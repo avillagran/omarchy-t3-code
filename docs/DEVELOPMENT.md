@@ -122,6 +122,12 @@ Preferences write only an allowlisted subset of native settings via
 `t3-protocol::settings` module validates values and exports safe field descriptors
 without provider credentials. General settings apply to the selected local or
 remote server; appearance follows Omarchy, and favorites use T3's existing store.
+Source Control includes native branch naming/prefix/instructions, writing style
+and pull request templates, merge method, worktree options and review guide
+preferences. Text edits require an explicit Save; staged edits survive unrelated
+settings responses and failed writes until the preferences view is closed or its
+environment is changed. General also exposes nullable inactivity days for
+auto-settle and automatic resume after rate limits.
 Connection management remains owned by T3's catalog.
 
 ## Everyday use
@@ -241,6 +247,7 @@ tools/test-qml dpi-lifecycle
 tools/test-qml panel-reopen
 tools/test-qml window-mode
 tools/test-qml preferences
+tools/test-qml preferences-source-control
 node tools/test-remote-bootstrap.cjs
 tools/test-qml context-divider
 tools/test-qml copy-actions

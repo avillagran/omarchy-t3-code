@@ -10,6 +10,14 @@ Rectangle {
  signal usageRequested(bool value)
  signal groupingRequested(bool value)
  property string page:"general"
+ property var edits:({})
+ property string savingKey:""
+ property string savingRequest:""
+ function save(key,value){if(!writable)return;bridge.requestSettings(environment,key,value);if(result.busy){savingKey=key;savingRequest=result.requestId}}
+ Connections {target:root.bridge
+  function onSettingsResultChanged(){var r=root.result;if(r.busy||!root.savingRequest||r.requestId!==root.savingRequest)return;if(!r.error){var next=Object.assign({},root.edits);delete next[root.savingKey];root.edits=next}root.savingKey="";root.savingRequest=""}
+ }
+ function stage(key,value){var next=Object.assign({},edits);next[key]=value;edits=next}
  property string environment:bridge.selectedEnvironment || "local"
  readonly property var result:bridge.settingsResult
  readonly property var environments:(bridge.state.environments || []).filter(function(e){return e.state==="ready"})
@@ -19,7 +27,7 @@ Rectangle {
  color:Color.popups.background
  function load(){bridge.requestSettings(environment)}
  Component.onCompleted:load()
- onEnvironmentChanged:load()
+ onEnvironmentChanged:{edits={};savingKey="";savingRequest="";load()}
  ColumnLayout {
   anchors.fill:parent;anchors.margins:Style.space(18);spacing:Style.space(16)
   RowLayout {Layout.fillWidth:true
@@ -30,7 +38,7 @@ Rectangle {
   }
   RowLayout {Layout.fillWidth:true;Layout.fillHeight:true;spacing:Style.space(20)
    ColumnLayout {Layout.preferredWidth:Style.space(145);Layout.alignment:Qt.AlignTop;spacing:Style.space(4)
-    Repeater {model:[{id:"general",name:"General"},{id:"appearance",name:"Appearance"},{id:"connections",name:"Connections"},{id:"providers",name:"Providers"},{id:"shortcuts",name:"Keyboard shortcuts"}]
+    Repeater {model:[{id:"general",name:"General"},{id:"source-control",name:"Source control"},{id:"appearance",name:"Appearance"},{id:"connections",name:"Connections"},{id:"providers",name:"Providers"},{id:"shortcuts",name:"Keyboard shortcuts"}]
      Controls.Button{required property var modelData;objectName:"preferencesTab_"+modelData.id;Layout.fillWidth:true;text:T3I18n.tr(modelData.name);checkable:true;checked:root.page===modelData.id;onClicked:root.page=modelData.id;font.pixelSize:Style.font.caption}
     }
     Item{Layout.fillHeight:true}
@@ -40,13 +48,9 @@ Rectangle {
     ColumnLayout {width:settingsScroll.availableWidth;spacing:Style.space(14)
      Text{visible:!!root.result.error;Layout.fillWidth:true;text:T3I18n.error(root.result.error || "");color:Color.urgent;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
      WorkIndicator{visible:root.result.busy;active:visible}
-     ColumnLayout {visible:root.page==="general";Layout.fillWidth:true;spacing:Style.space(10)
-      Repeater{model:root.result.fields || []
-       RowLayout{required property var modelData;Layout.fillWidth:true;spacing:Style.space(12)
-        Text{Layout.fillWidth:true;text:T3I18n.tr(modelData.label);color:root.fg;wrapMode:Text.Wrap;font.pixelSize:Style.font.body}
-        Controls.CheckBox{objectName:"preference_"+modelData.key;visible:modelData.kind==="bool";enabled:root.writable;checked:modelData.value===true;onToggled:root.bridge.requestSettings(root.environment,modelData.key,checked)}
-        T3Select{objectName:"preferenceChoice_"+modelData.key;visible:modelData.kind==="choice";enabled:root.writable;Layout.preferredWidth:Style.space(155);translateLabels:true;model:modelData.choices || [];textRole:"name";currentIndex:model.findIndex(function(c){return c.id===modelData.value});onActivated:function(i){root.bridge.requestSettings(root.environment,modelData.key,model[i].id)}}
-       }
+     ColumnLayout {visible:root.page==="general"||root.page==="source-control";Layout.fillWidth:true;spacing:Style.space(14)
+      Repeater{model:(root.result.fields || []).filter(function(f){return (f.section || "general")===root.page})
+       T3PreferenceField{required property var modelData;Layout.fillWidth:true;field:modelData;writable:root.writable;edit:root.edits[modelData.key];onStaged:function(value){root.stage(modelData.key,value)};onChanged:function(value){root.save(modelData.key,value)}}
       }
      }
      ColumnLayout {visible:root.page==="appearance";Layout.fillWidth:true
