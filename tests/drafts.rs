@@ -40,7 +40,7 @@ fn drafts_survive_restart_isolate_chats_and_preserve_uncertain_identity() {
     let key = "fixture/one";
     let request = uuid::Uuid::new_v4().to_string();
     let text = "Prompt seguro\ncon acentos: ñ y emojis 🦀";
-    let draft = json!({"text":text,"attachments":[],"delivery":"auto","attempt":{"op":"send","environment":"fixture","thread":"one","requestId":request,"text":text,"attachments":[],"modelSelection":null,"delivery":"auto"},"token":"must-not-persist"});
+    let draft = json!({"text":text,"attachments":[],"delivery":"auto","attempt":{"op":"send","environment":"fixture","thread":"one","requestId":request,"text":text,"attachments":[],"modelSelection":null,"delivery":"auto","nextThread":{"projectId":"p","modelSelection":{"instanceId":"codex","model":"fixture"},"runtimeMode":"approval-required","branch":"main","worktreePath":null}},"token":"must-not-persist"});
     let events = run(
         &root,
         &[
@@ -67,6 +67,7 @@ fn drafts_survive_restart_isolate_chats_and_preserve_uncertain_identity() {
         .clone();
     assert_eq!(data["text"], text);
     assert_eq!(data["attempt"]["requestId"], request);
+    assert_eq!(data["attempt"]["nextThread"]["projectId"], "p");
     assert!(!data.to_string().contains("must-not-persist"));
     assert_eq!(
         events

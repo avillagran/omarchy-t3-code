@@ -367,7 +367,14 @@
     "SSH host or alias": "SSH host or alias",
     "Username": "Username",
     "Forget this connection on this device? Remote projects and messages are kept.": "Forget this connection on this device? Remote projects and messages are kept.",
-    "Reconnect": "Reconnect"
+    "Reconnect": "Reconnect",
+    "Send and start new thread": "Send and start new thread",
+    "New project": "New project",
+    "Start a new Git repository from a name": "Start a new Git repository from a name",
+    "Clone from a remote URL": "Clone from a remote URL",
+    "{provider} repository": "{provider} repository",
+    "Clone a repository": "Clone a repository",
+    "Setup required": "Setup required"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -737,7 +744,14 @@
     "SSH host or alias": "Host o alias SSH",
     "Username": "Usuario",
     "Forget this connection on this device? Remote projects and messages are kept.": "¿Olvidar esta conexión en este equipo? Los proyectos y mensajes remotos se conservan.",
-    "Reconnect": "Reconectar"
+    "Reconnect": "Reconectar",
+    "Send and start new thread": "Enviar e iniciar un hilo nuevo",
+    "New project": "Nuevo proyecto",
+    "Start a new Git repository from a name": "Inicia un repositorio Git con un nombre",
+    "Clone from a remote URL": "Clonar desde una URL remota",
+    "{provider} repository": "Repositorio de {provider}",
+    "Clone a repository": "Clonar un repositorio",
+    "Setup required": "Requiere configuración"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1107,7 +1121,14 @@
     "SSH host or alias": "Host ou alias SSH",
     "Username": "Usuário",
     "Forget this connection on this device? Remote projects and messages are kept.": "Esquecer esta conexão neste dispositivo? Projetos e mensagens remotos são mantidos.",
-    "Reconnect": "Reconectar"
+    "Reconnect": "Reconectar",
+    "Send and start new thread": "Enviar e iniciar nova conversa",
+    "New project": "Novo projeto",
+    "Start a new Git repository from a name": "Iniciar um repositório Git a partir de um nome",
+    "Clone from a remote URL": "Clonar de uma URL remota",
+    "{provider} repository": "Repositório {provider}",
+    "Clone a repository": "Clonar um repositório",
+    "Setup required": "Configuração necessária"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1477,7 +1498,14 @@
     "SSH host or alias": "Hôte ou alias SSH",
     "Username": "Utilisateur",
     "Forget this connection on this device? Remote projects and messages are kept.": "Oublier cette connexion sur cet appareil ? Les projets et messages distants sont conservés.",
-    "Reconnect": "Reconnecter"
+    "Reconnect": "Reconnecter",
+    "Send and start new thread": "Envoyer et démarrer un nouveau fil",
+    "New project": "Nouveau projet",
+    "Start a new Git repository from a name": "Créer un dépôt Git à partir d’un nom",
+    "Clone from a remote URL": "Cloner depuis une URL distante",
+    "{provider} repository": "Dépôt {provider}",
+    "Clone a repository": "Cloner un dépôt",
+    "Setup required": "Configuration requise"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1847,7 +1875,14 @@
     "SSH host or alias": "SSH-Host oder Alias",
     "Username": "Benutzername",
     "Forget this connection on this device? Remote projects and messages are kept.": "Diese Verbindung auf diesem Gerät vergessen? Entfernte Projekte und Nachrichten bleiben erhalten.",
-    "Reconnect": "Erneut verbinden"
+    "Reconnect": "Erneut verbinden",
+    "Send and start new thread": "Senden und neuen Chat starten",
+    "New project": "Neues Projekt",
+    "Start a new Git repository from a name": "Ein Git-Repository mit einem Namen anlegen",
+    "Clone from a remote URL": "Von einer entfernten URL klonen",
+    "{provider} repository": "{provider}-Repository",
+    "Clone a repository": "Repository klonen",
+    "Setup required": "Einrichtung erforderlich"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2217,7 +2252,14 @@
     "SSH host or alias": "Host o alias SSH",
     "Username": "Utente",
     "Forget this connection on this device? Remote projects and messages are kept.": "Dimenticare la connessione su questo dispositivo? Progetti e messaggi remoti vengono conservati.",
-    "Reconnect": "Riconnetti"
+    "Reconnect": "Riconnetti",
+    "Send and start new thread": "Invia e avvia una nuova conversazione",
+    "New project": "Nuovo progetto",
+    "Start a new Git repository from a name": "Crea un repository Git da un nome",
+    "Clone from a remote URL": "Clona da un URL remoto",
+    "{provider} repository": "Repository {provider}",
+    "Clone a repository": "Clona un repository",
+    "Setup required": "Configurazione richiesta"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2587,7 +2629,14 @@
     "SSH host or alias": "SSH-host of alias",
     "Username": "Gebruikersnaam",
     "Forget this connection on this device? Remote projects and messages are kept.": "Deze verbinding op dit apparaat vergeten? Externe projecten en berichten blijven behouden.",
-    "Reconnect": "Opnieuw verbinden"
+    "Reconnect": "Opnieuw verbinden",
+    "Send and start new thread": "Versturen en nieuwe chat starten",
+    "New project": "Nieuw project",
+    "Start a new Git repository from a name": "Een Git-repository starten met een naam",
+    "Clone from a remote URL": "Klonen vanaf een externe URL",
+    "{provider} repository": "{provider}-repository",
+    "Clone a repository": "Een repository klonen",
+    "Setup required": "Configuratie vereist"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2957,7 +3006,14 @@
     "SSH host or alias": "Host lub alias SSH",
     "Username": "Użytkownik",
     "Forget this connection on this device? Remote projects and messages are kept.": "Zapomnieć połączenie na tym urządzeniu? Zdalne projekty i wiadomości zostaną zachowane.",
-    "Reconnect": "Połącz ponownie"
+    "Reconnect": "Połącz ponownie",
+    "Send and start new thread": "Wyślij i rozpocznij nowy wątek",
+    "New project": "Nowy projekt",
+    "Start a new Git repository from a name": "Utwórz repozytorium Git na podstawie nazwy",
+    "Clone from a remote URL": "Klonuj ze zdalnego adresu URL",
+    "{provider} repository": "Repozytorium {provider}",
+    "Clone a repository": "Klonuj repozytorium",
+    "Setup required": "Wymagana konfiguracja"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3327,7 +3383,14 @@
     "SSH host or alias": "Хост или псевдоним SSH",
     "Username": "Пользователь",
     "Forget this connection on this device? Remote projects and messages are kept.": "Забыть подключение на этом устройстве? Удалённые проекты и сообщения сохранятся.",
-    "Reconnect": "Переподключить"
+    "Reconnect": "Переподключить",
+    "Send and start new thread": "Отправить и начать новый чат",
+    "New project": "Новый проект",
+    "Start a new Git repository from a name": "Создать репозиторий Git по имени",
+    "Clone from a remote URL": "Клонировать по удалённому URL",
+    "{provider} repository": "Репозиторий {provider}",
+    "Clone a repository": "Клонировать репозиторий",
+    "Setup required": "Требуется настройка"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3697,7 +3760,14 @@
     "SSH host or alias": "Хост або псевдонім SSH",
     "Username": "Користувач",
     "Forget this connection on this device? Remote projects and messages are kept.": "Забути підключення на цьому пристрої? Віддалені проєкти й повідомлення збережуться.",
-    "Reconnect": "Підключити знову"
+    "Reconnect": "Підключити знову",
+    "Send and start new thread": "Надіслати й почати новий чат",
+    "New project": "Новий проєкт",
+    "Start a new Git repository from a name": "Створити репозиторій Git за назвою",
+    "Clone from a remote URL": "Клонувати з віддаленої URL",
+    "{provider} repository": "Репозиторій {provider}",
+    "Clone a repository": "Клонувати репозиторій",
+    "Setup required": "Потрібне налаштування"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4067,7 +4137,14 @@
     "SSH host or alias": "SSHホストまたはエイリアス",
     "Username": "ユーザー名",
     "Forget this connection on this device? Remote projects and messages are kept.": "このデバイスから接続を削除しますか？リモートのプロジェクトとメッセージは保持されます。",
-    "Reconnect": "再接続"
+    "Reconnect": "再接続",
+    "Send and start new thread": "送信して新しいスレッドを開始",
+    "New project": "新しいプロジェクト",
+    "Start a new Git repository from a name": "名前を指定して Git リポジトリを作成",
+    "Clone from a remote URL": "リモート URL からクローン",
+    "{provider} repository": "{provider} リポジトリ",
+    "Clone a repository": "リポジトリをクローン",
+    "Setup required": "設定が必要"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4437,7 +4514,14 @@
     "SSH host or alias": "SSH 호스트 또는 별칭",
     "Username": "사용자 이름",
     "Forget this connection on this device? Remote projects and messages are kept.": "이 기기에서 연결을 삭제할까요? 원격 프로젝트와 메시지는 유지됩니다.",
-    "Reconnect": "다시 연결"
+    "Reconnect": "다시 연결",
+    "Send and start new thread": "전송하고 새 대화 시작",
+    "New project": "새 프로젝트",
+    "Start a new Git repository from a name": "이름으로 Git 저장소 만들기",
+    "Clone from a remote URL": "원격 URL에서 복제",
+    "{provider} repository": "{provider} 저장소",
+    "Clone a repository": "저장소 복제",
+    "Setup required": "설정 필요"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4807,7 +4891,14 @@
     "SSH host or alias": "SSH 主机或别名",
     "Username": "用户名",
     "Forget this connection on this device? Remote projects and messages are kept.": "在此设备上移除此连接？远程项目和消息将保留。",
-    "Reconnect": "重新连接"
+    "Reconnect": "重新连接",
+    "Send and start new thread": "发送并开始新对话",
+    "New project": "新建项目",
+    "Start a new Git repository from a name": "通过名称创建 Git 仓库",
+    "Clone from a remote URL": "从远程 URL 克隆",
+    "{provider} repository": "{provider} 仓库",
+    "Clone a repository": "克隆仓库",
+    "Setup required": "需要配置"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5177,7 +5268,14 @@
     "SSH host or alias": "مضيف SSH أو اسمه المستعار",
     "Username": "اسم المستخدم",
     "Forget this connection on this device? Remote projects and messages are kept.": "هل تريد نسيان هذا الاتصال على هذا الجهاز؟ ستبقى المشاريع والرسائل البعيدة.",
-    "Reconnect": "إعادة الاتصال"
+    "Reconnect": "إعادة الاتصال",
+    "Send and start new thread": "إرسال وبدء محادثة جديدة",
+    "New project": "مشروع جديد",
+    "Start a new Git repository from a name": "إنشاء مستودع Git باسم",
+    "Clone from a remote URL": "استنساخ من عنوان URL بعيد",
+    "{provider} repository": "مستودع {provider}",
+    "Clone a repository": "استنساخ مستودع",
+    "Setup required": "يلزم الإعداد"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5547,7 +5645,14 @@
     "SSH host or alias": "SSH sunucusu veya takma adı",
     "Username": "Kullanıcı adı",
     "Forget this connection on this device? Remote projects and messages are kept.": "Bu cihazda bağlantı unutulsun mu? Uzak projeler ve mesajlar korunur.",
-    "Reconnect": "Yeniden bağlan"
+    "Reconnect": "Yeniden bağlan",
+    "Send and start new thread": "Gönder ve yeni sohbet başlat",
+    "New project": "Yeni proje",
+    "Start a new Git repository from a name": "Bir adla Git deposu oluştur",
+    "Clone from a remote URL": "Uzak URL üzerinden klonla",
+    "{provider} repository": "{provider} deposu",
+    "Clone a repository": "Depoyu klonla",
+    "Setup required": "Kurulum gerekli"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5917,7 +6022,14 @@
     "SSH host or alias": "SSH-värd eller alias",
     "Username": "Användarnamn",
     "Forget this connection on this device? Remote projects and messages are kept.": "Glöm anslutningen på denna enhet? Fjärrprojekt och meddelanden behålls.",
-    "Reconnect": "Återanslut"
+    "Reconnect": "Återanslut",
+    "Send and start new thread": "Skicka och starta ny tråd",
+    "New project": "Nytt projekt",
+    "Start a new Git repository from a name": "Skapa ett Git-arkiv från ett namn",
+    "Clone from a remote URL": "Klona från en fjärr-URL",
+    "{provider} repository": "{provider}-arkiv",
+    "Clone a repository": "Klona ett arkiv",
+    "Setup required": "Konfiguration krävs"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6287,7 +6399,14 @@
     "SSH host or alias": "SSH-vært eller alias",
     "Username": "Brugernavn",
     "Forget this connection on this device? Remote projects and messages are kept.": "Glem forbindelsen på denne enhed? Fjernprojekter og beskeder bevares.",
-    "Reconnect": "Tilslut igen"
+    "Reconnect": "Tilslut igen",
+    "Send and start new thread": "Send og start ny tråd",
+    "New project": "Nyt projekt",
+    "Start a new Git repository from a name": "Opret et Git-repository ud fra et navn",
+    "Clone from a remote URL": "Klon fra en fjern-URL",
+    "{provider} repository": "{provider}-repository",
+    "Clone a repository": "Klon et repository",
+    "Setup required": "Opsætning kræves"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6657,7 +6776,14 @@
     "SSH host or alias": "SSH-vert eller alias",
     "Username": "Brukernavn",
     "Forget this connection on this device? Remote projects and messages are kept.": "Glem tilkoblingen på denne enheten? Eksterne prosjekter og meldinger beholdes.",
-    "Reconnect": "Koble til på nytt"
+    "Reconnect": "Koble til på nytt",
+    "Send and start new thread": "Send og start ny tråd",
+    "New project": "Nytt prosjekt",
+    "Start a new Git repository from a name": "Opprett et Git-repositorium fra et navn",
+    "Clone from a remote URL": "Klon fra en ekstern URL",
+    "{provider} repository": "{provider}-repositorium",
+    "Clone a repository": "Klon et repositorium",
+    "Setup required": "Oppsett kreves"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7027,7 +7153,14 @@
     "SSH host or alias": "SSH-isäntä tai alias",
     "Username": "Käyttäjänimi",
     "Forget this connection on this device? Remote projects and messages are kept.": "Unohdetaanko yhteys tällä laitteella? Etäprojektit ja viestit säilyvät.",
-    "Reconnect": "Yhdistä uudelleen"
+    "Reconnect": "Yhdistä uudelleen",
+    "Send and start new thread": "Lähetä ja aloita uusi keskustelu",
+    "New project": "Uusi projekti",
+    "Start a new Git repository from a name": "Luo Git-tietovarasto nimen perusteella",
+    "Clone from a remote URL": "Kloonaa etä-URL-osoitteesta",
+    "{provider} repository": "{provider}-tietovarasto",
+    "Clone a repository": "Kloonaa tietovarasto",
+    "Setup required": "Määritys tarvitaan"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7397,6 +7530,13 @@
     "SSH host or alias": "SSH hostitel nebo alias",
     "Username": "Uživatelské jméno",
     "Forget this connection on this device? Remote projects and messages are kept.": "Zapomenout připojení na tomto zařízení? Vzdálené projekty a zprávy zůstanou zachovány.",
-    "Reconnect": "Znovu připojit"
+    "Reconnect": "Znovu připojit",
+    "Send and start new thread": "Odeslat a začít nové vlákno",
+    "New project": "Nový projekt",
+    "Start a new Git repository from a name": "Vytvořit repozitář Git podle názvu",
+    "Clone from a remote URL": "Klonovat ze vzdálené URL",
+    "{provider} repository": "Repozitář {provider}",
+    "Clone a repository": "Klonovat repozitář",
+    "Setup required": "Vyžaduje nastavení"
   }
 }

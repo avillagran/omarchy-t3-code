@@ -221,6 +221,8 @@ Singleton {
   function discardDraft(key){var d=drafts[key];if(!d || d.busy || d.loading || d.attempt || d.loadError)return;patchDraft(key,{text:"",attachments:[],error:""});flushDraft(key)}
   property var managementRequest: null
   property var folderBrowse:({busy:false,error:"",entries:[],parentPath:""})
+  property var projectSources:({busy:false,providers:[]})
+  function loadProjectSources(environment){var id=uuid();projectSources={busy:true,environment:environment,requestId:id,providers:[]};send({op:"project-sources",environment:environment,requestId:id})}
   property string windowLayoutError:""
   property var windowLayoutOperation:({busy:false})
   signal windowLayoutFinished(string error)
@@ -318,13 +320,15 @@ Singleton {
     patchDraft(selectedKey,{busy:true,error:""})
     send({op:"clipboard",environment:selectedEnvironment,thread:selectedThread,requestId:id,capacity:100-draft.attachments.length})
   }
-  function submit() {
+  function submit(startNewThread) {
+    if(startNewThread===true&&(activeQuestion||managementBusy||managementRequest||draft.queueEdit||!selectedInfo.projectId))return
     if(activeQuestion){questionSubmitRequested();return}
     if (!selectedThread || draft.loading || draft.loadError || draft.busy || draft.attachments.some(function(f) { return f.uploading || f.error })) return
     if (!draft.attempt && !draft.text.trim() && draft.attachments.length === 0) return
     var attempt = draft.attempt || {op: "send", environment: selectedEnvironment, thread: selectedThread,
       requestId: uuid(), text: draft.text, attachments: draft.attachments.map(function(f) { return f.attachment }),
       modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: selectedInfo.activeRunId ? "queue" : draft.delivery}
+    if(startNewThread===true&&!draft.attempt)attempt.nextThread={projectId:selectedInfo.projectId,modelSelection:attempt.modelSelection,runtimeMode:selectedInfo.runtimeMode,branch:selectedInfo.branch,worktreePath:selectedInfo.worktreePath}
     if(!draft.attempt && draft.queueEdit){
       if(!queue.items.some(function(q){return q.runId===root.draft.queueEdit.runId})){patchDraft(selectedKey,{error:"queued_message_no_longer_pending"});return}
       attempt=Object.assign({},attempt,{op:"queue",action:"edit",runId:draft.queueEdit.runId,context:draft.queueEdit.context})
@@ -404,6 +408,7 @@ Singleton {
       historyExpanded=true;historyCursor=data.result.historyCursor || "";hasEarlier=!!data.result.hasMoreHistory&&!!historyCursor
       mergeTranscript();messagesUpdated();return
     }
+    if(data.op==="project-sources"){if(data.requestId===projectSources.requestId)projectSources=Object.assign({},projectSources,{busy:false,error:data.error || ""},data.result || {});return}
     if(data.op==="approval"){
       var key=Object.keys(approvalOperations).find(function(k){return root.approvalOperations[k].requestId===data.requestId})
       if(key){var all=Object.assign({},approvalOperations);all[key]={busy:false,answered:!data.error,error:data.error || "",requestId:data.requestId};approvalOperations=all
@@ -487,7 +492,12 @@ Singleton {
     } else if (data.op === "send" && d.attempt && d.attempt.requestId === data.requestId) {
       if(data.error && data.error!=="rpc_outcome_unknown")forgetQueued(key,"omarchy-"+data.requestId)
       if (data.error) patchDraft(key, {busy: false, error: data.error, attempt: data.error === "rpc_outcome_unknown" ? d.attempt : null})
-      else { patchDraft(key, {text: "", attachments: [], busy: false, attempt: null, error: ""},false); resetUndo(key);flushDraft(key); refresh() }
+      else {
+        var next=d.attempt.nextThread
+        patchDraft(key, {text: "", attachments: [], busy: false, attempt: null, error: ""},false); resetUndo(key);flushDraft(key); refresh()
+        // Navigate only after acknowledgement, and only if the user is still here.
+        if(next&&selectedKey===key&&!managementBusy&&!managementRequest)manage({action:"new-thread",environment:data.environment,title:T3I18n.tr("New chat"),projectId:next.projectId,modelSelection:next.modelSelection,runtimeMode:next.runtimeMode,branch:next.branch,worktreePath:next.worktreePath})
+      }
     } else if (data.op === "stop") patchDraft(key, {stopping: false, error: data.error || ""})
   }
   signal connectionsManaged(string action,string error)

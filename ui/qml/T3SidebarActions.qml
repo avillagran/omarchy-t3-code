@@ -13,7 +13,7 @@ Item {
   property bool addingProject: false
   function newOnBranch(t){newThread();sourceThread=t;project.currentIndex=Math.max(0,projects.findIndex(function(p){return p.key===t.projectKey}))}
   function newThread() {
-    if(bridge.managementRequest&&bridge.managementRequest.action==="add-project"){projectWizard.begin();return}
+    if(bridge.managementRequest&&["add-project","create-project","clone-project"].indexOf(bridge.managementRequest.action)>=0){projectWizard.begin();return}
     sourceThread=null
     addingProject = bridge.managementRequest && bridge.managementRequest.action === "add-project"
     var index = projects.findIndex(function(p) { return p.key === root.bridge.selectedInfo.projectKey })

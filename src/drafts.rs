@@ -70,6 +70,7 @@ pub fn clean(v: &Value) -> Result<Value> {
             "attachments",
             "modelSelection",
             "delivery",
+            "nextThread",
         ] {
             if let Some(value) = a.get(key) {
                 attempt[key] = value.clone();

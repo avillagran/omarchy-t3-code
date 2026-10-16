@@ -12,6 +12,12 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     let config = rpc(e,"server.getConfig",json!({}))?;
     let mut result=protocol::models::catalog(&config);result["canWrite"]=json!(e.write_token_file.is_some() || e.bearer.is_some() || e.connection.is_some());Ok(result)
 }
+pub fn project_sources(e:&Environment)->Result<Value>{
+    let config=rpc(e,"server.getConfig",json!({}))?;
+    let discovery=rpc(e,"server.discoverSourceControl",json!({}))?;
+    let providers=discovery["sourceControlProviders"].as_array().into_iter().flatten().map(|p|json!({"kind":p["kind"],"status":p["status"],"auth":{"status":p["auth"]["status"]}})).collect::<Vec<_>>();
+    Ok(json!({"newProjectsRoot":config["newProjectsRoot"],"baseDirectory":config["settings"]["addProjectBaseDirectory"],"cloneTracking":config["environment"]["capabilities"]["projectCloneTracking"]==true,"providers":providers}))
+}
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
     let path=protocol::history::path(thread,text(input,"cursor"))?;
@@ -97,6 +103,23 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     let id=text(input,"requestId"); uuid::Uuid::parse_str(id).map_err(|_| "invalid_request_id")?;
     let mut thread=String::new();
     let (tag,mut command)=match text(input,"action") {
+        "create-project" => {
+            let name=text(input,"name").trim();
+            if name.is_empty()||name.chars().count()>200||name.chars().any(char::is_control){return Err("invalid_title".into())}
+            ("projects.createNew",json!({"name":name}))
+        },
+        "clone-project" => {
+            let destination=protocol::projects::folder_path(text(input,"workspaceRoot"))?;
+            let repository=text(input,"repository").trim();
+            if repository.is_empty()||repository.len()>4096||repository.chars().any(char::is_control){return Err("invalid_project".into())}
+            let mut c=json!({"projectId":format!("omarchy-project-{id}"),"title":destination.rsplit('/').next().unwrap_or("Project"),"createdAt":input["createdAt"],"destinationPath":destination});
+            if input["source"]=="url"{
+                let shorthand=repository.split('/').collect::<Vec<_>>();
+                let url=if shorthand.len()==2&&shorthand.iter().all(|s|!s.is_empty()&&s.chars().all(|c|c.is_ascii_alphanumeric()||matches!(c,'-'|'_'|'.'))){format!("https://github.com/{repository}{}",if repository.ends_with(".git"){""}else{".git"})}else{repository.to_string()};
+                c["remoteUrl"]=json!(url)
+            }else{let provider=text(input,"source");if provider.is_empty()||provider.len()>64||!provider.chars().all(|c|c.is_ascii_lowercase()||c.is_ascii_digit()||c=='-'){return Err("invalid_project".into())}c["provider"]=json!(provider);c["repository"]=json!(repository)}
+            ("projectClone.start",c)
+        },
         "new-thread" => {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
             thread=format!("omarchy-thread-{id}");
@@ -129,8 +152,16 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     command["commandId"]=json!(format!("omarchy-{id}"));
     let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
     let envelope=json!({"environment":e.id,"command":command,"rpc":tag});
-    if path.exists() {if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}} else {save_json(&path,&envelope)?;}
-    rpc(e,tag,command).map(|_|json!({"threadId":thread,"projectId":input["projectId"],"action":input["action"]}))
+    let receipt=path.with_extension("receipt.json");
+    let non_replayable=matches!(tag,"projects.createNew"|"projectClone.start");
+    if path.exists() {
+        if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}
+        if non_replayable {return if receipt.exists(){read_json(&receipt)}else{Err("rpc_outcome_unknown".into())}}
+    } else {save_json(&path,&envelope)?;}
+    let response=rpc(e,tag,command)?;
+    let result=json!({"threadId":thread,"projectId":response.get("projectId").unwrap_or(&input["projectId"]),"action":input["action"]});
+    if non_replayable{save_json(&receipt,&result)?;}
+    Ok(result)
 }
 pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="connections-manage"{return crate::connections::manage_connections(input)}
@@ -146,6 +177,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{rpc(&e,&tag,payload)}},
         "settings"=>{if input["action"]=="update"{rpc(&e,"server.updateSettings",protocol::settings::patch(input)?)?;}else if input["action"]!="read"{return Err("invalid_settings".into())}rpc(&e,"server.getSettings",json!({})).map(|v|protocol::settings::snapshot(&v))},
         "catalog"=>catalog(&e),
+        "project-sources"=>project_sources(&e),
         "browse-folders"=>{
             let path=protocol::projects::folder_path(text(input,"path"))?;
             protocol::projects::folders(&rpc(&e,"filesystem.browse",json!({"partialPath":path}))?)
