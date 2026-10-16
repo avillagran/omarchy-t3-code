@@ -265,7 +265,9 @@
     "Managed by T3 Code GUI": "Managed by T3 Code GUI",
     "Local backend controls": "Local backend controls",
     "Restart local backend": "Restart local backend",
-    "Stop local backend": "Stop local backend"
+    "Stop local backend": "Stop local backend",
+    "Context handoff": "Context handoff",
+    "Context handoff pending": "Context handoff pending"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -533,7 +535,9 @@
     "Managed by T3 Code GUI": "Gestionado por la GUI de T3 Code",
     "Local backend controls": "Controles del servidor local",
     "Restart local backend": "Reiniciar servidor local",
-    "Stop local backend": "Detener servidor local"
+    "Stop local backend": "Detener servidor local",
+    "Context handoff": "Traspaso de contexto",
+    "Context handoff pending": "Traspaso de contexto pendiente"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -801,7 +805,9 @@
     "Managed by T3 Code GUI": "Gerenciado pela GUI do T3 Code",
     "Local backend controls": "Controles do servidor local",
     "Restart local backend": "Reiniciar servidor local",
-    "Stop local backend": "Parar servidor local"
+    "Stop local backend": "Parar servidor local",
+    "Context handoff": "Transferência de contexto",
+    "Context handoff pending": "Transferência de contexto pendente"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1069,7 +1075,9 @@
     "Managed by T3 Code GUI": "Géré par l’interface T3 Code (GUI)",
     "Local backend controls": "Commandes du serveur local",
     "Restart local backend": "Redémarrer le serveur local",
-    "Stop local backend": "Arrêter le serveur local"
+    "Stop local backend": "Arrêter le serveur local",
+    "Context handoff": "Transfert de contexte",
+    "Context handoff pending": "Transfert de contexte en attente"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1337,7 +1345,9 @@
     "Managed by T3 Code GUI": "Von der T3-Code-Oberfläche verwaltet (GUI)",
     "Local backend controls": "Steuerung des lokalen Servers",
     "Restart local backend": "Lokalen Server neu starten",
-    "Stop local backend": "Lokalen Server stoppen"
+    "Stop local backend": "Lokalen Server stoppen",
+    "Context handoff": "Kontextübergabe",
+    "Context handoff pending": "Kontextübergabe ausstehend"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1605,7 +1615,9 @@
     "Managed by T3 Code GUI": "Gestito dall’interfaccia di T3 Code (GUI)",
     "Local backend controls": "Controlli del server locale",
     "Restart local backend": "Riavvia server locale",
-    "Stop local backend": "Arresta server locale"
+    "Stop local backend": "Arresta server locale",
+    "Context handoff": "Passaggio del contesto",
+    "Context handoff pending": "Passaggio del contesto in attesa"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1873,7 +1885,9 @@
     "Managed by T3 Code GUI": "Beheerd door de T3 Code-interface (GUI)",
     "Local backend controls": "Lokale serverbediening",
     "Restart local backend": "Lokale server herstarten",
-    "Stop local backend": "Lokale server stoppen"
+    "Stop local backend": "Lokale server stoppen",
+    "Context handoff": "Contextoverdracht",
+    "Context handoff pending": "Contextoverdracht in behandeling"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2141,7 +2155,9 @@
     "Managed by T3 Code GUI": "Zarządzany przez interfejs T3 Code (GUI)",
     "Local backend controls": "Sterowanie serwerem lokalnym",
     "Restart local backend": "Uruchom ponownie serwer lokalny",
-    "Stop local backend": "Zatrzymaj serwer lokalny"
+    "Stop local backend": "Zatrzymaj serwer lokalny",
+    "Context handoff": "Przekazanie kontekstu",
+    "Context handoff pending": "Oczekiwanie na przekazanie kontekstu"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2409,7 +2425,9 @@
     "Managed by T3 Code GUI": "Управляется интерфейсом T3 Code (GUI)",
     "Local backend controls": "Управление локальным сервером",
     "Restart local backend": "Перезапустить локальный сервер",
-    "Stop local backend": "Остановить локальный сервер"
+    "Stop local backend": "Остановить локальный сервер",
+    "Context handoff": "Передача контекста",
+    "Context handoff pending": "Ожидание передачи контекста"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2677,7 +2695,9 @@
     "Managed by T3 Code GUI": "Керується інтерфейсом T3 Code (GUI)",
     "Local backend controls": "Керування локальним сервером",
     "Restart local backend": "Перезапустити локальний сервер",
-    "Stop local backend": "Зупинити локальний сервер"
+    "Stop local backend": "Зупинити локальний сервер",
+    "Context handoff": "Передавання контексту",
+    "Context handoff pending": "Очікування передавання контексту"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2945,7 +2965,9 @@
     "Managed by T3 Code GUI": "T3 CodeのGUIで管理",
     "Local backend controls": "ローカルサーバーの操作",
     "Restart local backend": "ローカルサーバーを再起動",
-    "Stop local backend": "ローカルサーバーを停止"
+    "Stop local backend": "ローカルサーバーを停止",
+    "Context handoff": "コンテキストの引き継ぎ",
+    "Context handoff pending": "コンテキストの引き継ぎ待ち"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3213,7 +3235,9 @@
     "Managed by T3 Code GUI": "T3 Code GUI에서 관리",
     "Local backend controls": "로컬 서버 제어",
     "Restart local backend": "로컬 서버 다시 시작",
-    "Stop local backend": "로컬 서버 중지"
+    "Stop local backend": "로컬 서버 중지",
+    "Context handoff": "컨텍스트 인계",
+    "Context handoff pending": "컨텍스트 인계 대기 중"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3481,7 +3505,9 @@
     "Managed by T3 Code GUI": "由 T3 Code GUI 管理",
     "Local backend controls": "本地服务器控制",
     "Restart local backend": "重启本地服务器",
-    "Stop local backend": "停止本地服务器"
+    "Stop local backend": "停止本地服务器",
+    "Context handoff": "上下文交接",
+    "Context handoff pending": "等待上下文交接"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3749,7 +3775,9 @@
     "Managed by T3 Code GUI": "تديره واجهة T3 Code (GUI)",
     "Local backend controls": "عناصر تحكم الخادم المحلي",
     "Restart local backend": "إعادة تشغيل الخادم المحلي",
-    "Stop local backend": "إيقاف الخادم المحلي"
+    "Stop local backend": "إيقاف الخادم المحلي",
+    "Context handoff": "نقل السياق",
+    "Context handoff pending": "نقل السياق معلق"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4017,7 +4045,9 @@
     "Managed by T3 Code GUI": "T3 Code arayüzü tarafından yönetiliyor (GUI)",
     "Local backend controls": "Yerel sunucu denetimleri",
     "Restart local backend": "Yerel sunucuyu yeniden başlat",
-    "Stop local backend": "Yerel sunucuyu durdur"
+    "Stop local backend": "Yerel sunucuyu durdur",
+    "Context handoff": "Bağlam aktarımı",
+    "Context handoff pending": "Bağlam aktarımı bekleniyor"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4285,7 +4315,9 @@
     "Managed by T3 Code GUI": "Hanteras av T3 Codes gränssnitt (GUI)",
     "Local backend controls": "Lokala serverkontroller",
     "Restart local backend": "Starta om lokal server",
-    "Stop local backend": "Stoppa lokal server"
+    "Stop local backend": "Stoppa lokal server",
+    "Context handoff": "Kontextöverföring",
+    "Context handoff pending": "Väntar på kontextöverföring"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4553,7 +4585,9 @@
     "Managed by T3 Code GUI": "Administreres af T3 Codes brugerflade (GUI)",
     "Local backend controls": "Lokale serverkontroller",
     "Restart local backend": "Genstart lokal server",
-    "Stop local backend": "Stop lokal server"
+    "Stop local backend": "Stop lokal server",
+    "Context handoff": "Kontekstoverførsel",
+    "Context handoff pending": "Afventer kontekstoverførsel"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4821,7 +4855,9 @@
     "Managed by T3 Code GUI": "Administreres av T3 Codes grensesnitt (GUI)",
     "Local backend controls": "Lokale serverkontroller",
     "Restart local backend": "Start lokal server på nytt",
-    "Stop local backend": "Stopp lokal server"
+    "Stop local backend": "Stopp lokal server",
+    "Context handoff": "Kontekstoverføring",
+    "Context handoff pending": "Venter på kontekstoverføring"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5089,7 +5125,9 @@
     "Managed by T3 Code GUI": "T3 Coden käyttöliittymän hallinnoima (GUI)",
     "Local backend controls": "Paikallisen palvelimen hallinta",
     "Restart local backend": "Käynnistä paikallinen palvelin uudelleen",
-    "Stop local backend": "Pysäytä paikallinen palvelin"
+    "Stop local backend": "Pysäytä paikallinen palvelin",
+    "Context handoff": "Kontekstin siirto",
+    "Context handoff pending": "Kontekstin siirto odottaa"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5357,6 +5395,8 @@
     "Managed by T3 Code GUI": "Spravováno rozhraním T3 Code (GUI)",
     "Local backend controls": "Ovládání místního serveru",
     "Restart local backend": "Restartovat místní server",
-    "Stop local backend": "Zastavit místní server"
+    "Stop local backend": "Zastavit místní server",
+    "Context handoff": "Předání kontextu",
+    "Context handoff pending": "Čeká se na předání kontextu"
   }
 }

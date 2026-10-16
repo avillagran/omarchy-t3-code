@@ -649,3 +649,5 @@ impl Connection {
   if !valid{return Err("invalid_image".into())}Ok(bytes)
  }
 }
+
+pub mod lifecycle;

@@ -25,6 +25,8 @@ the official desktop GUI open when the server runs independently.
   keyboard navigation and click-to-jump.
 - **Live conversations:** streamed updates for the visible chat, contextual tool
   activity, animated work indicators, Markdown, changed-file summaries and tasks.
+  Context compactions and provider handoffs appear as native-style dividers with
+  inherited model names and provider icons. Links show a pointing hand on hover.
 - **A capable composer:** model picker with inherited favorites, options, queued
   messages, stop controls, file/folder mentions, skills and supported commands.
 - **Durable drafts:** per-thread text and attachments, expanded editor, list
@@ -228,6 +230,7 @@ tools/test-qml backend-owner
 tools/test-qml sidebar-pr
 tools/test-qml dpi-lifecycle
 tools/test-qml panel-reopen
+tools/test-qml context-divider
 tools/test-qml upward-scroll
 
 # Requires the optional Qt HTML frontend:

@@ -265,6 +265,8 @@
     "Managed by T3 Code GUI": "Managed by T3 Code GUI",
     "Local backend controls": "Local backend controls",
     "Restart local backend": "Restart local backend",
-    "Stop local backend": "Stop local backend"
+    "Stop local backend": "Stop local backend",
+    "Context handoff": "Context handoff",
+    "Context handoff pending": "Context handoff pending"
   }
 }
