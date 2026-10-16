@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
+import Quickshell
+import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "../js/SidebarModel.js" as Sidebar
@@ -30,6 +32,7 @@ Item {
   property real panelWidth: bridge.viewState.panelWidth || 1120
   property real panelHeight: bridge.viewState.panelHeight || 780
   function resizePanel(w,h) {
+    if(detached){desktop.implicitWidth=Style.space(Math.max(760,w));desktop.implicitHeight=Style.space(Math.max(360,h));return}
     panelWidth=Math.max(760,Math.min(4000,w));panelHeight=Math.max(360,Math.min(3000,h))
     bridge.rememberView({panelWidth:panelWidth,panelHeight:panelHeight})
   }
@@ -42,7 +45,20 @@ Item {
   function focusSidebar() { if(composerExpanded)expandComposer(false);if(sidebarCollapsed)toggleSidebar(false);var choices=[{view:threads,rows:activeRows},{view:workingThreads,rows:visibleWorkingRows},{view:snoozedThreads,rows:visibleSnoozedRows},{view:settledThreads,rows:visibleSettledRows}],choice=choices.find(function(c){return c.rows.some(function(t){return t.key===root.bridge.selectedKey})}) || choices.find(function(c){return c.rows.length}) || choices[0];choice.view.forceActiveFocus();choice.view.currentIndex=Math.max(0,choice.rows.findIndex(function(t){return t.key===root.bridge.selectedKey})) }
   function navigateThread(step) { var rows=activeRows.concat(visibleWorkingRows).concat(visibleSnoozedRows).concat(visibleSettledRows);if(!rows.length)return;var index=rows.findIndex(function(t){return t.key===root.bridge.selectedKey});var t=rows[(index+step+rows.length)%rows.length];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus() }
   Component.onCompleted: { initialized = true;syncConversation() }
-  readonly property bool opened: popup.open
+  property bool panelOpen:false
+  property bool detached:!!bridge.viewState.detached
+  readonly property bool opened:panelOpen
+  readonly property var managedToplevel:ToplevelManager.toplevels.values.find(function(t){return t.title===desktop.title&&t.appId===Quickshell.appId}) || null
+  onManagedToplevelChanged:if(opened&&detached&&managedToplevel)Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})
+  readonly property bool shortcutActive:opened&&(!detached||!!(managedToplevel&&managedToplevel.activated))
+  readonly property var normalWindow:desktop
+  function setDetached(value){
+    if(detached===value)return
+    conversation.stopWheel();captureState();documentPopup.close();imagePopup.close();diffPopup.close();keyHelp.close();filterMenu.close();projectMenu.dismissContext()
+    restoringConversation=true;restoringSidebar=true
+    detached=value;bridge.rememberView({detached:value})
+    Qt.callLater(function(){root.restoreSidebarShelves();root.restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false});composerPanel.inputField.forceActiveFocus()})
+  }
   readonly property color fg: Color.popups.text
   readonly property color dim: Qt.rgba(fg.r, fg.g, fg.b, 0.57)
   readonly property color divider: Qt.rgba(fg.r, fg.g, fg.b, 0.09)
@@ -216,9 +232,9 @@ Item {
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   function kind(t) { return Sidebar.state(t) }
   function stateColor(t) { return T3Palette.stateColor(kind(t)) }
-  function open() { popup.open = true }
-  function close() { documentPopup.close();imagePopup.close();diffPopup.close();captureState(); popup.open = false }
-  function toggle() { popup.open = !popup.open }
+  function open() { panelOpen=true;if(detached){desktop.minimized=false;Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
+  function close() { documentPopup.close();imagePopup.close();diffPopup.close();captureState(); panelOpen = false }
+  function toggle() { opened ? close() : open() }
   function date(ms) { return ms ? new Date(ms).toLocaleString(Qt.locale(T3I18n.locale), "dd MMM · HH:mm") : "—" }
   function age(ms) {
     if (!ms) return "—"
@@ -262,8 +278,23 @@ Item {
   }
   T3ProjectMenu{id:projectMenu;bridge:root.bridge;onGroupingChanged:function(previous,current){if(root.projectFilter===previous||root.projectFilter===projectMenu.project.key)root.projectFilter=current}}
   T3CompactionSettings{id:compactionSettings;bridge:root.bridge}
+  FloatingWindow {
+    id:desktop
+    title:"Omarchy T3 Code"
+    visible:root.panelOpen&&root.detached
+    color:Color.popups.background
+    implicitWidth:Style.space(root.bridge.viewState.windowWidth || root.panelWidth)
+    implicitHeight:Style.space(root.bridge.viewState.windowHeight || root.panelHeight)
+    minimumSize:Qt.size(Style.space(760),Style.space(360))
+    onClosed:if(root.detached)root.close()
+    onWidthChanged:if(visible&&root.detached)saveWindowSize.restart()
+    onHeightChanged:if(visible&&root.detached)saveWindowSize.restart()
+  }
+  Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.detached)root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
   PinnedKeyboardPanel {
     id: popup
+    open:root.panelOpen&&!root.detached
+    suspended:root.detached
     anchorItem: root.anchorItem; bar: root.bar; owner: root
     contentWidth: Math.min(Style.space(root.panelWidth), availableCardWidth - padding * 2)
     contentHeight: Math.min(Style.space(root.panelHeight), availableCardHeight - padding * 2)
@@ -273,6 +304,7 @@ Item {
     focusTarget: root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
     RowLayout {
       id:panelLayout;objectName:"t3PanelLayout"
+      parent:root.detached?desktop.contentItem:popup.surfaceItem
       LayoutMirroring.enabled:T3I18n.rtl;LayoutMirroring.childrenInherit:true
       anchors.fill: parent; spacing: 0
       Shortcut { sequence:"Meta+B";enabled:root.opened;onActivated:root.toggleSidebar() }
@@ -666,7 +698,8 @@ Item {
             T3IconButton { visible: root.sidebarCollapsed; name: "panel-left"; tooltipText: T3I18n.tr("Open sidebar"); onClicked: root.toggleSidebar() }
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
-            Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText }
+            Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
+            T3IconButton {objectName:"toggleWindowMode";name:root.detached?"pin":"monitor";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.detached?"Return to panel":"Open as window");onClicked:root.setDetached(!root.detached)}
             T3IconButton { name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
             T3IconButton { name: "x"; tooltipText: T3I18n.tr("Close"); onClicked: root.close() }
             T3IconButton{name:"shrink";tooltipText:T3I18n.tr("Automatic compaction");onClicked:compactionSettings.open()}

@@ -43,7 +43,7 @@ BarWidget {
   IpcHandler {
     target: "io.github.avillagran.omarchy-t3-code"
     function state(): string {
-      return JSON.stringify({ opened: root.opened, panelLoaded: panelLoader.item !== null,
+      return JSON.stringify({ opened: root.opened, panelLoaded: panelLoader.item !== null,detached:panelLoader.item?panelLoader.item.detached:!!t3Backend.viewState.detached,
         localBackend:t3Backend.localBackend,
         compaction:t3Backend.compactionStates,
         nativeScroll:t3Backend.scrollPolicy,modelFavorites:(t3Backend.catalog.favorites || []).length,modelCount:(t3Backend.catalog.models || []).length,
@@ -71,7 +71,7 @@ BarWidget {
         quotaWindows: t3Backend.providers.map(function(p) { return {provider:p.provider, weekly:!!p.weekly, shortWindow:!!p.shortWindow} }) })
     }
     function submitMessage(): bool {
-      if(!root.opened)return false
+      if(!root.opened || (panelLoader.item&&!panelLoader.item.shortcutActive))return false
       if(panelLoader.item)panelLoader.item.submitCurrent();return true
     }
     function readThread(environment: string, threadId: string): void {
