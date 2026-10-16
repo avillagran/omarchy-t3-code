@@ -218,19 +218,20 @@ process overhead.
 
 ### Shared library for Omi
 
-[`crates/t3-protocol`](../crates/t3-protocol/README.md) contains the portable Rust
-transport, authentication and protocol logic, including a C ABI for a JNI host.
+[`lib-t3-rust`](https://github.com/avillagran/lib-t3-rust) is the independent source
+of the portable Rust transport, authentication and protocol logic, including a C ABI for a JNI host.
 It does not depend on Quickshell, SSH or the Linux keyring. Omi supplies its own
 platform integration; the Android application is not built or modified here.
-See the [protocol contract](protocol/t3-direct-v1.json) and fixtures for shared
-behavior. Credentials stay in the host adapter and are not passed to QML.
+See its [Android/JNI guide](https://github.com/avillagran/lib-t3-rust/blob/main/docs/ANDROID.md)
+and the desktop [adapter contract](protocol/t3-direct-v1.json). Portable protocol
+tests now run in the library repository; this repository tests desktop integration.
+Credentials stay in the host adapter and are not passed to QML.
 
 ## Project layout
 
 ```text
 .
 ├── src/                     # Rust desktop adapter and process entry point
-├── crates/t3-protocol/       # Portable Rust library and C ABI for Omi
 ├── ui/
 │   ├── qml/                 # Panel, composer, sidebar and shared controls
 │   ├── js/                  # UI models, theme helpers and generated icon data
@@ -246,8 +247,18 @@ behavior. Credentials stay in the host adapter and are not passed to QML.
 ```
 
 `manifest.json` points directly to `ui/qml/BarWidget.qml`. Rust follows the
-standard Cargo layout; the portable crate remains separate from Linux desktop
-integration. Generated binaries, local measurements and development evidence
+standard Cargo layout; the portable crate is a pinned Git dependency on
+lib-t3-rust, shared with Omi. Update its full revision in Cargo.toml and commit
+Cargo.lock after validating both repositories. To develop locally without changing
+the committed dependency, use Cargo’s command-line patch:
+
+```sh
+cargo test --workspace --config 'patch."https://github.com/avillagran/lib-t3-rust".t3-protocol.path="../lib-t3-rust"'
+```
+
+A local patch can require a temporary lockfile update; do not commit a path-based
+lock entry. Run the normal locked checks again after removing the patch.
+Generated binaries, local measurements and development evidence
 are excluded from Git. The root `hypr-bindings.lua` is a compatibility entry point
 for existing user configurations; new installations use `integrations/hyprland/`.
 

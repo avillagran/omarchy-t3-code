@@ -40,7 +40,7 @@ deliberately excludes raw inputs/outputs and must not become an eager payload du
   older pages must be loaded before searching them. Formatted assistant text is
   indexed without Markdown delimiters or hidden link destinations. This is not
   yet server-wide search or simultaneous highlighting of every occurrence.
-- Portable approval and history helpers live in `crates/t3-protocol` for Omi.
+- Portable approval and history helpers live in [`lib-t3-rust`](https://github.com/avillagran/lib-t3-rust) for Omi.
   The desktop still owns durable storage and transport scheduling.
 
 Verified with isolated native HTTP/RPC integration tests, approval persistence
@@ -60,9 +60,9 @@ Native paths below are relative to `apps/web/src/` in the reference checkout.
 
 | Priority | Area | Missing or partial behavior | Native evidence / plugin evidence |
 | --- | --- | --- | --- |
-| High | Tool details | Activity labels and expandable summary lists exist. Missing the original item inspector, fetched tool output and detailed reasoning/tool presentation. | `components/chat/MessagesTimeline.tsx` (`V2ItemInspector`, `FetchedToolOutput`); `ui/qml/T3ActivityBlock.qml`, `crates/t3-protocol/src/activity.rs`, `projection.rs`. |
+| High | Tool details | Activity labels and expandable summary lists exist. Missing the original item inspector, fetched tool output and detailed reasoning/tool presentation. | `components/chat/MessagesTimeline.tsx` (`V2ItemInspector`, `FetchedToolOutput`); `ui/qml/T3ActivityBlock.qml`, `lib-t3-rust/src/activity.rs`, `projection.rs`. |
 | High | Diffs | Changed-file summary and a colored unified diff modal exist. File rows themselves are not actionable; missing the native per-file diff panel, file navigation and richer diff controls. | `components/DiffPanel.tsx`, `components/chat/MessagesTimeline.tsx::onOpenTurnDiff`; `ui/qml/T3Changes.qml`, `T3Panel.qml::diffPopup`. |
-| High | Chat modes | Model/options work, but runtime permissions are a read-only label. No native Plan/Default mode switch or plan-ready follow-up workflow. Provider slash-command suggestions are not equivalent to dispatching built-in chat-mode actions. | `composer-logic.ts::ComposerSlashCommand`, `components/chat/ComposerPlanFollowUpBanner.tsx`, `ChatView.tsx`; `ui/qml/T3Composer.qml`, `crates/t3-protocol/src/composer.rs` implements only built-in `/model`; new threads hardcode `interactionMode: default` in `src/write.rs`. |
+| High | Chat modes | Model/options work, but runtime permissions are a read-only label. No native Plan/Default mode switch or plan-ready follow-up workflow. Provider slash-command suggestions are not equivalent to dispatching built-in chat-mode actions. | `composer-logic.ts::ComposerSlashCommand`, `components/chat/ComposerPlanFollowUpBanner.tsx`, `ChatView.tsx`; `ui/qml/T3Composer.qml`, `lib-t3-rust/src/composer.rs` implements only built-in `/model`; new threads hardcode `interactionMode: default` in `src/write.rs`. |
 | Medium | Composer references | File/folder and skill lookup exist. Missing thread/PR suggestion kinds, rich context chips, assistant-selection citations and structured T3 clipboard contexts. The editor currently inserts textual Markdown references. | `components/chat/ComposerCommandMenu.tsx`, `ComposerPromptEditorTiptap.tsx`, `chat/AssistantSelectionToolbar.tsx`; `src/suggestions.rs` allows only path/skill/command, `ui/qml/T3Composer.qml`. |
 | Medium | Prompt stash | Durable draft and prompt history exist, but there is no multi-entry stash menu to save/restore/delete independent prompts and their attachments. This is separate from queued messages. | `components/chat/ComposerStashMenu.tsx`, `ComposerStashBadge.tsx`; `ui/qml/T3Composer.qml`, `T3Backend.qml`. |
 | Medium | Workspace controls | Missing full branch/worktree picker, Git action controls, project-script runner/editor and editor picker inside the chat details UI. “New thread on this branch” already exists and should be preserved. | `components/chat/ThreadDetailsPanel.tsx`, `components/BranchToolbar.tsx`, `GitActionsControl.tsx`, `ProjectScriptsControl.tsx`; `ui/qml/T3SidebarActions.qml`, `T3Panel.qml`. |
