@@ -382,7 +382,9 @@
     "Auto-approve edits, ask before other actions.": "Auto-approve edits, ask before other actions.",
     "Supported providers approve routine actions; others still ask.": "Supported providers approve routine actions; others still ask.",
     "Allow commands and edits without prompts.": "Allow commands and edits without prompts.",
-    "Open native terminal": "Open native terminal"
+    "Open native terminal": "Open native terminal",
+    "Run in terminal": "Run in terminal",
+    "Copy code": "Copy code"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -767,7 +769,9 @@
     "Auto-approve edits, ask before other actions.": "Aprobar ediciones automáticamente; preguntar por otras acciones.",
     "Supported providers approve routine actions; others still ask.": "Los proveedores compatibles aprueban acciones habituales; los demás preguntan.",
     "Allow commands and edits without prompts.": "Permitir comandos y ediciones sin pedir confirmación.",
-    "Open native terminal": "Abrir terminal nativa"
+    "Open native terminal": "Abrir terminal nativa",
+    "Run in terminal": "Ejecutar en terminal",
+    "Copy code": "Copiar código"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1152,7 +1156,9 @@
     "Auto-approve edits, ask before other actions.": "Aprovar edições automaticamente; perguntar por outras ações.",
     "Supported providers approve routine actions; others still ask.": "Provedores compatíveis aprovam ações comuns; os demais perguntam.",
     "Allow commands and edits without prompts.": "Permitir comandos e edições sem confirmação.",
-    "Open native terminal": "Abrir terminal nativo"
+    "Open native terminal": "Abrir terminal nativo",
+    "Run in terminal": "Executar no terminal",
+    "Copy code": "Copiar código"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1537,7 +1543,9 @@
     "Auto-approve edits, ask before other actions.": "Approuver les modifications, demander pour les autres actions.",
     "Supported providers approve routine actions; others still ask.": "Les fournisseurs compatibles approuvent les actions courantes ; les autres demandent.",
     "Allow commands and edits without prompts.": "Autoriser les commandes et modifications sans confirmation.",
-    "Open native terminal": "Ouvrir le terminal natif"
+    "Open native terminal": "Ouvrir le terminal natif",
+    "Run in terminal": "Exécuter dans le terminal",
+    "Copy code": "Copier le code"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1922,7 +1930,9 @@
     "Auto-approve edits, ask before other actions.": "Änderungen automatisch genehmigen, bei anderen Aktionen nachfragen.",
     "Supported providers approve routine actions; others still ask.": "Unterstützte Anbieter genehmigen Routineaktionen; andere fragen nach.",
     "Allow commands and edits without prompts.": "Befehle und Änderungen ohne Rückfrage erlauben.",
-    "Open native terminal": "Natives Terminal öffnen"
+    "Open native terminal": "Natives Terminal öffnen",
+    "Run in terminal": "Im Terminal ausführen",
+    "Copy code": "Code kopieren"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2307,7 +2317,9 @@
     "Auto-approve edits, ask before other actions.": "Approva le modifiche, chiedi per le altre azioni.",
     "Supported providers approve routine actions; others still ask.": "I provider compatibili approvano le azioni comuni; gli altri chiedono.",
     "Allow commands and edits without prompts.": "Consenti comandi e modifiche senza conferma.",
-    "Open native terminal": "Apri terminale nativo"
+    "Open native terminal": "Apri terminale nativo",
+    "Run in terminal": "Esegui nel terminale",
+    "Copy code": "Copia codice"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2692,7 +2704,9 @@
     "Auto-approve edits, ask before other actions.": "Keur wijzigingen automatisch goed; vraag bij andere acties.",
     "Supported providers approve routine actions; others still ask.": "Ondersteunde providers keuren routineacties goed; andere vragen toestemming.",
     "Allow commands and edits without prompts.": "Sta opdrachten en wijzigingen zonder bevestiging toe.",
-    "Open native terminal": "Native terminal openen"
+    "Open native terminal": "Native terminal openen",
+    "Run in terminal": "Uitvoeren in terminal",
+    "Copy code": "Code kopiëren"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3077,7 +3091,9 @@
     "Auto-approve edits, ask before other actions.": "Zatwierdzaj zmiany automatycznie, pytaj o inne działania.",
     "Supported providers approve routine actions; others still ask.": "Obsługiwani dostawcy zatwierdzają rutynowe działania; inni pytają.",
     "Allow commands and edits without prompts.": "Zezwalaj na polecenia i zmiany bez potwierdzenia.",
-    "Open native terminal": "Otwórz natywny terminal"
+    "Open native terminal": "Otwórz natywny terminal",
+    "Run in terminal": "Uruchom w terminalu",
+    "Copy code": "Kopiuj kod"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3462,7 +3478,9 @@
     "Auto-approve edits, ask before other actions.": "Автоматически одобрять правки, спрашивать об остальных действиях.",
     "Supported providers approve routine actions; others still ask.": "Совместимые провайдеры одобряют обычные действия; остальные спрашивают.",
     "Allow commands and edits without prompts.": "Разрешать команды и правки без подтверждений.",
-    "Open native terminal": "Открыть системный терминал"
+    "Open native terminal": "Открыть системный терминал",
+    "Run in terminal": "Выполнить в терминале",
+    "Copy code": "Копировать код"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3847,7 +3865,9 @@
     "Auto-approve edits, ask before other actions.": "Автоматично схвалювати зміни, питати про інші дії.",
     "Supported providers approve routine actions; others still ask.": "Сумісні провайдери схвалюють звичайні дії; інші запитують.",
     "Allow commands and edits without prompts.": "Дозволити команди та зміни без підтверджень.",
-    "Open native terminal": "Відкрити системний термінал"
+    "Open native terminal": "Відкрити системний термінал",
+    "Run in terminal": "Виконати в терміналі",
+    "Copy code": "Копіювати код"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4232,7 +4252,9 @@
     "Auto-approve edits, ask before other actions.": "編集を自動承認し、その他の操作は確認します。",
     "Supported providers approve routine actions; others still ask.": "対応プロバイダーは通常の操作を承認し、その他は確認します。",
     "Allow commands and edits without prompts.": "確認なしでコマンドと編集を許可します。",
-    "Open native terminal": "ネイティブターミナルを開く"
+    "Open native terminal": "ネイティブターミナルを開く",
+    "Run in terminal": "ターミナルで実行",
+    "Copy code": "コードをコピー"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4617,7 +4639,9 @@
     "Auto-approve edits, ask before other actions.": "편집은 자동 승인하고 다른 작업은 확인합니다.",
     "Supported providers approve routine actions; others still ask.": "지원하는 공급자는 일반 작업을 승인하고 나머지는 확인합니다.",
     "Allow commands and edits without prompts.": "확인 없이 명령과 편집을 허용합니다.",
-    "Open native terminal": "기본 터미널 열기"
+    "Open native terminal": "기본 터미널 열기",
+    "Run in terminal": "터미널에서 실행",
+    "Copy code": "코드 복사"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5002,7 +5026,9 @@
     "Auto-approve edits, ask before other actions.": "自动批准编辑，其他操作前询问。",
     "Supported providers approve routine actions; others still ask.": "支持的提供商批准常规操作，其他提供商仍会询问。",
     "Allow commands and edits without prompts.": "允许执行命令和编辑，无需确认。",
-    "Open native terminal": "打开原生终端"
+    "Open native terminal": "打开原生终端",
+    "Run in terminal": "在终端中运行",
+    "Copy code": "复制代码"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5387,7 +5413,9 @@
     "Auto-approve edits, ask before other actions.": "اعتماد التعديلات تلقائيًا والسؤال عن الإجراءات الأخرى.",
     "Supported providers approve routine actions; others still ask.": "يعتمد المزوّدون المتوافقون الإجراءات المعتادة، ويسأل الآخرون.",
     "Allow commands and edits without prompts.": "السماح بالأوامر والتعديلات دون تأكيد.",
-    "Open native terminal": "فتح الطرفية الأصلية"
+    "Open native terminal": "فتح الطرفية الأصلية",
+    "Run in terminal": "تشغيل في الطرفية",
+    "Copy code": "نسخ الشيفرة"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5772,7 +5800,9 @@
     "Auto-approve edits, ask before other actions.": "Düzenlemeleri otomatik onayla, diğer işlemleri sor.",
     "Supported providers approve routine actions; others still ask.": "Desteklenen sağlayıcılar rutin işlemleri onaylar; diğerleri sorar.",
     "Allow commands and edits without prompts.": "Komutlara ve düzenlemelere onaysız izin ver.",
-    "Open native terminal": "Yerel terminali aç"
+    "Open native terminal": "Yerel terminali aç",
+    "Run in terminal": "Terminalde çalıştır",
+    "Copy code": "Kodu kopyala"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6157,7 +6187,9 @@
     "Auto-approve edits, ask before other actions.": "Godkänn ändringar automatiskt, fråga om andra åtgärder.",
     "Supported providers approve routine actions; others still ask.": "Stödda leverantörer godkänner rutinåtgärder; andra frågar.",
     "Allow commands and edits without prompts.": "Tillåt kommandon och ändringar utan bekräftelse.",
-    "Open native terminal": "Öppna systemterminal"
+    "Open native terminal": "Öppna systemterminal",
+    "Run in terminal": "Kör i terminal",
+    "Copy code": "Kopiera kod"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6542,7 +6574,9 @@
     "Auto-approve edits, ask before other actions.": "Godkend ændringer automatisk, spørg om andre handlinger.",
     "Supported providers approve routine actions; others still ask.": "Understøttede udbydere godkender rutinehandlinger; andre spørger.",
     "Allow commands and edits without prompts.": "Tillad kommandoer og ændringer uden bekræftelse.",
-    "Open native terminal": "Åbn systemterminal"
+    "Open native terminal": "Åbn systemterminal",
+    "Run in terminal": "Kør i terminal",
+    "Copy code": "Kopiér kode"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6927,7 +6961,9 @@
     "Auto-approve edits, ask before other actions.": "Godkjenn endringer automatisk, spør om andre handlinger.",
     "Supported providers approve routine actions; others still ask.": "Støttede leverandører godkjenner rutinehandlinger; andre spør.",
     "Allow commands and edits without prompts.": "Tillat kommandoer og endringer uten bekreftelse.",
-    "Open native terminal": "Åpne systemterminal"
+    "Open native terminal": "Åpne systemterminal",
+    "Run in terminal": "Kjør i terminal",
+    "Copy code": "Kopier kode"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7312,7 +7348,9 @@
     "Auto-approve edits, ask before other actions.": "Hyväksy muutokset automaattisesti, kysy muista toimista.",
     "Supported providers approve routine actions; others still ask.": "Tuetut tarjoajat hyväksyvät rutiinitoimet; muut kysyvät.",
     "Allow commands and edits without prompts.": "Salli komennot ja muutokset ilman vahvistusta.",
-    "Open native terminal": "Avaa järjestelmän pääte"
+    "Open native terminal": "Avaa järjestelmän pääte",
+    "Run in terminal": "Suorita päätteessä",
+    "Copy code": "Kopioi koodi"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7697,6 +7735,8 @@
     "Auto-approve edits, ask before other actions.": "Automaticky schvalovat úpravy, ptát se na ostatní akce.",
     "Supported providers approve routine actions; others still ask.": "Podporovaní poskytovatelé schvalují běžné akce; ostatní se ptají.",
     "Allow commands and edits without prompts.": "Povolit příkazy a úpravy bez potvrzení.",
-    "Open native terminal": "Otevřít nativní terminál"
+    "Open native terminal": "Otevřít nativní terminál",
+    "Run in terminal": "Spustit v terminálu",
+    "Copy code": "Kopírovat kód"
   }
 }

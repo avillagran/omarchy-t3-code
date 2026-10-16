@@ -42,3 +42,19 @@ frontend termination/detachment and termios restoration. QML checks cover the
 header button, Ctrl+J, duplicate launch prevention, failures, late replies,
 draft preservation and read-only gating. These fixtures do not execute commands
 in a live user project or establish end-to-end LAN/emulator validation.
+
+## Run a command from a message
+
+Completed shell code blocks expose **Run in terminal** and **Copy code** in their
+header. Running requires a click; receiving or rendering a message never runs
+anything. As in T3 Code, only a closed, single-line shell fence without control
+or invisible formatting characters offers the run action. Streaming, incomplete
+or multiline blocks remain readable and copyable.
+
+A code action opens a fresh T3 terminal in the current chat's environment and
+project/worktree directory, so it cannot write into an unrelated running job.
+The command travels to the native frontend through a private one-use file,
+not a launcher shell argument. It is written once after the terminal attaches;
+an uncertain write is never retried automatically. Ordinary header/Ctrl+J opens
+continue to attach to the primary terminal. Closing the native window detaches
+without killing its shell.

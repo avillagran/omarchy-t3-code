@@ -277,6 +277,14 @@ Item {
     var mins = Math.max(0, Math.floor((Date.now() - ms) / 60000))
     return mins < 1 ? T3I18n.tr("now") : mins < 60 ? mins + "m" : mins < 1440 ? Math.floor(mins / 60) + "h" : Math.floor(mins / 1440) + "d"
   }
+  function renderMessage(message){
+    if(!message.rendered)return message.text || ""
+    var html=message.rendered
+    if(message.streaming||!root.bridge.canOpenTerminal)html=html.replace(new RegExp('<a href="ot3-code-run://[0-9]+">Run in terminal</a> · ',"g"),"")
+    html=html.replace(new RegExp('(href="ot3-code-run://[0-9]+">)Run in terminal(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Run in terminal")+b})
+    html=html.replace(new RegExp('(href="ot3-code-copy://[0-9]+">)Copy code(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy code")+b})
+    return html.replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ")
+  }
   function shortcutHelp(){
     var shortcuts=[["Tab / Shift+Tab","Navigate controls"],["Ctrl+F","Find in conversation"],["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Super+B","Chat list"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Super+E","Expand / return to chat"],["Super+PgUp / Super+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+S","Save draft"],["Ctrl+Enter","Send"],["Ctrl+J","Open native terminal"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Ctrl+Alt+Arrows","Resize"],["Esc","Return / close"]]
     return shortcuts.map(function(p){return T3I18n.tr("{shortcut} · {action}",{shortcut:p[0],action:T3I18n.tr(p[1])})}).join("\n")
@@ -898,9 +906,9 @@ Item {
                       LayoutMirroring.enabled:false
                       visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context"
                       width: parent.width
-                      text: message.userMessage ? modelData.text || "" : (modelData.rendered ? modelData.rendered.replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ") : modelData.text || "")
+                      text: message.userMessage ? modelData.text || "" : root.renderMessage(modelData)
                       textFormat: message.userMessage || !modelData.rendered ? TextEdit.PlainText : TextEdit.RichText; readOnly: true; selectByMouse: true
-                      onLinkActivated:function(link){root.bridge.openReference(link)}
+                      onLinkActivated:function(link){if(String(link).indexOf("ot3-code-")===0){root.bridge.codeAction(message.modelData,link);return}root.bridge.openReference(link)}
                       wrapMode: TextEdit.Wrap
                       color: root.fg; selectionColor: Color.accent; selectedTextColor: Color.popups.background
                       font.pixelSize: Style.font.body

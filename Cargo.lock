@@ -1497,11 +1497,12 @@ dependencies = [
 [[package]]
 name = "t3-protocol"
 version = "0.2.0"
-source = "git+https://github.com/avillagran/lib-t3-rust?rev=fc6931754ff045e55d18c44ed0cd302334c7d7f5#fc6931754ff045e55d18c44ed0cd302334c7d7f5"
+source = "git+https://github.com/avillagran/lib-t3-rust?rev=1a616ab6ccb31b689f41ff6f74915e69c780b1a3#1a616ab6ccb31b689f41ff6f74915e69c780b1a3"
 dependencies = [
  "base64 0.22.1",
  "chrono",
  "p256",
+ "pulldown-cmark",
  "rand_core 0.6.4",
  "reqwest",
  "serde_json",

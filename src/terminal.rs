@@ -18,16 +18,35 @@ fn size()->(u16,u16){let mut w:libc::winsize=unsafe{std::mem::zeroed()};if unsaf
 fn connection(e:&Environment)->Result<protocol::Connection>{if let Some(error)=&e.connection_error{return Err(error.clone())}if let Some(c)=&e.connection{return Ok(c.as_ref().clone())}protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)}
 fn writable(e:&Environment)->Result<()>{if e.write_token_file.is_none()&&e.bearer.is_none()&&e.connection.is_none(){Err("write_access_required".into())}else{Ok(())}}
 /// No command or path is interpolated into a shell; the bridge resolves thread context itself.
-pub fn launch(e:&Environment,thread:&str)->Result<serde_json::Value>{
+pub fn launch(e:&Environment,thread:&str)->Result<serde_json::Value>{launch_command(e,thread,None)}
+pub fn launch_command(e:&Environment,thread:&str,command:Option<&str>)->Result<serde_json::Value>{
  protocol::terminal::session(thread,"term-1")?;writable(e)?;if let Some(error)=&e.connection_error{return Err(error.clone())}
  let executable=std::env::current_exe().map_err(|_|"terminal_launch_failed")?;
- let mut child=Command::new("omarchy-launch-terminal").arg(executable).args(["terminal",&e.id,thread]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(|_|"terminal_launch_failed")?;
+ let mut launcher=Command::new("omarchy-launch-terminal");launcher.arg(executable).args(["terminal",&e.id,thread]);
+ let mut run_file=None;
+ if let Some(command)=command{
+  if !protocol::code_blocks::valid_command(command){return Err("invalid_terminal_input".into())}
+  let directory=xdg("XDG_STATE_HOME",".local/state").join("terminal-commands");std::fs::create_dir_all(&directory).map_err(|_|"local_error")?;
+  use std::os::unix::fs::PermissionsExt;std::fs::set_permissions(&directory,std::fs::Permissions::from_mode(0o700)).map_err(|_|"local_error")?;
+  let id=uuid::Uuid::new_v4().to_string();let file=directory.join(format!("{id}.json"));save_json(&file,&serde_json::json!({"command":command,"environment":e.id,"thread":thread,"terminalId":format!("term-ot3-{id}")}))?;
+  launcher.arg("--run-file").arg(&file);run_file=Some(file);
+ }
+ let mut child=match launcher.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn(){Ok(child)=>child,Err(_)=>{if let Some(file)=run_file{let _=std::fs::remove_file(file);}return Err("terminal_launch_failed".into())}};
  // Reap the short launcher without retaining a worker for the terminal's lifetime.
  std::thread::spawn(move||{let _=child.wait();});Ok(serde_json::json!({"opened":true}))
 }
 /// Run only in the native terminal process. Closing the frontend detaches; it never kills T3's shell.
-pub fn run(e:&Environment,thread:&str)->Result<()>{
- writable(e)?;let terminal="term-1";protocol::terminal::session(thread,terminal)?;
+pub fn run(e:&Environment,thread:&str)->Result<()>{run_command(e,thread,None)}
+fn consume(e:&Environment,thread:&str,path:&std::path::Path)->Result<serde_json::Value>{
+ use std::os::unix::fs::{OpenOptionsExt,MetadataExt,PermissionsExt};
+ let directory=xdg("XDG_STATE_HOME",".local/state").join("terminal-commands");
+ if path.parent()!=Some(directory.as_path())||path.extension().and_then(|s|s.to_str())!=Some("json"){return Err("invalid_terminal_input".into())}
+ let id=path.file_stem().and_then(|s|s.to_str()).ok_or("invalid_terminal_input")?;uuid::Uuid::parse_str(id).map_err(|_|"invalid_terminal_input")?;
+ let claimed=directory.join(format!("{id}.claimed"));std::fs::rename(path,&claimed).map_err(|_|"terminal_command_consumed")?;
+ let result=(||->Result<serde_json::Value>{let mut file=std::fs::OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW).open(&claimed).map_err(|_|"invalid_terminal_input")?;let meta=file.metadata().map_err(|_|"local_error")?;if !meta.is_file()||meta.uid()!=unsafe{libc::geteuid()}||meta.permissions().mode()&0o077!=0||meta.len()>65536{return Err("invalid_terminal_input".into())}let mut bytes=Vec::new();file.read_to_end(&mut bytes).map_err(|_|"local_error")?;let value:serde_json::Value=serde_json::from_slice(&bytes).map_err(|_|"invalid_terminal_input")?;if value["environment"]!=e.id||value["thread"]!=thread||value["terminalId"]!=format!("term-ot3-{id}")||!protocol::code_blocks::valid_command(text(&value,"command")){return Err("invalid_terminal_input".into())}Ok(value)})();let _=std::fs::remove_file(&claimed);result
+}
+pub fn run_command(e:&Environment,thread:&str,path:Option<&std::path::Path>)->Result<()>{
+ writable(e)?;let launch=path.map(|p|consume(e,thread,p)).transpose()?;let terminal=launch.as_ref().map(|v|text(v,"terminalId")).unwrap_or("term-1");protocol::terminal::session(thread,terminal)?;
  let c=connection(e)?;let shell=Client::new()?.get(e,"/api/orchestration/shell",true)?;
  let context=protocol::terminal::context(&shell,thread,"").or_else(|error|{if error!="terminal_directory_unavailable"{return Err(error)}let config=c.rpc("server.getConfig",serde_json::json!({}))?;protocol::terminal::context(&shell,thread,text(&config,"scratchWorkspaceRoot"))})?;
  let (cols,rows)=size();let payload=protocol::terminal::attach(thread,terminal,&context,cols,rows)?;
@@ -43,9 +62,10 @@ pub fn run(e:&Environment,thread:&str)->Result<()>{
    }Ok(())
   });stream_done.store(true,Ordering::Relaxed);result
  });
- let mut buffer=[0u8;16384];let mut pending=Vec::new();let mut last_size=(cols,rows);
+ let mut buffer=[0u8;16384];let mut pending=Vec::new();let mut last_size=(cols,rows);let mut initial=launch.as_ref().map(|v|format!("{}\r",text(v,"command")));
  let result=(||->Result<()>{while !done.load(Ordering::Relaxed)&&!INTERRUPTED.load(Ordering::Relaxed){
   if !ready.load(Ordering::Relaxed){std::thread::sleep(Duration::from_millis(20));continue}
+  if let Some(command)=initial.take(){c.terminal_write(thread,terminal,&command)?;}
   if RESIZED.swap(false,Ordering::Relaxed){let next=size();if next!=last_size{c.terminal_resize(thread,terminal,next.0,next.1)?;last_size=next;}}
   let mut fd=libc::pollfd{fd:0,events:libc::POLLIN,revents:0};let count=unsafe{libc::poll(&mut fd,1,100)};
   if count<0{if io::Error::last_os_error().kind()==io::ErrorKind::Interrupted{continue}return Err("terminal_input_closed".into())}

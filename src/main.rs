@@ -395,7 +395,7 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
-    if std::env::args().nth(1).as_deref()==Some("terminal") {let args:Vec<_>=std::env::args().skip(2).collect();let result=if args.len()==2{env_by_id(&args[0]).and_then(|e|terminal::run(&e,&args[1]))}else{Err("invalid_command".into())};if let Err(e)=result{eprintln!("T3 terminal: {e}");std::process::exit(1)}return}
+    if std::env::args().nth(1).as_deref()==Some("terminal") {let args:Vec<_>=std::env::args().skip(2).collect();let result=if args.len()==2 || (args.len()==4&&args[2]=="--run-file"){env_by_id(&args[0]).and_then(|e|terminal::run_command(&e,&args[1],args.get(3).map(std::path::Path::new)))}else{Err("invalid_command".into())};if let Err(e)=result{eprintln!("T3 terminal: {e}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("document-render") {if let Err(e)=documents::renderer(){eprintln!("{e}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("document-view") {if let Err(e)=documents::viewer(){eprintln!("{e}");std::process::exit(1)}return}
     if let Err(e) = run() {
