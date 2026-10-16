@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Both native packages must be gathered into dist/ before publishing.
+set -euo pipefail
+cd -- "$(dirname -- "$0")/.."
+tag=${1:?Usage: tools/publish-release vVERSION}
+[[ $tag =~ ^v[0-9][A-Za-z0-9._-]*$ ]] || exit 1
+[[ -z $(git status --porcelain) ]] || { echo 'Commit changes first.' >&2; exit 1; }
+commit=$(git rev-parse HEAD)
+assets=()
+for arch in aarch64 x86_64; do
+  file="dist/omarchy-t3-code-linux-$arch.tar.gz"
+  (cd dist && sha256sum -c "$(basename "$file").sha256")
+  [[ $(tar -xOf "$file" COMMIT) == "$commit" ]] || { echo "Stale package: $file" >&2; exit 1; }
+  assets+=("$file" "$file.sha256")
+done
+# A draft keeps incomplete releases out of the installer's latest-release lookup.
+gh release create "$tag" --target "$commit" --draft --title "Omarchy T3 Code $tag" --notes 'Native aarch64 and x86_64 packages for Omarchy on Arch Linux. Includes the Rust client and Qt HTML preview frontend. Install or update using the README one-liner.' "${assets[@]}"
+gh release edit "$tag" --draft=false --latest

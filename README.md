@@ -35,8 +35,8 @@ and opened at least once**. Run as your desktop user:
 curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/install.sh | bash
 ```
 
-The [installer](install.sh) installs build and preview dependencies through
-Pacman, compiles the plugin, enables its bar widget and makes **Super+Shift+A** open Omarchy T3 Code
+The [installer](install.sh) installs runtime dependencies through
+Pacman, downloads verified **aarch64 / x86_64** binaries, enables its bar widget and makes **Super+Shift+A** open Omarchy T3 Code
 as your default agent on Omarchy's Lua configuration. It reuses an existing T3 server or starts the native
 headless service when stopped. Your T3 connections and data stay in place.
 The same command updates a clean Git installation. It may request your sudo
