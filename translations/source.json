@@ -381,6 +381,7 @@
     "Ask before commands and file changes.": "Ask before commands and file changes.",
     "Auto-approve edits, ask before other actions.": "Auto-approve edits, ask before other actions.",
     "Supported providers approve routine actions; others still ask.": "Supported providers approve routine actions; others still ask.",
-    "Allow commands and edits without prompts.": "Allow commands and edits without prompts."
+    "Allow commands and edits without prompts.": "Allow commands and edits without prompts.",
+    "Open native terminal": "Open native terminal"
   }
 }

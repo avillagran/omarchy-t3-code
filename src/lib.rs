@@ -4,6 +4,7 @@ pub mod documents;
 pub mod scroll;
 pub mod message_text;
 pub mod desktop_open;
+pub mod terminal;
 pub mod clipboard;
 mod desktop_cloud;
 mod connections;
