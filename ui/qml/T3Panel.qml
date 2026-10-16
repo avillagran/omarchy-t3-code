@@ -46,7 +46,10 @@ Item {
     var i=root.bridge.transcript.findIndex(function(r){return r.id===m.id}),item=conversation.itemAtIndex(i)
     if(!item||!item.textItem)return
     var edit=item.textItem,text=edit.getText(0,edit.length).toLocaleLowerCase(),q=root.findQuery.toLocaleLowerCase(),pos=-1
-    for(var n=0;n<=m.ordinal;n++){pos=text.indexOf(q,pos+1);if(pos<0)return}
+    for(var n=0;n<=m.ordinal;n++){
+      do{pos=text.indexOf(q,pos+1)}while(pos>=0&&root.codeHeaderAt(edit,text,pos))
+      if(pos<0)return
+    }
     edit.select(pos,pos+q.length)
   }}
   readonly property var composerView: composerPanel
@@ -276,6 +279,16 @@ Item {
     if (!ms) return "—"
     var mins = Math.max(0, Math.floor((Date.now() - ms) / 60000))
     return mins < 1 ? T3I18n.tr("now") : mins < 60 ? mins + "m" : mins < 1440 ? Math.floor(mins / 60) + "h" : Math.floor(mins / 1440) + "d"
+  }
+  function codeHeaderAt(edit,plain,pos){
+    // QTextDocument exposes table-cell boundaries as FDD0/FDD1. Only our
+    // generated internal copy anchor identifies a generated code toolbar.
+    var previous=plain.lastIndexOf("\ufdd1",pos-1),start=plain.indexOf("\ufdd0",previous+1),end=plain.indexOf("\ufdd1",pos)
+    if(start<0||start>pos||end<0)return false
+    var label=plain.indexOf(T3I18n.tr("Copy code").toLocaleLowerCase(),start)
+    if(label<0||label>=end)return false
+    var rect=edit.positionToRectangle(label)
+    return String(edit.linkAt(rect.x+2,rect.y+rect.height/2)).indexOf("ot3-code-copy://")===0
   }
   function renderMessage(message){
     if(!message.rendered)return message.text || ""
