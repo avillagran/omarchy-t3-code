@@ -353,9 +353,12 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");
         let started=p["runs"].as_array().into_iter().flatten().find(|r|text(r,"id")==active).map(|r|epoch(&r["startedAt"]).max(epoch(&r["createdAt"]))).unwrap_or(0);
-        Ok(
-            json!({"threadState":{"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status},"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}),
-        )
+        let mut sorting=p["thread"].as_object().cloned().map(Value::Object).unwrap_or_else(||json!({}));
+        sorting["latestRun"]=p["runs"].as_array().and_then(|r|r.last()).cloned().unwrap_or(Value::Null);
+        if sorting["latestRun"].is_object()&&sorting["latestRun"].get("requestedAt").is_none(){sorting["latestRun"]["requestedAt"]=sorting["latestRun"]["createdAt"].clone();}
+        let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status});
+        for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
+        Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 
 /// Read only the desktop client's grouping preferences; never touch its store.
@@ -491,6 +494,7 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         let project = text(t, "projectId");
         let mut row=json!({"id":id,"environmentId":env,"key":format!("{env}/{id}"),"title":t["title"],"project":projects.get(project).copied().unwrap_or(project),"status":status,"working":working,"pending":!reason.is_empty()&&!snoozed,"reason":if reason.is_empty(){Value::Null}else{json!(reason)},"snoozed":snoozed,"updatedAt":epoch(&t["updatedAt"]),"revision":revision,"parentThreadId":t["lineage"]["parentThreadId"]});
         if let Some(relationship)=t["lineage"]["relationshipToParent"].as_str(){row["relationshipToParent"]=json!(relationship);}
+        for (key,value) in protocol::sidebar::sort_timestamps(t).as_object().unwrap(){row[key]=value.clone();}
         result.push(row);
     }
     result.sort_by(|a, b| {
@@ -563,7 +567,7 @@ pub fn snapshot(client: &Client) -> Result<Value> {
                         item["provider"] = t["providerInstanceId"].clone();
                         item["branch"] = t["branch"].clone();
                         item["model"] = t["modelSelection"]["model"].clone();
-                        for field in ["modelSelection", "runtimeMode", "interactionMode", "activeRunId","worktreePath","pinnedAt","pinOrderKey","autoSettleDisabledAt","titleRegeneration"] { item[field] = t[field].clone(); }
+                        for field in ["modelSelection", "runtimeMode", "interactionMode", "activeRunId","worktreePath","pinnedAt","pinOrderKey","activeOrderKey","autoSettleDisabledAt","titleRegeneration"] { item[field] = t[field].clone(); }
                         let monogram = project_identity(text(item, "project"));
                         item["projectMonogram"] = json!(monogram);
                     }
@@ -627,6 +631,15 @@ mod tests {
       let view=normalize_messages(&json!({"projection":p})).unwrap();
       assert_eq!(view["threadState"]["startedAt"],base+600);assert_eq!(view["activity"][0]["command"],"rg");
       let rows=view["timeline"].as_array().unwrap();let last=rows.last().unwrap();assert_eq!(last["activity"]["active"],true);assert_eq!(last["activity"]["entries"].as_array().unwrap().len(),600);
+    }
+    #[test]
+    fn live_completion_updates_sidebar_return_without_metadata_update(){
+      let base=1700000000000_i64;
+      let p=json!({"thread":{"createdAt":base,"updatedAt":base},"runs":[{"id":"r","status":"completed","createdAt":base+100,"completedAt":base+9000}],"messages":[],"turnItems":[]});
+      let view=normalize_messages(&json!({"projection":p})).unwrap();
+      assert_eq!(view["threadState"]["inboxAt"],base+9000);
+      assert_eq!(view["threadState"]["working"],false);
+      assert_eq!(view["threadState"]["activeAnchorAt"],base);
     }
     #[test]
     fn settlement_and_live_activity_do_not_invent_work() {
