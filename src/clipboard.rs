@@ -46,3 +46,60 @@ pub fn paste(input:&Value)->Result<Value>{
  use super::*;
  #[test]fn copied_paths_are_local_and_keep_escaping(){assert_eq!(paths("text/uri-list","# comment\nfile:///tmp/a%20b.png\r\n").unwrap(),vec!["file:///tmp/a%20b.png"]);assert_eq!(paths("x-special/gnome-copied-files","copy\nfile:///tmp/a.txt").unwrap().len(),1);assert!(paths("text/uri-list","https://example.com/a").is_err());}
 }
+
+/// Explicit user-requested copy only. Transfer bytes through stdin, never argv or
+/// a signed attachment URL. wl-copy owns the Wayland selection after it forks.
+fn offer(command:&mut Command,bytes:&[u8])->Result<()> {
+ use std::io::Write;
+ let mut child=command.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(|_|"clipboard_unavailable")?;
+ let result=child.stdin.take().ok_or("clipboard_unavailable").and_then(|mut pipe|pipe.write_all(bytes).map_err(|_|"clipboard_unavailable"));
+ if result.is_err(){let _=child.kill();let _=child.wait();return Err("clipboard_unavailable".into())}
+ if !child.wait().map_err(|_|"clipboard_unavailable")?.success(){return Err("clipboard_unavailable".into())}Ok(())
+}
+fn png_payload(bytes:Vec<u8>)->Result<Vec<u8>>{
+ use image::{ImageReader,ImageFormat,Limits};
+ let reader=ImageReader::new(Cursor::new(&bytes)).with_guessed_format().map_err(|_|"invalid_image")?;
+ let format=reader.format().ok_or("invalid_image")?;
+ if !matches!(format,ImageFormat::Png|ImageFormat::Jpeg|ImageFormat::Gif|ImageFormat::WebP){return Err("invalid_image".into())}
+ let (w,h)=reader.into_dimensions().map_err(|_|"invalid_image")?;
+ if w==0||h==0||u64::from(w)*u64::from(h)>16_000_000{return Err("clipboard_too_large".into())}
+ // PNG is already the interoperable clipboard flavor: no pixel allocation.
+ if format==ImageFormat::Png{return Ok(bytes)}
+ let mut reader=ImageReader::with_format(Cursor::new(bytes),format);let mut limits=Limits::default();limits.max_alloc=Some(64*1024*1024);limits.max_image_width=Some(8192);limits.max_image_height=Some(8192);reader.limits(limits);
+ let decoded=reader.decode().map_err(|_|"invalid_image")?;
+ let mut out=Cursor::new(Vec::new());decoded.write_to(&mut out,ImageFormat::Png).map_err(|_|"invalid_image")?;
+ Ok(out.into_inner())
+}
+pub fn copy(input:&Value)->Result<Value>{
+ let (mime,bytes)=match text(input,"kind"){
+  "text"=>{let text=input["text"].as_str().ok_or("invalid_clipboard_text")?;if text.len()>480000{return Err("clipboard_too_large".into())}("text/plain;charset=utf-8",text.as_bytes().to_vec())},
+  "image"=>{
+   // Resolve through the same authenticated attachment/cache path as previews.
+   let loaded=images::load(input)?;let url=reqwest::Url::parse(text(&loaded,"url")).map_err(|_|"invalid_image")?;
+   let path=url.to_file_path().map_err(|_|"invalid_image")?;
+   use std::os::unix::fs::{OpenOptionsExt,MetadataExt};
+   let mut file=std::fs::OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW).open(path).map_err(|_|"invalid_image")?;
+   let meta=file.metadata().map_err(|_|"invalid_image")?;
+   if !meta.is_file()||meta.uid()!=unsafe{libc::geteuid()}||meta.mode()&0o077!=0||meta.len()>10*1024*1024{return Err("invalid_image".into())}
+   let mut bytes=Vec::new();file.by_ref().take(10*1024*1024+1).read_to_end(&mut bytes).map_err(|_|"invalid_image")?;
+   if bytes.len()>10*1024*1024{return Err("clipboard_too_large".into())}
+   ("image/png",png_payload(bytes)?)
+  },
+  _=>return Err("clipboard_unsupported".into())
+ };
+ let mut command=Command::new("timeout");command.args(["5","wl-copy","--type",mime]);offer(&mut command,&bytes)?;
+ Ok(json!({"copied":true,"mimeType":mime}))
+}
+#[cfg(test)]mod copy_tests{
+ use super::*;
+ #[test]fn image_clipboard_normalizes_pixels_to_png(){
+  let image=image::DynamicImage::new_rgb8(3,2);
+  for format in [image::ImageFormat::Png,image::ImageFormat::Jpeg,image::ImageFormat::Gif,image::ImageFormat::WebP]{let mut data=Cursor::new(Vec::new());image.write_to(&mut data,format).unwrap();let png=png_payload(data.into_inner()).unwrap();assert_eq!(image::guess_format(&png).unwrap(),image::ImageFormat::Png);let decoded=image::load_from_memory(&png).unwrap();assert_eq!((decoded.width(),decoded.height()),(3,2));}
+  assert!(png_payload(b"not an image".to_vec()).is_err());
+ }
+ #[test]fn explicit_copy_reports_process_failure_and_keeps_literal_text(){
+  let mut command=Command::new("sh");command.args(["-c","test \"$(cat)\" = 'literal <b> & $not_a_variable'"]);offer(&mut command,b"literal <b> & $not_a_variable").unwrap();
+  assert!(offer(Command::new("false").args([] as [&str;0]),b"x").is_err());
+  assert!(copy(&json!({"kind":"text","text":"x".repeat(480001)})).is_err());
+ }
+}

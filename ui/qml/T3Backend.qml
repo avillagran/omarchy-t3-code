@@ -13,6 +13,9 @@ Singleton {
   property var localBackend:({owner:"unknown",running:false,canControl:false,installed:false})
   function refreshBackendStatus(){send({op:"backend-status"})}
   function controlBackend(action){if(backendStart.busy)return;backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,requestId:uuid()})}
+  signal copyFinished(string requestId,string error)
+  function copyText(value){var id=uuid();send({op:"copy",kind:"text",text:value,requestId:id});return id}
+  function copyImage(attachment){var id=uuid();send({op:"copy",kind:"image",environment:selectedEnvironment,attachment:attachment,requestId:id});return id}
   function startBackend(){controlBackend("start")}
   property int localRecoveryAttempts:0
   function recoverLocalBackend(){localRecoveryAttempts=30;refresh()}
@@ -324,6 +327,7 @@ Singleton {
   property var diffView: ({loading:false,text:"",error:"",requestId:""})
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
+    if(data.op==="copy"){copyFinished(data.requestId,data.error || "");return}
     if(data.op==="document-open"){if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
     if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)acceptBackendStatus(data.result.local);if(!data.error&&data.result&&data.result.status!=="stopped")recoverLocalBackend();refreshBackendStatus();refresh();return}
     if(data.op==="pull-requests"){var name=Object.keys(prOperations).find(function(k){return root.prOperations[k].requestId===data.requestId});if(!name)return;var all=Object.assign({},prOperations);all[name]={busy:false,requestId:data.requestId,error:data.error || "",data:data.result};prOperations=all;return}

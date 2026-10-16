@@ -336,7 +336,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
             let raw=text(m,"text");let id=text(m,"id").to_string();
             if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let rendered=rendered_markdown(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered));}
             let (_,display,rendered)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"text":display,"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"createdAt":epoch(&m["createdAt"])}));
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"streaming":m["streaming"]==true,"text":display,"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"createdAt":epoch(&m["createdAt"])}));
         }
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");
