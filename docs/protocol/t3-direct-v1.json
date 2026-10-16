@@ -112,13 +112,14 @@
   },
   "sharedLibrary": {
     "crate": "t3-protocol",
-    "path": "crates/t3-protocol",
     "outputs": [
       "rlib",
       "staticlib"
     ],
-    "ffiHeader": "crates/t3-protocol/include/t3_protocol.h",
+    "ffiHeader": "include/t3_protocol.h (lib-t3-rust)",
     "desktopAdapter": "src/desktop_cloud.rs",
-    "omiIntegration": "JNI adapter and Android build pending"
+    "omiIntegration": "JNI adapter and Android build pending",
+    "repository": "https://github.com/avillagran/lib-t3-rust",
+    "rev": "0f419c4208b10a1821cb2e9211faa5558a3c2054"
   }
 }

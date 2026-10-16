@@ -221,14 +221,14 @@ su renovación y reusa sus túneles si sólo falla otro entorno. Cambios del
 catálogo/runtime invalidan la caché; no hay polling del llavero por request.
 
 El transporte REST/RPC y el contrato de hilos se implementan en la biblioteca
-Rust portable `crates/t3-protocol`, compartida con Omi. Rutas Relay/T3 Connect
+Rust portable [`lib-t3-rust`](https://github.com/avillagran/lib-t3-rust), compartida con Omi. Rutas Relay/T3 Connect
 usan DPoP real, nunca se reinterpretan como Bearer. Otros formatos cifrados
 fallan explícitamente.
 `OMARCHY_T3_FIXTURE_ENVIRONMENTS` se reserva a pruebas locales aisladas.
 
 ## Biblioteca nativa y T3 Connect
 
-Implementación canónica: [t3-protocol](../../crates/t3-protocol/README.md), con rlib,
+Implementación canónica: [lib-t3-rust](https://github.com/avillagran/lib-t3-rust), con rlib,
 staticlib y ABI C para JNI. El plugin consume esa biblioteca para lecturas T3,
 RPC y streaming de adjuntos. Omi aporta login/almacenamiento y un puente JNI;
 no debe reimplementar el protocolo ni copiar el descubrimiento Linux.

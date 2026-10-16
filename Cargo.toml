@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-t3-protocol = { path = "crates/t3-protocol" }
+t3-protocol = { git = "https://github.com/avillagran/lib-t3-rust", rev = "0f419c4208b10a1821cb2e9211faa5558a3c2054" }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -30,5 +30,5 @@ lto = "thin"
 strip = true
 
 [workspace]
-members = ["crates/t3-protocol"]
+members = []
 resolver = "2"

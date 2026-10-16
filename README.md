@@ -67,6 +67,8 @@ See the [feature parity checklist](docs/FEATURE_PARITY.md).
 
 Build instructions, architecture, the shared Rust library for Omi, keyboard
 integration and validation commands live in the [development guide](docs/DEVELOPMENT.md).
+The portable protocol is maintained separately in [lib-t3-rust](https://github.com/avillagran/lib-t3-rust),
+shared with Omi and consumed at a pinned revision.
 
 ## Credits
 
