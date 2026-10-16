@@ -100,6 +100,7 @@ Item {
   readonly property color healthy: Color.accent
   property string statusFilter: bridge.viewState.statusFilter || "all"
   property string projectFilter: bridge.viewState.projectFilter || ""
+  Connections{target:root.bridge;function onProjectOpened(environment,projectId,error){if(!error){root.statusFilter="all";root.projectFilter="";root.bridge.query=""}}}
   onStatusFilterChanged: if (initialized && bridge.viewState.statusFilter !== statusFilter) bridge.rememberView({statusFilter:statusFilter})
   onProjectFilterChanged: if (initialized && bridge.viewState.projectFilter !== projectFilter) bridge.rememberView({projectFilter:projectFilter})
   readonly property bool sidebarCollapsed: bridge.sidebarCollapsed
