@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
-import QtQuick.Dialogs
 import qs.Commons
 import qs.Ui
 
@@ -13,6 +12,7 @@ Item {
   property bool addingProject: false
   function newOnBranch(t){newThread();sourceThread=t;project.currentIndex=Math.max(0,projects.findIndex(function(p){return p.key===t.projectKey}))}
   function newThread() {
+    if(bridge.managementRequest&&bridge.managementRequest.action==="add-project"){projectWizard.begin();return}
     sourceThread=null
     addingProject = bridge.managementRequest && bridge.managementRequest.action === "add-project"
     var index = projects.findIndex(function(p) { return p.key === root.bridge.selectedInfo.projectKey })
@@ -20,10 +20,8 @@ Item {
     title.text = bridge.managementRequest ? (bridge.managementRequest.title || "") : T3I18n.tr("New chat")
     dialog.open()
   }
-  function addProject() {
-    if (bridge.managementRequest) { newThread(); return }
-    folder.open()
-  }
+  function addProject() { projectWizard.begin() }
+  T3AddProject{id:projectWizard;bridge:root.bridge}
   Controls.Popup {
     id: dialog
     parent: Controls.Overlay.overlay
@@ -69,15 +67,6 @@ Item {
           }
         }
       }
-    }
-  }
-  FolderDialog {
-    id: folder
-    title: T3I18n.tr("Add folder as a T3 project")
-    onAccepted: {
-      root.addingProject = true
-      root.bridge.manage({action:"add-project",environment:"local",url:String(selectedFolder)})
-      dialog.open()
     }
   }
   Connections { target: root.bridge; function onManagementFinished(data) { if (!data.error) dialog.close() } }

@@ -341,7 +341,17 @@
     "Find in conversation": "Find in conversation",
     "No matches": "No matches",
     "Previous match": "Previous match",
-    "Next match": "Next match"
+    "Next match": "Next match",
+    "Choose environment": "Choose environment",
+    "Choose folder": "Choose folder",
+    "Local folder": "Local folder",
+    "Browse a folder on disk": "Browse a folder on disk",
+    "Parent folder": "Parent folder",
+    "Open folder": "Open folder",
+    "Open project": "Open project",
+    "Floating window": "Floating window",
+    "Tiled window": "Tiled window",
+    "Environment unavailable": "Environment unavailable"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -685,7 +695,17 @@
     "Find in conversation": "Buscar en la conversación",
     "No matches": "Sin coincidencias",
     "Previous match": "Coincidencia anterior",
-    "Next match": "Siguiente coincidencia"
+    "Next match": "Siguiente coincidencia",
+    "Choose environment": "Elegir entorno",
+    "Choose folder": "Elegir carpeta",
+    "Local folder": "Carpeta local",
+    "Browse a folder on disk": "Explorar una carpeta en disco",
+    "Parent folder": "Carpeta superior",
+    "Open folder": "Abrir carpeta",
+    "Open project": "Abrir proyecto",
+    "Floating window": "Ventana flotante",
+    "Tiled window": "Ventana en mosaico",
+    "Environment unavailable": "Entorno no disponible"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1029,7 +1049,17 @@
     "Find in conversation": "Buscar na conversa",
     "No matches": "Nenhuma correspondência",
     "Previous match": "Correspondência anterior",
-    "Next match": "Próxima correspondência"
+    "Next match": "Próxima correspondência",
+    "Choose environment": "Escolher ambiente",
+    "Choose folder": "Escolher pasta",
+    "Local folder": "Pasta local",
+    "Browse a folder on disk": "Explorar uma pasta no disco",
+    "Parent folder": "Pasta superior",
+    "Open folder": "Abrir pasta",
+    "Open project": "Abrir projeto",
+    "Floating window": "Janela flutuante",
+    "Tiled window": "Janela em mosaico",
+    "Environment unavailable": "Ambiente indisponível"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1373,7 +1403,17 @@
     "Find in conversation": "Rechercher dans la conversation",
     "No matches": "Aucun résultat",
     "Previous match": "Résultat précédent",
-    "Next match": "Résultat suivant"
+    "Next match": "Résultat suivant",
+    "Choose environment": "Choisir l’environnement",
+    "Choose folder": "Choisir un dossier",
+    "Local folder": "Dossier local",
+    "Browse a folder on disk": "Parcourir un dossier sur le disque",
+    "Parent folder": "Dossier parent",
+    "Open folder": "Ouvrir le dossier",
+    "Open project": "Ouvrir le projet",
+    "Floating window": "Fenêtre flottante",
+    "Tiled window": "Fenêtre en mosaïque",
+    "Environment unavailable": "Environnement indisponible"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1717,7 +1757,17 @@
     "Find in conversation": "In Unterhaltung suchen",
     "No matches": "Keine Treffer",
     "Previous match": "Vorheriger Treffer",
-    "Next match": "Nächster Treffer"
+    "Next match": "Nächster Treffer",
+    "Choose environment": "Umgebung wählen",
+    "Choose folder": "Ordner wählen",
+    "Local folder": "Lokaler Ordner",
+    "Browse a folder on disk": "Ordner auf dem Datenträger durchsuchen",
+    "Parent folder": "Übergeordneter Ordner",
+    "Open folder": "Ordner öffnen",
+    "Open project": "Projekt öffnen",
+    "Floating window": "Schwebendes Fenster",
+    "Tiled window": "Gekacheltes Fenster",
+    "Environment unavailable": "Umgebung nicht verfügbar"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2061,7 +2111,17 @@
     "Find in conversation": "Cerca nella conversazione",
     "No matches": "Nessun risultato",
     "Previous match": "Risultato precedente",
-    "Next match": "Risultato successivo"
+    "Next match": "Risultato successivo",
+    "Choose environment": "Scegli ambiente",
+    "Choose folder": "Scegli cartella",
+    "Local folder": "Cartella locale",
+    "Browse a folder on disk": "Sfoglia una cartella sul disco",
+    "Parent folder": "Cartella superiore",
+    "Open folder": "Apri cartella",
+    "Open project": "Apri progetto",
+    "Floating window": "Finestra flottante",
+    "Tiled window": "Finestra affiancata",
+    "Environment unavailable": "Ambiente non disponibile"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2405,7 +2465,17 @@
     "Find in conversation": "Zoeken in gesprek",
     "No matches": "Geen overeenkomsten",
     "Previous match": "Vorige overeenkomst",
-    "Next match": "Volgende overeenkomst"
+    "Next match": "Volgende overeenkomst",
+    "Choose environment": "Omgeving kiezen",
+    "Choose folder": "Map kiezen",
+    "Local folder": "Lokale map",
+    "Browse a folder on disk": "Een map op schijf doorzoeken",
+    "Parent folder": "Bovenliggende map",
+    "Open folder": "Map openen",
+    "Open project": "Project openen",
+    "Floating window": "Zwevend venster",
+    "Tiled window": "Getegeld venster",
+    "Environment unavailable": "Omgeving niet beschikbaar"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2749,7 +2819,17 @@
     "Find in conversation": "Szukaj w rozmowie",
     "No matches": "Brak wyników",
     "Previous match": "Poprzedni wynik",
-    "Next match": "Następny wynik"
+    "Next match": "Następny wynik",
+    "Choose environment": "Wybierz środowisko",
+    "Choose folder": "Wybierz folder",
+    "Local folder": "Folder lokalny",
+    "Browse a folder on disk": "Przeglądaj folder na dysku",
+    "Parent folder": "Folder nadrzędny",
+    "Open folder": "Otwórz folder",
+    "Open project": "Otwórz projekt",
+    "Floating window": "Okno pływające",
+    "Tiled window": "Okno kafelkowe",
+    "Environment unavailable": "Środowisko niedostępne"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3093,7 +3173,17 @@
     "Find in conversation": "Поиск в разговоре",
     "No matches": "Нет совпадений",
     "Previous match": "Предыдущее совпадение",
-    "Next match": "Следующее совпадение"
+    "Next match": "Следующее совпадение",
+    "Choose environment": "Выбрать окружение",
+    "Choose folder": "Выбрать папку",
+    "Local folder": "Локальная папка",
+    "Browse a folder on disk": "Выбрать папку на диске",
+    "Parent folder": "Родительская папка",
+    "Open folder": "Открыть папку",
+    "Open project": "Открыть проект",
+    "Floating window": "Плавающее окно",
+    "Tiled window": "Мозаичное окно",
+    "Environment unavailable": "Окружение недоступно"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3437,7 +3527,17 @@
     "Find in conversation": "Пошук у розмові",
     "No matches": "Немає збігів",
     "Previous match": "Попередній збіг",
-    "Next match": "Наступний збіг"
+    "Next match": "Наступний збіг",
+    "Choose environment": "Вибрати середовище",
+    "Choose folder": "Вибрати папку",
+    "Local folder": "Локальна папка",
+    "Browse a folder on disk": "Переглянути папку на диску",
+    "Parent folder": "Батьківська папка",
+    "Open folder": "Відкрити папку",
+    "Open project": "Відкрити проєкт",
+    "Floating window": "Плаваюче вікно",
+    "Tiled window": "Мозаїчне вікно",
+    "Environment unavailable": "Середовище недоступне"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3781,7 +3881,17 @@
     "Find in conversation": "会話内を検索",
     "No matches": "一致なし",
     "Previous match": "前の一致",
-    "Next match": "次の一致"
+    "Next match": "次の一致",
+    "Choose environment": "環境を選択",
+    "Choose folder": "フォルダーを選択",
+    "Local folder": "ローカルフォルダー",
+    "Browse a folder on disk": "ディスク上のフォルダーを参照",
+    "Parent folder": "親フォルダー",
+    "Open folder": "フォルダーを開く",
+    "Open project": "プロジェクトを開く",
+    "Floating window": "フローティングウィンドウ",
+    "Tiled window": "タイルウィンドウ",
+    "Environment unavailable": "環境を利用できません"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4125,7 +4235,17 @@
     "Find in conversation": "대화에서 검색",
     "No matches": "일치 항목 없음",
     "Previous match": "이전 일치 항목",
-    "Next match": "다음 일치 항목"
+    "Next match": "다음 일치 항목",
+    "Choose environment": "환경 선택",
+    "Choose folder": "폴더 선택",
+    "Local folder": "로컬 폴더",
+    "Browse a folder on disk": "디스크의 폴더 찾아보기",
+    "Parent folder": "상위 폴더",
+    "Open folder": "폴더 열기",
+    "Open project": "프로젝트 열기",
+    "Floating window": "플로팅 창",
+    "Tiled window": "타일 창",
+    "Environment unavailable": "환경을 사용할 수 없음"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4469,7 +4589,17 @@
     "Find in conversation": "在对话中搜索",
     "No matches": "无匹配项",
     "Previous match": "上一个匹配项",
-    "Next match": "下一个匹配项"
+    "Next match": "下一个匹配项",
+    "Choose environment": "选择环境",
+    "Choose folder": "选择文件夹",
+    "Local folder": "本地文件夹",
+    "Browse a folder on disk": "浏览磁盘上的文件夹",
+    "Parent folder": "上级文件夹",
+    "Open folder": "打开文件夹",
+    "Open project": "打开项目",
+    "Floating window": "浮动窗口",
+    "Tiled window": "平铺窗口",
+    "Environment unavailable": "环境不可用"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4813,7 +4943,17 @@
     "Find in conversation": "البحث في المحادثة",
     "No matches": "لا توجد نتائج",
     "Previous match": "النتيجة السابقة",
-    "Next match": "النتيجة التالية"
+    "Next match": "النتيجة التالية",
+    "Choose environment": "اختيار البيئة",
+    "Choose folder": "اختيار المجلد",
+    "Local folder": "مجلد محلي",
+    "Browse a folder on disk": "استعراض مجلد على القرص",
+    "Parent folder": "المجلد الأب",
+    "Open folder": "فتح المجلد",
+    "Open project": "فتح المشروع",
+    "Floating window": "نافذة عائمة",
+    "Tiled window": "نافذة مبلطة",
+    "Environment unavailable": "البيئة غير متاحة"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5157,7 +5297,17 @@
     "Find in conversation": "Sohbette ara",
     "No matches": "Eşleşme yok",
     "Previous match": "Önceki eşleşme",
-    "Next match": "Sonraki eşleşme"
+    "Next match": "Sonraki eşleşme",
+    "Choose environment": "Ortam seç",
+    "Choose folder": "Klasör seç",
+    "Local folder": "Yerel klasör",
+    "Browse a folder on disk": "Diskteki klasöre göz at",
+    "Parent folder": "Üst klasör",
+    "Open folder": "Klasörü aç",
+    "Open project": "Projeyi aç",
+    "Floating window": "Kayan pencere",
+    "Tiled window": "Döşenmiş pencere",
+    "Environment unavailable": "Ortam kullanılamıyor"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5501,7 +5651,17 @@
     "Find in conversation": "Sök i konversation",
     "No matches": "Inga träffar",
     "Previous match": "Föregående träff",
-    "Next match": "Nästa träff"
+    "Next match": "Nästa träff",
+    "Choose environment": "Välj miljö",
+    "Choose folder": "Välj mapp",
+    "Local folder": "Lokal mapp",
+    "Browse a folder on disk": "Bläddra i en mapp på disk",
+    "Parent folder": "Överordnad mapp",
+    "Open folder": "Öppna mapp",
+    "Open project": "Öppna projekt",
+    "Floating window": "Flytande fönster",
+    "Tiled window": "Sida vid sida-fönster",
+    "Environment unavailable": "Miljön är inte tillgänglig"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5845,7 +6005,17 @@
     "Find in conversation": "Søg i samtale",
     "No matches": "Ingen resultater",
     "Previous match": "Forrige resultat",
-    "Next match": "Næste resultat"
+    "Next match": "Næste resultat",
+    "Choose environment": "Vælg miljø",
+    "Choose folder": "Vælg mappe",
+    "Local folder": "Lokal mappe",
+    "Browse a folder on disk": "Gennemse en mappe på disken",
+    "Parent folder": "Overordnet mappe",
+    "Open folder": "Åbn mappe",
+    "Open project": "Åbn projekt",
+    "Floating window": "Flydende vindue",
+    "Tiled window": "Flisevindue",
+    "Environment unavailable": "Miljøet er utilgængeligt"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6189,7 +6359,17 @@
     "Find in conversation": "Søk i samtalen",
     "No matches": "Ingen treff",
     "Previous match": "Forrige treff",
-    "Next match": "Neste treff"
+    "Next match": "Neste treff",
+    "Choose environment": "Velg miljø",
+    "Choose folder": "Velg mappe",
+    "Local folder": "Lokal mappe",
+    "Browse a folder on disk": "Bla i en mappe på disken",
+    "Parent folder": "Overordnet mappe",
+    "Open folder": "Åpne mappe",
+    "Open project": "Åpne prosjekt",
+    "Floating window": "Flytende vindu",
+    "Tiled window": "Flislagt vindu",
+    "Environment unavailable": "Miljøet er utilgjengelig"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6533,7 +6713,17 @@
     "Find in conversation": "Etsi keskustelusta",
     "No matches": "Ei osumia",
     "Previous match": "Edellinen osuma",
-    "Next match": "Seuraava osuma"
+    "Next match": "Seuraava osuma",
+    "Choose environment": "Valitse ympäristö",
+    "Choose folder": "Valitse kansio",
+    "Local folder": "Paikallinen kansio",
+    "Browse a folder on disk": "Selaa levyn kansiota",
+    "Parent folder": "Yläkansio",
+    "Open folder": "Avaa kansio",
+    "Open project": "Avaa projekti",
+    "Floating window": "Kelluva ikkuna",
+    "Tiled window": "Laatoitettu ikkuna",
+    "Environment unavailable": "Ympäristö ei ole käytettävissä"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6877,6 +7067,16 @@
     "Find in conversation": "Hledat v konverzaci",
     "No matches": "Žádné shody",
     "Previous match": "Předchozí shoda",
-    "Next match": "Další shoda"
+    "Next match": "Další shoda",
+    "Choose environment": "Vybrat prostředí",
+    "Choose folder": "Vybrat složku",
+    "Local folder": "Místní složka",
+    "Browse a folder on disk": "Procházet složku na disku",
+    "Parent folder": "Nadřazená složka",
+    "Open folder": "Otevřít složku",
+    "Open project": "Otevřít projekt",
+    "Floating window": "Plovoucí okno",
+    "Tiled window": "Dlaždicové okno",
+    "Environment unavailable": "Prostředí není dostupné"
   }
 }

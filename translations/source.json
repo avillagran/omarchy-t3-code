@@ -341,6 +341,16 @@
     "Find in conversation": "Find in conversation",
     "No matches": "No matches",
     "Previous match": "Previous match",
-    "Next match": "Next match"
+    "Next match": "Next match",
+    "Choose environment": "Choose environment",
+    "Choose folder": "Choose folder",
+    "Local folder": "Local folder",
+    "Browse a folder on disk": "Browse a folder on disk",
+    "Parent folder": "Parent folder",
+    "Open folder": "Open folder",
+    "Open project": "Open project",
+    "Floating window": "Floating window",
+    "Tiled window": "Tiled window",
+    "Environment unavailable": "Environment unavailable"
   }
 }

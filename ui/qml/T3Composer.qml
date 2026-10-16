@@ -213,13 +213,13 @@ Rectangle {
         Keys.onReturnPressed: function(event) {
           if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
           if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
-          if(event.modifiers!==Qt.MetaModifier){event.accepted=false;return}
+          if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
           event.accepted = true; root.bridge.submit()
         }
         Keys.onEnterPressed: function(event) {
           if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
           if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
-          if(event.modifiers!==Qt.MetaModifier){event.accepted=false;return}
+          if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
           event.accepted = true; root.bridge.submit()
         }
       }
@@ -337,7 +337,7 @@ Rectangle {
           onClicked: primaryAction.activate()
         }
         Controls.ToolTip.visible: sendHover.hovered
-        Controls.ToolTip.text: primaryAction.Accessible.name + (root.stopMode ? "" : " · Super+Enter")
+        Controls.ToolTip.text: primaryAction.Accessible.name + (root.stopMode ? "" : " · Ctrl+Enter")
         HoverHandler { id: sendHover }
       }
 

@@ -74,19 +74,25 @@ Item {
   function navigateThread(step) { var rows=activeRows.concat(visibleWorkingRows).concat(visibleSnoozedRows).concat(visibleSettledRows);if(!rows.length)return;var index=rows.findIndex(function(t){return t.key===root.bridge.selectedKey});var t=rows[(index+step+rows.length)%rows.length];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus() }
   Component.onCompleted: { initialized = true;syncConversation() }
   property bool panelOpen:false
-  property bool detached:!!bridge.viewState.detached
+  property string windowMode:bridge.viewState.windowMode || (bridge.viewState.detached?"tiled":"panel")
+  readonly property bool detached:windowMode!=="panel"
   readonly property bool opened:panelOpen
   readonly property var managedToplevel:ToplevelManager.toplevels.values.find(function(t){return t.title===desktop.title&&t.appId===Quickshell.appId}) || null
-  onManagedToplevelChanged:if(opened&&detached&&managedToplevel)Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})
+  onManagedToplevelChanged:if(opened&&detached&&managedToplevel){applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})}
   readonly property bool shortcutActive:opened&&(!detached||!!(managedToplevel&&managedToplevel.activated))
   readonly property var normalWindow:desktop
-  function setDetached(value){
-    if(detached===value)return
+  function setDetached(value){setWindowMode(value?"floating":"panel")}
+  function cycleWindowMode(){setWindowMode(windowMode==="panel"?"floating":windowMode==="floating"?"tiled":"panel")}
+  function setWindowMode(value){
+    if(windowMode===value)return;windowApplyAttempts=0
     conversation.stopWheel();captureState();documentPopup.close();imagePopup.close();diffPopup.close();keyHelp.close();filterMenu.close();projectMenu.dismissContext()
     restoringConversation=true;restoringSidebar=true
-    detached=value;bridge.rememberView({detached:value})
+    windowMode=value;bridge.rememberView({windowMode:value,detached:value!=="panel"});if(detached)applyWindowMode.restart()
     Qt.callLater(function(){root.restoreSidebarShelves();root.restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false});composerPanel.inputField.forceActiveFocus()})
   }
+  property int windowApplyAttempts:0
+  Timer{id:applyWindowMode;interval:150;onTriggered:if(root.opened&&root.detached&&root.managedToplevel){root.windowApplyAttempts++;root.bridge.applyWindowLayout(root.windowMode,Quickshell.processId)}}
+  Connections{target:root.bridge;function onWindowLayoutFinished(error){if(error==="window_not_ready"&&root.windowApplyAttempts<6&&root.opened&&root.detached)applyWindowMode.restart()}}
   readonly property color fg: Color.popups.text
   readonly property color dim: Qt.rgba(fg.r, fg.g, fg.b, 0.57)
   readonly property color divider: Qt.rgba(fg.r, fg.g, fg.b, 0.09)
@@ -260,7 +266,7 @@ Item {
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   function kind(t) { return Sidebar.state(t) }
   function stateColor(t) { return T3Palette.stateColor(kind(t)) }
-  function open() { panelOpen=true;if(detached){desktop.minimized=false;Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
+  function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
   function close() { documentPopup.close();imagePopup.close();diffPopup.close();captureState(); panelOpen = false }
   function toggle() { opened ? close() : open() }
   function date(ms) { return ms ? new Date(ms).toLocaleString(Qt.locale(T3I18n.locale), "dd MMM · HH:mm") : "—" }
@@ -270,7 +276,7 @@ Item {
     return mins < 1 ? T3I18n.tr("now") : mins < 60 ? mins + "m" : mins < 1440 ? Math.floor(mins / 60) + "h" : Math.floor(mins / 1440) + "d"
   }
   function shortcutHelp(){
-    var shortcuts=[["Tab / Shift+Tab","Navigate controls"],["Ctrl+F","Find in conversation"],["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Super+B","Chat list"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Super+E","Expand / return to chat"],["Super+PgUp / Super+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+S","Save draft"],["Super+Enter","Send"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Ctrl+Alt+Arrows","Resize"],["Esc","Return / close"]]
+    var shortcuts=[["Tab / Shift+Tab","Navigate controls"],["Ctrl+F","Find in conversation"],["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Super+B","Chat list"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Super+E","Expand / return to chat"],["Super+PgUp / Super+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+S","Save draft"],["Ctrl+Enter","Send"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Ctrl+Alt+Arrows","Resize"],["Esc","Return / close"]]
     return shortcuts.map(function(p){return T3I18n.tr("{shortcut} · {action}",{shortcut:p[0],action:T3I18n.tr(p[1])})}).join("\n")
   }
   function providerIcon(provider) {
@@ -318,7 +324,7 @@ Item {
     onWidthChanged:if(visible&&root.detached)saveWindowSize.restart()
     onHeightChanged:if(visible&&root.detached)saveWindowSize.restart()
   }
-  Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.detached)root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
+  Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.windowMode==="floating")root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
   PinnedKeyboardPanel {
     id: popup
     open:root.panelOpen&&!root.detached
@@ -732,12 +738,12 @@ Item {
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
             Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
-            T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.detached?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.detached?"Return to panel":"Open as window");onClicked:root.setDetached(!root.detached)}
+            T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
             T3IconButton { name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
-            T3IconButton { name: "x"; tooltipText: T3I18n.tr("Close"); onClicked: root.close() }
             T3IconButton{name:"shrink";tooltipText:T3I18n.tr("Automatic compaction");onClicked:compactionSettings.open()}
             T3IconButton{objectName:"t3FindInChat";name:"search";tooltipText:T3I18n.tr("Find in conversation");enabled:!!root.bridge.selectedThread;onClicked:root.openFind()}
             Controls.Button {text:"?";implicitWidth:Style.space(28);Accessible.name:T3I18n.tr("Keyboard shortcuts");onClicked:keyHelp.open()}
+            T3IconButton {objectName:"t3CloseWindow";name:"x";tooltipText:T3I18n.tr("Close");onClicked:root.close()}
           }
           RowLayout{
             Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14)

@@ -24,6 +24,7 @@ pub fn sanitize(input: &Value) -> Value {
     if let Some(list)=input["autoCompactExcludedThreads"].as_array(){out["autoCompactExcludedThreads"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|s.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)))).take(1024).collect::<Vec<_>>());}
     if let Some(map)=input["sidebarProjectGroupingOverrides"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.len()<=2200&&!k.chars().any(char::is_control)&&matches!(v.as_str(),Some("inherit"|"repository"|"repository_path"|"separate")){clean.insert(k.clone(),v.clone());}}out["sidebarProjectGroupingOverrides"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
+    if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
     for key in ["panelWidth","panelHeight","sidebarWidth","windowWidth","windowHeight"] {
         if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=100.0 && *n<=10000.0){out[key]=json!(value);}
     }

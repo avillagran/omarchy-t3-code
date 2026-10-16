@@ -134,3 +134,24 @@ uses the existing NODE server without interrupting its sessions.
 Native sources above are relative to `apps/web/src/components/` in the nightly
 checkout. Plugin references: `T3Panel.qml`, `T3MessageImage.qml`,
 `T3CopyButton.qml`, `src/clipboard.rs`, and `tools/test-copy.cjs`.
+
+## ot3 interaction update
+
+- Existing-folder projects now use an embedded environment → source → folder
+  picker based on native `filesystem.browse` and `filesystem.getMetadata`.
+  Paths are validated on the selected server, including inherited SSH hosts.
+  No OS folder dialog is opened. New-repository creation and hosted-repository
+  discovery/clone sources remain separate parity work.
+- Ctrl+Enter sends prompts and questionnaire answers. Enter keeps multiline
+  editing. The desktop integration binds only the default-agent shortcut; it
+  no longer unbinds or intercepts Omarchy’s Super+Enter terminal shortcut.
+- Window control cycles panel → floating → tiled → panel, preserving the same
+  workspace/editor/draft/subscription. The close action is the rightmost header
+  control. Managed layout is scoped to ot3’s verified PID/title/address and
+  compares current floating state before dispatching, so repeated application
+  cannot toggle an already-correct window. Saved mode migrates old detached state.
+
+Validated with real Hyprland floating/tiled/panel tests, embedded-picker flow
+checks, native RPC fixtures for remote folder validation/project creation,
+read-only browsing against local and NODE, Ctrl+Enter regressions and installer
+isolation. New projects were not created in live user data during validation.

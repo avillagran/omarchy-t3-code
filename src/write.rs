@@ -104,11 +104,17 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             ("orchestration.dispatchCommand",json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":"default","branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))
         },
         "add-project" => {
-            if e.id!="local" {return Err("local_folder_only".into())}
-            let path=reqwest::Url::parse(text(input,"url")).map_err(|_| "invalid_folder")?.to_file_path().map_err(|_| "invalid_folder")?;
-            let path=path.canonicalize().map_err(|_| "invalid_folder")?;
-            if !path.is_dir() {return Err("invalid_folder".into())}
-            ("projects.mutate",json!({"type":"project.create","projectId":format!("omarchy-project-{id}"),"title":path.file_name().and_then(|s|s.to_str()).unwrap_or("Project"),"workspaceRoot":path,"createWorkspaceRootIfMissing":false}))
+            let path=if input["workspaceRoot"].is_string(){
+                let path=protocol::projects::folder_path(text(input,"workspaceRoot"))?;
+                let meta=rpc(e,"filesystem.getMetadata",json!({"paths":[path]}))?;
+                if meta["entries"][0]["kind"]!="directory"{return Err("invalid_folder".into())}path
+            }else{
+                if e.id!="local"{return Err("local_folder_only".into())}
+                let path=reqwest::Url::parse(text(input,"url")).map_err(|_| "invalid_folder")?.to_file_path().map_err(|_| "invalid_folder")?.canonicalize().map_err(|_| "invalid_folder")?;
+                if !path.is_dir(){return Err("invalid_folder".into())}path.to_str().ok_or("invalid_folder")?.to_string()
+            };
+            let title=path.trim_end_matches('/').rsplit('/').next().filter(|s|!s.is_empty()).unwrap_or("Project");
+            ("projects.mutate",json!({"type":"project.create","projectId":format!("omarchy-project-{id}"),"title":title,"workspaceRoot":path,"createWorkspaceRootIfMissing":false}))
         },
         "thread-rename"|"regenerate-title"|"pin"|"unpin"|"mark-unread"|"auto-settle"|"archive"|"delete-thread" => {thread=text(input,"thread").to_string();("orchestration.dispatchCommand",protocol::sidebar::thread_action(input)?)},
         "project-rename" | "project-settings" | "project-remove" => ("projects.mutate",protocol::projects::command(input)?),
@@ -127,6 +133,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     rpc(e,tag,command).map(|_|json!({"threadId":thread,"projectId":input["projectId"],"action":input["action"]}))
 }
 pub fn execute(input:&Value) -> Result<Value> {
+    if input["op"]=="window-layout" {return crate::window_layout::apply(input)}
     if input["op"]=="backend-control" {return crate::backend_service::control(text(input,"action"))}
     if input["op"]=="backend-start" {return crate::backend_service::start()}
     if input["op"]=="scroll-config" {return Ok(scroll::read())}
@@ -138,6 +145,10 @@ pub fn execute(input:&Value) -> Result<Value> {
         "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{rpc(&e,&tag,payload)}},
         "settings"=>{if input["action"]=="update"{rpc(&e,"server.updateSettings",protocol::settings::patch(input)?)?;}else if input["action"]!="read"{return Err("invalid_settings".into())}rpc(&e,"server.getSettings",json!({})).map(|v|protocol::settings::snapshot(&v))},
         "catalog"=>catalog(&e),
+        "browse-folders"=>{
+            let path=protocol::projects::folder_path(text(input,"path"))?;
+            protocol::projects::folders(&rpc(&e,"filesystem.browse",json!({"partialPath":path}))?)
+        },
         "history"=>history(&e,input),
         "model-favorite"=>{let desired=input["favorite"].as_bool().ok_or("invalid_model")?;let current=rpc(&e,"server.getSettings",json!({}))?;if !current["favorites"].is_array(){return Err("model_preferences_uninitialized".into())}rpc(&e,"server.updateSettings",protocol::models::favorite_payload(text(input,"provider"),text(input,"model"),desired)?).map(|v|protocol::models::preferences(&v))},
         "suggest"=>suggestions::query(&e,input),

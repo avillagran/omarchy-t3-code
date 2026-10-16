@@ -95,7 +95,7 @@ Rectangle {
      text:root.answer.custom || "";placeholderText:T3I18n.tr("Write custom answer");color:root.fg;placeholderTextColor:root.dim;font.pixelSize:Style.font.body;wrapMode:TextEdit.Wrap;textFormat:TextEdit.PlainText;selectByMouse:true
      background:Rectangle{radius:Style.space(6);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.025);border.width:1;border.color:customInput.activeFocus?Color.accent:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.1)}
      onTextChanged:if(activeFocus && text!==(root.answer.custom || ""))root.custom(text)
-     Keys.onReturnPressed:function(event){if(event.modifiers===Qt.MetaModifier){root.advance();event.accepted=true}else event.accepted=false}
+     Keys.onReturnPressed:function(event){if(event.modifiers===Qt.ControlModifier){root.advance();event.accepted=true}else event.accepted=false}
     }
    }
   }

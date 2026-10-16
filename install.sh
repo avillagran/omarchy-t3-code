@@ -48,15 +48,20 @@ fi
 omarchy plugin validate "$build_dir"
 if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi
 
-# Append the owned integration: replace the agent shortcut and route send contextually.
+# Append the owned integration: replace only the agent shortcut; send stays inside the app.
 bindings=$HOME/.config/hypr/bindings.lua
 if [[ -f "$bindings" ]] && ! rg -q '(omarchy-t3-code|io.github.avillagran.omarchy-t3-code)/(integrations/hyprland/bindings|hypr-bindings)\.lua' "$bindings"; then
   cp -p -- "$bindings" "$bindings.t3-backup-$(date +%Y%m%d%H%M%S)"
   lua_path=$(printf '%s' "$plugin_dir/integrations/hyprland/bindings.lua" | sed 's/\\/\\\\/g; s/"/\\"/g')
-  printf '\n-- Omarchy T3 Code: Super+Shift+A agent; contextual Super+Enter send/terminal.\ndofile("%s")\n' "$lua_path" >> "$bindings"
-  hyprctl reload >/dev/null
+  printf '\n-- Omarchy T3 Code: Super+Shift+A agent; Ctrl+Enter sends inside ot3.\ndofile("%s")\n' "$lua_path" >> "$bindings"
 elif [[ ! -f "$bindings" ]]; then
   printf '%s\n' 'Lua bindings.lua not found; use the Send button. See docs/DEVELOPMENT.md for agent/send shortcuts.'
+fi
+# Updates can remove an old binding from the already-sourced plugin module.
+if [[ -f "$bindings" ]]; then
+  hyprctl reload >/dev/null
+  binding_errors=$(hyprctl configerrors)
+  [[ -z ${binding_errors//[[:space:]]/} ]] || fail "Hyprland configuration errors: $binding_errors"
 fi
 status=$("$plugin_dir/bin/omarchy-t3-client" backend-status)
 if [[ $(jq -r '.owner' <<< "$status") == stopped ]]; then
