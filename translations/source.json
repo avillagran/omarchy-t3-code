@@ -258,6 +258,9 @@
     "Thread ID": "Thread ID",
     "Archive thread": "Archive thread",
     "Delete": "Delete",
-    "This permanently clears conversation history for this thread.": "This permanently clears conversation history for this thread."
+    "This permanently clears conversation history for this thread.": "This permanently clears conversation history for this thread.",
+    "Conversation timeline": "Conversation timeline",
+    "Previous turn": "Previous turn",
+    "Next turn": "Next turn"
   }
 }

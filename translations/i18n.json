@@ -258,7 +258,10 @@
     "Thread ID": "Thread ID",
     "Archive thread": "Archive thread",
     "Delete": "Delete",
-    "This permanently clears conversation history for this thread.": "This permanently clears conversation history for this thread."
+    "This permanently clears conversation history for this thread.": "This permanently clears conversation history for this thread.",
+    "Conversation timeline": "Conversation timeline",
+    "Previous turn": "Previous turn",
+    "Next turn": "Next turn"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -519,7 +522,10 @@
     "Thread ID": "ID del hilo",
     "Archive thread": "Archivar hilo",
     "Delete": "Eliminar",
-    "This permanently clears conversation history for this thread.": "Esto elimina permanentemente el historial de este hilo."
+    "This permanently clears conversation history for this thread.": "Esto elimina permanentemente el historial de este hilo.",
+    "Conversation timeline": "Línea de tiempo de la conversación",
+    "Previous turn": "Turno anterior",
+    "Next turn": "Turno siguiente"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -780,7 +786,10 @@
     "Thread ID": "ID da conversa",
     "Archive thread": "Arquivar conversa",
     "Delete": "Excluir",
-    "This permanently clears conversation history for this thread.": "Isso apaga permanentemente o histórico desta conversa."
+    "This permanently clears conversation history for this thread.": "Isso apaga permanentemente o histórico desta conversa.",
+    "Conversation timeline": "Linha do tempo da conversa",
+    "Previous turn": "Turno anterior",
+    "Next turn": "Próximo turno"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1041,7 +1050,10 @@
     "Thread ID": "ID du fil",
     "Archive thread": "Archiver le fil",
     "Delete": "Supprimer",
-    "This permanently clears conversation history for this thread.": "Cela efface définitivement l’historique de ce fil."
+    "This permanently clears conversation history for this thread.": "Cela efface définitivement l’historique de ce fil.",
+    "Conversation timeline": "Chronologie de la conversation",
+    "Previous turn": "Tour précédent",
+    "Next turn": "Tour suivant"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1302,7 +1314,10 @@
     "Thread ID": "Chat-ID",
     "Archive thread": "Chat archivieren",
     "Delete": "Löschen",
-    "This permanently clears conversation history for this thread.": "Dies löscht den Verlauf dieses Chats dauerhaft."
+    "This permanently clears conversation history for this thread.": "Dies löscht den Verlauf dieses Chats dauerhaft.",
+    "Conversation timeline": "Gesprächszeitleiste",
+    "Previous turn": "Vorheriger Gesprächsschritt",
+    "Next turn": "Nächster Gesprächsschritt"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1563,7 +1578,10 @@
     "Thread ID": "ID chat",
     "Archive thread": "Archivia chat",
     "Delete": "Elimina",
-    "This permanently clears conversation history for this thread.": "Questa azione elimina definitivamente la cronologia della chat."
+    "This permanently clears conversation history for this thread.": "Questa azione elimina definitivamente la cronologia della chat.",
+    "Conversation timeline": "Cronologia della conversazione",
+    "Previous turn": "Turno precedente",
+    "Next turn": "Turno successivo"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1824,7 +1842,10 @@
     "Thread ID": "Gespreks-ID",
     "Archive thread": "Gesprek archiveren",
     "Delete": "Verwijderen",
-    "This permanently clears conversation history for this thread.": "Dit wist de gespreksgeschiedenis permanent."
+    "This permanently clears conversation history for this thread.": "Dit wist de gespreksgeschiedenis permanent.",
+    "Conversation timeline": "Gesprekstijdlijn",
+    "Previous turn": "Vorige beurt",
+    "Next turn": "Volgende beurt"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2085,7 +2106,10 @@
     "Thread ID": "ID wątku",
     "Archive thread": "Archiwizuj wątek",
     "Delete": "Usuń",
-    "This permanently clears conversation history for this thread.": "To trwale usuwa historię tego wątku."
+    "This permanently clears conversation history for this thread.": "To trwale usuwa historię tego wątku.",
+    "Conversation timeline": "Oś czasu rozmowy",
+    "Previous turn": "Poprzednia tura",
+    "Next turn": "Następna tura"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2346,7 +2370,10 @@
     "Thread ID": "ID чата",
     "Archive thread": "Архивировать чат",
     "Delete": "Удалить",
-    "This permanently clears conversation history for this thread.": "История этого чата будет удалена навсегда."
+    "This permanently clears conversation history for this thread.": "История этого чата будет удалена навсегда.",
+    "Conversation timeline": "Хронология разговора",
+    "Previous turn": "Предыдущий ход",
+    "Next turn": "Следующий ход"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2607,7 +2634,10 @@
     "Thread ID": "ID чату",
     "Archive thread": "Архівувати чат",
     "Delete": "Видалити",
-    "This permanently clears conversation history for this thread.": "Історію цього чату буде видалено назавжди."
+    "This permanently clears conversation history for this thread.": "Історію цього чату буде видалено назавжди.",
+    "Conversation timeline": "Хронологія розмови",
+    "Previous turn": "Попередній хід",
+    "Next turn": "Наступний хід"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2868,7 +2898,10 @@
     "Thread ID": "スレッドID",
     "Archive thread": "スレッドをアーカイブ",
     "Delete": "削除",
-    "This permanently clears conversation history for this thread.": "このスレッドの履歴は完全に削除されます。"
+    "This permanently clears conversation history for this thread.": "このスレッドの履歴は完全に削除されます。",
+    "Conversation timeline": "会話のタイムライン",
+    "Previous turn": "前のターン",
+    "Next turn": "次のターン"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3129,7 +3162,10 @@
     "Thread ID": "대화 ID",
     "Archive thread": "대화 보관",
     "Delete": "삭제",
-    "This permanently clears conversation history for this thread.": "이 대화의 기록이 영구적으로 삭제됩니다."
+    "This permanently clears conversation history for this thread.": "이 대화의 기록이 영구적으로 삭제됩니다.",
+    "Conversation timeline": "대화 타임라인",
+    "Previous turn": "이전 턴",
+    "Next turn": "다음 턴"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3390,7 +3426,10 @@
     "Thread ID": "对话 ID",
     "Archive thread": "归档对话",
     "Delete": "删除",
-    "This permanently clears conversation history for this thread.": "这将永久清除此对话的历史记录。"
+    "This permanently clears conversation history for this thread.": "这将永久清除此对话的历史记录。",
+    "Conversation timeline": "对话时间线",
+    "Previous turn": "上一轮",
+    "Next turn": "下一轮"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3651,7 +3690,10 @@
     "Thread ID": "معرّف المحادثة",
     "Archive thread": "أرشفة المحادثة",
     "Delete": "حذف",
-    "This permanently clears conversation history for this thread.": "يؤدي هذا إلى حذف سجل المحادثة نهائياً."
+    "This permanently clears conversation history for this thread.": "يؤدي هذا إلى حذف سجل المحادثة نهائياً.",
+    "Conversation timeline": "المخطط الزمني للمحادثة",
+    "Previous turn": "الدور السابق",
+    "Next turn": "الدور التالي"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3912,7 +3954,10 @@
     "Thread ID": "Sohbet kimliği",
     "Archive thread": "Sohbeti arşivle",
     "Delete": "Sil",
-    "This permanently clears conversation history for this thread.": "Bu sohbetin geçmişi kalıcı olarak silinir."
+    "This permanently clears conversation history for this thread.": "Bu sohbetin geçmişi kalıcı olarak silinir.",
+    "Conversation timeline": "Sohbet zaman çizelgesi",
+    "Previous turn": "Önceki tur",
+    "Next turn": "Sonraki tur"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4173,7 +4218,10 @@
     "Thread ID": "Tråd-ID",
     "Archive thread": "Arkivera tråd",
     "Delete": "Radera",
-    "This permanently clears conversation history for this thread.": "Detta raderar trådens historik permanent."
+    "This permanently clears conversation history for this thread.": "Detta raderar trådens historik permanent.",
+    "Conversation timeline": "Samtalets tidslinje",
+    "Previous turn": "Föregående tur",
+    "Next turn": "Nästa tur"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4434,7 +4482,10 @@
     "Thread ID": "Tråd-ID",
     "Archive thread": "Arkivér tråd",
     "Delete": "Slet",
-    "This permanently clears conversation history for this thread.": "Dette sletter trådens historik permanent."
+    "This permanently clears conversation history for this thread.": "Dette sletter trådens historik permanent.",
+    "Conversation timeline": "Samtalens tidslinje",
+    "Previous turn": "Forrige tur",
+    "Next turn": "Næste tur"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4695,7 +4746,10 @@
     "Thread ID": "Tråd-ID",
     "Archive thread": "Arkiver tråd",
     "Delete": "Slett",
-    "This permanently clears conversation history for this thread.": "Dette sletter trådens historikk permanent."
+    "This permanently clears conversation history for this thread.": "Dette sletter trådens historikk permanent.",
+    "Conversation timeline": "Samtalens tidslinje",
+    "Previous turn": "Forrige tur",
+    "Next turn": "Neste tur"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4956,7 +5010,10 @@
     "Thread ID": "Keskustelun tunniste",
     "Archive thread": "Arkistoi keskustelu",
     "Delete": "Poista",
-    "This permanently clears conversation history for this thread.": "Tämä poistaa keskustelun historian pysyvästi."
+    "This permanently clears conversation history for this thread.": "Tämä poistaa keskustelun historian pysyvästi.",
+    "Conversation timeline": "Keskustelun aikajana",
+    "Previous turn": "Edellinen vuoro",
+    "Next turn": "Seuraava vuoro"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5217,6 +5274,9 @@
     "Thread ID": "ID vlákna",
     "Archive thread": "Archivovat vlákno",
     "Delete": "Odstranit",
-    "This permanently clears conversation history for this thread.": "Tím se trvale odstraní historie tohoto vlákna."
+    "This permanently clears conversation history for this thread.": "Tím se trvale odstraní historie tohoto vlákna.",
+    "Conversation timeline": "Časová osa konverzace",
+    "Previous turn": "Předchozí tah",
+    "Next turn": "Další tah"
   }
 }

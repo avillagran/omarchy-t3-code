@@ -18,6 +18,9 @@ the official desktop GUI open when the server runs independently.
 
 - **Familiar workspace:** resizable panel and sidebar, search, status filters,
   project identities, working timers, grouping, settled threads and context menus.
+- **Conversation minimap:** T3-style turn markers between the sidebar and chat,
+  with prompt/response previews, visible-turn highlights, previous/next buttons,
+  keyboard navigation and click-to-jump.
 - **Live conversations:** streamed updates for the visible chat, contextual tool
   activity, animated work indicators, Markdown, changed-file summaries and tasks.
 - **A capable composer:** model picker with inherited favorites, options, queued
