@@ -148,6 +148,7 @@ Singleton {
   function configureCompaction(patch){rememberView(patch);persistViewNow();refresh()}
   property var catalogs: ({})
   property var catalogLoading: ({})
+  function ensureSidebarCatalogs(){if(panelVisible)(state.environments || []).filter(function(e){return e.state==="ready"}).forEach(function(e){root.ensureCatalog(e.id)})}
   function ensureCatalog(env){if(!env || catalogs[env] || catalogLoading[env])return;var pending=Object.assign({},catalogLoading);pending[env]=true;catalogLoading=pending;send({op:"catalog",environment:env})}
   function discardDraft(key){var d=drafts[key];if(!d || d.busy || d.loading || d.attempt || d.loadError)return;patchDraft(key,{text:"",attachments:[],error:""});flushDraft(key)}
   property var managementRequest: null
@@ -392,7 +393,7 @@ Singleton {
   function send(data) { if (worker.running) worker.write(JSON.stringify(data) + "\n") }
   function setPanelVisible(value) { visiblePanels = Math.max(0, visiblePanels + (value ? 1 : -1)) }
   onPanelVisibleChanged: {
-    send({op: "visible", value: panelVisible});if(panelVisible)probeScroll()
+    send({op: "visible", value: panelVisible});if(panelVisible){probeScroll();ensureSidebarCatalogs()}
     if (!panelVisible) { liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});requestedSerial++; activity = []; loadingMessages = false; persistViewNow(); flushDrafts() }
     else if (selectedThread) fetchMessages()
   }
@@ -461,7 +462,7 @@ Singleton {
       else if(event.type==="document-frame" && data.requestId===documentOpen.requestId){documentOpen=Object.assign({},documentOpen,{frameUrl:data.url || documentOpen.frameUrl,frameRevision:data.revision || documentOpen.frameRevision,frameWidth:data.width || documentOpen.frameWidth,frameHeight:data.height || documentOpen.frameHeight,error:data.error || ""})}
       else if (event.type === "action") action(data)
       else if (event.type === "backend-status") {localBackend=data}
-      else if (event.type === "snapshot") { snapshotAboutToChange(); state = data; stale = data.stale; error = ""
+      else if (event.type === "snapshot") { snapshotAboutToChange(); state = data; stale = data.stale; error = "";ensureSidebarCatalogs()
         var current = state.threads.find(function(t) { return t.key === root.selectedKey })
         if (current) { selectedTitle = current.title; selectedProject = current.project }
         snapshotUpdated() }

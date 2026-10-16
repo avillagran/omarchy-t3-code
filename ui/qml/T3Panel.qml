@@ -12,8 +12,9 @@ Item {
   property var anchorItem: null
   property var bar: null
   required property var bridge
+  property var prTarget:null
   property bool pullRequestsOpen:false
-  onPullRequestsOpenChanged:if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
+  onPullRequestsOpenChanged:{if(!pullRequestsOpen)prTarget=null;if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}}
   function submitCurrent(){if(!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
   function selectSidebarThread(env,id){pullRequestsOpen=false;bridge.selectThread(env,id)}
   property bool initialized: false
@@ -248,6 +249,7 @@ Item {
       stateColor:root.stateColor(modelData);stateLabel:root.status(modelData)
       timeLabel:modelData.working ? root.duration(modelData.startedAt) : root.age(modelData.updatedAt)
       providerGlyph:root.providerIcon(modelData.provider)
+      onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
       onThreadActivated:root.pullRequestsOpen=false
       onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
       onProjectSettingsRequested:function(key){projectMenu.configureProject(key)}
@@ -644,7 +646,7 @@ Item {
         objectName:"t3MainChatArea"
         Layout.fillWidth: true; Layout.fillHeight: true
         color: Color.popups.background
-        Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened;sourceComponent:Component{T3PullRequests{bridge:root.bridge;onClosed:root.pullRequestsOpen=false}}}
+        Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
         ColumnLayout {
           visible:!root.pullRequestsOpen
           anchors.fill: parent; spacing: 0

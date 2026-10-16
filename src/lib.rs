@@ -538,6 +538,7 @@ pub fn snapshot(client: &Client) -> Result<Value> {
                         item["compactRunId"]=t["latestRunId"].clone();
                         item["lastSentAt"]=json!(epoch(t.get("latestUserAuthoredMessageAt").unwrap_or(&t["latestRunRequestedAt"])).max(epoch(&t["createdAt"])));
                         item["environmentName"] = json!(e.name);
+                        item["projectIsScratch"]=json!(d["projects"].as_array().into_iter().flatten().find(|p|p["id"]==t["projectId"]).is_some_and(|p|p["isScratch"]==true));
                         item["projectId"] = t["projectId"].clone();
                         item["projectKey"] = json!(format!("{}/{}",e.id,text(t,"projectId")));
                         item["settled"] = json!(is_settled(t));
