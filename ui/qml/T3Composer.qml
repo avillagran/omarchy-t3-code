@@ -213,12 +213,14 @@ Rectangle {
         Keys.onReturnPressed: function(event) {
           if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
           if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
+          if(event.modifiers===(Qt.ControlModifier|Qt.AltModifier)){event.accepted=true;root.bridge.submit(true);return}
           if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
           event.accepted = true; root.bridge.submit()
         }
         Keys.onEnterPressed: function(event) {
           if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
           if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
+          if(event.modifiers===(Qt.ControlModifier|Qt.AltModifier)){event.accepted=true;root.bridge.submit(true);return}
           if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
           event.accepted = true; root.bridge.submit()
         }
@@ -303,6 +305,13 @@ Rectangle {
         name:root.expanded?"chevron-down":"square-pen"
         tooltipText:(root.expanded?T3I18n.tr("Back to chat"):T3I18n.tr("Edit"))+" · "+(root.expanded?"Esc":"Super+E")
         onClicked:root.toggleExpanded()
+      }
+      T3IconButton {
+        objectName:"t3SendAndNewThread"
+        name:"git-branch"
+        tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Alt+Enter"
+        enabled:!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
+        onClicked:root.bridge.submit(true)
       }
       T3Select {
         objectName:"t3DeliverySelect"

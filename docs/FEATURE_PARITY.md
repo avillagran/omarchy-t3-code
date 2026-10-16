@@ -179,3 +179,28 @@ administration. Existing T3 Connect routes can be disabled or forgotten locally;
 account deregistration remains separate. Tests use isolated encrypted catalogs,
 a mocked native pairing server and QML forms. The real native catalog was read
 without changing the user’s saved connections.
+
+## Composer background send and project sources
+
+The composer now has a **Send and start new thread** action beside Edit,
+with **Ctrl+Alt+Enter** in its tooltip. It dispatches the current prompt (queues
+it if the current thread is running), then creates a fresh thread in the same
+project after acknowledgement. Failed or uncertain sends retain the prompt,
+attachments and request identity. Changing threads before acknowledgement does
+not pull the user back. The intent survives draft reloads.
+
+Add Project reads each selected environment's native configuration and source
+control discovery. It offers Local folder, New project when `newProjectsRoot`
+is available, Git URL, and the official six provider sources. Unavailable
+providers are marked as requiring setup. Creation uses `projects.createNew`;
+cloning uses `projectClone.start` and requires clone tracking support. Native
+provider authentication and clone transport settings stay on the T3 server.
+The folder picker filters names immediately, debounces directory changes,
+and supports Enter and arrow-key navigation entirely inside the ot3 window.
+Acknowledged creation receipts are durable; an unacknowledged non-idempotent
+creation is not blindly replayed.
+
+Validation uses synthetic RPC servers and isolated QML state, including failed
+sends and visible creation dialogs in panel, floating and tiled modes. Live user
+repositories were not created or cloned. This does not yet port the optional
+publish-new-project toggle, all source-palette suggestions or clone-progress UI.

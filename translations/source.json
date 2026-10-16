@@ -367,6 +367,13 @@
     "SSH host or alias": "SSH host or alias",
     "Username": "Username",
     "Forget this connection on this device? Remote projects and messages are kept.": "Forget this connection on this device? Remote projects and messages are kept.",
-    "Reconnect": "Reconnect"
+    "Reconnect": "Reconnect",
+    "Send and start new thread": "Send and start new thread",
+    "New project": "New project",
+    "Start a new Git repository from a name": "Start a new Git repository from a name",
+    "Clone from a remote URL": "Clone from a remote URL",
+    "{provider} repository": "{provider} repository",
+    "Clone a repository": "Clone a repository",
+    "Setup required": "Setup required"
   }
 }
