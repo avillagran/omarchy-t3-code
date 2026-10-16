@@ -14,7 +14,8 @@ Controls.Button {
   {id:"auto",label:"Auto",description:"Supported providers approve routine actions; others still ask.",icon:"sparkles"},
   {id:"full-access",label:"Full access",description:"Allow commands and edits without prompts.",icon:"lock-open"}
  ]
- readonly property string mode:bridge.draft.runtimeMode || bridge.selectedInfo.runtimeMode || "approval-required"
+ readonly property string storedMode:bridge.draft.runtimeMode || bridge.selectedInfo.runtimeMode || "approval-required"
+ readonly property string mode:modes.some(function(d){return d.id===root.storedMode})?storedMode:(modes[0] || definitions[0]).id
  readonly property var current:definitions.find(function(d){return d.id===root.mode}) || definitions[0]
  readonly property var provider:(bridge.catalog.providers || []).find(function(p){return p.instanceId===(root.bridge.draft.modelSelection || root.bridge.selectedInfo.modelSelection || {}).instanceId}) || ({})
  readonly property var modes:definitions.filter(function(d){return !(root.provider.supportedRuntimeModes || []).length || root.provider.supportedRuntimeModes.indexOf(d.id)>=0})
