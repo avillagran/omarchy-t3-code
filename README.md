@@ -34,15 +34,17 @@ curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/ins
 ```
 
 The [installer](install.sh) installs build and preview dependencies through
-Pacman, compiles the plugin, enables its bar widget and sets up Super+Enter on
-Omarchy's Lua configuration. It reuses an existing T3 server or starts the native
+Pacman, compiles the plugin, enables its bar widget and makes **Super+Shift+A** open Omarchy T3 Code
+as your default agent on Omarchy's Lua configuration. It reuses an existing T3 server or starts the native
 headless service when stopped. Your T3 connections and data stay in place.
 The same command updates a clean Git installation. It may request your sudo
 password and restarts the Omarchy shell when finished.
 
 ## Use
 
-Click **T3** in the status bar. **Super+Enter** sends; **Enter** inserts a newline.
+Press **Super+Shift+A** or click **T3** in the status bar to open the agent.
+**Super+Enter** sends while the panel is open; outside it, the shortcut opens
+your terminal as usual. **Enter** inserts a newline.
 Use the header buttons for subscription usage and pull requests, and right-click
 a thread for its actions. **F1** opens keyboard help.
 

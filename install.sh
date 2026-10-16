@@ -48,15 +48,15 @@ fi
 omarchy plugin validate "$build_dir"
 if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi
 
-# Match Omarchy's Lua configuration. Never replace existing user bindings.
+# Append the owned integration: replace the agent shortcut and route send contextually.
 bindings=$HOME/.config/hypr/bindings.lua
 if [[ -f "$bindings" ]] && ! rg -q '(omarchy-t3-code|io.github.avillagran.omarchy-t3-code)/(integrations/hyprland/bindings|hypr-bindings)\.lua' "$bindings"; then
   cp -p -- "$bindings" "$bindings.t3-backup-$(date +%Y%m%d%H%M%S)"
   lua_path=$(printf '%s' "$plugin_dir/integrations/hyprland/bindings.lua" | sed 's/\\/\\\\/g; s/"/\\"/g')
-  printf '\n-- Omarchy T3 Code: send while its panel is open, terminal otherwise.\ndofile("%s")\n' "$lua_path" >> "$bindings"
+  printf '\n-- Omarchy T3 Code: Super+Shift+A agent; contextual Super+Enter send/terminal.\ndofile("%s")\n' "$lua_path" >> "$bindings"
   hyprctl reload >/dev/null
 elif [[ ! -f "$bindings" ]]; then
-  printf '%s\n' 'Lua bindings.lua not found; use the Send button. See docs/DEVELOPMENT.md for Super+Enter setup.'
+  printf '%s\n' 'Lua bindings.lua not found; use the Send button. See docs/DEVELOPMENT.md for agent/send shortcuts.'
 fi
 status=$("$plugin_dir/bin/omarchy-t3-client" backend-status)
 if [[ $(jq -r '.owner' <<< "$status") == stopped ]]; then
