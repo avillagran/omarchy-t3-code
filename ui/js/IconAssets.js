@@ -41,3 +41,5 @@ icons["plus"]='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill=
 icons["pin"]='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5l-4 4v4l-3-3-5 5-3-3 5-5-3-3h4l4-4ZM2 22l4-4"/></svg>';
 icons["mail-open"]='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V10l10-8 10 8ZM22 10l-10 8-10-8"/></svg>';
 icons["archive"]='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="4" rx="1"/><path d="M4 7v14h16V7M10 12h4"/></svg>';
+
+icons["play"]="<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg>";

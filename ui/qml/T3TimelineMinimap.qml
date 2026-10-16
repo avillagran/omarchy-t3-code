@@ -16,7 +16,7 @@ Item {
     property var visibleMarkers: ({})
     property bool refreshQueued: false
     readonly property var preview: hoverIndex >= 0 && hoverIndex < items.length ? items[hoverIndex] : null
-    readonly property real stripWidth: Math.min(Style.space(14), Math.max(0, view.x - Style.space(12)))
+    readonly property real stripWidth: Math.min(Style.space(14), Math.max(0, view.x - Style.space(6)))
     readonly property real railHeight: Math.min(Math.max(1, (items.length - 1) * Style.space(8)), Math.max(1, height - Style.space(64)))
     visible: active && items.length >= 2 && stripWidth > 0
     signal selected(var entry)
@@ -66,7 +66,7 @@ Item {
     Item {
         id: rail
         objectName: "t3TimelineRail"
-        x: Style.space(12)
+        x: Style.space(6)
         y: (root.height - height) / 2
         width: root.preview ? Math.min(root.width - x, Style.space(354)) : root.stripWidth
         height: root.railHeight
@@ -139,6 +139,7 @@ Item {
         }
         T3IconButton {
             objectName: "t3TimelinePrevious"
+            implicitWidth:Style.space(20);implicitHeight:implicitWidth
             HoverHandler { id: previousHover }
             x: Style.space(4)-width/2; y: -height-Style.space(4)
             name: "chevron-up"; tooltipText:T3I18n.tr("Previous turn")
@@ -148,6 +149,7 @@ Item {
         }
         T3IconButton {
             objectName: "t3TimelineNext"
+            implicitWidth:Style.space(20);implicitHeight:implicitWidth
             HoverHandler { id: nextHover }
             x: Style.space(4)-width/2; y: rail.height+Style.space(4)
             name: "chevron-down"; tooltipText:T3I18n.tr("Next turn")

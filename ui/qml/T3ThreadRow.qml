@@ -172,6 +172,7 @@ Item {
     }
   }
   Controls.Menu {
+    width:Style.space(280)
     id:snoozeMenu;property var choices:[];objectName:"threadSnoozeMenu"
     x:Math.max(0,root.width-width);y:Style.space(24)
     palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
@@ -196,6 +197,7 @@ Item {
     }
   }
   Controls.Menu {
+    width:Style.space(280)
     id:autoSettleMenu
       title:T3I18n.tr("Auto-settle behavior");enabled:(root.actionCanOperate&&root.actionCaps.threadAutoSettleOptOut===true)&&!root.busy
       palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
@@ -205,27 +207,29 @@ Item {
     }
   TextEdit{id:copyField;visible:false;textFormat:TextEdit.PlainText}
   Controls.Menu {
+    width:Style.space(280)
     id:rowMenu;property bool autoMenuInserted:false
     onAboutToShow:{if(root.actionCaps.threadAutoSettleOptOut===true&&!autoMenuInserted){insertMenu(count-5,autoSettleMenu);autoMenuInserted=true}else if(root.actionCaps.threadAutoSettleOptOut!==true&&autoMenuInserted){removeMenu(autoSettleMenu);autoMenuInserted=false}}
     objectName:"t3ThreadContextMenu"
     palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
     background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.dim}
-    Controls.MenuItem{objectName:"threadNewOnBranch";icon.source:root.menuIcon("square-pen");icon.color:root.dim;text:T3I18n.tr("New thread on {branch}",{branch:root.actionThread.branch || ""});visible:!!root.actionThread.branch;enabled:root.actionCanOperate&&!root.busy;onTriggered:root.newThreadOnBranch(root.actionThread)}
-    Controls.MenuItem{objectName:"threadPin";icon.source:root.menuIcon("pin");icon.color:root.dim;text:T3I18n.tr(root.actionThread.pinned?"Unpin thread":"Pin thread");visible:root.actionCaps.threadPinning===true;enabled:(root.actionCanOperate&&root.actionCaps.threadPinning===true)&&!root.busy;onTriggered:root.contextManage(root.actionThread.pinned?"unpin":"pin")}
-    Controls.MenuItem{text:T3I18n.tr(root.actionThread.settled?"Move to active":"Mark settled");visible:root.actionCaps.threadSettlement===true;enabled:(root.actionCanOperate&&root.actionCaps.threadSettlement===true)&&!root.busy;onTriggered:root.contextManage(root.actionThread.settled?"unsettle":"settle")}
-    Controls.MenuItem{text:T3I18n.tr(root.actionThread.snoozed?"Wake thread now":"Snooze thread");visible:root.actionCaps.threadSnooze===true;enabled:root.actionCanOperate&&!root.busy&&((root.actionCanOperate&&root.actionCaps.threadSnooze===true&&root.actionThread.canSnooze===true)||!!root.actionThread.snoozed);onTriggered:if(root.actionThread.snoozed)root.contextManage("unsnooze");else root.openSnooze(true)}
-    Controls.MenuSeparator{}
+    Controls.MenuItem{objectName:"threadNewOnBranch";icon.source:root.menuIcon("square-pen");icon.color:root.dim;text:T3I18n.tr("New thread on {branch}",{branch:root.actionThread.branch || ""});visible:!!root.actionThread.branch;height:visible?implicitHeight:0;enabled:root.actionCanOperate&&!root.busy;onTriggered:root.newThreadOnBranch(root.actionThread)}
+    Controls.MenuItem{objectName:"threadPin";icon.source:root.menuIcon("pin");icon.color:root.dim;text:T3I18n.tr(root.actionThread.pinned?"Unpin thread":"Pin thread");visible:root.actionCaps.threadPinning===true;height:visible?implicitHeight:0;enabled:(root.actionCanOperate&&root.actionCaps.threadPinning===true)&&!root.busy;onTriggered:root.contextManage(root.actionThread.pinned?"unpin":"pin")}
+    Controls.MenuItem{text:T3I18n.tr(root.actionThread.settled?"Move to active":"Mark settled");visible:root.actionCaps.threadSettlement===true;height:visible?implicitHeight:0;enabled:(root.actionCanOperate&&root.actionCaps.threadSettlement===true)&&!root.busy;onTriggered:root.contextManage(root.actionThread.settled?"unsettle":"settle")}
+    Controls.MenuItem{text:T3I18n.tr(root.actionThread.snoozed?"Wake thread now":"Snooze thread");visible:root.actionCaps.threadSnooze===true;height:visible?implicitHeight:0;enabled:root.actionCanOperate&&!root.busy&&((root.actionCanOperate&&root.actionCaps.threadSnooze===true&&root.actionThread.canSnooze===true)||!!root.actionThread.snoozed);onTriggered:if(root.actionThread.snoozed)root.contextManage("unsnooze");else root.openSnooze(true)}
+    Controls.MenuSeparator{visible:!!root.actionThread.branch||root.actionCaps.threadPinning===true||root.actionCaps.threadSettlement===true||root.actionCaps.threadSnooze===true;height:visible?implicitHeight:0}
     Controls.MenuItem{objectName:"threadRename";icon.source:root.menuIcon("square-pen");icon.color:root.dim;text:T3I18n.tr("Rename thread");enabled:root.actionCanOperate&&!root.busy;onTriggered:root.confirmAction("thread-rename")}
-    Controls.MenuItem{objectName:"threadRegenerate";icon.source:root.menuIcon("refresh-cw");icon.color:root.dim;text:T3I18n.tr(root.actionThread.titleRegeneration?"Regenerating…":"Regenerate title");visible:root.actionCaps.threadTitleRegeneration===true;enabled:(root.actionCanOperate&&root.actionCaps.threadTitleRegeneration===true)&&!root.busy&&!root.actionThread.titleRegeneration;onTriggered:root.contextManage("regenerate-title")}
+    Controls.MenuItem{objectName:"threadRegenerate";icon.source:root.menuIcon("refresh-cw");icon.color:root.dim;text:T3I18n.tr(root.actionThread.titleRegeneration?"Regenerating…":"Regenerate title");visible:root.actionCaps.threadTitleRegeneration===true;height:visible?implicitHeight:0;enabled:(root.actionCanOperate&&root.actionCaps.threadTitleRegeneration===true)&&!root.busy&&!root.actionThread.titleRegeneration;onTriggered:root.contextManage("regenerate-title")}
     Controls.MenuItem{objectName:"threadMarkUnread";icon.source:root.menuIcon("mail-open");icon.color:root.dim;text:T3I18n.tr("Mark unread");enabled:root.actionCanOperate&&!root.busy;onTriggered:root.contextManage("mark-unread")}
-    Controls.MenuItem{objectName:"threadFilterProject";icon.source:root.menuIcon("folder");icon.color:root.dim;text:T3I18n.tr(root.projectScoped?"All projects":"Filter by {project}",{project:root.actionThread.project || ""});visible:!!root.actionThread.projectKey;onTriggered:root.filterProjectRequested(root.actionThread.projectKey)}
+    Controls.MenuItem{objectName:"threadFilterProject";icon.source:root.menuIcon("folder");icon.color:root.dim;text:T3I18n.tr(root.projectScoped?"All projects":"Filter by {project}",{project:root.actionThread.project || ""});visible:!!root.actionThread.projectKey;height:visible?implicitHeight:0;onTriggered:root.filterProjectRequested(root.actionThread.projectKey)}
     Controls.MenuSeparator{}
     Controls.Menu {
+    width:Style.space(280)
       title:T3I18n.tr("Copy")
       palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
       background:Rectangle{color:Color.popups.background;border.color:root.dim;border.width:1;radius:Style.space(7)}
       Controls.MenuItem{objectName:"threadCopyPath";icon.source:root.menuIcon("folder");icon.color:root.dim;text:T3I18n.tr("Path");enabled:!!root.actionPath;onTriggered:root.copyValue(root.actionPath)}
-      Controls.MenuItem{text:T3I18n.tr("Branch");visible:!!root.actionThread.branch;onTriggered:root.copyValue(root.actionThread.branch)}
+      Controls.MenuItem{text:T3I18n.tr("Branch");visible:!!root.actionThread.branch;height:visible?implicitHeight:0;onTriggered:root.copyValue(root.actionThread.branch)}
       Controls.MenuItem{text:T3I18n.tr("Thread ID");onTriggered:root.copyValue(root.actionThread.id)}
     }
     Controls.MenuItem{text:T3I18n.tr("Project settings");enabled:!!root.actionThread.projectKey;onTriggered:root.projectSettingsRequested(root.actionThread.projectKey)}
