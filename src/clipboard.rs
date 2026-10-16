@@ -1,0 +1,48 @@
+//! On-demand Wayland clipboard access. No watcher, polling, clipboard log or staging files.
+use crate::*;
+use serde_json::{json,Value};
+use std::{io::{Read,Cursor},process::{Command,Stdio}};
+fn read(mime:Option<&str>,limit:usize)->Result<Vec<u8>>{
+ let mut command=Command::new("timeout");command.args(["3","wl-paste"]);
+ if let Some(mime)=mime{command.args(["--no-newline","--type",mime]);}else{command.arg("--list-types");}
+ let mut child=command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"clipboard_unavailable")?;
+ let mut bytes=Vec::new();let result=child.stdout.take().ok_or("clipboard_unavailable")?.take(limit as u64+1).read_to_end(&mut bytes);
+ if result.is_err()||bytes.len()>limit{let _=child.kill();let _=child.wait();return Err("clipboard_too_large".into())}
+ if !child.wait().map_err(|_|"clipboard_unavailable")?.success(){return Err("clipboard_unavailable".into())}Ok(bytes)
+}
+fn utf8(bytes:Vec<u8>)->Result<String>{String::from_utf8(bytes).map_err(|_|"invalid_clipboard_text".into())}
+fn paths(mime:&str,value:&str)->Result<Vec<String>>{
+ let mut files=vec![];
+ for line in value.lines().map(str::trim).filter(|s|!s.is_empty()&&!s.starts_with('#')){
+  if mime=="x-special/gnome-copied-files" && matches!(line,"copy"|"cut"){continue}
+  let url=reqwest::Url::parse(line).map_err(|_|"invalid_clipboard_file")?;
+  if url.scheme()!="file"||url.to_file_path().is_err(){return Err("invalid_clipboard_file".into())}files.push(url.to_string());
+ }Ok(files)
+}
+pub fn paste(input:&Value)->Result<Value>{
+ let types=utf8(read(None,16384)?)?;let types:Vec<&str>=types.lines().collect();
+ if let Some(mime)=["text/uri-list","x-special/gnome-copied-files"].iter().find(|m|types.contains(m)){
+  let urls=paths(mime,&utf8(read(Some(mime),120000)?)?)?;
+  if urls.len()>input["capacity"].as_u64().unwrap_or(0) as usize{return Err("invalid_attachments".into())}
+  let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
+  let mut attachments=vec![];let mut error=String::new();
+  for url in urls{match write::upload(&e,&url){Ok(a)=>attachments.push(a),Err(e)=>{error=e;break}}}
+  return Ok(json!({"attachments":attachments,"error":error}))
+ }
+ if let Some(mime)=["image/png","image/jpeg","image/webp","image/gif"].iter().find(|m|types.contains(m)){
+  if input["capacity"].as_u64().unwrap_or(0)==0{return Err("invalid_attachments".into())}
+  let bytes=read(Some(mime),10*1024*1024)?;if bytes.is_empty(){return Err("invalid_file".into())}
+  let ext=match *mime{"image/jpeg"=>"jpg","image/webp"=>"webp","image/gif"=>"gif",_=>"png"};
+  let name=format!("clipboard-{}.{}",uuid::Uuid::new_v4(),ext);
+  let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
+  let connection=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,true)?)?)?};
+  let a=connection.upload_attachment(&name,mime,bytes.len() as u64,Cursor::new(bytes))?;
+  return Ok(json!({"attachments":[a]}))
+ }
+ let mime=["text/plain;charset=utf-8","text/plain","UTF8_STRING"].iter().find(|m|types.contains(m)).ok_or("clipboard_unsupported")?;
+ let raw=utf8(read(Some(mime),480000)?)?;Ok(json!({"text":message_text::plain_qt(&raw).unwrap_or(raw)}))
+}
+#[cfg(test)]mod tests{
+ use super::*;
+ #[test]fn copied_paths_are_local_and_keep_escaping(){assert_eq!(paths("text/uri-list","# comment\nfile:///tmp/a%20b.png\r\n").unwrap(),vec!["file:///tmp/a%20b.png"]);assert_eq!(paths("x-special/gnome-copied-files","copy\nfile:///tmp/a.txt").unwrap().len(),1);assert!(paths("text/uri-list","https://example.com/a").is_err());}
+}

@@ -1,0 +1,427 @@
+[
+  {
+    "name": "working",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "running",
+          "updatedAt": "2026-10-15T04:00:00Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "running",
+        "working": true,
+        "pending": false,
+        "reason": null,
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "40d0629501b808130a2c7dc4bae0aa717dcab4646cea106c1dc2e6f4e1d9bff0",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "request",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "running",
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "pendingRuntimeRequest": {
+            "id": "req-1"
+          }
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "running",
+        "working": true,
+        "pending": true,
+        "reason": "request",
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "e8449dfa0c63102727907dd7782be402eb54e6c9963e3c5ea6463179a0676f46",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "waiting",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "waiting",
+          "updatedAt": "2026-10-15T04:00:00Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "waiting",
+        "working": false,
+        "pending": true,
+        "reason": "waiting",
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "4b54e79ef378e902012f62b9911825c7ba882ab073449cd2ee249aa3d7f4f573",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "failed",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "failed",
+          "updatedAt": "2026-10-15T04:00:00Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "failed",
+        "working": false,
+        "pending": true,
+        "reason": "failed",
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "f2c54a570701bc1d230c4f13da547d8c0b9066f30aba717a2e8cbcfbfa25225e",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "plan",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "completed",
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "hasActionableProposedPlan": true
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "completed",
+        "working": false,
+        "pending": true,
+        "reason": "plan",
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "f8da42b4c538eca1336726452d71fe23415d496c0eb3c3fb8ac5e2fe94b78c4e",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "review",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "completed",
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "latestRunCompletedAt": "2026-10-15T04:00:00Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "completed",
+        "working": false,
+        "pending": true,
+        "reason": "review",
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "e71439722dbe1835e51118732ce821639d9978c8b5414cfe951de060f8714cad",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "seen",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "completed",
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "latestRunCompletedAt": "2026-10-15T04:00:00Z",
+          "lastVisitedAt": "2026-10-15T04:00:01Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "completed",
+        "working": false,
+        "pending": false,
+        "reason": null,
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "00d6f72217a2c225475bda99865aca27e44cf93d9447452d8a33e1435a456c74",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "settled",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "failed",
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "settledAt": "2026-10-15T04:00:01Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "failed",
+        "working": false,
+        "pending": false,
+        "reason": null,
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "40d0629501b808130a2c7dc4bae0aa717dcab4646cea106c1dc2e6f4e1d9bff0",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "snoozed",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "waiting",
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "snoozedUntil": "2099-01-01T00:00:00Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "waiting",
+        "working": false,
+        "pending": false,
+        "reason": "waiting",
+        "snoozed": true,
+        "updatedAt": 1792036800000,
+        "revision": "4b54e79ef378e902012f62b9911825c7ba882ab073449cd2ee249aa3d7f4f573",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "background",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "completed",
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "pendingBackgroundTasks": [
+            {
+              "id": "bg"
+            }
+          ]
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "completed",
+        "working": true,
+        "pending": false,
+        "reason": null,
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "40d0629501b808130a2c7dc4bae0aa717dcab4646cea106c1dc2e6f4e1d9bff0",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "unknown-date",
+    "shell": {
+      "threads": [
+        {
+          "id": "thread-0001",
+          "title": "Synthetic work",
+          "status": "running",
+          "updatedAt": "broken"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "thread-0001",
+        "environmentId": "fixture",
+        "key": "fixture/thread-0001",
+        "title": "Synthetic work",
+        "project": "",
+        "status": "running",
+        "working": true,
+        "pending": false,
+        "reason": null,
+        "snoozed": false,
+        "updatedAt": 0,
+        "revision": "3a5adebd0bb286892793d4c3661b8623a80602a9309e5de036b8d68412964b31",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "explicit-settled",
+    "shell": {
+      "threads": [
+        {
+          "id": "settlement-fixture",
+          "title": "Settlement override",
+          "status": "completed",
+          "latestRunCompletedAt": "2026-10-15T04:00:00Z",
+          "lastVisitedAt": null,
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "settledOverride": "settled",
+          "settledAt": null
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "settlement-fixture",
+        "environmentId": "fixture",
+        "key": "fixture/settlement-fixture",
+        "title": "Settlement override",
+        "project": "",
+        "status": "completed",
+        "working": false,
+        "pending": false,
+        "reason": null,
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "00d6f72217a2c225475bda99865aca27e44cf93d9447452d8a33e1435a456c74",
+        "parentThreadId": null
+      }
+    ]
+  },
+  {
+    "name": "explicit-active",
+    "shell": {
+      "threads": [
+        {
+          "id": "settlement-fixture",
+          "title": "Settlement override",
+          "status": "completed",
+          "latestRunCompletedAt": "2026-10-15T04:00:00Z",
+          "lastVisitedAt": null,
+          "updatedAt": "2026-10-15T04:00:00Z",
+          "settledOverride": "active",
+          "settledAt": "2026-10-14T04:00:00Z"
+        }
+      ]
+    },
+    "nowMs": 1792036800000,
+    "expected": [
+      {
+        "id": "settlement-fixture",
+        "environmentId": "fixture",
+        "key": "fixture/settlement-fixture",
+        "title": "Settlement override",
+        "project": "",
+        "status": "completed",
+        "working": false,
+        "pending": true,
+        "reason": "review",
+        "snoozed": false,
+        "updatedAt": 1792036800000,
+        "revision": "e71439722dbe1835e51118732ce821639d9978c8b5414cfe951de060f8714cad",
+        "parentThreadId": null
+      }
+    ]
+  }
+]

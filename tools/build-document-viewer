@@ -1,0 +1,8 @@
+#!/bin/bash
+# Optional on-demand Qt/QML frontend. Persistent backend remains Rust-only.
+set -eu
+cd -- "$(dirname -- "$0")/.."
+mkdir -p bin
+task_moc="$(pkg-config --variable=libexecdir Qt6Core)/moc"
+"$task_moc" frontend/document-host.cpp -o frontend/document-host.moc
+c++ -std=c++17 -Os -shared -fPIC frontend/document-host.cpp -o bin/libt3-document.so $(pkg-config --cflags --libs Qt6Quick Qt6WebEngineQuick)

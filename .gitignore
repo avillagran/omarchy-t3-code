@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+/target/
+/bin/omarchy-t3-client
+/bin/libt3-document.so
+/frontend/document-host.moc
+
+# Local development evidence; may contain machine paths and conversation IDs.
+/VALIDATION.md
+/performance/

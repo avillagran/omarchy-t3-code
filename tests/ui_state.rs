@@ -1,0 +1,22 @@
+use serde_json::{json,Value};
+use std::{io::Write,process::{Command,Stdio}};
+fn run(root:&std::path::Path,commands:&[Value])->Value{
+    let mut child=Command::new(env!("CARGO_BIN_EXE_omarchy-t3-client")).arg("watch")
+        .env("HOME",root.join("home")).env("T3CODE_HOME",root.join("native"))
+        .env("XDG_CONFIG_HOME",root.join("config")).env("XDG_STATE_HOME",root.join("state")).env("XDG_DATA_HOME",root.join("data"))
+        .env_remove("OMARCHY_T3_FIXTURE_ENVIRONMENTS").env_remove("KIMI_CODING_API_KEY")
+        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().unwrap();
+    let mut input=child.stdin.take().unwrap();for cmd in commands{writeln!(input,"{cmd}").unwrap();}writeln!(input,"{}",json!({"op":"quit"})).unwrap();drop(input);
+    let output=child.wait_with_output().unwrap();assert!(output.status.success());
+    String::from_utf8(output.stdout).unwrap().lines().filter_map(|line|serde_json::from_str::<Value>(line).ok()).find(|v|v["type"]=="ui-state").unwrap()["data"].clone()
+}
+#[test]
+fn worker_restart_restores_presentation_without_account_or_transcript_data(){
+    let dir=std::env::temp_dir().join(format!("t3-worker-ui-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&dir).unwrap();
+    let state=json!({"sidebarProjectGroupingMode":"repository_path","sidebarProjectGroupingOverrides":{"fixture:/work/repo":"separate","bad":"invalid"},"autoCompactEnabled":true,"autoCompactProviderMinutes":{"fixture/codex":5,"invalid/provider/key":8},"autoCompactMinTokens":50000,"autoCompactExcludedThreads":["fixture/off"],"quotaCollapsed":true,"usageExpanded":true,"tasksExpanded":true,"language":"fr","sidebarWidth":375,"sidebarCompact":true,"workingExpanded":true,"settledExpanded":true,"sidebarCollapsed":false,"selectedEnvironment":"fixture","selectedThread":"one","statusFilter":"all","positions":{"fixture/one":{"id":"message-12","offset":7,"atEnd":false}},"transcript":["private content"],"token":"private secret"});
+    assert_eq!(run(&dir,&[json!({"op":"ui-state-set","state":state})])["schemaVersion"],1);
+    let loaded=run(&dir,&[]);assert_eq!(loaded["sidebarProjectGroupingMode"],"repository_path");assert_eq!(loaded["sidebarProjectGroupingOverrides"]["fixture:/work/repo"],"separate");assert!(loaded["sidebarProjectGroupingOverrides"].get("bad").is_none());assert_eq!(loaded["sidebarCompact"],true);assert_eq!(loaded["workingExpanded"],true);assert_eq!(loaded["autoCompactEnabled"],true);assert_eq!(loaded["autoCompactMinTokens"],50000);assert_eq!(loaded["autoCompactProviderMinutes"]["fixture/codex"],5);assert!(loaded["autoCompactProviderMinutes"].get("invalid/provider/key").is_none());assert_eq!(loaded["autoCompactExcludedThreads"][0],"fixture/off");assert_eq!(loaded["usageExpanded"],true);assert_eq!(loaded["tasksExpanded"],true);assert_eq!(loaded["language"],"fr");assert_eq!(loaded["sidebarWidth"].as_f64(),Some(375.0));assert_eq!(loaded["quotaCollapsed"],true);assert_eq!(loaded["selectedThread"],"one");assert_eq!(loaded["positions"]["fixture/one"]["id"],"message-12");assert!(!loaded.to_string().contains("private"));std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn concurrent_private_json_saves_do_not_share_temporary_files(){let root=std::env::temp_dir().join(format!("t3-json-concurrent-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&root).unwrap();std::thread::scope(|scope|{for n in 0..8{let root=&root;scope.spawn(move||{for revision in 0..5{omarchy_t3_client::save_json(&root.join(format!("{n}.json")),&json!({"id":n,"revision":revision})).unwrap();}});}});for n in 0..8{let v=omarchy_t3_client::read_json(&root.join(format!("{n}.json"))).unwrap();assert_eq!(v["revision"],4);assert_eq!(v["id"],n);}std::fs::remove_dir_all(root).unwrap();}

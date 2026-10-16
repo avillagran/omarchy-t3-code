@@ -1,0 +1,124 @@
+{
+  "id": "omarchy.t3.v1",
+  "orchestrationProtocol": "2",
+  "headers": {
+    "Accept": "application/json",
+    "Accept-Encoding": "identity",
+    "x-t3-orchestration-protocol": "2"
+  },
+  "auth": {
+    "scheme": "Bearer",
+    "scope": "orchestration:read",
+    "credentialInUrl": false,
+    "writeScope": "orchestration:operate",
+    "relay": {
+      "scheme": "DPoP",
+      "algorithm": "ES256",
+      "ticketRoute": "/api/auth/websocket-ticket",
+      "tokenExchangeRoute": "/oauth/token",
+      "relayExchangeRoute": "/v1/client/dpop-token"
+    }
+  },
+  "routes": {
+    "shell": "/api/orchestration/shell",
+    "messages": "/api/orchestration/threads/{encodedThreadId}/bounded",
+    "environment": "/.well-known/t3/environment"
+  },
+  "environmentRouteUsesProtocolHeader": false,
+  "identity": [
+    "environmentId",
+    "threadId"
+  ],
+  "timestamps": "UTC epoch milliseconds; ISO-8601 with timezone or epoch seconds/milliseconds input; invalid=0",
+  "workingStatuses": [
+    "preparing",
+    "queued",
+    "starting",
+    "running"
+  ],
+  "attentionPriority": [
+    "request",
+    "plan",
+    "waiting",
+    "failed",
+    "review"
+  ],
+  "pollMs": 10000,
+  "quotaPollMs": 300000,
+  "maxResponseBytes": 8388608,
+  "redirects": false,
+  "writeOperations": [
+    "message.dispatch",
+    "run.interrupt",
+    "attachments.createUploadUrl",
+    "attachments.delete",
+    "thread.create",
+    "projects.mutate",
+    "thread.settle",
+    "thread.unsettle"
+  ],
+  "errors": [
+    "unauthorized",
+    "not_json",
+    "unsupported_encoding",
+    "too_large",
+    "malformed",
+    "unreachable",
+    "http_<status>"
+  ],
+  "idlePollMs": 60000,
+  "messagesOnlyWhilePanelVisible": true,
+  "workerProtocol": "omarchy.t3.worker.v1",
+  "workerTransport": "JSONL stdio",
+  "messagesRender": "Rust Markdown to resource-free HTML; original plain text retained",
+  "writeTransport": {
+    "path": "/ws?orchestrationProtocol=2",
+    "framing": "Effect RPC JSON",
+    "requestHeaders": [],
+    "authentication": "Bearer handshake header",
+    "retry": "Explicit only, same immutable commandId/messageId",
+    "attachmentUploadMethod": "POST",
+    "attachmentUploadPrefix": "/api/attachments/upload/"
+  },
+  "activity": {
+    "source": "projection.turnItems filtered by thread.activeRunId and running status",
+    "fields": [
+      "id",
+      "type",
+      "title",
+      "startedAt"
+    ],
+    "maxItems": 3,
+    "poll": "selected visible thread only, existing interval"
+  },
+  "settlement": "explicit settled override or settledAt unless override is active; independent of completed",
+  "connectionDiscovery": {
+    "source": "T3 native userdata",
+    "paths": [
+      "server-runtime.json",
+      "connection-catalog.json",
+      "desktop-settings.json",
+      "environment-id"
+    ],
+    "supported": [
+      "local",
+      "BearerConnectionTarget",
+      "SshConnectionTarget",
+      "RelayConnectionTarget"
+    ],
+    "unsupported": [],
+    "pluginConfiguration": false,
+    "credentialsInSnapshot": false
+  },
+  "sharedLibrary": {
+    "crate": "t3-protocol",
+    "path": "crates/t3-protocol",
+    "outputs": [
+      "rlib",
+      "staticlib"
+    ],
+    "ffiHeader": "crates/t3-protocol/include/t3_protocol.h",
+    "desktopAdapter": "src/desktop_cloud.rs",
+    "omiIntegration": "JNI adapter and Android build pending"
+  }
+}
