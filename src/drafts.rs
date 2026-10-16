@@ -21,6 +21,10 @@ pub fn clean(v: &Value) -> Result<Value> {
         return Err("draft_too_large".into());
     }
     let mut out = json!({"text":text,"attachments":[],"modelSelection":null,"delivery":if v["delivery"]=="queue"{"queue"}else{"auto"},"attempt":null});
+    if let Some(mode)=v.get("runtimeMode").filter(|v|!v.is_null()){
+        if !omarchy_t3_client::protocol::models::valid_runtime_mode(mode.as_str().unwrap_or("")){return Err("invalid_runtime_mode".into())}
+        out["runtimeMode"]=mode.clone();
+    }
     if let Some(s) = v["modelSelection"].as_object() {
         let options = s
             .get("options")
@@ -71,6 +75,7 @@ pub fn clean(v: &Value) -> Result<Value> {
             "modelSelection",
             "delivery",
             "nextThread",
+            "runtimeMode",
         ] {
             if let Some(value) = a.get(key) {
                 attempt[key] = value.clone();

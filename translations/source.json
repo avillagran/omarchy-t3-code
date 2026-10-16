@@ -374,6 +374,13 @@
     "Clone from a remote URL": "Clone from a remote URL",
     "{provider} repository": "{provider} repository",
     "Clone a repository": "Clone a repository",
-    "Setup required": "Setup required"
+    "Setup required": "Setup required",
+    "Supervised": "Supervised",
+    "Auto-accept edits": "Auto-accept edits",
+    "Auto": "Auto",
+    "Ask before commands and file changes.": "Ask before commands and file changes.",
+    "Auto-approve edits, ask before other actions.": "Auto-approve edits, ask before other actions.",
+    "Supported providers approve routine actions; others still ask.": "Supported providers approve routine actions; others still ask.",
+    "Allow commands and edits without prompts.": "Allow commands and edits without prompts."
   }
 }

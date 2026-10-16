@@ -309,7 +309,7 @@ Singleton {
     var previous=drafts[key]
     if(historyKind!==false && previous && !previous.loading && !previous.loadError && ((values.text!==undefined&&values.text!==previous.text)||(values.attachments!==undefined&&JSON.stringify(values.attachments)!==JSON.stringify(previous.attachments))))saveUndo(key,previous,all[key],historyKind)
     drafts = all
-    if (!all[key].loading && !all[key].loadError && ["text","attachments","modelSelection","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
+    if (!all[key].loading && !all[key].loadError && ["text","attachments","modelSelection","runtimeMode","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
       var dirty=Object.assign({},dirtyDrafts);dirty[key]=true;dirtyDrafts=dirty;saveDrafts.restart()
       var updated=Object.assign({},drafts);updated[key]=Object.assign({},updated[key],{saveState:"saving",saveRevision:""});drafts=updated
     }
@@ -318,6 +318,12 @@ Singleton {
   function chooseModel(index) {
     var m = catalog.models[index]; if (!m) return
     patchDraft(selectedKey, {modelSelection: {instanceId: m.instanceId, model: m.model, options: []}})
+  }
+  function chooseRuntimeMode(mode){
+    if(!selectedKey||draft.loading||draft.loadError||draft.busy||draft.attempt||draft.queueEdit||["approval-required","auto-accept-edits","auto","full-access"].indexOf(mode)<0)return
+    var provider=(catalog.providers || []).find(function(p){return p.instanceId===(root.draft.modelSelection || root.selectedInfo.modelSelection || {}).instanceId})
+    if(provider&&(provider.supportedRuntimeModes || []).length&&provider.supportedRuntimeModes.indexOf(mode)<0)return
+    patchDraft(selectedKey,{runtimeMode:mode===selectedInfo.runtimeMode?null:mode})
   }
   function chooseOption(id, value) {
     var selection = Object.assign({}, draft.modelSelection || selectedInfo.modelSelection)
@@ -360,7 +366,8 @@ Singleton {
     var attempt = draft.attempt || {op: "send", environment: selectedEnvironment, thread: selectedThread,
       requestId: uuid(), text: draft.text, attachments: draft.attachments.map(function(f) { return f.attachment }),
       modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: selectedInfo.activeRunId ? "queue" : draft.delivery}
-    if(startNewThread===true&&!draft.attempt)attempt.nextThread={projectId:selectedInfo.projectId,modelSelection:attempt.modelSelection,runtimeMode:selectedInfo.runtimeMode,branch:selectedInfo.branch,worktreePath:selectedInfo.worktreePath}
+    if(!draft.attempt&&draft.runtimeMode&&draft.runtimeMode!==selectedInfo.runtimeMode)attempt.runtimeMode=draft.runtimeMode
+    if(startNewThread===true&&!draft.attempt)attempt.nextThread={projectId:selectedInfo.projectId,modelSelection:attempt.modelSelection,runtimeMode:draft.runtimeMode || selectedInfo.runtimeMode,branch:selectedInfo.branch,worktreePath:selectedInfo.worktreePath}
     if(!draft.attempt && draft.queueEdit){
       if(!queue.items.some(function(q){return q.runId===root.draft.queueEdit.runId})){patchDraft(selectedKey,{error:"queued_message_no_longer_pending"});return}
       attempt=Object.assign({},attempt,{op:"queue",action:"edit",runId:draft.queueEdit.runId,context:draft.queueEdit.context})
@@ -530,8 +537,10 @@ Singleton {
       if(data.error && data.error!=="rpc_outcome_unknown")forgetQueued(key,"omarchy-"+data.requestId)
       if (data.error) patchDraft(key, {busy: false, error: data.error, attempt: data.error === "rpc_outcome_unknown" ? d.attempt : null})
       else {
+        var acceptedMode=d.attempt.runtimeMode
+        if(acceptedMode){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===key?Object.assign({},t,{runtimeMode:acceptedMode}):t})});snapshotUpdated()}
         var next=d.attempt.nextThread
-        patchDraft(key, {text: "", attachments: [], busy: false, attempt: null, error: ""},false); resetUndo(key);flushDraft(key); refresh()
+        patchDraft(key, {text: "", attachments: [], busy: false, attempt: null, runtimeMode:null,error: ""},false); resetUndo(key);flushDraft(key); refresh()
         // Navigate only after acknowledgement, and only if the user is still here.
         if(next&&selectedKey===key&&!managementBusy&&!managementRequest)manage({action:"new-thread",environment:data.environment,title:T3I18n.tr("New chat"),projectId:next.projectId,modelSelection:next.modelSelection,runtimeMode:next.runtimeMode,branch:next.branch,worktreePath:next.worktreePath})
       }
