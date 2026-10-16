@@ -19,6 +19,24 @@ backend is introduced. Decoding happens only on copy, with bounded input, pixel
 count and decoder allocation. Clipboard ownership uses the installed `wl-copy`.
 The integration tests replace it in a private environment.
 
+## Preferences and connection lifecycle
+
+The sidebar gear opens an embedded preferences view with General, Appearance,
+Connections, Providers and Keyboard shortcuts. General exposes supported native
+update, resume, auto-settle, snooze, streaming and background-profile settings.
+Appearance controls existing panel preferences and inherits the Omarchy theme.
+Connections show inherited status; Providers expose status and native model
+favorites. Settings target the selected environment through native RPC. This is
+a partial port: connection editing, provider credential/configuration editing,
+editable keybindings, advanced project/storage/source-control/integration and
+diagnostic panels remain to be ported. Native reference: `routes/settings.*.tsx`
+and `components/settings/SettingsPanels.tsx`.
+
+Inherited SSH targets now start a stopped native remote service before opening
+the tunnel. Active servers are reused. Isolated production-script tests cover
+running/stopped/missing services and profile/environment mismatch; live validation
+uses the existing NODE server without interrupting its sessions.
+
 ## Confirmed remaining gaps
 
 | Priority | Native T3 behavior | Current plugin gap | Source evidence |

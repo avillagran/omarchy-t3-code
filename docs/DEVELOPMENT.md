@@ -109,6 +109,21 @@ rechecks ownership before each operation and never stops a GUI-owned or
 unidentified process. It does not migrate an active desktop session or start a
 competing server over the same data directory.
 
+SSH startup uses T3's native `__ssh-helper runtime-port` and `wait-ready` checks.
+A stopped remote server starts through its existing `t3code.service`; if absent,
+T3 installs its own service. The adapter verifies the saved environment ID and
+service data directory before starting it. Existing servers are reused without
+restart. Healthy SSH tunnels survive local runtime changes; failed connections
+expire early for the next refresh. This requires an installed native T3 CLI and
+working noninteractive SSH authentication on the inherited target.
+
+Preferences write only an allowlisted subset of native settings via
+`server.updateSettings`, then reload `server.getSettings`. The shared
+`t3-protocol::settings` module validates values and exports safe field descriptors
+without provider credentials. General settings apply to the selected local or
+remote server; appearance follows Omarchy, and favorites use T3's existing store.
+Connection management remains owned by T3's catalog.
+
 ## Everyday use
 
 - **Super+Shift+A** opens Omarchy T3 Code as the default agent.
@@ -225,6 +240,8 @@ tools/test-qml sidebar-pr
 tools/test-qml dpi-lifecycle
 tools/test-qml panel-reopen
 tools/test-qml window-mode
+tools/test-qml preferences
+node tools/test-remote-bootstrap.cjs
 tools/test-qml context-divider
 tools/test-qml copy-actions
 node tools/test-copy.cjs

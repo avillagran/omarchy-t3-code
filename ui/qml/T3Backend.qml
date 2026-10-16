@@ -37,6 +37,8 @@ Singleton {
   // Retry only during recovery, retaining the current transcript and draft.
   Timer{interval:1000;repeat:true;running:root.panelVisible&&root.localRecoveryAttempts>0;onTriggered:{root.localRecoveryAttempts--;root.refreshBackendStatus();root.refresh()}}
   Timer{interval:3000;repeat:true;triggeredOnStart:true;running:root.visiblePanels>0;onTriggered:root.refreshBackendStatus()}
+  property var settingsResult:({busy:false,error:"",fields:[],environment:""})
+  function requestSettings(environment,key,value){if(settingsResult.busy)return;var id=uuid();settingsResult=Object.assign({},settingsResult,{busy:true,error:"",requestId:id,environment:environment,fields:settingsResult.environment===environment?settingsResult.fields:[]});send({op:"settings",action:key?"update":"read",key:key || "",value:value,environment:environment,requestId:id})}
   property var prOperations:({})
   function requestPullRequests(action,values){var id=uuid(),all=Object.assign({},prOperations);all[action]={busy:true,requestId:id,error:"",data:null};prOperations=all;send(Object.assign({op:"pull-requests",environment:selectedEnvironment,action:action,requestId:id},values || {}))}
   function resetPullRequests(){prOperations=({})}
@@ -327,6 +329,7 @@ Singleton {
   property var diffView: ({loading:false,text:"",error:"",requestId:""})
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
+    if(data.op==="settings"){if(data.requestId===settingsResult.requestId)settingsResult=Object.assign({},settingsResult,{busy:false,error:data.error || ""},data.result || {});return}
     if(data.op==="copy"){copyFinished(data.requestId,data.error || "");return}
     if(data.op==="document-open"){if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
     if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)acceptBackendStatus(data.result.local);if(!data.error&&data.result&&data.result.status!=="stopped")recoverLocalBackend();refreshBackendStatus();refresh();return}

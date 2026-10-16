@@ -23,7 +23,8 @@ your Omarchy theme and inherits T3's connections, models and favorites.
 - Subscription usage bars and work/ready/input badges on your desktop bar.
 - Switch between the bar panel and a normal Hyprland window from the header.
 - Resizable layout, keyboard navigation, smooth scrolling and **20 languages**.
-- Native headless server controls: keep working locally or over your remote connections.
+- Native headless server controls and automatic startup for inherited SSH connections.
+- Preferences for native general settings, Omarchy appearance, connections and model favorites.
 
 ## Install
 
@@ -54,7 +55,9 @@ a thread for its actions. **F1** opens keyboard help.
 
 Set up local and remote connections in T3 Code; the plugin inherits them. If the
 official GUI owns the server, close it and use the sidebar's start button to run
-headless. The plugin does not stop a GUI-owned server.
+headless. The plugin does not stop a GUI-owned server. Inherited SSH connections reuse a running
+remote server or start its native headless service when stopped. Open the sidebar
+gear for preferences; server settings apply to the selected environment.
 
 Some T3 features are still being ported, and the PR view is currently read-only.
 See the [feature parity checklist](docs/FEATURE_PARITY.md).

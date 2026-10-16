@@ -16,8 +16,10 @@ Item {
   required property var bridge
   property var prTarget:null
   property bool pullRequestsOpen:false
+  property bool preferencesOpen:false
+  onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
   onPullRequestsOpenChanged:{if(!pullRequestsOpen)prTarget=null;if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}}
-  function submitCurrent(){if(!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
+  function submitCurrent(){if(!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
   function selectSidebarThread(env,id){pullRequestsOpen=false;bridge.selectThread(env,id)}
   property bool initialized: false
   readonly property var conversationView: conversation
@@ -266,7 +268,7 @@ Item {
       timeLabel:modelData.working ? root.duration(modelData.startedAt) : root.age(modelData.updatedAt)
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
-      onThreadActivated:root.pullRequestsOpen=false
+      onThreadActivated:{root.pullRequestsOpen=false;root.preferencesOpen=false}
       onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
       onProjectSettingsRequested:function(key){projectMenu.configureProject(key)}
       onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
@@ -461,7 +463,7 @@ Item {
                 Text { text: "OMARCHY"; font.pixelSize: Style.space(8); font.letterSpacing: 2; color: root.dim }
               }
               Item { Layout.fillWidth: true }
-              T3IconButton{objectName:"t3PullRequestsToggle";name:"git-pull-request";tooltipText:T3I18n.tr("Pull requests");tint:root.pullRequestsOpen?Color.accent:root.dim;onClicked:root.pullRequestsOpen=!root.pullRequestsOpen}
+              T3IconButton{objectName:"t3PullRequestsToggle";name:"git-pull-request";tooltipText:T3I18n.tr("Pull requests");tint:root.pullRequestsOpen?Color.accent:root.dim;onClicked:{root.preferencesOpen=false;root.pullRequestsOpen=!root.pullRequestsOpen}}
               T3IconButton {
                 objectName:"t3UsageToggle";name:"chart-no-axes-column"
                 tint:root.usageCollapsed ? root.dim : Color.accent
@@ -620,6 +622,7 @@ Item {
           RowLayout {
             objectName:"t3SidebarFooter"
             Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
+            T3IconButton{objectName:"openPreferences";name:"settings";tooltipText:T3I18n.tr("Preferences");onClicked:root.preferencesOpen=!root.preferencesOpen}
             T3Icon {
               objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(18)
               readonly property string statusText:root.bridge.stale?((root.bridge.state.environments || []).some(function(e){return e.state==="ready"})?T3I18n.tr("Partially connected"):T3I18n.tr("Offline")):T3I18n.tr("Direct connection")
@@ -686,9 +689,10 @@ Item {
         objectName:"t3MainChatArea"
         Layout.fillWidth: true; Layout.fillHeight: true
         color: Color.popups.background
-        Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
+        Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
+        Loader{objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         ColumnLayout {
-          visible:!root.pullRequestsOpen
+          visible:!root.preferencesOpen&&!root.pullRequestsOpen
           anchors.fill: parent; spacing: 0
           RowLayout {
             objectName:"t3ChatHeader"
@@ -727,7 +731,7 @@ Item {
             T3TimelineMinimap {
               anchors.fill:parent;z:3
               rows:root.bridge.transcript;view:conversation;threadKey:root.bridge.selectedKey
-              active:root.opened && !root.pullRequestsOpen && !root.composerExpanded
+              active:root.opened && !root.preferencesOpen && !root.pullRequestsOpen && !root.composerExpanded
               onSelected:function(entry){root.jumpTimelineItem(entry)}
               onWheelRequested:function(angle,pixels,touchpad){conversation.wheelScroll(angle,pixels,touchpad)}
             }
@@ -884,7 +888,7 @@ Item {
               Connections {
                 target: root.bridge
                 function onMessageSubmitted(key) { root.followSubmittedMessage(key) }
-                function onThreadWillChange() { root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
+                function onThreadWillChange() { root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
                 function onSnapshotAboutToChange() {
                   if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")
                   if (!root.restoringSettled) root.capturePosition(settledThreads,root.visibleSettledRows,"@settled")

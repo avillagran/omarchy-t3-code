@@ -273,6 +273,26 @@
     "Copied!": "Copied!",
     "Copy failed": "Copy failed",
     "Open as window": "Open as window",
-    "Return to panel": "Return to panel"
+    "Return to panel": "Return to panel",
+    "Preferences": "Preferences",
+    "General": "General",
+    "Appearance": "Appearance",
+    "Connections": "Connections",
+    "Providers": "Providers",
+    "Omarchy theme": "Omarchy theme",
+    "Back": "Back",
+    "Custom": "Custom",
+    "Turn": "Turn",
+    "Paragraph": "Paragraph",
+    "Balanced": "Balanced",
+    "Performance": "Performance",
+    "Battery saver": "Battery saver",
+    "Background activity": "Background activity",
+    "Response streaming": "Response streaming",
+    "Check provider updates": "Check provider updates",
+    "Resume after server updates": "Resume after server updates",
+    "Keep threads with pull requests": "Keep threads with pull requests",
+    "Settle merged pull requests": "Settle merged pull requests",
+    "Snooze rate-limited threads": "Snooze rate-limited threads"
   }
 }
