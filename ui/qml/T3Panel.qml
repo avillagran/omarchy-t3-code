@@ -587,13 +587,31 @@ Item {
             objectName:"t3SidebarFooter"
             Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
             Text { Layout.fillWidth:true;elide:Text.ElideRight;text: root.bridge.stale ? ((root.bridge.state.environments || []).some(function(e) { return e.state === "ready" }) ? T3I18n.tr("Partially connected") : T3I18n.tr("Offline")) : T3I18n.tr("Direct connection"); color: root.bridge.stale ? Color.urgent : root.dim; font.pixelSize: Style.font.caption }
+            T3Icon {
+              objectName:"localBackendGuiIndicator";name:"monitor";implicitWidth:Style.space(20)
+              visible:root.bridge.localBackend.owner==="gui";tint:root.dim
+              Accessible.name:T3I18n.tr("Managed by T3 Code GUI")
+              HoverHandler{id:guiOwnerHover}
+              Controls.ToolTip.visible:guiOwnerHover.hovered
+              Controls.ToolTip.text:T3I18n.tr("Managed by T3 Code GUI")
+            }
             T3IconButton {
-              objectName:"startLocalBackend"
-              name:root.bridge.backendStart.busy?"loader-circle":"play"
-              tint:root.bridge.backendStart.error?Color.urgent:root.dim
-              tooltipText:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):T3I18n.tr(root.bridge.backendStart.busy?"Loading…":root.bridge.backendStart.status==="already-running"?"Running":"Start local backend")
-              enabled:!root.bridge.backendStart.busy
-              onClicked:root.bridge.startBackend()
+              id:localBackendControl;objectName:"startLocalBackend"
+              onVisibleChanged:if(!visible&&localBackendMenu)localBackendMenu.close()
+              visible:root.bridge.localBackend.owner!=="gui"
+              name:root.bridge.backendStart.busy?"loader-circle":root.bridge.localBackend.running?"server":"play"
+              tint:root.bridge.backendStart.error?Color.urgent:root.bridge.localBackend.running?Color.accent:root.dim
+              tooltipText:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):root.bridge.localBackend.error?T3I18n.error(root.bridge.localBackend.error):T3I18n.tr(root.bridge.backendStart.busy?"Loading…":root.bridge.localBackend.running?"Local backend controls":"Start local backend")
+              enabled:root.bridge.localBackend.canControl&&!root.bridge.backendStart.busy
+              onClicked:root.bridge.localBackend.running?localBackendMenu.popup():root.bridge.startBackend()
+              Controls.Menu {
+                id:localBackendMenu;objectName:"localBackendMenu";width:Style.space(260)
+                palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
+                background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.dim}
+                Controls.MenuItem{objectName:"localBackendStart";text:T3I18n.tr("Start local backend");enabled:root.bridge.localBackend.canControl&&!root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.startBackend()}
+                Controls.MenuItem{objectName:"localBackendRestart";text:T3I18n.tr("Restart local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("restart")}
+                Controls.MenuItem{objectName:"localBackendStop";text:T3I18n.tr("Stop local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("stop")}
+              }
             }
             T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
             T3IconButton {name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:root.bridge.refresh()}

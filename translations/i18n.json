@@ -261,7 +261,11 @@
     "This permanently clears conversation history for this thread.": "This permanently clears conversation history for this thread.",
     "Conversation timeline": "Conversation timeline",
     "Previous turn": "Previous turn",
-    "Next turn": "Next turn"
+    "Next turn": "Next turn",
+    "Managed by T3 Code GUI": "Managed by T3 Code GUI",
+    "Local backend controls": "Local backend controls",
+    "Restart local backend": "Restart local backend",
+    "Stop local backend": "Stop local backend"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -525,7 +529,11 @@
     "This permanently clears conversation history for this thread.": "Esto elimina permanentemente el historial de este hilo.",
     "Conversation timeline": "Línea de tiempo de la conversación",
     "Previous turn": "Turno anterior",
-    "Next turn": "Turno siguiente"
+    "Next turn": "Turno siguiente",
+    "Managed by T3 Code GUI": "Gestionado por la GUI de T3 Code",
+    "Local backend controls": "Controles del servidor local",
+    "Restart local backend": "Reiniciar servidor local",
+    "Stop local backend": "Detener servidor local"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -789,7 +797,11 @@
     "This permanently clears conversation history for this thread.": "Isso apaga permanentemente o histórico desta conversa.",
     "Conversation timeline": "Linha do tempo da conversa",
     "Previous turn": "Turno anterior",
-    "Next turn": "Próximo turno"
+    "Next turn": "Próximo turno",
+    "Managed by T3 Code GUI": "Gerenciado pela GUI do T3 Code",
+    "Local backend controls": "Controles do servidor local",
+    "Restart local backend": "Reiniciar servidor local",
+    "Stop local backend": "Parar servidor local"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1053,7 +1065,11 @@
     "This permanently clears conversation history for this thread.": "Cela efface définitivement l’historique de ce fil.",
     "Conversation timeline": "Chronologie de la conversation",
     "Previous turn": "Tour précédent",
-    "Next turn": "Tour suivant"
+    "Next turn": "Tour suivant",
+    "Managed by T3 Code GUI": "Géré par l’interface T3 Code (GUI)",
+    "Local backend controls": "Commandes du serveur local",
+    "Restart local backend": "Redémarrer le serveur local",
+    "Stop local backend": "Arrêter le serveur local"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1317,7 +1333,11 @@
     "This permanently clears conversation history for this thread.": "Dies löscht den Verlauf dieses Chats dauerhaft.",
     "Conversation timeline": "Gesprächszeitleiste",
     "Previous turn": "Vorheriger Gesprächsschritt",
-    "Next turn": "Nächster Gesprächsschritt"
+    "Next turn": "Nächster Gesprächsschritt",
+    "Managed by T3 Code GUI": "Von der T3-Code-Oberfläche verwaltet (GUI)",
+    "Local backend controls": "Steuerung des lokalen Servers",
+    "Restart local backend": "Lokalen Server neu starten",
+    "Stop local backend": "Lokalen Server stoppen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1581,7 +1601,11 @@
     "This permanently clears conversation history for this thread.": "Questa azione elimina definitivamente la cronologia della chat.",
     "Conversation timeline": "Cronologia della conversazione",
     "Previous turn": "Turno precedente",
-    "Next turn": "Turno successivo"
+    "Next turn": "Turno successivo",
+    "Managed by T3 Code GUI": "Gestito dall’interfaccia di T3 Code (GUI)",
+    "Local backend controls": "Controlli del server locale",
+    "Restart local backend": "Riavvia server locale",
+    "Stop local backend": "Arresta server locale"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1845,7 +1869,11 @@
     "This permanently clears conversation history for this thread.": "Dit wist de gespreksgeschiedenis permanent.",
     "Conversation timeline": "Gesprekstijdlijn",
     "Previous turn": "Vorige beurt",
-    "Next turn": "Volgende beurt"
+    "Next turn": "Volgende beurt",
+    "Managed by T3 Code GUI": "Beheerd door de T3 Code-interface (GUI)",
+    "Local backend controls": "Lokale serverbediening",
+    "Restart local backend": "Lokale server herstarten",
+    "Stop local backend": "Lokale server stoppen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2109,7 +2137,11 @@
     "This permanently clears conversation history for this thread.": "To trwale usuwa historię tego wątku.",
     "Conversation timeline": "Oś czasu rozmowy",
     "Previous turn": "Poprzednia tura",
-    "Next turn": "Następna tura"
+    "Next turn": "Następna tura",
+    "Managed by T3 Code GUI": "Zarządzany przez interfejs T3 Code (GUI)",
+    "Local backend controls": "Sterowanie serwerem lokalnym",
+    "Restart local backend": "Uruchom ponownie serwer lokalny",
+    "Stop local backend": "Zatrzymaj serwer lokalny"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2373,7 +2405,11 @@
     "This permanently clears conversation history for this thread.": "История этого чата будет удалена навсегда.",
     "Conversation timeline": "Хронология разговора",
     "Previous turn": "Предыдущий ход",
-    "Next turn": "Следующий ход"
+    "Next turn": "Следующий ход",
+    "Managed by T3 Code GUI": "Управляется интерфейсом T3 Code (GUI)",
+    "Local backend controls": "Управление локальным сервером",
+    "Restart local backend": "Перезапустить локальный сервер",
+    "Stop local backend": "Остановить локальный сервер"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2637,7 +2673,11 @@
     "This permanently clears conversation history for this thread.": "Історію цього чату буде видалено назавжди.",
     "Conversation timeline": "Хронологія розмови",
     "Previous turn": "Попередній хід",
-    "Next turn": "Наступний хід"
+    "Next turn": "Наступний хід",
+    "Managed by T3 Code GUI": "Керується інтерфейсом T3 Code (GUI)",
+    "Local backend controls": "Керування локальним сервером",
+    "Restart local backend": "Перезапустити локальний сервер",
+    "Stop local backend": "Зупинити локальний сервер"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2901,7 +2941,11 @@
     "This permanently clears conversation history for this thread.": "このスレッドの履歴は完全に削除されます。",
     "Conversation timeline": "会話のタイムライン",
     "Previous turn": "前のターン",
-    "Next turn": "次のターン"
+    "Next turn": "次のターン",
+    "Managed by T3 Code GUI": "T3 CodeのGUIで管理",
+    "Local backend controls": "ローカルサーバーの操作",
+    "Restart local backend": "ローカルサーバーを再起動",
+    "Stop local backend": "ローカルサーバーを停止"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3165,7 +3209,11 @@
     "This permanently clears conversation history for this thread.": "이 대화의 기록이 영구적으로 삭제됩니다.",
     "Conversation timeline": "대화 타임라인",
     "Previous turn": "이전 턴",
-    "Next turn": "다음 턴"
+    "Next turn": "다음 턴",
+    "Managed by T3 Code GUI": "T3 Code GUI에서 관리",
+    "Local backend controls": "로컬 서버 제어",
+    "Restart local backend": "로컬 서버 다시 시작",
+    "Stop local backend": "로컬 서버 중지"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3429,7 +3477,11 @@
     "This permanently clears conversation history for this thread.": "这将永久清除此对话的历史记录。",
     "Conversation timeline": "对话时间线",
     "Previous turn": "上一轮",
-    "Next turn": "下一轮"
+    "Next turn": "下一轮",
+    "Managed by T3 Code GUI": "由 T3 Code GUI 管理",
+    "Local backend controls": "本地服务器控制",
+    "Restart local backend": "重启本地服务器",
+    "Stop local backend": "停止本地服务器"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3693,7 +3745,11 @@
     "This permanently clears conversation history for this thread.": "يؤدي هذا إلى حذف سجل المحادثة نهائياً.",
     "Conversation timeline": "المخطط الزمني للمحادثة",
     "Previous turn": "الدور السابق",
-    "Next turn": "الدور التالي"
+    "Next turn": "الدور التالي",
+    "Managed by T3 Code GUI": "تديره واجهة T3 Code (GUI)",
+    "Local backend controls": "عناصر تحكم الخادم المحلي",
+    "Restart local backend": "إعادة تشغيل الخادم المحلي",
+    "Stop local backend": "إيقاف الخادم المحلي"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3957,7 +4013,11 @@
     "This permanently clears conversation history for this thread.": "Bu sohbetin geçmişi kalıcı olarak silinir.",
     "Conversation timeline": "Sohbet zaman çizelgesi",
     "Previous turn": "Önceki tur",
-    "Next turn": "Sonraki tur"
+    "Next turn": "Sonraki tur",
+    "Managed by T3 Code GUI": "T3 Code arayüzü tarafından yönetiliyor (GUI)",
+    "Local backend controls": "Yerel sunucu denetimleri",
+    "Restart local backend": "Yerel sunucuyu yeniden başlat",
+    "Stop local backend": "Yerel sunucuyu durdur"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4221,7 +4281,11 @@
     "This permanently clears conversation history for this thread.": "Detta raderar trådens historik permanent.",
     "Conversation timeline": "Samtalets tidslinje",
     "Previous turn": "Föregående tur",
-    "Next turn": "Nästa tur"
+    "Next turn": "Nästa tur",
+    "Managed by T3 Code GUI": "Hanteras av T3 Codes gränssnitt (GUI)",
+    "Local backend controls": "Lokala serverkontroller",
+    "Restart local backend": "Starta om lokal server",
+    "Stop local backend": "Stoppa lokal server"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4485,7 +4549,11 @@
     "This permanently clears conversation history for this thread.": "Dette sletter trådens historik permanent.",
     "Conversation timeline": "Samtalens tidslinje",
     "Previous turn": "Forrige tur",
-    "Next turn": "Næste tur"
+    "Next turn": "Næste tur",
+    "Managed by T3 Code GUI": "Administreres af T3 Codes brugerflade (GUI)",
+    "Local backend controls": "Lokale serverkontroller",
+    "Restart local backend": "Genstart lokal server",
+    "Stop local backend": "Stop lokal server"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4749,7 +4817,11 @@
     "This permanently clears conversation history for this thread.": "Dette sletter trådens historikk permanent.",
     "Conversation timeline": "Samtalens tidslinje",
     "Previous turn": "Forrige tur",
-    "Next turn": "Neste tur"
+    "Next turn": "Neste tur",
+    "Managed by T3 Code GUI": "Administreres av T3 Codes grensesnitt (GUI)",
+    "Local backend controls": "Lokale serverkontroller",
+    "Restart local backend": "Start lokal server på nytt",
+    "Stop local backend": "Stopp lokal server"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5013,7 +5085,11 @@
     "This permanently clears conversation history for this thread.": "Tämä poistaa keskustelun historian pysyvästi.",
     "Conversation timeline": "Keskustelun aikajana",
     "Previous turn": "Edellinen vuoro",
-    "Next turn": "Seuraava vuoro"
+    "Next turn": "Seuraava vuoro",
+    "Managed by T3 Code GUI": "T3 Coden käyttöliittymän hallinnoima (GUI)",
+    "Local backend controls": "Paikallisen palvelimen hallinta",
+    "Restart local backend": "Käynnistä paikallinen palvelin uudelleen",
+    "Stop local backend": "Pysäytä paikallinen palvelin"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5277,6 +5353,10 @@
     "This permanently clears conversation history for this thread.": "Tím se trvale odstraní historie tohoto vlákna.",
     "Conversation timeline": "Časová osa konverzace",
     "Previous turn": "Předchozí tah",
-    "Next turn": "Další tah"
+    "Next turn": "Další tah",
+    "Managed by T3 Code GUI": "Spravováno rozhraním T3 Code (GUI)",
+    "Local backend controls": "Ovládání místního serveru",
+    "Restart local backend": "Restartovat místní server",
+    "Stop local backend": "Zastavit místní server"
   }
 }

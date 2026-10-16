@@ -1,0 +1,27 @@
+#!/bin/bash
+# Opt-in Linux integration check: own transient fixture process only, no T3 data.
+set -eu
+cd -- "$(dirname -- "$0")/.."
+node <<'JS'
+const fs=require('fs'),os=require('os'),path=require('path'),cp=require('child_process'),crypto=require('crypto');
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'t3-owner-check-')),unit='omarchy-t3-owner-check-'+crypto.randomUUID()+'.service';
+const env={...process.env,HOME:root,T3CODE_HOME:root};
+const run=(cmd,args,options={})=>cp.execFileSync(cmd,args,{encoding:'utf8',timeout:20000,...options});
+let started=false;
+try{
+ fs.mkdirSync(path.join(root,'apps/server'),{recursive:true});fs.mkdirSync(path.join(root,'userdata'));
+ const entry=path.join(root,'apps/server/server.js');fs.writeFileSync(entry,'setInterval(()=>{},60000);\n');
+ run('systemd-run',['--user','--quiet','--collect','--unit='+unit,'--property=Type=exec','--setenv=T3CODE_HOME='+root,process.execPath,entry]);started=true;
+ const pid=Number(run('systemctl',['--user','show',unit,'--property=MainPID','--value']).trim());if(!pid)throw Error('fixture pid absent');
+ fs.writeFileSync(path.join(root,'userdata/server-runtime.json'),JSON.stringify({pid}));
+ const status=JSON.parse(run('bin/omarchy-t3-client',['backend-status'],{env}));
+ if(status.owner!=='headless-manual'||!status.canControl)throw Error('manual ownership not recognized: '+JSON.stringify(status));
+ const result=JSON.parse(run('bin/omarchy-t3-client',['backend-control','stop'],{env}));
+ if(result.status!=='stopped'||result.local.running)throw Error('fixture did not stop');
+ const current=JSON.parse(run('bin/omarchy-t3-client',['backend-status']));
+ console.log('BACKEND_OWNERSHIP_PASS: isolated headless PID recognized and gracefully stopped; production owner='+current.owner);
+}finally{
+ if(started){try{run('systemctl',['--user','stop',unit],{stdio:['ignore','pipe','ignore']})}catch{}}
+ fs.rmSync(root,{recursive:true,force:true});
+}
+JS
