@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot {
   id: root
   function check(ok, msg) { if (!ok) { console.error("T3_WRITE_QML_FAIL: " + msg); Qt.exit(1) } }

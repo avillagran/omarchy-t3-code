@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property int phase:0;property real savedWidth:0
  property var quotas:[{provider:"codex",label:"Codex",weekly:{availablePercent:75,windowSeconds:604800},onPace:true,expectedAvailable:50}]

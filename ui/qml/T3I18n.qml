@@ -22,7 +22,7 @@ Singleton{
  }
  function error(value){if(!value)return "";if(!/^[a-z][a-z0-9_]+$/.test(value))return tr(value);return tr("T3 request failed ({code})",{code:value})}
  property FileView translations:FileView{
-  path:Qt.resolvedUrl("i18n.json").toString().replace(/^file:\/\//,"");watchChanges:true;printErrors:false
+  path:Qt.resolvedUrl("../../translations/i18n.json").toString().replace(/^file:\/\//,"");watchChanges:true;printErrors:false
   onLoaded:{try{var next=JSON.parse(text());if(next.en)root.catalog=next}catch(e){console.warn("Invalid T3 translation catalog")}}
   onFileChanged:reload()
  }

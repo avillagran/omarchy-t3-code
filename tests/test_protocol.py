@@ -12,7 +12,7 @@ from t3client.monitor import changes
 
 class ProtocolTest(unittest.TestCase):
     def test_shared_vectors(self):
-        vectors=json.loads((Path(__file__).parents[1]/'protocol/fixtures/shell.json').read_text())
+        vectors=json.loads((Path(__file__).parents[1]/'docs/protocol/fixtures/shell.json').read_text())
         for v in vectors:
             with self.subTest(v['name']):
                 self.assertEqual(normalize_shell(v['shell'],'fixture',v['nowMs']),v['expected'])

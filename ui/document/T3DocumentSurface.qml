@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import QtWebEngine
-import "../DocumentTheme.js" as Theme
+import "../js/DocumentTheme.js" as Theme
 Window {
  id:root;visible:true;width:documentData.width || 900;height:documentData.height || 620
  color:documentData.theme.variables["--background"]

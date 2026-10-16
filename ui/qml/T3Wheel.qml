@@ -1,5 +1,5 @@
 import QtQuick
-import "WheelMotion.js" as Motion
+import "../js/WheelMotion.js" as Motion
 
 // One-shot easing only when the compositor is not supplying coast for this device.
 // Nested scrolls decline at their edges so the enclosing viewport can continue.

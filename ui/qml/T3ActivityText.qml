@@ -28,7 +28,7 @@ Item {
           property real progress:root.step / 30
           property real textWidth:width
           property real bandWidth:Style.space(72)
-          fragmentShader:Qt.resolvedUrl("assets/shaders/activity.frag.qsb")
+          fragmentShader:Qt.resolvedUrl("../assets/shaders/activity.frag.qsb")
         }
       }
     }

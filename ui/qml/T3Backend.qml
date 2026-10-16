@@ -3,11 +3,11 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
-import "DocumentTheme.js" as DocumentTheme
+import "../js/DocumentTheme.js" as DocumentTheme
 
 Singleton {
   id: root
-  readonly property string binary: Qt.resolvedUrl("bin/omarchy-t3-client").toString().replace(/^file:\/\//, "")
+  readonly property string binary: Qt.resolvedUrl("../../bin/omarchy-t3-client").toString().replace(/^file:\/\//, "")
   property var state: ({threads: [], environments: [], working: 0, pending: 0})
   property var backendStart:({busy:false,error:"",status:""})
   function startBackend(){if(backendStart.busy)return;backendStart={busy:true,error:"",status:""};send({op:"backend-start",requestId:uuid()})}

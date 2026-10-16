@@ -92,7 +92,7 @@ Omarchy normally reserves Super+Enter for the terminal. On installations using
 Lua Hyprland bindings, add this line to `~/.config/hypr/bindings.lua`:
 
 ```lua
-dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-t3-code/hypr-bindings.lua")
+dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-t3-code/integrations/hyprland/bindings.lua")
 ```
 
 Reload your Hyprland configuration afterwards. This integration sends through
@@ -174,8 +174,34 @@ process overhead.
 transport, authentication and protocol logic, including a C ABI for a JNI host.
 It does not depend on Quickshell, SSH or the Linux keyring. Omi supplies its own
 platform integration; the Android application is not built or modified here.
-See the [protocol contract](protocol/t3-direct-v1.json) and fixtures for shared
+See the [protocol contract](docs/protocol/t3-direct-v1.json) and fixtures for shared
 behavior. Credentials stay in the host adapter and are not passed to QML.
+
+## Project layout
+
+```text
+.
+├── src/                     # Rust desktop adapter and process entry point
+├── crates/t3-protocol/       # Portable Rust library and C ABI for Omi
+├── ui/
+│   ├── qml/                 # Panel, composer, sidebar and shared controls
+│   ├── js/                  # UI models, theme helpers and generated icon data
+│   ├── assets/              # SVGs, shaders and third-party license notices
+│   └── document/            # Optional isolated Qt HTML frontend
+├── translations/            # English source, locale batches and runtime catalog
+├── integrations/hyprland/    # Optional Super+Enter desktop binding
+├── docs/protocol/            # Shared transport contract and fixtures
+├── tests/                   # Rust, isolated QML and legacy reference checks
+├── examples/                # Opt-in integration diagnostics
+├── tools/                   # Build helpers, generators and validation scripts
+└── bin/                     # CLI launcher, build entry point and local binaries
+```
+
+`manifest.json` points directly to `ui/qml/BarWidget.qml`. Rust follows the
+standard Cargo layout; the portable crate remains separate from Linux desktop
+integration. Generated binaries, local measurements and development evidence
+are excluded from Git. The root `hypr-bindings.lua` is a compatibility entry point
+for existing user configurations; new installations use `integrations/hyprland/`.
 
 ## Validation
 
@@ -212,8 +238,8 @@ permissions and expired sessions must be resolved through T3 itself.
 Evolved from [Omarchy Ares](https://github.com/avillagran/omarchy-ares).
 Interface behavior and bundled T3 marks follow
 [T3 Code](https://github.com/pingdotgg/t3code). Action icons use
-[Lucide](https://lucide.dev). See [asset attribution](assets/README.md),
-[T3's MIT notice](assets/T3-LICENSE) and [Lucide's ISC notice](assets/LUCIDE-LICENSE).
+[Lucide](https://lucide.dev). See [asset attribution](ui/assets/README.md),
+[T3's MIT notice](ui/assets/T3-LICENSE) and [Lucide's ISC notice](ui/assets/LUCIDE-LICENSE).
 Provider names and marks belong to their respective owners.
 
 Plugin source is available under the [MIT License](LICENSE).

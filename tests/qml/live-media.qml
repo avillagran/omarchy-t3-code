@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int phase:0;property var fixture:null;property bool captured:false;property var image:({type:"image",id:"fixture-image",name:"test.png",mimeType:"image/png",sizeBytes:2048})
  function check(ok,msg){if(!ok){console.error("T3_LIVE_MEDIA_QML_FAIL: "+msg);Qt.exit(1)}}

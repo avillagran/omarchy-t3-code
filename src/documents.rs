@@ -18,7 +18,7 @@ fn viewer_mode(offscreen:bool)->Result<()>{
  if payload.len()>32*1024*1024{return Err("invalid_file".into())}
  let payload=std::ffi::CString::new(payload).map_err(|_|"invalid_file")?;
  let lib=std::ffi::CString::new(root.join("libt3-document.so").to_string_lossy().as_bytes()).unwrap();
- let qml=std::ffi::CString::new(root.join(if offscreen{"../frontend/T3DocumentSurface.qml"}else{"../frontend/T3DocumentWindow.qml"}).to_string_lossy().as_bytes()).unwrap();
+ let qml=std::ffi::CString::new(root.join(if offscreen{"../ui/document/T3DocumentSurface.qml"}else{"../ui/document/T3DocumentWindow.qml"}).to_string_lossy().as_bytes()).unwrap();
  unsafe{let handle=libc::dlopen(lib.as_ptr(),libc::RTLD_NOW|libc::RTLD_LOCAL);if handle.is_null(){eprintln!("Qt frontend: {}",std::ffi::CStr::from_ptr(libc::dlerror()).to_string_lossy());return Err("viewer_unavailable".into())}
  let symbol=libc::dlsym(handle,c"t3_document_main".as_ptr());if symbol.is_null(){eprintln!("Qt symbol: {}",std::ffi::CStr::from_ptr(libc::dlerror()).to_string_lossy());return Err("viewer_unavailable".into())}
  let run:unsafe extern "C" fn(*const libc::c_char,*const libc::c_char)->libc::c_int=std::mem::transmute(symbol);

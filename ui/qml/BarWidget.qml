@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
-import "SidebarModel.js" as Sidebar
+import "../js/SidebarModel.js" as Sidebar
 
 BarWidget {
   id: root

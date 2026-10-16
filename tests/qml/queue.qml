@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property int phase:0;property var calls:[]
  property var queueItems:[{runId:"q1",messageId:"m1",text:"First queued",attachments:[]},{runId:"q2",messageId:"m2",text:"Second queued",attachments:[{type:"file",id:"kept",name:"keep.txt",mimeType:"text/plain",sizeBytes:5}]}]

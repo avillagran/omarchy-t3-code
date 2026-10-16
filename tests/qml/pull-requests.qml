@@ -3,7 +3,7 @@ import QtQuick.Window
 import QtTest
 import Quickshell
 import qs.Commons
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property bool done:false
  function check(ok,msg){if(!ok){console.error("T3_PULL_REQUESTS_QML_FAIL: "+msg);Qt.callLater(function(){Qt.exit(1)})}}

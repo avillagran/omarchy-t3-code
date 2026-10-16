@@ -10,7 +10,7 @@
     "bar-widget"
   ],
   "entryPoints": {
-    "barWidget": "BarWidget.qml"
+    "barWidget": "ui/qml/BarWidget.qml"
   },
   "barWidget": {
     "displayName": "T3 Code",

@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property int phase:0;property real compactHeight:0
  function check(ok,msg){if(!ok){console.error("T3_EDITOR_QML_FAIL: "+msg);Qt.callLater(function(){Qt.exit(1)})}}
