@@ -113,12 +113,15 @@ T3 Connect/relay authorization follows the account and environment permissions
 already granted in T3.
 
 **Closing the official GUI only saves resources safely if its server is running
-independently.** A desktop-owned server stops with that desktop app. The play
-button beside **Direct connection** in the sidebar footer can request
-T3's native headless user service after the server stops;
-it installs the native service on first use and starts an existing matching
-service thereafter. It does not automatically migrate an active desktop session
-or start a competing server over the same data directory.
+independently.** A desktop-owned server stops with that desktop app.
+The sidebar footer detects who owns the local server. A desktop-managed server
+shows a GUI indicator and hides lifecycle controls. When stopped, the play button
+installs or starts T3's native headless user service. A headless server exposes
+Stop and Restart in its control menu. Verified manually launched headless servers
+can be stopped gracefully; restarting them adopts the native service. The plugin
+rechecks ownership before each operation and never stops a GUI-owned or
+unidentified process. It does not migrate an active desktop session or start a
+competing server over the same data directory.
 
 ## Everyday use
 
@@ -219,10 +222,14 @@ omarchy plugin validate .
 tools/test-qml thread-menu
 tools/test-qml content-panels
 tools/test-qml documents
+tools/test-qml backend-owner
 tools/test-qml upward-scroll
 
 # Requires the optional Qt HTML frontend:
 tools/test-document-viewer
+
+# Optional user-systemd fixture; never stops the real T3 server:
+tools/test-backend-ownership
 ```
 
 QML checks use isolated fixtures. The `examples/` directory also contains opt-in

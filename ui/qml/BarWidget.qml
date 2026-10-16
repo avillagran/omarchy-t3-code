@@ -44,6 +44,7 @@ BarWidget {
     target: "io.github.avillagran.omarchy-t3-code"
     function state(): string {
       return JSON.stringify({ opened: root.opened, panelLoaded: panelLoader.item !== null,
+        localBackend:t3Backend.localBackend,
         compaction:t3Backend.compactionStates,
         nativeScroll:t3Backend.scrollPolicy,modelFavorites:(t3Backend.catalog.favorites || []).length,modelCount:(t3Backend.catalog.models || []).length,
         liveConnected:t3Backend.liveConnected,loadedImages:Object.keys(t3Backend.imageStates).filter(function(k){return !!t3Backend.imageStates[k].url}).length,

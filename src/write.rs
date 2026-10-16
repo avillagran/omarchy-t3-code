@@ -107,6 +107,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     rpc(e,tag,command).map(|_|json!({"threadId":thread,"projectId":input["projectId"],"action":input["action"]}))
 }
 pub fn execute(input:&Value) -> Result<Value> {
+    if input["op"]=="backend-control" {return crate::backend_service::control(text(input,"action"))}
     if input["op"]=="backend-start" {return crate::backend_service::start()}
     if input["op"]=="scroll-config" {return Ok(scroll::read())}
     if input["op"]=="clipboard" {return clipboard::paste(input)}

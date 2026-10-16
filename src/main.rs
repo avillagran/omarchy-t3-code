@@ -193,6 +193,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="visible"&&v["value"]==false{input_live.select(None);}
                 if v["op"]=="image"{if !input_visible{continue}v["generation"]=json!(image_generation.load(std::sync::atomic::Ordering::Relaxed));let _=image_tx.send(v);continue}
                 // Draft durability must never wait behind a slow remote snapshot.
+                if v["op"]=="backend-status"{emit("backend-status",backend_service::status());continue}
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 if v["op"]=="suggest" {let _=input_action_tx.send(v);continue}
@@ -304,7 +305,7 @@ fn watch(client: Client) -> Result<()> {
         };
         match text(&cmd, "op") {
             "ui-state-set" => { if let Err(error)=ui_state::save(&cmd["state"]) {emit("ui-state-error",json!({"error":error}));} }
-            "backend-start" => {
+            "backend-start" | "backend-control" => {
                 if !service_starting {
                     service_starting=true;let service_tx=tx.clone();
                     std::thread::spawn(move||{let result=write::execute(&cmd);let _=service_tx.send(json!({"op":"action_result","input":cmd,"result":result.as_ref().ok(),"error":result.as_ref().err()}));});
@@ -312,9 +313,9 @@ fn watch(client: Client) -> Result<()> {
             }
             "pull-requests" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" => { let _ = action_tx.send(cmd); }
             "action_result" => {
-                if cmd["input"]["op"]=="backend-start"{service_starting=false;}
+                if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"){service_starting=false;}
                 emit("action",json!({"op":cmd["input"]["op"],"environment":cmd["input"]["environment"],"thread":cmd["input"]["thread"],"requestId":cmd["input"]["requestId"],"result":cmd["result"],"error":cmd["error"]}));
-                if cmd["input"]["op"]=="backend-start" || cmd["input"]["op"]=="question" || cmd["input"]["op"]=="queue" || cmd["input"]["op"]=="send" || cmd["input"]["op"]=="stop" || cmd["input"]["op"]=="manage" { message_cache=None; next_poll=Instant::now(); }
+                if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control") || cmd["input"]["op"]=="question" || cmd["input"]["op"]=="queue" || cmd["input"]["op"]=="send" || cmd["input"]["op"]=="stop" || cmd["input"]["op"]=="manage" { message_cache=None; next_poll=Instant::now(); }
             }
             "quit" => return Ok(()),
             "refresh" => { refresh_connections(); next_poll = Instant::now(); },
@@ -378,6 +379,8 @@ fn run() -> Result<()> {
             d
         }
         "quotas" => quotas::collect(&client),
+        "backend-status" => backend_service::status(),
+        "backend-control" if args.len()==2 => backend_service::control(&args[1])?,
         "scroll-config" => scroll::read(),
         "catalog" if args.len()==2 => write::execute(&json!({"op":"catalog","environment":args[1]}))?,
         "suggest" if args.len()==6 => write::execute(&json!({"op":"suggest","environment":args[1],"thread":args[2],"kind":args[3],"query":args[4],"instanceId":args[5]}))?,
