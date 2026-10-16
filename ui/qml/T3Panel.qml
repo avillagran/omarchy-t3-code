@@ -699,7 +699,7 @@ Item {
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
             Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
-            T3IconButton {objectName:"toggleWindowMode";name:root.detached?"pin":"monitor";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.detached?"Return to panel":"Open as window");onClicked:root.setDetached(!root.detached)}
+            T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.detached?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.detached?"Return to panel":"Open as window");onClicked:root.setDetached(!root.detached)}
             T3IconButton { name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
             T3IconButton { name: "x"; tooltipText: T3I18n.tr("Close"); onClicked: root.close() }
             T3IconButton{name:"shrink";tooltipText:T3I18n.tr("Automatic compaction");onClicked:compactionSettings.open()}

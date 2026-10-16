@@ -47,7 +47,7 @@ Press **Super+Shift+A** or click **T3** in the status bar to open the agent.
 **Super+Enter** sends while the panel is open; outside it, the shortcut opens
 your terminal as usual. A detached window consumes this shortcut only while
 focused. **Enter** inserts a newline.
-Use the header’s monitor button to detach into a normal window; its pin button
+Use the header’s window button to detach into a normal window; its pin button
 returns to the bar panel. The mode, chat and draft are retained.
 Use the header buttons for subscription usage and pull requests, and right-click
 a thread for its actions. **F1** opens keyboard help.
