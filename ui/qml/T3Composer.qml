@@ -252,11 +252,7 @@ Rectangle {
           }
         }
       }
-      RowLayout {
-        Text { text: T3I18n.tr("Thread permissions"); color: root.dim; font.pixelSize: Style.font.caption }
-        Item { Layout.fillWidth: true }
-        Text { text: root.bridge.selectedInfo.runtimeMode==="full-access"?T3I18n.tr("Full access"):root.bridge.selectedInfo.runtimeMode==="approval-required"?T3I18n.tr("Approval required"):root.bridge.selectedInfo.runtimeMode || "—"; color: root.dim; font.pixelSize: Style.font.caption }
-      }
+
     }
     Text {
       Layout.fillWidth: true
@@ -278,6 +274,11 @@ Rectangle {
         Layout.fillWidth:true;Layout.maximumWidth:Style.space(300)
         bridge:root.bridge;selection:root.selection
         enabled:!root.locked && !root.draft.queueEdit
+        onPicked:editor.forceActiveFocus()
+      }
+      T3PermissionPicker {
+        bridge:root.bridge;Layout.minimumWidth:Style.space(38);Layout.maximumWidth:Style.space(170)
+        enabled:!root.locked&&!root.draft.queueEdit&&root.bridge.catalog.canWrite!==false
         onPicked:editor.forceActiveFocus()
       }
       T3IconButton { enabled:!root.draft.queueEdit;name: "sliders-horizontal"; tooltipText: T3I18n.tr("Model options"); onClicked: root.showOptions = !root.showOptions }

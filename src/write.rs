@@ -8,6 +8,10 @@ pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
     if let Some(connection)=&e.connection {return connection.rpc(tag,payload)}
     protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?.rpc(tag,payload)
 }
+fn runtime_mode(input:&Value)->Result<&str>{
+    let mode=match input.get("runtimeMode"){None|Some(Value::Null)=>"approval-required",Some(value)=>value.as_str().ok_or("invalid_runtime_mode")?};
+    if protocol::models::valid_runtime_mode(mode){Ok(mode)}else{Err("invalid_runtime_mode".into())}
+}
 pub fn catalog(e: &Environment) -> Result<Value> {
     let config = rpc(e,"server.getConfig",json!({}))?;
     let mut result=protocol::models::catalog(&config);result["canWrite"]=json!(e.write_token_file.is_some() || e.bearer.is_some() || e.connection.is_some());Ok(result)
@@ -93,9 +97,14 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     cmd["commandId"]=json!(format!("omarchy-{id}"));
     // Persist before sending. An explicit retry must reuse exactly the same command.
     let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
-    let envelope=json!({"environment":e.id,"command":cmd});
+    let permissions=if cmd["type"]=="message.dispatch"&&input.get("runtimeMode").is_some_and(|v|!v.is_null()){
+        Some(protocol::models::runtime_mode_command(thread,&format!("omarchy-{id}-runtime-mode"),runtime_mode(input)?)?)
+    }else{None};
+    let mut envelope=json!({"environment":e.id,"command":cmd});
+    if permissions.is_some(){envelope["runtimeMode"]=input["runtimeMode"].clone();}
     if path.exists() {if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}}
     else { save_json(&path,&envelope)?; }
+    if let Some(mode)=permissions{rpc(e,"orchestration.dispatchCommand",mode)?;}
     rpc(e,"orchestration.dispatchCommand",cmd)
 }
 /// Header actions create metadata only; never starts a provider or an agent run.
@@ -123,7 +132,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
         "new-thread" => {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
             thread=format!("omarchy-thread-{id}");
-            let mode=if input["runtimeMode"]=="full-access" {"full-access"} else {"approval-required"};
+            let mode=runtime_mode(input)?;
             ("orchestration.dispatchCommand",json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":"default","branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))
         },
         "add-project" => {

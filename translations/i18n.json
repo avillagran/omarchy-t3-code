@@ -374,7 +374,14 @@
     "Clone from a remote URL": "Clone from a remote URL",
     "{provider} repository": "{provider} repository",
     "Clone a repository": "Clone a repository",
-    "Setup required": "Setup required"
+    "Setup required": "Setup required",
+    "Supervised": "Supervised",
+    "Auto-accept edits": "Auto-accept edits",
+    "Auto": "Auto",
+    "Ask before commands and file changes.": "Ask before commands and file changes.",
+    "Auto-approve edits, ask before other actions.": "Auto-approve edits, ask before other actions.",
+    "Supported providers approve routine actions; others still ask.": "Supported providers approve routine actions; others still ask.",
+    "Allow commands and edits without prompts.": "Allow commands and edits without prompts."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -751,7 +758,14 @@
     "Clone from a remote URL": "Clonar desde una URL remota",
     "{provider} repository": "Repositorio de {provider}",
     "Clone a repository": "Clonar un repositorio",
-    "Setup required": "Requiere configuración"
+    "Setup required": "Requiere configuración",
+    "Supervised": "Supervisado",
+    "Auto-accept edits": "Aceptar ediciones",
+    "Auto": "Automático",
+    "Ask before commands and file changes.": "Preguntar antes de ejecutar comandos y cambiar archivos.",
+    "Auto-approve edits, ask before other actions.": "Aprobar ediciones automáticamente; preguntar por otras acciones.",
+    "Supported providers approve routine actions; others still ask.": "Los proveedores compatibles aprueban acciones habituales; los demás preguntan.",
+    "Allow commands and edits without prompts.": "Permitir comandos y ediciones sin pedir confirmación."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1128,7 +1142,14 @@
     "Clone from a remote URL": "Clonar de uma URL remota",
     "{provider} repository": "Repositório {provider}",
     "Clone a repository": "Clonar um repositório",
-    "Setup required": "Configuração necessária"
+    "Setup required": "Configuração necessária",
+    "Supervised": "Supervisionado",
+    "Auto-accept edits": "Aceitar edições",
+    "Auto": "Automático",
+    "Ask before commands and file changes.": "Perguntar antes de comandos e alterações em arquivos.",
+    "Auto-approve edits, ask before other actions.": "Aprovar edições automaticamente; perguntar por outras ações.",
+    "Supported providers approve routine actions; others still ask.": "Provedores compatíveis aprovam ações comuns; os demais perguntam.",
+    "Allow commands and edits without prompts.": "Permitir comandos e edições sem confirmação."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1505,7 +1526,14 @@
     "Clone from a remote URL": "Cloner depuis une URL distante",
     "{provider} repository": "Dépôt {provider}",
     "Clone a repository": "Cloner un dépôt",
-    "Setup required": "Configuration requise"
+    "Setup required": "Configuration requise",
+    "Supervised": "Supervisé",
+    "Auto-accept edits": "Accepter les modifications",
+    "Auto": "Automatique",
+    "Ask before commands and file changes.": "Demander avant les commandes et les modifications de fichiers.",
+    "Auto-approve edits, ask before other actions.": "Approuver les modifications, demander pour les autres actions.",
+    "Supported providers approve routine actions; others still ask.": "Les fournisseurs compatibles approuvent les actions courantes ; les autres demandent.",
+    "Allow commands and edits without prompts.": "Autoriser les commandes et modifications sans confirmation."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1882,7 +1910,14 @@
     "Clone from a remote URL": "Von einer entfernten URL klonen",
     "{provider} repository": "{provider}-Repository",
     "Clone a repository": "Repository klonen",
-    "Setup required": "Einrichtung erforderlich"
+    "Setup required": "Einrichtung erforderlich",
+    "Supervised": "Beaufsichtigt",
+    "Auto-accept edits": "Änderungen akzeptieren",
+    "Auto": "Automatisch",
+    "Ask before commands and file changes.": "Vor Befehlen und Dateiänderungen nachfragen.",
+    "Auto-approve edits, ask before other actions.": "Änderungen automatisch genehmigen, bei anderen Aktionen nachfragen.",
+    "Supported providers approve routine actions; others still ask.": "Unterstützte Anbieter genehmigen Routineaktionen; andere fragen nach.",
+    "Allow commands and edits without prompts.": "Befehle und Änderungen ohne Rückfrage erlauben."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2259,7 +2294,14 @@
     "Clone from a remote URL": "Clona da un URL remoto",
     "{provider} repository": "Repository {provider}",
     "Clone a repository": "Clona un repository",
-    "Setup required": "Configurazione richiesta"
+    "Setup required": "Configurazione richiesta",
+    "Supervised": "Supervisionato",
+    "Auto-accept edits": "Accetta modifiche",
+    "Auto": "Automatico",
+    "Ask before commands and file changes.": "Chiedi prima dei comandi e delle modifiche ai file.",
+    "Auto-approve edits, ask before other actions.": "Approva le modifiche, chiedi per le altre azioni.",
+    "Supported providers approve routine actions; others still ask.": "I provider compatibili approvano le azioni comuni; gli altri chiedono.",
+    "Allow commands and edits without prompts.": "Consenti comandi e modifiche senza conferma."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2636,7 +2678,14 @@
     "Clone from a remote URL": "Klonen vanaf een externe URL",
     "{provider} repository": "{provider}-repository",
     "Clone a repository": "Een repository klonen",
-    "Setup required": "Configuratie vereist"
+    "Setup required": "Configuratie vereist",
+    "Supervised": "Onder toezicht",
+    "Auto-accept edits": "Wijzigingen accepteren",
+    "Auto": "Automatisch",
+    "Ask before commands and file changes.": "Vraag toestemming voor opdrachten en bestandswijzigingen.",
+    "Auto-approve edits, ask before other actions.": "Keur wijzigingen automatisch goed; vraag bij andere acties.",
+    "Supported providers approve routine actions; others still ask.": "Ondersteunde providers keuren routineacties goed; andere vragen toestemming.",
+    "Allow commands and edits without prompts.": "Sta opdrachten en wijzigingen zonder bevestiging toe."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3013,7 +3062,14 @@
     "Clone from a remote URL": "Klonuj ze zdalnego adresu URL",
     "{provider} repository": "Repozytorium {provider}",
     "Clone a repository": "Klonuj repozytorium",
-    "Setup required": "Wymagana konfiguracja"
+    "Setup required": "Wymagana konfiguracja",
+    "Supervised": "Nadzorowany",
+    "Auto-accept edits": "Akceptuj zmiany",
+    "Auto": "Automatyczny",
+    "Ask before commands and file changes.": "Pytaj przed poleceniami i zmianami plików.",
+    "Auto-approve edits, ask before other actions.": "Zatwierdzaj zmiany automatycznie, pytaj o inne działania.",
+    "Supported providers approve routine actions; others still ask.": "Obsługiwani dostawcy zatwierdzają rutynowe działania; inni pytają.",
+    "Allow commands and edits without prompts.": "Zezwalaj na polecenia i zmiany bez potwierdzenia."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3390,7 +3446,14 @@
     "Clone from a remote URL": "Клонировать по удалённому URL",
     "{provider} repository": "Репозиторий {provider}",
     "Clone a repository": "Клонировать репозиторий",
-    "Setup required": "Требуется настройка"
+    "Setup required": "Требуется настройка",
+    "Supervised": "Под наблюдением",
+    "Auto-accept edits": "Принимать правки",
+    "Auto": "Автоматически",
+    "Ask before commands and file changes.": "Спрашивать перед командами и изменениями файлов.",
+    "Auto-approve edits, ask before other actions.": "Автоматически одобрять правки, спрашивать об остальных действиях.",
+    "Supported providers approve routine actions; others still ask.": "Совместимые провайдеры одобряют обычные действия; остальные спрашивают.",
+    "Allow commands and edits without prompts.": "Разрешать команды и правки без подтверждений."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3767,7 +3830,14 @@
     "Clone from a remote URL": "Клонувати з віддаленої URL",
     "{provider} repository": "Репозиторій {provider}",
     "Clone a repository": "Клонувати репозиторій",
-    "Setup required": "Потрібне налаштування"
+    "Setup required": "Потрібне налаштування",
+    "Supervised": "Під наглядом",
+    "Auto-accept edits": "Приймати зміни",
+    "Auto": "Автоматично",
+    "Ask before commands and file changes.": "Питати перед командами та змінами файлів.",
+    "Auto-approve edits, ask before other actions.": "Автоматично схвалювати зміни, питати про інші дії.",
+    "Supported providers approve routine actions; others still ask.": "Сумісні провайдери схвалюють звичайні дії; інші запитують.",
+    "Allow commands and edits without prompts.": "Дозволити команди та зміни без підтверджень."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4144,7 +4214,14 @@
     "Clone from a remote URL": "リモート URL からクローン",
     "{provider} repository": "{provider} リポジトリ",
     "Clone a repository": "リポジトリをクローン",
-    "Setup required": "設定が必要"
+    "Setup required": "設定が必要",
+    "Supervised": "監督付き",
+    "Auto-accept edits": "編集を自動承認",
+    "Auto": "自動",
+    "Ask before commands and file changes.": "コマンドとファイル変更の前に確認します。",
+    "Auto-approve edits, ask before other actions.": "編集を自動承認し、その他の操作は確認します。",
+    "Supported providers approve routine actions; others still ask.": "対応プロバイダーは通常の操作を承認し、その他は確認します。",
+    "Allow commands and edits without prompts.": "確認なしでコマンドと編集を許可します。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4521,7 +4598,14 @@
     "Clone from a remote URL": "원격 URL에서 복제",
     "{provider} repository": "{provider} 저장소",
     "Clone a repository": "저장소 복제",
-    "Setup required": "설정 필요"
+    "Setup required": "설정 필요",
+    "Supervised": "감독 모드",
+    "Auto-accept edits": "편집 자동 승인",
+    "Auto": "자동",
+    "Ask before commands and file changes.": "명령 실행과 파일 변경 전에 확인합니다.",
+    "Auto-approve edits, ask before other actions.": "편집은 자동 승인하고 다른 작업은 확인합니다.",
+    "Supported providers approve routine actions; others still ask.": "지원하는 공급자는 일반 작업을 승인하고 나머지는 확인합니다.",
+    "Allow commands and edits without prompts.": "확인 없이 명령과 편집을 허용합니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4898,7 +4982,14 @@
     "Clone from a remote URL": "从远程 URL 克隆",
     "{provider} repository": "{provider} 仓库",
     "Clone a repository": "克隆仓库",
-    "Setup required": "需要配置"
+    "Setup required": "需要配置",
+    "Supervised": "监督模式",
+    "Auto-accept edits": "自动接受编辑",
+    "Auto": "自动",
+    "Ask before commands and file changes.": "执行命令和修改文件前询问。",
+    "Auto-approve edits, ask before other actions.": "自动批准编辑，其他操作前询问。",
+    "Supported providers approve routine actions; others still ask.": "支持的提供商批准常规操作，其他提供商仍会询问。",
+    "Allow commands and edits without prompts.": "允许执行命令和编辑，无需确认。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5275,7 +5366,14 @@
     "Clone from a remote URL": "استنساخ من عنوان URL بعيد",
     "{provider} repository": "مستودع {provider}",
     "Clone a repository": "استنساخ مستودع",
-    "Setup required": "يلزم الإعداد"
+    "Setup required": "يلزم الإعداد",
+    "Supervised": "تحت الإشراف",
+    "Auto-accept edits": "قبول التعديلات",
+    "Auto": "تلقائي",
+    "Ask before commands and file changes.": "السؤال قبل الأوامر وتغييرات الملفات.",
+    "Auto-approve edits, ask before other actions.": "اعتماد التعديلات تلقائيًا والسؤال عن الإجراءات الأخرى.",
+    "Supported providers approve routine actions; others still ask.": "يعتمد المزوّدون المتوافقون الإجراءات المعتادة، ويسأل الآخرون.",
+    "Allow commands and edits without prompts.": "السماح بالأوامر والتعديلات دون تأكيد."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5652,7 +5750,14 @@
     "Clone from a remote URL": "Uzak URL üzerinden klonla",
     "{provider} repository": "{provider} deposu",
     "Clone a repository": "Depoyu klonla",
-    "Setup required": "Kurulum gerekli"
+    "Setup required": "Kurulum gerekli",
+    "Supervised": "Denetimli",
+    "Auto-accept edits": "Düzenlemeleri kabul et",
+    "Auto": "Otomatik",
+    "Ask before commands and file changes.": "Komutlardan ve dosya değişikliklerinden önce sor.",
+    "Auto-approve edits, ask before other actions.": "Düzenlemeleri otomatik onayla, diğer işlemleri sor.",
+    "Supported providers approve routine actions; others still ask.": "Desteklenen sağlayıcılar rutin işlemleri onaylar; diğerleri sorar.",
+    "Allow commands and edits without prompts.": "Komutlara ve düzenlemelere onaysız izin ver."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6029,7 +6134,14 @@
     "Clone from a remote URL": "Klona från en fjärr-URL",
     "{provider} repository": "{provider}-arkiv",
     "Clone a repository": "Klona ett arkiv",
-    "Setup required": "Konfiguration krävs"
+    "Setup required": "Konfiguration krävs",
+    "Supervised": "Övervakat",
+    "Auto-accept edits": "Godkänn ändringar",
+    "Auto": "Automatiskt",
+    "Ask before commands and file changes.": "Fråga före kommandon och filändringar.",
+    "Auto-approve edits, ask before other actions.": "Godkänn ändringar automatiskt, fråga om andra åtgärder.",
+    "Supported providers approve routine actions; others still ask.": "Stödda leverantörer godkänner rutinåtgärder; andra frågar.",
+    "Allow commands and edits without prompts.": "Tillåt kommandon och ändringar utan bekräftelse."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6406,7 +6518,14 @@
     "Clone from a remote URL": "Klon fra en fjern-URL",
     "{provider} repository": "{provider}-repository",
     "Clone a repository": "Klon et repository",
-    "Setup required": "Opsætning kræves"
+    "Setup required": "Opsætning kræves",
+    "Supervised": "Overvåget",
+    "Auto-accept edits": "Godkend ændringer",
+    "Auto": "Automatisk",
+    "Ask before commands and file changes.": "Spørg før kommandoer og filændringer.",
+    "Auto-approve edits, ask before other actions.": "Godkend ændringer automatisk, spørg om andre handlinger.",
+    "Supported providers approve routine actions; others still ask.": "Understøttede udbydere godkender rutinehandlinger; andre spørger.",
+    "Allow commands and edits without prompts.": "Tillad kommandoer og ændringer uden bekræftelse."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6783,7 +6902,14 @@
     "Clone from a remote URL": "Klon fra en ekstern URL",
     "{provider} repository": "{provider}-repositorium",
     "Clone a repository": "Klon et repositorium",
-    "Setup required": "Oppsett kreves"
+    "Setup required": "Oppsett kreves",
+    "Supervised": "Overvåket",
+    "Auto-accept edits": "Godta endringer",
+    "Auto": "Automatisk",
+    "Ask before commands and file changes.": "Spør før kommandoer og filendringer.",
+    "Auto-approve edits, ask before other actions.": "Godkjenn endringer automatisk, spør om andre handlinger.",
+    "Supported providers approve routine actions; others still ask.": "Støttede leverandører godkjenner rutinehandlinger; andre spør.",
+    "Allow commands and edits without prompts.": "Tillat kommandoer og endringer uten bekreftelse."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7160,7 +7286,14 @@
     "Clone from a remote URL": "Kloonaa etä-URL-osoitteesta",
     "{provider} repository": "{provider}-tietovarasto",
     "Clone a repository": "Kloonaa tietovarasto",
-    "Setup required": "Määritys tarvitaan"
+    "Setup required": "Määritys tarvitaan",
+    "Supervised": "Valvottu",
+    "Auto-accept edits": "Hyväksy muutokset",
+    "Auto": "Automaattinen",
+    "Ask before commands and file changes.": "Kysy ennen komentoja ja tiedostomuutoksia.",
+    "Auto-approve edits, ask before other actions.": "Hyväksy muutokset automaattisesti, kysy muista toimista.",
+    "Supported providers approve routine actions; others still ask.": "Tuetut tarjoajat hyväksyvät rutiinitoimet; muut kysyvät.",
+    "Allow commands and edits without prompts.": "Salli komennot ja muutokset ilman vahvistusta."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7537,6 +7670,13 @@
     "Clone from a remote URL": "Klonovat ze vzdálené URL",
     "{provider} repository": "Repozitář {provider}",
     "Clone a repository": "Klonovat repozitář",
-    "Setup required": "Vyžaduje nastavení"
+    "Setup required": "Vyžaduje nastavení",
+    "Supervised": "Pod dohledem",
+    "Auto-accept edits": "Přijímat úpravy",
+    "Auto": "Automaticky",
+    "Ask before commands and file changes.": "Ptát se před příkazy a změnami souborů.",
+    "Auto-approve edits, ask before other actions.": "Automaticky schvalovat úpravy, ptát se na ostatní akce.",
+    "Supported providers approve routine actions; others still ask.": "Podporovaní poskytovatelé schvalují běžné akce; ostatní se ptají.",
+    "Allow commands and edits without prompts.": "Povolit příkazy a úpravy bez potvrzení."
   }
 }

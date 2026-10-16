@@ -130,3 +130,13 @@ fn questionnaire_answers_and_stable_retry_survive_restart_without_touching_promp
  let events=run(&root,&[json!({"op":"draft-load","key":"fixture/one"})]);let loaded=&events.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"];
  assert_eq!(loaded["text"],"Do not lose this prompt");assert_eq!(loaded["questionnaires"],questions);std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn permission_selection_and_send_intent_survive_restart(){
+ for mode in ["approval-required","auto-accept-edits","auto","full-access"]{
+  let root=std::env::temp_dir().join(format!("ot3-mode-draft-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&root).unwrap();
+  let id=uuid::Uuid::new_v4().to_string();let draft=json!({"text":"Safe draft","runtimeMode":mode,"attachments":[],"attempt":{"op":"send","environment":"fixture","thread":"one","requestId":id,"text":"Safe draft","attachments":[],"runtimeMode":mode}});
+  let saved=run(&root,&[json!({"op":"draft-save","key":"fixture/one","revision":"mode","draft":draft})]);assert!(saved.iter().find(|e|e["type"]=="draft-saved").unwrap()["data"]["error"].is_null());
+  let loaded=run(&root,&[json!({"op":"draft-load","key":"fixture/one"})]);let d=&loaded.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"];assert_eq!(d["runtimeMode"],mode);assert_eq!(d["attempt"]["runtimeMode"],mode);assert_eq!(d["attempt"]["requestId"],id);std::fs::remove_dir_all(root).unwrap();
+ }
+}
