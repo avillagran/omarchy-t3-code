@@ -421,7 +421,7 @@ Item {
         contentItem:Text {text:root.shortcutHelp();color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
       }
       Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
-      T3SidebarActions { id: sidebarActions; bridge: root.bridge; projects: root.bridge.state.projects || [] }
+      T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || [] }
       Controls.Popup {
         id: filterMenu
         focus: true
@@ -529,8 +529,8 @@ Item {
               tint: root.statusFilter !== "all" || root.projectFilter ? Color.accent : root.dim
               onClicked: filterMenu.visible ? filterMenu.close() : filterMenu.open()
             }
-            T3IconButton { name: "folder-plus"; tooltipText: T3I18n.tr("Add project"); onClicked: sidebarActions.addProject() }
-            T3IconButton { name: "square-pen"; tooltipText: T3I18n.tr("New chat"); onClicked: sidebarActions.newThread() }
+            T3IconButton { objectName:"newProjectButton"; name: "folder-plus"; tooltipText: T3I18n.tr("Add project"); onClicked: sidebarActions.addProject() }
+            T3IconButton { objectName:"newChatButton"; name: "square-pen"; tooltipText: T3I18n.tr("New chat"); onClicked: sidebarActions.newThread() }
           }
           RowLayout {
             Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12)

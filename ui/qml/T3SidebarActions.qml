@@ -7,6 +7,7 @@ import qs.Ui
 Item {
   id: root
   required property var bridge
+  required property Item popupHost
   property var projects: []
   property var sourceThread:null
   property bool addingProject: false
@@ -21,13 +22,15 @@ Item {
     dialog.open()
   }
   function addProject() { projectWizard.begin() }
-  T3AddProject{id:projectWizard;bridge:root.bridge}
+  T3AddProject{id:projectWizard;bridge:root.bridge;parent:root.popupHost}
   Controls.Popup {
     id: dialog
-    parent: Controls.Overlay.overlay
+    objectName:"t3NewChatDialog"
+    parent: root.popupHost
     anchors.centerIn: parent
-    width: Style.space(460); padding: Style.space(20)
-    modal: true
+    width: Math.min(Style.space(460),parent.width-Style.space(32)); padding: Style.space(20)
+    modal: true; focus:true
+    onOpened: title.forceActiveFocus()
     background: Rectangle { color: Color.popups.background; radius: Style.space(12); border.width: 1; border.color: Color.accent }
     contentItem: ColumnLayout {
       spacing: Style.space(12)
