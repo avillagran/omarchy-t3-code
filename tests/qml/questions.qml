@@ -39,7 +39,7 @@ ShellRoot{
     root.check(card.resolved(card.question)==="Existing text","editable initial answer seeded")
     var input=findChild(card,"questionCustomAnswer");input.forceActiveFocus();keyClick(Qt.Key_A,Qt.ControlModifier);for(var ch of "typed")keyClick(ch.toUpperCase().charCodeAt(0));wait(60)
     root.check(card.resolved(card.question)==="typed","free text editing")
-    keyClick(Qt.Key_Return,Qt.MetaModifier);root.check(fixture.submitted.action==="respond"&&fixture.submitted.answers.when==="before "&&fixture.submitted.answers.providers[0]==="codex"&&fixture.submitted.answers.detail==="typed","one native response with all answers")
+    keyClick(Qt.Key_Return,Qt.ControlModifier);root.check(fixture.submitted.action==="respond"&&fixture.submitted.answers.when==="before "&&fixture.submitted.answers.providers[0]==="codex"&&fixture.submitted.answers.detail==="typed","one native response with all answers")
     var sent=fixture.submitted.answers;fixture.submitted=null;fixture.updateQuestion({attempt:{action:"respond",answers:sent,requestId:"same-command"},responseStatus:"failed",responseError:"invalid_runtime_request"});wait(40)
     var send=findChild(card,"questionNext");root.check(card.locked&&send.enabled,"failed saved attempt keeps text locked but enables primary retry")
     root.check(card.operation.error==="invalid_runtime_request","saved failure survives lost in-memory operation state")

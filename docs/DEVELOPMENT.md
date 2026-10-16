@@ -39,7 +39,7 @@ The root [installer](../install.sh) installs dependencies, builds the optional
 HTML renderer, enables the widget and starts the local service only if stopped.
 It adds the keyboard integration to an existing Lua bindings file after making
 a backup: Super+Shift+A replaces ChatGPT/earlier Ares bindings with this client,
-and Super+Enter sends in the panel or opens the terminal outside it. Repeated runs update a clean checkout; local changes are never reset.
+and Ctrl+Enter sends inside ot3 without changing the terminal shortcut. Repeated runs update a clean checkout; local changes are never reset.
 T3 Code itself must already be installed and initialized. The installer is not
 run as root; only Pacman uses sudo.
 
@@ -84,8 +84,8 @@ dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-t3-code/integratio
 ```
 
 Reload your Hyprland configuration afterwards. Super+Shift+A opens this plugin
-in place of the default agent shortcut. Super+Enter sends through
-the panel while it is open and launches the terminal otherwise. Review the
+in place of the default agent shortcut. Ctrl+Enter sends inside ot3; the
+Super+Enter terminal binding is untouched. Review the
 binding file before enabling it if you already customize these shortcuts. With a
 manual installation, the binding is not installed automatically.
 
@@ -142,7 +142,7 @@ sets the narrow content viewport so compositor tiling cannot mask layout bugs.
 ## Everyday use
 
 - **Super+Shift+A** opens Omarchy T3 Code as the default agent.
-- **Super+Enter** submits the prompt. **Enter** inserts a newline and continues
+- **Ctrl+Enter** submits the prompt. **Enter** inserts a newline and continues
   supported lists. Other shortcuts follow the panel's keyboard help; system
   bindings can affect availability.
 - Select a model through the native-style picker; favorites come from T3.
@@ -224,7 +224,7 @@ behavior. Credentials stay in the host adapter and are not passed to QML.
 │   ├── assets/              # SVGs, shaders and third-party license notices
 │   └── document/            # Optional isolated Qt HTML frontend
 ├── translations/            # English source, locale batches and runtime catalog
-├── integrations/hyprland/    # Optional Super+Enter desktop binding
+├── integrations/hyprland/    # Default agent desktop binding
 ├── docs/protocol/            # Shared transport contract and fixtures
 ├── tests/                   # Rust, isolated QML and legacy reference checks
 ├── examples/                # Opt-in integration diagnostics

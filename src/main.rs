@@ -196,7 +196,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="backend-status"{emit("backend-status",backend_service::status());continue}
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
-                if matches!(text(&v,"op"),"suggest"|"copy"|"settings") {let _=input_action_tx.send(v);continue}
+                if matches!(text(&v,"op"),"suggest"|"copy"|"settings"|"window-layout") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;
                 }
@@ -213,7 +213,7 @@ fn watch(client: Client) -> Result<()> {
                 while let Ok(next)=action_rx.try_recv(){if next["op"]=="suggest"{input=next}else{pending=Some(next);break}}
             }
             let result = write::execute(&input);
-            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"settings") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
+            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"settings"|"window-layout") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
             let _ = result_tx.send(json!({"op":"action_result","input":input,"result":result.as_ref().ok(),"error":result.as_ref().err()}));
         }
     });
@@ -311,7 +311,7 @@ fn watch(client: Client) -> Result<()> {
                     std::thread::spawn(move||{let result=write::execute(&cmd);let _=service_tx.send(json!({"op":"action_result","input":cmd,"result":result.as_ref().ok(),"error":result.as_ref().err()}));});
                 }
             }
-            "history" | "pull-requests" | "approval" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" => { let _ = action_tx.send(cmd); }
+            "window-layout" | "browse-folders" | "history" | "pull-requests" | "approval" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" => { let _ = action_tx.send(cmd); }
             "action_result" => {
                 if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"){service_starting=false;}
                 emit("action",json!({"op":cmd["input"]["op"],"environment":cmd["input"]["environment"],"thread":cmd["input"]["thread"],"requestId":cmd["input"]["requestId"],"result":cmd["result"],"error":cmd["error"]}));
@@ -362,9 +362,10 @@ fn watch(client: Client) -> Result<()> {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().is_some_and(|s|s=="super-enter") {
-        let consumed=Command::new("timeout").args(["2","omarchy-shell","io.github.avillagran.omarchy-t3-code","submitMessage"]).stdin(Stdio::null()).stderr(Stdio::null()).output().ok().is_some_and(|o|o.status.success()&&String::from_utf8_lossy(&o.stdout).trim()=="true");
-        if !consumed {use std::os::unix::process::CommandExt;let _=Command::new("omarchy-launch-terminal").stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).exec();return Err("terminal_launch_failed".into())}
-        return Ok(())
+        // Compatibility for old installations: this command only opens a terminal.
+        use std::os::unix::process::CommandExt;
+        let _=Command::new("omarchy-launch-terminal").stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).exec();
+        return Err("terminal_launch_failed".into())
     }
     let client = Client::new()?;
     let result = match args.first().map(String::as_str).unwrap_or("watch") {

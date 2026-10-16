@@ -212,6 +212,12 @@ Singleton {
   function ensureCatalog(env){if(!env || catalogs[env] || catalogLoading[env])return;var pending=Object.assign({},catalogLoading);pending[env]=true;catalogLoading=pending;send({op:"catalog",environment:env})}
   function discardDraft(key){var d=drafts[key];if(!d || d.busy || d.loading || d.attempt || d.loadError)return;patchDraft(key,{text:"",attachments:[],error:""});flushDraft(key)}
   property var managementRequest: null
+  property var folderBrowse:({busy:false,error:"",entries:[],parentPath:""})
+  property string windowLayoutError:""
+  property var windowLayoutOperation:({busy:false})
+  signal windowLayoutFinished(string error)
+  function applyWindowLayout(mode,pid){var id=uuid();windowLayoutOperation={busy:true,requestId:id,mode:mode};send({op:"window-layout",mode:mode,pid:pid,requestId:id})}
+  function browseFolders(environment,path){var id=uuid();folderBrowse={busy:true,error:"",entries:[],parentPath:"",requestId:id,environment:environment};send({op:"browse-folders",environment:environment,path:path,requestId:id})}
   property bool managementBusy: false
   property string managementError: ""
   function manage(values) {
@@ -366,6 +372,8 @@ Singleton {
   property var diffView: ({loading:false,text:"",error:"",requestId:""})
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
+    if(data.op==="window-layout"){if(data.requestId===windowLayoutOperation.requestId){windowLayoutOperation=Object.assign({},windowLayoutOperation,{busy:false});windowLayoutError=data.error || "";windowLayoutFinished(windowLayoutError)}return}
+    if(data.op==="browse-folders"){if(data.requestId===folderBrowse.requestId)folderBrowse=Object.assign({},folderBrowse,{busy:false,error:data.error || ""},data.result || {});return}
     if(data.op==="history"){
       var op=historyOperation
       if(data.requestId!==op.requestId || op.key!==selectedKey || op.serial!==requestedSerial)return
