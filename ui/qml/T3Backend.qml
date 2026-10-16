@@ -258,10 +258,18 @@ Singleton {
   property var terminalOperation:({busy:false,error:"",requestId:"",key:""})
   readonly property bool canOpenTerminal:!!selectedThread && catalog.canWrite!==false && (state.environments || []).some(function(e){return e.id===root.selectedEnvironment&&e.state==="ready"})
   signal terminalOpened()
-  function openTerminal(){
+  function codeAction(message,link){
+    var match=String(link).match(/^ot3-code-(run|copy):\/\/(\d+)$/)
+    if(!match||!message||message.role!=="assistant"||!transcript.some(function(m){return m.id===message.id}))return false
+    var block=(message.codeBlocks || [])[Number(match[2])];if(!block)return false
+    if(match[1]==="copy"){copyText(block.code || "");return true}
+    if(message.streaming||!block.command)return false
+    openTerminal(block.command);return true
+  }
+  function openTerminal(command){
     if(!canOpenTerminal||terminalOperation.busy)return
     var id=uuid();terminalOperation={busy:true,error:"",requestId:id,key:selectedKey}
-    send({op:"terminal-open",environment:selectedEnvironment,thread:selectedThread,requestId:id})
+    send({op:"terminal-open",environment:selectedEnvironment,thread:selectedThread,requestId:id,command:typeof command==="string"?command:undefined})
   }
   property string windowLayoutError:""
   property var windowLayoutOperation:({busy:false})

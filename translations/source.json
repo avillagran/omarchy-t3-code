@@ -382,6 +382,8 @@
     "Auto-approve edits, ask before other actions.": "Auto-approve edits, ask before other actions.",
     "Supported providers approve routine actions; others still ask.": "Supported providers approve routine actions; others still ask.",
     "Allow commands and edits without prompts.": "Allow commands and edits without prompts.",
-    "Open native terminal": "Open native terminal"
+    "Open native terminal": "Open native terminal",
+    "Run in terminal": "Run in terminal",
+    "Copy code": "Copy code"
   }
 }

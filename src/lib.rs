@@ -66,7 +66,8 @@ pub fn epoch(v: &Value) -> i64 {
         })
         .unwrap_or(0)
 }
-pub fn rendered_markdown(input: &str) -> String {
+pub fn rendered_markdown(input:&str)->String{markdown_with_code_actions(input,None)}
+fn markdown_with_code_actions(input: &str, blocks:Option<&[Value]>) -> String {
     use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
     let events = Parser::new_ext(
         input,
@@ -85,6 +86,8 @@ pub fn rendered_markdown(input: &str) -> String {
         other => Some(other),
     });
     let mut out = String::new();
+    let mut index=0;
+    let events=events.flat_map(|event|{let mut batch=Vec::new();if matches!(&event,Event::Start(Tag::CodeBlock(_))){if let Some(block)=blocks.and_then(|b|b.get(index)){let run=if block["command"].is_string(){format!("<a href=\"ot3-code-run://{index}\">Run in terminal</a> · ")}else{String::new()};batch.push(Event::Html(format!("<table width=\"100%\"><tr><td>{}</td><td align=\"right\">{run}<a href=\"ot3-code-copy://{index}\">Copy code</a></td></tr></table>",text(block,"language").replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")).into()));}index+=1;}batch.push(event);batch});
     html::push_html(&mut out, events);
     out
 }
@@ -334,7 +337,7 @@ impl Client {
         normalize_messages(&d)
     }
 }
-pub type RenderCache=HashMap<String,(String,String,String,String)>;
+pub type RenderCache=HashMap<String,(String,String,String,String,Vec<Value>)>;
 pub fn normalize_messages(d:&Value)->Result<Value>{normalize_messages_cached(d,&mut RenderCache::new())}
 pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>{
         let rows = d["projection"]["messages"].as_array().ok_or("malformed")?;
@@ -347,9 +350,9 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
                 return Err("malformed".into());
             }
             let raw=text(m,"text");let id=text(m,"id").to_string();
-            if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let rendered=rendered_markdown(&display);let search=markdown_search_text(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search));}
-            let (_,display,rendered,search)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"createdAt":epoch(&m["createdAt"])}));
+            if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search,blocks));}
+            let (_,display,rendered,search,blocks)=&cache[&id];
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
         }
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");

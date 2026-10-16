@@ -2,7 +2,7 @@
 # Isolated QML integration checks; no live connections, accounts or Python runtime.
 set -eu
 task_template=${1:-composer}
-case "$task_template" in composer|sidebar|state|interaction|completion|layout|queue|tasks|editor|i18n|send-scroll|clipboard|work-details|live-media|scroll-stability|wheel-scroll|draft-undo|upward-scroll|model-picker|inertia|thread-hover|auto-compaction|questions|question-state|compact-sidebar|pull-requests|backend-start|documents|project-menu|thread-menu|content-panels|timeline|thread-menu-panel|backend-owner|dpi-lifecycle|sidebar-pr|panel-reopen|backend-reconnect|context-divider|copy-actions|window-mode|preferences|preferences-source-control|preferences-design|approvals|approval-state|history-find|project-picker|window-cycle|connections|creation-dialogs|send-new-thread|sidebar-order|project-open|permissions|native-terminal) ;; *) echo 'Unknown QML check' >&2; exit 1;; esac
+case "$task_template" in composer|sidebar|state|interaction|completion|layout|queue|tasks|editor|i18n|send-scroll|clipboard|work-details|live-media|scroll-stability|wheel-scroll|draft-undo|upward-scroll|model-picker|inertia|thread-hover|auto-compaction|questions|question-state|compact-sidebar|pull-requests|backend-start|documents|project-menu|thread-menu|content-panels|timeline|thread-menu-panel|backend-owner|dpi-lifecycle|sidebar-pr|panel-reopen|backend-reconnect|context-divider|copy-actions|window-mode|preferences|preferences-source-control|preferences-design|approvals|approval-state|history-find|project-picker|window-cycle|connections|creation-dialogs|send-new-thread|sidebar-order|project-open|permissions|native-terminal|code-actions) ;; *) echo 'Unknown QML check' >&2; exit 1;; esac
 task_repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 task_root=$(mktemp -d /tmp/t3-qml-test-XXXXXX)
 trap 'rm -rf -- "$task_root"' EXIT
@@ -14,6 +14,10 @@ if [ "$task_template" = state ]; then
   printf '%s\n' '{"schemaVersion":1,"quotaCollapsed":true,"selectedEnvironment":"fixture","selectedThread":"restored","positions":{}}' > "$task_root/state/omarchy-t3-code/ui-state.json"
 fi
 mkdir -p "$task_root/bin"
+if [ "$task_template" = code-actions ]; then
+  printf '%s\n' '#!/bin/sh' 'cat > /dev/null' > "$task_root/bin/wl-copy"
+  chmod 700 "$task_root/bin/wl-copy"
+fi
 if [ "$task_template" = clipboard ]; then
   cat > "$task_root/bin/wl-paste" <<'CLIP'
 #!/bin/sh

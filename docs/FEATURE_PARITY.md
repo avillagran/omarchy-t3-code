@@ -121,7 +121,7 @@ uses the existing NODE server without interrupting its sessions.
 | Priority | Native T3 behavior | Current plugin gap | Source evidence |
 | --- | --- | --- | --- |
 | High | Markdown-authored image references resolve to interactive media previews. | Native image attachments work, but `rendered_markdown` strips Markdown image tags to alt text; those images need the authenticated media pipeline and actions too. | `ChatMarkdown.tsx` / `src/lib.rs`, `rendered_markdown` |
-| High | Code blocks have their own copy action, language header and expand control. | QML rich text renders code, but has no equivalent per-block controls or expanded code view. | `ChatMarkdown.tsx`, code frame and `handleCopy` |
+| High | Code blocks have their own copy action, language header and expand control. | Per-block language/copy and explicit single-line shell execution now work through the native terminal. Expanded code view, syntax highlighting and line-wrap controls remain unported. | `ChatMarkdown.tsx`, code frame and `handleCopy` |
 | High | Tables can be copied as Markdown or CSV. | Tables render through Qt rich text; there is no table action menu. | `ChatMarkdown.tsx`, `Copy as Markdown` / `Copy as CSV` |
 | High | Media context menu offers Save image/video and source-aware path/URL actions. | This update adds Copy image; Save/download and full media context menus remain absent. File preview is already embedded. | `media/MediaActions.tsx` |
 | Medium | A user-message action copies a shareable prompt link carrying repository/provider/model context. | There is no prompt-link action or structured composer-context clipboard flavor. | `chat/MessagesTimeline.tsx`, `promptLinks/copyPromptLink.ts` |
