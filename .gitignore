@@ -9,3 +9,6 @@ __pycache__/
 # Local development evidence; may contain machine paths and conversation IDs.
 
 /docs/development/
+
+# Architecture-specific build artifacts.
+/dist/

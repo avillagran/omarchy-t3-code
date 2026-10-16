@@ -10,7 +10,7 @@ t3_base=${T3CODE_HOME:-$HOME/.t3}
 t3_base=${t3_base/#\~/$HOME}
 [[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] || fail 'Install and open T3 Code once before installing this plugin: https://t3.codes'
 
-packages=(git ripgrep base-devel pkgconf jq libsecret openssh wl-clipboard qt6-declarative qt6-webengine)
+packages=(ttf-firacode-nerd git ripgrep base-devel pkgconf jq libsecret openssh wl-clipboard qt6-declarative qt6-webengine)
 if ! cargo --version >/dev/null 2>&1 && ! command -v rustup >/dev/null; then packages+=(rust); fi
 missing=()
 for package in "${packages[@]}"; do pacman -Q "$package" >/dev/null 2>&1 || missing+=("$package"); done

@@ -20,6 +20,19 @@ Build on the target architecture. Generated binaries are not committed.
 Development has been exercised on Linux ARM64 against T3 nightly versions;
 compatibility with every T3 release is not guaranteed.
 
+## Architecture builds
+
+The installer compiles on the target machine; a separate downloadable x86 build
+is not required. Native x86_64 builds of the Rust client and Qt HTML frontend
+were verified on Kuyen (Arch Linux, Rust 1.98.1, Qt 6.11.2, glibc 2.44). The
+16 client core tests and isolated clipboard process test passed there. The full
+integration suite was not executed on x86_64: remaining release-test linking was
+stopped after core validation. Desktop QML interaction checks ran on ARM64.
+
+Use `CARGO_BUILD_JOBS=2 bin/build-client` to moderate parallel build work. Local
+architecture artifacts under `dist/` are excluded from Git. Binary overlays are
+not universal Linux packages and require compatible runtime libraries.
+
 ## Automated installer
 
 The root [installer](../install.sh) installs dependencies, builds the optional
