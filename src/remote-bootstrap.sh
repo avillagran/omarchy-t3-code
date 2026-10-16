@@ -28,4 +28,4 @@ port=${info#* }
 "$cli" __ssh-helper wait-ready "$port" 15000 1000 >/dev/null || exit 9
 cat "$runtime"
 printf '\nT3_AUTH\n'
-"$cli" auth session issue --base-dir "$base" --scope orchestration:read --scope orchestration:operate --scope filesystem:read --scope settings:write --ttl 1d --label omarchy-t3-code --token-only
+"$cli" auth session issue --base-dir "$base" --scope orchestration:read --scope orchestration:operate --scope filesystem:read --scope settings:write --scope terminal:read --scope terminal:operate --ttl 1d --label omarchy-t3-code --token-only

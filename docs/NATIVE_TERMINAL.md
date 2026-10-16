@@ -10,7 +10,10 @@ Closing the native window detaches the frontend. It does not close T3's shell
 or terminate its jobs. Reopening restores the server's terminal history. Use
 `exit` to end the shell. Opening an exited shell starts it again. A connection
 failure ends the frontend instead of replaying input or reconnecting silently.
-Read-only connections cannot launch terminals.
+Read-only connections cannot launch terminals. Local and inherited SSH credentials
+request T3’s `terminal:read` and `terminal:operate` scopes. Paired connections
+request the same scopes within their existing grant; a restricted grant must
+be updated in T3 before it can operate a terminal.
 
 The native emulator supplies selection, copy/paste, scrollback, fonts and the
 Omarchy theme. When launched from the overlay panel, ot3 hides the panel so it
