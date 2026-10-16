@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
-import "IconAssets.js" as Icons
+import "../js/IconAssets.js" as Icons
 
 Item {
   id: root

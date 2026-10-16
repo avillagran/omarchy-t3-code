@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int anchorIndex:-1;property real anchorScreenY:0;property int phase:0;property int tick:0;property var fixture:null;property real beforeY:0;property real lastY:0;property int samples:0
  function check(ok,msg){if(!ok){console.error("T3_WHEEL_SCROLL_QML_FAIL: "+msg);Qt.exit(1)}}

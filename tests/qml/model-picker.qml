@@ -3,7 +3,7 @@ import QtQuick.Window
 import Quickshell
 import QtTest
 import qs.Commons
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int phase:0;property bool captured:false
  function check(ok,msg){if(!ok){console.error("T3_MODEL_PICKER_QML_FAIL: "+msg);Qt.exit(1)}}

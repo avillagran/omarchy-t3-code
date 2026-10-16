@@ -228,7 +228,7 @@ fallan explícitamente.
 
 ## Biblioteca nativa y T3 Connect
 
-Implementación canónica: [t3-protocol](../crates/t3-protocol/README.md), con rlib,
+Implementación canónica: [t3-protocol](../../crates/t3-protocol/README.md), con rlib,
 staticlib y ABI C para JNI. El plugin consume esa biblioteca para lecturas T3,
 RPC y streaming de adjuntos. Omi aporta login/almacenamiento y un puente JNI;
 no debe reimplementar el protocolo ni copiar el descubrimiento Linux.

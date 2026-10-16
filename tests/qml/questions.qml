@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Window
 import QtTest
 import Quickshell
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 import qs.Commons
 ShellRoot{
  id:root;property bool done:false

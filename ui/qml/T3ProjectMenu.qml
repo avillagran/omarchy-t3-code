@@ -3,8 +3,8 @@ import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
 import qs.Ui
-import "ProjectModel.js" as Projects
-import "IconAssets.js" as Icons
+import "../js/ProjectModel.js" as Projects
+import "../js/IconAssets.js" as Icons
 Item {
  id:root
  signal groupingChanged(string previous,string current)

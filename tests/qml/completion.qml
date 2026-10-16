@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property var fixtureState: null;property int phase:0;property string request:""
  function check(ok,msg){if(!ok){console.error("T3_COMPLETION_QML_FAIL: "+msg);Qt.exit(1)}}

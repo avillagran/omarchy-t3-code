@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const fs=require('fs'),assert=require('node:assert/strict');const {validate}=require('./validate-catalog.js');
-const source=JSON.parse(fs.readFileSync('translations/source.json')),catalog=JSON.parse(fs.readFileSync('i18n.json'));const keys=Object.keys(source.en);
+const source=JSON.parse(fs.readFileSync('translations/source.json')),catalog=JSON.parse(fs.readFileSync('translations/i18n.json'));const keys=Object.keys(source.en);
 const result=validate(source,catalog);assert.deepEqual(result.errors,[]);assert.deepEqual(result.warnings,[]);assert(Object.keys(catalog).length>=20);
 for(const [l,c]of Object.entries(catalog))assert.deepEqual(Object.keys(c).sort(),keys.slice().sort(),l+' complete coverage');
 for(const f of fs.readdirSync('.').filter(f=>f.endsWith('.qml'))){const text=fs.readFileSync(f,'utf8');for(const m of text.matchAll(/(?:T3I18n\.)?tr\(("(?:[^"\\]|\\.)*")/g)){const k=JSON.parse(m[1]);assert(k in source.en,f+' unlisted UI string: '+k)}}

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import qs.Commons
-import "IconAssets.js" as Icons
+import "../js/IconAssets.js" as Icons
 Item {
   id: root
   property string name: "server"

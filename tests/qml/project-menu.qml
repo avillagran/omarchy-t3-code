@@ -3,9 +3,9 @@ import QtQuick.Window
 import QtTest
 import Quickshell
 import qs.Commons
-import "UnderTest" as Test
-import "UnderTest/ProjectModel.js" as Projects
-import "UnderTest/SidebarModel.js" as Sidebar
+import "UnderTest/ui/qml" as Test
+import "UnderTest/ui/js/ProjectModel.js" as Projects
+import "UnderTest/ui/js/SidebarModel.js" as Sidebar
 ShellRoot {
  id:root;property bool done:false
  Timer{interval:400;running:true;onTriggered:checks.runChecks()}

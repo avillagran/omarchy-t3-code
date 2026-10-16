@@ -3,9 +3,9 @@ import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
 import qs.Ui
-import "SidebarModel.js" as Sidebar
-import "ProjectModel.js" as Projects
-import "WheelMotion.js" as Motion
+import "../js/SidebarModel.js" as Sidebar
+import "../js/ProjectModel.js" as Projects
+import "../js/WheelMotion.js" as Motion
 
 Item {
   id: root

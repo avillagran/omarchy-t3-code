@@ -582,7 +582,7 @@ mod tests {
     #[test]
     fn shared_contract_vectors() {
         let vectors: Value =
-            serde_json::from_str(include_str!("../protocol/fixtures/shell.json")).unwrap();
+            serde_json::from_str(include_str!("../docs/protocol/fixtures/shell.json")).unwrap();
         for v in vectors.as_array().unwrap() {
             assert_eq!(
                 json!(normalize(&v["shell"], "fixture", v["nowMs"].as_i64().unwrap()).unwrap()),

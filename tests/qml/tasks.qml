@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property int phase:0
  property var steps:[{id:"a",text:"Verify",status:"completed",durationMs:3000},{id:"b",text:"Verify",status:"running"},{id:"c",text:"Report",status:"pending"}]

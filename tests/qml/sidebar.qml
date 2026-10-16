@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
-import "UnderTest" as Test
-import "UnderTest/SidebarModel.js" as Sidebar
+import "UnderTest/ui/qml" as Test
+import "UnderTest/ui/js/SidebarModel.js" as Sidebar
 ShellRoot {
   id: root
   function check(ok,msg) { if (!ok) { console.error("T3_SIDEBAR_QML_FAIL: " + msg); Qt.exit(1) } }

@@ -3,7 +3,7 @@ import QtQuick.Window
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import QtWebEngine
-import "../DocumentTheme.js" as Theme
+import "../js/DocumentTheme.js" as Theme
 Window {
  id:root;visible:true;width:1100;height:800;minimumWidth:460;minimumHeight:320
  title:documentData.title+" · T3 Code Omarchy"

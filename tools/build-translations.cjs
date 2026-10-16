@@ -13,4 +13,4 @@ for(const f of fs.readdirSync('translations').filter(f=>/^batch-.*\.tsv$/.test(f
  }
 }
 for(const locale of languages){const missing=keys.filter(k=>out[locale][k]===undefined);if(missing.length)throw Error(locale+' missing '+JSON.stringify(missing));out[locale]=Object.fromEntries(keys.map(k=>[k,out[locale][k]]));}
-fs.writeFileSync('i18n.json',JSON.stringify(out,null,2)+'\n');console.log(`${Object.keys(out).length} locales × ${keys.length} source strings`);
+fs.writeFileSync('translations/i18n.json',JSON.stringify(out,null,2)+'\n');console.log(`${Object.keys(out).length} locales × ${keys.length} source strings`);

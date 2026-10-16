@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import QtTest
 import qs.Commons
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property int phase:0;property int index:0;property bool grabbed:false
  property var codes:["en","es","pt","fr","de","it","nl","pl","ru","uk","ja","ko","zh","ar","tr","sv","da","no","fi","cs"]

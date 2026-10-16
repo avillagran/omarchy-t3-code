@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int phase:0;property var fixture:null
  function check(ok,msg){if(!ok){console.error("CONTENT_PANELS_QML_FAIL "+msg);Qt.exit(1)}}

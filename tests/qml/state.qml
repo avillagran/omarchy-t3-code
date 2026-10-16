@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot {
   id: root;property var fixtureState: null
   property var oldChat: []

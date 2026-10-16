@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 import Quickshell
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot{
  id:root;property int phase:0;property bool done:false
  function check(ok,msg){if(!ok){console.error("T3_COMPACT_SIDEBAR_QML_FAIL: "+msg);Qt.callLater(function(){Qt.exit(1)})}}

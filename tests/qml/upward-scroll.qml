@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
+import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int phase:0;property int ticks:0;property int frames:0;property var fixture:null;property var positions:({});property real largest:0;property int originChanges:0;property int direction:1;property real oldOrigin:0
  function check(ok,msg){if(!ok){console.error("T3_UPWARD_SCROLL_QML_FAIL: "+msg);Qt.exit(1)}}

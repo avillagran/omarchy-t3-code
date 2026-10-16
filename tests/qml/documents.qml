@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 import QtTest
-import "UnderTest" as Test
-import "UnderTest/DocumentTheme.js" as Theme
+import "UnderTest/ui/qml" as Test
+import "UnderTest/ui/js/DocumentTheme.js" as Theme
 ShellRoot {
  id:root;property int phase:0;property var fixture:null
  function check(ok,msg){if(!ok){console.error("DOCUMENT_QML_FAIL "+msg);Qt.exit(1)}}

@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Window
 import Quickshell
 import QtTest
-import "UnderTest" as Test
-import "UnderTest/WheelMotion.js" as Motion
+import "UnderTest/ui/qml" as Test
+import "UnderTest/ui/js/WheelMotion.js" as Motion
 ShellRoot {
  id:root;property int phase:0;property var policy:({mouseNative:false,touchpadNative:false});property real before:0;property int coastTicks:0
  function check(ok,msg){if(!ok){console.error("T3_INERTIA_QML_FAIL: "+msg);Qt.exit(1)}}
