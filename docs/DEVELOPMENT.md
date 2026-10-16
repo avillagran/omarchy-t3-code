@@ -24,8 +24,9 @@ compatibility with every T3 release is not guaranteed.
 
 The root [installer](../install.sh) installs dependencies, builds the optional
 HTML renderer, enables the widget and starts the local service only if stopped.
-It adds the Super+Enter integration to an existing Lua bindings file after making
-a backup. Repeated runs update a clean checkout; local changes are never reset.
+It adds the keyboard integration to an existing Lua bindings file after making
+a backup: Super+Shift+A replaces ChatGPT/earlier Ares bindings with this client,
+and Super+Enter sends in the panel or opens the terminal outside it. Repeated runs update a clean checkout; local changes are never reset.
 T3 Code itself must already be installed and initialized. The installer is not
 run as root; only Pacman uses sudo.
 
@@ -60,7 +61,7 @@ omarchy restart shell
 Save any active draft before restarting the shell. Existing drafts and UI
 preferences are stored outside the plugin checkout.
 
-### Super+Enter on Omarchy
+### Default agent and send shortcuts on Omarchy
 
 Omarchy normally reserves Super+Enter for the terminal. On installations using
 Lua Hyprland bindings, add this line to `~/.config/hypr/bindings.lua`:
@@ -69,9 +70,10 @@ Lua Hyprland bindings, add this line to `~/.config/hypr/bindings.lua`:
 dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-t3-code/integrations/hyprland/bindings.lua")
 ```
 
-Reload your Hyprland configuration afterwards. This integration sends through
+Reload your Hyprland configuration afterwards. Super+Shift+A opens this plugin
+in place of the default agent shortcut. Super+Enter sends through
 the panel while it is open and launches the terminal otherwise. Review the
-binding file before enabling it if you already customize Super+Enter. With a
+binding file before enabling it if you already customize these shortcuts. With a
 manual installation, the binding is not installed automatically.
 
 ## Local and remote connections
@@ -96,6 +98,7 @@ competing server over the same data directory.
 
 ## Everyday use
 
+- **Super+Shift+A** opens Omarchy T3 Code as the default agent.
 - **Super+Enter** submits the prompt. **Enter** inserts a newline and continues
   supported lists. Other shortcuts follow the panel's keyboard help; system
   bindings can affect availability.
