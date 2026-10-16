@@ -22,13 +22,17 @@ The integration tests replace it in a private environment.
 ## Preferences and connection lifecycle
 
 The sidebar gear opens an embedded preferences view with General, Appearance,
-Connections, Providers and Keyboard shortcuts. General exposes supported native
+Source Control, Connections, Providers and Keyboard shortcuts. General exposes supported native
 update, resume, auto-settle, snooze, streaming and background-profile settings.
 Appearance controls existing panel preferences and inherits the Omarchy theme.
 Connections show inherited status; Providers expose status and native model
-favorites. Settings target the selected environment through native RPC. This is
+favorites. Source Control ports branch naming, worktree defaults, merge method,
+writing style/templates and review-guide preferences. General includes optional
+inactivity days and automatic resume after rate limits. Text edits save explicitly
+and remain staged on failure. Settings target the selected environment through native RPC. This is
 a partial port: connection editing, provider credential/configuration editing,
-editable keybindings, advanced project/storage/source-control/integration and
+editable keybindings, source-control host credentials and writer/review model
+selection, advanced project/storage/integration and
 diagnostic panels remain to be ported. Native reference: `routes/settings.*.tsx`
 and `components/settings/SettingsPanels.tsx`.
 

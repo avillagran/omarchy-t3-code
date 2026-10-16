@@ -24,7 +24,7 @@ your Omarchy theme and inherits T3's connections, models and favorites.
 - Switch between the bar panel and a normal Hyprland window from the header.
 - Resizable layout, keyboard navigation, smooth scrolling and **20 languages**.
 - Native headless server controls and automatic startup for inherited SSH connections.
-- Preferences for native general settings, Omarchy appearance, connections and model favorites.
+- Preferences for native general/Git settings, Omarchy appearance, connections and model favorites.
 
 ## Install
 
