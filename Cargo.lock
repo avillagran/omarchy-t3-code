@@ -1496,8 +1496,8 @@ dependencies = [
 
 [[package]]
 name = "t3-protocol"
-version = "0.1.0"
-source = "git+https://github.com/avillagran/lib-t3-rust?rev=0f419c4208b10a1821cb2e9211faa5558a3c2054#0f419c4208b10a1821cb2e9211faa5558a3c2054"
+version = "0.2.0"
+source = "git+https://github.com/avillagran/lib-t3-rust?rev=594a8f83f26fb661efbd102e198f5febe5fe0115#594a8f83f26fb661efbd102e198f5febe5fe0115"
 dependencies = [
  "base64 0.22.1",
  "chrono",
