@@ -38,6 +38,14 @@ Singleton {
   Timer{interval:1000;repeat:true;running:root.panelVisible&&root.localRecoveryAttempts>0;onTriggered:{root.localRecoveryAttempts--;root.refreshBackendStatus();root.refresh()}}
   Timer{interval:3000;repeat:true;triggeredOnStart:true;running:root.visiblePanels>0;onTriggered:root.refreshBackendStatus()}
   property var settingsResult:({busy:false,error:"",fields:[],environment:""})
+  property var connectionSettings:({busy:false,error:"",environments:[],revision:""})
+  property var connectionSettingsCommand:null
+  property bool connectionChanging:false
+  function manageConnections(action,values){
+    if(connectionSettings.busy)return
+    var command=Object.assign({op:"connections-manage",action:action,revision:connectionSettings.revision,requestId:uuid()},values || {})
+    connectionSettingsCommand={action:action,environmentId:command.environmentId,enabled:command.enabled};connectionSettings=Object.assign({},connectionSettings,{busy:true,error:"",requestId:command.requestId});send(command)
+  }
   function requestSettings(environment,key,value){if(settingsResult.busy)return;var id=uuid();settingsResult=Object.assign({},settingsResult,{busy:true,error:"",requestId:id,environment:environment,fields:settingsResult.environment===environment?settingsResult.fields:[]});send({op:"settings",action:key?"update":"read",key:key || "",value:value,environment:environment,requestId:id})}
   property var prOperations:({})
   function requestPullRequests(action,values){var id=uuid(),all=Object.assign({},prOperations);all[action]={busy:true,requestId:id,error:"",data:null};prOperations=all;send(Object.assign({op:"pull-requests",environment:selectedEnvironment,action:action,requestId:id},values || {}))}
@@ -331,6 +339,7 @@ Singleton {
     send({op: "stop", environment: selectedEnvironment, thread: selectedThread, requestId: uuid(), runId: selectedInfo.activeRunId})
   }
   function connectionLost() {
+    if(connectionSettings.busy)connectionSettings=Object.assign({},connectionSettings,{busy:false,error:"rpc_outcome_unknown"})
     historyOperation=Object.assign({},historyOperation,{busy:false,error:historyOperation.busy?"rpc_outcome_unknown":historyOperation.error});liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
     var operations=Object.assign({},queueOperations);Object.keys(operations).forEach(function(key){var o=operations[key];if(o.busy)operations[key]=Object.assign({},o,{busy:false,error:"rpc_outcome_unknown"})});queueOperations=operations
     var operations=Object.assign({},questionOperations);Object.keys(operations).forEach(function(k){if(operations[k].busy)operations[k]={busy:false,error:"rpc_outcome_unknown",requestId:operations[k].requestId}});questionOperations=operations
@@ -372,6 +381,16 @@ Singleton {
   property var diffView: ({loading:false,text:"",error:"",requestId:""})
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
+    if(data.op==="connections-manage"){
+      if(data.requestId!==connectionSettings.requestId)return
+      var command=connectionSettingsCommand
+      connectionSettings=Object.assign({},connectionSettings,{busy:false,error:data.error || ""},data.result || {})
+      if(!data.error&&command&&command.action!=="read"){
+        if((command.environmentId===selectedEnvironment&&(command.action==="remove"||(command.action==="remove-route"&&!(data.result.environments || []).some(function(e){return e.id===root.selectedEnvironment}))||(command.action==="enabled"&&!command.enabled)))||(command.action==="local-enabled"&&!command.enabled&&selectedEnvironment==="local")){connectionChanging=true;clearSelection();connectionChanging=false}
+        refresh()
+      }
+      connectionsManaged(command?command.action:"",data.error || "");return
+    }
     if(data.op==="window-layout"){if(data.requestId===windowLayoutOperation.requestId){windowLayoutOperation=Object.assign({},windowLayoutOperation,{busy:false});windowLayoutError=data.error || "";windowLayoutFinished(windowLayoutError)}return}
     if(data.op==="browse-folders"){if(data.requestId===folderBrowse.requestId)folderBrowse=Object.assign({},folderBrowse,{busy:false,error:data.error || ""},data.result || {});return}
     if(data.op==="history"){
@@ -471,6 +490,7 @@ Singleton {
       else { patchDraft(key, {text: "", attachments: [], busy: false, attempt: null, error: ""},false); resetUndo(key);flushDraft(key); refresh() }
     } else if (data.op === "stop") patchDraft(key, {stopping: false, error: data.error || ""})
   }
+  signal connectionsManaged(string action,string error)
   signal managementFinished(var result)
   signal snapshotUpdated()
   signal snapshotAboutToChange()

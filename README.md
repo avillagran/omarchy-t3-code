@@ -52,7 +52,9 @@ environment and folder picker, including remote folders.
 Use the header buttons for subscription usage and pull requests, and right-click
 a thread for its actions. **F1** opens keyboard help.
 
-Set up local and remote connections in T3 Code; the plugin inherits them. If the
+Manage saved connections in **Preferences → Connections**: add SSH hosts or pairing
+links, edit routes, rename, reconnect, switch off or remove them. Ot3 uses T3’s
+native encrypted catalog. If the
 official GUI owns the server, close it and use the sidebar's start button to run
 headless. The plugin does not stop a GUI-owned server. Inherited SSH connections reuse a running
 remote server or start its native headless service when stopped. Open the sidebar

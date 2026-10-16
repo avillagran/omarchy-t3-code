@@ -351,6 +351,22 @@
     "Open project": "Open project",
     "Floating window": "Floating window",
     "Tiled window": "Tiled window",
-    "Environment unavailable": "Environment unavailable"
+    "Environment unavailable": "Environment unavailable",
+    "Add connection": "Add connection",
+    "Add route": "Add route",
+    "Connected": "Connected",
+    "Edit connection": "Edit connection",
+    "Local": "Local",
+    "Name": "Name",
+    "Pairing code": "Pairing code",
+    "Pairing link": "Pairing link",
+    "Port": "Port",
+    "Preferred route": "Preferred route",
+    "Remove connection": "Remove connection",
+    "Remove route": "Remove route",
+    "SSH host or alias": "SSH host or alias",
+    "Username": "Username",
+    "Forget this connection on this device? Remote projects and messages are kept.": "Forget this connection on this device? Remote projects and messages are kept.",
+    "Reconnect": "Reconnect"
   }
 }

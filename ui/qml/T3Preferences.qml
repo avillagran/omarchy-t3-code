@@ -114,19 +114,7 @@ Rectangle {
         T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceGrouping";field:({key:"grouping",label:"Group working, snoozed and settled threads",kind:"bool",value:!!root.bridge.viewState.sidebarCompact});writable:true;onChanged:function(value){root.groupingRequested(value)}}
        }}
       }
-      T3PreferenceSection{visible:!root.query.trim()&&root.page==="connections";Layout.fillWidth:true;title:"Connections";icon:"server"
-       body:Component{Column{width:parent.width;Repeater{model:root.bridge.state.environments || []
-        Item{required property var modelData;required property int index;width:parent.width;implicitHeight:Style.space(68)
-         Rectangle{visible:index>0;width:parent.width;height:1;color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.065)}
-         RowLayout{anchors.fill:parent;anchors.margins:Style.space(16);spacing:Style.space(12)
-          T3Icon{name:modelData.id==="local"?"laptop":"server";tint:root.dim;implicitWidth:Style.space(18)}
-          Text{Layout.fillWidth:true;text:modelData.name;color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight}
-          Rectangle{width:Style.space(6);height:width;radius:width/2;color:modelData.state==="ready"?T3Palette.done:Color.urgent}
-          Text{text:modelData.state==="ready"?T3I18n.tr("Done"):T3I18n.error(modelData.error || modelData.state);color:root.dim;font.pixelSize:Style.font.caption;Layout.maximumWidth:parent.width*0.45;elide:Text.ElideRight}
-         }
-        }
-       }}}
-      }
+      Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="connections";visible:active;sourceComponent:Component{T3Connections{bridge:root.bridge}}}
       T3PreferenceSection{visible:!root.query.trim()&&root.page==="providers";Layout.fillWidth:true;title:"Providers";icon:"acp"
        body:Component{Column{width:parent.width;Repeater{model:(root.bridge.catalogs[root.environment] || {}).providers || []
         Item{required property var modelData;required property int index;width:parent.width;implicitHeight:Style.space(62)

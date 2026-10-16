@@ -133,6 +133,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     rpc(e,tag,command).map(|_|json!({"threadId":thread,"projectId":input["projectId"],"action":input["action"]}))
 }
 pub fn execute(input:&Value) -> Result<Value> {
+    if input["op"]=="connections-manage"{return crate::connections::manage_connections(input)}
     if input["op"]=="window-layout" {return crate::window_layout::apply(input)}
     if input["op"]=="backend-control" {return crate::backend_service::control(text(input,"action"))}
     if input["op"]=="backend-start" {return crate::backend_service::start()}
