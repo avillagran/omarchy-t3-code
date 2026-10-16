@@ -21,6 +21,7 @@ your Omarchy theme and inherits T3's connections, models and favorites.
 - Image/file/HTML previews inside the panel; copy messages and images.
 - Thread actions, branch/PR badges, conversation minimap and a PR browser.
 - Subscription usage bars and work/ready/input badges on your desktop bar.
+- Switch between the bar panel and a normal Hyprland window from the header.
 - Resizable layout, keyboard navigation, smooth scrolling and **20 languages**.
 - Native headless server controls: keep working locally or over your remote connections.
 
@@ -44,7 +45,10 @@ password and restarts the Omarchy shell when finished.
 
 Press **Super+Shift+A** or click **T3** in the status bar to open the agent.
 **Super+Enter** sends while the panel is open; outside it, the shortcut opens
-your terminal as usual. **Enter** inserts a newline.
+your terminal as usual. A detached window consumes this shortcut only while
+focused. **Enter** inserts a newline.
+Use the header’s monitor button to detach into a normal window; its pin button
+returns to the bar panel. The mode, chat and draft are retained.
 Use the header buttons for subscription usage and pull requests, and right-click
 a thread for its actions. **F1** opens keyboard help.
 

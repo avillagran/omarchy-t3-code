@@ -118,6 +118,16 @@ before estimated cache expiry. Review its settings: provider cache lifetimes
 vary, estimates can be wrong, and compaction consumes quota even if you do not
 return to the thread. It requires the plugin and T3 server to remain running.
 
+## Native window mode
+
+The header toggles the same workspace item between a layer-shell panel and a
+Quickshell FloatingWindow (a normal Wayland toplevel managed by Hyprland). It
+does not create a second backend or rebuild the composer. Logical visibility
+stays stable across the switch, so subscriptions and pending drafts continue.
+The desktop host stores the mode and window size in its private UI state.
+Closing through the compositor hides the client; opening it again restores the
+selected mode. Global send is consumed by a detached window only when focused.
+
 ## Architecture and resource use
 
 ```text
@@ -201,6 +211,7 @@ tools/test-qml backend-owner
 tools/test-qml sidebar-pr
 tools/test-qml dpi-lifecycle
 tools/test-qml panel-reopen
+tools/test-qml window-mode
 tools/test-qml context-divider
 tools/test-qml copy-actions
 node tools/test-copy.cjs

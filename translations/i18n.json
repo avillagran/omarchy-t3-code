@@ -271,7 +271,9 @@
     "Copy image": "Copy image",
     "Copy message": "Copy message",
     "Copied!": "Copied!",
-    "Copy failed": "Copy failed"
+    "Copy failed": "Copy failed",
+    "Open as window": "Open as window",
+    "Return to panel": "Return to panel"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -545,7 +547,9 @@
     "Copy image": "Copiar imagen",
     "Copy message": "Copiar mensaje",
     "Copied!": "¡Copiado!",
-    "Copy failed": "No se pudo copiar"
+    "Copy failed": "No se pudo copiar",
+    "Open as window": "Abrir como ventana",
+    "Return to panel": "Volver al panel"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -819,7 +823,9 @@
     "Copy image": "Copiar imagem",
     "Copy message": "Copiar mensagem",
     "Copied!": "Copiado!",
-    "Copy failed": "Falha ao copiar"
+    "Copy failed": "Falha ao copiar",
+    "Open as window": "Abrir como janela",
+    "Return to panel": "Voltar ao painel"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1093,7 +1099,9 @@
     "Copy image": "Copier l’image",
     "Copy message": "Copier le message",
     "Copied!": "Copié !",
-    "Copy failed": "Échec de la copie"
+    "Copy failed": "Échec de la copie",
+    "Open as window": "Ouvrir dans une fenêtre",
+    "Return to panel": "Revenir au panneau"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1367,7 +1375,9 @@
     "Copy image": "Bild kopieren",
     "Copy message": "Nachricht kopieren",
     "Copied!": "Kopiert!",
-    "Copy failed": "Kopieren fehlgeschlagen"
+    "Copy failed": "Kopieren fehlgeschlagen",
+    "Open as window": "Als Fenster öffnen",
+    "Return to panel": "Zurück zum Panel"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1641,7 +1651,9 @@
     "Copy image": "Copia immagine",
     "Copy message": "Copia messaggio",
     "Copied!": "Copiato!",
-    "Copy failed": "Copia non riuscita"
+    "Copy failed": "Copia non riuscita",
+    "Open as window": "Apri come finestra",
+    "Return to panel": "Torna al pannello"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1915,7 +1927,9 @@
     "Copy image": "Afbeelding kopiëren",
     "Copy message": "Bericht kopiëren",
     "Copied!": "Gekopieerd!",
-    "Copy failed": "Kopiëren mislukt"
+    "Copy failed": "Kopiëren mislukt",
+    "Open as window": "Als venster openen",
+    "Return to panel": "Terug naar paneel"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2189,7 +2203,9 @@
     "Copy image": "Kopiuj obraz",
     "Copy message": "Kopiuj wiadomość",
     "Copied!": "Skopiowano!",
-    "Copy failed": "Kopiowanie nie powiodło się"
+    "Copy failed": "Kopiowanie nie powiodło się",
+    "Open as window": "Otwórz jako okno",
+    "Return to panel": "Wróć do panelu"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2463,7 +2479,9 @@
     "Copy image": "Копировать изображение",
     "Copy message": "Копировать сообщение",
     "Copied!": "Скопировано!",
-    "Copy failed": "Не удалось скопировать"
+    "Copy failed": "Не удалось скопировать",
+    "Open as window": "Открыть в окне",
+    "Return to panel": "Вернуться к панели"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2737,7 +2755,9 @@
     "Copy image": "Копіювати зображення",
     "Copy message": "Копіювати повідомлення",
     "Copied!": "Скопійовано!",
-    "Copy failed": "Не вдалося скопіювати"
+    "Copy failed": "Не вдалося скопіювати",
+    "Open as window": "Відкрити у вікні",
+    "Return to panel": "Повернутися до панелі"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3011,7 +3031,9 @@
     "Copy image": "画像をコピー",
     "Copy message": "メッセージをコピー",
     "Copied!": "コピーしました！",
-    "Copy failed": "コピーに失敗しました"
+    "Copy failed": "コピーに失敗しました",
+    "Open as window": "ウィンドウで開く",
+    "Return to panel": "パネルに戻る"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3285,7 +3307,9 @@
     "Copy image": "이미지 복사",
     "Copy message": "메시지 복사",
     "Copied!": "복사됨!",
-    "Copy failed": "복사 실패"
+    "Copy failed": "복사 실패",
+    "Open as window": "창으로 열기",
+    "Return to panel": "패널로 돌아가기"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3559,7 +3583,9 @@
     "Copy image": "复制图片",
     "Copy message": "复制消息",
     "Copied!": "已复制！",
-    "Copy failed": "复制失败"
+    "Copy failed": "复制失败",
+    "Open as window": "作为窗口打开",
+    "Return to panel": "返回面板"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3833,7 +3859,9 @@
     "Copy image": "نسخ الصورة",
     "Copy message": "نسخ الرسالة",
     "Copied!": "تم النسخ!",
-    "Copy failed": "تعذر النسخ"
+    "Copy failed": "تعذر النسخ",
+    "Open as window": "فتح كنافذة",
+    "Return to panel": "العودة إلى اللوحة"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4107,7 +4135,9 @@
     "Copy image": "Resmi kopyala",
     "Copy message": "Mesajı kopyala",
     "Copied!": "Kopyalandı!",
-    "Copy failed": "Kopyalama başarısız"
+    "Copy failed": "Kopyalama başarısız",
+    "Open as window": "Pencere olarak aç",
+    "Return to panel": "Panele dön"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4381,7 +4411,9 @@
     "Copy image": "Kopiera bild",
     "Copy message": "Kopiera meddelande",
     "Copied!": "Kopierat!",
-    "Copy failed": "Kopieringen misslyckades"
+    "Copy failed": "Kopieringen misslyckades",
+    "Open as window": "Öppna som fönster",
+    "Return to panel": "Återgå till panelen"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4655,7 +4687,9 @@
     "Copy image": "Kopiér billede",
     "Copy message": "Kopiér besked",
     "Copied!": "Kopieret!",
-    "Copy failed": "Kopiering mislykkedes"
+    "Copy failed": "Kopiering mislykkedes",
+    "Open as window": "Åbn som vindue",
+    "Return to panel": "Vend tilbage til panelet"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4929,7 +4963,9 @@
     "Copy image": "Kopier bilde",
     "Copy message": "Kopier melding",
     "Copied!": "Kopiert!",
-    "Copy failed": "Kopiering mislyktes"
+    "Copy failed": "Kopiering mislyktes",
+    "Open as window": "Åpne som vindu",
+    "Return to panel": "Tilbake til panelet"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5203,7 +5239,9 @@
     "Copy image": "Kopioi kuva",
     "Copy message": "Kopioi viesti",
     "Copied!": "Kopioitu!",
-    "Copy failed": "Kopiointi epäonnistui"
+    "Copy failed": "Kopiointi epäonnistui",
+    "Open as window": "Avaa ikkunana",
+    "Return to panel": "Palaa paneeliin"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5477,6 +5515,8 @@
     "Copy image": "Kopírovat obrázek",
     "Copy message": "Kopírovat zprávu",
     "Copied!": "Zkopírováno!",
-    "Copy failed": "Kopírování selhalo"
+    "Copy failed": "Kopírování selhalo",
+    "Open as window": "Otevřít jako okno",
+    "Return to panel": "Zpět do panelu"
   }
 }

@@ -50,6 +50,8 @@ PanelWindow {
   signal resized(real cardWidth, real cardHeight)
   property var borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
   property bool centerOnBar: false
+  property bool suspended: false
+  readonly property Item surfaceItem: contentHolder
   property bool open: false
   property bool dismissOnOutsideClick: true
   property int gap: Style.gapsOut  // distance between bar edge and panel
@@ -83,7 +85,7 @@ PanelWindow {
   // --- screen + lifetime ---------------------------------------------------
 
   screen: (anchorWindow && anchorWindow.screen) || Quickshell.screens[0] || null
-  visible: open || card.opacity > 0 || popoutSwitching
+  visible: !suspended && (open || card.opacity > 0 || popoutSwitching)
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
