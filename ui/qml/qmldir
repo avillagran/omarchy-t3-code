@@ -37,3 +37,4 @@ T3PullRequests 1.0 T3PullRequests.qml
 T3FileReference 1.0 T3FileReference.qml
 T3ProjectMenu 1.0 T3ProjectMenu.qml
 T3DocumentView 1.0 T3DocumentView.qml
+T3TimelineMinimap 1.0 T3TimelineMinimap.qml

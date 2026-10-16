@@ -96,6 +96,12 @@ Item {
   }
   // An accepted send resumes live-edge following until the reader navigates away.
   property string submissionFollowKey: ""
+  function jumpTimelineItem(entry) {
+    if (!entry || !bridge.transcript.some(function(r){return r.id===entry.id})) return
+    conversation.stopWheel();detachConversation();restoringConversation=true
+    bridge.rememberPosition(bridge.selectedKey,{id:entry.id,offset:0,atEnd:false})
+    restorePosition(conversation,bridge.transcript,bridge.selectedKey,false,function(){root.restoringConversation=false})
+  }
   function followSubmittedMessage(key) {
     if (key !== bridge.selectedKey) return
     conversation.stopWheel();submissionFollowKey = key;followingTail=true
@@ -650,6 +656,13 @@ Item {
           Item {
             Layout.fillWidth: true; Layout.fillHeight: true
             visible: !root.composerExpanded
+            T3TimelineMinimap {
+              anchors.fill:parent;z:3
+              rows:root.bridge.transcript;view:conversation;threadKey:root.bridge.selectedKey
+              active:root.opened && !root.pullRequestsOpen && !root.composerExpanded
+              onSelected:function(entry){root.jumpTimelineItem(entry)}
+              onWheelRequested:function(angle,pixels,touchpad){conversation.wheelScroll(angle,pixels,touchpad)}
+            }
             ListView {
               id: conversation
               activeFocusOnTab: true
