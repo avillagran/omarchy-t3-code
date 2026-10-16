@@ -6,8 +6,10 @@ Rectangle{
  id:root
  required property var bridge
  signal closed()
- property string environment:bridge.selectedEnvironment || "local"
- property string stateFilter:"open"
+ property var initialEntry:null
+ property string environment:initialEntry&&initialEntry.environmentId || bridge.selectedEnvironment || "local"
+ readonly property bool threadScoped:!!initialEntry&&Array.isArray(initialEntry.references)
+ property string stateFilter:threadScoped?"all":"open"
  property string involvement:"all"
  property var selected:null
  readonly property bool narrow:width<Style.space(650)
@@ -27,12 +29,12 @@ Rectangle{
  function statusLabel(state){return T3I18n.tr(({"approved":"Approved","changes-requested":"Changes requested","review-required":"Review required","pending":"Pending","action-required":"Action required","success":"Done","failure":"Failed","skipped":"Skipped","cancelled":"Cancelled","neutral":"Done"})[state] || state)}
  function tint(state){return ["failure","failing","closed","changes-requested"].indexOf(state)>=0?T3Palette.failed:["success","passing","open","approved"].indexOf(state)>=0?T3Palette.done:state==="merged"?Color.accent:dim}
  function reference(){return selected?{projectId:selected.projectId,host:selected.host,repository:selected.repository,number:selected.number}:null}
- function loadList(more){appending=!!more;bridge.requestPullRequests("list",{environment:environment,state:stateFilter,involvement:involvement,query:search.text,cursors:more&&listResult.data?listResult.data.nextCursors:undefined})}
+ function loadList(more){if(threadScoped){var needle=search.text.toLowerCase();entries=initialEntry.references.map(function(e){return Object.assign({},e,e.snapshot || {},{title:e.snapshot&&e.snapshot.title || "#"+e.number,state:e.snapshot&&e.snapshot.state || "unknown"})}).filter(function(e){return (stateFilter==="all"||e.state===stateFilter)&&(!needle||(e.title+" "+e.repository+" "+e.number).toLowerCase().indexOf(needle)>=0)});return}appending=!!more;bridge.requestPullRequests("list",{environment:environment,state:stateFilter,involvement:involvement,query:search.text,cursors:more&&listResult.data?listResult.data.nextCursors:undefined})}
  function openEntry(entry){selected=entry;tab=0;patch="";bridge.requestPullRequests("detail",{environment:environment,reference:reference()})}
  function loadTab(index){tab=index;if(!selected||index===0)return;appendPatch=false;bridge.requestPullRequests(index===1?"checks":index===2?"activity":"diff",{environment:environment,reference:reference()})}
- onListResultChanged:if(listResult.data){var next=appending?entries.slice():[];(listResult.data.entries || []).forEach(function(e){var i=next.findIndex(function(x){return x.host===e.host&&x.repository===e.repository&&x.number===e.number});if(i<0)next.push(e);else next[i]=e});entries=next.sort(function(a,b){return Date.parse(b.updatedAt)-Date.parse(a.updatedAt)})}
+ onListResultChanged:if(!threadScoped&&listResult.data){var next=appending?entries.slice():[];(listResult.data.entries || []).forEach(function(e){var i=next.findIndex(function(x){return x.host===e.host&&x.repository===e.repository&&x.number===e.number});if(i<0)next.push(e);else next[i]=e});entries=next.sort(function(a,b){return Date.parse(b.updatedAt)-Date.parse(a.updatedAt)})}
  onTabResultChanged:if(tab===3&&tabResult.data)patch=(appendPatch?patch:"")+(tabResult.data.patch || "")
- Component.onCompleted:{bridge.resetPullRequests();loadList(false)}
+ Component.onCompleted:{bridge.resetPullRequests();loadList(false);if(initialEntry&&!initialEntry.multiple)openEntry(entries.find(function(e){return e.number===initialEntry.number&&e.host===initialEntry.host&&e.repository===initialEntry.repository}) || initialEntry)}
  Component.onDestruction:bridge.resetPullRequests()
  ColumnLayout{
   anchors.fill:parent;anchors.margins:Style.space(16);spacing:Style.space(10)
@@ -41,14 +43,14 @@ Rectangle{
    T3IconButton{name:"chevron-left";tooltipText:T3I18n.tr("Back to chat");onClicked:if(root.narrow&&root.selected)root.selected=null;else root.closed()}
    T3Icon{name:"git-pull-request";tint:Color.accent}
    Text{Layout.fillWidth:true;text:T3I18n.tr("Pull requests");color:root.fg;font.bold:true;font.pixelSize:Style.font.body}
-   T3Select{Layout.preferredWidth:Style.space(130);model:root.environments;textRole:"name";currentIndex:Math.max(0,model.findIndex(function(e){return e.id===root.environment}));onActivated:function(i){root.environment=model[i].id;root.selected=null;root.entries=[];root.bridge.resetPullRequests();root.loadList(false)}}
+   T3Select{enabled:!root.threadScoped;Layout.preferredWidth:Style.space(130);model:root.environments;textRole:"name";currentIndex:Math.max(0,model.findIndex(function(e){return e.id===root.environment}));onActivated:function(i){root.environment=model[i].id;root.selected=null;root.entries=[];root.bridge.resetPullRequests();root.loadList(false)}}
    T3IconButton{name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:{root.loadList(false);if(root.selected)root.openEntry(root.selected)}}
   }
   RowLayout{
    Layout.fillWidth:true
    Controls.TextField{id:search;Layout.fillWidth:true;placeholderText:T3I18n.tr("Search pull requests…");color:root.fg;placeholderTextColor:root.dim;font.pixelSize:Style.font.caption;implicitHeight:Style.space(32);background:Rectangle{radius:Style.space(7);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.04);border.width:1;border.color:search.activeFocus?Color.accent:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12)} onTextEdited:searchDelay.restart();onAccepted:{searchDelay.stop();root.loadList(false)}}
-   T3Select{Layout.preferredWidth:Style.space(110);translateLabels:true;model:["Open","Merged","Closed","All"];onActivated:function(i){root.stateFilter=["open","merged","closed","all"][i];root.loadList(false)}}
-   T3Select{Layout.preferredWidth:Style.space(115);translateLabels:true;model:["All","Authored","Reviewing"];onActivated:function(i){root.involvement=["all","authored","reviewing"][i];root.loadList(false)}}
+   T3Select{Layout.preferredWidth:Style.space(110);translateLabels:true;model:["Open","Merged","Closed","All"];currentIndex:["open","merged","closed","all"].indexOf(root.stateFilter);onActivated:function(i){root.stateFilter=["open","merged","closed","all"][i];root.loadList(false)}}
+   T3Select{enabled:!root.threadScoped;Layout.preferredWidth:Style.space(115);translateLabels:true;model:["All","Authored","Reviewing"];onActivated:function(i){root.involvement=["all","authored","reviewing"][i];root.loadList(false)}}
   }
   Text{Layout.fillWidth:true;visible:!!root.listResult.error;text:T3I18n.error(root.listResult.error || "");color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText}
   Text{Layout.fillWidth:true;visible:!!root.listResult.data&&(root.listResult.data.errors || []).length>0;text:root.listResult.data?(root.listResult.data.errors || []).map(function(e){return e.projectTitle+": "+e.message}).join("\n"):"";color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText;font.pixelSize:Style.font.caption}

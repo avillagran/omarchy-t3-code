@@ -9,7 +9,7 @@ pub fn metadata(t:&Value,now:i64)->Value {
  let blocked=t["hasPendingApprovals"]==true || t["hasPendingUserInput"]==true || t["pendingSubagentRequest"].is_object() || t["pendingRuntimeRequest"].is_object();
  let snoozed_at=stamp(&t["snoozedAt"]);
  let raised=blocked || (matches!(runtime["status"].as_str(),Some("error"|"failed"))&&(snoozed_at==0||stamp(&runtime["updatedAt"])>snoozed_at)) || (snoozed_at>0&&(run["state"]=="completed"||run["status"]=="completed")&&stamp(&run["completedAt"])>snoozed_at);
- json!({"snoozed":stamp(&t["snoozedUntil"])>now&&!raised,"canSnooze":!blocked&&!queued,"snoozedUntil":t["snoozedUntil"],"hasRuntimeError":runtime["lastError"].as_str().is_some_and(|s|!s.is_empty()),"runtimeErrorClass":runtime["lastErrorClass"],"providerHistory":t["providerInstanceHistory"]})
+ json!({"snoozed":stamp(&t["snoozedUntil"])>now&&!raised,"canSnooze":!blocked&&!queued,"snoozedUntil":t["snoozedUntil"],"hasRuntimeError":runtime["lastError"].as_str().is_some_and(|s|!s.is_empty()),"runtimeErrorClass":runtime["lastErrorClass"],"providerHistory":t["providerInstanceHistory"],"pullRequests":t["pullRequests"],"linkedPullRequest":t["linkedPullRequest"],"branchPullRequest":t["branchPullRequest"],"pullRequestBadge":super::pull_requests::sidebar_badge(t)})
 }
 pub fn command(action:&str,thread:&str,until:Option<&str>)->Result<Value> {
  let mut c=json!({"type":match action{"settle"=>"thread.settle","unsettle"=>"thread.unsettle","snooze"=>"thread.snooze","unsnooze"=>"thread.unsnooze",_=>return Err("invalid_command".into())},"threadId":thread});

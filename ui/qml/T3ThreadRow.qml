@@ -7,6 +7,7 @@ import "../js/IconAssets.js" as Icons
 Item {
   id: root
   required property var thread
+  signal pullRequestsRequested(var source,var reference,bool multiple)
   signal threadActivated(var source)
   signal filterProjectRequested(string key)
   signal projectSettingsRequested(string key)
@@ -22,6 +23,9 @@ Item {
   property color stateColor: Color.accent
   property string providerGlyph: "acp"
   property var catalog: bridge.catalogs[thread.environmentId] || ({})
+  readonly property var projectInfo:(bridge.state.projects || []).find(function(p){return p.key===root.thread.projectKey}) || ({})
+  readonly property bool scratchProject:!!thread.projectIsScratch || (!!catalog.scratchWorkspaceRoot&&String(projectInfo.workspaceRoot || "").replace(/[/\\]+$/,"")===String(catalog.scratchWorkspaceRoot).replace(/[/\\]+$/,""))
+  readonly property bool showScratchMachine:!thread.branch&&scratchProject&&(bridge.state.environments || []).length>1
   readonly property var modelInfo: (catalog.models || []).find(function(m){return m.instanceId === root.thread.provider && m.model === root.thread.model}) || ({})
   readonly property var draft: bridge.drafts[thread.key] || ({})
   readonly property bool hasDraft: !draft.queueEdit && (!!String(draft.text || "").trim() || !!(draft.attachments && draft.attachments.length))
@@ -59,7 +63,7 @@ Item {
   Accessible.role: Accessible.Button
   Accessible.name: [thread.title,thread.project,stateLabel].filter(Boolean).join(" · ")
   function hidePreview(){openDelay.stop();closeDelay.stop();preview.close()}
-  function dismiss(){projectContextDismissed();hidePreview();snoozeMenu.close();rowMenu.close();customSnooze.close()}
+  function dismiss(){if(threadPRBadge)threadPRBadge.closePreview();projectContextDismissed();hidePreview();snoozeMenu.close();rowMenu.close();customSnooze.close()}
   function manage(action,extra){hidePreview();bridge.manage(Object.assign({action:action,environment:thread.environmentId,thread:thread.id},extra || {}))}
   function snoozeManage(action,extra){if(snoozeContext)contextManage(action,extra);else manage(action,extra)}
   function contextManage(action,extra){var t=actionThread;bridge.manage(Object.assign({action:action,environment:t.environmentId,thread:t.id},extra || {}))}
@@ -146,9 +150,10 @@ Item {
       Text{Layout.fillWidth:true;Layout.topMargin:Style.space(2);text:root.thread.title || "";color:(root.thread.working||root.thread.settled)&&!root.showActions?root.dim:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
       RowLayout{
         Layout.fillWidth:true;spacing:Style.space(6)
-        T3Icon{name:root.thread.branch?"git-branch":"server";tint:root.dim;implicitWidth:Style.space(12)}
-        Text{Layout.fillWidth:true;text:root.thread.branch||root.thread.environmentName||"";color:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
-        T3Icon{name:"server";tint:root.dim;implicitWidth:Style.space(12);visible:!!root.thread.branch}
+        T3Icon{objectName:"threadWorkspaceIcon";name:root.thread.branch?"folder-git-2":"server";visible:root.thread.branch?!!root.thread.worktreePath:root.showScratchMachine;tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);implicitWidth:Style.space(12)}
+        Text{objectName:"threadBranch";Layout.fillWidth:true;text:root.thread.branch||(root.showScratchMachine?root.thread.environmentName || "":"");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
+        T3PullRequestBadge{id:threadPRBadge;active:root.panelVisible&&!root.pooled;objectName:"threadPullRequestBadge";badge:root.thread.pullRequestBadge || null;visible:!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
+        T3Icon{objectName:"threadRemoteIcon";name:"server";tint:root.dim;implicitWidth:Style.space(12);visible:root.thread.environmentId!=="local"&&!root.showScratchMachine}
         T3ProviderIcon{provider:root.modelInfo.instanceId?root.modelInfo:({driverKind:root.thread.provider,registryIcon:""});tint:root.dim;Layout.preferredWidth:Style.space(12);Layout.preferredHeight:Style.space(12)}
       }
     }

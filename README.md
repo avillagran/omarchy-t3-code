@@ -18,6 +18,8 @@ the official desktop GUI open when the server runs independently.
 
 - **Familiar workspace:** resizable panel and sidebar, search, status filters,
   project identities, working timers, grouping, settled threads and context menus.
+  Branch names use middle truncation; native linked PR badges show their number,
+  state and stack/count, with previews and an in-app PR view.
 - **Conversation minimap:** T3-style turn markers between the sidebar and chat,
   with prompt/response previews, visible-turn highlights, previous/next buttons,
   keyboard navigation and click-to-jump.
@@ -223,6 +225,9 @@ tools/test-qml thread-menu
 tools/test-qml content-panels
 tools/test-qml documents
 tools/test-qml backend-owner
+tools/test-qml sidebar-pr
+tools/test-qml dpi-lifecycle
+tools/test-qml panel-reopen
 tools/test-qml upward-scroll
 
 # Requires the optional Qt HTML frontend:

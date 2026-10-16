@@ -26,3 +26,8 @@ claim of affiliation.
 T3 logo: exact SVG viewBox/path/fill from apps/web/src/components/T3Wordmark.tsx
 at the same T3 commit above, MIT. Used in header and bar. It is separate from
 Lucide PanelLeftClose/PanelLeft, which are interactive sidebar controls.
+
+Sidebar PR/worktree glyphs use the official Lucide SVG geometry (folder-git-2,
+layers, git-merge, git-pull-request-closed and git-pull-request-draft), retrieved
+from lucide-icons/lucide on 2026-10-16, with the same 1.75 stroke as the other
+T3-style action marks. The Lucide ISC notice applies.

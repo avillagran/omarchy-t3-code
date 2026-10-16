@@ -82,7 +82,7 @@ PanelWindow {
 
   // --- screen + lifetime ---------------------------------------------------
 
-  screen: anchorWindow ? anchorWindow.screen : null
+  screen: (anchorWindow && anchorWindow.screen) || Quickshell.screens[0] || null
   visible: open || card.opacity > 0 || popoutSwitching
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore

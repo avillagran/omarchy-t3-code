@@ -24,7 +24,7 @@ pub fn catalog(config:&Value)->Value{
   }
   list.sort_by_key(|m|order.iter().position(|v|v==&m["model"]).unwrap_or(usize::MAX));models.extend(list);
  }
- json!({"models":models,"providers":providers,"favorites":prefs["favorites"],"favoritesReady":prefs["favoritesReady"],"capabilities":{"threadSettlement":config["environment"]["capabilities"]["threadSettlement"]==true,"threadSnooze":config["environment"]["capabilities"]["threadSnooze"]==true,"threadPinning":config["environment"]["capabilities"]["threadPinning"]==true,"threadAutoSettleOptOut":config["environment"]["capabilities"]["threadAutoSettleOptOut"]==true,"threadTitleRegeneration":config["environment"]["capabilities"]["threadTitleRegeneration"]==true}})
+ json!({"scratchWorkspaceRoot":config["scratchWorkspaceRoot"],"models":models,"providers":providers,"favorites":prefs["favorites"],"favoritesReady":prefs["favoritesReady"],"capabilities":{"threadSettlement":config["environment"]["capabilities"]["threadSettlement"]==true,"threadSnooze":config["environment"]["capabilities"]["threadSnooze"]==true,"threadPinning":config["environment"]["capabilities"]["threadPinning"]==true,"threadAutoSettleOptOut":config["environment"]["capabilities"]["threadAutoSettleOptOut"]==true,"threadTitleRegeneration":config["environment"]["capabilities"]["threadTitleRegeneration"]==true}})
 }
 pub fn favorite_payload(provider:&str,model:&str,favorite:bool)->Result<Value>{
  if provider.is_empty()||provider.len()>512||model.is_empty()||model.len()>512||provider.chars().chain(model.chars()).any(char::is_control){return Err("invalid_model".into())}
