@@ -120,6 +120,6 @@
     "desktopAdapter": "src/desktop_cloud.rs",
     "omiIntegration": "Android four-ABI Kotlin/JNI adapter and AAR in lib-t3-rust; consumer device/UI validation remains separate",
     "repository": "https://github.com/avillagran/lib-t3-rust",
-    "rev": "594a8f83f26fb661efbd102e198f5febe5fe0115"
+    "rev": "b5c8637053f3f972c77da5d6aba97b6c2afa6977"
   }
 }

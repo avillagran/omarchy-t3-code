@@ -4,11 +4,16 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import "../js/DocumentTheme.js" as DocumentTheme
+import "../js/SidebarModel.js" as Sidebar
 
 Singleton {
   id: root
   readonly property string binary: Qt.resolvedUrl("../../bin/omarchy-t3-client").toString().replace(/^file:\/\//, "")
   property var state: ({threads: [], environments: [], working: 0, pending: 0})
+  property var inboxReturnState:({working:null,returned:{}})
+  function observeInboxReturns(){inboxReturnState=(viewState || {}).sidebarCompact?Sidebar.observeReturns(inboxReturnState,state.threads || [],Date.now()):{working:null,returned:{}}}
+  onStateChanged:observeInboxReturns()
+  onViewStateChanged:observeInboxReturns()
   property var backendStart:({busy:false,error:"",status:""})
   property var localBackend:({owner:"unknown",running:false,canControl:false,installed:false})
   function refreshBackendStatus(){send({op:"backend-status"})}
