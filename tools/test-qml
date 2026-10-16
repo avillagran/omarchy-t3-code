@@ -1,0 +1,26 @@
+#!/bin/bash
+# Isolated QML integration checks; no live connections, accounts or Python runtime.
+set -eu
+task_template=${1:-composer}
+case "$task_template" in composer|sidebar|state|interaction|completion|layout|queue|tasks|editor|i18n|send-scroll|clipboard|work-details|live-media|scroll-stability|wheel-scroll|draft-undo|upward-scroll|model-picker|inertia|thread-hover|auto-compaction|questions|question-state|compact-sidebar|pull-requests|backend-start|documents|project-menu|thread-menu|content-panels) ;; *) echo 'Unknown QML check' >&2; exit 1;; esac
+task_repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+task_root=$(mktemp -d /tmp/t3-qml-test-XXXXXX)
+trap 'rm -rf -- "$task_root"' EXIT
+for task_dir in Commons Ui plugins services; do ln -s "/usr/share/omarchy/shell/$task_dir" "$task_root/$task_dir"; done
+ln -s "$task_repo" "$task_root/UnderTest"
+cp "$task_repo/tests/qml/$task_template.qml" "$task_root/shell.qml"
+if [ "$task_template" = state ]; then
+  mkdir -p "$task_root/state/omarchy-t3-code"
+  printf '%s\n' '{"schemaVersion":1,"quotaCollapsed":true,"selectedEnvironment":"fixture","selectedThread":"restored","positions":{}}' > "$task_root/state/omarchy-t3-code/ui-state.json"
+fi
+mkdir -p "$task_root/bin"
+if [ "$task_template" = clipboard ]; then
+  cat > "$task_root/bin/wl-paste" <<'CLIP'
+#!/bin/sh
+if [ "$1" = --list-types ]; then printf '%s\n' text/plain; else printf '%s' 'pasted text'; fi
+CLIP
+  chmod 700 "$task_root/bin/wl-paste"
+fi
+env -u KIMI_CODING_API_KEY -u OMARCHY_T3_FIXTURE_ENVIRONMENTS PATH="$task_root/bin:$PATH" OMARCHY_T3_LANGUAGE=es HOME="$task_root/home" XDG_CONFIG_HOME="$task_root/config" XDG_STATE_HOME="$task_root/state" XDG_DATA_HOME="$task_root/data" T3CODE_HOME="$task_root/native" timeout 12 quickshell -p "$task_root/shell.qml" > "$task_root/log" 2>&1 || { cat "$task_root/log"; exit 1; }
+if rg 'QML_FAIL|ReferenceError|TypeError|Binding loop' "$task_root/log"; then cat "$task_root/log"; exit 1; fi
+rg 'QML_PASS' "$task_root/log" || { cat "$task_root/log"; exit 1; }

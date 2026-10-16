@@ -1,0 +1,37 @@
+use omarchy_t3_client::*;
+use serde_json::json;
+use base64::Engine;
+use aes::cipher::{BlockEncryptMut,KeyIvInit,block_padding::Pkcs7};
+use std::{fs,io::{Read,Write},net::TcpListener,thread,os::unix::fs::PermissionsExt};
+fn write_catalog(path:&std::path::Path, disabled:Vec<&str>) {
+    let raw=json!({"schemaVersion":1,"targets":[{"_tag":"BearerConnectionTarget","environmentId":"remote","connectionId":"route","label":"From T3"},{"_tag":"BearerConnectionTarget","environmentId":"disabled","connectionId":"disabled","label":"Disabled"}],"profiles":[{"_tag":"BearerConnectionProfile","connectionId":"route","httpBaseUrl":fs::read_to_string(path.parent().unwrap().join("origin")).unwrap()}],"credentials":[{"connectionId":"route","credential":{"_tag":"BearerConnectionCredential","token":"synthetic-catalog-credential"}}],"disabledEnvironmentIds":disabled});
+    let mut key=[0u8;16];pbkdf2::pbkdf2_hmac::<sha1::Sha1>(b"peanuts",b"saltysalt",1,&mut key);
+    let mut bytes=b"v10".to_vec();bytes.extend(cbc::Encryptor::<aes::Aes128>::new_from_slices(&key,&[b' ';16]).unwrap().encrypt_padded_vec_mut::<Pkcs7>(raw.to_string().as_bytes()));
+    fs::write(path,json!({"version":1,"encryptedCatalog":base64::engine::general_purpose::STANDARD.encode(bytes)}).to_string()).unwrap();
+}
+#[test]
+fn t3_is_authoritative_for_origin_credentials_disabled_routes_and_reload() {
+    let root=std::env::temp_dir().join(format!("t3-inherit-test-{}",uuid::Uuid::new_v4()));let data=root.join("native/userdata");fs::create_dir_all(&data).unwrap();
+    std::env::set_var("HOME",&root);std::env::set_var("T3CODE_HOME",root.join("native"));std::env::set_var("XDG_DATA_HOME",root.join("data"));std::env::remove_var("OMARCHY_T3_FIXTURE_ENVIRONMENTS");
+    let listener=TcpListener::bind("127.0.0.1:0").unwrap();let origin=format!("http://{}",listener.local_addr().unwrap());
+    fs::write(data.join("origin"),&origin).unwrap();fs::write(data.join("server-runtime.json"),json!({"origin":origin,"pid":std::process::id(),"port":listener.local_addr().unwrap().port()}).to_string()).unwrap();
+    fs::write(data.join("environment-id"),"primary").unwrap();
+    let token=xdg("XDG_DATA_HOME",".local/share").join("local.write.token");fs::create_dir_all(token.parent().unwrap()).unwrap();
+    fs::write(&token,format!("{}.synthetic-signature",base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json!({"exp":chrono::Utc::now().timestamp_millis()+86_400_000,"scopes":["orchestration:read","orchestration:operate","filesystem:read","settings:write"]}).to_string()))).unwrap();fs::set_permissions(&token,fs::Permissions::from_mode(0o600)).unwrap();
+    // A stale plugin registry must have no influence over the native connection catalog.
+    let legacy=root.join(".config/omarchy-t3-code");fs::create_dir_all(&legacy).unwrap();fs::write(legacy.join("environments.json"),r#"{"environments":[{"id":"wrong","base_url":"http://example.invalid"}]}"#).unwrap();
+    write_catalog(&data.join("connection-catalog.json"),vec!["disabled"]);
+    let environments=environments().unwrap();assert_eq!(environments.len(),2);assert_eq!(environments[0].base_url,origin);assert_eq!(environments[1].name,"From T3");assert_eq!(environment_token(&environments[1],false).unwrap(),"synthetic-catalog-credential");assert!(environments[1].token_file.as_os_str().is_empty());
+    let server=thread::spawn(move||{let (mut socket,_)=listener.accept().unwrap();let mut bytes=[0;4096];let n=socket.read(&mut bytes).unwrap();assert!(String::from_utf8_lossy(&bytes[..n]).contains("Bearer synthetic-catalog-credential"));socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").unwrap();});
+    assert_eq!(Client::new().unwrap().get(&environments[1],"/fixture",true).unwrap(),json!({}));server.join().unwrap();
+    write_catalog(&data.join("connection-catalog.json"),vec!["disabled","remote"]);
+    let updated=omarchy_t3_client::environments().unwrap();assert_eq!(updated.len(),1);assert_eq!(updated[0].id,"local");
+    write_catalog(&data.join("connection-catalog.json"),vec!["disabled","remote","primary"]);
+    assert!(omarchy_t3_client::environments().unwrap().is_empty());
+    write_catalog(&data.join("connection-catalog.json"),vec!["disabled","remote"]);
+    fs::write(data.join("desktop-settings.json"),r#"{"localEnvironmentEnabled":false}"#).unwrap();
+    assert!(omarchy_t3_client::environments().unwrap().is_empty());
+    fs::write(data.join("desktop-settings.json"),r#"{"localEnvironmentEnabled":true}"#).unwrap();
+    assert_eq!(omarchy_t3_client::environments().unwrap().len(),1);
+    fs::remove_dir_all(root).unwrap();
+}

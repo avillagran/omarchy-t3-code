@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.avillagran.omarchy-t3-code",
+  "name": "Omarchy T3 Code",
+  "version": "0.2.0",
+  "author": "Andr\u00e9s Villagr\u00e1n",
+  "license": "MIT",
+  "description": "Native Rust T3 chats, writing, attachments, activity and subscription quotas.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "T3 Code",
+    "description": "Manage T3 chats and monitor work and subscription quotas.",
+    "category": "System",
+    "defaultSection": "right"
+  }
+}

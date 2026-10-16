@@ -1,0 +1,33 @@
+[package]
+name = "omarchy-t3-client"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+t3-protocol = { path = "crates/t3-protocol" }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+sha2 = "0.10"
+libc = "0.2"
+tungstenite = { version = "0.28", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
+uuid = { version = "1", features = ["v4"] }
+mime_guess = "2"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc", "block-padding"] }
+pbkdf2 = "0.12"
+sha1 = "0.10"
+zeroize = "1"
+base64 = "0.22"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+strip = true
+
+[workspace]
+members = ["crates/t3-protocol"]
+resolver = "2"

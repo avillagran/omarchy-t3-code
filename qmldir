@@ -1,0 +1,39 @@
+singleton T3Backend 1.0 T3Backend.qml
+BarWidget 1.0 BarWidget.qml
+T3Panel 1.0 T3Panel.qml
+QuotaStrip 1.0 QuotaStrip.qml
+WorkIndicator 1.0 WorkIndicator.qml
+PinnedKeyboardPanel 1.0 PinnedKeyboardPanel.qml
+T3Icon 1.0 T3Icon.qml
+T3IconButton 1.0 T3IconButton.qml
+T3Select 1.0 T3Select.qml
+T3Composer 1.0 T3Composer.qml
+singleton T3Palette 1.0 T3Palette.qml
+T3ActivityText 1.0 T3ActivityText.qml
+T3SidebarActions 1.0 T3SidebarActions.qml
+
+T3Queue 1.0 T3Queue.qml
+
+T3Tasks 1.0 T3Tasks.qml
+
+T3StatusBadges 1.0 T3StatusBadges.qml
+
+singleton T3I18n 1.0 T3I18n.qml
+T3ActivityBlock 1.0 T3ActivityBlock.qml
+T3Changes 1.0 T3Changes.qml
+T3MessageImage 1.0 T3MessageImage.qml
+
+T3Wheel 1.0 T3Wheel.qml
+T3ModelPicker 1.0 T3ModelPicker.qml
+T3ProviderIcon 1.0 T3ProviderIcon.qml
+
+T3ThreadRow 1.0 T3ThreadRow.qml
+
+T3CompactionSettings 1.0 T3CompactionSettings.qml
+
+T3Questions 1.0 T3Questions.qml
+
+T3PullRequests 1.0 T3PullRequests.qml
+T3FileReference 1.0 T3FileReference.qml
+T3ProjectMenu 1.0 T3ProjectMenu.qml
+T3DocumentView 1.0 T3DocumentView.qml

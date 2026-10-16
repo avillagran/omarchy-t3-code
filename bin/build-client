@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+plugin_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$plugin_dir"
+cargo build --release --locked
+install -m755 target/release/omarchy-t3-client bin/omarchy-t3-client
+if pkg-config --exists Qt6Quick Qt6WebEngineQuick; then
+  tools/build-document-viewer
+else
+  printf '%s\n' 'Optional HTML viewer not built: Qt6Quick/Qt6WebEngineQuick development packages are missing.' >&2
+fi
