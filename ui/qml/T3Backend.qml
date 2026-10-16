@@ -14,6 +14,25 @@ Singleton {
   function refreshBackendStatus(){send({op:"backend-status"})}
   function controlBackend(action){if(backendStart.busy)return;backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,requestId:uuid()})}
   function startBackend(){controlBackend("start")}
+  property int localRecoveryAttempts:0
+  function recoverLocalBackend(){localRecoveryAttempts=30;refresh()}
+  function acceptBackendStatus(value){
+    var changed=value.running && (!localBackend.running || value.pid!==localBackend.pid)
+    localBackend=value
+    if(!value.running&&backendStart.status==="stopped")localRecoveryAttempts=0
+    if(changed)recoverLocalBackend()
+  }
+  function finishLocalRecovery(){
+    if(!localRecoveryAttempts || !(state.environments || []).some(function(e){return e.id==="local"&&e.state==="ready"}))return
+    localRecoveryAttempts=0
+    var all=Object.assign({},catalogs);delete all.local;catalogs=all
+    var pending=Object.assign({},catalogLoading);delete pending.local;catalogLoading=pending
+    ensureCatalog("local")
+    if(selectedEnvironment==="local")fetchMessages()
+  }
+  // Service activation can finish before its HTTP listener/runtime file is ready.
+  // Retry only during recovery, retaining the current transcript and draft.
+  Timer{interval:1000;repeat:true;running:root.panelVisible&&root.localRecoveryAttempts>0;onTriggered:{root.localRecoveryAttempts--;root.refreshBackendStatus();root.refresh()}}
   Timer{interval:3000;repeat:true;triggeredOnStart:true;running:root.visiblePanels>0;onTriggered:root.refreshBackendStatus()}
   property var prOperations:({})
   function requestPullRequests(action,values){var id=uuid(),all=Object.assign({},prOperations);all[action]={busy:true,requestId:id,error:"",data:null};prOperations=all;send(Object.assign({op:"pull-requests",environment:selectedEnvironment,action:action,requestId:id},values || {}))}
@@ -306,7 +325,7 @@ Singleton {
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
     if(data.op==="document-open"){if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
-    if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)localBackend=data.result.local;refreshBackendStatus();refresh();return}
+    if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)acceptBackendStatus(data.result.local);if(!data.error&&data.result&&data.result.status!=="stopped")recoverLocalBackend();refreshBackendStatus();refresh();return}
     if(data.op==="pull-requests"){var name=Object.keys(prOperations).find(function(k){return root.prOperations[k].requestId===data.requestId});if(!name)return;var all=Object.assign({},prOperations);all[name]={busy:false,requestId:data.requestId,error:data.error || "",data:data.result};prOperations=all;return}
     if(data.op==="question"){
       var key=Object.keys(questionOperations).find(function(k){return root.questionOperations[k].requestId===data.requestId})
@@ -461,11 +480,11 @@ Singleton {
       else if(event.type==="document-clipboard"&&data.requestId===documentOpen.requestId){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-frame" && data.requestId===documentOpen.requestId){documentOpen=Object.assign({},documentOpen,{frameUrl:data.url || documentOpen.frameUrl,frameRevision:data.revision || documentOpen.frameRevision,frameWidth:data.width || documentOpen.frameWidth,frameHeight:data.height || documentOpen.frameHeight,error:data.error || ""})}
       else if (event.type === "action") action(data)
-      else if (event.type === "backend-status") {localBackend=data}
+      else if (event.type === "backend-status") {acceptBackendStatus(data)}
       else if (event.type === "snapshot") { snapshotAboutToChange(); state = data; stale = data.stale; error = "";ensureSidebarCatalogs()
         var current = state.threads.find(function(t) { return t.key === root.selectedKey })
         if (current) { selectedTitle = current.title; selectedProject = current.project }
-        snapshotUpdated() }
+        finishLocalRecovery();snapshotUpdated() }
       else if (event.type === "quotas") { providers = data.providers || []; quotaError = "" }
       else if (event.type === "messages" && data.serial === requestedSerial && panelVisible) {
         loadingMessages = false; messageError = data.result.error || ""
