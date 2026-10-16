@@ -111,6 +111,7 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="backend-start" {return crate::backend_service::start()}
     if input["op"]=="scroll-config" {return Ok(scroll::read())}
     if input["op"]=="clipboard" {return clipboard::paste(input)}
+    if input["op"]=="copy" {return clipboard::copy(input)}
     let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
     match text(input,"op") {
         "document-open"=>crate::documents::read(&e,input),

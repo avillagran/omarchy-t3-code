@@ -267,7 +267,11 @@
     "Restart local backend": "Restart local backend",
     "Stop local backend": "Stop local backend",
     "Context handoff": "Context handoff",
-    "Context handoff pending": "Context handoff pending"
+    "Context handoff pending": "Context handoff pending",
+    "Copy image": "Copy image",
+    "Copy message": "Copy message",
+    "Copied!": "Copied!",
+    "Copy failed": "Copy failed"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -537,7 +541,11 @@
     "Restart local backend": "Reiniciar servidor local",
     "Stop local backend": "Detener servidor local",
     "Context handoff": "Traspaso de contexto",
-    "Context handoff pending": "Traspaso de contexto pendiente"
+    "Context handoff pending": "Traspaso de contexto pendiente",
+    "Copy image": "Copiar imagen",
+    "Copy message": "Copiar mensaje",
+    "Copied!": "¡Copiado!",
+    "Copy failed": "No se pudo copiar"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -807,7 +815,11 @@
     "Restart local backend": "Reiniciar servidor local",
     "Stop local backend": "Parar servidor local",
     "Context handoff": "Transferência de contexto",
-    "Context handoff pending": "Transferência de contexto pendente"
+    "Context handoff pending": "Transferência de contexto pendente",
+    "Copy image": "Copiar imagem",
+    "Copy message": "Copiar mensagem",
+    "Copied!": "Copiado!",
+    "Copy failed": "Falha ao copiar"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1077,7 +1089,11 @@
     "Restart local backend": "Redémarrer le serveur local",
     "Stop local backend": "Arrêter le serveur local",
     "Context handoff": "Transfert de contexte",
-    "Context handoff pending": "Transfert de contexte en attente"
+    "Context handoff pending": "Transfert de contexte en attente",
+    "Copy image": "Copier l’image",
+    "Copy message": "Copier le message",
+    "Copied!": "Copié !",
+    "Copy failed": "Échec de la copie"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1347,7 +1363,11 @@
     "Restart local backend": "Lokalen Server neu starten",
     "Stop local backend": "Lokalen Server stoppen",
     "Context handoff": "Kontextübergabe",
-    "Context handoff pending": "Kontextübergabe ausstehend"
+    "Context handoff pending": "Kontextübergabe ausstehend",
+    "Copy image": "Bild kopieren",
+    "Copy message": "Nachricht kopieren",
+    "Copied!": "Kopiert!",
+    "Copy failed": "Kopieren fehlgeschlagen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1617,7 +1637,11 @@
     "Restart local backend": "Riavvia server locale",
     "Stop local backend": "Arresta server locale",
     "Context handoff": "Passaggio del contesto",
-    "Context handoff pending": "Passaggio del contesto in attesa"
+    "Context handoff pending": "Passaggio del contesto in attesa",
+    "Copy image": "Copia immagine",
+    "Copy message": "Copia messaggio",
+    "Copied!": "Copiato!",
+    "Copy failed": "Copia non riuscita"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1887,7 +1911,11 @@
     "Restart local backend": "Lokale server herstarten",
     "Stop local backend": "Lokale server stoppen",
     "Context handoff": "Contextoverdracht",
-    "Context handoff pending": "Contextoverdracht in behandeling"
+    "Context handoff pending": "Contextoverdracht in behandeling",
+    "Copy image": "Afbeelding kopiëren",
+    "Copy message": "Bericht kopiëren",
+    "Copied!": "Gekopieerd!",
+    "Copy failed": "Kopiëren mislukt"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2157,7 +2185,11 @@
     "Restart local backend": "Uruchom ponownie serwer lokalny",
     "Stop local backend": "Zatrzymaj serwer lokalny",
     "Context handoff": "Przekazanie kontekstu",
-    "Context handoff pending": "Oczekiwanie na przekazanie kontekstu"
+    "Context handoff pending": "Oczekiwanie na przekazanie kontekstu",
+    "Copy image": "Kopiuj obraz",
+    "Copy message": "Kopiuj wiadomość",
+    "Copied!": "Skopiowano!",
+    "Copy failed": "Kopiowanie nie powiodło się"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2427,7 +2459,11 @@
     "Restart local backend": "Перезапустить локальный сервер",
     "Stop local backend": "Остановить локальный сервер",
     "Context handoff": "Передача контекста",
-    "Context handoff pending": "Ожидание передачи контекста"
+    "Context handoff pending": "Ожидание передачи контекста",
+    "Copy image": "Копировать изображение",
+    "Copy message": "Копировать сообщение",
+    "Copied!": "Скопировано!",
+    "Copy failed": "Не удалось скопировать"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2697,7 +2733,11 @@
     "Restart local backend": "Перезапустити локальний сервер",
     "Stop local backend": "Зупинити локальний сервер",
     "Context handoff": "Передавання контексту",
-    "Context handoff pending": "Очікування передавання контексту"
+    "Context handoff pending": "Очікування передавання контексту",
+    "Copy image": "Копіювати зображення",
+    "Copy message": "Копіювати повідомлення",
+    "Copied!": "Скопійовано!",
+    "Copy failed": "Не вдалося скопіювати"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2967,7 +3007,11 @@
     "Restart local backend": "ローカルサーバーを再起動",
     "Stop local backend": "ローカルサーバーを停止",
     "Context handoff": "コンテキストの引き継ぎ",
-    "Context handoff pending": "コンテキストの引き継ぎ待ち"
+    "Context handoff pending": "コンテキストの引き継ぎ待ち",
+    "Copy image": "画像をコピー",
+    "Copy message": "メッセージをコピー",
+    "Copied!": "コピーしました！",
+    "Copy failed": "コピーに失敗しました"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3237,7 +3281,11 @@
     "Restart local backend": "로컬 서버 다시 시작",
     "Stop local backend": "로컬 서버 중지",
     "Context handoff": "컨텍스트 인계",
-    "Context handoff pending": "컨텍스트 인계 대기 중"
+    "Context handoff pending": "컨텍스트 인계 대기 중",
+    "Copy image": "이미지 복사",
+    "Copy message": "메시지 복사",
+    "Copied!": "복사됨!",
+    "Copy failed": "복사 실패"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3507,7 +3555,11 @@
     "Restart local backend": "重启本地服务器",
     "Stop local backend": "停止本地服务器",
     "Context handoff": "上下文交接",
-    "Context handoff pending": "等待上下文交接"
+    "Context handoff pending": "等待上下文交接",
+    "Copy image": "复制图片",
+    "Copy message": "复制消息",
+    "Copied!": "已复制！",
+    "Copy failed": "复制失败"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3777,7 +3829,11 @@
     "Restart local backend": "إعادة تشغيل الخادم المحلي",
     "Stop local backend": "إيقاف الخادم المحلي",
     "Context handoff": "نقل السياق",
-    "Context handoff pending": "نقل السياق معلق"
+    "Context handoff pending": "نقل السياق معلق",
+    "Copy image": "نسخ الصورة",
+    "Copy message": "نسخ الرسالة",
+    "Copied!": "تم النسخ!",
+    "Copy failed": "تعذر النسخ"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4047,7 +4103,11 @@
     "Restart local backend": "Yerel sunucuyu yeniden başlat",
     "Stop local backend": "Yerel sunucuyu durdur",
     "Context handoff": "Bağlam aktarımı",
-    "Context handoff pending": "Bağlam aktarımı bekleniyor"
+    "Context handoff pending": "Bağlam aktarımı bekleniyor",
+    "Copy image": "Resmi kopyala",
+    "Copy message": "Mesajı kopyala",
+    "Copied!": "Kopyalandı!",
+    "Copy failed": "Kopyalama başarısız"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4317,7 +4377,11 @@
     "Restart local backend": "Starta om lokal server",
     "Stop local backend": "Stoppa lokal server",
     "Context handoff": "Kontextöverföring",
-    "Context handoff pending": "Väntar på kontextöverföring"
+    "Context handoff pending": "Väntar på kontextöverföring",
+    "Copy image": "Kopiera bild",
+    "Copy message": "Kopiera meddelande",
+    "Copied!": "Kopierat!",
+    "Copy failed": "Kopieringen misslyckades"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4587,7 +4651,11 @@
     "Restart local backend": "Genstart lokal server",
     "Stop local backend": "Stop lokal server",
     "Context handoff": "Kontekstoverførsel",
-    "Context handoff pending": "Afventer kontekstoverførsel"
+    "Context handoff pending": "Afventer kontekstoverførsel",
+    "Copy image": "Kopiér billede",
+    "Copy message": "Kopiér besked",
+    "Copied!": "Kopieret!",
+    "Copy failed": "Kopiering mislykkedes"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4857,7 +4925,11 @@
     "Restart local backend": "Start lokal server på nytt",
     "Stop local backend": "Stopp lokal server",
     "Context handoff": "Kontekstoverføring",
-    "Context handoff pending": "Venter på kontekstoverføring"
+    "Context handoff pending": "Venter på kontekstoverføring",
+    "Copy image": "Kopier bilde",
+    "Copy message": "Kopier melding",
+    "Copied!": "Kopiert!",
+    "Copy failed": "Kopiering mislyktes"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5127,7 +5199,11 @@
     "Restart local backend": "Käynnistä paikallinen palvelin uudelleen",
     "Stop local backend": "Pysäytä paikallinen palvelin",
     "Context handoff": "Kontekstin siirto",
-    "Context handoff pending": "Kontekstin siirto odottaa"
+    "Context handoff pending": "Kontekstin siirto odottaa",
+    "Copy image": "Kopioi kuva",
+    "Copy message": "Kopioi viesti",
+    "Copied!": "Kopioitu!",
+    "Copy failed": "Kopiointi epäonnistui"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5397,6 +5473,10 @@
     "Restart local backend": "Restartovat místní server",
     "Stop local backend": "Zastavit místní server",
     "Context handoff": "Předání kontextu",
-    "Context handoff pending": "Čeká se na předání kontextu"
+    "Context handoff pending": "Čeká se na předání kontextu",
+    "Copy image": "Kopírovat obrázek",
+    "Copy message": "Kopírovat zprávu",
+    "Copied!": "Zkopírováno!",
+    "Copy failed": "Kopírování selhalo"
   }
 }

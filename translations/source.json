@@ -267,6 +267,10 @@
     "Restart local backend": "Restart local backend",
     "Stop local backend": "Stop local backend",
     "Context handoff": "Context handoff",
-    "Context handoff pending": "Context handoff pending"
+    "Context handoff pending": "Context handoff pending",
+    "Copy image": "Copy image",
+    "Copy message": "Copy message",
+    "Copied!": "Copied!",
+    "Copy failed": "Copy failed"
   }
 }

@@ -33,6 +33,8 @@ the official desktop GUI open when the server runs independently.
   continuation, prompt history and undo. Switching chats keeps your draft.
 - **Attachments and previews:** file picker, drag and drop, clipboard images,
   clickable thumbnails, and text/image/HTML previews inside the panel.
+  Copy original message text/Markdown or image pixels from thumbnails and the
+  enlarged viewer, with localized success/error feedback.
 - **Native thread actions:** pin, rename, mark unread, settle, snooze, archive and
   delete, with environment capability checks and confirmation where required.
 - **Pull requests:** browse PRs, descriptions, checks, conversation and diffs in
@@ -231,6 +233,8 @@ tools/test-qml sidebar-pr
 tools/test-qml dpi-lifecycle
 tools/test-qml panel-reopen
 tools/test-qml context-divider
+tools/test-qml copy-actions
+node tools/test-copy.cjs
 tools/test-qml upward-scroll
 
 # Requires the optional Qt HTML frontend:
@@ -263,3 +267,6 @@ Interface behavior and bundled T3 marks follow
 Provider names and marks belong to their respective owners.
 
 Plugin source is available under the [MIT License](LICENSE).
+
+See [the chat interaction parity audit](docs/FEATURE_PARITY.md) for verified
+differences from the original client and remaining work.

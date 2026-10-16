@@ -303,7 +303,7 @@ Item {
         ColumnLayout {
           objectName:"t3ImageContents"
           anchors.fill:parent
-          RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:imagePopup.attachment.name || "";color:root.fg;elide:Text.ElideMiddle;font.pixelSize:Style.font.body;textFormat:Text.PlainText}T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:imagePopup.close()}}
+          RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:imagePopup.attachment.name || "";color:root.fg;elide:Text.ElideMiddle;font.pixelSize:Style.font.body;textFormat:Text.PlainText}T3CopyButton{objectName:"copyFullImage";bridge:root.bridge;attachment:imagePopup.attachment}T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:imagePopup.close()}}
           Image{objectName:"t3FullImage";Layout.fillWidth:true;Layout.fillHeight:true;source:imagePopup.visible?imagePopup.imageState.url || "":"";asynchronous:true;cache:false;sourceSize:Qt.size(1920,1080);fillMode:Image.PreserveAspectFit}
           WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:!!imagePopup.imageState.loading;active:visible&&imagePopup.visible}
           Text{Layout.fillWidth:true;visible:!!imagePopup.imageState.error;text:T3I18n.error(imagePopup.imageState.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
@@ -835,6 +835,11 @@ Item {
                           onClicked:root.bridge.openReference("",modelData)
                         }
                       }
+                    }
+                    Row {
+                      visible:(modelData.role==="user"||modelData.role==="assistant")&&!!modelData.text&&modelData.streaming!==true
+                      anchors.right:parent.right;spacing:Style.space(4)
+                      T3CopyButton{objectName:"copyChatMessage";bridge:root.bridge;copyText:message.modelData.text || ""}
                     }
                     T3ContextDivider{visible:modelData.role==="context";width:parent.width;boundary:modelData.context || {};catalog:root.bridge.catalog;active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     T3ActivityBlock{visible:modelData.role==="activity";bridge:root.bridge;activity:modelData.activity || {};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
