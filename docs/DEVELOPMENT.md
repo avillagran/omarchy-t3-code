@@ -130,6 +130,15 @@ environment is changed. General also exposes nullable inactivity days for
 auto-settle and automatic resume after rate limits.
 Connection management remains owned by T3's catalog.
 
+Preferences temporarily replace the chat sidebar with their own category
+navigation, then restore the original chat layout on return. Sections follow
+T3's grouped cards with muted headings and divided rows; switches and inputs use
+Omarchy colors. The centered content column adapts to narrow windows. Search
+filters the supported native setting fields across categories (translated labels
+and English source labels). Hidden sections unload their content. The design
+check renders real QML screenshots to `/tmp/t3-preferences-*.png` and explicitly
+sets the narrow content viewport so compositor tiling cannot mask layout bugs.
+
 ## Everyday use
 
 - **Super+Shift+A** opens Omarchy T3 Code as the default agent.
@@ -248,6 +257,7 @@ tools/test-qml panel-reopen
 tools/test-qml window-mode
 tools/test-qml preferences
 tools/test-qml preferences-source-control
+tools/test-qml preferences-design
 node tools/test-remote-bootstrap.cjs
 tools/test-qml context-divider
 tools/test-qml copy-actions

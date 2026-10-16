@@ -28,7 +28,10 @@ Appearance controls existing panel preferences and inherits the Omarchy theme.
 Connections show inherited status; Providers expose status and native model
 favorites. Source Control ports branch naming, worktree defaults, merge method,
 writing style/templates and review-guide preferences. General includes optional
-inactivity days and automatic resume after rate limits. Text edits save explicitly
+inactivity days and automatic resume after rate limits. Preferences use dedicated
+sidebar navigation, grouped cards, compact themed controls and a responsive
+content column. Search covers the supported native settings across categories.
+Text edits save explicitly
 and remain staged on failure. Settings target the selected environment through native RPC. This is
 a partial port: connection editing, provider credential/configuration editing,
 editable keybindings, source-control host credentials and writer/review model

@@ -320,6 +320,12 @@
     "Recursive": "Recursive",
     "Top level": "Top level",
     "Auto-settle after inactivity (days)": "Auto-settle after inactivity (days)",
-    "Source control": "Source control"
+    "Source control": "Source control",
+    "Updates": "Updates",
+    "Threads": "Threads",
+    "Worktrees": "Worktrees",
+    "Search settings": "Search settings",
+    "No settings found": "No settings found",
+    "Language": "Language"
   }
 }

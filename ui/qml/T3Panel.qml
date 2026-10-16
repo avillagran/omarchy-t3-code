@@ -385,7 +385,7 @@ Item {
         background:Rectangle {color:Color.popups.background;border.color:root.divider;border.width:1;radius:Style.space(10)}
         contentItem:Text {text:root.shortcutHelp();color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
       }
-      Keys.onEscapePressed: {if(root.composerExpanded)root.expandComposer();else root.close()}
+      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.composerExpanded)root.expandComposer();else root.close()}
       T3SidebarActions { id: sidebarActions; bridge: root.bridge; projects: root.bridge.state.projects || [] }
       Controls.Popup {
         id: filterMenu
@@ -426,7 +426,7 @@ Item {
       Rectangle {
         id: sidebar
         Layout.preferredWidth: Math.min(Style.space(root.sidebarWidth),Math.max(Style.space(260),panelLayout.width-Style.space(420))); Layout.fillHeight: true
-        visible: !root.sidebarCollapsed && !root.composerExpanded
+        visible: !root.preferencesOpen && !root.sidebarCollapsed && !root.composerExpanded
         color: Qt.darker(Color.popups.background, 1.10)
         ColumnLayout {
           anchors.fill: parent; spacing: 0
@@ -669,7 +669,7 @@ Item {
       Item {
         id:sidebarResizer
         Layout.fillHeight:true;Layout.preferredWidth:Style.space(6)
-        visible:!root.sidebarCollapsed && !root.composerExpanded
+        visible:!root.preferencesOpen && !root.sidebarCollapsed && !root.composerExpanded
         activeFocusOnTab:true
         Accessible.role:Accessible.Slider
         Accessible.name:T3I18n.tr("Sidebar width")

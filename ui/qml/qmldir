@@ -43,3 +43,5 @@ T3ContextDivider 1.0 T3ContextDivider.qml
 T3CopyButton 1.0 T3CopyButton.qml
 T3Preferences 1.0 T3Preferences.qml
 T3PreferenceField 1.0 T3PreferenceField.qml
+T3Switch 1.0 T3Switch.qml
+T3PreferenceSection 1.0 T3PreferenceSection.qml
