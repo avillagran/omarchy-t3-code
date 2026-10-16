@@ -587,6 +587,14 @@ Item {
             objectName:"t3SidebarFooter"
             Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
             Text { Layout.fillWidth:true;elide:Text.ElideRight;text: root.bridge.stale ? ((root.bridge.state.environments || []).some(function(e) { return e.state === "ready" }) ? T3I18n.tr("Partially connected") : T3I18n.tr("Offline")) : T3I18n.tr("Direct connection"); color: root.bridge.stale ? Color.urgent : root.dim; font.pixelSize: Style.font.caption }
+            T3IconButton {
+              objectName:"startLocalBackend"
+              name:root.bridge.backendStart.busy?"loader-circle":"play"
+              tint:root.bridge.backendStart.error?Color.urgent:root.dim
+              tooltipText:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):T3I18n.tr(root.bridge.backendStart.busy?"Loading…":root.bridge.backendStart.status==="already-running"?"Running":"Start local backend")
+              enabled:!root.bridge.backendStart.busy
+              onClicked:root.bridge.startBackend()
+            }
             T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
             T3IconButton {name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:root.bridge.refresh()}
             T3Select {id:languagePicker;objectName:"t3LanguagePicker";Layout.preferredWidth:Math.min(languageText.width+Style.space(36),root.sidebarWidth*Style.space(0.5));popupAbove:true;model:T3I18n.languages;textRole:"name";currentIndex:Math.max(0,model.findIndex(function(l){return l.id===T3I18n.choice}));onActivated:function(index){root.bridge.rememberView({language:model[index].id})}}
@@ -640,7 +648,6 @@ Item {
             Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14)
             visible:(root.bridge.state.environments || []).some(function(e){return e.id==="local"&&e.state!=="ready"}) || !!root.bridge.backendStart.error
             Text{Layout.fillWidth:true;text:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):T3I18n.tr("Local backend is offline");color:root.bridge.backendStart.error?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-            T3IconButton{objectName:"startLocalBackend";name:"play";tooltipText:T3I18n.tr("Start local backend");enabled:!root.bridge.backendStart.busy;onClicked:root.bridge.startBackend()}
           }
           Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
           QuotaStrip {

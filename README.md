@@ -113,10 +113,12 @@ T3 Connect/relay authorization follows the account and environment permissions
 already granted in T3.
 
 **Closing the official GUI only saves resources safely if its server is running
-independently.** A desktop-owned server stops with that desktop app. The panel's
-backend-start action can request T3's native user service after the server stops;
-it does not automatically migrate an active desktop session or start a competing
-server over the same data directory.
+independently.** A desktop-owned server stops with that desktop app. The play
+button beside **Direct connection** in the sidebar footer can request
+T3's native headless user service after the server stops;
+it installs the native service on first use and starts an existing matching
+service thereafter. It does not automatically migrate an active desktop session
+or start a competing server over the same data directory.
 
 ## Everyday use
 
