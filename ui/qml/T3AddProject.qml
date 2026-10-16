@@ -4,6 +4,7 @@ import QtQuick.Controls as Controls
 import qs.Commons
 Controls.Popup {
  id:root
+ objectName:"t3AddProjectDialog"
  required property var bridge
  property int step:0
  property string environment:""
@@ -14,7 +15,7 @@ Controls.Popup {
  readonly property color muted:Qt.rgba(fg.r,fg.g,fg.b,0.6)
  parent:Controls.Overlay.overlay;anchors.centerIn:parent
  width:Math.min(Style.space(620),parent?parent.width-Style.space(32):Style.space(620))
- padding:Style.space(16);modal:true
+ padding:Style.space(16);modal:true;focus:true
  background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.18)}
  function begin(){
   if(bridge.managementRequest&&bridge.managementRequest.action==="add-project"){
