@@ -311,11 +311,11 @@ fn watch(client: Client) -> Result<()> {
                     std::thread::spawn(move||{let result=write::execute(&cmd);let _=service_tx.send(json!({"op":"action_result","input":cmd,"result":result.as_ref().ok(),"error":result.as_ref().err()}));});
                 }
             }
-            "pull-requests" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" => { let _ = action_tx.send(cmd); }
+            "history" | "pull-requests" | "approval" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" => { let _ = action_tx.send(cmd); }
             "action_result" => {
                 if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"){service_starting=false;}
                 emit("action",json!({"op":cmd["input"]["op"],"environment":cmd["input"]["environment"],"thread":cmd["input"]["thread"],"requestId":cmd["input"]["requestId"],"result":cmd["result"],"error":cmd["error"]}));
-                if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control") || cmd["input"]["op"]=="question" || cmd["input"]["op"]=="queue" || cmd["input"]["op"]=="send" || cmd["input"]["op"]=="stop" || cmd["input"]["op"]=="manage" { message_cache=None; next_poll=Instant::now(); }
+                if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"|"approval"|"question"|"queue"|"send"|"stop"|"manage") { message_cache=None; next_poll=Instant::now(); }
             }
             "quit" => return Ok(()),
             "refresh" => { refresh_connections(); next_poll = Instant::now(); },

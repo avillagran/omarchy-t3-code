@@ -1,8 +1,80 @@
-# Chat interaction parity audit
+# UI and chat parity audit
 
 Compared on 2026-10-16 with the local T3 Code nightly checkout at `5a4e9980`.
-This is a source-backed review of message, Markdown and media interactions, with
-one adjacent PR workflow. It is not a claim of whole-application parity.
+Plugin baseline: `213ff5b`. This is a source-backed review, expanded to the
+composer, transcript, workspace controls and preferences. It does not establish
+runtime or pixel-level parity. No live conversations or native settings were
+modified during this audit. The reference is the local nightly checkout, not a
+freshly downloaded upstream version.
+
+## Recommended implementation order
+
+1. Approval requests, older history and in-conversation search: implemented in
+   the operational update below; retain their regression checks.
+2. Tool inspection, per-file diffs and Plan/Default controls: complete the core
+   coding conversation rather than only its status presentation.
+3. Code/table/media actions and structured composer context.
+4. Workspace, terminal, relationships, PR mutations and remaining preferences.
+
+Keep large payloads and expensive renderers on demand. History needs bounded
+pagination with a stable visible-message anchor, not an unbounded transcript.
+Tool inspection needs a separate fetch path: the compact shared activity summary
+deliberately excludes raw inputs/outputs and must not become an eager payload dump.
+
+## Operational update: approvals, history and find
+
+- Native approvals for commands, file reads/changes, permissions and app access,
+  with provider labels/warnings, primary decisions and secondary choices. Dead
+  provider requests and read-only connections cannot submit. The Rust host checks
+  current pending state/options before the first dispatch, persists the command
+  and replays exactly that ID/payload on explicit retry. Decisions survive reloads
+  separately from the prompt. No automatic approval is introduced.
+- “Load earlier messages” uses the native authenticated history endpoint and
+  opaque cursor. Pages are fetched only on request, merged with live messages
+  without duplicate IDs and released when switching chats. The visible message
+  remains anchored after prepend. Historical pages never replace live approval,
+  queue or provider state. Images and Markdown remain available in loaded pages.
+- In-chat find: Ctrl+F or the header search icon; Enter/Shift+Enter and
+  Ctrl+G/Ctrl+Shift+G navigate, Escape closes. Ctrl+Shift+F searches threads.
+  Counts, current-message outline and selection apply to loaded message text;
+  older pages must be loaded before searching them. Formatted assistant text is
+  indexed without Markdown delimiters or hidden link destinations. This is not
+  yet server-wide search or simultaneous highlighting of every occurrence.
+- Portable approval and history helpers live in `crates/t3-protocol` for Omi.
+  The desktop still owns durable storage and transport scheduling.
+
+Verified with isolated native HTTP/RPC integration tests, approval persistence
+checks, QML click/navigation tests, history overlap/live-retention/viewport tests,
+upward-scroll and send-follow regressions. No real user approval was accepted
+as a test. Read-only history requests also succeeded against the real local
+headless server and the inherited NODE connection. After deployment, both
+environments remained ready, the local live subscription reconnected, and the
+selected chat, detached window and saved draft were preserved. The T3 server
+process was not restarted. Tool inspection, per-file diff controls and chat
+modes remain next.
+
+## Additional confirmed gaps from the expanded review
+
+Native paths below are relative to `apps/web/src/` in the reference checkout.
+“Partial” means an existing feature needs additional behavior, not a replacement.
+
+| Priority | Area | Missing or partial behavior | Native evidence / plugin evidence |
+| --- | --- | --- | --- |
+| High | Tool details | Activity labels and expandable summary lists exist. Missing the original item inspector, fetched tool output and detailed reasoning/tool presentation. | `components/chat/MessagesTimeline.tsx` (`V2ItemInspector`, `FetchedToolOutput`); `ui/qml/T3ActivityBlock.qml`, `crates/t3-protocol/src/activity.rs`, `projection.rs`. |
+| High | Diffs | Changed-file summary and a colored unified diff modal exist. File rows themselves are not actionable; missing the native per-file diff panel, file navigation and richer diff controls. | `components/DiffPanel.tsx`, `components/chat/MessagesTimeline.tsx::onOpenTurnDiff`; `ui/qml/T3Changes.qml`, `T3Panel.qml::diffPopup`. |
+| High | Chat modes | Model/options work, but runtime permissions are a read-only label. No native Plan/Default mode switch or plan-ready follow-up workflow. Provider slash-command suggestions are not equivalent to dispatching built-in chat-mode actions. | `composer-logic.ts::ComposerSlashCommand`, `components/chat/ComposerPlanFollowUpBanner.tsx`, `ChatView.tsx`; `ui/qml/T3Composer.qml`, `crates/t3-protocol/src/composer.rs` implements only built-in `/model`; new threads hardcode `interactionMode: default` in `src/write.rs`. |
+| Medium | Composer references | File/folder and skill lookup exist. Missing thread/PR suggestion kinds, rich context chips, assistant-selection citations and structured T3 clipboard contexts. The editor currently inserts textual Markdown references. | `components/chat/ComposerCommandMenu.tsx`, `ComposerPromptEditorTiptap.tsx`, `chat/AssistantSelectionToolbar.tsx`; `src/suggestions.rs` allows only path/skill/command, `ui/qml/T3Composer.qml`. |
+| Medium | Prompt stash | Durable draft and prompt history exist, but there is no multi-entry stash menu to save/restore/delete independent prompts and their attachments. This is separate from queued messages. | `components/chat/ComposerStashMenu.tsx`, `ComposerStashBadge.tsx`; `ui/qml/T3Composer.qml`, `T3Backend.qml`. |
+| Medium | Workspace controls | Missing full branch/worktree picker, Git action controls, project-script runner/editor and editor picker inside the chat details UI. “New thread on this branch” already exists and should be preserved. | `components/chat/ThreadDetailsPanel.tsx`, `components/BranchToolbar.tsx`, `GitActionsControl.tsx`, `ProjectScriptsControl.tsx`; `ui/qml/T3SidebarActions.qml`, `T3Panel.qml`. |
+| Medium | Terminal | No embedded terminal drawer or terminal-selection context in the prompt. Tool activity labels do not provide an interactive terminal. | `components/ThreadTerminalDrawer.tsx`, `components/chat/ComposerPendingTerminalContexts.tsx`; no equivalent QML component or terminal transport. |
+| Medium | Relationships and automations | Lineage metadata exists in the normalized sidebar data, but no full parent/fork/subagent relationship panel or thread automation editor. | `components/chat/ThreadRelationshipsControl.tsx`, `ThreadAutomationsPanel.tsx`; `src/lib.rs` preserves lineage, `ui/qml/T3Panel.qml` has no corresponding panel. |
+
+The Markdown/media/message-action gaps below remain valid. Sidebar hover actions,
+thread/project context menus, working elapsed time, shelves, minimap, queues,
+tasks, questionnaires, image copy/preview, embedded file/HTML preview, model
+favorites and preferences are already present; they are not newly missing
+features. Existing implementations still need visual/interaction regression
+checks when adjacent components change.
 
 ## Implemented in this update
 

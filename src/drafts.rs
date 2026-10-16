@@ -81,6 +81,10 @@ pub fn clean(v: &Value) -> Result<Value> {
         if questions.len()>32 || v["questionnaires"].to_string().len()>480000 {return Err("invalid_draft".into())}
         out["questionnaires"]=v["questionnaires"].clone();
     }
+    if let Some(approvals)=v["approvals"].as_object() {
+        if approvals.len()>32 || v["approvals"].to_string().len()>96000 {return Err("invalid_draft".into())}
+        out["approvals"]=v["approvals"].clone();
+    }
     if out.to_string().len() > 750000 {
         return Err("draft_too_large".into());
     }

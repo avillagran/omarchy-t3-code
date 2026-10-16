@@ -326,6 +326,21 @@
     "Worktrees": "Worktrees",
     "Search settings": "Search settings",
     "No settings found": "No settings found",
-    "Language": "Language"
+    "Language": "Language",
+    "Command approval": "Command approval",
+    "File read approval": "File read approval",
+    "File change approval": "File change approval",
+    "App permission approval": "App permission approval",
+    "App access approval": "App access approval",
+    "Approve": "Approve",
+    "Decline": "Decline",
+    "Always allow this session": "Always allow this session",
+    "More approval options": "More approval options",
+    "Provider process is gone — interrupt or restart the run to respond.": "Provider process is gone — interrupt or restart the run to respond.",
+    "Load earlier messages": "Load earlier messages",
+    "Find in conversation": "Find in conversation",
+    "No matches": "No matches",
+    "Previous match": "Previous match",
+    "Next match": "Next match"
   }
 }

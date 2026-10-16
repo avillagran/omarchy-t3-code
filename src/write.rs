@@ -12,6 +12,12 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     let config = rpc(e,"server.getConfig",json!({}))?;
     let mut result=protocol::models::catalog(&config);result["canWrite"]=json!(e.write_token_file.is_some() || e.bearer.is_some() || e.connection.is_some());Ok(result)
 }
+pub fn history(e: &Environment,input:&Value)->Result<Value>{
+    let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
+    let path=protocol::history::path(thread,text(input,"cursor"))?;
+    let page=Client::new()?.get(e,&path,true)?;
+    normalize_messages(&protocol::history::envelope(&page,thread)?)
+}
 
 pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
     let url=reqwest::Url::parse(file_url).map_err(|_| "invalid_file")?;
@@ -35,7 +41,21 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     uuid::Uuid::parse_str(id).map_err(|_| "invalid_request_id")?;
     let thread=text(input,"thread");
     if !valid_id(thread) {return Err("invalid_id".into())}
-    let mut cmd = if input["op"]=="question" {
+    let mut cmd = if input["op"]=="approval" {
+        let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
+        let expected=json!({"environment":e.id,"command":{"type":"runtime-request.respond","threadId":thread,"requestId":input["runtimeRequestId"],"decision":input["decision"],"commandId":format!("omarchy-{id}")}});
+        if path.exists() {
+            // A lost acknowledgement may already have resolved the request. Replay
+            // only the identical durable command, letting T3 deduplicate its ID.
+            if read_json(&path)?!=expected {return Err("retry_payload_changed".into())}
+            expected["command"].clone()
+        } else {
+            let mut url=reqwest::Url::parse(&e.base_url).map_err(|_|"invalid_endpoint")?;
+            url.path_segments_mut().map_err(|_|"invalid_endpoint")?.extend(["api","orchestration","threads",thread,"bounded"]);
+            let snapshot=Client::new()?.get(e,url.path(),true)?;
+            protocol::approvals::command(input,&snapshot["projection"])?
+        }
+    } else if input["op"]=="question" {
         protocol::questions::command(input)?
     } else if input["op"]=="queue" {
         protocol::queue::command(input)?
@@ -118,13 +138,14 @@ pub fn execute(input:&Value) -> Result<Value> {
         "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{rpc(&e,&tag,payload)}},
         "settings"=>{if input["action"]=="update"{rpc(&e,"server.updateSettings",protocol::settings::patch(input)?)?;}else if input["action"]!="read"{return Err("invalid_settings".into())}rpc(&e,"server.getSettings",json!({})).map(|v|protocol::settings::snapshot(&v))},
         "catalog"=>catalog(&e),
+        "history"=>history(&e,input),
         "model-favorite"=>{let desired=input["favorite"].as_bool().ok_or("invalid_model")?;let current=rpc(&e,"server.getSettings",json!({}))?;if !current["favorites"].is_array(){return Err("model_preferences_uninitialized".into())}rpc(&e,"server.updateSettings",protocol::models::favorite_payload(text(input,"provider"),text(input,"model"),desired)?).map(|v|protocol::models::preferences(&v))},
         "suggest"=>suggestions::query(&e,input),
         "diff"=>{let from=input["fromTurnCount"].as_u64().ok_or("invalid_range")?;let to=input["toTurnCount"].as_u64().filter(|n|*n>=from).ok_or("invalid_range")?;let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}if from==0{rpc(&e,"orchestration.getFullThreadDiff",json!({"threadId":thread,"toTurnCount":to}))}else{rpc(&e,"orchestration.getTurnDiff",json!({"threadId":thread,"fromTurnCount":from,"toTurnCount":to}))}},
         "manage"=>manage(&e,input),
         "upload"=>upload(&e,text(input,"url")),
         "delete-upload"=>rpc(&e,"attachments.delete",json!({"attachmentId":input["attachmentId"]})),
-        "question"|"send"|"stop"|"queue"=>dispatch(&e,input),
+        "approval"|"question"|"send"|"stop"|"queue"=>dispatch(&e,input),
         _=>Err("invalid_command".into())
     }
 }

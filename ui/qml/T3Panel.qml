@@ -23,6 +23,32 @@ Item {
   function selectSidebarThread(env,id){pullRequestsOpen=false;bridge.selectThread(env,id)}
   property bool initialized: false
   readonly property var conversationView: conversation
+  property bool findOpen:false
+  property string findQuery:""
+  property int findIndex:-1
+  readonly property var findMatches:{
+    var q=findQuery.toLocaleLowerCase(),matches=[]
+    if(!q)return matches
+    bridge.transcript.forEach(function(r){if(r.role!=="user"&&r.role!=="assistant")return;var text=(r.searchText!==undefined?r.searchText:r.text || "").toLocaleLowerCase(),start=0,ordinal=0;while((start=text.indexOf(q,start))>=0){matches.push({id:r.id,ordinal:ordinal++});start+=q.length}})
+    return matches
+  }
+  onFindQueryChanged:{findIndex=-1;findDebounce.restart()}
+  function openFind(){findOpen=true;if(composerExpanded)expandComposer(false);Qt.callLater(function(){chatFindInput.forceActiveFocus();chatFindInput.selectAll()})}
+  function navigateFind(step){
+    if(!findMatches.length){findIndex=-1;return}
+    findIndex=(findIndex+step+findMatches.length)%findMatches.length
+    var match=findMatches[findIndex];jumpTimelineItem(match);findSelection.restart()
+  }
+  Timer{id:findDebounce;interval:140;onTriggered:if(root.findOpen)root.navigateFind(1)}
+  Timer{id:findSelection;interval:90;onTriggered:{
+    var m=root.findMatches[root.findIndex];if(!root.findOpen||!m)return
+    if(root.restoringConversation){restart();return}
+    var i=root.bridge.transcript.findIndex(function(r){return r.id===m.id}),item=conversation.itemAtIndex(i)
+    if(!item||!item.textItem)return
+    var edit=item.textItem,text=edit.getText(0,edit.length).toLocaleLowerCase(),q=root.findQuery.toLocaleLowerCase(),pos=-1
+    for(var n=0;n<=m.ordinal;n++){pos=text.indexOf(q,pos+1);if(pos<0)return}
+    edit.select(pos,pos+q.length)
+  }}
   readonly property var composerView: composerPanel
   readonly property var searchInput: searchField
   readonly property var sidebarView: threads
@@ -244,7 +270,7 @@ Item {
     return mins < 1 ? T3I18n.tr("now") : mins < 60 ? mins + "m" : mins < 1440 ? Math.floor(mins / 60) + "h" : Math.floor(mins / 1440) + "d"
   }
   function shortcutHelp(){
-    var shortcuts=[["Tab / Shift+Tab","Navigate controls"],["Ctrl+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Super+B","Chat list"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Super+E","Expand / return to chat"],["Super+PgUp / Super+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+S","Save draft"],["Super+Enter","Send"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Ctrl+Alt+Arrows","Resize"],["Esc","Return / close"]]
+    var shortcuts=[["Tab / Shift+Tab","Navigate controls"],["Ctrl+F","Find in conversation"],["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Super+B","Chat list"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Super+E","Expand / return to chat"],["Super+PgUp / Super+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+S","Save draft"],["Super+Enter","Send"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Ctrl+Alt+Arrows","Resize"],["Esc","Return / close"]]
     return shortcuts.map(function(p){return T3I18n.tr("{shortcut} · {action}",{shortcut:p[0],action:T3I18n.tr(p[1])})}).join("\n")
   }
   function providerIcon(provider) {
@@ -310,7 +336,10 @@ Item {
       LayoutMirroring.enabled:T3I18n.rtl;LayoutMirroring.childrenInherit:true
       anchors.fill: parent; spacing: 0
       Shortcut { sequence:"Meta+B";enabled:root.opened;onActivated:root.toggleSidebar() }
-      Shortcut { sequence:"Ctrl+F";enabled:root.opened;onActivated:{if(root.composerExpanded)root.expandComposer(false);if(root.sidebarCollapsed)root.toggleSidebar(false);searchField.forceActiveFocus();searchField.selectAll()} }
+      Shortcut { sequence:"Ctrl+F";enabled:root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen;onActivated:root.openFind() }
+      Shortcut { sequence:"Ctrl+Shift+F";enabled:root.opened;onActivated:{if(root.composerExpanded)root.expandComposer(false);if(root.sidebarCollapsed)root.toggleSidebar(false);searchField.forceActiveFocus();searchField.selectAll()} }
+      Shortcut { sequence:"Ctrl+G";enabled:root.opened&&root.findOpen;onActivated:root.navigateFind(1) }
+      Shortcut { sequence:"Ctrl+Shift+G";enabled:root.opened&&root.findOpen;onActivated:root.navigateFind(-1) }
       Shortcut { sequence:"Ctrl+K";enabled:root.opened;onActivated:root.focusSidebar() }
       Shortcut { sequence:"Ctrl+L";enabled:root.opened;onActivated:composerPanel.inputField.forceActiveFocus() }
       Shortcut { sequence:"Meta+E";enabled:root.opened && !!root.bridge.selectedThread;onActivated:root.expandComposer() }
@@ -385,7 +414,7 @@ Item {
         background:Rectangle {color:Color.popups.background;border.color:root.divider;border.width:1;radius:Style.space(10)}
         contentItem:Text {text:root.shortcutHelp();color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
       }
-      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.composerExpanded)root.expandComposer();else root.close()}
+      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
       T3SidebarActions { id: sidebarActions; bridge: root.bridge; projects: root.bridge.state.projects || [] }
       Controls.Popup {
         id: filterMenu
@@ -707,6 +736,7 @@ Item {
             T3IconButton { name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
             T3IconButton { name: "x"; tooltipText: T3I18n.tr("Close"); onClicked: root.close() }
             T3IconButton{name:"shrink";tooltipText:T3I18n.tr("Automatic compaction");onClicked:compactionSettings.open()}
+            T3IconButton{objectName:"t3FindInChat";name:"search";tooltipText:T3I18n.tr("Find in conversation");enabled:!!root.bridge.selectedThread;onClicked:root.openFind()}
             Controls.Button {text:"?";implicitWidth:Style.space(28);Accessible.name:T3I18n.tr("Keyboard shortcuts");onClicked:keyHelp.open()}
           }
           RowLayout{
@@ -715,6 +745,19 @@ Item {
             Text{Layout.fillWidth:true;text:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):T3I18n.tr("Local backend is offline");color:root.bridge.backendStart.error?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
           }
           Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
+          RowLayout {
+            visible:root.findOpen;Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14);Layout.topMargin:visible?Style.space(6):0;Layout.bottomMargin:visible?Style.space(6):0
+            Controls.TextField {
+              id:chatFindInput;objectName:"t3ChatFindInput";Layout.fillWidth:true;text:root.findQuery;placeholderText:T3I18n.tr("Find in conversation")
+              onTextEdited:root.findQuery=text
+              Keys.onReturnPressed:function(event){root.navigateFind(event.modifiers&Qt.ShiftModifier?-1:1);event.accepted=true}
+              Keys.onEscapePressed:function(event){root.findOpen=false;root.findQuery="";event.accepted=true}
+            }
+            Text{text:root.findMatches.length?((root.findIndex+1)+"/"+root.findMatches.length):T3I18n.tr("No matches");color:root.dim;font.pixelSize:Style.font.caption}
+            T3IconButton{objectName:"t3ChatFindPrevious";name:"chevron-up";tooltipText:T3I18n.tr("Previous match");enabled:!!root.findMatches.length;onClicked:root.navigateFind(-1)}
+            T3IconButton{objectName:"t3ChatFindNext";name:"chevron-down";tooltipText:T3I18n.tr("Next match");enabled:!!root.findMatches.length;onClicked:root.navigateFind(1)}
+            T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:{root.findOpen=false;root.findQuery=""}}
+          }
           QuotaStrip {
             id:usage
             objectName:"t3HeaderUsage"
@@ -737,6 +780,18 @@ Item {
             }
             ListView {
               id: conversation
+              header:Column {
+                width:conversation.width
+                visible:!!root.bridge.hasEarlier || !!(root.bridge.historyOperation || {}).error
+                height:visible?implicitHeight:0
+                Controls.Button {
+                  objectName:"t3LoadEarlier";anchors.horizontalCenter:parent.horizontalCenter
+                  text:(root.bridge.historyOperation || {}).busy?T3I18n.tr("Loading…"):T3I18n.tr("Load earlier messages")
+                  enabled:!(root.bridge.historyOperation || {}).busy
+                  onClicked:{conversation.stopWheel();root.detachConversation();root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey);var p=root.bridge.sessionPositions[root.bridge.selectedKey];if(p)root.bridge.rememberPosition(root.bridge.selectedKey,Object.assign({},p,{atEnd:false}));root.bridge.loadEarlier()}
+                }
+                Text{width:parent.width;visible:!!text;text:T3I18n.error((root.bridge.historyOperation || {}).error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+              }
               activeFocusOnTab: true
               Keys.onPressed: function(event) {
                 if([Qt.Key_PageUp,Qt.Key_PageDown,Qt.Key_Home,Qt.Key_End].indexOf(event.key)<0)return
@@ -801,6 +856,7 @@ Item {
                 id: message
                 required property var row
                 readonly property var modelData: row
+                readonly property var textItem:messageText
                 property bool pooled:false
                 ListView.onPooled:{pooled=true;opacity=1}
                 ListView.onReused:{pooled=false;opacity=1}
@@ -814,6 +870,8 @@ Item {
                   height: parent.height
                   radius: Style.space(16)
                   color: message.userMessage ? root.surface : "transparent"
+                  border.width:root.findOpen&&root.findMatches[root.findIndex]&&root.findMatches[root.findIndex].id===message.modelData.id?1:0
+                  border.color:Color.accent
                   Column {
                     id: body
                   anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(message.userMessage ? 16 : 0) }
@@ -888,7 +946,7 @@ Item {
               Connections {
                 target: root.bridge
                 function onMessageSubmitted(key) { root.followSubmittedMessage(key) }
-                function onThreadWillChange() { root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
+                function onThreadWillChange() { root.findOpen=false;root.findQuery="";root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
                 function onSnapshotAboutToChange() {
                   if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")
                   if (!root.restoringSettled) root.capturePosition(settledThreads,root.visibleSettledRows,"@settled")
@@ -954,6 +1012,10 @@ Item {
           T3Tasks{
             objectName:"t3TasksControl"
             Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(5)
+            bridge:root.bridge
+          }
+          T3Approvals {
+            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(8)
             bridge:root.bridge
           }
           T3Questions {
