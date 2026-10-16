@@ -32,6 +32,7 @@ T3ThreadRow 1.0 T3ThreadRow.qml
 T3CompactionSettings 1.0 T3CompactionSettings.qml
 
 T3Questions 1.0 T3Questions.qml
+T3Approvals 1.0 T3Approvals.qml
 
 T3PullRequests 1.0 T3PullRequests.qml
 T3FileReference 1.0 T3FileReference.qml

@@ -87,6 +87,18 @@ pub fn rendered_markdown(input: &str) -> String {
     html::push_html(&mut out, events);
     out
 }
+pub fn markdown_search_text(input:&str)->String{
+    use pulldown_cmark::{Event,Options,Parser,TagEnd};
+    let mut out=String::new();
+    for event in Parser::new_ext(input,Options::ENABLE_TABLES|Options::ENABLE_STRIKETHROUGH){
+        match event{
+            Event::Text(s)|Event::Code(s)|Event::Html(s)|Event::InlineHtml(s)=>out.push_str(&s),
+            Event::SoftBreak|Event::HardBreak|Event::End(TagEnd::Paragraph|TagEnd::Heading(_)|TagEnd::CodeBlock|TagEnd::Item|TagEnd::TableCell|TagEnd::TableRow)=>out.push('\n'),
+            _=>{}
+        }
+    }
+    out
+}
 pub fn file_references(input:&str)->Vec<Value>{
  use pulldown_cmark::{Event,Parser,Tag};
  let mut paths=HashSet::new();
@@ -321,7 +333,7 @@ impl Client {
         normalize_messages(&d)
     }
 }
-pub type RenderCache=HashMap<String,(String,String,String)>;
+pub type RenderCache=HashMap<String,(String,String,String,String)>;
 pub fn normalize_messages(d:&Value)->Result<Value>{normalize_messages_cached(d,&mut RenderCache::new())}
 pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>{
         let rows = d["projection"]["messages"].as_array().ok_or("malformed")?;
@@ -334,15 +346,15 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
                 return Err("malformed".into());
             }
             let raw=text(m,"text");let id=text(m,"id").to_string();
-            if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let rendered=rendered_markdown(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered));}
-            let (_,display,rendered)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"streaming":m["streaming"]==true,"text":display,"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"createdAt":epoch(&m["createdAt"])}));
+            if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let rendered=rendered_markdown(&display);let search=markdown_search_text(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search));}
+            let (_,display,rendered,search)=&cache[&id];
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"createdAt":epoch(&m["createdAt"])}));
         }
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");
         let started=p["runs"].as_array().into_iter().flatten().find(|r|text(r,"id")==active).map(|r|epoch(&r["startedAt"]).max(epoch(&r["createdAt"]))).unwrap_or(0);
         Ok(
-            json!({"threadState":{"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status},"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}),
+            json!({"threadState":{"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status},"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}),
         )
 }
 

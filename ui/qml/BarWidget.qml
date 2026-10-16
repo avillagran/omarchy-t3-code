@@ -52,6 +52,8 @@ BarWidget {
         language:T3I18n.locale, languageChoice:T3I18n.choice, statusCounts:root.counts,pending: t3Backend.state.pending, stale: t3Backend.stale,
         threads: t3Backend.state.threads.length, messages: t3Backend.transcript.length,
         messageError: t3Backend.messageError, loadingMessages: t3Backend.loadingMessages,
+        pendingApprovals:t3Backend.approvals.length,
+        history:{hasEarlier:t3Backend.hasEarlier,loadedRows:t3Backend.olderTranscript.length,busy:!!t3Backend.historyOperation.busy,error:t3Backend.historyOperation.error || ""},
         settled: t3Backend.state.threads.filter(function(t) { return !!t.settled }).length,
         filter: panelLoader.item ? panelLoader.item.statusFilter : "all",
         sidebarGrouping:panelLoader.item?({enabled:panelLoader.item.sidebarCompact,inbox:panelLoader.item.activeRows.length,working:panelLoader.item.workingRows.length,snoozed:panelLoader.item.snoozedRows.length,settled:panelLoader.item.settledRows.length}):({enabled:!!t3Backend.viewState.sidebarCompact}),

@@ -25,6 +25,8 @@ pub mod changes;
 pub mod composer;
 pub mod queue;
 pub mod questions;
+pub mod approvals;
+pub mod history;
 pub mod pull_requests;
 pub mod documents;
 pub mod projects;

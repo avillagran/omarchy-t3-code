@@ -117,6 +117,42 @@ Singleton {
     suggestionRequest=uuid();suggestionItems=[];suggestionsError="";suggestionsLoading=true
     send({op:"suggest",environment:selectedEnvironment,thread:selectedThread,requestId:suggestionRequest,kind:kind,query:query,instanceId:instance || ""})
   }
+  property var approvals:[]
+  property var recentTranscript:[]
+  property var olderTranscript:[]
+  property string historyCursor:""
+  property bool hasEarlier:false
+  property bool historyExpanded:false
+  property var historyOperation:({busy:false,error:""})
+  function mergeTranscript(){
+    var current={};recentTranscript.forEach(function(r){current[r.id]=true})
+    transcript=olderTranscript.filter(function(r){return !current[r.id]}).concat(recentTranscript)
+  }
+  function resetHistory(){recentTranscript=[];olderTranscript=[];historyCursor="";hasEarlier=false;historyExpanded=false;historyOperation=({busy:false,error:""})}
+  function loadEarlier(){
+    if(historyOperation.busy || !hasEarlier || !historyCursor || !selectedThread)return
+    var id=uuid();historyOperation={busy:true,error:"",requestId:id,key:selectedKey,serial:requestedSerial,cursor:historyCursor}
+    send({op:"history",environment:selectedEnvironment,thread:selectedThread,requestId:id,cursor:historyCursor})
+  }
+  property var approvalOperations:({})
+  readonly property var activeApproval:approvals.length?approvals[0]:null
+  readonly property var approvalState:activeApproval?((draft.approvals || {})[activeApproval.requestId] || {}):({})
+  function updateApproval(key,id,values){
+    var d=drafts[key];if(!d || d.loading || d.loadError)return
+    var all=Object.assign({},d.approvals || {});all[id]=Object.assign({},all[id] || {},values)
+    var keep=Object.keys(all);while(keep.length>32)delete all[keep.shift()]
+    patchDraft(key,{approvals:all},false)
+  }
+  function respondApproval(decision){
+    if(!activeApproval || activeApproval.responseCapability!=="live" || draft.loading || draft.loadError || !catalog.canWrite)return
+    var key=selectedKey+"/"+activeApproval.requestId,op=approvalOperations[key] || {}
+    if(op.busy || op.answered || approvalState.responseStatus==="accepted")return
+    if(!approvalState.attempt && !activeApproval.options.some(function(o){return o.decision===decision}))return
+    var attempt=approvalState.attempt || {op:"approval",environment:selectedEnvironment,thread:selectedThread,runtimeRequestId:activeApproval.requestId,decision:decision,requestId:uuid()}
+    updateApproval(selectedKey,activeApproval.requestId,{attempt:attempt})
+    var all=Object.assign({},approvalOperations);all[key]={busy:true,error:"",requestId:attempt.requestId};approvalOperations=all
+    flushDraft(selectedKey,attempt)
+  }
   property var questions:[]
   property var questionOperations:({})
   readonly property var activeQuestion:questions.length?questions[0]:null
@@ -225,7 +261,7 @@ Singleton {
     var previous=drafts[key]
     if(historyKind!==false && previous && !previous.loading && !previous.loadError && ((values.text!==undefined&&values.text!==previous.text)||(values.attachments!==undefined&&JSON.stringify(values.attachments)!==JSON.stringify(previous.attachments))))saveUndo(key,previous,all[key],historyKind)
     drafts = all
-    if (!all[key].loading && !all[key].loadError && ["text","attachments","modelSelection","delivery","attempt","queueEdit","questionnaires"].some(function(k){return values[k] !== undefined})) {
+    if (!all[key].loading && !all[key].loadError && ["text","attachments","modelSelection","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
       var dirty=Object.assign({},dirtyDrafts);dirty[key]=true;dirtyDrafts=dirty;saveDrafts.restart()
       var updated=Object.assign({},drafts);updated[key]=Object.assign({},updated[key],{saveState:"saving",saveRevision:""});drafts=updated
     }
@@ -289,9 +325,10 @@ Singleton {
     send({op: "stop", environment: selectedEnvironment, thread: selectedThread, requestId: uuid(), runId: selectedInfo.activeRunId})
   }
   function connectionLost() {
-    liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
+    historyOperation=Object.assign({},historyOperation,{busy:false,error:historyOperation.busy?"rpc_outcome_unknown":historyOperation.error});liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
     var operations=Object.assign({},queueOperations);Object.keys(operations).forEach(function(key){var o=operations[key];if(o.busy)operations[key]=Object.assign({},o,{busy:false,error:"rpc_outcome_unknown"})});queueOperations=operations
     var operations=Object.assign({},questionOperations);Object.keys(operations).forEach(function(k){if(operations[k].busy)operations[k]={busy:false,error:"rpc_outcome_unknown",requestId:operations[k].requestId}});questionOperations=operations
+    var operations=Object.assign({},approvalOperations);Object.keys(operations).forEach(function(k){if(operations[k].busy)operations[k]=Object.assign({},operations[k],{busy:false,error:"rpc_outcome_unknown"})});approvalOperations=operations
     pendingSends=({}); clipboardRequests=({})
     if (managementBusy) { managementBusy = false; managementError = "rpc_outcome_unknown" }
     Object.keys(drafts).forEach(function(key) {
@@ -329,6 +366,23 @@ Singleton {
   property var diffView: ({loading:false,text:"",error:"",requestId:""})
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
+    if(data.op==="history"){
+      var op=historyOperation
+      if(data.requestId!==op.requestId || op.key!==selectedKey || op.serial!==requestedSerial)return
+      historyOperation=Object.assign({},op,{busy:false,error:data.error || ""})
+      if(data.error)return
+      messagesAboutToChange()
+      var page=data.result.timeline || [],seen={};page.forEach(function(r){seen[r.id]=true})
+      olderTranscript=page.concat(olderTranscript.filter(function(r){return !seen[r.id]}))
+      historyExpanded=true;historyCursor=data.result.historyCursor || "";hasEarlier=!!data.result.hasMoreHistory&&!!historyCursor
+      mergeTranscript();messagesUpdated();return
+    }
+    if(data.op==="approval"){
+      var key=Object.keys(approvalOperations).find(function(k){return root.approvalOperations[k].requestId===data.requestId})
+      if(key){var all=Object.assign({},approvalOperations);all[key]={busy:false,answered:!data.error,error:data.error || "",requestId:data.requestId};approvalOperations=all
+        updateApproval(data.environment+"/"+data.thread,key.substring((data.environment+"/"+data.thread+"/").length),{responseStatus:data.error?"failed":"accepted",responseError:data.error || ""})}
+      return
+    }
     if(data.op==="settings"){if(data.requestId===settingsResult.requestId)settingsResult=Object.assign({},settingsResult,{busy:false,error:data.error || ""},data.result || {});return}
     if(data.op==="copy"){copyFinished(data.requestId,data.error || "");return}
     if(data.op==="document-open"){if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
@@ -433,7 +487,7 @@ Singleton {
   }
   function refresh() { send({op: "refresh"}) }
   function search(value) { query = value }
-  function clearSelection(){threadWillChange();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";transcript=[];activity=[];questions=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
+  function clearSelection(){threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
   function selectThread(env, thread) {
     if (selectedEnvironment === env && selectedThread === thread) { fetchMessages(); return }
     closeDocument();favoriteError="";liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});diffView=({loading:false,text:"",error:"",requestId:""});dismissSuggestions();threadWillChange()
@@ -446,11 +500,12 @@ Singleton {
       send({op:"draft-load",key:selectedKey})
     }
     if (!catalogs[env]) send({op: "catalog", environment: env})
-    transcript = []; activity = [];tasks=null;questions=[];queue=({items:[],held:false,canReorder:false,canSteer:false}); messageError = ""; fetchMessages()
+    resetHistory();transcript = []; activity = [];tasks=null;questions=[];approvals=[];queue=({items:[],held:false,canReorder:false,canSteer:false}); messageError = ""; fetchMessages()
     persistView.restart()
   }
   function fetchMessages() {
     if (!panelVisible || !selectedThread) return
+    if(historyOperation.busy)historyOperation=({busy:false,error:""})
     requestedSerial++; loadingMessages = true
     send({op: "select", environment: selectedEnvironment, thread: selectedThread, serial: requestedSerial})
   }
@@ -468,7 +523,12 @@ Singleton {
         if(existing && existing.saveRevision===data.revision) { var updated=Object.assign({},drafts);updated[data.key]=Object.assign({},existing,{saveState:data.error?"error":"saved",saveError:data.error || ""});drafts=updated }
         if(submission) {
           var pending=Object.assign({},pendingSends);delete pending[data.revision];pendingSends=pending
-          if(submission.op==="question"){
+          if(submission.op==="approval"){
+            var approvalKey=data.key+"/"+submission.runtimeRequestId,operations=Object.assign({},approvalOperations)
+            if(data.error){operations[approvalKey]={busy:false,error:"draft_save_failed",requestId:submission.requestId};approvalOperations=operations}
+            else send(submission)
+          }
+          else if(submission.op==="question"){
             var questionKey=data.key+"/"+submission.runtimeRequestId,operations=Object.assign({},questionOperations)
             if(data.error){operations[questionKey]={busy:false,error:"draft_save_failed",requestId:submission.requestId};questionOperations=operations}
             else send(submission)
@@ -497,9 +557,12 @@ Singleton {
         loadingMessages = false; messageError = data.result.error || ""
         if(data.result.threadState){var currentKey=selectedKey,current=state.threads.find(function(t){return t.key===currentKey}),delta=data.result.threadState;if(current && Object.keys(delta).some(function(k){return current[k]!==delta[k]})){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===currentKey?Object.assign({},t,delta):t})});snapshotUpdated()}}
         messagesAboutToChange()
-        transcript = data.result.timeline || data.result.messages || []
+        recentTranscript = data.result.timeline || data.result.messages || []
+        if(!historyExpanded&&!historyOperation.busy){historyCursor=data.result.historyCursor || "";hasEarlier=!!data.result.hasMoreHistory&&!!historyCursor}
+        mergeTranscript()
         activity = data.result.activity || []
         questions=data.result.questions || []
+        approvals=data.result.approvals || []
         tasks=data.result.tasks || null
         queue=data.result.queue || {items:[],held:false,canReorder:false,canSteer:false}
         var acknowledged=queue.acknowledgedMessageIds || [];var queued=Object.assign({},optimisticQueued);queued[selectedKey]=(queued[selectedKey] || []).filter(function(q){return acknowledged.indexOf(q.messageId)<0});optimisticQueued=queued
