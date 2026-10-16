@@ -41,3 +41,4 @@ T3TimelineMinimap 1.0 T3TimelineMinimap.qml
 T3PullRequestBadge 1.0 T3PullRequestBadge.qml
 T3ContextDivider 1.0 T3ContextDivider.qml
 T3CopyButton 1.0 T3CopyButton.qml
+T3Preferences 1.0 T3Preferences.qml

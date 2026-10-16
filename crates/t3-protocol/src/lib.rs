@@ -651,3 +651,5 @@ impl Connection {
 }
 
 pub mod lifecycle;
+
+pub mod settings;

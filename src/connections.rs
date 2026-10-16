@@ -46,7 +46,7 @@ fn validate_catalog(c:Value)->Result<Value>{
 use std::{net::{TcpListener,TcpStream},process::{Child,Stdio},sync::{Mutex,OnceLock},time::{Duration,Instant},io::Write,os::unix::process::CommandExt};
 struct Tunnel(Child);
 impl Drop for Tunnel {fn drop(&mut self){let _=self.0.kill();let _=self.0.wait();}}
-struct Cache { signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value> }
+struct Cache { signature:String, remote_signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value> }
 static CACHE:OnceLock<Mutex<Option<Cache>>>=OnceLock::new();
 fn token_expiry_ms(token:&str)->Option<i64> {
     // T3 SessionStore uses payload.signature (not JWT) and millisecond exp.
@@ -99,25 +99,15 @@ fn ssh_args(target:&Value)->Result<Vec<String>> {
     if let Some(user)=target["username"].as_str(){if user.is_empty()||!user.bytes().all(|b|b.is_ascii_alphanumeric()||b"._-".contains(&b)){return Err("invalid_t3_ssh_profile".into())}args.extend(["-l".into(),user.into()]);}
     args.extend(["--".into(),destination.into()]);Ok(args)
 }
-const REMOTE_DISCOVERY:&str=r#"set -eu
-base="$HOME/.t3"
-actual=$(cat "$base/userdata/environment-id")
-[ "$actual" = "$1" ] || exit 7
-cat "$base/userdata/server-runtime.json"
-printf '\nT3_AUTH\n'
-cli="$HOME/.t3/bin/t3"
-if [ ! -x "$cli" ]; then cli="$HOME/.local/bin/t3"; fi
-if [ ! -x "$cli" ]; then cli=$(command -v t3); fi
-"$cli" auth session issue --base-dir "$base" --scope orchestration:read --scope orchestration:operate --scope filesystem:read --scope settings:write --ttl 1d --label omarchy-t3-code --token-only
-"#;
+const REMOTE_DISCOVERY:&str=include_str!("remote-bootstrap.sh");
 fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {
     uuid::Uuid::parse_str(&env.id).map_err(|_|"invalid_t3_environment_id")?;
     let args=ssh_args(&profile["target"])?;
-    let mut cmd=Command::new("timeout");cmd.args(["20s","ssh"]).args(&args).arg(format!("sh -s -- '{}'",env.id)).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
+    let mut cmd=Command::new("timeout");cmd.args(["60s","ssh"]).args(&args).arg(format!("sh -s -- '{}'",env.id)).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
     let mut child=cmd.spawn().map_err(|_|"ssh_unavailable")?;
     child.stdin.take().ok_or("ssh_unavailable")?.write_all(REMOTE_DISCOVERY.as_bytes()).map_err(|_|"ssh_unavailable")?;
     let output=child.wait_with_output().map_err(|_|"ssh_unavailable")?;
-    if !output.status.success(){return Err(match output.status.code(){Some(7)=>"t3_environment_mismatch",Some(124)=>"ssh_timeout",Some(255)=>"ssh_unavailable",Some(127)=>"t3_cli_unavailable",_=>"t3_remote_unavailable"}.into())}
+    if !output.status.success(){return Err(match output.status.code(){Some(7)=>"t3_environment_mismatch",Some(8)=>"service_profile_mismatch",Some(9)=>"t3_remote_start_failed",Some(124)=>"ssh_timeout",Some(255)=>"ssh_unavailable",Some(127)=>"t3_cli_unavailable",_=>"t3_remote_unavailable"}.into())}
     let output=Zeroizing::new(output.stdout);let raw=std::str::from_utf8(&output).map_err(|_|"invalid_t3_runtime")?;
     let (runtime,token)=raw.split_once("\nT3_AUTH\n").ok_or("invalid_t3_runtime")?;
     let runtime:Value=serde_json::from_str(runtime).map_err(|_|"invalid_t3_runtime")?;
@@ -146,7 +136,8 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
     let signature=format!("{:x}",Sha256::digest(&signature));
     let cloud_signature=format!("{:x}",Sha256::digest(fs::read(t3_home().join("userdata/clerk-tokens.json")).unwrap_or_default()));
     if let Some(c)=cache.as_mut(){if c.signature==signature && c.cloud_signature==cloud_signature && Instant::now()<c.until && c.tunnels.values_mut().all(|t|t.0.try_wait().ok()==Some(None)){return Ok(c.environments.clone())}}
-    let mut previous=cache.take().filter(|c|c.signature==signature);
+    let remote_signature=format!("{:x}",Sha256::digest(["userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().flat_map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).collect::<Vec<_>>()));
+    let mut previous=cache.take().filter(|c|c.remote_signature==remote_signature);
     let mut result=vec![];let mut tunnels=HashMap::new();
     let catalog=previous.as_ref().and_then(|c|c.catalog.as_ref().ok()).cloned().map(Ok).unwrap_or_else(read_catalog);
     let primary_id=fs::read_to_string(t3_home().join("userdata/environment-id")).unwrap_or_default();
@@ -190,7 +181,7 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
     }
     let has_error=result.iter().any(|e|e.connection_error.is_some());
     let lifetime=result.iter().filter_map(|e|e.bearer.clone().or_else(||private_token(&e.token_file).ok())).filter_map(|t|token_expiry_ms(&t)).chain(result.iter().filter_map(|e|e.connection.as_ref().and_then(|c|c.expires_at()).map(|s|s*1000))).map(|exp|((exp-Utc::now().timestamp_millis()-300_000)/1000).max(30) as u64).min().unwrap_or(3600*20).min(3600*20);
-    *cache=Some(Cache{signature,cloud_signature,until:Instant::now()+Duration::from_secs(if has_error{30}else{lifetime}),environments:result.clone(),tunnels,catalog});
+    *cache=Some(Cache{signature,remote_signature,cloud_signature,until:Instant::now()+Duration::from_secs(if has_error{3}else{lifetime}),environments:result.clone(),tunnels,catalog});
     Ok(result)
 }
 

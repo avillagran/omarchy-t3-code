@@ -2,7 +2,7 @@
 # Isolated QML integration checks; no live connections, accounts or Python runtime.
 set -eu
 task_template=${1:-composer}
-case "$task_template" in composer|sidebar|state|interaction|completion|layout|queue|tasks|editor|i18n|send-scroll|clipboard|work-details|live-media|scroll-stability|wheel-scroll|draft-undo|upward-scroll|model-picker|inertia|thread-hover|auto-compaction|questions|question-state|compact-sidebar|pull-requests|backend-start|documents|project-menu|thread-menu|content-panels|timeline|thread-menu-panel|backend-owner|dpi-lifecycle|sidebar-pr|panel-reopen|backend-reconnect|context-divider|copy-actions|window-mode) ;; *) echo 'Unknown QML check' >&2; exit 1;; esac
+case "$task_template" in composer|sidebar|state|interaction|completion|layout|queue|tasks|editor|i18n|send-scroll|clipboard|work-details|live-media|scroll-stability|wheel-scroll|draft-undo|upward-scroll|model-picker|inertia|thread-hover|auto-compaction|questions|question-state|compact-sidebar|pull-requests|backend-start|documents|project-menu|thread-menu|content-panels|timeline|thread-menu-panel|backend-owner|dpi-lifecycle|sidebar-pr|panel-reopen|backend-reconnect|context-divider|copy-actions|window-mode|preferences) ;; *) echo 'Unknown QML check' >&2; exit 1;; esac
 task_repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 task_root=$(mktemp -d /tmp/t3-qml-test-XXXXXX)
 trap 'rm -rf -- "$task_root"' EXIT
