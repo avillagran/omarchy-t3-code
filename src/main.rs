@@ -198,7 +198,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if v["op"]=="connections-manage"{std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
-                if matches!(text(&v,"op"),"suggest"|"copy"|"settings"|"window-layout"|"connections-manage") {let _=input_action_tx.send(v);continue}
+                if matches!(text(&v,"op"),"suggest"|"copy"|"settings"|"window-layout"|"connections-manage"|"terminal-open") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;
                 }
@@ -395,6 +395,7 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
+    if std::env::args().nth(1).as_deref()==Some("terminal") {let args:Vec<_>=std::env::args().skip(2).collect();let result=if args.len()==2{env_by_id(&args[0]).and_then(|e|terminal::run(&e,&args[1]))}else{Err("invalid_command".into())};if let Err(e)=result{eprintln!("T3 terminal: {e}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("document-render") {if let Err(e)=documents::renderer(){eprintln!("{e}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("document-view") {if let Err(e)=documents::viewer(){eprintln!("{e}");std::process::exit(1)}return}
     if let Err(e) = run() {

@@ -255,6 +255,14 @@ Singleton {
     pendingProjectOpen=Object.assign({},pending,{requestId:managementRequest.requestId})
   }
   function loadProjectSources(environment){var id=uuid();projectSources={busy:true,environment:environment,requestId:id,providers:[]};send({op:"project-sources",environment:environment,requestId:id})}
+  property var terminalOperation:({busy:false,error:"",requestId:"",key:""})
+  readonly property bool canOpenTerminal:!!selectedThread && catalog.canWrite!==false && (state.environments || []).some(function(e){return e.id===root.selectedEnvironment&&e.state==="ready"})
+  signal terminalOpened()
+  function openTerminal(){
+    if(!canOpenTerminal||terminalOperation.busy)return
+    var id=uuid();terminalOperation={busy:true,error:"",requestId:id,key:selectedKey}
+    send({op:"terminal-open",environment:selectedEnvironment,thread:selectedThread,requestId:id})
+  }
   property string windowLayoutError:""
   property var windowLayoutOperation:({busy:false})
   signal windowLayoutFinished(string error)
@@ -382,6 +390,7 @@ Singleton {
     send({op: "stop", environment: selectedEnvironment, thread: selectedThread, requestId: uuid(), runId: selectedInfo.activeRunId})
   }
   function connectionLost() {
+    if(terminalOperation.busy)terminalOperation=Object.assign({},terminalOperation,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionSettings.busy)connectionSettings=Object.assign({},connectionSettings,{busy:false,error:"rpc_outcome_unknown"})
     historyOperation=Object.assign({},historyOperation,{busy:false,error:historyOperation.busy?"rpc_outcome_unknown":historyOperation.error});liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
     var operations=Object.assign({},queueOperations);Object.keys(operations).forEach(function(key){var o=operations[key];if(o.busy)operations[key]=Object.assign({},o,{busy:false,error:"rpc_outcome_unknown"})});queueOperations=operations
@@ -424,6 +433,14 @@ Singleton {
   property var diffView: ({loading:false,text:"",error:"",requestId:""})
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
+    if(data.op==="terminal-open"){
+      if(data.requestId!==terminalOperation.requestId)return
+      var here=terminalOperation.key===selectedKey
+      terminalOperation=Object.assign({},terminalOperation,{busy:false,error:data.error || ""})
+      if(!data.error&&here)terminalOpened()
+      return
+    }
+
     if(data.op==="connections-manage"){
       if(data.requestId!==connectionSettings.requestId)return
       var command=connectionSettingsCommand
