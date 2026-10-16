@@ -118,8 +118,8 @@
     ],
     "ffiHeader": "include/t3_protocol.h (lib-t3-rust)",
     "desktopAdapter": "src/desktop_cloud.rs",
-    "omiIntegration": "JNI adapter and Android build pending",
+    "omiIntegration": "Android four-ABI Kotlin/JNI adapter and AAR in lib-t3-rust; consumer device/UI validation remains separate",
     "repository": "https://github.com/avillagran/lib-t3-rust",
-    "rev": "0f419c4208b10a1821cb2e9211faa5558a3c2054"
+    "rev": "594a8f83f26fb661efbd102e198f5febe5fe0115"
   }
 }
