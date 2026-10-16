@@ -45,16 +45,22 @@ if [[ -e "$plugin_dir" ]]; then
   origin=$(git -C "$plugin_dir" remote get-url origin)
   case "$origin" in https://github.com/avillagran/omarchy-t3-code.git|git@github.com:avillagran/omarchy-t3-code.git) ;; *) fail 'Existing checkout has a different origin; refusing to update it.';; esac
   [[ -z $(git -C "$plugin_dir" status --porcelain) ]] || fail 'Existing checkout has local changes; commit or stash them before updating.'
-  omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
   git -C "$plugin_dir" fetch origin "$release_ref"
-  git -C "$plugin_dir" merge --ff-only FETCH_HEAD
+  expected_commit=$(git -C "$plugin_dir" rev-parse FETCH_HEAD)
+  # Verify the package before changing an existing installation.
+  git -C "$plugin_dir" merge-base --is-ancestor HEAD "$expected_commit" || fail 'Installed source is ahead of or diverges from this release. Use OT3_BUILD_FROM_SOURCE=1 for main.'
   build_dir=$plugin_dir
 else
   stage=$(mktemp -d "$plugins_dir/.t3-install.XXXXXXXX")
   git clone --branch "$release_ref" -- https://github.com/avillagran/omarchy-t3-code.git "$stage"
   build_dir=$stage
+  expected_commit=$(git -C "$build_dir" rev-parse HEAD)
 fi
 if [[ $source_build == 1 ]]; then
+  if [[ -z "$stage" ]]; then
+    omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
+    git -C "$plugin_dir" merge --ff-only "$expected_commit"
+  fi
   "$build_dir/bin/build-client"
 else
   downloads=$(mktemp -d)
@@ -64,7 +70,7 @@ else
   curl -fsSL "$base_url/$asset" -o "$downloads/$asset"
   curl -fsSL "$base_url/$asset.sha256" -o "$downloads/$asset.sha256"
   (cd "$downloads" && sha256sum -c "$asset.sha256") || fail 'Binary checksum failed.'
-  [[ $(tar -xOf "$downloads/$asset" COMMIT) == $(git -C "$build_dir" rev-parse HEAD) ]] || fail 'Binary and source revisions differ.'
+  [[ $(tar -xOf "$downloads/$asset" COMMIT) == "$expected_commit" ]] || fail 'Binary and source revisions differ.'
   mkdir "$downloads/unpacked"
   tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so
   ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" > "$downloads/libraries"
@@ -72,7 +78,12 @@ else
     cat "$downloads/libraries" >&2
     fail 'Runtime libraries do not match this package; update Omarchy or use OT3_BUILD_FROM_SOURCE=1.'
   fi
-  install -m755 "$downloads/unpacked/bin/omarchy-t3-client" "$build_dir/bin/omarchy-t3-client"
+  if [[ -z "$stage" ]]; then
+    omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
+    git -C "$plugin_dir" merge --ff-only "$expected_commit"
+  fi
+  install -m755 "$downloads/unpacked/bin/omarchy-t3-client" "$build_dir/bin/omarchy-t3-client.new"
+  mv -f "$build_dir/bin/omarchy-t3-client.new" "$build_dir/bin/omarchy-t3-client"
   install -m755 "$downloads/unpacked/bin/libt3-document.so" "$build_dir/bin/libt3-document.so"
 fi
 [[ -f "$build_dir/bin/libt3-document.so" ]] || fail 'The HTML preview did not build; check Qt development packages and retry.'
