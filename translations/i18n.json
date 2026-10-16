@@ -320,7 +320,13 @@
     "Recursive": "Recursive",
     "Top level": "Top level",
     "Auto-settle after inactivity (days)": "Auto-settle after inactivity (days)",
-    "Source control": "Source control"
+    "Source control": "Source control",
+    "Updates": "Updates",
+    "Threads": "Threads",
+    "Worktrees": "Worktrees",
+    "Search settings": "Search settings",
+    "No settings found": "No settings found",
+    "Language": "Language"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -643,7 +649,13 @@
     "Recursive": "Recursivo",
     "Top level": "Nivel superior",
     "Auto-settle after inactivity (days)": "Cerrar tras inactividad (días)",
-    "Source control": "Control de versiones"
+    "Source control": "Control de versiones",
+    "Updates": "Actualizaciones",
+    "Threads": "Hilos",
+    "Worktrees": "Worktrees",
+    "Search settings": "Buscar ajustes",
+    "No settings found": "No se encontraron ajustes",
+    "Language": "Idioma"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -966,7 +978,13 @@
     "Recursive": "Recursivo",
     "Top level": "Nível superior",
     "Auto-settle after inactivity (days)": "Encerrar após inatividade (dias)",
-    "Source control": "Controle de versão"
+    "Source control": "Controle de versão",
+    "Updates": "Atualizações",
+    "Threads": "Conversas",
+    "Worktrees": "Worktrees",
+    "Search settings": "Buscar configurações",
+    "No settings found": "Nenhuma configuração encontrada",
+    "Language": "Idioma"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1289,7 +1307,13 @@
     "Recursive": "Récursif",
     "Top level": "Niveau supérieur",
     "Auto-settle after inactivity (days)": "Clore après inactivité (jours)",
-    "Source control": "Gestion de versions"
+    "Source control": "Gestion de versions",
+    "Updates": "Mises à jour",
+    "Threads": "Conversations",
+    "Worktrees": "Worktrees",
+    "Search settings": "Rechercher des paramètres",
+    "No settings found": "Aucun paramètre trouvé",
+    "Language": "Langue"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1612,7 +1636,13 @@
     "Recursive": "Rekursiv",
     "Top level": "Oberste Ebene",
     "Auto-settle after inactivity (days)": "Nach Inaktivität abschließen (Tage)",
-    "Source control": "Versionsverwaltung"
+    "Source control": "Versionsverwaltung",
+    "Updates": "Updates",
+    "Threads": "Threads",
+    "Worktrees": "Worktrees",
+    "Search settings": "Einstellungen suchen",
+    "No settings found": "Keine Einstellungen gefunden",
+    "Language": "Sprache"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1935,7 +1965,13 @@
     "Recursive": "Ricorsivo",
     "Top level": "Livello superiore",
     "Auto-settle after inactivity (days)": "Chiudi dopo inattività (giorni)",
-    "Source control": "Controllo versione"
+    "Source control": "Controllo versione",
+    "Updates": "Aggiornamenti",
+    "Threads": "Conversazioni",
+    "Worktrees": "Worktree",
+    "Search settings": "Cerca impostazioni",
+    "No settings found": "Nessuna impostazione trovata",
+    "Language": "Lingua"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2258,7 +2294,13 @@
     "Recursive": "Recursief",
     "Top level": "Hoogste niveau",
     "Auto-settle after inactivity (days)": "Afronden na inactiviteit (dagen)",
-    "Source control": "Versiebeheer"
+    "Source control": "Versiebeheer",
+    "Updates": "Updates",
+    "Threads": "Threads",
+    "Worktrees": "Worktrees",
+    "Search settings": "Instellingen zoeken",
+    "No settings found": "Geen instellingen gevonden",
+    "Language": "Taal"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2581,7 +2623,13 @@
     "Recursive": "Rekurencyjne",
     "Top level": "Najwyższy poziom",
     "Auto-settle after inactivity (days)": "Zamykaj po bezczynności (dni)",
-    "Source control": "Kontrola wersji"
+    "Source control": "Kontrola wersji",
+    "Updates": "Aktualizacje",
+    "Threads": "Wątki",
+    "Worktrees": "Worktrees",
+    "Search settings": "Szukaj ustawień",
+    "No settings found": "Nie znaleziono ustawień",
+    "Language": "Język"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2904,7 +2952,13 @@
     "Recursive": "Рекурсивно",
     "Top level": "Верхний уровень",
     "Auto-settle after inactivity (days)": "Закрывать после бездействия (дни)",
-    "Source control": "Контроль версий"
+    "Source control": "Контроль версий",
+    "Updates": "Обновления",
+    "Threads": "Ветки",
+    "Worktrees": "Worktrees",
+    "Search settings": "Поиск настроек",
+    "No settings found": "Настройки не найдены",
+    "Language": "Язык"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3227,7 +3281,13 @@
     "Recursive": "Рекурсивно",
     "Top level": "Верхній рівень",
     "Auto-settle after inactivity (days)": "Закривати після бездіяльності (дні)",
-    "Source control": "Контроль версій"
+    "Source control": "Контроль версій",
+    "Updates": "Оновлення",
+    "Threads": "Гілки",
+    "Worktrees": "Worktrees",
+    "Search settings": "Пошук налаштувань",
+    "No settings found": "Налаштування не знайдено",
+    "Language": "Мова"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3550,7 +3610,13 @@
     "Recursive": "再帰的",
     "Top level": "最上位",
     "Auto-settle after inactivity (days)": "非アクティブ期間後に完了（日）",
-    "Source control": "バージョン管理"
+    "Source control": "バージョン管理",
+    "Updates": "更新",
+    "Threads": "スレッド",
+    "Worktrees": "Worktrees",
+    "Search settings": "設定を検索",
+    "No settings found": "設定が見つかりません",
+    "Language": "言語"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3873,7 +3939,13 @@
     "Recursive": "재귀적",
     "Top level": "최상위",
     "Auto-settle after inactivity (days)": "비활성 후 완료 처리 (일)",
-    "Source control": "버전 관리"
+    "Source control": "버전 관리",
+    "Updates": "업데이트",
+    "Threads": "대화",
+    "Worktrees": "Worktrees",
+    "Search settings": "설정 검색",
+    "No settings found": "설정을 찾을 수 없음",
+    "Language": "언어"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4196,7 +4268,13 @@
     "Recursive": "递归",
     "Top level": "顶层",
     "Auto-settle after inactivity (days)": "闲置后自动完成（天）",
-    "Source control": "版本控制"
+    "Source control": "版本控制",
+    "Updates": "更新",
+    "Threads": "会话",
+    "Worktrees": "Worktrees",
+    "Search settings": "搜索设置",
+    "No settings found": "未找到设置",
+    "Language": "语言"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4519,7 +4597,13 @@
     "Recursive": "تكراري",
     "Top level": "المستوى الأعلى",
     "Auto-settle after inactivity (days)": "الإغلاق بعد عدم النشاط (أيام)",
-    "Source control": "التحكم بالإصدارات"
+    "Source control": "التحكم بالإصدارات",
+    "Updates": "التحديثات",
+    "Threads": "المحادثات",
+    "Worktrees": "Worktrees",
+    "Search settings": "البحث في الإعدادات",
+    "No settings found": "لم يتم العثور على إعدادات",
+    "Language": "اللغة"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4842,7 +4926,13 @@
     "Recursive": "Özyinelemeli",
     "Top level": "Üst düzey",
     "Auto-settle after inactivity (days)": "Hareketsizlik sonrası kapat (gün)",
-    "Source control": "Sürüm denetimi"
+    "Source control": "Sürüm denetimi",
+    "Updates": "Güncellemeler",
+    "Threads": "Konuşmalar",
+    "Worktrees": "Worktrees",
+    "Search settings": "Ayarları ara",
+    "No settings found": "Ayar bulunamadı",
+    "Language": "Dil"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5165,7 +5255,13 @@
     "Recursive": "Rekursiv",
     "Top level": "Översta nivån",
     "Auto-settle after inactivity (days)": "Avsluta efter inaktivitet (dagar)",
-    "Source control": "Versionshantering"
+    "Source control": "Versionshantering",
+    "Updates": "Uppdateringar",
+    "Threads": "Trådar",
+    "Worktrees": "Worktrees",
+    "Search settings": "Sök inställningar",
+    "No settings found": "Inga inställningar hittades",
+    "Language": "Språk"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5488,7 +5584,13 @@
     "Recursive": "Rekursiv",
     "Top level": "Øverste niveau",
     "Auto-settle after inactivity (days)": "Afslut efter inaktivitet (dage)",
-    "Source control": "Versionsstyring"
+    "Source control": "Versionsstyring",
+    "Updates": "Opdateringer",
+    "Threads": "Tråde",
+    "Worktrees": "Worktrees",
+    "Search settings": "Søg i indstillinger",
+    "No settings found": "Ingen indstillinger fundet",
+    "Language": "Sprog"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5811,7 +5913,13 @@
     "Recursive": "Rekursiv",
     "Top level": "Øverste nivå",
     "Auto-settle after inactivity (days)": "Avslutt etter inaktivitet (dager)",
-    "Source control": "Versjonskontroll"
+    "Source control": "Versjonskontroll",
+    "Updates": "Oppdateringer",
+    "Threads": "Tråder",
+    "Worktrees": "Worktrees",
+    "Search settings": "Søk i innstillinger",
+    "No settings found": "Ingen innstillinger funnet",
+    "Language": "Språk"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6134,7 +6242,13 @@
     "Recursive": "Rekursiivinen",
     "Top level": "Ylin taso",
     "Auto-settle after inactivity (days)": "Päätä käyttämättömyyden jälkeen (päivää)",
-    "Source control": "Versionhallinta"
+    "Source control": "Versionhallinta",
+    "Updates": "Päivitykset",
+    "Threads": "Keskustelut",
+    "Worktrees": "Worktrees",
+    "Search settings": "Hae asetuksia",
+    "No settings found": "Asetuksia ei löytynyt",
+    "Language": "Kieli"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6457,6 +6571,12 @@
     "Recursive": "Rekurzivní",
     "Top level": "Nejvyšší úroveň",
     "Auto-settle after inactivity (days)": "Uzavřít po nečinnosti (dny)",
-    "Source control": "Správa verzí"
+    "Source control": "Správa verzí",
+    "Updates": "Aktualizace",
+    "Threads": "Vlákna",
+    "Worktrees": "Worktrees",
+    "Search settings": "Hledat nastavení",
+    "No settings found": "Nebylo nalezeno žádné nastavení",
+    "Language": "Jazyk"
   }
 }

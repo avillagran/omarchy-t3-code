@@ -31,3 +31,6 @@ Sidebar PR/worktree glyphs use the official Lucide SVG geometry (folder-git-2,
 layers, git-merge, git-pull-request-closed and git-pull-request-draft), retrieved
 from lucide-icons/lucide on 2026-10-16, with the same 1.75 stroke as the other
 T3-style action marks. The Lucide ISC notice applies.
+
+Preferences navigation uses the Lucide keyboard SVG from lucide-icons/lucide
+(retrieved 2026-10-16), with the same 1.75 stroke and ISC notice.
