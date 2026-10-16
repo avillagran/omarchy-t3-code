@@ -10,15 +10,25 @@ t3_base=${T3CODE_HOME:-$HOME/.t3}
 t3_base=${t3_base/#\~/$HOME}
 [[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] || fail 'Install and open T3 Code once before installing this plugin: https://t3.codes'
 
-packages=(ttf-firacode-nerd git ripgrep base-devel pkgconf jq libsecret openssh wl-clipboard qt6-declarative qt6-webengine)
-if ! cargo --version >/dev/null 2>&1 && ! command -v rustup >/dev/null; then packages+=(rust); fi
+source_build=${OT3_BUILD_FROM_SOURCE:-0}
+packages=(ttf-firacode-nerd git curl ripgrep jq libsecret openssh wl-clipboard qt6-declarative qt6-webengine)
+if [[ $source_build == 1 ]]; then packages+=(base-devel pkgconf); fi
+if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1 && ! command -v rustup >/dev/null; then packages+=(rust); fi
 missing=()
 for package in "${packages[@]}"; do pacman -Q "$package" >/dev/null 2>&1 || missing+=("$package"); done
 if ((${#missing[@]})); then
-  printf '%s\n' 'Installing build, clipboard and HTML-preview dependencies (sudo may request your password).'
+  printf '%s\n' 'Installing runtime dependencies (sudo may request your password).'
   sudo pacman -S --needed --noconfirm "${missing[@]}"
 fi
-if ! cargo --version >/dev/null 2>&1; then rustup default stable; fi
+if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1; then rustup default stable; fi
+
+release_ref=main
+if [[ $source_build != 1 ]]; then
+  arch=$(uname -m)
+  case "$arch" in aarch64|x86_64) ;; *) fail "No prebuilt package for $arch. Use OT3_BUILD_FROM_SOURCE=1.";; esac
+  release_json=$(curl -fsSL https://api.github.com/repos/avillagran/omarchy-t3-code/releases/latest)
+  release_ref=$(jq -er '.tag_name | select(test("^v[0-9][A-Za-z0-9._-]*$"))' <<< "$release_json") || fail 'No published binary release available. Use OT3_BUILD_FROM_SOURCE=1 to build main.'
+fi
 
 plugin_id=io.github.avillagran.omarchy-t3-code
 plugins_dir=$HOME/.config/omarchy/plugins
@@ -36,14 +46,35 @@ if [[ -e "$plugin_dir" ]]; then
   case "$origin" in https://github.com/avillagran/omarchy-t3-code.git|git@github.com:avillagran/omarchy-t3-code.git) ;; *) fail 'Existing checkout has a different origin; refusing to update it.';; esac
   [[ -z $(git -C "$plugin_dir" status --porcelain) ]] || fail 'Existing checkout has local changes; commit or stash them before updating.'
   omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
-  git -C "$plugin_dir" pull --ff-only origin main
+  git -C "$plugin_dir" fetch origin "$release_ref"
+  git -C "$plugin_dir" merge --ff-only FETCH_HEAD
   build_dir=$plugin_dir
 else
   stage=$(mktemp -d "$plugins_dir/.t3-install.XXXXXXXX")
-  git clone -- https://github.com/avillagran/omarchy-t3-code.git "$stage"
+  git clone --branch "$release_ref" -- https://github.com/avillagran/omarchy-t3-code.git "$stage"
   build_dir=$stage
 fi
-"$build_dir/bin/build-client"
+if [[ $source_build == 1 ]]; then
+  "$build_dir/bin/build-client"
+else
+  downloads=$(mktemp -d)
+  trap 'rm -rf -- "$downloads"; cleanup' EXIT
+  asset="omarchy-t3-code-linux-$arch.tar.gz"
+  base_url="https://github.com/avillagran/omarchy-t3-code/releases/download/$release_ref"
+  curl -fsSL "$base_url/$asset" -o "$downloads/$asset"
+  curl -fsSL "$base_url/$asset.sha256" -o "$downloads/$asset.sha256"
+  (cd "$downloads" && sha256sum -c "$asset.sha256") || fail 'Binary checksum failed.'
+  [[ $(tar -xOf "$downloads/$asset" COMMIT) == $(git -C "$build_dir" rev-parse HEAD) ]] || fail 'Binary and source revisions differ.'
+  mkdir "$downloads/unpacked"
+  tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so
+  ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" > "$downloads/libraries"
+  if rg -q 'not found' "$downloads/libraries"; then
+    cat "$downloads/libraries" >&2
+    fail 'Runtime libraries do not match this package; update Omarchy or use OT3_BUILD_FROM_SOURCE=1.'
+  fi
+  install -m755 "$downloads/unpacked/bin/omarchy-t3-client" "$build_dir/bin/omarchy-t3-client"
+  install -m755 "$downloads/unpacked/bin/libt3-document.so" "$build_dir/bin/libt3-document.so"
+fi
 [[ -f "$build_dir/bin/libt3-document.so" ]] || fail 'The HTML preview did not build; check Qt development packages and retry.'
 omarchy plugin validate "$build_dir"
 if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi

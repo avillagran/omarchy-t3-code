@@ -22,21 +22,34 @@ compatibility with every T3 release is not guaranteed.
 
 ## Architecture builds
 
-The installer compiles on the target machine; a separate downloadable x86 build
-is not required. Native x86_64 builds of the Rust client and Qt HTML frontend
-were verified on Kuyen (Arch Linux, Rust 1.98.1, Qt 6.11.2, glibc 2.44). The
-16 client core tests and isolated clipboard process test passed there. The full
-integration suite was not executed on x86_64: remaining release-test linking was
-stopped after core validation. Desktop QML interaction checks ran on ARM64.
+The installer downloads the latest published release for aarch64 or x86_64.
+It checks SHA-256 and the source commit before installing the Rust client and Qt
+HTML frontend. Runtime libraries must match the Arch Linux build; missing
+libraries cause installation to fail with a source-build option, never a silent
+compiler installation. Keep Omarchy up to date.
 
-Use `CARGO_BUILD_JOBS=2 bin/build-client` to moderate parallel build work. Local
-architecture artifacts under `dist/` are excluded from Git. Binary overlays are
-not universal Linux packages and require compatible runtime libraries.
+To build main locally through the installer, use:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/install.sh | OT3_BUILD_FROM_SOURCE=1 bash
+```
+
+For a release, commit and push the source, then run
+`CARGO_BUILD_JOBS=2 tools/package-binaries` natively on each architecture.
+Kuyen provides the x86_64 builder; ARM64 builds run on the development machine.
+Gather both archives and their checksum files into `dist/`, then run
+`tools/publish-release vVERSION`. The publisher refuses stale packages and
+publishes a draft only after both matching architecture assets are uploaded.
+QML-only changes still need a release for installer updates, but Rust binaries
+need rebuilding only when their sources/dependencies change (the packaging tool
+uses Cargo's incremental cache for consistency).
+Generated binaries are excluded from Git. Packages target Omarchy on Arch Linux,
+not arbitrary Linux distributions. The portable Omi library remains a separate
+host-platform build; these desktop packages do not replace an Android build.
 
 ## Automated installer
 
-The root [installer](../install.sh) installs dependencies, builds the optional
-HTML renderer, enables the widget and starts the local service only if stopped.
+The root [installer](../install.sh) installs runtime dependencies and prebuilt binaries, enables the widget and starts the local service only if stopped.
 It adds the keyboard integration to an existing Lua bindings file after making
 a backup: Super+Shift+A replaces ChatGPT/earlier Ares bindings with this client,
 and Ctrl+Enter sends inside ot3 without changing the terminal shortcut. Repeated runs update a clean checkout; local changes are never reset.
