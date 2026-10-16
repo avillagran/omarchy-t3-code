@@ -196,7 +196,9 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="backend-status"{emit("backend-status",backend_service::status());continue}
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
-                if matches!(text(&v,"op"),"suggest"|"copy"|"settings"|"window-layout") {let _=input_action_tx.send(v);continue}
+                // SSH onboarding can take a minute; keep sends and draft saves responsive.
+                if v["op"]=="connections-manage"{std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
+                if matches!(text(&v,"op"),"suggest"|"copy"|"settings"|"window-layout"|"connections-manage") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;
                 }
@@ -213,7 +215,7 @@ fn watch(client: Client) -> Result<()> {
                 while let Ok(next)=action_rx.try_recv(){if next["op"]=="suggest"{input=next}else{pending=Some(next);break}}
             }
             let result = write::execute(&input);
-            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"settings"|"window-layout") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
+            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"settings"|"window-layout"|"connections-manage") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
             let _ = result_tx.send(json!({"op":"action_result","input":input,"result":result.as_ref().ok(),"error":result.as_ref().err()}));
         }
     });

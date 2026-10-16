@@ -97,7 +97,7 @@ The sidebar gear opens an embedded preferences view with General, Appearance,
 Source Control, Connections, Providers and Keyboard shortcuts. General exposes supported native
 update, resume, auto-settle, snooze, streaming and background-profile settings.
 Appearance controls existing panel preferences and inherits the Omarchy theme.
-Connections show inherited status; Providers expose status and native model
+Connections manage saved native routes (see below); Providers expose status and native model
 favorites. Source Control ports branch naming, worktree defaults, merge method,
 writing style/templates and review-guide preferences. General includes optional
 inactivity days and automatic resume after rate limits. Preferences use dedicated
@@ -105,7 +105,7 @@ sidebar navigation, grouped cards, compact themed controls and a responsive
 content column. Search covers the supported native settings across categories.
 Text edits save explicitly
 and remain staged on failure. Settings target the selected environment through native RPC. This is
-a partial port: connection editing, provider credential/configuration editing,
+a partial port: provider credential/configuration editing,
 editable keybindings, source-control host credentials and writer/review model
 selection, advanced project/storage/integration and
 diagnostic panels remain to be ported. Native reference: `routes/settings.*.tsx`
@@ -155,3 +155,27 @@ Validated with real Hyprland floating/tiled/panel tests, embedded-picker flow
 checks, native RPC fixtures for remote folder validation/project creation,
 read-only browsing against local and NODE, Ctrl+Enter regressions and installer
 isolation. New projects were not created in live user data during validation.
+
+## Saved connection management
+
+Preferences now manages the native encrypted T3 connection catalog: SSH and
+direct/hosted pairing-link onboarding, endpoint/SSH target editing with environment
+identity checks, labels, enabled state, preferred routes, reconnect, route removal
+and environment removal. Disabled entries remain visible with their credentials
+intact. Removal confirms before deleting this device’s credentials; remote chats
+and projects are not deleted. Local connection availability and the existing
+headless service controls are included. GUI-owned servers cannot be stopped here.
+
+Catalog operations preserve unrelated routes, credentials and unknown fields,
+use an optimistic revision check, keep an encrypted previous-file backup, and
+retain the native encryption version/key. QML sees sanitized route metadata, not
+saved bearer tokens; pairing input is transient. SSH onboarding runs independently
+of sends and draft saves. Unchanged SSH tunnels survive catalog label edits.
+Portable transformations and pairing-link normalization live in t3-protocol.
+
+This ports saved-connection management, not T3 cloud-account registration, SSH
+key/passphrase enrollment, host network exposure, or authorized-client/share-link
+administration. Existing T3 Connect routes can be disabled or forgotten locally;
+account deregistration remains separate. Tests use isolated encrypted catalogs,
+a mocked native pairing server and QML forms. The real native catalog was read
+without changing the user’s saved connections.

@@ -27,6 +27,7 @@ pub mod queue;
 pub mod questions;
 pub mod approvals;
 pub mod history;
+pub mod connection_catalog;
 pub mod pull_requests;
 pub mod documents;
 pub mod projects;

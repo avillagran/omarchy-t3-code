@@ -952,7 +952,7 @@ Item {
               Connections {
                 target: root.bridge
                 function onMessageSubmitted(key) { root.followSubmittedMessage(key) }
-                function onThreadWillChange() { root.findOpen=false;root.findQuery="";root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
+                function onThreadWillChange() { root.findOpen=false;root.findQuery="";if(!root.bridge.connectionChanging)root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
                 function onSnapshotAboutToChange() {
                   if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")
                   if (!root.restoringSettled) root.capturePosition(settledThreads,root.visibleSettledRows,"@settled")

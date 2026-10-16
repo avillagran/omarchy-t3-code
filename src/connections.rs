@@ -4,6 +4,9 @@ use aes::cipher::{block_padding::Pkcs7,BlockDecryptMut,KeyIvInit};
 use base64::Engine;
 use std::process::Command;
 use zeroize::Zeroizing;
+#[path="connections_management.rs"]
+mod management;
+pub use management::execute as manage_connections;
 pub fn t3_home() -> PathBuf {
     let Some(raw)=std::env::var_os("T3CODE_HOME") else {return home().join(".t3")};
     let value=raw.to_string_lossy();
@@ -46,7 +49,7 @@ fn validate_catalog(c:Value)->Result<Value>{
 use std::{net::{TcpListener,TcpStream},process::{Child,Stdio},sync::{Mutex,OnceLock},time::{Duration,Instant},io::Write,os::unix::process::CommandExt};
 struct Tunnel(Child);
 impl Drop for Tunnel {fn drop(&mut self){let _=self.0.kill();let _=self.0.wait();}}
-struct Cache { signature:String, remote_signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value> }
+struct Cache { signature:String, remote_signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, routes:HashMap<String,String>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value> }
 static CACHE:OnceLock<Mutex<Option<Cache>>>=OnceLock::new();
 fn token_expiry_ms(token:&str)->Option<i64> {
     // T3 SessionStore uses payload.signature (not JWT) and millisecond exp.
@@ -137,9 +140,9 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
     let cloud_signature=format!("{:x}",Sha256::digest(fs::read(t3_home().join("userdata/clerk-tokens.json")).unwrap_or_default()));
     if let Some(c)=cache.as_mut(){if c.signature==signature && c.cloud_signature==cloud_signature && Instant::now()<c.until && c.tunnels.values_mut().all(|t|t.0.try_wait().ok()==Some(None)){return Ok(c.environments.clone())}}
     let remote_signature=format!("{:x}",Sha256::digest(["userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().flat_map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).collect::<Vec<_>>()));
-    let mut previous=cache.take().filter(|c|c.remote_signature==remote_signature);
-    let mut result=vec![];let mut tunnels=HashMap::new();
-    let catalog=previous.as_ref().and_then(|c|c.catalog.as_ref().ok()).cloned().map(Ok).unwrap_or_else(read_catalog);
+    let mut previous=cache.take();
+    let mut result=vec![];let mut tunnels=HashMap::new();let mut routes=HashMap::new();
+    let catalog=previous.as_ref().filter(|c|c.remote_signature==remote_signature).and_then(|c|c.catalog.as_ref().ok()).cloned().map(Ok).unwrap_or_else(read_catalog);
     let primary_id=fs::read_to_string(t3_home().join("userdata/environment-id")).unwrap_or_default();
     let local_disabled=catalog.as_ref().ok().and_then(|c|c["disabledEnvironmentIds"].as_array()).is_some_and(|ids|ids.contains(&json!(primary_id.trim()))||ids.contains(&json!("local")));
     let local_disabled=local_disabled || read_json(&t3_home().join("userdata/desktop-settings.json")).ok().is_some_and(|c|c["localEnvironmentEnabled"]==false);
@@ -154,10 +157,12 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
                 if e.id.is_empty() || e.id=="local" || e.id==primary_id.trim(){continue}
                 if result.iter().any(|known| known.id==e.id && known.connection_error.is_none()){continue}
                 if let Some(prior)=previous.as_mut(){
-                    if let Some(known)=prior.environments.iter().find(|known|known.id==e.id && known.connection_error.is_none()) {
+                    let unchanged=prior.catalog.as_ref().ok().is_some_and(|old|{let id=&target["connectionId"];let profile=|c:&Value|c["profiles"].as_array().into_iter().flatten().find(|p|p["connectionId"]==*id).map(|p|json!({"target":p["target"],"url":p["httpBaseUrl"]}));let credentials=|c:&Value|c["credentials"].as_array().into_iter().flatten().find(|p|p["connectionId"]==*id).cloned();old["targets"].as_array().into_iter().flatten().any(|t|t["environmentId"]==target["environmentId"]&&t["connectionId"]==target["connectionId"]&&t["_tag"]==target["_tag"])&&profile(old)==profile(catalog)&&credentials(old)==credentials(catalog)});
+                    let route_id=target["connectionId"].as_str().unwrap_or("relay");
+                    if let Some(known)=prior.environments.iter().filter(|_|unchanged&&prior.routes.get(&e.id).is_some_and(|id|id==route_id)).find(|known|known.id==e.id && known.connection_error.is_none()) {
                         let alive=prior.tunnels.get_mut(&e.id).is_none_or(|t|t.0.try_wait().ok()==Some(None));
                         if alive && (known.connection.is_none() || prior.cloud_signature==cloud_signature) && known.connection.as_ref().is_none_or(|c|c.expires_at().is_none_or(|t|t>Utc::now().timestamp()+300)) && known.bearer.as_ref().is_none_or(|t|fresh_token(t)) {
-                            result.push(known.clone());if let Some(t)=prior.tunnels.remove(&e.id){tunnels.insert(e.id.clone(),t);}continue
+                            let mut known=known.clone();known.name=e.name.clone();routes.insert(e.id.clone(),route_id.to_string());result.push(known);if let Some(t)=prior.tunnels.remove(&e.id){tunnels.insert(e.id.clone(),t);}continue
                         }
                     }
                 }
@@ -172,7 +177,7 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
                     ("RelayConnectionTarget",_)=>crate::desktop_cloud::connect(&mut e),
                     _=>Err("invalid_t3_catalog".into())
                 };
-                if let Err(error)=status{e.connection_error=Some(error);}
+                if let Err(error)=status{e.connection_error=Some(error);}else{routes.insert(e.id.clone(),target["connectionId"].as_str().unwrap_or("relay").to_string());}
                 result.retain(|prior| prior.id!=e.id);
                 result.push(e);
             }
@@ -181,7 +186,7 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
     }
     let has_error=result.iter().any(|e|e.connection_error.is_some());
     let lifetime=result.iter().filter_map(|e|e.bearer.clone().or_else(||private_token(&e.token_file).ok())).filter_map(|t|token_expiry_ms(&t)).chain(result.iter().filter_map(|e|e.connection.as_ref().and_then(|c|c.expires_at()).map(|s|s*1000))).map(|exp|((exp-Utc::now().timestamp_millis()-300_000)/1000).max(30) as u64).min().unwrap_or(3600*20).min(3600*20);
-    *cache=Some(Cache{signature,remote_signature,cloud_signature,until:Instant::now()+Duration::from_secs(if has_error{3}else{lifetime}),environments:result.clone(),tunnels,catalog});
+    *cache=Some(Cache{signature,remote_signature,cloud_signature,until:Instant::now()+Duration::from_secs(if has_error{3}else{lifetime}),environments:result.clone(),routes,tunnels,catalog});
     Ok(result)
 }
 
