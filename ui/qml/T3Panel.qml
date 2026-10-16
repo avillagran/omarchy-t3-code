@@ -588,7 +588,15 @@ Item {
           RowLayout {
             objectName:"t3SidebarFooter"
             Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
-            Text { Layout.fillWidth:true;elide:Text.ElideRight;text: root.bridge.stale ? ((root.bridge.state.environments || []).some(function(e) { return e.state === "ready" }) ? T3I18n.tr("Partially connected") : T3I18n.tr("Offline")) : T3I18n.tr("Direct connection"); color: root.bridge.stale ? Color.urgent : root.dim; font.pixelSize: Style.font.caption }
+            T3Icon {
+              objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(18)
+              readonly property string statusText:root.bridge.stale?((root.bridge.state.environments || []).some(function(e){return e.state==="ready"})?T3I18n.tr("Partially connected"):T3I18n.tr("Offline")):T3I18n.tr("Direct connection")
+              tint:root.bridge.stale?Color.urgent:root.dim;Accessible.name:statusText
+              HoverHandler{id:connectionStatusHover}
+              Controls.ToolTip.visible:connectionStatusHover.hovered
+              Controls.ToolTip.text:statusText
+            }
+            Item{Layout.fillWidth:true}
             T3Icon {
               objectName:"localBackendGuiIndicator";name:"monitor";implicitWidth:Style.space(20)
               visible:root.bridge.localBackend.owner==="gui";tint:root.dim
@@ -774,14 +782,16 @@ Item {
                   anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(message.userMessage ? 16 : 0) }
                     spacing: Style.space(9)
                     Row {
-                      visible: modelData.role !== "activity" && modelData.role !== "changes"
+                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context"
                       spacing: Style.space(9)
                       Text { text: message.userMessage ? T3I18n.tr("You") : modelData.role === "assistant" ? "T3" : modelData.role; color: root.dim; font.pixelSize: Style.font.caption; font.bold: true; textFormat: Text.PlainText }
                       Text { text: root.date(modelData.createdAt); color: root.dim; font.pixelSize: Style.font.caption }
                     }
                     TextEdit {
+                      id:messageText;objectName:"chatMessageText"
+                      HoverHandler{objectName:"chatLinkCursor";cursorShape:messageText.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
                       LayoutMirroring.enabled:false
-                      visible: modelData.role !== "activity" && modelData.role !== "changes"
+                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context"
                       width: parent.width
                       text: message.userMessage ? modelData.text || "" : (modelData.rendered ? modelData.rendered.replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ") : modelData.text || "")
                       textFormat: message.userMessage || !modelData.rendered ? TextEdit.PlainText : TextEdit.RichText; readOnly: true; selectByMouse: true
@@ -826,6 +836,7 @@ Item {
                         }
                       }
                     }
+                    T3ContextDivider{visible:modelData.role==="context";width:parent.width;boundary:modelData.context || {};catalog:root.bridge.catalog;active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     T3ActivityBlock{visible:modelData.role==="activity";bridge:root.bridge;activity:modelData.activity || {};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     T3Changes{visible:modelData.role==="changes";summary:modelData.changes || {};onOpenDiff:{root.bridge.requestDiff(summary);diffPopup.open()}}
 

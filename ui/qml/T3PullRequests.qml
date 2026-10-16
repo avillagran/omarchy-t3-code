@@ -90,7 +90,7 @@ Rectangle{
     Controls.ScrollView{
      id:description;Layout.fillWidth:true;Layout.fillHeight:true;visible:root.tab===0;clip:true;contentWidth:availableWidth
      T3Wheel{flickable:description.contentItem}
-     Text{width:description.availableWidth;text:root.detailResult.busy?T3I18n.tr("Loading…"):(root.detail.body || "");color:root.fg;wrapMode:Text.Wrap;textFormat:Text.MarkdownText;font.pixelSize:Style.font.body;onLinkActivated:function(link){if(/^https?:\/\//.test(link))Qt.openUrlExternally(link)}}
+     Text{id:prDescription;HoverHandler{cursorShape:prDescription.hoveredLink?Qt.PointingHandCursor:Qt.ArrowCursor}width:description.availableWidth;text:root.detailResult.busy?T3I18n.tr("Loading…"):(root.detail.body || "");color:root.fg;wrapMode:Text.Wrap;textFormat:Text.MarkdownText;font.pixelSize:Style.font.body;onLinkActivated:function(link){if(/^https?:\/\//.test(link))Qt.openUrlExternally(link)}}
     }
     ListView{
      id:checks;Layout.fillWidth:true;Layout.fillHeight:true;visible:root.tab===1;model:root.tabResult.data?(root.tabResult.data.checks || []):[];clip:true;reuseItems:false;cacheBuffer:0

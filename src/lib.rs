@@ -372,6 +372,10 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
  for row in &items[items.len().saturating_sub(600)..]{
   let native=protocol::activity::item(row);
   if let Some(a)=protocol::documents::html_render(native){let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));if time>=first{rows.push(json!({"id":format!("html/{}",text(native,"id")),"role":"assistant","createdAt":time,"text":"","attachments":[a]}))}}
+  if let Some(boundary)=protocol::lifecycle::describe(row,projection["runs"].as_array().map(Vec::as_slice).unwrap_or(&[])){
+   let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));
+   if time>=first{rows.push(json!({"id":format!("context/{}",text(native,"id")),"role":"context","createdAt":time,"context":boundary,"text":""}))}continue
+  }
   let Some(mut activity)=protocol::activity::describe(row) else{continue};
   let item=protocol::activity::item(row);let time=epoch(&item["startedAt"]).max(epoch(&row["createdAt"]));
   if time<first{continue}
