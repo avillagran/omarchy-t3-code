@@ -49,3 +49,6 @@ T3PreferenceSection 1.0 T3PreferenceSection.qml
 
 T3AddProject 1.0 T3AddProject.qml
 T3Connections 1.0 T3Connections.qml
+T3PickerRow 1.0 T3PickerRow.qml
+T3PickerField 1.0 T3PickerField.qml
+T3PickerButton 1.0 T3PickerButton.qml

@@ -90,6 +90,7 @@ BarWidget {
     function usageCollapsed(value: bool): void { root.open(); if (panelLoader.item) panelLoader.item.usageCollapsed = value }
     function filters(value: bool): void { root.open(); if (panelLoader.item) { if (value) panelLoader.item.showFilters(); else panelLoader.item.hideFilters() } }
     function refresh(): void { t3Backend.refresh() }
+    function openProject(environment: string, projectId: string): void {root.open();t3Backend.openProject(environment,projectId)}
   }
   BarIconButton {
     id: button

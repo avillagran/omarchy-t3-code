@@ -1,0 +1,16 @@
+import QtQuick
+import QtTest
+import Quickshell
+import "UnderTest/ui/qml" as Test
+ShellRoot {
+ id:root;property int phase:0;property int opened:0;property var fixture:null
+ function check(ok,msg){if(!ok){console.error("PROJECT_OPEN_QML_FAIL "+msg);Qt.exit(1)}}
+ Test.T3Panel{id:panel;bridge:Test.T3Backend}
+ Connections{target:Test.T3Backend;function onManagementBusyChanged(){var b=Test.T3Backend;if(b.managementBusy&&b.managementRequest&&b.managementRequest.action==="new-thread")Qt.callLater(root.completeProjectOpen)}
+ function onSnapshotUpdated(){if(root.fixture)Test.T3Backend.state=root.fixture}function onProjectOpened(environment,projectId,error){check(environment==="fixture"&&projectId==="omarchy-project-registration"&&!error,"project navigation acknowledgement");root.opened++}}
+ function completeProjectOpen(){var b=Test.T3Backend;var request=b.managementRequest;check(request&&request.action==="new-thread"&&request.projectId==="omarchy-project-registration","successful project registration automatically creates first chat");check(request.modelSelection.model==="favorite"&&request.environment==="fixture","model comes from destination environment");check(!request.text&&!request.workspaceStrategy,"opening a project does not start an agent or prepare a worktree");var thread="omarchy-thread-"+request.requestId;fixture=Object.assign({},fixture,{threads:[{id:thread,key:"fixture/"+thread,environmentId:"fixture",projectId:"omarchy-project-registration",projectKey:"fixture/omarchy-project-registration",title:"New chat",status:"idle",modelSelection:request.modelSelection}]});b.state=fixture;b.action({op:"manage",environment:"fixture",requestId:request.requestId,result:{action:"new-thread",threadId:thread,projectId:"omarchy-project-registration"}});check(b.selectedKey==="fixture/"+thread&&!b.pendingProjectOpen&&opened===1,"first chat becomes selected and visible");check(panel.activeRows.some(t=>t.id===thread),"registered project is represented in sidebar");b.openProject("fixture","omarchy-project-registration");check(!b.managementRequest&&opened===2,"reopening reuses existing chat without duplicate creation");console.log("PROJECT_OPEN_QML_PASS: registered project opens first visible chat, destination model, no agent run and duplicate-safe reopen");panel.close();Qt.quit()}
+ Timer{interval:220;running:true;repeat:true;onTriggered:{var b=Test.T3Backend
+  if(phase===0){if(!b.viewStateLoaded)return;fixture={threads:[],projects:[{id:"omarchy-project-registration",key:"fixture/omarchy-project-registration",environmentId:"fixture",title:"New project",workspaceRoot:"/remote/repo"}],environments:[]};b.state=fixture;b.catalogs={fixture:{models:[{instanceId:"native",model:"first",available:true},{instanceId:"native",model:"favorite",available:true}],favorites:[{provider:"native",model:"favorite"}]}};panel.open();b.managementRequest={requestId:"registration",action:"add-project",environment:"fixture"};b.managementBusy=true;b.action({op:"manage",environment:"fixture",requestId:"registration",result:{action:"add-project"}});phase=1
+  }
+ }}
+}

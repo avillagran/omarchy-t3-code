@@ -158,8 +158,10 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
         if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}
         if non_replayable {return if receipt.exists(){read_json(&receipt)}else{Err("rpc_outcome_unknown".into())}}
     } else {save_json(&path,&envelope)?;}
+    let command_project=command["projectId"].clone();
     let response=rpc(e,tag,command)?;
-    let result=json!({"threadId":thread,"projectId":response.get("projectId").unwrap_or(&input["projectId"]),"action":input["action"]});
+    let project=response.get("projectId").or_else(||response.get("id")).filter(|v|v.is_string()).unwrap_or(if command_project.is_string(){&command_project}else{&input["projectId"]});
+    let result=json!({"threadId":thread,"projectId":project,"action":input["action"]});
     if non_replayable{save_json(&receipt,&result)?;}
     Ok(result)
 }

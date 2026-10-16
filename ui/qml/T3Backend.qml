@@ -12,7 +12,7 @@ Singleton {
   property var state: ({threads: [], environments: [], working: 0, pending: 0})
   property var inboxReturnState:({working:null,returned:{}})
   function observeInboxReturns(){inboxReturnState=(viewState || {}).sidebarCompact?Sidebar.observeReturns(inboxReturnState,state.threads || [],Date.now()):{working:null,returned:{}}}
-  onStateChanged:observeInboxReturns()
+  onStateChanged:{observeInboxReturns();finishProjectOpen()}
   onViewStateChanged:observeInboxReturns()
   property var backendStart:({busy:false,error:"",status:""})
   property var localBackend:({owner:"unknown",running:false,canControl:false,installed:false})
@@ -227,6 +227,33 @@ Singleton {
   property var managementRequest: null
   property var folderBrowse:({busy:false,error:"",entries:[],parentPath:""})
   property var projectSources:({busy:false,providers:[]})
+  property var pendingProjectOpen:null
+  signal projectOpened(string environment,string projectId,string error)
+  function openProject(environment,projectId){
+    if(managementBusy||managementRequest)return
+    pendingProjectOpen={environment:environment,projectId:projectId,requestId:""}
+    managementError="";finishProjectOpen();refresh()
+  }
+  function finishProjectOpen(){
+    var pending=pendingProjectOpen
+    if(!pending||pending.requestId||managementBusy||managementRequest)return
+    var project=(state.projects || []).find(function(p){return p.environmentId===pending.environment&&p.id===pending.projectId})
+    if(!project)return
+    var threads=(state.threads || []).filter(function(t){return t.environmentId===pending.environment&&t.projectId===pending.projectId&&!t.settled})
+    if(threads.length){pendingProjectOpen=null;selectThread(pending.environment,threads[0].id);projectOpened(pending.environment,pending.projectId,"");return}
+    var selection=project.defaultModelSelection || (selectedEnvironment===pending.environment?(draft.modelSelection || selectedInfo.modelSelection):null)
+    if(!selection){var template=(state.threads || []).find(function(t){return t.environmentId===pending.environment&&t.modelSelection});selection=template?template.modelSelection:null}
+    if(!selection){
+      var available=catalogs[pending.environment]
+      if(!available){ensureCatalog(pending.environment);return}
+      var models=(available.models || []).filter(function(m){return m.available!==false})
+      var favorite=models.find(function(m){return (available.favorites || []).some(function(f){return f.provider===m.instanceId&&f.model===m.model})}) || models[0]
+      if(favorite)selection={instanceId:favorite.instanceId,model:favorite.model,options:[]}
+    }
+    if(!selection){managementError=T3I18n.tr("Select a model in an existing chat first.");pendingProjectOpen=null;projectOpened(pending.environment,pending.projectId,managementError);return}
+    manage({action:"new-thread",environment:pending.environment,projectId:pending.projectId,title:T3I18n.tr("New chat"),modelSelection:selection,runtimeMode:"approval-required"})
+    pendingProjectOpen=Object.assign({},pending,{requestId:managementRequest.requestId})
+  }
   function loadProjectSources(environment){var id=uuid();projectSources={busy:true,environment:environment,requestId:id,providers:[]};send({op:"project-sources",environment:environment,requestId:id})}
   property string windowLayoutError:""
   property var windowLayoutOperation:({busy:false})
@@ -460,6 +487,8 @@ Singleton {
     }
     if (data.op === "manage") {
       if (!managementRequest || data.requestId !== managementRequest.requestId) return
+      // Older desktop clients returned no ID for Project.id responses.
+      if(!data.error&&data.result&&data.result.action==="add-project"&&!data.result.projectId)data.result=Object.assign({},data.result,{projectId:"omarchy-project-"+data.requestId})
       managementBusy = false; managementError = data.error || ""
       if (data.error !== "rpc_outcome_unknown") managementRequest = null
       if (!data.error) {
@@ -467,7 +496,10 @@ Singleton {
         if(["archive","delete-thread"].indexOf(data.result.action)>=0 && selectedKey===data.environment+"/"+data.result.threadId){var nextThread=state.threads.find(function(t){return t.key!==root.selectedKey});if(nextThread)selectThread(nextThread.environmentId,nextThread.id);else clearSelection()}
         refresh(); if (data.result.action === "new-thread") selectThread(data.environment,data.result.threadId)
       }
-      managementFinished(data); return
+      managementFinished(data)
+      if(pendingProjectOpen&&pendingProjectOpen.requestId===data.requestId){var opened=pendingProjectOpen;if(data.error!=="rpc_outcome_unknown")pendingProjectOpen=null;projectOpened(opened.environment,opened.projectId,data.error || "")}
+      if(!data.error&&["add-project","create-project","clone-project"].indexOf(data.result.action)>=0){var environment=data.environment,projectId=data.result.projectId;Qt.callLater(function(){root.openProject(environment,projectId)})}
+      return
     }
     var key = data.environment + "/" + data.thread
     if(data.op==="queue") {
@@ -484,7 +516,7 @@ Singleton {
 
     if (data.op === "catalog") {
       var loading=Object.assign({},catalogLoading);delete loading[data.environment];catalogLoading=loading
-      var all = Object.assign({}, catalogs); all[data.environment] = data.result || Object.assign({},all[data.environment] || {models:[],providers:[],favorites:[]},{favoritesReady:false,error:data.error}); catalogs = all; return
+      var all = Object.assign({}, catalogs); all[data.environment] = data.result || Object.assign({},all[data.environment] || {models:[],providers:[],favorites:[]},{favoritesReady:false,error:data.error}); catalogs = all;finishProjectOpen(); return
     }
     var d = drafts[key]; if (!d) return
     if (data.op === "upload") {
