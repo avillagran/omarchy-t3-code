@@ -1,6 +1,7 @@
 pub mod notification_icon;
 pub mod backend_service;
 pub mod images;
+pub mod markdown_images;
 pub mod documents;
 pub mod scroll;
 pub mod message_text;
@@ -95,14 +96,17 @@ pub fn epoch(v: &Value) -> i64 {
 pub fn rendered_markdown(input:&str)->String{markdown_with_code_actions(input,None)}
 fn markdown_with_code_actions(input: &str, blocks:Option<&[Value]>) -> String {
     use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
+    let mut image_index=0;
     let events = Parser::new_ext(
         input,
         Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH,
     )
     .filter_map(|event| match event {
-        Event::Start(Tag::Image { .. })
-        | Event::End(TagEnd::Image)
-        => None,
+        Event::Start(Tag::Image { .. }) if blocks.is_some() => {
+            let marker=format!("<a href=\"ot3-image-open://{image_index}\">");image_index+=1;Some(Event::Html(marker.into()))
+        },
+        Event::End(TagEnd::Image) if blocks.is_some() => Some(Event::Html("</a>".into())),
+        Event::Start(Tag::Image { .. }) | Event::End(TagEnd::Image) => None,
         Event::Start(Tag::Link { link_type, dest_url, title, id }) => {
             let url=dest_url.to_ascii_lowercase();
             let safe=!url.contains('\0') && (!url.contains(':') || ["http://","https://","file://","t3-thread://"].iter().any(|s|url.starts_with(s)));
@@ -363,7 +367,7 @@ impl Client {
         normalize_messages(&self.bounded_thread(e, id)?)
     }
 }
-pub type RenderCache=HashMap<String,(String,String,String,String,Vec<Value>)>;
+pub type RenderCache=HashMap<String,(String,String,String,String,Vec<Value>,Vec<Value>)>;
 pub fn normalize_messages(d:&Value)->Result<Value>{normalize_messages_cached(d,&mut RenderCache::new())}
 pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>{
         let rows = d["projection"]["messages"].as_array().ok_or("malformed")?;
@@ -377,9 +381,9 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
                 return Err("malformed".into());
             }
             let raw=text(m,"text");let id=text(m,"id").to_string();
-            if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search,blocks));}
-            let (_,display,rendered,search,blocks)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"{json!(prompt_recall::recall(raw))}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
+            if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);let images=markdown_images::descriptors(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search,blocks,images));}
+            let (_,display,rendered,search,blocks,images)=&cache[&id];
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"{json!(prompt_recall::recall(raw))}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
         }
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");

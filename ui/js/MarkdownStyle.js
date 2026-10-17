@@ -18,6 +18,16 @@ function render(input, fontSize, scale, foreground, muted, surface, border) {
   // Code toolbar tables keep their compact cells instead of inheriting prose
   // table padding. Their links are generated internally, never from raw HTML.
   html=html.replace(/<table\b[^>]*>[\s\S]*?<\/table>/g,function(table){return table.indexOf('href="ot3-code-copy://')>=0?table.replace("<table ",'<table class="ot3-code-toolbar" '):table})
+  // Qt applies proportional paragraph leading to the entire inline image.
+  // Keep prose leading elsewhere; image lines need their intrinsic height.
+  ;["p","li"].forEach(function(tag){
+    html=html.replace(new RegExp("<"+tag+"\\b([^>]*)>([\\s\\S]*?)</"+tag+">","g"),function(full,attributes,body){
+      if(body.indexOf("<img ")<0)return full;
+      if(/\bstyle="/.test(attributes))attributes=attributes.replace(/style="/, 'style="line-height:100%;');
+      else attributes+=' style="line-height:100%;"';
+      return "<"+tag+attributes+">"+body+"</"+tag+">";
+    });
+  })
   var px=function(n){return Math.round(n*scale*100)/100+"px"}
   return '<style>'+
     'p,ul,ol,blockquote,pre,table{margin-top:'+px(10.4)+';margin-bottom:'+px(10.4)+';}' +

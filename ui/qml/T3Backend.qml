@@ -26,7 +26,7 @@ Singleton {
   function controlBackend(action){if(backendStart.busy)return;if(!worker.running){backendStart={busy:false,error:"disconnected",status:""};return;}backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,requestId:uuid()})}
   signal copyFinished(string requestId,string error)
   function copyText(value){var id=uuid();send({op:"copy",kind:"text",text:value,requestId:id});return id}
-  function copyImage(attachment){var id=uuid();send({op:"copy",kind:"image",environment:selectedEnvironment,attachment:attachment,requestId:id});return id}
+  function copyImage(attachment){var id=uuid();send({op:"copy",kind:"image",environment:selectedEnvironment,thread:selectedThread,attachment:attachment,requestId:id});return id}
   function startBackend(){controlBackend("start")}
   property int localRecoveryAttempts:0
   function recoverLocalBackend(){localRecoveryAttempts=30;refresh()}
@@ -604,11 +604,11 @@ Singleton {
   }
   property bool liveConnected:false
   property var imageStates: ({})
-  function imageKey(a){return selectedEnvironment+"/"+a.id}
+  function imageKey(a){return selectedEnvironment+"/"+(a.source?selectedThread+"/":"")+a.id}
   function requestImage(a){
     var key=imageKey(a);if(imageStates[key])return
     var all=Object.assign({},imageStates),id=uuid();all[key]={loading:true,url:"",error:"",requestId:id};imageStates=all
-    send({op:"image",environment:selectedEnvironment,requestId:id,attachment:a})
+    send({op:"image",environment:selectedEnvironment,thread:selectedThread,requestId:id,attachment:a})
   }
   property var documentOpen:({busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0})
   property var inlineDocuments:({})
@@ -1200,7 +1200,7 @@ Singleton {
       var all=Object.assign({},favoritePending),key=Object.keys(all).find(function(k){return all[k].requestId===data.requestId});if(!key)return;var env=all[key].environment;delete all[key];favoritePending=all;if(env===selectedEnvironment)favoriteError=data.error || ""
       if(data.result){var cache=Object.assign({},catalogs);cache[env]=Object.assign({},cache[env] || {},data.result);catalogs=cache}return
     }
-    if(data.op==="image"){var key=Object.keys(imageStates).find(function(k){return root.imageStates[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},imageStates);all[key]={loading:false,url:data.result?data.result.url || "":"",error:data.error || "",requestId:data.requestId};imageStates=all;return}
+    if(data.op==="image"){var key=Object.keys(imageStates).find(function(k){return root.imageStates[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},imageStates);all[key]={loading:false,url:data.result?data.result.url || "":"",width:data.result?data.result.width || 0:0,height:data.result?data.result.height || 0:0,error:data.error || "",requestId:data.requestId};imageStates=all;return}
 
     if(data.op==="tool-inspector"){toolInspectorFinished(data.requestId,data.result || null,data.error || "");return}
     if(data.op==="diff"){
