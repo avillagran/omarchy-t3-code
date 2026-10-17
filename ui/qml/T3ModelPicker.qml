@@ -7,6 +7,7 @@ Controls.Button {
  id:root
  required property var bridge
  property var selection:({})
+ property string emptyText:T3I18n.tr("Loading models…")
  property alias popup:menu
  readonly property var models:bridge.catalog.models || []
  readonly property var providers:bridge.catalog.providers || fallbackProviders()
@@ -17,7 +18,7 @@ Controls.Button {
  property bool legacyExpanded:false
  property string query:""
  signal picked()
- Accessible.name:selectedModel.shortName || selectedModel.displayName || selection.model || T3I18n.tr("Loading models…")
+ Accessible.name:selectedModel.shortName || selectedModel.displayName || selection.model || root.emptyText
  implicitHeight:Style.space(30)
  readonly property color fg:Color.popups.text
  readonly property color dim:Qt.rgba(fg.r,fg.g,fg.b,0.57)
@@ -32,12 +33,15 @@ Controls.Button {
  readonly property var rail:[{instanceId:"favorites",name:T3I18n.tr("Favorites"),ready:true}].concat(providers)
  onRowsChanged:if(menu.visible){results.currentIndex=Math.max(0,rows.findIndex(function(r){return r.model.instanceId===root.selection.instanceId&&r.model.model===root.selection.model}));Qt.callLater(function(){results.positionViewAtIndex(results.currentIndex,ListView.Contain)})}
  function selectProvider(id){provider=id;railView.currentIndex=rail.findIndex(function(p){return p.instanceId===id});legacyExpanded=models.some(function(m){return m.instanceId===id&&m.model===root.selection.model&&m.isLegacy});results.positionViewAtBeginning()}
+ // ModelPickerContent's adjacent provider behavior over the existing normalized
+ // rail: favorites always participates, unavailable providers are skipped.
+ function moveProvider(step){var available=rail.filter(function(p){return p.ready!==false}),index=available.findIndex(function(p){return p.instanceId===root.provider});query="";selectProvider(available[index<0?(step>0?0:available.length-1):(index+step+available.length)%available.length].instanceId)}
  function moveResult(step){if(!rows.length)return;results.currentIndex=(results.currentIndex+step+rows.length)%rows.length;results.positionViewAtIndex(results.currentIndex,ListView.Contain)}
  function selectResult(index){var row=rows[index];if(!row || row.model.available===false)return;bridge.chooseModel(row.index);menu.close();picked()}
  contentItem:RowLayout {
   spacing:Style.space(6)
   T3ProviderIcon{provider:root.selectedModel.instanceId?root.selectedModel:root.selection;implicitWidth:Style.space(16);opacity:root.enabled?1:0.45}
-  Text{Layout.fillWidth:true;text:root.selectedModel.shortName || root.selectedModel.displayName || root.selectedModel.name || root.selection.model || T3I18n.tr("Loading models…");color:root.fg;elide:Text.ElideRight;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;opacity:root.enabled?1:0.45}
+  Text{Layout.fillWidth:true;text:root.selectedModel.shortName || root.selectedModel.displayName || root.selectedModel.name || root.selection.model || root.emptyText;color:root.fg;elide:Text.ElideRight;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;opacity:root.enabled?1:0.45}
   T3Icon{name:"chevron-down";implicitWidth:Style.space(12);opacity:root.enabled?1:0.45}
  }
  background:Rectangle{radius:Style.space(7);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,root.hovered?0.09:0.035);border.width:root.activeFocus?1:0;border.color:Color.accent}

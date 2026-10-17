@@ -40,3 +40,19 @@ fn document_grant_uses_thread_scope_and_signed_get_without_bearer(){
  });
  let c=protocol::Connection::new(&format!("http://{addr}"),None,protocol::Credential::bearer("fixture-token").unwrap()).unwrap();let d=c.document(protocol::documents::resource("thread","/home/node/report.html").unwrap()).unwrap();assert_eq!(d["contents"],"<h1>Informe comparativo</h1>");server.join().unwrap();
 }
+#[test]
+fn markdown_uses_native_text_rpc_for_absolute_paths_and_renders_safely(){
+ use std::{net::TcpListener,thread,sync::Arc};use serde_json::{json,Value};
+ let listener=TcpListener::bind("127.0.0.1:0").unwrap();let base=format!("http://{}",listener.local_addr().unwrap());
+ let server=thread::spawn(move||{
+  for truncated in [false,true]{
+   let(s,_)=listener.accept().unwrap();let mut ws=tungstenite::accept(s).unwrap();let req:Value=serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
+   assert_eq!(req["tag"],"projects.readFile");assert_eq!(req["payload"],json!({"cwd":"/work/tree","relativePath":"/outside/report.md"}));
+   ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":{"contents":"# Report\n\n**Bold** <script>bad</script>","truncated":truncated,"byteLength":42}}}).to_string().into())).unwrap();
+  }
+ });
+ let mut e:omarchy_t3_client::Environment=serde_json::from_value(json!({"id":"fixture","base_url":base,"token_file":"/unused"})).unwrap();e.connection=Some(Arc::new(protocol::Connection::new(&base,None,protocol::Credential::bearer("fixture-token").unwrap()).unwrap()));
+ let input=json!({"thread":"thread","cwd":"/work/tree","path":"/outside/report.md"});let d=omarchy_t3_client::documents::read(&e,&input).unwrap();
+ assert_eq!(d["markdown"],true);assert!(d["rendered"].as_str().unwrap().contains("<h1>Report</h1>"));assert!(!d["rendered"].as_str().unwrap().contains("<script>"));assert!(d["contents"].as_str().unwrap().contains("**Bold**"));
+ assert_eq!(omarchy_t3_client::documents::read(&e,&input).unwrap_err(),"document_limit_4MiB");server.join().unwrap();
+}

@@ -1,7 +1,10 @@
 mod auto_compact;
 mod document_session;
 mod live;
-mod drafts;
+mod keybinding_watch;
+mod device_watch;
+mod preview_watch;
+mod preview_command;
 mod prompt_stash;
 mod localization;
 mod ui_state;
@@ -28,8 +31,8 @@ fn emit(kind: &str, data: Value) {
 fn draft_command(cmd:&Value)->bool {
     let key=text(cmd,"key");
     match text(cmd,"op") {
-        "draft-load" => {let result=prompt_stash::recover_before_load(key,text(cmd,"projectId")).and_then(|_|drafts::load(key));emit("draft-loaded",json!({"key":key,"draft":result.as_ref().ok(),"error":result.as_ref().err()}));true}
-        "draft-save" => {let result=drafts::save(key,&cmd["draft"]);emit("draft-saved",json!({"key":key,"revision":cmd["revision"],"error":result.as_ref().err()}));true}
+        "draft-load" => {let result=prompt_stash::recover_before_load(key,text(cmd,"projectId")).and_then(|_|checkpoint_operations::recover_before_load(key)).and_then(|_|drafts::load(key));emit("draft-loaded",json!({"key":key,"draft":result.as_ref().ok(),"error":result.as_ref().err()}));true}
+        "draft-save" => {let result=drafts::save(key,&cmd["draft"]);let recovery=if result.as_ref().err().is_some_and(|e|e=="draft_recovery_changed"){drafts::load(key).ok().and_then(|d|d["recoveryIds"].as_array().and_then(|ids|ids.iter().find(|id|!cmd["draft"]["recoveryIds"].as_array().is_some_and(|old|old.contains(id)))).and_then(Value::as_str).and_then(|id|checkpoint_journal::action(id).ok().flatten()).as_ref().map(checkpoint_journal::receipt))}else{None};emit("draft-saved",json!({"key":key,"revision":cmd["revision"],"error":result.as_ref().err(),"recovery":recovery}));true}
         "prompt-stash" => {let result=prompt_stash::execute(cmd);emit("prompt-stash",json!({"requestId":cmd["requestId"],"environment":cmd["environment"],"projectId":cmd["projectId"],"key":key,"result":result.as_ref().ok(),"error":result.as_ref().err()}));true}
         _=>false
     }
@@ -159,6 +162,23 @@ fn view(snapshot: &Value, query: &str) -> Value {
     }
     v
 }
+// Native tool downloads must not block messages, draft persistence or state.
+// Read/action pools are independent and allocated lazily, with bounded admission.
+fn device_pool(browser:browser_sessions::Manager)->mpsc::SyncSender<Value> {
+    let (sender,receiver)=mpsc::sync_channel::<Value>(64);
+    let receiver=std::sync::Arc::new(std::sync::Mutex::new(receiver));
+    for _ in 0..4 {
+        let receiver=receiver.clone();
+        let browser=browser.clone();
+        std::thread::spawn(move||loop {
+            let input={let receiver=receiver.lock().unwrap();receiver.recv()};
+            let Ok(v)=input else{break};
+            let result=if v["op"]=="browser-import-sources"{browser_sources::list_at(&home())}else if matches!(text(&v,"op"),"browser-import-read"|"browser-import-action"){browser_import::execute(&v,&browser)}else if text(&v,"op").starts_with("browser-profiles-"){browser_profiles::execute_with(&v,Some(&browser))}else{write::execute(&v)};
+            emit("action",json!({"op":v["op"],"environment":v["environment"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
+        });
+    }
+    sender
+}
 fn watch(client: Client) -> Result<()> {
     emit("ui-state",ui_state::load());
     let (tx, rx) = mpsc::channel::<Value>();
@@ -166,15 +186,46 @@ fn watch(client: Client) -> Result<()> {
     let (action_tx, action_rx) = mpsc::channel::<Value>();
     let input_action_tx=action_tx.clone();
     let mut document_manager=document_session::Pool::new();
+    let cloud_manager=connection_cloud::CloudManager::default();
     let (image_tx,image_rx)=mpsc::channel::<Value>();
     let image_generation=std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
     let image_worker_generation=image_generation.clone();
     std::thread::spawn(move||{for input in image_rx{let generation=input["generation"].as_u64().unwrap_or(0);if image_worker_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}let result=images::load(&input);if image_worker_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}emit("action",json!({"op":"image","requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
+    // Bounded read worker: detail requests never wait behind sends or settings mutations.
+    let (detail_tx,detail_rx)=mpsc::sync_channel::<Value>(2);
+    let detail_generation=image_generation.clone();
+    std::thread::spawn(move||{for v in detail_rx{
+        let generation=v["generation"].as_u64().unwrap_or(0);
+        if detail_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}
+        let result=write::execute(&v);
+        if detail_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}
+        emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
+    }});
+    // Native preference reads and lifecycle commands must not block sends or draft persistence.
+    let (archive_tx,archive_rx)=mpsc::sync_channel::<Value>(16);
+    std::thread::spawn(move||{for v in archive_rx{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
+    // Initialized only if the Integrations device UI is used.
+    let mut device_read_tx:Option<mpsc::SyncSender<Value>>=None;
+    let mut device_action_tx:Option<mpsc::SyncSender<Value>>=None;
+    // Native Git actions are streams and must not block message/draft workers.
+    let (git_tx,git_rx)=mpsc::sync_channel::<Value>(2);
+    std::thread::spawn(move||{for v in git_rx{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
+    // Rewinds remain attached to their original thread across navigation. Their
+    // observations must not be discarded by the selected-detail generation.
+    let (rewind_tx,rewind_rx)=mpsc::sync_channel::<Value>(8);
+    std::thread::spawn(move||{for v in rewind_rx{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"operationId":v["operationId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
     let input_tx = tx.clone();
     let live=live::Control::new(client.clone());
     let input_live=live.clone();
+    let browser_manager=browser_sessions::Manager::start(browser_guest::Config::native()?,|id|environments()?.into_iter().find(|e|e.id==id).ok_or("unknown_environment".into()),connection_preferences::read_client_preferences,|data|emit("browser-surface",data));
     std::thread::spawn(move || {
         let mut input_visible=false;
+        let mut keybinding_watches=keybinding_watch::Control::default();
+        let mut device_watches=device_watch::Control::default();
+        let browser_observer=browser_manager.clone();
+        let preview_watches=preview_watch::Control::with_observer(move|data|browser_observer.observe(data));
+        let browser_actions=browser_manager.clone();
+        let mut preview_commands=preview_command::Control::with_observer(move|input,result|browser_actions.action(input,result));
         let mut document_thread_key=String::new();
         for line in io::stdin()
             .lock()
@@ -185,18 +236,58 @@ fn watch(client: Client) -> Result<()> {
                 continue;
             }
             if let Ok(mut v) = serde_json::from_str::<Value>(&line) {
+                if matches!(text(&v,"op"),"connection-cloud"|"connection-cloud-cancel"|"connection-cloud-install"){
+                    let result=match text(&v,"op"){
+                        "connection-cloud-cancel"=>cloud_manager.cancel(text(&v,"requestId")),
+                        "connection-cloud-install"=>cloud_manager.confirm_install(text(&v,"requestId"),v["approved"]==true),
+                        _=>{
+                            if v["environment"]!="local"{Err("local_environment_only".into())}
+                            else if matches!(text(&v,"action"),"link"|"link-publish-only")&&v["confirmed"]!=true{Err("confirmation_required".into())}
+                            else{cloud_manager.start(connection_cloud::NativeCli::new(home().join(".t3/bin/t3"),t3_home()),text(&v,"requestId"),text(&v,"action"),v["confirmed"]==true,|event|emit("connection-cloud",event))}
+                        }
+                    };
+                    if let Err(error)=result{emit("connection-cloud",json!({"environment":"local","requestId":v["requestId"],"action":v["action"],"busy":false,"stage":"failed","error":error}));}continue
+                }
+
                 if matches!(text(&v,"op"),"document-open"|"document-input"|"document-close"){
                     if v["op"]=="document-open"&&!input_visible{emit("action",json!({"op":"document-open","requestId":v["requestId"],"error":"panel_hidden"}));continue}
                     document_manager.send(v);continue
                 }
-                if v["op"]=="select" {let key=format!("{}/{}",text(&v,"environment"),text(&v,"thread"));if key!=document_thread_key{document_manager.send(json!({"op":"document-close"}));document_thread_key=key;}}
+                if v["op"]=="select" {let key=format!("{}/{}",text(&v,"environment"),text(&v,"thread"));if key!=document_thread_key{document_manager.send(json!({"op":"document-close"}));preview_watches.clear();browser_manager.hide();document_thread_key=key;}}
                 if v["op"]=="clear-select" || (v["op"]=="visible" && v["value"]==false){document_manager.send(json!({"op":"document-close"}));}
                 if v["op"]=="clear-select"{image_generation.fetch_add(1,std::sync::atomic::Ordering::Relaxed);input_live.select(None);}
-                if v["op"]=="visible"{input_visible=v["value"]==true;}
+                if v["op"]=="visible"{input_visible=v["value"]==true;if !input_visible{keybinding_watches.clear();device_watches.clear();preview_watches.clear();browser_manager.hide();}}
+                if matches!(text(&v,"op"),"browser-show"|"browser-hide"|"browser-input"|"browser-control"){browser_manager.request(v,input_visible);continue}
+                if v["op"]=="preview-action"{preview_commands.send(v,input_visible);continue}
+                if v["op"]=="preview-watch"{preview_watches.select(&v,input_visible);continue}
+                if v["op"]=="clear-select"{preview_watches.clear();browser_manager.hide();}
+                if v["op"]=="devices-watch"{device_watches.select(&v,input_visible);continue}
+                if v["op"]=="keybindings-watch"{keybinding_watches.select(&v,input_visible);continue}
                 if v["op"]=="select" || (v["op"]=="visible"&&v["value"]==false){image_generation.fetch_add(1,std::sync::atomic::Ordering::Relaxed);}
                 if v["op"]=="select"&&input_visible{input_live.select(Some((text(&v,"environment").into(),text(&v,"thread").into(),v["serial"].as_i64().unwrap_or(0))));}
                 if v["op"]=="visible"&&v["value"]==false{input_live.select(None);}
                 if v["op"]=="image"{if !input_visible{continue}v["generation"]=json!(image_generation.load(std::sync::atomic::Ordering::Relaxed));let _=image_tx.send(v);continue}
+                if matches!(text(&v,"op"),"diff"|"tool-inspector"|"plan-followup"|"git-read"|"working-review"|"review-refs"|"rewind-preview"){
+                    v["generation"]=json!(image_generation.load(std::sync::atomic::Ordering::Relaxed));
+                    let error=if !input_visible{Some("panel_hidden")}else if detail_tx.try_send(v.clone()).is_err(){Some("detail_read_busy")}else{None};
+                    if let Some(error)=error{emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"error":error}));}continue
+                }
+                if matches!(text(&v,"op"),"rewind-dispatch"|"rewind-observe"|"rewind-resolve"|"rewind-list"){
+                    if rewind_tx.try_send(v.clone()).is_err(){emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"operationId":v["operationId"],"error":"revert_busy"}));}continue
+                }
+                if v["op"]=="rewind-recover"{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"operationId":v["operationId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
+                if matches!(text(&v,"op"),"archive-read"|"archive-action"|"archive-state"|"keybindings-read"|"keybindings-write"|"keybindings-open"|"licenses-read"|"licenses-notice"){
+                    if archive_tx.try_send(v.clone()).is_err(){emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"error":if text(&v,"op").starts_with("keybindings-"){"keybindings_busy"}else if text(&v,"op").starts_with("licenses-"){"licenses_busy"}else{"archive_busy"}}));}continue
+                }
+                if matches!(text(&v,"op"),"devices-read"|"devices-action"|"browser-profiles-read"|"browser-profiles-action"|"browser-import-sources"|"browser-import-read"|"browser-import-action") {
+                    let sender=if matches!(text(&v,"op"),"devices-read"|"browser-profiles-read"|"browser-import-sources"|"browser-import-read"){device_read_tx.get_or_insert_with(||device_pool(browser_manager.clone()))}else{device_action_tx.get_or_insert_with(||device_pool(browser_manager.clone()))};
+                    if sender.try_send(v.clone()).is_err(){emit("action",json!({"op":v["op"],"environment":v["environment"],"requestId":v["requestId"],"error":if text(&v,"op").starts_with("browser-profiles-"){"browser_profiles_busy"}else{"device_busy"}}));}
+                    continue
+                }
+                if matches!(text(&v,"op"),"git-action"|"git-resolve"|"git-terminal"){
+                    if git_tx.try_send(v.clone()).is_err(){emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"error":"git_operation_busy"}));}continue
+                }
+                if v["op"]=="git-state"{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
                 // Draft durability must never wait behind a slow remote snapshot.
                 if v["op"]=="backend-status"{emit("backend-status",backend_service::status());continue}
                 // Lifecycle controls must not wait behind a remote snapshot.
@@ -210,16 +301,19 @@ fn watch(client: Client) -> Result<()> {
                         let _=service_tx.send(json!({"op":"refresh"}));
                     });continue
                 }
+                if v["op"]=="quit"{let _=cloud_manager.cancel_active();}
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
-                if v["op"]=="connections-manage"{std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
-                if matches!(text(&v,"op"),"suggest"|"copy"|"settings"|"window-layout"|"connections-manage"|"terminal-open") {let _=input_action_tx.send(v);continue}
+                if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
+                if matches!(text(&v,"op"),"suggest"|"copy"|"client-settings"|"settings"|"window-layout"|"connections-manage"|"terminal-open"|"git-action"|"git-resolve"|"git-terminal") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;
                 }
             }
         }
+        let _=cloud_manager.cancel_active();
+        let _=browser_manager.shutdown();
         let _ = input_tx.send(json!({"op":"quit"}));
     });
     let result_tx = tx.clone();
@@ -231,7 +325,7 @@ fn watch(client: Client) -> Result<()> {
                 while let Ok(next)=action_rx.try_recv(){if next["op"]=="suggest"{input=next}else{pending=Some(next);break}}
             }
             let result = write::execute(&input);
-            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"settings"|"window-layout"|"connections-manage") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
+            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"client-settings"|"settings"|"window-layout"|"connections-manage") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
             let _ = result_tx.send(json!({"op":"action_result","input":input,"result":result.as_ref().ok(),"error":result.as_ref().err()}));
         }
     });
@@ -380,6 +474,11 @@ fn run() -> Result<()> {
     let client = Client::new()?;
     let result = match args.first().map(String::as_str).unwrap_or("watch") {
         "watch" => return watch(client),
+        "licenses-read" => third_party_licenses::read()?,
+        "browser-import-sources" => browser_sources::list_at(&home())?,
+        "browser-profiles-read" if args.len()>1 => browser_profiles::execute(&json!({"op":"browser-profiles-read","environments":args[1..]}))?,
+        "preview-read" if args.len()==3 => {let e=environments()?.into_iter().find(|e|e.id==args[1]).ok_or("unknown_environment")?;preview_transport::read(&e,&args[2])?},
+        "devices-read" if args.len()==2 => write::execute(&json!({"op":"devices-read","environment":args[1]}))?,
         "relay-status" => if let Some(id)=args.get(1){check_native_environment(id)?}else{check_native_session()?},
         "connections" | "setup-local" | "setup-write" => json!({"source":"t3","automatic":true,"environments":environments()?.iter().map(|e|json!({"id":e.id,"name":e.name,"state":e.connection_error})).collect::<Vec<_>>()}),
         "snapshot" => {
@@ -393,6 +492,12 @@ fn run() -> Result<()> {
         "backend-status" => backend_service::status(),
         "backend-control" if args.len()==2 => backend_service::control(&args[1])?,
         "scroll-config" => scroll::read(),
+        "rewind-preview" if args.len()==4 => write::execute(&json!({"op":"rewind-preview","environment":args[1],"thread":args[2],"messageId":args[3]}))?,
+        "keybindings-read" if args.len()==2 =>write::execute(&json!({"op":"keybindings-read","environment":args[1]}))?,
+        "archive-read" if args.len()==2 =>write::execute(&json!({"op":"archive-read","environment":args[1],"requestId":uuid::Uuid::new_v4().to_string(),"projectIds":null}))?,
+        "review-refs" if args.len()>=5 => write::execute(&json!({"op":"review-refs","environment":args[1],"thread":args[2],"projectId":args[3],"cwd":args[4],"refKind":args.get(5).map(String::as_str).unwrap_or("local"),"query":args.get(6).map(String::as_str).unwrap_or(""),"requestId":uuid::Uuid::new_v4().to_string()}))?,
+        "working-review" if args.len()>=5 => write::execute(&json!({"op":"working-review","environment":args[1],"thread":args[2],"projectId":args[3],"cwd":args[4],"sourceKind":args.get(5).map(String::as_str).unwrap_or("working-tree"),"filePath":args.get(6),"requestId":uuid::Uuid::new_v4().to_string()}))?,
+        "git-read" if args.len()==5 => write::execute(&json!({"op":"git-read","environment":args[1],"thread":args[2],"projectId":args[3],"cwd":args[4],"requestId":uuid::Uuid::new_v4().to_string()}))?,
         "catalog" if args.len()==2 => write::execute(&json!({"op":"catalog","environment":args[1]}))?,
         "suggest" if args.len()==6 => write::execute(&json!({"op":"suggest","environment":args[1],"thread":args[2],"kind":args[3],"query":args[4],"instanceId":args[5]}))?,
         "messages" if args.len() == 3 => client.messages(&env_by_id(&args[1])?, &args[2])?,
@@ -403,6 +508,9 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
+    if matches!(std::env::args().nth(1).as_deref(),Some("--version"|"-V")){println!("omarchy-t3-client {}",env!("CARGO_PKG_VERSION"));return}
+    if std::env::args().nth(1).as_deref()==Some("browser-render"){if let Err(error)=browser_runtime::renderer(){eprintln!("{error}");std::process::exit(1)}return}
+    if std::env::args().nth(1).as_deref()==Some("terminal-session"){let args:Vec<_>=std::env::args().skip(2).collect();let result=if args.len()==3{env_by_id(&args[0]).and_then(|e|terminal::run_session(&e,&args[1],&args[2]))}else{Err("invalid_command".into())};if let Err(e)=result{eprintln!("T3 terminal: {e}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("terminal") {let args:Vec<_>=std::env::args().skip(2).collect();let result=if args.len()==2 || (args.len()==4&&args[2]=="--run-file"){env_by_id(&args[0]).and_then(|e|terminal::run_command(&e,&args[1],args.get(3).map(std::path::Path::new)))}else{Err("invalid_command".into())};if let Err(e)=result{eprintln!("T3 terminal: {e}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("document-render") {if let Err(e)=documents::renderer(){eprintln!("{e}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("document-view") {if let Err(e)=documents::viewer(){eprintln!("{e}");std::process::exit(1)}return}

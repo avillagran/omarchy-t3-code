@@ -7,6 +7,7 @@ use zeroize::Zeroizing;
 #[path="connections_management.rs"]
 mod management;
 pub use management::execute as manage_connections;
+pub(crate) use management::native_primary;
 pub fn t3_home() -> PathBuf {
     let Some(raw)=std::env::var_os("T3CODE_HOME") else {return home().join(".t3")};
     let value=raw.to_string_lossy();

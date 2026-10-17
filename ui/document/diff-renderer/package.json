@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@pierre/diffs": "1.5.2",
+    "esbuild": "0.25.12"
+  },
+  "name": "ot3-diff-renderer",
+  "version": "0.0.0",
+  "private": true
+}

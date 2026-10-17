@@ -30,7 +30,7 @@ ShellRoot {
    panel.openFind();panel.findQuery="needle";phase=4
   }else if(phase===4){
    if(panel.restoringConversation)return
-   check(panel.findMatches.length===10,"all occurrences in loaded messages found")
+   check(panel.findMatches.length===10,"all occurrences in loaded messages found "+JSON.stringify({count:panel.findMatches.length,query:panel.findQuery,rows:b.transcript.length,matching:b.transcript.filter(function(r){return r.text.indexOf("needle")>=0}).map(function(r){return {id:r.id,text:r.text}})}))
    check(panel.findMatches[panel.findIndex].id==="m20","find jumps to first message")
    var item=c.itemAtIndex(b.transcript.findIndex(function(r){return r.id==="m20"}));check(item&&item.textItem.selectedText.toLowerCase()==="needle","matching displayed text selected "+JSON.stringify({item:!!item,selected:item?item.textItem.selectedText:"",index:panel.findIndex}))
    panel.navigateFind(-1);check(panel.findIndex===9,"previous match wraps")

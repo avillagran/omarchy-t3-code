@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Build the pinned native diff component once; no Node/npm needed at runtime.
+set -euo pipefail
+cd -- "$(dirname -- "$0")/.."
+task_build=$(mktemp -d /tmp/ot3-diff-build-XXXXXXXX)
+trap 'rm -rf -- "$task_build"' EXIT
+cp ui/document/diff-renderer/{package.json,package-lock.json,main.js} "$task_build/"
+npm ci --prefix "$task_build" --ignore-scripts --no-audit --no-fund
+"$task_build/node_modules/.bin/esbuild" "$task_build/main.js" --bundle --format=iife --platform=browser --target=chrome130 --minify --legal-comments=inline --outfile="$task_build/bundle.js"
+gzip -n -9 -c "$task_build/bundle.js" > ui/document/diff-renderer.bundle.js.gz
+python3 - "$task_build/node_modules" <<'PY'
+import pathlib,sys
+root=pathlib.Path(sys.argv[1]);out=[]
+for p in sorted(root.rglob('*')):
+ if p.is_file() and p.name.lower() in ('license','license.md','license.txt','copying'):
+  out.append(str(p.relative_to(root))+'\n'+p.read_text(errors='replace'))
+pathlib.Path('licenses/diff-renderer-dependencies.txt').write_text('\n\n'.join(out))
+PY

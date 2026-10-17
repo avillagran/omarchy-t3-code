@@ -7,6 +7,8 @@ import "../js/ProjectModel.js" as Projects
 import "../js/IconAssets.js" as Icons
 Item {
  id:root
+ property bool scopedSettings:false
+ signal settingsRequested(string key)
  signal groupingChanged(string previous,string current)
  required property var bridge
  property var project:({})
@@ -64,7 +66,7 @@ Item {
   Controls.MenuItem{objectName:"projectRename";text:T3I18n.tr("Rename");enabled:root.canWrite&&!root.busy;onTriggered:root.edit("rename")}
   Controls.MenuItem{objectName:"projectGrouping";text:T3I18n.tr("Group into…");enabled:!root.busy;onTriggered:root.edit("grouping")}
   Controls.MenuItem{objectName:"projectCopyPath";text:T3I18n.tr("Copy Path");enabled:!!root.project.workspaceRoot;onTriggered:{copyBuffer.selectAll();copyBuffer.copy();copyBuffer.deselect()}}
-  Controls.MenuItem{objectName:"projectSettings";icon.source:"data:image/svg+xml,"+encodeURIComponent(Icons.svg("settings").replace(/currentColor/g,String(Color.popups.text)));icon.color:Color.popups.text;text:T3I18n.tr("Project settings");onTriggered:root.edit("settings")}
+  Controls.MenuItem{objectName:"projectSettings";icon.source:"data:image/svg+xml,"+encodeURIComponent(Icons.svg("settings").replace(/currentColor/g,String(Color.popups.text)));icon.color:Color.popups.text;text:T3I18n.tr("Project settings");onTriggered:if(root.scopedSettings)root.settingsRequested(root.project.key);else root.edit("settings")}
   Controls.MenuSeparator{}
   Controls.MenuItem{objectName:"projectRemove";icon.source:"data:image/svg+xml,"+encodeURIComponent(Icons.svg("trash-2").replace(/currentColor/g,String(Color.urgent)));icon.color:Color.urgent;text:T3I18n.tr("Remove");enabled:root.canWrite&&!root.busy;palette.text:Color.urgent;palette.windowText:Color.urgent;onTriggered:root.edit("remove")}
  }

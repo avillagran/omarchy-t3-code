@@ -97,7 +97,7 @@ impl Harness {
                             };
                             let _=ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":result}}).to_string().into()));
                         } else {
-                            let body = if first.contains("/bounded ") {
+                            let body = if first.contains("/bounded?compactTurnItems=1 ") {
                                 let mut p = p.clone();
                                 let mut count = reads.lock().unwrap();
                                 *count += 1;

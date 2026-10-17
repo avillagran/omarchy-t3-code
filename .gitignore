@@ -12,3 +12,8 @@ __pycache__/
 
 # Architecture-specific build artifacts.
 /dist/
+
+/bin/libt3-browser.so
+/ui/browser/browser-host.moc
+
+/bin/t3-browser-secret

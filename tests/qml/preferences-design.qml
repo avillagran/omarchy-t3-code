@@ -40,7 +40,7 @@ ShellRoot {
   }else if(phase===3&&captured){root.narrowPreview=true;phase=4
   }else if(phase===4){var field=keys.findChild(view,"preferenceText_branchNamePrefix");check(view.compact&&view.width===720,"narrow viewport exercised independently of window tiling");check(field.width>200,"narrow text field uses available width");check(field.mapToItem(view,field.width,0).x<=view.width,"narrow field stays inside window");capture("narrow");phase=5
   }else if(phase===5&&captured){view.query="updates";phase=6
-  }else if(phase===6){check(view.groups.length===1&&view.groups[0].title==="Updates","search finds settings across categories");view.query="does-not-exist";check(!view.groups.length,"search empty state");view.query="";view.page="appearance";phase=7
+  }else if(phase===6){check(view.groups.length===1&&view.groups[0].title==="Behavior","search finds update fields in the native Behavior section");view.query="does-not-exist";check(!view.groups.length,"search empty state");view.query="";view.page="appearance";phase=7
   }else if(phase===7){check(keys.findChild(view,"preferenceUsage").visible,"appearance switch visible");capture("appearance");phase=8
   }else if(phase===8&&captured){console.log("PREFERENCES_DESIGN_QML_PASS: grouped cards, cross-category search, responsive fields and screenshots");Qt.quit()}
  }}

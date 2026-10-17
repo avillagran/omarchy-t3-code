@@ -49,6 +49,9 @@ ShellRoot {
    b.managementRequest=null;b.managementBusy=false
    b.requestNewThread({action:"new-thread",environment:"fixture",projectId:"p",title:"Override",modelSelection:{instanceId:"codex",model:"fixture"},branch:"main",worktreePath:"/existing"});preference(b,"local")
    check(b.managementRequest.workspaceStrategy.type==="existing_worktree"&&!keys.findChild(panel,"t3WorkspaceConfirmation").visible,"native project override is honored without asking")
+   b.managementRequest=null;b.managementBusy=false
+   b.requestNewThread({action:"new-thread",environment:"fixture",projectId:"p",title:"Explicit local",modelSelection:{instanceId:"codex",model:"fixture"},workspaceStrategy:{type:"root"},automatic:true})
+   check(!b.workspaceOperation.busy&&b.managementRequest.workspaceStrategy.type==="root"&&!b.managementRequest.automatic&&!keys.findChild(panel,"t3WorkspaceConfirmation").visible,"native New Local explicitly uses root without changing saved worktree preference")
    b.managementRequest=null;b.managementBusy=false;panel.close();console.log("SEND_NEW_THREAD_QML_PASS: one-time native preference approval/cancel/failure, automatic subsequent worktrees, overrides and exact launch retries");Qt.quit()
   }
  }}

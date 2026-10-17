@@ -1,0 +1,198 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "presetIds": [
+    "iphone-se",
+    "iphone-xr",
+    "iphone-12-pro",
+    "iphone-14-pro-max",
+    "pixel-7",
+    "samsung-galaxy-s8-plus",
+    "samsung-galaxy-s20-ultra",
+    "ipad-mini",
+    "ipad-air",
+    "ipad-pro",
+    "surface-pro-7",
+    "surface-duo",
+    "galaxy-z-fold-5",
+    "asus-zenbook-fold",
+    "samsung-galaxy-a51-71",
+    "nest-hub",
+    "nest-hub-max"
+  ],
+  "legacyPresetIds": [
+    "desktop-1920x1080",
+    "desktop-1440x900",
+    "laptop-1366x768",
+    "laptop-1280x800",
+    "ipad-pro-11",
+    "iphone-15-pro",
+    "pixel-8",
+    "galaxy-s24"
+  ],
+  "presets": [
+    {
+      "id": "iphone-se",
+      "label": "iPhone SE",
+      "category": "Phone",
+      "detail": "375 × 667",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "id": "iphone-xr",
+      "label": "iPhone XR",
+      "category": "Phone",
+      "detail": "414 × 896",
+      "width": 414,
+      "height": 896
+    },
+    {
+      "id": "iphone-12-pro",
+      "label": "iPhone 12 Pro",
+      "category": "Phone",
+      "detail": "390 × 844",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "id": "iphone-14-pro-max",
+      "label": "iPhone 14 Pro Max",
+      "category": "Phone",
+      "detail": "430 × 932",
+      "width": 430,
+      "height": 932
+    },
+    {
+      "id": "pixel-7",
+      "label": "Pixel 7",
+      "category": "Phone",
+      "detail": "412 × 915",
+      "width": 412,
+      "height": 915
+    },
+    {
+      "id": "samsung-galaxy-s8-plus",
+      "label": "Samsung Galaxy S8+",
+      "category": "Phone",
+      "detail": "360 × 740",
+      "width": 360,
+      "height": 740
+    },
+    {
+      "id": "samsung-galaxy-s20-ultra",
+      "label": "Samsung Galaxy S20 Ultra",
+      "category": "Phone",
+      "detail": "412 × 915",
+      "width": 412,
+      "height": 915
+    },
+    {
+      "id": "ipad-mini",
+      "label": "iPad Mini",
+      "category": "Tablet",
+      "detail": "768 × 1024",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "id": "ipad-air",
+      "label": "iPad Air",
+      "category": "Tablet",
+      "detail": "820 × 1180",
+      "width": 820,
+      "height": 1180
+    },
+    {
+      "id": "ipad-pro",
+      "label": "iPad Pro",
+      "category": "Tablet",
+      "detail": "1024 × 1366",
+      "width": 1024,
+      "height": 1366
+    },
+    {
+      "id": "surface-pro-7",
+      "label": "Surface Pro 7",
+      "category": "Tablet",
+      "detail": "912 × 1368",
+      "width": 912,
+      "height": 1368
+    },
+    {
+      "id": "surface-duo",
+      "label": "Surface Duo",
+      "category": "Phone",
+      "detail": "540 × 720",
+      "width": 540,
+      "height": 720
+    },
+    {
+      "id": "galaxy-z-fold-5",
+      "label": "Galaxy Z Fold 5",
+      "category": "Phone",
+      "detail": "344 × 882",
+      "width": 344,
+      "height": 882
+    },
+    {
+      "id": "asus-zenbook-fold",
+      "label": "Asus Zenbook Fold",
+      "category": "Tablet",
+      "detail": "853 × 1280",
+      "width": 853,
+      "height": 1280
+    },
+    {
+      "id": "samsung-galaxy-a51-71",
+      "label": "Samsung Galaxy A51/71",
+      "category": "Phone",
+      "detail": "412 × 914",
+      "width": 412,
+      "height": 914
+    },
+    {
+      "id": "nest-hub",
+      "label": "Nest Hub",
+      "category": "Tablet",
+      "detail": "1024 × 600",
+      "width": 1024,
+      "height": 600
+    },
+    {
+      "id": "nest-hub-max",
+      "label": "Nest Hub Max",
+      "category": "Tablet",
+      "detail": "1280 × 800",
+      "width": 1280,
+      "height": 800
+    }
+  ],
+  "zoomLevels": [
+    0.25,
+    0.33,
+    0.5,
+    0.67,
+    0.75,
+    0.8,
+    0.9,
+    1,
+    1.1,
+    1.25,
+    1.5,
+    1.75,
+    2,
+    2.5,
+    3,
+    4,
+    5
+  ],
+  "minDimension": 240,
+  "maxDimension": 3840,
+  "maxArea": 8294400,
+  "recordingFrameRates": [
+    30,
+    60
+  ],
+  "profileNameMaxLength": 48,
+  "profileMaxCount": 24
+}

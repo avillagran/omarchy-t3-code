@@ -1,0 +1,8 @@
+#!/bin/bash
+# Optional Qt browser guest, separate from both shell and document sandbox.
+set -eu
+cd -- "$(dirname -- "$0")/.."
+mkdir -p bin
+task_moc="$(pkg-config --variable=libexecdir Qt6Core)/moc"
+"$task_moc" ui/browser/browser-host.cpp -o ui/browser/browser-host.moc
+c++ -std=c++17 -Os -shared -fPIC ui/browser/browser-host.cpp -o bin/libt3-browser.so $(pkg-config --cflags --libs Qt6Quick Qt6WebEngineQuick Qt6WebEngineCore)

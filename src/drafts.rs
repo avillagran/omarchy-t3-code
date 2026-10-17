@@ -1,5 +1,5 @@
 //! Durable per-thread prompt drafts. Independent from presentation preferences.
-use omarchy_t3_client::*;
+use crate::*;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, io::Read, os::unix::fs::PermissionsExt};
@@ -21,9 +21,23 @@ pub fn clean(v: &Value) -> Result<Value> {
         return Err("draft_too_large".into());
     }
     let mut out = json!({"text":text,"attachments":[],"modelSelection":null,"delivery":if v["delivery"]=="queue"{"queue"}else{"auto"},"attempt":null});
+    if let Some(ids)=v.get("recoveryIds"){
+        let ids=ids.as_array().filter(|ids|ids.len()<=1024).ok_or("invalid_draft")?;
+        let mut seen=std::collections::HashSet::new();
+        for id in ids{let id=id.as_str().ok_or("invalid_draft")?;uuid::Uuid::parse_str(id).map_err(|_|"invalid_draft")?;if !seen.insert(id){return Err("invalid_draft".into())}}
+        out["recoveryIds"]=json!(ids);
+    }
     if let Some(mode)=v.get("runtimeMode").filter(|v|!v.is_null()){
-        if !omarchy_t3_client::protocol::models::valid_runtime_mode(mode.as_str().unwrap_or("")){return Err("invalid_runtime_mode".into())}
+        if !crate::protocol::models::valid_runtime_mode(mode.as_str().unwrap_or("")){return Err("invalid_runtime_mode".into())}
         out["runtimeMode"]=mode.clone();
+    }
+    if let Some(mode)=v.get("interactionMode").filter(|v|!v.is_null()){
+        if !matches!(mode.as_str(),Some("default"|"plan")){return Err("invalid_interaction_mode".into())}
+        out["interactionMode"]=mode.clone();
+    }
+    if let Some(reference)=v.get("sourcePlanRef").filter(|v|!v.is_null()){
+        if !valid_id(text_field(reference,"threadId"))||!valid_id(text_field(reference,"planId")){return Err("invalid_plan_scope".into())}
+        out["sourcePlanRef"]=json!({"threadId":reference["threadId"],"planId":reference["planId"]});
     }
     if let Some(s) = v["modelSelection"].as_object() {
         let options = s
@@ -58,9 +72,14 @@ pub fn clean(v: &Value) -> Result<Value> {
     if v["attempt"].is_object() {
         let a = &v["attempt"];
         uuid::Uuid::parse_str(text_field(a, "requestId")).map_err(|_| "invalid_draft")?;
-        if !(a["op"]=="send" || (a["op"]=="manage"&&a["action"]=="new-thread"&&valid_id(text_field(a,"projectId"))) || (a["op"]=="queue"&&a["action"]=="edit"&&a["runId"]==out["queueEdit"]["runId"])) || a["text"] != out["text"] {
+        if !(a["op"]=="send" || (a["op"]=="manage"&&a["action"]=="new-thread"&&valid_id(text_field(a,"projectId"))) || (a["op"]=="queue"&&a["action"]=="edit"&&a["runId"]==out["queueEdit"]["runId"])) || (a["text"] != out["text"] && !(a["op"]=="manage"&&a["planFollowUp"]==true&&a["sourcePlanRef"].is_object())) {
             return Err("invalid_draft".into());
         }
+        if let Some(mode)=a.get("interactionMode").filter(|v|!v.is_null()){if !matches!(mode.as_str(),Some("default"|"plan")){return Err("invalid_interaction_mode".into())}}
+        if let Some(reference)=a.get("sourcePlanRef").filter(|v|!v.is_null()){if !valid_id(text_field(reference,"threadId"))||!valid_id(text_field(reference,"planId")){return Err("invalid_plan_scope".into())}}
+        for flag in ["planFollowUp","navigateAfterSend"]{if a.get(flag).is_some_and(|v|!v.is_boolean()){return Err("invalid_draft".into())}}
+        if let Some(key)=a.get("planOriginKey"){if !key.as_str().and_then(|s|s.split_once('/')).is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){return Err("invalid_draft".into())}}
+        if a["planFollowUp"]==true {crate::write::validate_message(a)?;if a["op"]=="manage"&&(a["workspaceStrategy"].is_object()||a["launchWithMessage"]==true||!a["attachments"].as_array().is_some_and(Vec::is_empty)){return Err("invalid_draft".into())}}
         if a["op"]=="manage" {uuid::Uuid::parse_str(text_field(a,"sendRequestId")).map_err(|_| "invalid_draft")?;}
         let mut attempt = json!({});
         for key in [
@@ -84,11 +103,16 @@ pub fn clean(v: &Value) -> Result<Value> {
             "projectId",
             "title",
             "runtimeMode",
+            "interactionMode",
+            "sourcePlanRef",
+            "planFollowUp",
+            "planOriginKey",
+            "navigateAfterSend",
             "branch",
             "worktreePath",
         ] {
             if let Some(value) = a.get(key) {
-                attempt[key] = value.clone();
+                attempt[key] = if key=="sourcePlanRef"&&!value.is_null(){json!({"threadId":value["threadId"],"planId":value["planId"]})}else{value.clone()};
             }
         }
         out["attempt"] = attempt;
@@ -129,27 +153,27 @@ pub fn load(key: &str) -> Result<Value> {
     }
     clean(&doc["draft"])
 }
-pub fn save(key: &str, value: &Value) -> Result<()> {
-    let path = path(key)?;
-    let value = clean(value)?;
-    if value["attempt"].is_object()
-        && format!(
-            "{}/{}",
-            text_field(&value["attempt"], "environment"),
-            text_field(&value["attempt"], "thread")
-        ) != key
-    {
-        return Err("invalid_draft_key".into());
-    }
-    let dir = path.parent().ok_or("draft_save_failed")?;
-    fs::create_dir_all(dir).map_err(|_| "draft_save_failed")?;
-    fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(|_| "draft_save_failed")?;
-    save_json(&path, &json!({"version":1,"key":key,"draft":value}))
-        .map_err(|_| "draft_save_failed")?;
-    fs::File::open(dir)
-        .and_then(|d| d.sync_all())
-        .map_err(|_| "draft_save_failed".into())
+fn save_unlocked(key:&str,value:&Value)->Result<()> {
+    let path=path(key)?;let value=clean(value)?;
+    if value["attempt"].is_object()&&format!("{}/{}",text_field(&value["attempt"],"environment"),text_field(&value["attempt"],"thread"))!=key{return Err("invalid_draft_key".into())}
+    let dir=path.parent().ok_or("draft_save_failed")?;fs::create_dir_all(dir).map_err(|_|"draft_save_failed")?;
+    fs::set_permissions(dir,fs::Permissions::from_mode(0o700)).map_err(|_|"draft_save_failed")?;
+    save_json(&path,&json!({"version":1,"key":key,"draft":value})).map_err(|_|"draft_save_failed".into())
 }
+/// Single draft transaction: recovery marker and recovered text/files share one
+/// atomic document. A stale autosave cannot erase a recovery committed elsewhere.
+pub fn update(key:&str,change:impl FnOnce(&Value)->Result<Value>)->Result<Value>{
+    use std::os::{fd::AsRawFd,unix::fs::OpenOptionsExt};
+    let p=path(key)?.with_extension("lock");fs::create_dir_all(p.parent().unwrap()).map_err(|_|"draft_save_failed")?;
+    let lock=fs::OpenOptions::new().write(true).create(true).truncate(false).mode(0o600).custom_flags(libc::O_NOFOLLOW).open(p).map_err(|_|"draft_save_failed")?;
+    if unsafe{libc::flock(lock.as_raw_fd(),libc::LOCK_EX|libc::LOCK_NB)}!=0{return Err("drafts_busy".into())}
+    let result=(||{let old=load(key)?;let next=clean(&change(&old)?)?;
+        let markers=next["recoveryIds"].as_array().cloned().unwrap_or_default();
+        if old["recoveryIds"].as_array().into_iter().flatten().any(|id|!markers.contains(id)){return Err("draft_recovery_changed".into())}
+        save_unlocked(key,&next)?;Ok(next)})();
+    unsafe{libc::flock(lock.as_raw_fd(),libc::LOCK_UN);}result
+}
+pub fn save(key:&str,value:&Value)->Result<()>{update(key,|_|clean(value)).map(|_|())}
 
 #[cfg(test)]
 mod tests {

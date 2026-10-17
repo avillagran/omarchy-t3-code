@@ -1,0 +1,13 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "files": {
+    "apps/web/src/components/settings/browserImportWizard.logic.ts": "e83ca49b38cad64b2c25a2164f68f60f42cd1097fe2b3db8992583d54fc5fb66",
+    "packages/contracts/src/browserImport.ts": "fc10b3bce8f67e4ba271227b3376150cc7f680bcd5c46de6be02206b826c300a"
+  },
+  "adaptations": [
+    "TypeScript erasure/import and export removal",
+    "Object spread becomes Object.assign, Array.at(-1) becomes final-index lookup for Qt",
+    "Failure dictionary spread merged with Object.assign"
+  ],
+  "outputSha256": "c99c194fbd46a0738d65765132d1ed5cf5e3b28c40c4bcacb94c37aca23c6b11"
+}

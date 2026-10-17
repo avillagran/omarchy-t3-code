@@ -7,6 +7,8 @@
 #include <QQuickWindow>
 #include <QTimer>
 #include <QFile>
+#include <QTemporaryFile>
+#include <QUrl>
 #include <QDir>
 #include <QJsonObject>
 #include <QSocketNotifier>
@@ -26,8 +28,10 @@ class DocumentHost: public QObject {
  bool allowCopy=false;
  std::atomic<bool> grabbing{false};
  QByteArray input;
+ QTemporaryFile reviewPage;
 public:
  DocumentHost(QString directory):directory(directory){
+  reviewPage.setFileTemplate(QDir(directory).filePath("review-XXXXXX.html"));
   connect(QGuiApplication::clipboard(),&QClipboard::dataChanged,this,[this](){if(!allowCopy)return;allowCopy=false;auto text=QGuiApplication::clipboard()->text();if(text.size()>120000)return;auto out=QJsonDocument(QJsonObject{{"clipboard",text}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);});
   capture.setSingleShot(true);capture.setInterval(40);
   connect(&capture,&QTimer::timeout,this,[this](){
@@ -44,14 +48,22 @@ public:
   connect(w,&QQuickWindow::afterRendering,this,[this](){if(!grabbing.load())QMetaObject::invokeMethod(this,[this](){requestFrame();},Qt::QueuedConnection);},Qt::DirectConnection);
   requestFrame();
  }
+ Q_INVOKABLE QUrl reviewPageUrl(const QString &html){
+  if(html.size()>32*1024*1024)return QUrl();
+  if(!reviewPage.isOpen()&&!reviewPage.open())return QUrl();
+  reviewPage.resize(0);auto bytes=html.toUtf8();if(reviewPage.write(bytes)!=bytes.size()||!reviewPage.flush())return QUrl();
+  return QUrl::fromLocalFile(reviewPage.fileName());
+ }
  Q_INVOKABLE void requestFrame(){if(!capture.isActive())capture.start();}
+ Q_INVOKABLE void reviewState(const QString &error){auto out=QJsonDocument(QJsonObject{{"reviewReady",true},{"reviewError",error.left(256)}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);}
  Q_INVOKABLE void contentHeight(int height){
   if(height<1||height>100000)return;auto out=QJsonDocument(QJsonObject{{"contentHeight",height}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);
  }
  void command(const QJsonObject &v){
   if(!window)return;QString type=v["type"].toString();
   if(type=="close"){QCoreApplication::quit();return;}
-  if(type=="resize"){window->resize(qBound(240,v["width"].toInt(),2560),qBound(180,v["height"].toInt(),1800));}
+  if(type=="review-options"){QString layout=v["layout"].toString();if((layout=="split"||layout=="stacked")&&v["wrap"].isBool())QMetaObject::invokeMethod(window,"setReviewOptions",Q_ARG(QVariant,layout),Q_ARG(QVariant,v["wrap"].toBool()));}
+  else if(type=="resize"){window->resize(qBound(240,v["width"].toInt(),2560),qBound(180,v["height"].toInt(),1800));}
   else if(type=="zoom"){QMetaObject::invokeMethod(window,"setZoom",Q_ARG(QVariant,qBound(0.5,v["value"].toDouble(),2.0)));}
   else if(type=="wheel"){
    QPointF p(v["x"].toDouble(),v["y"].toDouble());QWheelEvent e(p,p,QPoint(v["px"].toInt(),v["py"].toInt()),QPoint(v["ax"].toInt(),v["ay"].toInt()),Qt::NoButton,Qt::KeyboardModifiers(v["modifiers"].toInt()),Qt::NoScrollPhase,false);QCoreApplication::sendEvent(window,&e);

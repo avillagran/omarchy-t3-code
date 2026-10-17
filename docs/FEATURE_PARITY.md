@@ -1,5 +1,7 @@
 # UI and chat parity audit
 
+Current comprehensive review: [screen and section audit](SCREEN_PARITY_AUDIT.md) (2026-10-17), with all 28 native route files, 168 comparison rows and fresh QML/rendering evidence. The historical implementation notes below retain their original scope.
+
 Compared on 2026-10-16 with the local T3 Code nightly checkout at `5a4e9980`.
 Plugin baseline: `213ff5b`. This is a source-backed review, expanded to the
 composer, transcript, workspace controls and preferences. It does not establish
@@ -64,7 +66,7 @@ Native paths below are relative to `apps/web/src/` in the reference checkout.
 | High | Diffs | Changed-file summary and a colored unified diff modal exist. File rows themselves are not actionable; missing the native per-file diff panel, file navigation and richer diff controls. | `components/DiffPanel.tsx`, `components/chat/MessagesTimeline.tsx::onOpenTurnDiff`; `ui/qml/T3Changes.qml`, `T3Panel.qml::diffPopup`. |
 | High | Chat modes | Model/options and provider-filtered runtime permissions work beside the composer model picker, with per-thread draft persistence and native mode updates before dispatch. No native Plan/Default mode switch or plan-ready follow-up workflow. Provider slash-command suggestions are not equivalent to dispatching built-in chat-mode actions. | `composer-logic.ts::ComposerSlashCommand`, `components/chat/ComposerPlanFollowUpBanner.tsx`, `ChatView.tsx`; `ui/qml/T3Composer.qml`, `lib-t3-rust/src/composer.rs` implements only built-in `/model`; new threads hardcode `interactionMode: default` in `src/write.rs`. |
 | Medium | Composer references | File/folder and skill lookup exist. Missing thread/PR suggestion kinds, rich context chips, assistant-selection citations and structured T3 clipboard contexts. The editor currently inserts textual Markdown references. | `components/chat/ComposerCommandMenu.tsx`, `ComposerPromptEditorTiptap.tsx`, `chat/AssistantSelectionToolbar.tsx`; `src/suggestions.rs` allows only path/skill/command, `ui/qml/T3Composer.qml`. |
-| Medium | Prompt stash | Durable draft and prompt history exist, but there is no multi-entry stash menu to save/restore/delete independent prompts and their attachments. This is separate from queued messages. | `components/chat/ComposerStashMenu.tsx`, `ComposerStashBadge.tsx`; `ui/qml/T3Composer.qml`, `T3Backend.qml`. |
+| Adapted | Project drafts/stash | Multi-entry project-scoped save/restore/delete and attachments are now implemented, shared between fullscreen and Edit right-click. Native floating stash badge/banner presentation differs. | `components/chat/ComposerStashMenu.tsx`, `ComposerStashBadge.tsx`; `ui/qml/T3ProjectDrafts.qml`, `T3Composer.qml`, `T3Backend.qml`; see current audit row 41. |
 | Medium | Workspace controls | Missing full branch/worktree picker, Git action controls, project-script runner/editor and editor picker inside the chat details UI. “New thread on this branch” already exists and should be preserved. | `components/chat/ThreadDetailsPanel.tsx`, `components/BranchToolbar.tsx`, `GitActionsControl.tsx`, `ProjectScriptsControl.tsx`; `ui/qml/T3SidebarActions.qml`, `T3Panel.qml`. |
 | Medium | Terminal | Native Omarchy terminal now attaches to the chat’s T3 shell (local or remote), with history, input and resize support. Embedded terminal drawer and terminal-selection context in the prompt remain unported. | `components/ThreadTerminalDrawer.tsx`, `components/chat/ComposerPendingTerminalContexts.tsx`; `src/terminal.rs`, `lib-t3-rust/src/terminal.rs`, `docs/NATIVE_TERMINAL.md`. |
 | Medium | Relationships and automations | Lineage metadata exists in the normalized sidebar data, but no full parent/fork/subagent relationship panel or thread automation editor. | `components/chat/ThreadRelationshipsControl.tsx`, `ThreadAutomationsPanel.tsx`; `src/lib.rs` preserves lineage, `ui/qml/T3Panel.qml` has no corresponding panel. |
@@ -173,12 +175,21 @@ saved bearer tokens; pairing input is transient. SSH onboarding runs independent
 of sends and draft saves. Unchanged SSH tunnels survive catalog label edits.
 Portable transformations and pairing-link normalization live in t3-protocol.
 
-This ports saved-connection management, not T3 cloud-account registration, SSH
-key/passphrase enrollment, host network exposure, or authorized-client/share-link
-administration. Existing T3 Connect routes can be disabled or forgotten locally;
-account deregistration remains separate. Tests use isolated encrypted catalogs,
-a mocked native pairing server and QML forms. The real native catalog was read
-without changing the user’s saved connections.
+The selected environment now also exposes native authorized clients, pairing
+links and explicit permission selection, individual/bulk revocation, version,
+network reachability, supported environment icons and linked T3 Connect
+activity/webhook preferences. See [connection access](CONNECTION_ACCESS.md) for
+contracts and validation. Local network exposure and Tailscale HTTPS use native
+launch settings and an ownership-checked, confirmed service restart. Native CLI
+account authorization, browser account creation, relay installation approval,
+managed/publish-only setup, unlink and logout are integrated; CLI authorization
+is separate from the Electron Clerk session (see [cloud adapter](CONNECTION_CLOUD.md)).
+Native balancing preferences now route eligible automatic drafts to the matching
+project/environment; GitHub sharing preferences guard cross-environment PR reads
+(see [connection preferences](CONNECTION_PREFERENCES.md)). SSH key/passphrase
+enrollment remains in the native application. Tests use isolated encrypted
+catalogs, fake native processes, mocked HTTP endpoints and QML forms. Live smoke
+checks only read state; they do not change account, exposure or sharing settings.
 
 ## Composer background send and project sources
 
@@ -253,3 +264,18 @@ QML component. Ports native GUI stash/restore rules with project scope, includes
 pending prompts from other project threads, preserves target model/permissions
 and attachments, and saves the destination before consuming a source. See
 [PROJECT_DRAFTS.md](PROJECT_DRAFTS.md).
+
+Archive screen follow-up (2026-10-17): [native grouped archived threads](ARCHIVE.md) is implemented in Preferences, with native scope, Unarchive/Delete, confirmation preference and durable explicit retry/status handling. Local/node archive reads passed; live mutations and original-app pixel comparison remain unverified. Other administration gaps remain in the comprehensive screen audit.
+
+
+Native keybindings follow-up: editable grouped commands/conditions, native key-file
+operations, original primary/active runtime resolution, change subscriptions and
+supported chat/script dispatch are installed. Missing workspace commands and
+alternate-layout/IME/compositor matching remain partial; see [KEYBINDINGS.md](KEYBINDINGS.md).
+
+Open-source licenses follow-up: General → Diagnostics → View licenses now exposes
+the application manifest with native filtering/counts/source links and one lazy,
+selectable notice.238locked component/asset/compiler notices are collected at
+build time; reads need no native account or environment role. The General link,
+actual-worker notice reads and error/stale/retry behavior are tested. See
+[LICENSES.md](LICENSES.md); five other dedicated administration pages remain.

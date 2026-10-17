@@ -6,11 +6,14 @@ tag=${1:?Usage: tools/publish-release vVERSION}
 [[ $tag =~ ^v[0-9][A-Za-z0-9._-]*$ ]] || exit 1
 [[ -z $(git status --porcelain) ]] || { echo 'Commit changes first.' >&2; exit 1; }
 commit=$(git rev-parse HEAD)
+[[ "$tag" == "v$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')" ]] || { echo 'Tag and manifest version differ.' >&2; exit 1; }
+[[ $(git rev-parse "$tag^{commit}") == "$commit" ]] || { echo 'Tag does not match source.' >&2; exit 1; }
 assets=()
 for arch in aarch64 x86_64; do
-  file="dist/omarchy-t3-code-linux-$arch.tar.gz"
+  file="dist/omarchy-t3-code-$tag-linux-$arch.tar.gz"
   (cd dist && sha256sum -c "$(basename "$file").sha256")
   [[ $(tar -xOf "$file" COMMIT) == "$commit" ]] || { echo "Stale package: $file" >&2; exit 1; }
+  [[ $(tar -xOf "$file" BUILD-INFO | head -1) == "version=$tag" ]] || { echo "Package version mismatch: $file" >&2; exit 1; }
   assets+=("$file" "$file.sha256")
 done
 # A draft keeps incomplete releases out of the installer's latest-release lookup.

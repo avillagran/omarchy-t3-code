@@ -1,0 +1,7 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "source": "native/browser-secret/main.c",
+  "sha256": "d174fffa558aa50bc6d354b9ab9a153d03d60262475c6b48337102bcb370c69f",
+  "license": "licenses/T3-Code-MIT.txt",
+  "adaptations": []
+}

@@ -1,0 +1,7 @@
+# Native connection network controls
+
+`T3ConnectionNetwork.qml` shows local/LAN/Tailscale HTTPS reachability and the native backend owner. It reads native desktop settings and runtime metadata; Tailscale status is reduced to the current machine's DNS/running state and Serve configuration. Peer identities are not returned. Only a Serve proxy to this T3 localhost port is treated as active; another application's handler is a conflict.
+
+Changing exposure or Serve requires an explicit confirmation. `connection_network.rs` checks the settings/drop-in revision under the native catalog lock and validates mode, port, service ownership and Tailscale availability. It preserves unknown desktop settings and writes the documented native `T3CODE_HOST`, `T3CODE_TAILSCALE_SERVE` and `T3CODE_TAILSCALE_SERVE_PORT` into the user service drop-in. The existing ownership-checked lifecycle reloads and restarts the native headless service. T3 owns listeners and Serve setup/cleanup. A failed activation restores previous files and attempts to restore the prior service. GUI-owned or external servers expose read-only controls.
+
+The settings revision detects stale writes; native Electron does not share ot3's lock, so simultaneous native file replacements cannot be made fully atomic by this adapter. Test fixtures use isolated HOME/T3 data, fake systemctl/T3 executables and native runtime records to verify successful activation, stale/unconfirmed rejection and rollback. No live network configuration was applied during validation.

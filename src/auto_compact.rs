@@ -42,7 +42,7 @@ fn bounded(client: &Client, e: &Environment, id: &str) -> Result<Value> {
     if !valid_id(id) {
         return Err("invalid_id".into());
     }
-    client.get(e, &format!("/api/orchestration/threads/{id}/bounded"), true)
+    client.bounded_thread(e, id)
 }
 fn supported(
     e: &Environment,

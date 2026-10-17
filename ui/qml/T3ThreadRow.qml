@@ -29,6 +29,10 @@ Item {
   readonly property var modelInfo: (catalog.models || []).find(function(m){return m.instanceId === root.thread.provider && m.model === root.thread.model}) || ({})
   readonly property var draft: bridge.drafts[thread.key] || ({})
   readonly property bool hasDraft: !draft.queueEdit && (!!String(draft.text || "").trim() || !!(draft.attachments && draft.attachments.length))
+  readonly property bool showDraft:hasDraft&&bridge.selectedKey!==thread.key
+  readonly property bool slim:!!thread.settled||!!thread.snoozed
+  readonly property bool selected:bridge.selectedKey===thread.key
+  readonly property bool receding:!selected&&!showActions&&((!!thread.working&&!(thread.pending&&["request","plan","waiting"].indexOf(thread.reason)>=0))||!!thread.settled)
   readonly property bool busy: !!bridge.managementBusy || !!bridge.managementRequest
   readonly property bool canOperate: catalog.canWrite === true
   readonly property var capabilities:catalog.capabilities || ({})
@@ -59,11 +63,11 @@ Item {
   readonly property var discardControl: discardButton
   readonly property color fg: Color.popups.text
   readonly property color dim: Qt.rgba(fg.r,fg.g,fg.b,0.57)
-  height: Style.space(82)
+  height: Style.space(slim?36:82)
   Accessible.role: Accessible.Button
   Accessible.name: [thread.title,thread.project,stateLabel].filter(Boolean).join(" · ")
   function hidePreview(){openDelay.stop();closeDelay.stop();preview.close()}
-  function dismiss(){if(threadPRBadge)threadPRBadge.closePreview();projectContextDismissed();hidePreview();snoozeMenu.close();rowMenu.close();customSnooze.close()}
+  function dismiss(){if(threadPRBadge)threadPRBadge.closePreview();if(slimPRBadge)slimPRBadge.closePreview();projectContextDismissed();hidePreview();snoozeMenu.close();rowMenu.close();customSnooze.close()}
   function manage(action,extra){hidePreview();bridge.manage(Object.assign({action:action,environment:thread.environmentId,thread:thread.id},extra || {}))}
   function snoozeManage(action,extra){if(snoozeContext)contextManage(action,extra);else manage(action,extra)}
   function contextManage(action,extra){var t=actionThread;bridge.manage(Object.assign({action:action,environment:t.environmentId,thread:t.id},extra || {}))}
@@ -99,44 +103,46 @@ Item {
   Timer { id:openDelay;interval:500;onTriggered:if(root.hovered && !actionsHover.hovered && !snoozeMenu.visible && !rowMenu.visible && root.panelVisible && !root.pooled)preview.open() }
   Timer { id:closeDelay;interval:140;onTriggered:if(!root.hovered && !previewHover.hovered)preview.close() }
   Rectangle {
-    anchors.fill:parent;anchors.topMargin:Style.space(2);anchors.bottomMargin:Style.space(2)
+    anchors.fill:parent;anchors.topMargin:Style.space(root.slim?0:2);anchors.bottomMargin:Style.space(root.slim?0:2)
     radius:Style.space(6)
-    color: root.bridge.selectedKey===root.thread.key ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.075) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.045) : "transparent"
+    color: root.selected ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.075) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.045) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
+    border.width:root.keyboardCurrent?1:0;border.color:Color.accent
     Behavior on color {ColorAnimation{duration:130}}
     MouseArea {
       anchors.fill:parent;cursorShape:Qt.PointingHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton
       onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
     }
     ColumnLayout {
-      anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(8);anchors.bottomMargin:Style.space(8);spacing:Style.space(2)
+      anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(root.slim?0:8);anchors.bottomMargin:Style.space(root.slim?0:8);spacing:Style.space(2)
+      opacity:root.receding&&root.thread.working?0.7:1
       RowLayout {
         Layout.fillWidth:true;Layout.preferredHeight:Style.space(20);spacing:Style.space(6)
-        T3Icon {name:"square-pen";implicitWidth:Style.space(13);tint:root.dim;visible:root.hasDraft}
-        Rectangle {
+        T3Icon {name:"square-pen";implicitWidth:Style.space(13);tint:root.dim;visible:root.showDraft}
+        T3ProjectIcon {
+          project:root.projectInfo;projects:root.bridge.state.projects || [];monogram:root.thread.projectMonogram || "PR";projectKey:root.thread.projectKey || ""
           width:Style.space(16);height:width;radius:Style.space(4)
-          readonly property color tint:T3Palette.projectColor(root.thread.projectKey,root.bridge.state.projects)
-          color:Qt.rgba(tint.r,tint.g,tint.b,0.14)
+          opacity:root.slim&&!root.showActions?0.4:1
           MouseArea{objectName:"projectIconContext";anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
-          Text{anchors.centerIn:parent;text:root.thread.projectMonogram || "PR";font.pixelSize:Style.space(8);font.bold:true;color:parent.tint;textFormat:Text.PlainText}
         }
-        Text{Layout.fillWidth:true;text:root.thread.project || root.thread.environmentName || "";color:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText
-          activeFocusOnTab:true
+        Text{objectName:"threadProjectOrTitle";Layout.fillWidth:true;text:root.slim?root.thread.title || "":root.thread.project || root.thread.environmentName || "";color:root.slim?(root.receding?root.dim:root.fg):root.dim;font.pixelSize:root.slim?Style.font.body:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText
+          activeFocusOnTab:!root.slim
           Keys.onPressed:function(event){if(event.key===Qt.Key_Menu || (event.key===Qt.Key_F10&&event.modifiers===Qt.ShiftModifier)){root.hidePreview();root.projectContextRequested(this,width/2,height/2);event.accepted=true}}
-          MouseArea{objectName:"projectNameContext";anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
+          MouseArea{objectName:"projectNameContext";anchors.fill:parent;enabled:!root.slim;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
         }
+        T3IconButton{objectName:"threadPinIndicator";visible:!!root.thread.pinned;name:root.canPin&&root.hovered?"pin-off":"pin";implicitWidth:Style.space(18);implicitHeight:Style.space(18);tooltipText:T3I18n.tr("Unpin thread");opacity:root.canPin?1:0.65;enabled:root.canPin&&!root.busy;onClicked:root.manage("unpin")}
+        T3PullRequestBadge{id:slimPRBadge;objectName:root.slim?"threadPullRequestBadge":"slimThreadPullRequestBadge";active:root.slim&&root.panelVisible&&!root.pooled;badge:root.thread.pullRequestBadge || null;visible:root.slim&&!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
         RowLayout {
-          visible:!root.showActions || (!root.canSettle && !root.canSnooze && !root.hasDraft);spacing:Style.space(4)
-          WorkIndicator{visible:!!root.thread.working;active:root.panelVisible&&!root.pooled&&visible;tint:root.stateColor}
-          T3Icon{name:root.stateLabel===T3I18n.tr("Done")?"circle-check":"circle-alert";visible:!root.thread.working&&!!root.stateLabel;implicitWidth:Style.space(12);tint:root.stateColor}
-          Text{text:root.stateLabel ? root.stateLabel+(root.thread.working && root.timeLabel ? " "+root.timeLabel : "") : root.timeLabel;color:root.stateLabel ? root.stateColor : root.dim;font.pixelSize:Style.font.caption}
+          visible:!root.showActions || (!root.canSettle && !root.canSnooze && !root.showDraft);spacing:Style.space(4)
+          T3Icon{name:root.thread.pending&&["request","plan","waiting"].indexOf(root.thread.reason)>=0?"message-circle-question":root.thread.working?"circle-dashed":root.stateLabel===T3I18n.tr("Done")?"circle-check":"circle-alert";visible:!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor}
+          Text{text:!root.slim&&root.stateLabel ? root.stateLabel+(root.stateLabel===T3I18n.tr("Working") && root.timeLabel ? " "+root.timeLabel : "") : root.timeLabel;color:!root.slim&&root.stateLabel ? root.stateColor : root.dim;font.pixelSize:Style.font.caption}
         }
         RowLayout {
           visible:root.showActions;spacing:0
           HoverHandler{id:actionsHover;onHoveredChanged:if(hovered)root.hidePreview();else if(root.hovered)openDelay.restart()}
-          T3IconButton{id:discardButton;objectName:"threadDiscard";name:"x";tooltipText:T3I18n.tr("Discard draft");visible:root.hasDraft;enabled:!root.draft.busy&&!root.draft.loading&&!root.draft.attempt&&!root.draft.loadError;implicitWidth:Style.space(22);implicitHeight:Style.space(20);onClicked:root.bridge.discardDraft(root.thread.key)}
+          T3IconButton{id:discardButton;objectName:"threadDiscard";name:"x";tooltipText:T3I18n.tr("Discard draft");visible:root.showDraft;enabled:!root.draft.busy&&!root.draft.loading&&!root.draft.attempt&&!root.draft.loadError;implicitWidth:Style.space(22);implicitHeight:Style.space(20);onClicked:root.bridge.discardDraft(root.thread.key)}
           T3IconButton{id:snoozeButton;objectName:"threadSnooze";name:root.thread.snoozed?"alarm-clock-off":"clock";tooltipText:T3I18n.tr(root.thread.snoozed?"Wake thread now":"Snooze thread");visible:root.canSnooze||!!root.thread.snoozed&&root.canOperate;enabled:!root.busy;implicitWidth:Style.space(22);implicitHeight:Style.space(20);onClicked:if(root.thread.snoozed)root.manage("unsnooze");else root.openSnooze()}
           Controls.Button {
-            id:settleButton;objectName:"threadSettle";visible:root.canSettle;enabled:!root.busy
+            id:settleButton;objectName:"threadSettle";visible:root.canSettle&&!root.thread.snoozed;enabled:!root.busy
             implicitHeight:Style.space(20);implicitWidth:root.thread.settled?Style.space(24):settleContent.implicitWidth+Style.space(8)
             padding:0;leftPadding:Style.space(4);rightPadding:Style.space(4)
             Accessible.name:T3I18n.tr(root.thread.settled?"Move to active":"Mark settled")
@@ -147,12 +153,13 @@ Item {
           }
         }
       }
-      Text{Layout.fillWidth:true;Layout.topMargin:Style.space(2);text:root.thread.title || "";color:(root.thread.working||root.thread.settled)&&!root.showActions?root.dim:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
+      Text{objectName:"threadCardTitle";visible:!root.slim;Layout.fillWidth:true;Layout.topMargin:Style.space(2);text:root.thread.title || "";color:root.receding?root.dim:root.fg;font.weight:root.receding?Font.Normal:Font.Medium;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
       RowLayout{
+        visible:!root.slim
         Layout.fillWidth:true;spacing:Style.space(6)
         T3Icon{objectName:"threadWorkspaceIcon";name:root.thread.branch?"folder-git-2":"server";visible:root.thread.branch?!!root.thread.worktreePath:root.showScratchMachine;tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);implicitWidth:Style.space(12)}
         Text{objectName:"threadBranch";Layout.fillWidth:true;text:root.thread.branch||(root.showScratchMachine?root.thread.environmentName || "":"");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
-        T3PullRequestBadge{id:threadPRBadge;active:root.panelVisible&&!root.pooled;objectName:"threadPullRequestBadge";badge:root.thread.pullRequestBadge || null;visible:!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
+        T3PullRequestBadge{id:threadPRBadge;active:!root.slim&&root.panelVisible&&!root.pooled;objectName:root.slim?"cardThreadPullRequestBadge":"threadPullRequestBadge";badge:root.thread.pullRequestBadge || null;visible:!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
         T3Icon{objectName:"threadRemoteIcon";name:"server";tint:root.dim;implicitWidth:Style.space(12);visible:root.thread.environmentId!=="local"&&!root.showScratchMachine}
         T3ProviderIcon{provider:root.modelInfo.instanceId?root.modelInfo:({driverKind:root.thread.provider,registryIcon:""});tint:root.dim;Layout.preferredWidth:Style.space(12);Layout.preferredHeight:Style.space(12)}
       }

@@ -115,5 +115,25 @@ fn canonical_encrypted_crud_and_native_pairing_preserve_other_routes() {
         read_json(&root.join("userdata/desktop-settings.json")).unwrap()["unrelated"],
         42
     );
+    // Exercise the production dispatcher and encrypted persistence together.
+    fs::write(root.join("userdata/environment-id"), "primary-native-id\n").unwrap();
+    fs::write(root.join("userdata/server-runtime.json"), json!({"origin":"http://127.0.0.1:3773"}).to_string()).unwrap();
+    fs::write(root.join("userdata/client-settings.json"), json!({"futureSetting":{"keep":true}}).to_string()).unwrap();
+    let mut prefs = write::execute(&json!({"op":"connections-manage","action":"preferences-read"})).unwrap();
+    assert_eq!(prefs["primaryEnvironmentId"], "primary-native-id");
+    let old_client_revision = prefs["client"]["revision"].clone();
+    prefs = write::execute(&json!({"op":"connections-manage","action":"client-update","clientRevision":old_client_revision,"patch":{"environmentId":"existing","weight":100}})).unwrap();
+    assert_eq!(prefs["client"]["loadBalancingWeights"]["existing"], 100);
+    assert_eq!(read_json(&root.join("userdata/client-settings.json")).unwrap()["futureSetting"]["keep"], true);
+    assert_eq!(write::execute(&json!({"op":"connections-manage","action":"client-update","clientRevision":old_client_revision,"patch":{"loadBalancingEnabled":true}})).unwrap_err(), "client_settings_changed_reload");
+    assert_eq!(write::execute(&json!({"op":"connections-manage","action":"client-update","clientRevision":prefs["client"]["revision"],"patch":{"environmentId":"unknown","weight":100}})).unwrap_err(), "unknown_environment");
+    let old_catalog_revision = prefs["catalogRevision"].clone();
+    prefs = write::execute(&json!({"op":"connections-manage","action":"github-update","revision":old_catalog_revision,"environmentId":"existing","permission":"read"})).unwrap();
+    assert!(prefs["github"]["environments"].as_array().unwrap().iter().any(|r|r["environmentId"]=="existing" && r["permission"]=="read"));
+    assert_ne!(prefs["catalogRevision"], old_catalog_revision);
+    assert_eq!(read_catalog().unwrap()["futureField"]["keep"], true);
+    assert!(read_catalog().unwrap()["githubRoutingPermissions"].as_array().is_some_and(|rows|!rows.is_empty()));
+    assert!(!fs::read_to_string(&path).unwrap().contains("githubRoutingPermissions"));
+    assert_eq!(write::execute(&json!({"op":"connections-manage","action":"github-update","revision":old_catalog_revision,"environmentId":"existing","permission":"off"})).unwrap_err(), "catalog_changed_reload");
     fs::remove_dir_all(root).unwrap();
 }
