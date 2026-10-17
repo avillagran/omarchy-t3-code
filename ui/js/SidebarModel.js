@@ -23,7 +23,7 @@ function rows(threads, filter, project, expanded, query) {
 function count(threads, filter, project) { return threads.filter(function(t) { return matches(t, filter, project) }).length }
 function counts(threads) {
   var totals={working:0,done:0,waiting:0}
-  threads.filter(function(t){return t.relationshipToParent!=="subagent"}).forEach(function(t){var s=state(t);if(totals[s]!==undefined)totals[s]++})
+  threads.filter(function(t){return !t.settled&&t.relationshipToParent!=="subagent"}).forEach(function(t){var s=state(t);if(totals[s]!==undefined)totals[s]++})
   return totals
 }
 

@@ -42,10 +42,11 @@ ColumnLayout {
   }
   RowLayout{Layout.fillWidth:true
    Text{Layout.fillWidth:true;text:(root.bridge.localBackend || {}).owner || "";color:root.muted;font.pixelSize:Style.font.caption}
-   Controls.Button{text:T3I18n.tr("Start local backend");visible:!(root.bridge.localBackend || {}).running;enabled:!(root.bridge.backendStart || {}).busy;onClicked:root.bridge.controlBackend("start")}
+   Controls.Button{objectName:"connectionStartBackend";text:T3I18n.tr((root.bridge.backendStart || {}).busy?"Loading…":"Start local backend");visible:!(root.bridge.localBackend || {}).running;enabled:!!(root.bridge.localBackend || {}).canControl&&!(root.bridge.backendStart || {}).busy;onClicked:root.bridge.controlBackend("start")}
    T3IconButton{name:"refresh-cw";tooltipText:T3I18n.tr("Restart local backend");visible:!!(root.bridge.localBackend || {}).canControl;enabled:!(root.bridge.backendStart || {}).busy;onClicked:root.bridge.controlBackend("restart")}
    T3IconButton{name:"square";tint:Color.urgent;tooltipText:T3I18n.tr("Stop local backend");visible:!!(root.bridge.localBackend || {}).canControl;enabled:!(root.bridge.backendStart || {}).busy;onClicked:root.bridge.controlBackend("stop")}
   }
+  Text{objectName:"connectionBackendError";Layout.fillWidth:true;visible:!!text;text:T3I18n.error((root.bridge.backendStart || {}).error || (root.bridge.localBackend || {}).error || "");color:Color.urgent;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
  }
  Repeater{model:root.store.environments || []
   delegate:ColumnLayout {

@@ -6,24 +6,28 @@ Item {
  id:root;objectName:"t3DocumentView"
  required property var bridge
  signal closed()
- readonly property var doc:bridge.documentOpen
+ property string sessionId:""
+ property string fallbackTitle:""
+ property bool inlineMode:false
+ readonly property real surfaceHeight:surface.height
+ readonly property var doc:inlineMode?(bridge.inlineDocuments[sessionId] || {}):bridge.documentOpen
  property bool sourceMode:false
  property real zoom:1
  readonly property bool html:!!doc.data&&doc.data.html===true
  onHtmlChanged:{sourceMode=!html;Qt.callLater(resize)}
- function send(event){bridge.documentInput(event)}
+ function send(event){if(inlineMode&&!sessionId)return;if(sessionId)bridge.send({op:"document-input",requestId:sessionId,event:event});else bridge.documentInput(event)}
  function resize(){if(html&&!sourceMode)send({type:"resize",width:Math.round(surface.width),height:Math.round(surface.height)})}
  ColumnLayout{
   anchors.fill:parent;spacing:Style.space(8)
   RowLayout{
    Layout.fillWidth:true
    T3Icon{name:"file";tint:Color.accent}
-   Text{Layout.fillWidth:true;text:root.doc.data?root.doc.data.title:"";color:Color.popups.text;textFormat:Text.PlainText;elide:Text.ElideMiddle;font.pixelSize:Style.font.body}
-   Controls.Button{text:T3I18n.tr(root.sourceMode?"Preview":"Source");visible:root.html;onClicked:{root.sourceMode=!root.sourceMode;resizeDelay.restart()} palette.button:Color.popups.background;palette.buttonText:Color.popups.text}
-   T3IconButton{name:"minus";tooltipText:"−";visible:root.html&&!root.sourceMode;enabled:root.zoom>0.5;onClicked:{root.zoom=Math.max(0.5,root.zoom-0.25);root.send({type:"zoom",value:root.zoom})}}
-   Controls.Button{text:Math.round(root.zoom*100)+"%";visible:root.html&&!root.sourceMode;onClicked:{root.zoom=1;root.send({type:"zoom",value:1})} palette.button:Color.popups.background;palette.buttonText:Color.popups.text}
-   T3IconButton{name:"plus";tooltipText:"+";visible:root.html&&!root.sourceMode;enabled:root.zoom<2;onClicked:{root.zoom=Math.min(2,root.zoom+0.25);root.send({type:"zoom",value:root.zoom})}}
-   T3IconButton{objectName:"t3DocumentClose";name:"x";tooltipText:T3I18n.tr("Close");onClicked:root.closed()}
+   Text{Layout.fillWidth:true;text:root.doc.data?root.doc.data.title:root.fallbackTitle;color:Color.popups.text;textFormat:Text.PlainText;elide:Text.ElideMiddle;font.pixelSize:Style.font.body}
+   Controls.Button{text:T3I18n.tr(root.sourceMode?"Preview":"Source");visible:root.html&&!root.inlineMode;onClicked:{root.sourceMode=!root.sourceMode;resizeDelay.restart()} palette.button:Color.popups.background;palette.buttonText:Color.popups.text}
+   T3IconButton{name:"minus";tooltipText:"−";visible:root.html&&!root.sourceMode&&!root.inlineMode;enabled:root.zoom>0.5;onClicked:{root.zoom=Math.max(0.5,root.zoom-0.25);root.send({type:"zoom",value:root.zoom})}}
+   Controls.Button{text:Math.round(root.zoom*100)+"%";visible:root.html&&!root.sourceMode&&!root.inlineMode;onClicked:{root.zoom=1;root.send({type:"zoom",value:1})} palette.button:Color.popups.background;palette.buttonText:Color.popups.text}
+   T3IconButton{name:"plus";tooltipText:"+";visible:root.html&&!root.sourceMode&&!root.inlineMode;enabled:root.zoom<2;onClicked:{root.zoom=Math.min(2,root.zoom+0.25);root.send({type:"zoom",value:root.zoom})}}
+   T3IconButton{objectName:"t3DocumentClose";name:root.inlineMode?"maximize-2":"x";tooltipText:T3I18n.tr(root.inlineMode?"Preview":"Close");onClicked:root.closed()}
   }
   Text{Layout.fillWidth:true;visible:!!root.doc.error;text:T3I18n.error(root.doc.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:root.doc.busy || root.html&&!root.sourceMode&&!root.doc.frameUrl&&!root.doc.error;active:visible}
@@ -32,15 +36,15 @@ Item {
    onWidthChanged:resizeDelay.restart();onHeightChanged:resizeDelay.restart()
    Image{
     id:frame;objectName:"t3EmbeddedDocumentFrame";anchors.fill:parent;visible:(root.html&&!root.sourceMode)||!!root.doc.data&&!!root.doc.data.imageData
-    source:root.doc.data&&root.doc.data.imageData?root.doc.data.imageData:root.doc.frameUrl || "";cache:false;fillMode:Image.PreserveAspectFit;asynchronous:true
+    source:root.doc.data&&root.doc.data.imageData?root.doc.data.imageData:root.doc.frameUrl || "";cache:false;fillMode:Image.PreserveAspectFit;asynchronous:true;retainWhileLoading:true
     function point(x,y){var w=paintedWidth || width,h=paintedHeight || height;return {x:Math.max(0,(x-(width-w)/2)*(root.doc.frameWidth || w)/w),y:Math.max(0,(y-(height-h)/2)*(root.doc.frameHeight || h)/h)}}
     activeFocusOnTab:true
-    onStatusChanged:if(status===Image.Ready&&visible)forceActiveFocus()
+    onStatusChanged:if(status===Image.Ready&&visible&&!root.inlineMode)forceActiveFocus()
     Keys.onPressed:function(e){if(e.key===Qt.Key_Escape){root.closed();e.accepted=true;return}root.send({type:"key",key:e.key,text:e.text,modifiers:e.modifiers});e.accepted=true}
     Keys.onReleased:function(e){root.send({type:"keyup",key:e.key,text:e.text,modifiers:e.modifiers});e.accepted=true}
     MouseArea{
      id:mouseInput
-     anchors.fill:parent;enabled:root.html&&frame.status===Image.Ready;acceptedButtons:Qt.LeftButton;hoverEnabled:true
+     anchors.fill:parent;enabled:root.html&&frame.paintedWidth>0&&frame.paintedHeight>0;acceptedButtons:Qt.LeftButton;hoverEnabled:true
      property var lastMove:({})
      function input(type,m){var p=frame.point(m.x,m.y);root.send({type:type,x:p.x,y:p.y,button:m.button,buttons:m.buttons,modifiers:m.modifiers})}
      onPressed:function(m){frame.forceActiveFocus();input("press",m)}
@@ -48,7 +52,7 @@ Item {
      onPositionChanged:function(m){if(pressed)input("move",m);else{var p=frame.point(m.x,m.y);lastMove={type:"move",x:p.x,y:p.y,button:0,buttons:0,modifiers:m.modifiers};if(!moveDelay.running)moveDelay.start()}}
      Timer{id:moveDelay;interval:40;onTriggered:root.send(mouseInput.lastMove)}
      onDoubleClicked:function(m){input("double",m)}
-     onWheel:function(e){var p=frame.point(e.x,e.y);root.send({type:"wheel",x:p.x,y:p.y,ax:e.angleDelta.x,ay:e.angleDelta.y,px:e.pixelDelta.x,py:e.pixelDelta.y,modifiers:e.modifiers});e.accepted=true}
+     onWheel:function(e){if(root.inlineMode&&!frame.activeFocus){e.accepted=false;return}var p=frame.point(e.x,e.y);root.send({type:"wheel",x:p.x,y:p.y,ax:e.angleDelta.x,ay:e.angleDelta.y,px:e.pixelDelta.x,py:e.pixelDelta.y,modifiers:e.modifiers});e.accepted=true}
     }
    }
    Controls.ScrollView{

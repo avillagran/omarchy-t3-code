@@ -1,3 +1,4 @@
+pub mod notification_icon;
 pub mod backend_service;
 pub mod images;
 pub mod documents;
@@ -498,6 +499,8 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         let project = text(t, "projectId");
         let mut row=json!({"id":id,"environmentId":env,"key":format!("{env}/{id}"),"title":t["title"],"project":projects.get(project).copied().unwrap_or(project),"status":status,"working":working,"pending":!reason.is_empty()&&!snoozed,"reason":if reason.is_empty(){Value::Null}else{json!(reason)},"snoozed":snoozed,"updatedAt":epoch(&t["updatedAt"]),"revision":revision,"parentThreadId":t["lineage"]["parentThreadId"]});
         if let Some(relationship)=t["lineage"]["relationshipToParent"].as_str(){row["relationshipToParent"]=json!(relationship);}
+        // Match native isProviderNativeSubagentThread; MCP children remain writable.
+        if t["lineage"]["relationshipToParent"]=="subagent" && t["creationSource"]=="provider" {row["providerSubagent"]=json!(true);}
         for (key,value) in protocol::sidebar::sort_timestamps(t).as_object().unwrap(){row[key]=value.clone();}
         result.push(row);
     }
@@ -545,7 +548,7 @@ pub fn snapshot(client: &Client) -> Result<Value> {
             .get(&e, "/api/orchestration/shell", true)
             .and_then(|d| {
                 for p in d["projects"].as_array().into_iter().flatten() {
-                    projects.push(json!({"id":p["id"],"environmentId":e.id,"key":format!("{}/{}",e.id,text(p,"id")),"title":p["title"],"workspaceRoot":p["workspaceRoot"],"repositoryIdentity":p["repositoryIdentity"],"defaultThreadEnvMode":p["defaultThreadEnvMode"],"autoPull":p["autoPull"],"isScratch":p["isScratch"],"defaultModelSelection":p["defaultModelSelection"]}));
+                    projects.push(json!({"id":p["id"],"environmentId":e.id,"key":format!("{}/{}",e.id,text(p,"id")),"title":p["title"],"workspaceRoot":p["workspaceRoot"],"repositoryIdentity":p["repositoryIdentity"],"faviconPath":p["faviconPath"],"projectIcon":p["projectIcon"],"defaultThreadEnvMode":p["defaultThreadEnvMode"],"autoPull":p["autoPull"],"isScratch":p["isScratch"],"defaultModelSelection":p["defaultModelSelection"]}));
                 }
                 let mut items = normalize(&d, &e.id, Utc::now().timestamp_millis())?;
                 let raw: HashMap<&str, &Value> = d["threads"]
@@ -622,9 +625,12 @@ mod tests {
         let shell=json!({"threads":[
             {"id":"root","title":"Root"},
             {"id":"child","title":"Child","lineage":{"parentThreadId":"root","relationshipToParent":"subagent"}},
-            {"id":"fork","title":"Fork","lineage":{"parentThreadId":"root","relationshipToParent":"fork"}}
+            {"id":"fork","title":"Fork","creationSource":"provider","lineage":{"parentThreadId":"root","relationshipToParent":"fork"}},
+            {"id":"native","title":"Native","creationSource":"provider","lineage":{"parentThreadId":"root","relationshipToParent":"subagent"}},
+            {"id":"mcp","title":"MCP","creationSource":"mcp","lineage":{"parentThreadId":"root","relationshipToParent":"subagent"}}
         ]});
-        let rows=normalize(&shell,"fixture",0).unwrap();assert_eq!(rows.len(),3);
+        let rows=normalize(&shell,"fixture",0).unwrap();assert_eq!(rows.len(),5);
+        for row in &rows {assert_eq!(row["providerSubagent"]==true,row["id"]=="native");}
         assert_eq!(rows.iter().find(|r|r["id"]=="child").unwrap()["relationshipToParent"],"subagent");
         assert_eq!(rows.iter().find(|r|r["id"]=="fork").unwrap()["relationshipToParent"],"fork");
     }

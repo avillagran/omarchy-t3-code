@@ -11,3 +11,5 @@ function step(state,angle,pixel,touchpad,now){
  var next={mouse:state.mouse,touchpad:state.touchpad,device:device};next[device]={time:now,direction:direction,velocity:velocity}
  return {state:next,delta:delta*factor,continueTarget:continuous&&state.device===device,factor:factor}
 }
+
+function duration(distance){return Math.max(80,Math.min(glide.coasting,Math.abs(distance)*1.5))}

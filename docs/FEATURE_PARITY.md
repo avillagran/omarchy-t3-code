@@ -182,12 +182,36 @@ without changing the user’s saved connections.
 
 ## Composer background send and project sources
 
-The composer now has a **Send and start new thread** action beside Edit,
-with **Ctrl+Alt+Enter** in its tooltip. It dispatches the current prompt (queues
-it if the current thread is running), then creates a fresh thread in the same
-project after acknowledgement. Failed or uncertain sends retain the prompt,
-attachments and request identity. Changing threads before acknowledgement does
-not pull the user back. The intent survives draft reloads.
+The composer has a **Send and start new thread** action beside Edit,
+with **Ctrl+Shift+Enter** in its tooltip. Composer and header thread creation
+read T3's native `defaultThreadEnvMode` before launching. If unset, one modal
+asks to Enable worktrees, Use same folder, or Cancel. Approval saves the chosen
+native environment default through `server.updateSettings`; subsequent threads
+and app restarts read that setting and launch without another confirmation.
+Existing project overrides take precedence, and native
+`newWorktreesStartFromOrigin` is applied. Read/write failures keep the draft and
+offer Retry without creating a thread. The setting is shared with original T3,
+not stored as a separate local approval flag.
+
+Worktree mode uses native `orchestration.launchThread` with
+`workspaceStrategy: {type: "worktree", baseRef: <source branch or HEAD>}`;
+T3 allocates the new branch and worktree. Same-folder mode explicitly uses
+`root` or `existing_worktree`, retaining the source branch/path.
+
+Composer launches pass `initialMessage` to the same native call. T3 durably
+accepts the prompt and defers execution until workspace preparation completes;
+there is no independent send that could run in the wrong folder. The source
+draft clears only after native acknowledgement. Draft save failures and RPC
+errors retain the prompt and exact launch/message identities for explicit retry.
+Legacy persisted create-then-send attempts retain their previous recovery path.
+Worktree creation does not enable automatic merging. Integration remains in
+native T3 Git/pull-request workflows; those controls are not yet ported here.
+
+Verified against local native source `packages/contracts/src/orchestrationV2.ts`
+(`OrchestrationV2ThreadLaunchInput`, workspace strategy and result),
+`apps/server/src/ws.ts` launch handler, and
+`apps/server/src/orchestration-v2/ThreadLaunchService.ts` (receipts,
+`defer_start`, workspace preparation and generated branch).
 
 Add Project reads each selected environment's native configuration and source
 control discovery. It offers Local folder, New project when `newProjectsRoot`
@@ -204,3 +228,28 @@ Validation uses synthetic RPC servers and isolated QML state, including failed
 sends and visible creation dialogs in panel, floating and tiled modes. Live user
 repositories were not created or cloned. This does not yet port the optional
 publish-new-project toggle, all source-palette suggestions or clone-progress UI.
+
+### Inline HTML pages
+
+Native `html_render` attachments render automatically inside the conversation with
+an interactive Chromium surface; they retain the native measured content height
+(up to 1800 px) and can expand into the embedded document modal. Author CSS takes
+precedence over theme defaults, and native theme notifications reach the page.
+Each visible page has an independent isolated renderer, bounded to four inline
+sessions plus the modal. Pages outside the viewport, hidden panels and thread
+changes release their processes. Late frames cannot revive a closed page or
+close another renderer. Chromium repaints drive frame delivery, including delayed
+JavaScript changes, without continuous captures while idle. No WebEngine library
+loads into Quickshell or the persistent Rust backend.
+
+Validation: `tools/test-qml inline-html`, `tools/test-qml documents`,
+`tools/test-document-viewer`, and `cargo test --release --test documents --bin
+omarchy-t3-client`. The real tooltip HTML attachment was also read through native
+asset grants and rendered with three independent sessions; no user prompt or
+project command was executed.
+
+Project draft drawer: fullscreen editor and edit-button right-click share one
+QML component. Ports native GUI stash/restore rules with project scope, includes
+pending prompts from other project threads, preserves target model/permissions
+and attachments, and saves the destination before consuming a source. See
+[PROJECT_DRAFTS.md](PROJECT_DRAFTS.md).

@@ -58,9 +58,10 @@ pub fn clean(v: &Value) -> Result<Value> {
     if v["attempt"].is_object() {
         let a = &v["attempt"];
         uuid::Uuid::parse_str(text_field(a, "requestId")).map_err(|_| "invalid_draft")?;
-        if !(a["op"]=="send" || (a["op"]=="queue"&&a["action"]=="edit"&&a["runId"]==out["queueEdit"]["runId"])) || a["text"] != out["text"] {
+        if !(a["op"]=="send" || (a["op"]=="manage"&&a["action"]=="new-thread"&&valid_id(text_field(a,"projectId"))) || (a["op"]=="queue"&&a["action"]=="edit"&&a["runId"]==out["queueEdit"]["runId"])) || a["text"] != out["text"] {
             return Err("invalid_draft".into());
         }
+        if a["op"]=="manage" {uuid::Uuid::parse_str(text_field(a,"sendRequestId")).map_err(|_| "invalid_draft")?;}
         let mut attempt = json!({});
         for key in [
             "op",
@@ -75,7 +76,16 @@ pub fn clean(v: &Value) -> Result<Value> {
             "modelSelection",
             "delivery",
             "nextThread",
+            "sendRequestId",
+            "moveSource",
+            "creationRequestId",
+            "workspaceStrategy",
+            "launchWithMessage",
+            "projectId",
+            "title",
             "runtimeMode",
+            "branch",
+            "worktreePath",
         ] {
             if let Some(value) = a.get(key) {
                 attempt[key] = value.clone();
@@ -139,4 +149,32 @@ pub fn save(key: &str, value: &Value) -> Result<()> {
     fs::File::open(dir)
         .and_then(|d| d.sync_all())
         .map_err(|_| "draft_save_failed".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn creation_and_transfer_keep_distinct_retry_ids() {
+        let creation=uuid::Uuid::new_v4().to_string();
+        let send=uuid::Uuid::new_v4().to_string();
+        let draft=json!({"text":"Move me","attempt":{"op":"manage","action":"new-thread","environment":"local","thread":"source","requestId":creation,"sendRequestId":send,"projectId":"p","text":"Move me","attachments":[],"branch":"main","runtimeMode":"full-access","workspaceStrategy":{"type":"worktree","baseRef":"main"},"launchWithMessage":true}});
+        let saved=clean(&draft).unwrap();
+        assert_eq!(saved["attempt"]["sendRequestId"],send);
+        assert_eq!(saved["attempt"]["projectId"],"p");
+        assert_eq!(saved["attempt"]["branch"],"main");
+        assert_eq!(saved["attempt"]["workspaceStrategy"],json!({"type":"worktree","baseRef":"main"}));
+        assert_eq!(saved["attempt"]["launchWithMessage"],true);
+        let mut destination=saved.clone();
+        destination["attempt"]["op"]=json!("send");
+        destination["attempt"]["thread"]=json!("destination");
+        destination["attempt"]["requestId"]=json!(send);
+        destination["attempt"]["moveSource"]=json!("local/source");
+        destination["attempt"]["creationRequestId"]=json!(creation);
+        let saved=clean(&destination).unwrap();
+        assert_eq!(saved["attempt"]["moveSource"],"local/source");
+        assert_eq!(saved["attempt"]["creationRequestId"],creation);
+        let mut invalid=draft;invalid["attempt"]["sendRequestId"]=json!("bad");
+        assert!(clean(&invalid).is_err());
+    }
 }

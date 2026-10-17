@@ -15,12 +15,13 @@ function theme(bg,fg,accent,colors) {
 function escapeAttribute(s){return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
 function page(data) {
  var theme=data.theme,css=":root{color-scheme:"+theme.appearance+";";
- Object.keys(theme.variables).forEach(function(k){css+=k+":"+theme.variables[k]+" !important;"});css+="}html,body{background:var(--background)!important;color:var(--foreground)!important;font-family:var(--font-sans)}a{color:var(--accent)}pre,code{color:var(--code-foreground);background:var(--code-background)}";
+ Object.keys(theme.variables).forEach(function(k){css+=k+":"+theme.variables[k]+";"});css+="}html{background:var(--background);color:var(--foreground);font-family:var(--font-sans);font-size:14px;line-height:1.5}body{margin:0;background:var(--background);color:var(--foreground)}code,kbd,pre,samp{font-family:var(--font-mono)}";
  var injected='<base href="'+escapeAttribute(data.baseUrl)+'"><style>'+css+'</style>';
- // Append at the end of head so report CSS retains layout while the host owns
- // theme tokens and the page canvas. The opaque sandbox cannot reach Qt/app storage.
+ // Theme defaults precede author styles, matching native T3. Explicit page
+ // colors and layout win. The opaque sandbox cannot reach Qt/app storage.
  var probe='<script>addEventListener("load",function(){parent.postMessage({type:"t3-document-ready",background:getComputedStyle(document.body).backgroundColor,foreground:getComputedStyle(document.body).color,accent:getComputedStyle(document.documentElement).getPropertyValue("--accent"),sandboxed:(function(){try{void parent.document;return false}catch(e){return true}})()},"*")});<\/script>';
  var html=data.contents+probe;
- if(/<\/head\s*>/i.test(html))html=html.replace(/<\/head\s*>/i,injected+'</head>');else html=injected+html;
- return '<!doctype html><script>addEventListener("message",function(e){var f=document.querySelector("iframe");if(f&&e.source===f.contentWindow&&e.data&&e.data.type==="t3-document-ready")window.__t3DocumentStatus=e.data});<\/script><meta charset="utf-8"><style>html,body,iframe{border:0;margin:0;width:100%;height:100%;overflow:hidden;background:'+theme.variables["--background"]+'}</style><iframe sandbox="allow-scripts" referrerpolicy="no-referrer" srcdoc="'+escapeAttribute(html)+'"></iframe>';
+ var notify=JSON.stringify({jsonrpc:"2.0",method:"ui/notifications/host-context-changed",params:{theme:theme.appearance,styles:{variables:theme.variables}}}).replace(/</g,"\\u003c");
+ if(/<head(?:\s[^>]*)?>/i.test(html))html=html.replace(/<head(?:\s[^>]*)?>/i,function(head){return head+injected});else html=injected+html;
+ return '<!doctype html><script>addEventListener("message",function(e){var f=document.querySelector("iframe");if(f&&e.source===f.contentWindow&&e.data&&e.data.type==="t3-document-ready")window.__t3DocumentStatus=e.data;if(f&&e.source===f.contentWindow&&e.data&&e.data.jsonrpc==="2.0"&&e.data.method==="ui/notifications/size-changed")window.__t3ContentHeight=e.data.params.height});<\/script><meta charset="utf-8"><style>html,body,iframe{border:0;margin:0;width:100%;height:100%;overflow:hidden;background:'+theme.variables["--background"]+'}</style><iframe sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" srcdoc="'+escapeAttribute(html)+'"></iframe><script>var f=document.querySelector("iframe");f.addEventListener("load",function(){f.contentWindow.postMessage('+notify+',"*")});<\/script>';
 }

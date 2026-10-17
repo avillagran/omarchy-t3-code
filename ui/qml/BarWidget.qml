@@ -47,6 +47,7 @@ BarWidget {
         localBackend:t3Backend.localBackend,
         compaction:t3Backend.compactionStates,
         nativeScroll:t3Backend.scrollPolicy,modelFavorites:(t3Backend.catalog.favorites || []).length,modelCount:(t3Backend.catalog.models || []).length,
+        inlineHtml:{visible:Object.keys(t3Backend.inlineDocuments).length,loaded:Object.keys(t3Backend.inlineDocuments).filter(function(k){return !!t3Backend.inlineDocuments[k].frameUrl}).length,errors:Object.keys(t3Backend.inlineDocuments).map(function(k){return t3Backend.inlineDocuments[k].error}).filter(function(e){return !!e})},
         liveConnected:t3Backend.liveConnected,loadedImages:Object.keys(t3Backend.imageStates).filter(function(k){return !!t3Backend.imageStates[k].url}).length,
         pollInterval: t3Backend.pollInterval, working: t3Backend.state.working,
         language:T3I18n.locale, languageChoice:T3I18n.choice, statusCounts:root.counts,pending: t3Backend.state.pending, stale: t3Backend.stale,

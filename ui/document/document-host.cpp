@@ -16,6 +16,7 @@
 #include <QClipboard>
 #include <fcntl.h>
 #include <unistd.h>
+#include <atomic>
 class DocumentHost: public QObject {
  Q_OBJECT
  QQuickWindow *window=nullptr;
@@ -23,21 +24,30 @@ class DocumentHost: public QObject {
  QString directory;
  int sequence=0;
  bool allowCopy=false;
+ std::atomic<bool> grabbing{false};
  QByteArray input;
 public:
  DocumentHost(QString directory):directory(directory){
   connect(QGuiApplication::clipboard(),&QClipboard::dataChanged,this,[this](){if(!allowCopy)return;allowCopy=false;auto text=QGuiApplication::clipboard()->text();if(text.size()>120000)return;auto out=QJsonDocument(QJsonObject{{"clipboard",text}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);});
   capture.setSingleShot(true);capture.setInterval(40);
   connect(&capture,&QTimer::timeout,this,[this](){
-   if(!window)return;auto image=window->grabWindow();if(image.isNull())return;
+   if(!window)return;grabbing=true;auto image=window->grabWindow();grabbing=false;if(image.isNull())return;
    QString name=QString("frame-%1.png").arg(++sequence%2),path=this->directory+"/"+name,tmp=path+".next";
    if(!image.save(tmp,"PNG"))return;QFile::setPermissions(tmp,QFileDevice::ReadOwner|QFileDevice::WriteOwner);if(::rename(QFile::encodeName(tmp).constData(),QFile::encodeName(path).constData())!=0)return;
    auto out=QJsonDocument(QJsonObject{{"frame",name},{"revision",sequence},{"width",image.width()},{"height",image.height()}}).toJson(QJsonDocument::Compact);
    fprintf(stdout,"%s\n",out.constData());fflush(stdout);
   });
  }
- void attach(QQuickWindow *w){window=w;requestFrame();}
+ void attach(QQuickWindow *w){window=w;
+  // Chromium repaint requests (including canvas and CSS animations) drive
+  // captures. A capture's own render must not schedule another idle frame.
+  connect(w,&QQuickWindow::afterRendering,this,[this](){if(!grabbing.load())QMetaObject::invokeMethod(this,[this](){requestFrame();},Qt::QueuedConnection);},Qt::DirectConnection);
+  requestFrame();
+ }
  Q_INVOKABLE void requestFrame(){if(!capture.isActive())capture.start();}
+ Q_INVOKABLE void contentHeight(int height){
+  if(height<1||height>100000)return;auto out=QJsonDocument(QJsonObject{{"contentHeight",height}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);
+ }
  void command(const QJsonObject &v){
   if(!window)return;QString type=v["type"].toString();
   if(type=="close"){QCoreApplication::quit();return;}

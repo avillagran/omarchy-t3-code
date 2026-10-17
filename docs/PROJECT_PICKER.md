@@ -19,3 +19,13 @@ filter immediately and directory changes are debounced.
 
 Regression coverage: `tests/project_creation.rs`, `tools/test-qml project-picker`,
 `tools/test-qml project-open`, and `tools/test-qml creation-dialogs`.
+
+Add Project also lists registered projects immediately, before browsing or
+registering a folder. The list shows title, workspace path and environment, and
+matches every search token against those fields, following the native command
+palette's project action/search metadata. The initial multi-environment screen
+includes projects from all ready environments; choosing an environment scopes the
+list. Selecting a row calls the existing scoped project navigation flow, without
+another registration. Navigation failures remain visible and allow retry. Fresh
+openings reset the search and scroll position. Creation and clone sources remain
+available below the project list.

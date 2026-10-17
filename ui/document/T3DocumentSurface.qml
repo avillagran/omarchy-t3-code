@@ -18,6 +18,8 @@ Window {
   onScrollPositionChanged:documentHost.requestFrame()
   Component.onCompleted:{forceActiveFocus();loadHtml(Theme.page(documentData))}
  }
+ property int measuredHeight:0
+ Timer{interval:200;running:true;repeat:true;onTriggered:web.runJavaScript("window.__t3ContentHeight || 0",function(h){if(h>0&&h!==root.measuredHeight){root.measuredHeight=h;documentHost.contentHeight(h);documentHost.requestFrame()}})}
  function verifyDocument(){web.runJavaScript("JSON.stringify({status:window.__t3DocumentStatus,sandbox:document.querySelector('iframe').getAttribute('sandbox')})",function(value){console.log("DOCUMENT_VERIFY "+value)})}
  function copySelection(){web.triggerWebAction(WebEngineView.Copy)}
  function setZoom(value){web.zoomFactor=value;documentHost.requestFrame()}
