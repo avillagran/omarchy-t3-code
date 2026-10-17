@@ -418,3 +418,13 @@ Python are build-only. `node tools/build-licenses.cjs` uses fetched locked crate
 sources offline and the checked-in original helpers. Run release
 `third_party_licenses` tests and serial QML `licenses`/`licenses-preferences`.
 The real-worker fixture runs without a T3 account and never modifies user data.
+
+Chat Markdown images use native rich-text image placeholders restored only after
+the Rust image worker resolves a private cache URL. Filesystem destinations,
+including absolute paths and `file:` URLs, use T3's exact thread/path
+`media-file` asset grant; remote host paths are never passed to Qt as image
+sources. Public HTTP/data images carry no environment credentials. Image size
+is proportional to the chat lane and clicking opens the existing native viewer.
+The generic document/plan Markdown renderer keeps its existing image policy.
+Run `cargo test --release --test markdown_images --test images --test history
+--test documents` and serial QML `markdown-images`, `live-media`, `history-find`.

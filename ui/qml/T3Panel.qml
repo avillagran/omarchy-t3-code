@@ -397,9 +397,17 @@ Item {
     var rect=edit.positionToRectangle(label)
     return String(edit.linkAt(rect.x+2,rect.y+rect.height/2)).indexOf("ot3-code-copy://")===0
   }
-  function renderMessage(message){
+  function renderMessage(message,availableWidth){
     if(!message.rendered)return message.text || ""
     var html=message.rendered
+    html=html.replace(/<a href="ot3-image-open:\/\/([0-9]+)">([\s\S]*?)<\/a>/g,function(full,index,label){
+      var a=(message.markdownImages || [])[Number(index)];if(!a)return label;
+      var state=root.bridge.imageStates[root.bridge.imageKey(a)] || {};
+      if(!state.url)return full;
+      var width=Math.max(1,Math.min(availableWidth || root.chatContentMaxWidth,state.width || 640));
+      var height=Math.max(1,Math.round(width*(state.height || 480)/(state.width || 640)));
+      return '<a href="ot3-image-open://'+index+'"><img src="'+String(state.url).replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'" width="'+Math.round(width)+'" height="'+height+'" /></a>';
+    })
     if(message.streaming||!root.bridge.canOpenTerminal)html=html.replace(new RegExp('<a href="ot3-code-run://[0-9]+">Run in terminal</a> · ',"g"),"")
     html=html.replace(new RegExp('(href="ot3-code-run://[0-9]+">)Run in terminal(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Run in terminal")+b})
     html=html.replace(new RegExp('(href="ot3-code-copy://[0-9]+">)Copy code(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy code")+b})
@@ -1152,13 +1160,28 @@ Item {
                       LayoutMirroring.enabled:false
                       visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context" && modelData.role !== "plan"
                       width: parent.width
-                      text: message.userMessage ? modelData.text || "" : root.renderMessage(modelData)
+                      text: message.userMessage ? modelData.text || "" : root.renderMessage(modelData,width)
                       textFormat: message.userMessage || !modelData.rendered ? TextEdit.PlainText : TextEdit.RichText; readOnly: true; selectByMouse: true
-                      onLinkActivated:function(link){if(String(link).indexOf("ot3-code-")===0){root.bridge.codeAction(message.modelData,link);return}root.bridge.openReference(link)}
+                      onLinkActivated:function(link){if(String(link).indexOf("ot3-image-open://")===0){var a=(message.modelData.markdownImages || [])[Number(String(link).slice(17))];if(a){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}return}if(String(link).indexOf("ot3-code-")===0){root.bridge.codeAction(message.modelData,link);return}root.bridge.openReference(link)}
                       wrapMode: TextEdit.Wrap
                       color: root.fg; selectionColor: Color.accent; selectedTextColor: Color.popups.background
                       font.pixelSize: Style.font.body
                       Accessible.name:message.userMessage?T3I18n.tr("You"):"T3"
+                    }
+                    Repeater {
+                      model:message.modelData.markdownImages || []
+                      Item {
+                        id:markdownImageRequest
+                        required property var modelData
+                        width:0;height:0
+                        readonly property real viewportY:message.y+body.y-conversation.contentY
+                        readonly property bool active:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+message.height>0
+                        function request(){if(active)root.bridge.requestImage(modelData)}
+                        onActiveChanged:request()
+                        onModelDataChanged:Qt.callLater(request)
+                        Component.onCompleted:Qt.callLater(request)
+                        Connections{target:root.bridge;function onImageStatesChanged(){if(markdownImageRequest.active&&!root.bridge.imageStates[root.bridge.imageKey(markdownImageRequest.modelData)])Qt.callLater(markdownImageRequest.request)}}
+                      }
                     }
                     Flow {
                       id:attachmentFlow

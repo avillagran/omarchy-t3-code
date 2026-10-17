@@ -35,6 +35,7 @@
   "localChanges": [
     "src/lib.rs declares mod long_rpc and applies a 64 MiB cap only to protocol GET thread bounded snapshots; generic HTTP/RPC stays at 8 MiB",
     "src/long_rpc.rs adds rpc_with_timeout over the existing private authenticated websocket factory",
-    "src/stream.rs uses the 64 MiB websocket cap only for orchestration.subscribeThread with acceptBoundedSnapshot=true; authentication and other streams unchanged"
+    "src/stream.rs uses the 64 MiB websocket cap only for orchestration.subscribeThread with acceptBoundedSnapshot=true; authentication and other streams unchanged",
+    "src/lib.rs adds media_image using the same signed same-origin image grant reader as attachment_image, with exact thread/path scope and existing 10 MiB bound"
   ]
 }
