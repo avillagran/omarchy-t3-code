@@ -5,6 +5,7 @@ import qs.Commons
 ColumnLayout {
  id:root
  required property var bridge
+ property string environment:bridge.selectedEnvironment || "local"
  readonly property var store:bridge.connectionSettings || ({busy:false,error:"",environments:[]})
  readonly property color fg:Color.popups.text
  readonly property color muted:Qt.rgba(fg.r,fg.g,fg.b,0.58)
@@ -28,26 +29,27 @@ ColumnLayout {
  }
  spacing:Style.space(14)
  Component.onCompleted:run("read")
- RowLayout{Layout.fillWidth:true;Layout.margins:Style.space(12)
-  Text{Layout.fillWidth:true;text:T3I18n.tr("Connections");color:root.fg;font.bold:true;font.pixelSize:Style.font.body}
-  T3IconButton{name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");enabled:!root.store.busy;onClicked:root.run("read")}
-  Controls.Button{objectName:"connectionAdd";text:T3I18n.tr("Add connection");enabled:!root.store.busy&&!!root.store.revision;onClicked:root.edit(null,null)}
- }
  Text{Layout.fillWidth:true;Layout.margins:Style.space(12);visible:!!text;text:root.store.error?T3I18n.error(root.store.error):root.store.busy?T3I18n.tr("Loading…"):"";color:root.store.error?Color.urgent:root.muted;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
- ColumnLayout{Layout.fillWidth:true;Layout.margins:Style.space(12);spacing:Style.space(6)
-  RowLayout{Layout.fillWidth:true
-   T3Icon{name:"laptop";tint:root.fg}
-   Text{Layout.fillWidth:true;text:"T3 Code · "+T3I18n.tr("Local");color:root.fg;font.pixelSize:Style.font.body}
-   T3Switch{objectName:"connectionLocalEnabled";checked:root.store.localEnabled!==false;enabled:!root.store.busy&&!!root.store.revision;onToggled:root.run("local-enabled",{enabled:checked})}
+ Loader{Layout.fillWidth:true;active:root.environment!=="local";visible:active;sourceComponent:Component{T3PreferenceSection{title:"Local environment";icon:"laptop";body:Component{T3LocalConnection{width:parent.width;bridge:root.bridge}}}}}
+ T3ConnectionAccess{Layout.fillWidth:true;bridge:root.bridge;environment:root.environment}
+ T3ConnectionCloud{Layout.fillWidth:true;bridge:root.bridge;environment:root.environment}
+ T3PickerButton{primary:false;Layout.alignment:Qt.AlignRight;visible:root.environment==="local"&&!!((root.bridge.connectionCloud || {}).status || {}).desired&&!!(root.bridge.localBackend || {}).canControl;text:T3I18n.tr("Restart local backend");enabled:!(root.bridge.backendStart || {}).busy;onClicked:cloudRestartConfirm.open()}
+ Controls.Popup{id:cloudRestartConfirm;parent:Controls.Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(Style.space(500),parent?parent.width-Style.space(32):Style.space(500));padding:Style.space(20)
+  background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.muted}
+  contentItem:ColumnLayout{spacing:Style.space(12)
+   Text{Layout.fillWidth:true;text:T3I18n.tr("Apply and restart T3 Code?");color:root.fg;font.bold:true;wrapMode:Text.Wrap}
+   Text{Layout.fillWidth:true;text:T3I18n.tr("T3 Code will restart its local server to apply the network settings. Your threads and drafts are kept.");color:root.muted;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
+   RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}T3PickerButton{primary:false;text:T3I18n.tr("Cancel");onClicked:cloudRestartConfirm.close()}T3PickerButton{text:T3I18n.tr("Apply and restart");onClicked:{cloudRestartConfirm.close();root.bridge.controlBackend("restart")}}}
   }
-  RowLayout{Layout.fillWidth:true
-   Text{Layout.fillWidth:true;text:(root.bridge.localBackend || {}).owner || "";color:root.muted;font.pixelSize:Style.font.caption}
-   Controls.Button{objectName:"connectionStartBackend";text:T3I18n.tr((root.bridge.backendStart || {}).busy?"Loading…":"Start local backend");visible:!(root.bridge.localBackend || {}).running;enabled:!!(root.bridge.localBackend || {}).canControl&&!(root.bridge.backendStart || {}).busy;onClicked:root.bridge.controlBackend("start")}
-   T3IconButton{name:"refresh-cw";tooltipText:T3I18n.tr("Restart local backend");visible:!!(root.bridge.localBackend || {}).canControl;enabled:!(root.bridge.backendStart || {}).busy;onClicked:root.bridge.controlBackend("restart")}
-   T3IconButton{name:"square";tint:Color.urgent;tooltipText:T3I18n.tr("Stop local backend");visible:!!(root.bridge.localBackend || {}).canControl;enabled:!(root.bridge.backendStart || {}).busy;onClicked:root.bridge.controlBackend("stop")}
-  }
-  Text{objectName:"connectionBackendError";Layout.fillWidth:true;visible:!!text;text:T3I18n.error((root.bridge.backendStart || {}).error || (root.bridge.localBackend || {}).error || "");color:Color.urgent;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
  }
+
+ T3PreferenceSection{Layout.fillWidth:true;title:"Environments";icon:"server"
+  body:Component{ColumnLayout{width:parent.width;spacing:Style.space(8)
+   RowLayout{Layout.fillWidth:true;Layout.margins:Style.space(12)
+    Text{Layout.fillWidth:true;text:T3I18n.tr("Environments");color:root.fg;font.pixelSize:Style.font.body}
+    T3IconButton{name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");enabled:!root.store.busy;onClicked:root.run("read")}
+    T3PickerButton{primary:false;objectName:"connectionAdd";text:T3I18n.tr("Add connection");enabled:!root.store.busy&&!!root.store.revision;onClicked:root.edit(null,null)}
+   }
  Repeater{model:root.store.environments || []
   delegate:ColumnLayout {
    id:environment;required property var modelData
@@ -79,6 +81,9 @@ ColumnLayout {
    }
   }
  }
+  }}
+ }
+ T3ConnectionPreferences{Layout.fillWidth:true;bridge:root.bridge}
  Controls.Popup {
   id:editor;parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(520),parent?parent.width-Style.space(32):Style.space(520));padding:Style.space(20);modal:true
   background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.18)}
@@ -86,23 +91,23 @@ ColumnLayout {
   contentItem:ColumnLayout{spacing:Style.space(10)
    RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:T3I18n.tr(root.form==="rename"?"Rename":root.route?"Edit connection":"Add connection");color:root.fg;font.bold:true;font.pixelSize:Style.font.body}T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");enabled:!root.store.busy;onClicked:editor.close()}}
    RowLayout{visible:root.form!=="rename"&&!root.route;Layout.fillWidth:true
-    Controls.Button{text:"SSH";checkable:true;checked:root.kind==="ssh";enabled:!root.store.busy;onClicked:root.kind="ssh"}
-    Controls.Button{text:T3I18n.tr("Pairing link");checkable:true;checked:root.kind==="bearer";enabled:!root.store.busy;onClicked:root.kind="bearer"}
+    T3PickerButton{primary:false;text:"SSH";checkable:true;checked:root.kind==="ssh";enabled:!root.store.busy;onClicked:root.kind="ssh"}
+    T3PickerButton{primary:false;text:T3I18n.tr("Pairing link");checkable:true;checked:root.kind==="bearer";enabled:!root.store.busy;onClicked:root.kind="bearer"}
    }
-   Controls.TextField{id:label;objectName:"connectionLabel";Layout.fillWidth:true;placeholderText:T3I18n.tr("Name");enabled:!root.store.busy;selectByMouse:true}
+   T3PickerField{id:label;objectName:"connectionLabel";Layout.fillWidth:true;placeholderText:T3I18n.tr("Name");enabled:!root.store.busy;selectByMouse:true}
    ColumnLayout{visible:root.form!=="rename"&&root.kind==="ssh";Layout.fillWidth:true
-    Controls.TextField{id:host;objectName:"connectionSshHost";Layout.fillWidth:true;placeholderText:T3I18n.tr("SSH host or alias");enabled:!root.store.busy;selectByMouse:true}
+    T3PickerField{id:host;objectName:"connectionSshHost";Layout.fillWidth:true;placeholderText:T3I18n.tr("SSH host or alias");enabled:!root.store.busy;selectByMouse:true}
     RowLayout{Layout.fillWidth:true
-     Controls.TextField{id:username;objectName:"connectionSshUser";Layout.fillWidth:true;placeholderText:T3I18n.tr("Username");enabled:!root.store.busy;selectByMouse:true}
-     Controls.TextField{id:port;objectName:"connectionSshPort";Layout.preferredWidth:Style.space(90);placeholderText:T3I18n.tr("Port");validator:IntValidator{bottom:1;top:65535} enabled:!root.store.busy}
+     T3PickerField{id:username;objectName:"connectionSshUser";Layout.fillWidth:true;placeholderText:T3I18n.tr("Username");enabled:!root.store.busy;selectByMouse:true}
+     T3PickerField{id:port;objectName:"connectionSshPort";Layout.preferredWidth:Style.space(90);placeholderText:T3I18n.tr("Port");validator:IntValidator{bottom:1;top:65535} enabled:!root.store.busy}
     }
    }
    ColumnLayout{visible:root.form!=="rename"&&root.kind==="bearer";Layout.fillWidth:true
-    Controls.TextField{id:endpoint;objectName:"connectionUrl";Layout.fillWidth:true;placeholderText:"https://host:3773";enabled:!root.store.busy;selectByMouse:true}
-    Controls.TextField{id:code;objectName:"connectionPairingCode";Layout.fillWidth:true;placeholderText:T3I18n.tr("Pairing code");echoMode:TextInput.Password;enabled:!root.store.busy;selectByMouse:true}
+    T3PickerField{id:endpoint;objectName:"connectionUrl";Layout.fillWidth:true;placeholderText:"https://host:3773";enabled:!root.store.busy;selectByMouse:true}
+    T3PickerField{id:code;objectName:"connectionPairingCode";Layout.fillWidth:true;placeholderText:T3I18n.tr("Pairing code");echoMode:TextInput.Password;enabled:!root.store.busy;selectByMouse:true}
    }
    Text{Layout.fillWidth:true;visible:!!root.store.error;text:T3I18n.error(root.store.error || "");color:Color.urgent;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
-   Controls.Button{objectName:"connectionSave";Layout.alignment:Qt.AlignRight;text:T3I18n.tr("Save");enabled:!root.store.busy&&(root.form==="rename"?!!label.text.trim():root.kind==="ssh"?!!host.text.trim():!!endpoint.text.trim());onClicked:root.save()}
+   T3PickerButton{primary:false;objectName:"connectionSave";Layout.alignment:Qt.AlignRight;text:T3I18n.tr("Save");enabled:!root.store.busy&&(root.form==="rename"?!!label.text.trim():root.kind==="ssh"?!!host.text.trim():!!endpoint.text.trim());onClicked:root.save()}
   }
  }
  Controls.Popup{
@@ -112,7 +117,7 @@ ColumnLayout {
    Text{Layout.fillWidth:true;text:T3I18n.tr(root.route?"Remove route":"Remove connection")+" · "+(root.selected?root.selected.name:"");color:root.fg;font.bold:true;wrapMode:Text.Wrap}
    Text{Layout.fillWidth:true;text:T3I18n.tr("Forget this connection on this device? Remote projects and messages are kept.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
    Text{Layout.fillWidth:true;visible:!!root.store.error;text:T3I18n.error(root.store.error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-   RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}Controls.Button{text:T3I18n.tr("Cancel");onClicked:confirm.close()}Controls.Button{objectName:"connectionConfirmRemove";text:T3I18n.tr("Delete");enabled:!root.store.busy;onClicked:root.run(root.route?"remove-route":"remove",{environmentId:root.selected.id,connectionId:root.route?root.route.connectionId:"",confirmed:true})}}
+   RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}T3PickerButton{primary:false;text:T3I18n.tr("Cancel");onClicked:confirm.close()}T3PickerButton{primary:false;objectName:"connectionConfirmRemove";text:T3I18n.tr("Delete");enabled:!root.store.busy;onClicked:root.run(root.route?"remove-route":"remove",{environmentId:root.selected.id,connectionId:root.route?root.route.connectionId:"",confirmed:true})}}
   }
  }
  Connections{target:root.bridge;function onConnectionsManaged(action,error){if(!error&&action!=="read"){editor.close();confirm.close();code.text=""}}}

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Native component + real Qt/Chromium transport, using synthetic source only.
+set -euo pipefail
+cd -- "$(dirname -- "$0")/.."
+task_dir=$(mktemp -d /tmp/ot3-diff-test-XXXXXXXX)
+trap 'rm -rf -- "$task_dir"' EXIT
+OT3_REVIEW_DOCUMENT_CAPTURE="$task_dir/document.json" OT3_CHECKPOINT_DOCUMENT_CAPTURE="$task_dir/checkpoint.json" cargo test --release --quiet --test review_document
+node - "$task_dir" <<'JS'
+const fs=require('fs'),{spawn}=require('child_process'),assert=require('node:assert/strict'),crypto=require('crypto');
+const dir=process.argv[2],historical=process.env.OT3_DIFF_HISTORICAL==='1',data=JSON.parse(fs.readFileSync(dir+(historical?'/checkpoint.json':'/document.json')));Object.assign(data,{offscreen:true,frameDirectory:dir,width:900,height:620});
+const p=spawn('bin/omarchy-t3-client',['document-render'],{env:{...process.env,QT_QPA_PLATFORM:'offscreen',QT_QUICK_BACKEND:'software',QTWEBENGINE_CHROMIUM_FLAGS:'--disable-gpu',T3_DOCUMENT_VERIFY:'1'},stdio:['pipe','pipe','pipe']});
+let out='',log='',latest,frames=0,clip=null,exited=false,code;
+p.stdout.on('data',c=>{out+=c;let i;while((i=out.indexOf('\n'))>=0){const line=out.slice(0,i);out=out.slice(i+1);if(!line.startsWith('{'))continue;const value=JSON.parse(line);if(value.frame){latest=value;frames++}if(value.clipboard!==undefined)clip=value.clipboard;}});
+p.stderr.on('data',c=>log+=c);p.on('exit',c=>{exited=true;code=c});const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitFor(check,ms=8000){const end=Date.now()+ms;while(Date.now()<end){if(check())return;assert(!exited,'renderer exited: '+log);await sleep(40)}throw Error('native renderer timeout: '+log)}
+function send(value){p.stdin.write(JSON.stringify(value)+'\n')}
+function hash(){return latest?crypto.createHash('sha256').update(fs.readFileSync(dir+'/'+latest.frame)).digest('hex'):''}
+async function copy(){clip=null;send({type:'key',key:65,text:'a',modifiers:0x10000000});await sleep(80);send({type:'key',key:67,text:'c',modifiers:0x10000000});await waitFor(()=>clip!==null);return clip}
+const payload=Buffer.from(JSON.stringify(data)),header=Buffer.alloc(8);header.writeBigUInt64BE(BigInt(payload.length));p.stdin.write(header);p.stdin.write(payload);
+(async()=>{try{
+ await waitFor(()=>log.includes('DOCUMENT_VERIFY {')&&latest);const state=JSON.parse(log.match(/DOCUMENT_VERIFY (\{.*\})/)[1]);assert.equal(state.status.sandboxed,true);assert.equal(state.sandbox,'allow-scripts allow-forms');assert.equal(state.diff.error,'');assert.equal(state.diff.version,'1.5.2');assert(state.diff.tokens>0,'real syntax tokens');assert.equal(state.diff.contextLoader,!historical,'historical patches have no checkout loader');assert(state.diff.partial);if(!historical)assert(state.diff.expand,'checkout patch exposes native expand control');
+ send({type:'press',x:180,y:60,button:1,buttons:1,modifiers:0});send({type:'release',x:180,y:60,button:1,buttons:0,modifiers:0});await sleep(100);const initial=await copy();assert(initial.includes('line60'),'code copied from focused iframe: '+JSON.stringify(initial.slice(0,160)));assert(!initial.includes('line50'),'hidden context initially absent');
+ const privatePages=fs.readdirSync(dir).filter(n=>n.startsWith('review-')&&n.endsWith('.html'));assert.equal(privatePages.length,1);assert.equal(fs.statSync(dir+'/'+privatePages[0]).mode&0o077,0,'private renderer page');
+ const before=hash(),point=state.diff.expand;if(point){send({type:'press',x:point.x,y:point.y,button:1,buttons:1,modifiers:0});send({type:'release',x:point.x,y:point.y,button:1,buttons:0,modifiers:0});if(!historical)await waitFor(()=>hash()!==before);await sleep(250)}const expanded=await copy();assert(expanded.includes('line60'));assert.equal(expanded.includes('line50'),!historical,'context expansion uses only the supplied capability');
+ const split=hash();send({type:'review-options',layout:'stacked',wrap:false});await waitFor(()=>hash()!==split);await sleep(200);assert.equal((await copy()).includes('line50'),!historical,'context capability/state survives layout changes');await sleep(300);const idle=frames;await sleep(400);assert.equal(frames,idle,'no idle capture loop');
+ send({type:'press',x:850,y:300,button:1,buttons:1,modifiers:0});send({type:'release',x:850,y:300,button:1,buttons:0,modifiers:0});await sleep(150);
+ if(process.env.OT3_DIFF_RENDERER_CAPTURE)fs.copyFileSync(dir+'/'+latest.frame,process.env.OT3_DIFF_RENDERER_CAPTURE);
+ send({type:'close'});await waitFor(()=>exited);assert.equal(code,0);assert(privatePages.every(n=>!fs.existsSync(dir+'/'+n)),'private pages removed on close');console.log(historical?'CHECKPOINT_RENDERER_PASS: actual Pierre1.5.2 historical patch, syntax/copy/layout, no checkout loader or invented context, private sandbox and no idle frames':'DIFF_RENDERER_PASS: actual Pierre1.5.2, syntax tokens, split/unified options, native hunk expansion from full contents, copy, sandbox and no idle frames');
+ }catch(e){console.error(e);process.exitCode=1}finally{if(!exited){send({type:'close'});await sleep(500);if(!exited)p.kill()}}})();
+JS

@@ -19,7 +19,7 @@ if(name==='curl'){
  if(out<0)console.log(JSON.stringify({tag_name:'v0.2.1'}));
  else {const name=args[out+1].split('/').at(-1);fs.copyFileSync(path.join(root,'assets',name),args[out+1]);}
 }
-if(name==='build-client'){const dir=path.dirname(process.argv[1]);fs.copyFileSync(path.join(root,'bin','omarchy-t3-client'),path.join(dir,'omarchy-t3-client'));fs.writeFileSync(path.join(dir,'libt3-document.so'),'fixture');}
+if(name==='build-client'){const dir=path.dirname(process.argv[1]);fs.copyFileSync(path.join(root,'bin','omarchy-t3-client'),path.join(dir,'omarchy-t3-client'));for(const file of ['libt3-document.so','libt3-browser.so','t3-browser-secret'])fs.writeFileSync(path.join(dir,file),'fixture');}
 if(name==='omarchy-t3-client'){if(args[0]==='backend-status')console.log(JSON.stringify({owner:process.env.INSTALL_TEST_OWNER||'stopped'}));else console.log(JSON.stringify({status:'starting'}));}
 `;
 for(const name of ['pacman','sudo','git','cargo','rustup','omarchy','omarchy-shell','hyprctl','build-client','omarchy-t3-client','curl','ldd','uname'])fs.writeFileSync(path.join(bin,name),'#!'+process.execPath+'\n'+body,{mode:0o700});
@@ -28,8 +28,8 @@ function run(extra={}){fs.writeFileSync(log,'');const result=spawnSync('bash',[p
 function called(calls,name,...parts){return calls.some(c=>c.name===name&&parts.every(p=>c.args.includes(p)))}
 try{
  fs.mkdirSync(path.join(root,'assets'));fs.mkdirSync(path.join(root,'payload','bin'),{recursive:true});
- fs.copyFileSync(path.join(bin,'omarchy-t3-client'),path.join(root,'payload','bin','omarchy-t3-client'));fs.writeFileSync(path.join(root,'payload','bin','libt3-document.so'),'fixture');
- const asset='omarchy-t3-code-linux-aarch64.tar.gz';
+ fs.copyFileSync(path.join(bin,'omarchy-t3-client'),path.join(root,'payload','bin','omarchy-t3-client'));for(const file of ['libt3-document.so','libt3-browser.so','t3-browser-secret'])fs.writeFileSync(path.join(root,'payload','bin',file),'fixture');
+ const asset='omarchy-t3-code-v0.2.1-linux-aarch64.tar.gz';
  function pack(commit='fixture-commit'){fs.writeFileSync(path.join(root,'payload','COMMIT'),commit);assert.equal(spawnSync('tar',['-czf',path.join(root,'assets',asset),'-C',path.join(root,'payload'),'bin','COMMIT']).status,0);const hash=require('crypto').createHash('sha256').update(fs.readFileSync(path.join(root,'assets',asset))).digest('hex');fs.writeFileSync(path.join(root,'assets',asset+'.sha256'),hash+'  '+asset+'\n');}
  pack();
  let {result,calls}=run();assert.equal(result.status,0,result.stderr);assert(called(calls,'sudo','pacman','wl-clipboard'));assert(called(calls,'git','clone'));assert(!called(calls,'build-client'));assert(!called(calls,'cargo'));assert(!called(calls,'rustup'));assert(called(calls,'omarchy','validate'));assert(called(calls,'omarchy','enable'));assert(called(calls,'omarchy-t3-client','backend-control','start'));assert(called(calls,'omarchy','restart','shell'));assert(fs.readFileSync(bindings,'utf8').startsWith('-- existing user setting\n'));assert.equal((fs.readFileSync(bindings,'utf8').match(/dofile/g)||[]).length,1);assert.equal(fs.readdirSync(path.dirname(bindings)).filter(f=>f.includes('.t3-backup-')).length,1);

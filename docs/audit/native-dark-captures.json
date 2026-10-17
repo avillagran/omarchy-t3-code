@@ -1,0 +1,30 @@
+[
+  {
+    "path": "settings/general",
+    "screenshot": "screenshots/native-settings-general-dark.png"
+  },
+  {
+    "path": "settings/appearance",
+    "screenshot": "screenshots/native-settings-appearance-dark.png"
+  },
+  {
+    "path": "settings/connections",
+    "screenshot": "screenshots/native-settings-connections-dark.png"
+  },
+  {
+    "path": "settings/providers",
+    "screenshot": "screenshots/native-settings-providers-dark.png"
+  },
+  {
+    "path": "settings/source-control",
+    "screenshot": "screenshots/native-settings-source-control-dark.png"
+  },
+  {
+    "path": "pull-requests",
+    "screenshot": "screenshots/native-pull-requests-dark.png"
+  },
+  {
+    "path": "usage",
+    "screenshot": "screenshots/native-usage-dark.png"
+  }
+]

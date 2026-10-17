@@ -1,0 +1,40 @@
+{
+  "repository": "https://github.com/avillagran/lib-t3-rust",
+  "revision": "1a616ab6ccb31b689f41ff6f74915e69c780b1a3",
+  "upstreamFiles": {
+    "Cargo.toml": "7ffdbbfc3439ad4f1add2bdd3f1523a80cb3ddb88afcb5d311b0ca3cbc4a5641",
+    "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
+    "README.md": "d688c0f03691a5a1eb4e0291f00695cd07cdda52176eceffc316f24c4e84f436",
+    "src/activity.rs": "e8181f7b0e8fb01a153ad105ec31f465016161b0a56fbe4ca9daa028c453eb8e",
+    "src/approvals.rs": "0207ed73e3046a11bb3e7a9ce306e56c2f3289e63db5e34a33617c7cc4f1be57",
+    "src/changes.rs": "999f442928b7fe47b05c75e01d3830fc20b5088ca686ca552536268ca60d2132",
+    "src/code_blocks.rs": "5b670c8d05501338e3c95f34f7dec1e9c3277be11e979627a1a2b9b3272f308b",
+    "src/compaction.rs": "75d823d0f1b29d57b3b143eea55914ce34fb2c82dbf57f993b2e7f48abb211a6",
+    "src/composer.rs": "66f42e264b69b82b2e84457046ec8f5dbdbb65a83c017c2e4a0fae7d8ff99c44",
+    "src/connection_catalog.rs": "97f52dc7ed1357c31dc92a417489931dc0f315f312bd586aa0d5c756124ea1f9",
+    "src/documents.rs": "050138e23fba2437298760cfabebf0170c12fcd0b77df467eb41689dcbe0c11e",
+    "src/ffi.rs": "8dab7f82595d7664b43183d03dd34d8da4177a35c1aa6fa38089f5216354184e",
+    "src/ffi_attachments.rs": "49aacf0b3d137875c1709eaa507303fc405ca4eda1a4d39e3fc996817b753b4c",
+    "src/ffi_stream.rs": "4f9a4772740721b46f7f20006eb8381f8183bacda164af083d36b633af5f9052",
+    "src/history.rs": "1f3fcd68eea3f3b317053bedd36fec1458359da70225931285f3fd2b07196266",
+    "src/i18n.rs": "0cbb5b216b8dd94f6fbf8001871808fbb2e696f2822f0d482c8c46664729c1cb",
+    "src/lib.rs": "6ae5652036b4b62451946707873fd2b78b88529315a9fb32920d632bcd7aa71d",
+    "src/lifecycle.rs": "52b1a2581e9d80880e603d48f82f36e4bcb43b4ed3ecd3fa06bafabffdca2563",
+    "src/models.rs": "cdeb2da96de219219920db96cafa126dbf8811dd5d4777ea034c91b91d95cd89",
+    "src/projection.rs": "d3c746c263726ce2aed41f4e9b8a007a12f53e10aec12b65e28cc51b76e16996",
+    "src/projects.rs": "ec4f71bcb5207969a8e2190bf0d8c51b341decf47d651a395991c04f069480f5",
+    "src/pull_requests.rs": "81a8d5f45f348c06d033470c8d79bcb34a5f81434706e89bfd2a00d53662286b",
+    "src/questions.rs": "47f6dfc72bfadfbb0b0f2e27cf144cbbc1e6f910506d92797df3db0e049bdee5",
+    "src/queue.rs": "5c9a4e1fac049be0fd75cb9d75900fe5e6a0dd628e8f488aa0a037c52f35f03a",
+    "src/settings.rs": "cc3d358be178433037d5c8644d06f9833fd85e1d72f5c20b074cc876b9d3515b",
+    "src/sidebar.rs": "00c364ed2146fcee641e1df657a7caee42329b6eccf5e14fc7d30f3f7da6a0f3",
+    "src/stream.rs": "b8df675099f33a19a57819941c872793e3f76a1bfb1ffc5322909b02905fdf53",
+    "src/tasks.rs": "27eed96aa7b145d3d5a035a7b131d6aeaed5f31441051514cf274ce945817585",
+    "src/terminal.rs": "21e1a93820363ce3c19881b1213547ce4a54e49b4e888001834c98b0fe8553e9"
+  },
+  "localChanges": [
+    "src/lib.rs declares mod long_rpc and applies a 64 MiB cap only to protocol GET thread bounded snapshots; generic HTTP/RPC stays at 8 MiB",
+    "src/long_rpc.rs adds rpc_with_timeout over the existing private authenticated websocket factory",
+    "src/stream.rs uses the 64 MiB websocket cap only for orchestration.subscribeThread with acceptBoundedSnapshot=true; authentication and other streams unchanged"
+  ]
+}

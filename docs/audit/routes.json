@@ -1,0 +1,198 @@
+[
+  {
+    "file": "__root.tsx",
+    "route": "__root (layout)",
+    "status": "Adapted/partial",
+    "note": "Omarchy shell/window lifecycle; app-wide auth/notice/right-panel coordinators differ.",
+    "sourceLine": 90
+  },
+  {
+    "file": "_chat.$environmentId.$threadId.tsx",
+    "route": "/_chat/$environmentId/$threadId",
+    "status": "Partial",
+    "note": "Main transcript/composer implemented; details/Plan/tool-output/diff gaps documented.",
+    "sourceLine": 5
+  },
+  {
+    "file": "_chat.draft.$draftId.tsx",
+    "route": "/_chat/draft/$draftId",
+    "status": "Adapted/partial",
+    "note": "Durable per-thread/project drafts and fullscreen editor; no identical native draft URL route.",
+    "sourceLine": 5
+  },
+  {
+    "file": "_chat.index.tsx",
+    "route": "/_chat/",
+    "status": "Adapted/partial",
+    "note": "Restores panel/selected thread rather than the identical native recent-project draft landing.",
+    "sourceLine": 131
+  },
+  {
+    "file": "_chat.new.tsx",
+    "route": "/_chat/new",
+    "status": "Partial",
+    "note": "New thread and native worktree launch; prompt-link import and full creation controls differ.",
+    "sourceLine": 28
+  },
+  {
+    "file": "_chat.pull-requests.tsx",
+    "route": "/_chat/pull-requests",
+    "status": "Partial",
+    "note": "Read-only list/detail/checks/conversation/patch; review/merge/stack workflows missing.",
+    "sourceLine": 307
+  },
+  {
+    "file": "_chat.tsx",
+    "route": "/_chat",
+    "status": "Adapted/partial",
+    "note": "Persistent panel and selected thread; no equivalent URL/router and full right-panel workspace.",
+    "sourceLine": 236
+  },
+  {
+    "file": "connect-agent.tsx",
+    "route": "/connect-agent",
+    "status": "Missing",
+    "note": "No external-agent authorization landing; chat approvals are a different feature.",
+    "sourceLine": 5
+  },
+  {
+    "file": "connect.tsx",
+    "route": "/connect",
+    "status": "Adapted",
+    "note": "Official browser device authorization delegated from native CLI; Electron Clerk is separate.",
+    "sourceLine": 6
+  },
+  {
+    "file": "pair.tsx",
+    "route": "/pair",
+    "status": "Adapted/partial",
+    "note": "Embedded Add Connection native pairing rather than a standalone web landing.",
+    "sourceLine": 9
+  },
+  {
+    "file": "projects.$projectKey.tsx",
+    "route": "/projects/$projectKey",
+    "status": "Partial",
+    "note": "Native redirect to project settings; ot3 project popup does not supply the full destination page.",
+    "sourceLine": 3
+  },
+  {
+    "file": "settings.appearance.tsx",
+    "route": "/settings/appearance",
+    "status": "Adapted/partial",
+    "note": "Omarchy theme/font; native layout, typography overrides and previews differ.",
+    "sourceLine": 9
+  },
+  {
+    "file": "settings.archived.tsx",
+    "route": "/settings/archived",
+    "status": "Implemented core / partial visual",
+    "note": "Native scoped grouped archive, unarchive/delete, native confirmation preference and durable explicit retry. No live mutation or exact pixel comparison.",
+    "sourceLine": 5
+  },
+  {
+    "file": "settings.connections.tsx",
+    "route": "/settings/connections",
+    "status": "Partial",
+    "note": "Native catalog/access/network/CLI Connect/balancing/sharing present; Electron discovery/auth and enrollment differ.",
+    "sourceLine": 5
+  },
+  {
+    "file": "settings.diagnostics.tsx",
+    "route": "/settings/diagnostics",
+    "status": "Missing",
+    "note": "No resource, process, trace or export panel.",
+    "sourceLine": 5
+  },
+  {
+    "file": "settings.general.tsx",
+    "route": "/settings/general",
+    "status": "Partial",
+    "note": "Native server fields only; missing defaults/scoping and many behavior controls.",
+    "sourceLine": 9
+  },
+  {
+    "file": "settings.integrations.tsx",
+    "route": "/settings/integrations",
+    "status": "Missing",
+    "note": "No browser/profile/device integration settings UI.",
+    "sourceLine": 5
+  },
+  {
+    "file": "settings.keybindings.tsx",
+    "route": "/settings/keybindings",
+    "status": "Partial",
+    "note": "Fixed shortcut reference; no recorder/editor.",
+    "sourceLine": 5
+  },
+  {
+    "file": "settings.open-source-licenses.tsx",
+    "route": "/settings/open-source-licenses",
+    "status": "Missing",
+    "note": "No third-party-notices viewer.",
+    "sourceLine": 5
+  },
+  {
+    "file": "settings.projects.tsx",
+    "route": "/settings/projects",
+    "status": "Missing",
+    "note": "No scoped Projects/Checkouts settings page; sidebar project popup is partial.",
+    "sourceLine": 4
+  },
+  {
+    "file": "settings.providers.tsx",
+    "route": "/settings/providers",
+    "status": "Partial",
+    "note": "Status/favorites; no full provider editor or authentication setup.",
+    "sourceLine": 40
+  },
+  {
+    "file": "settings.scheduled-tasks.tsx",
+    "route": "/settings/scheduled-tasks",
+    "status": "Missing",
+    "note": "No task list, editor, delivery or webhook UI.",
+    "sourceLine": 11
+  },
+  {
+    "file": "settings.snap-shot.tsx",
+    "route": "/settings/snap-shot",
+    "status": "Missing/conditional",
+    "note": "No SnapShots setup/settings; native functionality also depends on desktop/platform support.",
+    "sourceLine": 9
+  },
+  {
+    "file": "settings.source-control.tsx",
+    "route": "/settings/source-control",
+    "status": "Partial",
+    "note": "Many native defaults; no source-control host credential/account UI.",
+    "sourceLine": 5
+  },
+  {
+    "file": "settings.storage.tsx",
+    "route": "/settings/storage",
+    "status": "Missing",
+    "note": "No native worktree/retention/cleanup settings page.",
+    "sourceLine": 4
+  },
+  {
+    "file": "settings.tsx",
+    "route": "/settings",
+    "status": "Partial",
+    "note": "Eight categories with counterparts, several incomplete; native tree has14leaf routes.",
+    "sourceLine": 178
+  },
+  {
+    "file": "usage.tsx",
+    "route": "/usage",
+    "status": "Partial",
+    "note": "Quota strip implemented; standalone cost/tokens/limits history/dashboard missing.",
+    "sourceLine": 5
+  },
+  {
+    "file": "welcome.tsx",
+    "route": "/welcome",
+    "status": "Partial",
+    "note": "Project/connection setup exposed separately; no complete onboarding/import wizard.",
+    "sourceLine": 14
+  }
+]

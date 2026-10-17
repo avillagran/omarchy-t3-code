@@ -1,6 +1,6 @@
 .pragma library
 // Control-panel's Glide preset. Same adaptive smoothstep/velocity EMA as the
-// compositor patch; QML supplies a finite OutCubic coast when the patch is off.
+// compositor patch. QML eases angle-only events; native pixel streams pass through.
 var glide={speed:1.3,max:4.0,coasting:1000}
 function step(state,angle,pixel,touchpad,now){
  var device=touchpad?"touchpad":"mouse",previous=state[device] || {},dt=now-(previous.time || 0)
@@ -12,4 +12,14 @@ function step(state,angle,pixel,touchpad,now){
  return {state:next,delta:delta*factor,continueTarget:continuous&&state.device===device,factor:factor}
 }
 
-function duration(distance){return Math.max(80,Math.min(glide.coasting,Math.abs(distance)*1.5))}
+function duration(distance){return Math.max(80,Math.min(glide.coasting,Math.abs(distance)*5))}
+
+// Qt may expose a mouse coast as angle-only wheel events. Ease those events
+// without accelerating again or adding travel to the compositor's distance.
+function plan(state, angle, pixel, touchpad, native, now) {
+  var motion=step(state,angle,pixel,touchpad,now)
+  var sample=motion.state[touchpad?"touchpad":"mouse"],coast=0
+  if(!native&&sample.velocity>=0.15)coast=sample.direction*Math.min(8,sample.velocity)*(pixel!==0?1:14.4)*glide.coasting/3
+  return {coast:coast,state:motion.state, delta:native?(pixel!==0?pixel:angle*1.8):motion.delta,
+          animate:!native||pixel===0, continueTarget:motion.continueTarget}
+}

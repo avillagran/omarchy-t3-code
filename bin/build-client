@@ -2,10 +2,17 @@
 set -eu
 plugin_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$plugin_dir"
+# Collect exact notices after fetching locked sources, for this build target.
+# The checked-in original T3 helper needs no sibling checkout or Node at runtime.
+task_build_target=$(rustc -vV | sed -n 's/^host: //p')
+cargo fetch --locked --target "$task_build_target"
+node tools/build-licenses.cjs
 cargo build --release --locked
 install -m755 target/release/omarchy-t3-client bin/omarchy-t3-client
 if pkg-config --exists Qt6Quick Qt6WebEngineQuick; then
   tools/build-document-viewer
+  tools/build-browser-viewer
+  tools/build-browser-secret
 else
   printf '%s\n' 'Optional HTML viewer not built: Qt6Quick/Qt6WebEngineQuick development packages are missing.' >&2
 fi

@@ -6,16 +6,18 @@ cd -- "$(dirname -- "$0")/.."
 arch=$(uname -m)
 case "$arch" in aarch64|x86_64) ;; *) echo "Unsupported architecture: $arch" >&2; exit 1;; esac
 commit=$(git rev-parse HEAD)
+version="v$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')"
+[[ $(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1) == "${version#v}" ]] || { echo 'Version mismatch.' >&2; exit 1; }
 bin/build-client
-[[ -s bin/libt3-document.so ]]
+for file in omarchy-t3-client libt3-document.so libt3-browser.so t3-browser-secret; do [[ -s bin/$file ]]; done
 mkdir -p dist
 stage=$(mktemp -d)
 trap 'rm -rf -- "$stage"' EXIT
 mkdir "$stage/bin"
-install -m755 bin/omarchy-t3-client bin/libt3-document.so "$stage/bin/"
+install -m755 bin/omarchy-t3-client bin/libt3-document.so bin/libt3-browser.so bin/t3-browser-secret "$stage/bin/"
 printf '%s\n' "$commit" > "$stage/COMMIT"
-printf 'architecture=%s\nqt=%s\nglibc=%s\nrust=%s\n' "$arch" "$(pkg-config --modversion Qt6Core)" "$(getconf GNU_LIBC_VERSION)" "$(rustc --version)" > "$stage/BUILD-INFO"
-asset="omarchy-t3-code-linux-$arch.tar.gz"
+printf 'version=%s\narchitecture=%s\nqt=%s\nglibc=%s\nrust=%s\n' "$version" "$arch" "$(pkg-config --modversion Qt6Core)" "$(getconf GNU_LIBC_VERSION)" "$(rustc --version)" > "$stage/BUILD-INFO"
+asset="omarchy-t3-code-$version-linux-$arch.tar.gz"
 tar -czf "dist/$asset" -C "$stage" bin COMMIT BUILD-INFO
 (cd dist && sha256sum "$asset" > "$asset.sha256")
 printf 'Packaged %s (%s)\n' "$asset" "$commit"

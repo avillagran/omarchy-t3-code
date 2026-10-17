@@ -9,6 +9,8 @@ T3IconButton 1.0 T3IconButton.qml
 T3Select 1.0 T3Select.qml
 T3Composer 1.0 T3Composer.qml
 singleton T3Palette 1.0 T3Palette.qml
+singleton T3ProjectIcons 1.0 T3ProjectIcons.qml
+T3ProjectIcon 1.0 T3ProjectIcon.qml
 T3ActivityText 1.0 T3ActivityText.qml
 T3SidebarActions 1.0 T3SidebarActions.qml
 
@@ -59,3 +61,43 @@ T3PermissionPicker 1.0 T3PermissionPicker.qml
 T3InlineHtml 1.0 T3InlineHtml.qml
 
 T3ProjectDrafts 1.0 T3ProjectDrafts.qml
+
+T3ConnectionAccess 1.0 T3ConnectionAccess.qml
+T3ConnectionNetwork 1.0 T3ConnectionNetwork.qml
+T3ConnectionCloud 1.0 T3ConnectionCloud.qml
+T3ConnectionPreferences 1.0 T3ConnectionPreferences.qml
+T3LocalConnection 1.0 T3LocalConnection.qml
+
+T3ModelOptions 1.0 T3ModelOptions.qml
+
+T3DiffReview 1.0 T3DiffReview.qml
+T3ToolInspector 1.0 T3ToolInspector.qml
+
+T3PlanWorkflow 1.0 T3PlanWorkflow.qml
+T3GitControls 1.0 T3GitControls.qml
+T3CheckpointRevert 1.0 T3CheckpointRevert.qml
+
+T3WorkingReview 1.0 T3WorkingReview.qml
+
+T3BaseRefPicker 1.0 T3BaseRefPicker.qml
+
+T3Archive 1.0 T3Archive.qml
+
+T3WhenNode 1.0 T3WhenNode.qml
+T3WhenEditor 1.0 T3WhenEditor.qml
+
+T3KeybindingRow 1.0 T3KeybindingRow.qml
+
+T3Keybindings 1.0 T3Keybindings.qml
+
+T3ShortcutRouter 1.0 T3ShortcutRouter.qml
+T3Licenses 1.0 T3Licenses.qml
+
+T3Integrations 1.0 T3Integrations.qml
+T3DeviceHostEditor 1.0 T3DeviceHostEditor.qml
+T3BrowserDefaults 1.0 T3BrowserDefaults.qml
+T3BrowserProfiles 1.0 T3BrowserProfiles.qml
+T3BrowserPage 1.0 T3BrowserPage.qml
+T3BrowserView 1.0 T3BrowserView.qml
+T3BrowserWorkspace 1.0 T3BrowserWorkspace.qml
+T3BrowserImportWizard 1.0 T3BrowserImportWizard.qml

@@ -13,8 +13,10 @@
   SSH connections. `wl-clipboard` supports clipboard integration.
 - Optional: Qt Quick and Qt WebEngine development packages, `pkg-config`, and
   Qt's `moc` for interactive HTML reports. The build detects these packages.
-- Node.js for translation checks and the HTML renderer test; Python is used only
-  by legacy reference tests and asset-generation tooling, never by the backend.
+- Node.js18+ for collecting the exact application license notices during source
+  builds, translation checks and the HTML renderer test. Python3 converts the
+  compiler-provided HTML copyright summary to plain notice text at build time
+  and runs reference/asset tools; neither is needed by the backend at runtime.
 
 Build on the target architecture. Generated binaries are not committed.
 Development has been exercised on Linux ARM64 against T3 nightly versions;
@@ -37,7 +39,8 @@ curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/ins
 For a release, commit and push the source, then run
 `CARGO_BUILD_JOBS=2 tools/package-binaries` natively on each architecture.
 Kuyen provides the x86_64 builder; ARM64 builds run on the development machine.
-Gather both archives and their checksum files into `dist/`, then run
+Packages include the Rust client, document and browser Qt libraries, and the original browser secret helper. Manifest/Cargo versions, `--version`, archive filenames and `BUILD-INFO` carry the same release version. Create an annotated `vVERSION` tag for the source commit.
+Gather both versioned archives and their checksum files into `dist/`, then run
 `tools/publish-release vVERSION`. The publisher refuses stale packages and
 publishes a draft only after both matching architecture assets are uploaded.
 QML-only changes still need a release for installer updates, but Rust binaries
@@ -345,3 +348,73 @@ with a 128-file cap. SVG, emoji and monogram rendering uses librsvg; raster icon
 include PNG/JPEG/GIF/WebP/ICO support (native T3 extracts ICNS to PNG). The Lucide
 0.564.0 atlas matches T3's dependency and includes its license. Regenerate it with
 `tools/generate-project-icons` and the official lucide-static npm archive.
+
+Markdown links use inline Nerd Font glyphs, following native `ChatMarkdown`'s
+GitHub brand treatment (including branch/commit/pull URLs), file references and
+web fallback. Decoration is view-only: raw Markdown, full-message copy and search
+metadata remain unchanged. Unlike native remote favicons, generic web links use
+an offline globe. `tools/test-qml markdown-links` checks actual rich-text output,
+clickable icons, file types, host boundaries, literal content, copy and find.
+
+Timeline spacing follows native `MessagesTimeline`: no list-wide gap or extra
+padding around work rows (24 px line height), 8 px after commentary and 16 px
+after terminal/user messages, scaled through Omarchy's spacing tokens. Author
+headings remain accessible without a visible row. Commentary omits terminal
+metadata; timestamps and compact copy controls sit below terminal/user bodies.
+`tools/test-qml timeline-spacing` checks row geometry and produces a visual
+fixture. Link glyph spacing also reserves a real font-run space to clear Nerd
+Font glyph overhang; its test measures the label position against glyph bounds.
+
+The broader source-backed chat/sidebar review, including remaining differences,
+is recorded in [NATIVE_VISUAL_AUDIT.md](NATIVE_VISUAL_AUDIT.md). The comfortable
+736px lane is shared by the composer and timeline; user bubbles shrink to their
+content with an 80% cap and keep hover metadata outside the background. Markdown
+uses an explicit Qt-supported stylesheet. Sidebar shelves render native 36px
+slim rows, with persistent PR actions, project icon overrides, read/draft/pin
+cues and static work status. `tools/test-qml visual-parity` checks actual geometry,
+source-dependent state and bundled project icon rendering.
+
+Document previews read text through native `projects.readFile` with the selected
+thread's worktree (or project root) as `cwd`. Signed asset grants remain reserved
+for media and attachments; they reject ordinary Markdown/text files. Markdown
+opens as safe rendered rich text with a Source/Preview toggle, preserving the
+original text and handling links through the existing reference router.
+
+Angle-only wheel events retain a bounded 1000 ms ease even when Hyprland reports
+native coasting. The compositor's distance is preserved without a second
+acceleration multiplier; precise native pixel streams still pass through. Tiny
+edge distances settle faster. The `inertia` and `wheel-scroll` checks verify
+continued movement after release with both fallback and native policies.
+
+Scroll capability probing also checks the compositor's window exclusions at the
+current pointer position. Layer popups can sit over a browser whose class
+suppresses native touchpad coasting. While those exclusions are configured, the
+visible panel refreshes its effective policy every 300 ms through the compositor
+socket. Hidden/inactive clients are excluded from the underlay lookup; floating
+windows take precedence over tiled clients. Mouse support remains independent.
+
+The local fallback seeds a bounded velocity coast after 80 ms of silence, using
+the patch's EMA, minimum velocity and quadratic-decay integral over 1000 ms.
+This adds actual travel after release rather than only easing the input distance.
+Native streams never receive this extra local coast. Both document text views
+use the same controller as the sidebar and chat.
+
+
+Native checkout diff renderer: `tools/build-diff-renderer` rebuilds the deterministic gzip asset from the exact npm lock (Node/npm are build-only). Rebuild the Rust client after changing the asset, because it is embedded in the executable. `tools/build-document-viewer` rebuilds the on-demand Qt bridge. `tools/test-diff-renderer` exercises the real component with synthetic full-file data and native mouse/keyboard events; ordinary HTML still uses `tools/test-document-viewer`. See `docs/GIT_CONTROLS.md` for the scoped native-read/security contract and remaining checkpoint parity.
+
+
+Historical renderer regression: `OT3_DIFF_HISTORICAL=1 tools/test-diff-renderer` checks the native no-checkout-loader path. QML checks `checkpoint-diff-flow` and `diff-preferences` exercise range/file identity and canonical native layout persistence in an isolated home. Native layout writes must start with a fresh client-settings read; per-view whitespace and wrap do not rewrite their global defaults.
+
+Archived-thread regression: `cargo test --release --test archive_management --test connection_preferences`, plus serial `tools/test-qml archive` and `tools/test-qml archive-preferences`. The fixtures use isolated local state and synthetic native HTTP/WebSocket servers. Live smoke is read-only: `bin/omarchy-t3-client archive-read <environment-id>`. See [ARCHIVE.md](ARCHIVE.md); never use real archived-thread mutation merely to validate the screen.
+
+Native compact bounded snapshots: chat seed reads, plan/approval preflight and automatic compaction reads now request `compactTurnItems=1`; live subscription opts into `acceptCompactTurnItems`. `bounded_snapshot::restore` restores local visible turn items before reducers/caches. Legacy unmarked responses remain unchanged. Protocol GET `/api/orchestration/threads/:id/bounded` and `orchestration.subscribeThread` with `acceptBoundedSnapshot=true` have a bounded 64 MiB response/frame allowance; generic HTTP, RPC and other streams retain 8 MiB. `cargo test --release --test bounded_snapshot --test live --test approvals --test plan_transport --test auto_compact` covers exact reconstruction and the real HTTP limit. The long development chat exceeded the legacy form limit during archive installation; its compact response was then approximately 5.5 MB and grew beyond 9 MB on October 17. Regression tests cover compact HTTP and live snapshots above 8 MiB, unchanged generic limits, and rejection above 64 MiB.
+
+Keybinding editor integration is in progress: [KEYBINDINGS.md](KEYBINDINGS.md). `node tools/build-keybindings.cjs` deterministically reuses the pinned original TS logic in Qt (no npm/runtime dependency). Verify with `tools/test-qml keybindings-logic` and `cargo test --release --test keybinding_settings`. The native editable screen and supported runtime dispatch are now installed, with primary/active ownership, native config-stream invalidations, localized labels/search and script shortcuts through the existing journaled pipeline. Also run serial `shortcut-routing`, `keybindings-runtime`, `script-shortcuts` and `keybindings-flow`. These fixtures and live read-only checks do not establish parity for missing workspace commands or alternate-layout/IME/compositor key handling.
+
+
+Application licenses: [LICENSES.md](LICENSES.md). `bin/build-client` collects exact
+locked Cargo, renderer, asset and compiler notices before compiling; Node and
+Python are build-only. `node tools/build-licenses.cjs` uses fetched locked crate
+sources offline and the checked-in original helpers. Run release
+`third_party_licenses` tests and serial QML `licenses`/`licenses-preferences`.
+The real-worker fixture runs without a T3 account and never modifies user data.

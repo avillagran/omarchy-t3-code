@@ -1,0 +1,14 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "files": {
+    "apps/web/src/previewStateStore.ts": "677e1259aa718abbc3b48d38098a74967b8a206bd4b2a35f53f96419488b4fd0",
+    "apps/web/src/components/preview/previewConstants.ts": "c66c3cd443c2b660ad0beca0edb0cad90fc53571955cb4c4b05e8bcfd21569ee"
+  },
+  "adaptations": [
+    "Original preview state/reducers extracted verbatim with TypeScript erasure and export removal",
+    "React atom storage boundary replaced by a factory with scoped tuple Map keys and change subscriptions",
+    "Qt object spread/rest becomes own-key Object.assign copies; toSorted/at become copying sort/slice; Object.fromEntries becomes own-property entries construction",
+    "React hooks, active-thread aggregate and timer-based whenPreviewTabKnown excluded; no transport or runtime-support claims"
+  ],
+  "outputSha256": "0c55db3ebb321749c9786efd71e5755bad47754ea98e6101f9d836845954dc35"
+}

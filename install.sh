@@ -11,8 +11,8 @@ t3_base=${t3_base/#\~/$HOME}
 [[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] || fail 'Install and open T3 Code once before installing this plugin: https://t3.codes'
 
 source_build=${OT3_BUILD_FROM_SOURCE:-0}
-packages=(ttf-firacode-nerd git curl ripgrep jq libsecret openssh wl-clipboard librsvg qt6-declarative qt6-webengine)
-if [[ $source_build == 1 ]]; then packages+=(base-devel pkgconf); fi
+packages=(ttf-firacode-nerd git curl ripgrep jq libsecret sqlite openssh wl-clipboard librsvg qt6-declarative qt6-webengine)
+if [[ $source_build == 1 ]]; then packages+=(base-devel pkgconf nodejs python); fi
 if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1 && ! command -v rustup >/dev/null; then packages+=(rust); fi
 missing=()
 for package in "${packages[@]}"; do pacman -Q "$package" >/dev/null 2>&1 || missing+=("$package"); done
@@ -65,15 +65,15 @@ if [[ $source_build == 1 ]]; then
 else
   downloads=$(mktemp -d)
   trap 'rm -rf -- "$downloads"; cleanup' EXIT
-  asset="omarchy-t3-code-linux-$arch.tar.gz"
+  asset="omarchy-t3-code-$release_ref-linux-$arch.tar.gz"
   base_url="https://github.com/avillagran/omarchy-t3-code/releases/download/$release_ref"
   curl -fsSL "$base_url/$asset" -o "$downloads/$asset"
   curl -fsSL "$base_url/$asset.sha256" -o "$downloads/$asset.sha256"
   (cd "$downloads" && sha256sum -c "$asset.sha256") || fail 'Binary checksum failed.'
   [[ $(tar -xOf "$downloads/$asset" COMMIT) == "$expected_commit" ]] || fail 'Binary and source revisions differ.'
   mkdir "$downloads/unpacked"
-  tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so
-  ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" > "$downloads/libraries"
+  tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so bin/libt3-browser.so bin/t3-browser-secret
+  ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" "$downloads/unpacked/bin/libt3-browser.so" "$downloads/unpacked/bin/t3-browser-secret" > "$downloads/libraries"
   if rg -q 'not found' "$downloads/libraries"; then
     cat "$downloads/libraries" >&2
     fail 'Runtime libraries do not match this package; update Omarchy or use OT3_BUILD_FROM_SOURCE=1.'
@@ -84,7 +84,9 @@ else
   fi
   install -m755 "$downloads/unpacked/bin/omarchy-t3-client" "$build_dir/bin/omarchy-t3-client.new"
   mv -f "$build_dir/bin/omarchy-t3-client.new" "$build_dir/bin/omarchy-t3-client"
-  install -m755 "$downloads/unpacked/bin/libt3-document.so" "$build_dir/bin/libt3-document.so"
+  for file in libt3-document.so libt3-browser.so t3-browser-secret; do
+    install -m755 "$downloads/unpacked/bin/$file" "$build_dir/bin/$file"
+  done
 fi
 [[ -f "$build_dir/bin/libt3-document.so" ]] || fail 'The HTML preview did not build; check Qt development packages and retry.'
 omarchy plugin validate "$build_dir"

@@ -35,6 +35,15 @@ pub fn launch_command(e:&Environment,thread:&str,command:Option<&str>)->Result<s
  // Reap the short launcher without retaining a worker for the terminal's lifetime.
  std::thread::spawn(move||{let _=child.wait();});Ok(serde_json::json!({"opened":true}))
 }
+/// Attach the frontend to the exact native session opened by the script plan.
+pub fn launcher_available()->bool{std::env::var_os("PATH").is_some_and(|paths|std::env::split_paths(&paths).any(|p|p.join("omarchy-launch-terminal").is_file()))}
+fn script_session(thread:&str,terminal:&str)->Result<()>{protocol::terminal::session(thread,terminal)?;uuid::Uuid::parse_str(terminal.strip_prefix("term-ot3-script-").ok_or("invalid_terminal")?).map_err(|_|"invalid_terminal")?;Ok(())}
+pub fn launch_session(e:&Environment,thread:&str,terminal:&str)->Result<serde_json::Value>{
+ script_session(thread,terminal)?;writable(e)?;let executable=std::env::current_exe().map_err(|_|"terminal_launch_failed")?;
+ let mut child=Command::new("omarchy-launch-terminal").arg(executable).args(["terminal-session",&e.id,thread,terminal]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(|_|"terminal_launch_failed")?;
+ std::thread::spawn(move||{let _=child.wait();});Ok(serde_json::json!({"opened":true,"terminalId":terminal}))
+}
+pub fn run_session(e:&Environment,thread:&str,terminal:&str)->Result<()>{script_session(thread,terminal)?;run_frontend(e,thread,None,Some(terminal))}
 /// Run only in the native terminal process. Closing the frontend detaches; it never kills T3's shell.
 pub fn run(e:&Environment,thread:&str)->Result<()>{run_command(e,thread,None)}
 fn consume(e:&Environment,thread:&str,path:&std::path::Path)->Result<serde_json::Value>{
@@ -45,11 +54,12 @@ fn consume(e:&Environment,thread:&str,path:&std::path::Path)->Result<serde_json:
  let claimed=directory.join(format!("{id}.claimed"));std::fs::rename(path,&claimed).map_err(|_|"terminal_command_consumed")?;
  let result=(||->Result<serde_json::Value>{let mut file=std::fs::OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW).open(&claimed).map_err(|_|"invalid_terminal_input")?;let meta=file.metadata().map_err(|_|"local_error")?;if !meta.is_file()||meta.uid()!=unsafe{libc::geteuid()}||meta.permissions().mode()&0o077!=0||meta.len()>65536{return Err("invalid_terminal_input".into())}let mut bytes=Vec::new();file.read_to_end(&mut bytes).map_err(|_|"local_error")?;let value:serde_json::Value=serde_json::from_slice(&bytes).map_err(|_|"invalid_terminal_input")?;if value["environment"]!=e.id||value["thread"]!=thread||value["terminalId"]!=format!("term-ot3-{id}")||!protocol::code_blocks::valid_command(text(&value,"command")){return Err("invalid_terminal_input".into())}Ok(value)})();let _=std::fs::remove_file(&claimed);result
 }
-pub fn run_command(e:&Environment,thread:&str,path:Option<&std::path::Path>)->Result<()>{
- writable(e)?;let launch=path.map(|p|consume(e,thread,p)).transpose()?;let terminal=launch.as_ref().map(|v|text(v,"terminalId")).unwrap_or("term-1");protocol::terminal::session(thread,terminal)?;
+pub fn run_command(e:&Environment,thread:&str,path:Option<&std::path::Path>)->Result<()>{run_frontend(e,thread,path,None)}
+fn run_frontend(e:&Environment,thread:&str,path:Option<&std::path::Path>,session:Option<&str>)->Result<()>{
+ writable(e)?;let launch=path.map(|p|consume(e,thread,p)).transpose()?;let terminal=session.or_else(||launch.as_ref().map(|v|text(v,"terminalId"))).unwrap_or("term-1");protocol::terminal::session(thread,terminal)?;
  let c=connection(e)?;let shell=Client::new()?.get(e,"/api/orchestration/shell",true)?;
  let context=protocol::terminal::context(&shell,thread,"").or_else(|error|{if error!="terminal_directory_unavailable"{return Err(error)}let config=c.rpc("server.getConfig",serde_json::json!({}))?;protocol::terminal::context(&shell,thread,text(&config,"scratchWorkspaceRoot"))})?;
- let (cols,rows)=size();let payload=protocol::terminal::attach(thread,terminal,&context,cols,rows)?;
+ let (cols,rows)=size();let mut payload=protocol::terminal::attach(thread,terminal,&context,cols,rows)?;if session.is_some(){payload["restartIfNotRunning"]=serde_json::json!(false);}
  eprintln!("T3 · {} · {}\r",e.name,text(&context,"cwd"));
  let tty=Tty::enter()?;let done=Arc::new(AtomicBool::new(false));let ready=Arc::new(AtomicBool::new(false));let stream_done=done.clone();let stream_ready=ready.clone();let stream=c.clone();
  let output=std::thread::spawn(move||{

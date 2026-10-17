@@ -12,7 +12,7 @@ ShellRoot {
  function check(ok,msg){if(!ok){console.error("SOURCE_CONTROL_PREFERENCES_QML_FAIL "+msg);Qt.exit(1)}}
  // Retire the synthetic RPC ID after its injected reply; the isolated real worker
  // can report unknown_environment later and must not overwrite this fixture.
- function reply(b,error){b.action({op:"settings",requestId:b.settingsResult.requestId,result:{fields:fields},error:error || ""});b.settingsResult=Object.assign({},b.settingsResult,{requestId:"fixture-replied-"+b.settingsResult.requestId})}
+ function reply(b,error){b.action({op:"settings",requestId:b.settingsResult.requestId,result:{writable:true,fields:fields},error:error || ""});b.settingsResult=Object.assign({},b.settingsResult,{requestId:"fixture-replied-"+b.settingsResult.requestId})}
  Test.T3Panel{id:panel;bridge:Test.T3Backend}
  TestCase{id:keys;when:false}
  Timer{interval:200;repeat:true;running:true;onTriggered:{var b=Test.T3Backend,loader=keys.findChild(panel,"t3PreferencesView"),v=loader?loader.item:null

@@ -1,0 +1,21 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "files": {
+    "packages/contracts/src/keybindings.ts": "fcef8dd4fa5c4b80d0ebf3e436354333cb3057b7b5a755f9fafac31cc6bc28af",
+    "packages/shared/src/keybindings.ts": "61eb77bc01d8ce52eeadeebadb4d38816744efd958e62580976b7f82118334f5",
+    "apps/web/src/components/usage/usageShortcuts.ts": "9c2f9495469783fb2ee03d73afde97237ecbf43e94b383c4f730ec339883e35e",
+    "apps/web/src/components/settings/KeybindingsSettings.logic.ts": "01dd88c7877b85b56adac1a5a91b4dca63738190d18aeb483e5372991845cd93",
+    "apps/web/src/components/settings/KeybindingsSettings.tsx": "1344eec0ee62e729a787b155e89865db3298d2087096216b2d032807b7412a54",
+    "apps/web/src/keybindings.ts": "5b54026f2de75a9fd8db849fd6403b1c037644a65b8564f7e6729be540668bf0",
+    "packages/contracts/src/editor.ts": "486a81edead6245c84a00e070191b138b0a2031429560f8a5c82c0d512014cc3",
+    "apps/web/src/projectScripts.ts": "ad3ba91fbb41b88ea5d27fc3e08547cbc6df6bc7baccf3f550fdea794bfe1f7f"
+  },
+  "adaptations": [
+    "TypeScript type erasure and import removal; identical native constants and dependency order",
+    "Array.toSorted replaced with Array.slice().sort; group flatMap replaced with map/concat for Qt JS compatibility",
+    "Declare recursive parseOr binding before its closures to avoid Qt used-before-declared warning",
+    "Native context object spread becomes Object.assign for Qt JS compatibility",
+    "Qt desktop supplies the native desktop context default; script command schema predicate uses the pinned literal/id constraint without the Effect runtime"
+  ],
+  "outputSha256": "0922455005c292dbe8812983473286feb0dad1620d9540c8859d28785642e1e3"
+}

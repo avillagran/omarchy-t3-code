@@ -8,13 +8,23 @@ pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
     if let Some(connection)=&e.connection {return connection.rpc(tag,payload)}
     protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?.rpc(tag,payload)
 }
+fn interaction_mode(input:&Value)->Result<&str>{
+    match input.get("interactionMode"){None|Some(Value::Null)=>Ok("default"),Some(v)=>v.as_str().filter(|s|matches!(*s,"default"|"plan")).ok_or("invalid_interaction_mode".into())}
+}
 fn runtime_mode(input:&Value)->Result<&str>{
     let mode=match input.get("runtimeMode"){None|Some(Value::Null)=>"approval-required",Some(value)=>value.as_str().ok_or("invalid_runtime_mode")?};
     if protocol::models::valid_runtime_mode(mode){Ok(mode)}else{Err("invalid_runtime_mode".into())}
 }
 pub fn catalog(e: &Environment) -> Result<Value> {
     let config = rpc(e,"server.getConfig",json!({}))?;
-    let mut result=protocol::models::catalog(&config);result["canWrite"]=json!(e.write_token_file.is_some() || e.bearer.is_some() || e.connection.is_some());Ok(result)
+    let mut result=protocol::models::catalog(&config);
+    for provider in result["providers"].as_array_mut().unwrap(){
+        if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);}
+    }
+    let permission=Client::new()?.get(e,"/api/auth/session",false);
+    result["canWrite"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="orchestration:operate"))));
+    if let Err(error)=permission{result["permissionError"]=json!(error);}
+    Ok(result)
 }
 pub fn project_sources(e:&Environment)->Result<Value>{
     let config=rpc(e,"server.getConfig",json!({}))?;
@@ -31,7 +41,8 @@ pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
     let overrides=&raw["projectSettingsOverrides"][project];
     let mode=overrides["defaultThreadEnvMode"].as_str().or(raw["defaultThreadEnvMode"].as_str()).filter(|s|matches!(*s,"local"|"worktree"));
     let origin=overrides["newWorktreesStartFromOrigin"].as_bool().or(raw["newWorktreesStartFromOrigin"].as_bool()).unwrap_or(true);
-    Ok(json!({"mode":mode,"startFromOrigin":origin}))
+    let mut result=crate::native_settings::thread_defaults(&raw,project);
+    result["mode"]=json!(mode);result["startFromOrigin"]=json!(origin);Ok(result)
 }
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
@@ -57,7 +68,7 @@ pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
     let connection=if let Some(c)=&e.connection {c.as_ref().clone()} else {protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?};
     connection.upload_attachment(name,&mime,size,file)
 }
-fn validate_message(input:&Value)->Result<()> {
+pub fn validate_message(input:&Value)->Result<()> {
     let content=text(input,"text");
     let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
         if (content.trim().is_empty() && attachments.is_empty()) || content.chars().count()>120000 || attachments.len()>100 {return Err("invalid_message".into())}
@@ -92,7 +103,7 @@ fn launch_command(input:&Value,thread:&str)->Result<Value>{
     if let Some(origin)=strategy["startFromOrigin"].as_bool(){workspace["startFromOrigin"]=json!(origin);}
     let title=text(input,"title").trim();
     if title.is_empty()||title.chars().count()>255{return Err("invalid_title".into())}
-    let mut command=json!({"threadId":thread,"projectId":input["projectId"],"title":title,"modelSelection":input["modelSelection"],"runtimeMode":runtime_mode(input)?,"interactionMode":"default","workspaceStrategy":workspace,"creationSource":"web"});
+    let mut command=json!({"threadId":thread,"projectId":input["projectId"],"title":title,"modelSelection":input["modelSelection"],"runtimeMode":runtime_mode(input)?,"interactionMode":interaction_mode(input)?,"workspaceStrategy":workspace,"creationSource":"web"});
     if input["launchWithMessage"]==true {
         validate_message(input)?;
         let message=uuid::Uuid::parse_str(text(input,"sendRequestId")).map_err(|_|"invalid_request_id")?;
@@ -105,6 +116,8 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     uuid::Uuid::parse_str(id).map_err(|_| "invalid_request_id")?;
     let thread=text(input,"thread");
     if !valid_id(thread) {return Err("invalid_id".into())}
+    let _rewind_guard=crate::checkpoint_journal::lock(&e.id,thread)?;
+    crate::checkpoint_journal::ensure_available(&e.id,thread)?;
     let mut cmd = if input["op"]=="approval" {
         let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
         let expected=json!({"environment":e.id,"command":{"type":"runtime-request.respond","threadId":thread,"requestId":input["runtimeRequestId"],"decision":input["decision"],"commandId":format!("omarchy-{id}")}});
@@ -114,9 +127,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
             if read_json(&path)?!=expected {return Err("retry_payload_changed".into())}
             expected["command"].clone()
         } else {
-            let mut url=reqwest::Url::parse(&e.base_url).map_err(|_|"invalid_endpoint")?;
-            url.path_segments_mut().map_err(|_|"invalid_endpoint")?.extend(["api","orchestration","threads",thread,"bounded"]);
-            let snapshot=Client::new()?.get(e,url.path(),true)?;
+            let snapshot=Client::new()?.bounded_thread(e,thread)?;
             protocol::approvals::command(input,&snapshot["projection"])?
         }
     } else if input["op"]=="question" {
@@ -135,6 +146,9 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         if input["modelSelection"].is_object() {c["modelSelection"]=input["modelSelection"].clone();}
         c
     };
+    if cmd["type"]=="message.dispatch"&&input.get("sourcePlanRef").is_some_and(|v|!v.is_null()){
+        crate::plan_workflow::attach_source_ref(&mut cmd,input).map_err(str::to_string)?;
+    }
     cmd["commandId"]=json!(format!("omarchy-{id}"));
     // Persist before sending. An explicit retry must reuse exactly the same command.
     let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
@@ -143,9 +157,14 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     }else{None};
     let mut envelope=json!({"environment":e.id,"command":cmd});
     if permissions.is_some(){envelope["runtimeMode"]=input["runtimeMode"].clone();}
+    let interaction=if cmd["type"]=="message.dispatch"&&input.get("interactionMode").is_some_and(|v|!v.is_null()){
+        Some(json!({"type":"thread.interaction-mode.set","threadId":thread,"commandId":format!("omarchy-{id}-interaction-mode"),"interactionMode":interaction_mode(input)?}))
+    }else{None};
+    if interaction.is_some(){envelope["interactionMode"]=input["interactionMode"].clone();}
     if path.exists() {if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}}
     else { save_json(&path,&envelope)?; }
     if let Some(mode)=permissions{rpc(e,"orchestration.dispatchCommand",mode)?;}
+    if let Some(mode)=interaction{rpc(e,"orchestration.dispatchCommand",mode)?;}
     rpc(e,"orchestration.dispatchCommand",cmd)
 }
 /// Explicit management actions. Native launches own workspace preparation and
@@ -175,7 +194,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
             thread=format!("omarchy-thread-{id}");
             let mode=runtime_mode(input)?;
-            if input["workspaceStrategy"].is_object(){("orchestration.launchThread",launch_command(input,&thread)?)}else{("orchestration.dispatchCommand",json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":"default","branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))}
+            if input["workspaceStrategy"].is_object(){("orchestration.launchThread",launch_command(input,&thread)?)}else{("orchestration.dispatchCommand",json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":interaction_mode(input)?,"branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))}
         },
         "add-project" => {
             let path=if input["workspaceRoot"].is_string(){
@@ -217,20 +236,36 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     Ok(result)
 }
 pub fn execute(input:&Value) -> Result<Value> {
+    if matches!(text(input,"op"),"browser-profiles-read"|"browser-profiles-action"){return crate::browser_profiles::execute(input)}
+    if input["op"]=="licenses-read"{return crate::third_party_licenses::read()}
+    if input["op"]=="licenses-notice"{return crate::third_party_licenses::notice(input)}
+    if input["op"]=="client-settings"{return match text(input,"action"){
+        "read"=>crate::connection_preferences::read_client_preferences(),
+        "update"=>crate::connection_preferences::update_client_preferences(text(input,"revision"),&input["patch"]),
+        _=>Err("invalid_client_preference".into())
+    }}
+    if input["op"]=="settings"&&input["scope"].is_object(){return crate::scoped_settings::execute(input)}
+    if input["op"]=="connection-route"{return crate::connection_route::choose(input)}
+    if input["op"]=="connection-network"{return crate::connection_network::execute(input)}
     if input["op"]=="connections-manage"{return crate::connections::manage_connections(input)}
     if input["op"]=="window-layout" {return crate::window_layout::apply(input)}
     if input["op"]=="backend-control" {return crate::backend_service::control(text(input,"action"))}
     if input["op"]=="backend-start" {return crate::backend_service::start()}
     if input["op"]=="scroll-config" {return Ok(scroll::read())}
+    if input["op"]=="rewind-list"{return Ok(json!({"operations":crate::checkpoint_journal::list()?}))}
+    if input["op"]=="rewind-recover"{return crate::checkpoint_operations::recover(input)}
     if input["op"]=="clipboard" {return clipboard::paste(input)}
     if input["op"]=="copy" {return clipboard::copy(input)}
     let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
     match text(input,"op") {
+        "devices-read"=>crate::integration_devices::read(&e),
+        "devices-action"=>crate::integration_devices::apply(&e,input),
+        "connection-access"=>crate::connection_access::execute(&e,input),
         "terminal-open"=>{let command=match input.get("command"){None|Some(Value::Null)=>None,Some(value)=>Some(value.as_str().ok_or("invalid_terminal_input")?)};crate::terminal::launch_command(&e,text(input,"thread"),command)},
         "document-open"=>crate::documents::read(&e,input),
-        "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{rpc(&e,&tag,payload)}},
+        "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{crate::connection_github::read(&e,&tag,payload)}},
         "settings" if matches!(text(input,"action"),"workspace-read"|"workspace-update")=>workspace_preference(&e,input),
-        "settings"=>{if input["action"]=="update"{rpc(&e,"server.updateSettings",protocol::settings::patch(input)?)?;}else if input["action"]!="read"{return Err("invalid_settings".into())}rpc(&e,"server.getSettings",json!({})).map(|v|protocol::settings::snapshot(&v))},
+        "settings"=>crate::native_settings::execute(&e,input),
         "catalog"=>catalog(&e),
         "project-sources"=>project_sources(&e),
         "browse-folders"=>{
@@ -240,11 +275,54 @@ pub fn execute(input:&Value) -> Result<Value> {
         "history"=>history(&e,input),
         "model-favorite"=>{let desired=input["favorite"].as_bool().ok_or("invalid_model")?;let current=rpc(&e,"server.getSettings",json!({}))?;if !current["favorites"].is_array(){return Err("model_preferences_uninitialized".into())}rpc(&e,"server.updateSettings",protocol::models::favorite_payload(text(input,"provider"),text(input,"model"),desired)?).map(|v|protocol::models::preferences(&v))},
         "suggest"=>suggestions::query(&e,input),
-        "diff"=>{let from=input["fromTurnCount"].as_u64().ok_or("invalid_range")?;let to=input["toTurnCount"].as_u64().filter(|n|*n>=from).ok_or("invalid_range")?;let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}if from==0{rpc(&e,"orchestration.getFullThreadDiff",json!({"threadId":thread,"toTurnCount":to}))}else{rpc(&e,"orchestration.getTurnDiff",json!({"threadId":thread,"fromTurnCount":from,"toTurnCount":to}))}},
+        "plan-followup"=>prepare_plan_follow_up(&e,input),
+        "rewind-preview"=>crate::checkpoint_operations::preview(&e,input),
+        "rewind-dispatch"=>crate::checkpoint_operations::dispatch(&e,input),
+        "rewind-observe"=>crate::checkpoint_operations::observe(&e,input),
+        "rewind-resolve"=>crate::checkpoint_operations::resolve(&e,input),
+        "keybindings-open"=>crate::keybinding_settings::open(&e,input),
+        "keybindings-read"=>crate::keybinding_settings::read(&e),
+        "keybindings-write"=>crate::keybinding_settings::apply(&e,input),
+        "archive-read"=>crate::archive_management::read(&e,input),
+        "archive-action"=>crate::archive_management::action(&e,input),
+        "archive-state"=>crate::archive_management::observe(&e,input),
+        "review-refs"=>crate::working_review::refs(&e,input),
+        "working-review"=>crate::working_review::execute(&e,input),
+        "git-read"=>crate::git_operations::read(&e,input),
+        "git-action"=>crate::git_operations::action(&e,input),
+        "git-state"=>crate::git_operations::status(&e,input),
+        "git-resolve"=>crate::git_operations::resolve(&e,input),
+        "git-terminal"=>crate::git_operations::open_terminal(&e,input),
+        "tool-inspector"=>crate::tool_inspector::execute(&e,input),
+        "diff"=>crate::diff_review::execute(&e,input),
         "manage"=>manage(&e,input),
         "upload"=>upload(&e,text(input,"url")),
         "delete-upload"=>rpc(&e,"attachments.delete",json!({"attachmentId":input["attachmentId"]})),
         "approval"|"question"|"send"|"stop"|"queue"=>dispatch(&e,input),
         _=>Err("invalid_command".into())
     }
+}
+
+/// Re-read the native plan before preparing a user-triggered follow-up. This
+/// operation only returns a prompt; the existing durable send path owns writes.
+pub fn prepare_plan_follow_up(e:&Environment,input:&Value)->Result<Value>{
+    let session=Client::new()?.get(e,"/api/auth/session",false)?;
+    if session["authenticated"]!=true || !session.get("permissions").or_else(||session.get("scopes")).and_then(Value::as_array).is_some_and(|scopes|scopes.iter().any(|scope|scope=="orchestration:operate")){return Err("permission_denied".into())}
+    let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_plan_scope".into())}
+    let config=rpc(e,"server.getConfig",json!({}))?;
+    let selection=crate::native_settings::model_selection(&input["modelSelection"])?;
+    let provider=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==selection["instanceId"]&&p["enabled"]==true&&p["status"]!="error");
+    let local=crate::connection_preferences::read_client_preferences()?;
+    let gate=crate::plan_workflow::mode(local["planModeEnabled"]==true,provider,text(input,"interactionMode"));
+    if gate["interactionMode"]!="plan"{return Err("plan_mode_unavailable".into())}
+    crate::native_settings::patch(&json!({"key":"defaultModelSelection","value":selection}),Some(&config))?;
+    let bounded=Client::new()?.bounded_thread(e,thread)?;let projection=&bounded["projection"];
+    let view=crate::plan_workflow::view(projection,crate::rendered_markdown);
+    let plan=&view["ready"];
+    if view.get("error").is_some()||plan.is_null()||plan["id"]!=input["planId"]||input["hasAttachments"]!=false{return Err("plan_no_longer_ready".into())}
+    let mut result=crate::plan_workflow::follow_up(plan,thread,text(input,"draftText")).map_err(str::to_string)?;
+    result["planId"]=plan["id"].clone();result["thread"]=json!(thread);result["environment"]=json!(&e.id);
+    result["projectId"]=projection["thread"]["projectId"].clone();result["branch"]=projection["thread"]["branch"].clone();result["worktreePath"]=projection["thread"]["worktreePath"].clone();
+    result["title"]=json!(crate::plan_workflow::implementation_title(text(plan,"markdown")));
+    result["modelSelection"]=selection;Ok(result)
 }

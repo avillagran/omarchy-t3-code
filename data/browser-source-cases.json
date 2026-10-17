@@ -1,0 +1,145 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "source": "apps/desktop/src/preview/BrowserImport/Sources.ts",
+  "sourceSha256": "ea6fad0e6e526a662f8403f83703cd0fe2a0745dd9631f8f544eb8bc881cbd6f",
+  "cases": [
+    {
+      "input": "",
+      "profiles": []
+    },
+    {
+      "input": "[Install123]\nName=ignored\nPath=ignored",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nName=Personal\nPath=abc.default",
+      "profiles": [
+        {
+          "directory": "abc.default",
+          "name": "Personal"
+        }
+      ]
+    },
+    {
+      "input": "[Profile42]\nPath=./a/../profile",
+      "profiles": [
+        {
+          "directory": "profile",
+          "name": "profile"
+        }
+      ]
+    },
+    {
+      "input": "[profile2]\nNAME = Name = value\nPATH=p",
+      "profiles": [
+        {
+          "directory": "p",
+          "name": "Name = value"
+        }
+      ]
+    },
+    {
+      "input": "[Profile0]\nPath=../escape",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=a/../../escape",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=/absolute",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=/absolute\nIsRelative=0",
+      "profiles": [
+        {
+          "directory": "/absolute",
+          "name": "/absolute"
+        }
+      ]
+    },
+    {
+      "input": "[Profile0]\nPath=/../absolute\nIsRelative=0",
+      "profiles": [
+        {
+          "directory": "/absolute",
+          "name": "/absolute"
+        }
+      ]
+    },
+    {
+      "input": "[Profile0]\nPath=relative\nIsRelative=0",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=./a\nIsRelative=2",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=./a\nIsRelative=",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=a\u0000b",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=a/..",
+      "profiles": [
+        {
+          "directory": ".",
+          "name": "."
+        }
+      ]
+    },
+    {
+      "input": "[Profile0]\nPath=a\\b",
+      "profiles": [
+        {
+          "directory": "a\\b",
+          "name": "a\\b"
+        }
+      ]
+    },
+    {
+      "input": "[ProfileX]\nPath=wrong",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0] extra\nPath=wrong",
+      "profiles": []
+    },
+    {
+      "input": "[Profile0]\nPath=one\nPath=two",
+      "profiles": [
+        {
+          "directory": "two",
+          "name": "two"
+        }
+      ]
+    },
+    {
+      "input": "﻿[Profile0]﻿\nName=﻿Title﻿\nPath=﻿dir﻿",
+      "profiles": [
+        {
+          "directory": "dir",
+          "name": "Title"
+        }
+      ]
+    },
+    {
+      "input": "[Profile0]\nPath=a\n[Install123]\nPath=b\n[Profile1]\nName=   \nPath=c",
+      "profiles": [
+        {
+          "directory": "a",
+          "name": "a"
+        },
+        {
+          "directory": "c",
+          "name": "c"
+        }
+      ]
+    }
+  ]
+}

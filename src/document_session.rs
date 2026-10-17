@@ -18,8 +18,8 @@ fn launch(exe:&std::path::Path,doc:&Value,id:&str,generation:u64,current:Arc<Ato
  let mut child=Command::new(exe).arg("document-render").env("QT_QPA_PLATFORM","offscreen").process_group(0).env("QT_QUICK_BACKEND","software").env("QT_SCALE_FACTOR","1").env("QT_SCREEN_SCALE_FACTORS","1").env("QTWEBENGINE_CHROMIUM_FLAGS","--disable-gpu").env_remove("T3_DOCUMENT_VERIFY").env_remove("T3_DOCUMENT_GRAB").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"viewer_unavailable")?;
  let stdin=child.stdin.take().ok_or("viewer_unavailable")?;let stdout=child.stdout.take().ok_or("viewer_unavailable")?;
  let mut session=Session{child,stdin,dir:dir.clone(),id:id.into()};let bytes=payload.to_string().into_bytes();session.stdin.write_all(&(bytes.len() as u64).to_be_bytes()).and_then(|_|session.stdin.write_all(&bytes)).map_err(|_|"viewer_unavailable")?;
- let id=id.to_string();thread::spawn(move||{
-  for line in BufReader::new(stdout).lines(){let Ok(line)=line else{break};if current.load(Ordering::SeqCst)!=generation{break}let Ok(v)=serde_json::from_str::<Value>(&line)else{continue};if let Some(value)=v["clipboard"].as_str().filter(|s|s.len()<=120000){super::emit("document-clipboard",json!({"requestId":id,"text":value}));continue}if let Some(height)=v["contentHeight"].as_u64().filter(|h|*h>0&&*h<=100000){super::emit("document-size",json!({"requestId":id,"height":height}));continue}let name=text(&v,"frame");if !matches!(name,"frame-0.png"|"frame-1.png"){continue}let path=dir.join(name);if !fs::metadata(&path).is_ok_and(|m|m.is_file()&&m.len()<=20*1024*1024){continue}let Ok(url)=reqwest::Url::from_file_path(path)else{continue};super::emit("document-frame",json!({"requestId":id,"url":url.to_string(),"revision":v["revision"],"width":v["width"],"height":v["height"]}));
+ let internal=doc["internalReview"]==true;let id=id.to_string();thread::spawn(move||{
+  for line in BufReader::new(stdout).lines(){let Ok(line)=line else{break};if current.load(Ordering::SeqCst)!=generation{break}let Ok(v)=serde_json::from_str::<Value>(&line)else{continue};if internal&&v["reviewReady"]==true{super::emit("document-ready",json!({"requestId":id,"error":text(&v,"reviewError")}));continue}if let Some(value)=v["clipboard"].as_str().filter(|s|s.len()<=120000){super::emit("document-clipboard",json!({"requestId":id,"text":value}));continue}if let Some(height)=v["contentHeight"].as_u64().filter(|h|*h>0&&*h<=100000){super::emit("document-size",json!({"requestId":id,"height":height}));continue}let name=text(&v,"frame");if !matches!(name,"frame-0.png"|"frame-1.png"){continue}let path=dir.join(name);if !fs::metadata(&path).is_ok_and(|m|m.is_file()&&m.len()<=20*1024*1024){continue}let Ok(url)=reqwest::Url::from_file_path(path)else{continue};super::emit("document-frame",json!({"requestId":id,"url":url.to_string(),"revision":v["revision"],"width":v["width"],"height":v["height"]}));
   }
   if current.load(Ordering::SeqCst)==generation{super::emit("document-frame",json!({"requestId":id,"error":"viewer_closed"}));}
  });Ok(session)
@@ -32,10 +32,10 @@ pub fn start_with(exe:std::path::PathBuf)->Manager{
    match text(&input,"op"){
     "document-open"=>{
      session=None;let result=write::execute(&input);if stamp!=current.load(Ordering::SeqCst){continue}
-     let result=result.and_then(|doc|{if doc["html"]==true{session=Some(launch(&exe,&doc,text(&input,"requestId"),stamp,current.clone())?)}Ok(doc)});
+     let result=result.and_then(|mut doc|{if doc["html"]==true{session=Some(launch(&exe,&doc,text(&input,"requestId"),stamp,current.clone())?)}if doc["internalReview"]==true{doc["contents"]=json!("");}Ok(doc)});
      super::emit("action",json!({"op":"document-open","requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
     },
-    "document-input"=>{if let Some(s)=session.as_mut(){if s.id==text(&input,"requestId"){let v=&input["event"];if v.to_string().len()<=8192&&matches!(text(v,"type"),"press"|"release"|"move"|"double"|"wheel"|"key"|"keyup"|"resize"|"zoom"|"capture"){let _=writeln!(s.stdin,"{v}");}}}},
+    "document-input"=>{if let Some(s)=session.as_mut(){if s.id==text(&input,"requestId"){let v=&input["event"];if v.to_string().len()<=8192&&matches!(text(v,"type"),"press"|"release"|"move"|"double"|"wheel"|"key"|"keyup"|"resize"|"zoom"|"capture"|"review-options"){let _=writeln!(s.stdin,"{v}");}}}},
     "document-close"=>{session=None;},_=>{}
    }
   }
@@ -44,19 +44,22 @@ pub fn start_with(exe:std::path::PathBuf)->Manager{
 
 /// Each visible inline page has an independent renderer; modal previews keep
 /// their own slot. Leaving the viewport cancels pending reads and frees Qt.
-pub struct Pool{modal:Manager,modal_id:String,inline:std::collections::HashMap<String,Manager>}
+pub struct Pool{modal:Manager,modal_id:String,review:Manager,review_id:String,inline:std::collections::HashMap<String,Manager>}
 impl Pool{
- pub fn new()->Self{Self{modal:start(),modal_id:String::new(),inline:std::collections::HashMap::new()}}
+ pub fn new()->Self{Self{modal:start(),modal_id:String::new(),review:start(),review_id:String::new(),inline:std::collections::HashMap::new()}}
  pub fn send(&mut self,input:Value){
   let id=text(&input,"requestId").to_string();
   match text(&input,"op"){
+   "document-open" if input["reviewSnapshotId"].is_string()=>{self.review_id=id;self.review.send(input)},
    "document-open" if input["inline"]==true=>{
     if !self.inline.contains_key(&id)&&self.inline.len()>=4{super::emit("action",json!({"op":"document-open","requestId":id,"error":"viewer_unavailable"}));return}
     self.inline.entry(id).or_insert_with(start).send(input);
    },
    "document-open"=>{self.modal_id=id;self.modal.send(input)},
-   "document-close" if id.is_empty()=>{self.modal_id.clear();for(_,manager)in self.inline.drain(){manager.send(json!({"op":"document-close"}));}self.modal.send(input)},
+   "document-close" if id.is_empty()=>{self.modal_id.clear();self.review_id.clear();self.review.send(json!({"op":"document-close"}));for(_,manager)in self.inline.drain(){manager.send(json!({"op":"document-close"}));}self.modal.send(input)},
+   "document-close" if id==self.review_id=>{self.review_id.clear();self.review.send(input)},
    "document-close"=>{if let Some(manager)=self.inline.remove(&id){manager.send(input)}else if id==self.modal_id{self.modal_id.clear();self.modal.send(input)}},
+   _ if id==self.review_id=>self.review.send(input),
    _=>{if let Some(manager)=self.inline.get(&id){manager.send(input)}else if id==self.modal_id{self.modal.send(input)}},
   }
  }

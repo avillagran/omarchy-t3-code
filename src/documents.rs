@@ -4,10 +4,21 @@ use crate::*;
 use std::os::fd::FromRawFd;
 
 pub fn read(e:&Environment,input:&Value)->Result<Value>{
+ if input["reviewSnapshotId"].is_string(){return crate::review_document::open(e,input)}
  let resource=if input["attachment"].is_object(){let a=&input["attachment"];let id=text(a,"id");if !valid_id(id){return Err("invalid_file".into())}json!({"_tag":"attachment","attachmentId":id,"fileName":text(a,"name"),"mimeType":text(a,"mimeType"),"disposition":"inline"})}else{protocol::documents::resource(text(input,"thread"),text(input,"path"))?};
  let name=if input["attachment"].is_object(){text(&input["attachment"],"name")}else{text(input,"path")};
  let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?};
- let mut doc=c.document(resource)?;doc["labels"]=input["labels"].clone();doc["title"]=json!(name);doc["theme"]=input["theme"].clone();doc["html"]=json!(name.to_ascii_lowercase().ends_with(".html")||name.to_ascii_lowercase().ends_with(".htm")||text(&input["attachment"],"mimeType")=="text/html");Ok(doc)
+ let mut doc=if resource["_tag"]=="workspace-file" {
+  // Asset grants only serve browser media. Text uses the native Files RPC,
+  // including absolute host paths and the selected thread's worktree cwd.
+  let cwd=text(input,"cwd");if cwd.is_empty(){return Err("invalid_workspace".into())}
+  let doc=c.rpc("projects.readFile",json!({"cwd":cwd,"relativePath":text(input,"path")}))?;
+  if doc["truncated"]==true||text(&doc,"contents").len()>4*1024*1024{return Err("document_limit_4MiB".into())}doc
+ }else{c.document(resource)?};
+ doc["internalReview"]=json!(false);
+ doc["markdown"]=json!([".md",".markdown",".mdown",".mkd"].iter().any(|ext|name.to_ascii_lowercase().ends_with(ext))||text(&input["attachment"],"mimeType")=="text/markdown");
+ if doc["markdown"]==true{doc["rendered"]=json!(rendered_markdown(text(&doc,"contents")))}
+ doc["labels"]=input["labels"].clone();doc["title"]=json!(name);doc["theme"]=input["theme"].clone();doc["html"]=json!(name.to_ascii_lowercase().ends_with(".html")||name.to_ascii_lowercase().ends_with(".htm")||text(&input["attachment"],"mimeType")=="text/html");Ok(doc)
 }
 /// Tiny Qt frontend bridge loaded explicitly so the Rust daemon has no Qt dependency.
 pub fn renderer()->Result<()>{viewer_mode(true)}

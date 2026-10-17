@@ -8,6 +8,17 @@ import qs.Ui
 Rectangle {
   id: root
   property alias inputField: editor
+  readonly property bool modelPickerAvailable:modelPicker.enabled
+  readonly property bool permissionPickerAvailable:permissionPicker.enabled
+  readonly property bool modelPickerOpen:modelPicker.popup.visible
+  readonly property bool permissionPickerOpen:permissionPicker.popup.visible
+  function nativeModelControl(command){
+    if(command==="modelPicker.toggle"){if(modelPicker.enabled)modelPicker.popup.visible?modelPicker.popup.close():modelPicker.popup.open();return}
+    if(command==="composer.mode"){if(permissionPicker.enabled)permissionPicker.popup.open();return}
+    if(command==="composer.effort"){showOptions=true;Qt.callLater(function(){modelOptions.focusEffort()});return}
+    if(command==="modelPicker.previousProvider"||command==="modelPicker.nextProvider"){modelPicker.moveProvider(command==="modelPicker.nextProvider"?1:-1);return}
+    var jump=/^modelPicker\.jump\.([1-9])$/.exec(command);if(jump)modelPicker.selectResult(Number(jump[1])-1)
+  }
   required property var bridge
   property bool showOptions: false
   property bool expanded: false
@@ -33,7 +44,7 @@ Rectangle {
   Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;editor.cursorPosition=cursor;editor.forceActiveFocus()})}}
   property int historyIndex: -1
   property string historyScratch: ""
-  readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"}).map(function(m){return String(m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
+  readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"}).map(function(m){return String(m.recallableText!==undefined?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
   Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";saveQuietPeriod.stop()} }
   property var completion: null
   property int completionIndex: 0
@@ -126,7 +137,7 @@ Rectangle {
   readonly property var models: bridge.catalog.models || []
   readonly property int modelIndex: models.findIndex(function(m) { return m.instanceId === root.selection.instanceId && m.model === root.selection.model })
   readonly property var descriptors: modelIndex >= 0 ? (models[modelIndex].descriptors || []) : []
-  readonly property bool locked: !!draft.busy || !!draft.attempt || !!draft.loading || !!draft.loadError
+  readonly property bool locked: !!(bridge.planOperation || {}).busy || !!draft.busy || !!draft.attempt || !!draft.loading || !!draft.loadError
   readonly property bool running: !!bridge.selectedInfo.activeRunId
   readonly property bool hasContent: !!draft.text.trim() || draft.attachments.length > 0
   readonly property bool stopMode: running && !hasContent && !draft.queueEdit
@@ -218,7 +229,7 @@ Rectangle {
         onSelectionEndChanged:if(!root.draft.loading)root.bridge.rememberDraftCursor(selectionStart,selectionEnd)
         onCursorPositionChanged: {if(!root.draft.loading)root.bridge.rememberDraftCursor(selectionStart,selectionEnd);completionDelay.restart();Qt.callLater(editorViewport.revealCursor)}
         onCursorRectangleChanged:Qt.callLater(editorViewport.revealCursor)
-        Keys.onPressed:function(event){if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(editor.selectionStart,editor.selectionEnd)}}
+        Keys.onPressed:function(event){if(event.modifiers===Qt.ShiftModifier&&event.key===Qt.Key_Backtab&&root.bridge.interactionModeEnabled===true&&!root.locked){root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan");event.accepted=true;return}if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(editor.selectionStart,editor.selectionEnd)}}
         onActiveFocusChanged: { if (!activeFocus) root.bridge.flushDrafts(); else completionDelay.restart() }
         Keys.onUpPressed: function(event) { event.accepted = root.completionKey(event,-1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(-1)) }
         Keys.onDownPressed: function(event) { event.accepted = root.completionKey(event,1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(1)) }
@@ -242,33 +253,7 @@ Rectangle {
         }
       }
     }
-    ColumnLayout {
-      Layout.fillWidth: true
-      visible: root.showOptions && !root.draft.queueEdit
-      spacing: Style.space(6)
-      Repeater {
-        model: root.descriptors
-        RowLayout {
-          required property var modelData
-          Layout.fillWidth: true
-          Text { Layout.preferredWidth: Style.space(125); text: T3I18n.tr(modelData.label); font.pixelSize: Style.font.caption; color: root.dim; textFormat: Text.PlainText }
-          T3Select {
-            objectName: "t3Option_" + modelData.id
-            Layout.fillWidth: true; visible: modelData.type === "select"
-            enabled: !root.locked
-            model: modelData.options || []; textRole: "label";translateLabels:true
-            currentIndex: model.findIndex(function(o) { return o.id === root.optionValue(modelData) })
-            onActivated: function(index) { root.bridge.chooseOption(modelData.id, model[index].id) }
-          }
-          Controls.Switch {
-            visible: modelData.type === "boolean"; enabled: !root.locked
-            checked: !!root.optionValue(modelData)
-            onToggled: root.bridge.chooseOption(modelData.id, checked)
-            palette.highlight: Color.accent
-          }
-        }
-      }
-    }
+    T3ModelOptions {id:modelOptions;Layout.fillWidth:true;visible:root.showOptions&&!root.draft.queueEdit;bridge:root.bridge;descriptors:root.descriptors;selection:root.selection;locked:root.locked}
     Text {
       Layout.fillWidth: true
       visible: !!text
@@ -292,10 +277,12 @@ Rectangle {
         onPicked:editor.forceActiveFocus()
       }
       T3PermissionPicker {
+        id:permissionPicker
         bridge:root.bridge;Layout.minimumWidth:Style.space(38);Layout.maximumWidth:Style.space(170)
         enabled:!root.locked&&!root.draft.queueEdit&&root.bridge.catalog.canWrite!==false
         onPicked:editor.forceActiveFocus()
       }
+      T3PickerButton{objectName:"t3InteractionMode";primary:false;implicitHeight:Style.space(28);leftPadding:Style.space(8);rightPadding:leftPadding;visible:root.bridge.interactionModeEnabled===true;text:T3I18n.tr(root.bridge.interactionMode==="plan"?"Plan":"Build");enabled:!root.locked&&!root.draft.queueEdit&&root.bridge.catalog.canWrite!==false;onClicked:root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan")}
       T3IconButton { enabled:!root.draft.queueEdit;name: "sliders-horizontal"; tooltipText: T3I18n.tr("Model options"); onClicked: root.showOptions = !root.showOptions }
       Item { Layout.fillWidth: true }
       Item {
@@ -327,7 +314,7 @@ Rectangle {
         objectName:"t3SendAndNewThread"
         name:"git-branch"
         tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Shift+Enter"
-        enabled:!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
+        enabled:!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
         onClicked:root.bridge.submit(true)
       }
       T3Select {
@@ -359,7 +346,7 @@ Rectangle {
         T3Icon { anchors.centerIn: parent; name: primaryAction.iconName; tint: root.stopMode ? "white" : Color.popups.background; visible: root.stopMode ? !root.draft.stopping : !root.draft.busy && !root.uploading }
         MouseArea {
           id: sendMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-          enabled: root.stopMode ? !root.draft.stopping : !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
+          enabled: root.stopMode ? !root.draft.stopping : !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
           onClicked: primaryAction.activate()
         }
         Controls.ToolTip.visible: sendHover.hovered

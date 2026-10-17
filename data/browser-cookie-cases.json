@@ -1,0 +1,165 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "source": "apps/desktop/src/preview/BrowserImport/ChromiumCookies.ts",
+  "sourceSha256": "db5bc4f0373723bb47ff453a899e56c0cc8e76e7324638b4ef6336a951da4a22",
+  "cases": [
+    {
+      "id": "empty",
+      "host": "example.test",
+      "version": 23,
+      "hex": "",
+      "value": ""
+    },
+    {
+      "id": "legacy-plaintext",
+      "host": "example.test",
+      "version": 23,
+      "hex": "6c6567616379",
+      "value": "legacy"
+    },
+    {
+      "id": "invalid-cbc",
+      "host": "example.test",
+      "version": 23,
+      "hex": "76313062726f6b656e",
+      "value": null
+    },
+    {
+      "id": "legacy-v20-linux",
+      "host": "example.test",
+      "version": 23,
+      "hex": "7632306c6567616379",
+      "value": "v20legacy"
+    },
+    {
+      "id": "v10-23-normal",
+      "host": ".example.test",
+      "version": 23,
+      "hex": "7631301fd747089d955891085d70b31f2b542ed8dd60f7b599182cbdef47d9541fb4bc",
+      "value": "synthetic-v10-✓"
+    },
+    {
+      "id": "v10-23-empty",
+      "host": ".example.test",
+      "version": 23,
+      "hex": "7631300c884308fa8838f3e7b551eb9717d3e48814f2f100b6e0af5edc4b2046e29ada",
+      "value": "synthetic-v10-✓"
+    },
+    {
+      "id": "v11-23-normal",
+      "host": ".example.test",
+      "version": 23,
+      "hex": "7631313903c7ca5dd32696806daee98f7a2a8611ec16da4eae9ed0dbd95c44a4b13b49",
+      "value": "synthetic-v11-✓"
+    },
+    {
+      "id": "missing-v11-23-normal",
+      "host": ".example.test",
+      "version": 23,
+      "missingV11": true,
+      "hex": "7631313903c7ca5dd32696806daee98f7a2a8611ec16da4eae9ed0dbd95c44a4b13b49",
+      "value": null
+    },
+    {
+      "id": "v11-23-empty",
+      "host": ".example.test",
+      "version": 23,
+      "hex": "7631310f83e14bb6b878e2a46d4a10ce31bcaf0fe080c417fbb0d96a714b82e9f4f8eb",
+      "value": "synthetic-v11-✓"
+    },
+    {
+      "id": "missing-v11-23-empty",
+      "host": ".example.test",
+      "version": 23,
+      "missingV11": true,
+      "hex": "7631310f83e14bb6b878e2a46d4a10ce31bcaf0fe080c417fbb0d96a714b82e9f4f8eb",
+      "value": null
+    },
+    {
+      "id": "v10-24-normal",
+      "host": ".example.test",
+      "version": 24,
+      "hex": "76313059f2bdd15dd07447497282fada0e1febf791a1cfea589774156a60a2dc399ec0041ef9aed3e874d33b913e44654f0370e576c5f4a2a7cf32efd55232590665c2",
+      "value": "synthetic-v10-✓"
+    },
+    {
+      "id": "wrong-host-v10-normal",
+      "host": "other.test",
+      "version": 24,
+      "hex": "76313059f2bdd15dd07447497282fada0e1febf791a1cfea589774156a60a2dc399ec0041ef9aed3e874d33b913e44654f0370e576c5f4a2a7cf32efd55232590665c2",
+      "value": null
+    },
+    {
+      "id": "v10-24-empty",
+      "host": ".example.test",
+      "version": 24,
+      "hex": "763130e8da432f0721b44064bf87de3cb1eba14d33853aeb85ca13e60bbe64565cc4c7cdf4483ea945d9932b8f78b78c4ae105a0dd774ac1440f3b560df9f0ac336734",
+      "value": "synthetic-v10-✓"
+    },
+    {
+      "id": "wrong-host-v10-empty",
+      "host": "other.test",
+      "version": 24,
+      "hex": "763130e8da432f0721b44064bf87de3cb1eba14d33853aeb85ca13e60bbe64565cc4c7cdf4483ea945d9932b8f78b78c4ae105a0dd774ac1440f3b560df9f0ac336734",
+      "value": null
+    },
+    {
+      "id": "v11-24-normal",
+      "host": ".example.test",
+      "version": 24,
+      "hex": "7631319ffeb9a8fcaa0e49b7fd05746bf58e18fd17b209019ebcebd380718539dad84b7b9012aaa4e306d3cdf215913d71ee3f8712ae5110b4273697e0af876906c818",
+      "value": "synthetic-v11-✓"
+    },
+    {
+      "id": "wrong-host-v11-normal",
+      "host": "other.test",
+      "version": 24,
+      "hex": "7631319ffeb9a8fcaa0e49b7fd05746bf58e18fd17b209019ebcebd380718539dad84b7b9012aaa4e306d3cdf215913d71ee3f8712ae5110b4273697e0af876906c818",
+      "value": null
+    },
+    {
+      "id": "missing-v11-24-normal",
+      "host": ".example.test",
+      "version": 24,
+      "missingV11": true,
+      "hex": "7631319ffeb9a8fcaa0e49b7fd05746bf58e18fd17b209019ebcebd380718539dad84b7b9012aaa4e306d3cdf215913d71ee3f8712ae5110b4273697e0af876906c818",
+      "value": null
+    },
+    {
+      "id": "v11-24-empty",
+      "host": ".example.test",
+      "version": 24,
+      "hex": "763131e8da432f0721b44064bf87de3cb1eba14d33853aeb85ca13e60bbe64565cc4c7d4fae63b08cf3091b8c3e2abf34ee14ccbf65a9df36c033e758ab0a1f74dfa0e",
+      "value": "synthetic-v11-✓"
+    },
+    {
+      "id": "wrong-host-v11-empty",
+      "host": "other.test",
+      "version": 24,
+      "hex": "763131e8da432f0721b44064bf87de3cb1eba14d33853aeb85ca13e60bbe64565cc4c7d4fae63b08cf3091b8c3e2abf34ee14ccbf65a9df36c033e758ab0a1f74dfa0e",
+      "value": null
+    },
+    {
+      "id": "missing-v11-24-empty",
+      "host": ".example.test",
+      "version": 24,
+      "missingV11": true,
+      "hex": "763131e8da432f0721b44064bf87de3cb1eba14d33853aeb85ca13e60bbe64565cc4c7d4fae63b08cf3091b8c3e2abf34ee14ccbf65a9df36c033e758ab0a1f74dfa0e",
+      "value": null
+    },
+    {
+      "id": "legacy-bound",
+      "host": "example.test",
+      "version": 24,
+      "hex": "9b263fbcb589853137b33ddcafa5bcc5403464ead4da766d0f819348bf8d472c626f756e642d636c656172",
+      "value": "bound-clear"
+    },
+    {
+      "id": "legacy-bound-invalid",
+      "host": "example.test",
+      "version": 24,
+      "hex": "746f6f2073686f7274",
+      "value": null
+    }
+  ]
+}

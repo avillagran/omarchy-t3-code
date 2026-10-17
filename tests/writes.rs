@@ -18,6 +18,7 @@ fn native_write_contract_and_upload_boundaries() {
         let req:Value=serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
         assert_eq!(req["headers"],json!([]));assert_eq!(req["tag"],"server.getConfig");
         ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":{"auth":{"secret":"must-not-leak"},"providers":[{"enabled":true,"instanceId":"codex","displayName":"Codex","auth":"must-not-leak","models":[{"slug":"custom-model","name":"Custom","capabilities":{"optionDescriptors":[]}}]},{"enabled":false,"instanceId":"disabled","models":[{"slug":"hidden"}]}]}}}).to_string().into())).unwrap();
+        let(mut stream,_)=listener.accept().unwrap();let mut auth_request=[0;2048];let n=stream.read(&mut auth_request).unwrap();assert!(String::from_utf8_lossy(&auth_request[..n]).starts_with("GET /api/auth/session "));let body=json!({"authenticated":true,"permissions":["orchestration:read"]}).to_string();write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
         // Same command twice: frame and command identity must remain identical.
         let mut first=Value::Null;
         for n in 0..2 {
@@ -59,7 +60,7 @@ fn native_write_contract_and_upload_boundaries() {
 
 
     });
-    let catalog=writing::catalog(&e).unwrap();assert_eq!(catalog["models"].as_array().unwrap().len(),1);assert!(!catalog.to_string().contains("must-not-leak"));
+    let catalog=writing::catalog(&e).unwrap();assert_eq!(catalog["canWrite"],false);assert_eq!(catalog["models"].as_array().unwrap().len(),1);assert!(!catalog.to_string().contains("must-not-leak"));
     e.write_token_file=Some(e.token_file.clone());
     let request=json!({"op":"send","requestId":uuid::Uuid::new_v4().to_string(),"thread":"fixture-thread","text":"safe synthetic fixture [fixture.txt](t3-context://v1/file/fixture_attachment)","attachments":[{"type":"file","id":"fixture_attachment","name":"fixture.txt","mimeType":"text/plain","sizeBytes":7}],"modelSelection":{"instanceId":"codex","model":"custom-model","options":[{"id":"reasoningEffort","value":"medium"}]}});
     assert_eq!(writing::dispatch(&e,&request).unwrap()["sequence"],123);

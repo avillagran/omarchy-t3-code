@@ -62,6 +62,19 @@ fn snapshot(c: &Value) -> Result<Value> {
         json!({"revision":revision()?,"localEnabled":enabled,"environments":protocol::connection_catalog::view(c)}),
     )
 }
+pub(crate) fn native_primary()->Option<Value>{
+    let env=fs::read_to_string(t3_home().join("userdata/environment-id")).ok()?;
+    let env=env.trim();if env.is_empty(){return None}
+    let runtime=read_json(&t3_home().join("userdata/server-runtime.json")).ok()?;
+    let base=text(&runtime,"origin");validate_base(base).ok()?;
+    let mut ws=reqwest::Url::parse(base).ok()?;let scheme=if ws.scheme()=="https"{"wss"}else{"ws"};ws.set_scheme(scheme).ok()?;
+    Some(json!({"_tag":"PrimaryConnectionTarget","environmentId":env,"httpBaseUrl":base,"wsBaseUrl":ws.as_str().trim_end_matches('/')}))
+}
+fn preferences_snapshot(c:&Value)->Result<Value>{
+    let view=snapshot(c)?;let primary=native_primary();let mut ids=view["environments"].as_array().into_iter().flatten().filter(|v|v["enabled"]==true).filter_map(|v|v["id"].as_str().map(str::to_owned)).collect::<Vec<_>>();
+    if view["localEnabled"]==true{if let Some(p)=&primary{ids.push(text(p,"environmentId").into())}}
+    Ok(json!({"client":crate::connection_preferences::read_client_preferences()?,"catalogRevision":view["revision"],"primaryEnvironmentId":primary.as_ref().map(|p|p["environmentId"].clone()),"github":crate::connection_preferences::github_preferences(c,primary.as_ref(),&ids)}))
+}
 fn persist(c: &Value, expected: &str) -> Result<()> {
     if revision()? != expected {
         return Err("catalog_changed_reload".into());
@@ -265,6 +278,23 @@ pub fn execute(i: &Value) -> Result<Value> {
     if i["action"] == "read" {
         return snapshot(&c);
     }
+    if i["action"]=="preferences-read"{return preferences_snapshot(&c)}
+    if i["action"]=="client-update"{
+        if let Some(id)=i["patch"]["environmentId"].as_str(){
+            if !preferences_snapshot(&c)?["github"]["environments"].as_array().is_some_and(|rows|rows.iter().any(|r|r["environmentId"]==id)){return Err("unknown_environment".into())}
+        }
+        crate::connection_preferences::update_client_preferences(text(i,"clientRevision"),&i["patch"])?;
+        return preferences_snapshot(&c)
+    }
+    if i["action"]=="github-update"{
+        let expected=text(i,"revision");if expected!=self::revision()?{return Err("catalog_changed_reload".into())}
+        let primary=native_primary();let env=text(i,"environmentId");
+        if !preferences_snapshot(&c)?["github"]["environments"].as_array().is_some_and(|rows|rows.iter().any(|r|r["environmentId"]==env)){return Err("unknown_environment".into())}
+        let key=crate::connection_preferences::github_connection_key(&c,env,primary.as_ref()).ok_or("untrusted_connection_endpoint")?;
+        let next=crate::connection_preferences::set_github_permission(&c,primary.as_ref(),env,&key,text(i,"permission"))?;
+        persist(&next,expected)?;return preferences_snapshot(&next)
+    }
+
     if i["action"] == "reconnect" {
         let id = text(i, "environmentId");
         if !c["targets"]

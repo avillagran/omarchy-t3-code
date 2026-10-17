@@ -1,0 +1,16 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "files": {
+    "packages/contracts/src/preview.ts": "d7f176a0e34104fa1b5dd3a0eb22332e2637cad13b674df2092d68714a2b055c",
+    "packages/contracts/src/settings.ts": "576b0bfeb86b8bbd8f7976185e0284735e8349cef6d4eb0334d72230555576d6",
+    "packages/contracts/src/browserProfile.ts": "8a7641b2103183e8d1ae09b1213562e9706c9a2c482ead92465e5fe70fd67126",
+    "packages/shared/src/previewViewport.ts": "2c79b4eae4a1bf0fe7526c2d4134988ddfe13ee71d175ea29742efc9c959183d",
+    "apps/web/src/components/settings/IntegrationsSettings.tsx": "f4145c7a99ad801f5e78ff80549c60db814af37bf1939b6e7d106973e1c80a23"
+  },
+  "adaptations": [
+    "Original helper/constant excerpts, TypeScript erasure and export removal",
+    "Qt object spreads become Object.assign; algorithm unchanged"
+  ],
+  "outputSha256": "3dfe8f8b05440cff4abc885d923768a26f563c62aaea7007b89f4bfc35a9ef11",
+  "contractSha256": "d5cfe03a00d1fb367eb3ea24aede4d8c0d6f978f215705536e33ef6fdf93f877"
+}

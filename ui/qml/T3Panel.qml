@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import Quickshell
@@ -6,8 +7,12 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "../js/SidebarModel.js" as Sidebar
+import "../js/MarkdownLinks.js" as MarkdownLinks
+import "../js/MarkdownStyle.js" as MarkdownStyle
 import "../js/ProjectModel.js" as Projects
 import "../js/WheelMotion.js" as Motion
+import "../js/NativeKeybindings.js" as Native
+import "../js/KeybindingLabels.js" as KeyLabels
 
 Item {
   id: root
@@ -16,13 +21,29 @@ Item {
   required property var bridge
   property var prTarget:null
   property bool pullRequestsOpen:false
+  property bool browserOpen:false
+  property real browserPanelWidth:Math.max(360,Math.min(1600,bridge.viewState.browserPanelWidth || 540))
+  readonly property real browserAvailableWidth:panelLayout.width-(sidebar.visible?sidebar.width+sidebarResizer.width:0)
+  readonly property bool browserInline:browserAvailableWidth>=Style.space(760)
+  readonly property bool browserShown:browserOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
+  readonly property real browserMaxWidth:Math.max(360,Math.min(Math.floor(panelLayout.width/Style.space(1)*0.7),Math.floor(browserAvailableWidth/Style.space(1))-366))
+  readonly property var browserWorkspaceItem:browserInline?inlineBrowserLoader.item:overlayBrowserLoader.item
+  function resizeBrowser(width){browserPanelWidth=Math.max(360,Math.min(browserMaxWidth,width));bridge.rememberView({browserPanelWidth:browserPanelWidth})}
+  function toggleBrowser(){browserOpen=!browserOpen;if(browserOpen&&composerExpanded)expandComposer(false)}
+  function focusBrowserUrl(){if(browserWorkspaceItem)browserWorkspaceItem.focusUrl()}
+  function browserKeyFocus(){var item=nativeFocusItem;while(item){if(item.objectName==="t3BrowserWorkspace")return true;item=item.parent}return false}
+  readonly property bool browserFocused:browserShown&&browserKeyFocus()
   property bool preferencesOpen:false
+  property string preferencesProjectKey:""
+  function openProjectSettings(key){preferencesProjectKey=key;preferencesOpen=true;var loader=preferencesLoader;if(loader&&loader.item){loader.item.initialProjectKey=key;loader.item.selectInitialProject()}}
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
   onPullRequestsOpenChanged:{if(!pullRequestsOpen)prTarget=null;if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}}
   function submitCurrent(){if(!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
   function selectSidebarThread(env,id){pullRequestsOpen=false;bridge.selectThread(env,id)}
   property bool initialized: false
   readonly property var conversationView: conversation
+  // Native comfortable lane: 46rem, shared by timeline and composer.
+  readonly property real chatContentMaxWidth:Style.space(736)
   property bool findOpen:false
   property string findQuery:""
   property int findIndex:-1
@@ -99,6 +120,68 @@ Item {
     if(next.index>=0){next.item.currentIndex=next.index;next.item.positionViewAtIndex(next.index,ListView.Contain)}
   }
   function navigateThread(step) { var rows=activeRows.concat(visibleWorkingRows).concat(visibleSnoozedRows).concat(visibleSettledRows);if(!rows.length)return;var index=rows.findIndex(function(t){return t.key===root.bridge.selectedKey});var t=rows[(index+step+rows.length)%rows.length];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus() }
+  readonly property bool nativeKeybindingsEnabled:typeof bridge.keybindingRulesFor==="function"
+  readonly property var nativeShortcutController:nativeShortcuts
+  readonly property var nativePrimaryKeys:nativeKeybindingsEnabled?bridge.keybindingRulesFor(bridge.primaryKeybindingEnvironment):[]
+  readonly property var nativeScriptKeys:nativeKeybindingsEnabled?bridge.keybindingRulesFor(bridge.selectedEnvironment):[]
+  readonly property var lastUserMessage:(bridge.transcript || []).filter(function(m){return m.role==="user"}).slice(-1)[0] || null
+  readonly property var nativeFocusItem:panelLayout.Window.activeFocusItem
+  function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
+  readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true})
+  readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
+  readonly property bool nativeKeysActive:shortcutActive&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
+  function nativeThreadRows(){return activeRows.concat(visibleWorkingRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
+  function supportsNativeShortcut(command){
+    if(!nativeKeybindingsEnabled)return false
+    if(workingPopup.visible)return command==="diff.toggle"
+    if(composerPanel.modelPickerOpen)return command.indexOf("modelPicker.")===0
+    if(["sidebar.toggle","chat.find"].indexOf(command)>=0)return command!=="chat.find"||!!bridge.selectedThread
+    if(command==="chat.new"||command==="chat.newLocal")return (bridge.state.projects || []).length>0&&!bridge.managementBusy&&!bridge.managementRequest
+    if(command==="thread.previous"||command==="thread.next")return nativeThreadRows().length>1
+    var jump=/^thread\.jump\.([1-9])$/.exec(command);if(jump)return nativeThreadRows().length>=Number(jump[1])
+    if(command==="preview.toggle")return !!bridge.selectedThread
+    if(command==="preview.focusUrl")return browserShown
+    if(command==="preview.refresh")return browserShown&&!!bridge.previewState&&!!bridge.previewState.snapshot&&bridge.previewWatch.canOperate&&!bridge.previewWatch.busy
+    if(["preview.zoomIn","preview.zoomOut","preview.resetZoom"].indexOf(command)>=0)return browserShown&&!!bridge.browserSurface.interactive
+    if(command==="terminal.toggle")return bridge.canOpenTerminal===true
+    if(command==="diff.toggle")return bridge.canOpenGit===true
+    if(command==="modelPicker.toggle")return composerPanel.modelPickerAvailable
+    if(command==="composer.mode")return composerPanel.permissionPickerAvailable
+    if(command==="composer.effort")return !composerPanel.locked&&composerPanel.descriptors.some(function(d){return /effort|thinking|reasoning/i.test(d.id+" "+d.label)})
+    if(command==="thread.undo")return bridge.canRewind===true&&!bridge.rewindPending&&!((bridge.rewindPreview || {}).busy)&&!!lastUserMessage&&lastUserMessage.canRewindMessage===true
+    if(command==="thread.stop")return !!bridge.selectedInfo.activeRunId&&!bridge.draft.stopping&&!bridge.providerSubagent
+    if(command==="thread.copyReference")return !!bridge.selectedThread
+    if(command==="composer.stash")return !!bridge.selectedInfo.projectId&&!bridge.draft.loading&&!bridge.draft.loadError&&!bridge.draft.busy&&!bridge.draft.attempt&&!bridge.draft.queueEdit&&!((bridge.projectDrafts || {}).busy)&&(!!bridge.draft.text.trim()||bridge.draft.attachments.length>0)
+    if(command==="composer.sendAndNewThread")return !composerPanel.locked&&composerPanel.hasContent&&!bridge.draft.queueEdit
+    if(bridge.projectScriptId(command)!==null)return bridge.canOpenGit&&!bridge.gitBusy&&!bridge.scriptShortcutPending&&["pending","unknown"].indexOf(bridge.gitView.operation.state)<0
+    if(command==="thread.steerQueuedMessage"){var q=bridge.queue.items[0];return !!q&&!q.pending&&q.available!==false&&!!bridge.queue.canSteer&&!bridge.queueOperation.busy&&!bridge.queueOperation.command&&!bridge.draft.busy&&!bridge.draft.attempt}
+    if(command==="thread.editQueuedMessage"){var items=bridge.queue.items || [],q=items[items.length-1];return !!q&&!q.pending&&q.available!==false&&!bridge.draft.queueEdit&&!bridge.draft.busy&&!bridge.draft.attempt&&composerPanel.inputField.activeFocus&&composerPanel.inputField.cursorPosition===0}
+    return false
+  }
+  function triggerNativeShortcut(command){
+    if(!nativeKeysActive||!supportsNativeShortcut(command))return
+    if(command==="sidebar.toggle")toggleSidebar()
+    else if(command==="chat.find")openFind()
+    else if(command==="chat.new"||command==="chat.newLocal")sidebarActions.newThread(command==="chat.newLocal"?{type:"root"}:null)
+    else if(command==="thread.previous"||command==="thread.next")navigateThread(command==="thread.next"?1:-1)
+    else if(/^thread\.jump\.[1-9]$/.test(command)){var t=nativeThreadRows()[Number(command.split(".").pop())-1];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}
+    else if(command==="preview.toggle")toggleBrowser()
+    else if(command==="preview.focusUrl")focusBrowserUrl()
+    else if(command==="preview.refresh"){if(browserWorkspaceItem)browserWorkspaceItem.refresh()}
+    else if(command==="preview.zoomIn"||command==="preview.zoomOut"||command==="preview.resetZoom")bridge.browserControl(command==="preview.zoomIn"?"zoom-in":command==="preview.zoomOut"?"zoom-out":"zoom-reset")
+    else if(command==="terminal.toggle")bridge.openTerminal()
+    else if(command==="diff.toggle"){if(workingPopup.visible)workingPopup.close();else{bridge.requestWorkingReview("working-tree","",bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}}
+    else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort")composerPanel.nativeModelControl(command)
+    else if(command==="thread.undo")bridge.requestRewindPreview(lastUserMessage.id)
+    else if(command==="thread.stop")bridge.stop()
+    else if(command==="thread.copyReference"){var badge=bridge.selectedInfo.pullRequestBadge || {};bridge.copyText((badge.current || {}).url || bridge.selectedThread)}
+    else if(command==="composer.stash")bridge.requestProjectDrafts("stash")
+    else if(command==="composer.sendAndNewThread")bridge.submit(true)
+    else if(bridge.projectScriptId(command)!==null){if(bridge.requestScriptShortcut(command))gitPopup.open()}
+    else if(command==="thread.steerQueuedMessage")bridge.queueAction("steer",{runId:bridge.queue.items[0].runId,targetRunId:bridge.queue.activeRunId})
+    else if(command==="thread.editQueuedMessage"){var items=bridge.queue.items;bridge.beginQueueEdit(items[items.length-1]);composerPanel.inputField.forceActiveFocus()}
+  }
+  function localShortcutAvailable(sequence){return !nativeKeybindingsEnabled||!nativeShortcuts.claimsSequence(sequence)}
   Component.onCompleted: { initialized = true;syncConversation() }
   property bool panelOpen:false
   property string windowMode:bridge.viewState.windowMode || (bridge.viewState.detached?"tiled":"panel")
@@ -113,7 +196,7 @@ Item {
   function cycleWindowMode(){setWindowMode(windowMode==="panel"?"floating":windowMode==="floating"?"tiled":"panel")}
   function setWindowMode(value){
     if(windowMode===value)return;windowApplyAttempts=0
-    conversation.stopWheel();captureState();documentPopup.close();imagePopup.close();diffPopup.close();keyHelp.close();filterMenu.close();projectMenu.dismissContext()
+    conversation.stopWheel();captureState();documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();keyHelp.close();filterMenu.close();projectMenu.dismissContext()
     restoringConversation=true;restoringSidebar=true
     windowMode=value;bridge.rememberView({windowMode:value,detached:value!=="panel"});if(detached)applyWindowMode.restart()
     Qt.callLater(function(){root.restoreSidebarShelves();root.restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false});composerPanel.inputField.forceActiveFocus()})
@@ -273,7 +356,7 @@ Item {
   }
   Component.onDestruction: captureState()
   property real clockNow: Date.now()
-  Timer { interval: 1000; repeat: true; running: root.opened && root.bridge.state.threads.some(function(t){return !!t.working}); onTriggered: root.clockNow = Date.now() }
+  Timer { interval: 1000; repeat: true; running: root.opened && root.bridge.state.threads.some(function(t){return !!t.working||!!t.snoozed}); onTriggered: root.clockNow = Date.now() }
   function duration(start) {
     if (!start) return ""
     var seconds = Math.max(0,Math.floor((clockNow-start)/1000))
@@ -295,7 +378,7 @@ Item {
   function kind(t) { return Sidebar.state(t) }
   function stateColor(t) { return T3Palette.stateColor(kind(t)) }
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
-  function close() { documentPopup.close();imagePopup.close();diffPopup.close();captureState(); panelOpen = false }
+  function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
   function toggle() { opened ? close() : open() }
   function date(ms) { return ms ? new Date(ms).toLocaleString(Qt.locale(T3I18n.locale), "dd MMM · HH:mm") : "—" }
   function age(ms) {
@@ -303,6 +386,7 @@ Item {
     var mins = Math.max(0, Math.floor((Date.now() - ms) / 60000))
     return mins < 1 ? T3I18n.tr("now") : mins < 60 ? mins + "m" : mins < 1440 ? Math.floor(mins / 60) + "h" : Math.floor(mins / 1440) + "d"
   }
+  function snoozeRemaining(until){var remaining=new Date(until).getTime()-clockNow;if(!isFinite(remaining)||remaining<=0)return T3I18n.tr("now");return remaining<3600000?Math.max(1,Math.ceil(remaining/60000))+"m":remaining<86400000?Math.ceil(remaining/3600000)+"h":Math.ceil(remaining/86400000)+"d"}
   function codeHeaderAt(edit,plain,pos){
     // QTextDocument exposes table-cell boundaries as FDD0/FDD1. Only our
     // generated internal copy anchor identifies a generated code toolbar.
@@ -319,18 +403,25 @@ Item {
     if(message.streaming||!root.bridge.canOpenTerminal)html=html.replace(new RegExp('<a href="ot3-code-run://[0-9]+">Run in terminal</a> · ',"g"),"")
     html=html.replace(new RegExp('(href="ot3-code-run://[0-9]+">)Run in terminal(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Run in terminal")+b})
     html=html.replace(new RegExp('(href="ot3-code-copy://[0-9]+">)Copy code(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy code")+b})
-    return html.replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ")
+    html=MarkdownStyle.render(html,Style.font.body,Style.spaceReal(1),String(root.fg),String(root.dim),String(root.surface),String(root.divider))
+    return MarkdownLinks.decorate(html).replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ")
   }
   function shortcutHelp(){
-    var shortcuts=[["Tab / Shift+Tab","Navigate controls"],["Ctrl+F","Find in conversation"],["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Super+B","Chat list"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Super+E","Expand / return to chat"],["Super+PgUp / Super+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+S","Save draft"],["Ctrl+Enter","Send"],["Ctrl+J","Open native terminal"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Ctrl+Alt+Arrows","Resize"],["Esc","Return / close"]]
-    return shortcuts.map(function(p){return T3I18n.tr("{shortcut} · {action}",{shortcut:p[0],action:T3I18n.tr(p[1])})}).join("\n")
+    var shortcuts=[],tr=function(key){return T3I18n.tr(key)}
+    if(nativeKeybindingsEnabled)nativeShortcuts.routes.forEach(function(r){shortcuts.push([Native.nativeKeys.formatShortcutLabel(r.shortcut,"Linux"),KeyLabels.command(r.command,tr)])})
+    else [["Ctrl+F","Find in conversation"],["Ctrl+J","Open native terminal"],["Ctrl+S","Save draft"]].forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
+    var local=[["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Meta+B","Chat list"],["Meta+E","Expand / return to chat"],["Meta+PgUp","Switch chat"],["Meta+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+Alt+Left","Resize"],["Ctrl+Alt+Right","Resize"],["Ctrl+Alt+Up","Resize"],["Ctrl+Alt+Down","Resize"]]
+    local.filter(function(p){return root.localShortcutAvailable(p[0])}).forEach(function(p){shortcuts.push([p[0].replace("Meta+","Super+"),tr(p[1])])})
+    var fixed=[["Tab / Shift+Tab","Navigate controls"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Ctrl+Enter","Send"],["Ctrl+Shift+Enter","Send and start new thread"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Esc","Return / close"]]
+    fixed.forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
+    return shortcuts.map(function(p){return T3I18n.tr("{shortcut} · {action}",{shortcut:p[0],action:p[1]})}).join("\n")
   }
   function providerIcon(provider) {
     var p = String(provider || "").toLowerCase()
     return p.indexOf("codex") >= 0 || p.indexOf("openai") >= 0 ? "openai" : p.indexOf("claude") >= 0 ? "claude" : p.indexOf("cursor") >= 0 ? "cursor" : "acp"
   }
   function status(t) {
-    return kind(t) === "waiting" ? T3I18n.tr("Waiting") : kind(t) === "working" ? T3I18n.tr("Working") : kind(t) === "failed" ? T3I18n.tr("Failed") : kind(t) === "done" ? T3I18n.tr("Done") : ""
+    return kind(t) === "waiting" ? T3I18n.tr("Waiting") : kind(t) === "working" ? T3I18n.tr("Working") : kind(t) === "failed" ? T3I18n.tr("Failed") : kind(t) === "done" && t.pending ? T3I18n.tr("Done") : ""
   }
   Component {
     id: threadDelegate
@@ -343,12 +434,12 @@ Item {
       panelVisible: root.opened
       keyboardCurrent: ListView.view ? ListView.view.activeFocus && ListView.view.currentIndex===index : false
       stateColor:root.stateColor(modelData);stateLabel:root.status(modelData)
-      timeLabel:modelData.working ? root.duration(modelData.startedAt) : root.age(modelData.updatedAt)
+      timeLabel:modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
       onThreadActivated:{root.pullRequestsOpen=false;root.preferencesOpen=false}
       onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
-      onProjectSettingsRequested:function(key){projectMenu.configureProject(key)}
+      onProjectSettingsRequested:function(key){root.openProjectSettings(key)}
       onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
       onProjectContextDismissed:projectMenu.dismissContext()
       onProjectContextRequested:function(item,px,py){projectMenu.showProject(modelData.projectKey,item,px,py)}
@@ -356,7 +447,7 @@ Item {
       ListView.onReused:pooled=false
     }
   }
-  T3ProjectMenu{id:projectMenu;bridge:root.bridge;onGroupingChanged:function(previous,current){if(root.projectFilter===previous||root.projectFilter===projectMenu.project.key)root.projectFilter=current}}
+  T3ProjectMenu{id:projectMenu;bridge:root.bridge;scopedSettings:true;onSettingsRequested:function(key){root.openProjectSettings(key)};onGroupingChanged:function(previous,current){if(root.projectFilter===previous||root.projectFilter===projectMenu.project.key)root.projectFilter=current}}
   T3CompactionSettings{id:compactionSettings;bridge:root.bridge}
   FloatingWindow {
     id:desktop
@@ -371,6 +462,7 @@ Item {
     onHeightChanged:if(visible&&root.detached)saveWindowSize.restart()
   }
   Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.windowMode==="floating")root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
+  Component{id:browserWorkspaceComponent;T3BrowserWorkspace{bridge:root.bridge;onClosed:root.browserOpen=false;onPreferencesRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   PinnedKeyboardPanel {
     id: popup
     open:root.panelOpen&&!root.detached
@@ -387,25 +479,28 @@ Item {
       parent:root.detached?desktop.contentItem:popup.surfaceItem
       LayoutMirroring.enabled:T3I18n.rtl;LayoutMirroring.childrenInherit:true
       anchors.fill: parent; spacing: 0
-      Shortcut { sequence:"Meta+B";enabled:root.opened;onActivated:root.toggleSidebar() }
-      Shortcut { sequence:"Ctrl+F";enabled:root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen;onActivated:root.openFind() }
-      Shortcut { sequence:"Ctrl+Shift+F";enabled:root.opened;onActivated:{if(root.composerExpanded)root.expandComposer(false);if(root.sidebarCollapsed)root.toggleSidebar(false);searchField.forceActiveFocus();searchField.selectAll()} }
-      Shortcut { sequence:"Ctrl+G";enabled:root.opened&&root.findOpen;onActivated:root.navigateFind(1) }
-      Shortcut { sequence:"Ctrl+Shift+G";enabled:root.opened&&root.findOpen;onActivated:root.navigateFind(-1) }
-      Shortcut{sequence:"Ctrl+J";enabled:root.shortcutActive&&root.bridge.canOpenTerminal;onActivated:root.bridge.openTerminal()}
-      Shortcut { sequence:"Ctrl+K";enabled:root.opened;onActivated:root.focusSidebar() }
-      Shortcut { sequence:"Ctrl+L";enabled:root.opened;onActivated:composerPanel.inputField.forceActiveFocus() }
-      Shortcut { sequence:"Meta+E";enabled:root.opened && !!root.bridge.selectedThread;onActivated:root.expandComposer() }
-      Shortcut { sequence:"Meta+Return";enabled:root.opened;onActivated:root.submitCurrent() }
-      Shortcut { sequence:"Ctrl+Shift+A";enabled:root.opened;onActivated:composerPanel.attachFiles() }
-      Shortcut { sequence:"Ctrl+S";enabled:root.opened;onActivated:root.bridge.flushDrafts() }
-      Shortcut { sequence:"Meta+PgDown";enabled:root.opened;onActivated:root.navigateThread(1) }
-      Shortcut { sequence:"Meta+PgUp";enabled:root.opened;onActivated:root.navigateThread(-1) }
-      Shortcut { sequence:"Ctrl+Alt+Right";enabled:root.opened;onActivated:root.resizePanel(root.panelWidth+40,root.panelHeight) }
-      Shortcut { sequence:"Ctrl+Alt+Left";enabled:root.opened;onActivated:root.resizePanel(root.panelWidth-40,root.panelHeight) }
-      Shortcut { sequence:"Ctrl+Alt+Up";enabled:root.opened;onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
-      Shortcut { sequence:"Ctrl+Alt+Down";enabled:root.opened;onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
-      Shortcut { sequence:"F1";enabled:root.opened;onActivated:keyHelp.open() }
+      T3ShortcutRouter{id:nativeShortcuts;active:root.nativeKeybindingsEnabled&&root.nativeKeysActive;primary:root.nativePrimaryKeys;scripts:root.nativeScriptKeys;context:root.nativeShortcutContext;localOverrides:root.findOpen?["Ctrl+G","Ctrl+Shift+G"]:[];supports:function(command){return root.supportsNativeShortcut(command)};onTriggered:function(command){root.triggerNativeShortcut(command)}}
+      Shortcut { sequence:"Meta+B";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+B");onActivated:root.toggleSidebar() }
+      Shortcut { sequence:"Ctrl+F";enabled:!root.nativeKeybindingsEnabled&&(root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+F");onActivated:root.openFind() }
+      Shortcut { sequence:"Ctrl+Shift+F";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+F");onActivated:{if(root.composerExpanded)root.expandComposer(false);if(root.sidebarCollapsed)root.toggleSidebar(false);searchField.forceActiveFocus();searchField.selectAll()} }
+      Shortcut { sequence:"Ctrl+G";enabled:(root.opened&&root.findOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+G");onActivated:root.navigateFind(1) }
+      Shortcut { sequence:"Ctrl+Shift+G";enabled:(root.opened&&root.findOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+G");onActivated:root.navigateFind(-1) }
+      Shortcut{sequence:"Ctrl+Shift+J";enabled:!root.nativeKeybindingsEnabled&&root.shortcutActive&&!!root.bridge.selectedThread&&root.localShortcutAvailable("Ctrl+Shift+J");onActivated:root.toggleBrowser()}
+      Shortcut{sequence:"Ctrl+R";enabled:!root.nativeKeybindingsEnabled&&root.shortcutActive&&root.browserFocused&&root.localShortcutAvailable("Ctrl+R");onActivated:if(root.browserWorkspaceItem)root.browserWorkspaceItem.refresh()}
+      Shortcut{sequence:"Ctrl+J";enabled:!root.nativeKeybindingsEnabled&&(root.shortcutActive&&root.bridge.canOpenTerminal)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+J");onActivated:root.bridge.openTerminal()}
+      Shortcut { sequence:"Ctrl+K";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+K");onActivated:root.focusSidebar() }
+      Shortcut { sequence:"Ctrl+L";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+L");onActivated:{if(root.browserFocused)root.focusBrowserUrl();else composerPanel.inputField.forceActiveFocus()} }
+      Shortcut { sequence:"Meta+E";enabled:(root.opened && !!root.bridge.selectedThread)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+E");onActivated:root.expandComposer() }
+      Shortcut { sequence:"Meta+Return";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+Return");onActivated:root.submitCurrent() }
+      Shortcut { sequence:"Ctrl+Shift+A";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+A");onActivated:composerPanel.attachFiles() }
+      Shortcut { sequence:"Ctrl+S";enabled:!root.nativeKeybindingsEnabled&&(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+S");onActivated:root.bridge.flushDrafts() }
+      Shortcut { sequence:"Meta+PgDown";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+PgDown");onActivated:root.navigateThread(1) }
+      Shortcut { sequence:"Meta+PgUp";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+PgUp");onActivated:root.navigateThread(-1) }
+      Shortcut { sequence:"Ctrl+Alt+Right";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Right");onActivated:root.resizePanel(root.panelWidth+40,root.panelHeight) }
+      Shortcut { sequence:"Ctrl+Alt+Left";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Left");onActivated:root.resizePanel(root.panelWidth-40,root.panelHeight) }
+      Shortcut { sequence:"Ctrl+Alt+Up";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Up");onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
+      Shortcut { sequence:"Ctrl+Alt+Down";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Down");onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
+      Shortcut { sequence:"F1";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
       Controls.Popup {
         id:imagePopup
         objectName:"t3ImagePopup"
@@ -426,33 +521,96 @@ Item {
         }
       }
       Controls.Popup {
-        id:diffPopup
-        objectName:"t3DiffPopup"
-        onClosed:root.bridge.diffView=({loading:false,text:"",error:"",requestId:""})
+        id:diffPopup;objectName:"t3DiffPopup"
+        property string initialPath:""
+        onClosed:root.bridge.dismissDiff()
+        onOpened:diffReview.forceActiveFocus()
         focus:true;modal:true
         x:Style.space(24);y:Style.space(24)
-        width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48))
-        padding:Style.space(14)
+        width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
-        ColumnLayout {
-          objectName:"t3DiffContents"
-          anchors.fill:parent
-          RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:T3I18n.tr("Changed files");color:root.fg;font.pixelSize:Style.font.body}T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:diffPopup.close()}}
-          Text{Layout.fillWidth:true;visible:root.bridge.diffView.loading || !!root.bridge.diffView.error;text:root.bridge.diffView.loading?T3I18n.tr("Loading diff…"):T3I18n.error(root.bridge.diffView.error);color:root.bridge.diffView.error?Color.urgent:root.dim;wrapMode:Text.Wrap}
-          ListView {
-            id:diffList;objectName:"t3DiffLines"
-            T3Wheel {flickable:diffList}
-            Layout.fillWidth:true;Layout.fillHeight:true;clip:true;reuseItems:false
-            model:diffPopup.visible && !root.bridge.diffView.loading?root.bridge.diffView.text.split("\n"):[]
-            Controls.ScrollBar.vertical:Controls.ScrollBar{}
-            delegate:Rectangle {
-              required property string modelData
-              width:ListView.view.width;height:diffLine.implicitHeight+Style.space(3)
-              color:modelData.startsWith("+")?Qt.rgba(T3Palette.done.r,T3Palette.done.g,T3Palette.done.b,0.08):modelData.startsWith("-")?Qt.rgba(Color.urgent.r,Color.urgent.g,Color.urgent.b,0.08):"transparent"
-              TextEdit{id:diffLine;width:parent.width;text:modelData;textFormat:TextEdit.PlainText;readOnly:true;selectByMouse:true;wrapMode:TextEdit.Wrap;font.family:"monospace";font.pixelSize:Style.font.caption;color:modelData.startsWith("+")?T3Palette.done:modelData.startsWith("-")?Color.urgent:root.fg}
-            }
-          }
+        T3DiffReview {
+          id:diffReview;objectName:"t3DiffContents";anchors.fill:parent;rendererBridge:root.bridge
+          diffLayout:root.bridge.diffPreferences.layout;wordWrap:root.bridge.diffPreferences.wordWrap
+          view:root.bridge.diffView;summary:root.bridge.diffView.summary || {};initialPath:diffPopup.initialPath
+          ignoreWhitespace:root.bridge.diffView.ignoreWhitespace!==false
+          onClosed:diffPopup.close()
+          onRetryRequested:{if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,ignoreWhitespace)}
+          onWhitespaceChanged:function(value){if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,value)}
+          onFileRequested:function(path){diffPopup.initialPath=path;root.bridge.requestDiff(summary,ignoreWhitespace)}
         }
+      }
+      Controls.Popup {
+        id:workingPopup;objectName:"t3WorkingReviewPopup";focus:true;modal:true
+        x:Style.space(24);y:Style.space(24);width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
+        background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
+        onClosed:root.bridge.dismissWorkingReview()
+        onOpened:workingContents.forceActiveFocus()
+        T3WorkingReview {
+          id:workingContents;anchors.fill:parent;rendererBridge:root.bridge;view:root.bridge.workingReview;refs:root.bridge.reviewRefs
+          onClosed:workingPopup.close()
+          onRequested:function(kind,base,whitespace,path){root.bridge.requestWorkingReview(kind,base,whitespace,path)}
+          onRefsRequested:function(query,kind,cursor){root.bridge.requestReviewRefs(query,kind,cursor)}
+          onRefsDismissed:root.bridge.dismissReviewRefs()
+        }
+      }
+      T3CheckpointRevert {
+        id:rewindWorkflow;bridge:root.bridge;popupHost:parent;closeAfterConfirmation:true
+        environment:root.bridge.selectedEnvironment;threadId:root.bridge.selectedThread
+        canOperate:root.bridge.catalog.canWrite===true;connected:root.bridge.rewindConnected || false
+        supportsRollback:!!root.bridge.rollbackProvider&&root.bridge.rollbackProvider.supportsConversationRollback!==false
+        working:!!root.bridge.selectedInfo.working;sendBusy:!!root.bridge.draft.busy||!!root.bridge.draft.attempt||!!root.bridge.draft.queueEdit
+        connecting:!!root.bridge.loadingMessages;attachmentsPending:(root.bridge.draft.attachments || []).some(function(f){return f.uploading})
+        parentPending:root.bridge.rewindPending || false;canRestoreFiles:!!root.bridge.selectedInfo.worktreePath
+        onRequested:function(request){root.bridge.requestRewind(request)}
+        onRefreshRequested:function(request){root.bridge.refreshRewind(request)}
+        onReviewRequested:function(messageId){root.bridge.requestRewindPreview(messageId)}
+        onRecoverRequested:function(request){root.bridge.recoverRewind(request)}
+        onReconcileRequested:function(request){root.bridge.reconcileRewind(request)}
+      }
+      Connections{target:root.bridge;ignoreUnknownSignals:true
+        function onRewindReady(reference,canRestoreFiles){rewindWorkflow.canRestoreFiles=canRestoreFiles;rewindWorkflow.begin(reference)}
+        function onRewindReceipt(receipt){rewindWorkflow.accept(receipt)}
+        function onRewindResume(request,state){rewindWorkflow.resume(request,state)}
+        function onRewindRestored(key){if(root.opened&&key===root.bridge.selectedKey&&!root.preferencesOpen&&!root.pullRequestsOpen)composerPanel.inputField.forceActiveFocus()}
+      }
+      Controls.Popup {
+        id:gitPopup;objectName:"t3GitPopup";focus:true;modal:true
+        x:Math.max(Style.space(20),parent.width-width-Style.space(20));y:Style.space(65)
+        width:Math.min(Style.space(700),parent.width-Style.space(40));height:Math.max(100,parent.height-Style.space(90));padding:Style.space(14)
+        background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
+        onClosed:if(root.bridge.dismissGit)root.bridge.dismissGit()
+        T3GitControls {
+          anchors.fill:parent;scope:(root.bridge.gitView || {}).scope || {};view:root.bridge.gitView || {loading:false,error:"",data:null}
+          canSourceControlWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.sourceControlWrite)
+          canReviewChanges:!!(snapshot && snapshot.permissions && snapshot.permissions.filesystemRead)
+          canTerminalWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.terminalWrite)
+          busy:root.bridge.gitBusy || false
+          operationState:((root.bridge.gitView || {}).operation || {}).state || ""
+          operationError:(root.bridge.gitView || {}).operationError || ((root.bridge.gitView || {}).operation || {}).error || ""
+          operation:(root.bridge.gitView || {}).operation || {}
+          onClosed:gitPopup.close()
+          onRefreshRequested:root.bridge.requestGit()
+          onChangesRequested:function(path){gitPopup.close();root.bridge.requestWorkingReview("working-tree","",root.bridge.diffPreferences.ignoreWhitespace,path);workingPopup.open()}
+          onActionRequested:function(intent){root.bridge.requestGitAction(intent)}
+          onTerminalRequested:root.bridge.openGitTerminal()
+          onReconcileRequested:root.bridge.reconcileGitOperation()
+          onNativeRequested:root.bridge.openThread(root.bridge.selectedEnvironment,root.bridge.selectedThread)
+          onPullRequestRequested:function(pr){var entry=snapshot.pullRequestReference;if(!entry)return;root.prTarget=entry;gitPopup.close();root.pullRequestsOpen=true}
+        }
+      }
+      Controls.Popup {
+        id:toolPopup;objectName:"t3ToolPopup";focus:true;modal:true
+        x:Style.space(24);y:Style.space(24);width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
+        background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
+        onClosed:toolInspector.dismiss(false)
+        onOpened:toolInspector.forceActiveFocus()
+        T3ToolInspector {
+          id:toolInspector;anchors.fill:parent;bridge:root.bridge;environment:root.bridge.selectedEnvironment;threadId:root.bridge.selectedThread
+          onRequested:function(token,scope){root.bridge.send(Object.assign({op:"tool-inspector",thread:scope.threadId,requestId:token},scope))}
+          onClosed:toolPopup.close()
+        }
+        Connections {target:root.bridge;function onToolInspectorFinished(requestId,result,error){toolInspector.accept(requestId,result,error)}}
       }
       Controls.Popup {
         id:documentPopup;objectName:"t3EmbeddedDocumentPopup";focus:true;modal:true
@@ -464,10 +622,13 @@ Item {
       Connections{target:root.bridge;function onDocumentOpenChanged(){if(root.opened&&root.bridge.documentOpen.requestId&&!documentPopup.visible)documentPopup.open()}}
       Controls.Popup {
         id:keyHelp; focus:true;x:Math.max(0,(parent.width-width)/2);y:Style.space(60);width:Style.space(420);padding:Style.space(18)
+        height:Math.min(parent.height-Style.space(80),helpText.implicitHeight+2*padding)
         background:Rectangle {color:Color.popups.background;border.color:root.divider;border.width:1;radius:Style.space(10)}
-        contentItem:Text {text:root.shortcutHelp();color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+        contentItem:Controls.ScrollView{id:helpScroll;clip:true;contentWidth:availableWidth
+          Text{id:helpText;width:helpScroll.availableWidth;text:root.shortcutHelp();color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+        }
       }
-      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
+      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.browserShown){root.browserOpen=false}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
       T3WorkspaceConfirmation {popupHost:panelLayout;bridge:root.bridge}
       T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || [] }
       Controls.Popup {
@@ -568,9 +729,10 @@ Item {
               font.pixelSize: Style.font.body
               background: Rectangle { color: "transparent" }
               onTextEdited: root.bridge.search(text)
-              Keys.onEscapePressed: root.close()
+              Keys.onEscapePressed: if(root.bridge.query)root.bridge.search("");else root.close()
               Keys.onDownPressed: root.focusSidebar()
             }
+            T3IconButton{objectName:"clearThreadSearch";name:"x";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!!root.bridge.query;tooltipText:T3I18n.tr("Clear search");onClicked:{root.bridge.search("");searchField.forceActiveFocus()}}
             T3IconButton {
               id: filterButton
               name: "list-filter"; tooltipText: T3I18n.tr("Filter by state and project")
@@ -618,7 +780,7 @@ Item {
           Rectangle {
             id:workingToggle;objectName:"workingShelfToggle"
             border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-            Layout.fillWidth:true;Layout.preferredHeight:Style.space(34);Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)
+            Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
             color:"transparent";visible:root.workingRows.length>0;activeFocusOnTab:true
             Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.workingRows.length})
             Keys.onReturnPressed:root.workingExpanded=!root.workingExpanded
@@ -649,7 +811,7 @@ Item {
             Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
           }
           Rectangle {
-            Layout.fillWidth:true;Layout.preferredHeight:Style.space(34);Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)
+            Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
             id:snoozedToggle;objectName:"snoozedShelfToggle"
             border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
             color:"transparent";visible:root.snoozedRows.length>0;activeFocusOnTab:true
@@ -680,7 +842,7 @@ Item {
             Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
           }
           Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: Style.space(34)
+            Layout.fillWidth: true; Layout.preferredHeight: Style.space(32)
             activeFocusOnTab: true
             Accessible.role: Accessible.Button
             id:settledToggle;objectName:"settledShelfToggle"
@@ -692,7 +854,7 @@ Item {
             Keys.onDownPressed:root.moveSidebarFocus(settledToggle,1)
             Keys.onLeftPressed:root.settledExpanded=false
             Keys.onRightPressed:root.settledExpanded=true
-            Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12)
+            Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
             visible: root.settledRows.length > 0
             color: "transparent"
             RowLayout {
@@ -793,11 +955,12 @@ Item {
         }
       }
       Rectangle {
-        objectName:"t3MainChatArea"
+        id:mainChatArea;objectName:"t3MainChatArea"
         Layout.fillWidth: true; Layout.fillHeight: true
         color: Color.popups.background
+        Loader{id:overlayBrowserLoader;objectName:"t3BrowserSheet";anchors.fill:parent;z:20;active:root.browserShown&&!root.browserInline;sourceComponent:browserWorkspaceComponent}
         Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
-        Loader{objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
+        Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         ColumnLayout {
           visible:!root.preferencesOpen&&!root.pullRequestsOpen
           anchors.fill: parent; spacing: 0
@@ -810,6 +973,8 @@ Item {
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
             Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
+            T3IconButton {objectName:"t3OpenBrowser";name:"globe";enabled:!!root.bridge.selectedThread;tint:root.browserOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Browser");onClicked:root.toggleBrowser()}
+            T3IconButton {objectName:"t3OpenGit";name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
             T3IconButton {objectName:"t3OpenTerminal";name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
             T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
             T3IconButton { name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
@@ -903,20 +1068,23 @@ Item {
               maximumFlickVelocity:6000
               function minY(){return originY}
               function maxY(){return originY+Math.max(0,contentHeight-height)}
+              property bool wheelCoasting:false
+              property real wheelCoastDelta:0
               property real wheelTarget:0
               property var wheelMotionState:({})
-              function stopWheel(){conversationWheel.stop();wheelMotionState=({})}
+              function stopWheel(){conversationCoastStart.stop();conversationWheel.stop();wheelCoasting=false;wheelMotionState=({})}
               function wheelScroll(angle,pixel,touchpad){
                 var delta=pixel!==0?pixel:angle*1.8
                 if(delta===0)return
                 var local=!(touchpad||pixel!==0?root.bridge.scrollPolicy.touchpadNative:root.bridge.scrollPolicy.mouseNative)
-                var step=local?Motion.step(wheelMotionState,angle,pixel,touchpad||pixel!==0,Date.now()):null
-                var from=local&&conversationWheel.running&&step.continueTarget?wheelTarget:contentY
+                var step=Motion.plan(wheelMotionState,angle,pixel,touchpad||pixel!==0,!local,Date.now())
+                var from=!wheelCoasting&&step.animate&&conversationWheel.running&&step.continueTarget?wheelTarget:contentY
                 conversationWheel.stop();root.detachConversation()
-                if(local){wheelMotionState=step.state;delta=step.delta}else wheelMotionState=({})
+                wheelCoasting=false;wheelMotionState=step.state;delta=step.delta;wheelCoastDelta=step.coast
+                if(wheelCoastDelta!==0)conversationCoastStart.restart();else conversationCoastStart.stop()
                 wheelTarget=Math.max(minY(),Math.min(maxY(),from-delta))
                 root.followingTail=wheelTarget>=maxY()-1
-                if(!local){contentY=wheelTarget;root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}else {conversationWheel.duration=Motion.duration(wheelTarget-contentY);conversationWheel.start()}
+                if(!step.animate){contentY=wheelTarget;root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}else {conversationWheel.duration=Motion.duration(wheelTarget-contentY);conversationWheel.start()}
               }
               WheelHandler {
                 objectName:"t3ConversationWheel"
@@ -924,17 +1092,26 @@ Item {
                 acceptedDevices:PointerDevice.Mouse|PointerDevice.TouchPad
                 onWheel:function(event){if(event.angleDelta.y===0&&event.pixelDelta.y===0){event.accepted=false;return}event.accepted=true;conversation.wheelScroll(event.angleDelta.y,event.pixelDelta.y,event.device.type===PointerDevice.TouchPad)}
               }
+              Timer{id:conversationCoastStart;interval:80;onTriggered:{
+                conversation.wheelCoasting=true;conversationWheel.stop()
+                conversation.wheelTarget=Math.max(conversation.minY(),Math.min(conversation.maxY(),conversation.wheelTarget-conversation.wheelCoastDelta))
+                root.followingTail=conversation.wheelTarget>=conversation.maxY()-1
+                conversationWheel.duration=Motion.glide.coasting;conversationWheel.start()
+              }}
               NumberAnimation {
                 id:conversationWheel;target:conversation;property:"contentY";to:conversation.wheelTarget
                 duration:Motion.glide.coasting;easing.type:Easing.OutCubic
                 onFinished:{if(root.followingTail)root.settleSubmittedTail();else root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}
               }
-              spacing: Style.space(22)
+              // Native timeline spacing belongs to each row kind; work rows
+              // are contiguous rather than receiving another list-wide gap.
+              spacing: 0
               Controls.ScrollBar.vertical: Controls.ScrollBar { id:conversationBar; policy: Controls.ScrollBar.AsNeeded;onPressedChanged:{if(pressed){conversation.stopWheel();root.followingTail=false;root.submissionFollowKey="";root.cancelScrollRestore()}else{root.followingTail=conversation.atYEnd;root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}} }
               // No opacity transitions on pooled rows: interrupted animations can
               // leave a recycled message or changed-file card almost invisible.
               delegate: Item {
                 id: message
+                required property int index
                 required property var row
                 readonly property var modelData: row
                 readonly property var textItem:messageText
@@ -942,32 +1119,38 @@ Item {
                 ListView.onPooled:{pooled=true;opacity=1}
                 ListView.onReused:{pooled=false;opacity=1}
                 readonly property bool userMessage: modelData.role === "user"
+                readonly property bool commentary: modelData.role === "assistant" && index+1<root.bridge.transcript.length && root.bridge.transcript[index+1].role!=="user"
+                readonly property real bottomGap:Style.space(modelData.role==="activity"?0:commentary?8:16)
+                readonly property real verticalInset:Style.space(userMessage?12:modelData.role==="activity"?0:2)
+                readonly property real laneWidth:messageLane.width
                 width: conversation.width
-                height: body.implicitHeight + Style.space(userMessage ? 32 : 18)
+                height: bubble.height+(messageActions.visible?messageActions.height+Style.space(6):0)+bottomGap
+                HoverHandler{id:messageHover}
+                FontMetrics{id:userMeasure;font:messageText.font}
+                readonly property real naturalUserWidth:userMessage?String(modelData.text || "").split("\n").reduce(function(width,line){return Math.max(width,userMeasure.advanceWidth(line))},0):0
+                Item {
+                id:messageLane;objectName:"t3MessageLane"
+                width:Math.min(message.width,root.chatContentMaxWidth);height:message.height;anchors.horizontalCenter:parent.horizontalCenter
                 Rectangle {
                   id: bubble
+                  objectName:"t3MessageBubble"
                   anchors.right: parent.right
-                  width: message.userMessage ? parent.width * 0.88 : parent.width
-                  height: parent.height
+                  width: message.userMessage ? Math.min(parent.width*0.8,Math.max(Style.space(80),message.naturalUserWidth+Style.space(24),(message.modelData.attachments || []).length?Style.space(240):0)) : parent.width
+                  height: body.implicitHeight + 2*message.verticalInset
                   radius: Style.space(16)
                   color: message.userMessage ? root.surface : "transparent"
                   border.width:root.findOpen&&root.findMatches[root.findIndex]&&root.findMatches[root.findIndex].id===message.modelData.id?1:0
                   border.color:Color.accent
                   Column {
                     id: body
-                  anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(message.userMessage ? 16 : 0) }
-                    spacing: Style.space(9)
-                    Row {
-                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context"
-                      spacing: Style.space(9)
-                      Text { text: message.userMessage ? T3I18n.tr("You") : modelData.role === "assistant" ? "T3" : modelData.role; color: root.dim; font.pixelSize: Style.font.caption; font.bold: true; textFormat: Text.PlainText }
-                      Text { text: root.date(modelData.createdAt); color: root.dim; font.pixelSize: Style.font.caption }
-                    }
+                    objectName:"t3MessageBody"
+                  anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin:Style.space(message.userMessage?12:4);rightMargin:Style.space(message.userMessage?12:4);topMargin:message.verticalInset }
+                    spacing: Style.space(6)
                     TextEdit {
                       id:messageText;objectName:"chatMessageText"
                       HoverHandler{objectName:"chatLinkCursor";cursorShape:messageText.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
                       LayoutMirroring.enabled:false
-                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context"
+                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context" && modelData.role !== "plan"
                       width: parent.width
                       text: message.userMessage ? modelData.text || "" : root.renderMessage(modelData)
                       textFormat: message.userMessage || !modelData.rendered ? TextEdit.PlainText : TextEdit.RichText; readOnly: true; selectByMouse: true
@@ -975,6 +1158,7 @@ Item {
                       wrapMode: TextEdit.Wrap
                       color: root.fg; selectionColor: Color.accent; selectedTextColor: Color.popups.background
                       font.pixelSize: Style.font.body
+                      Accessible.name:message.userMessage?T3I18n.tr("You"):"T3"
                     }
                     Flow {
                       id:attachmentFlow
@@ -1021,22 +1205,32 @@ Item {
                         }
                       }
                     }
-                    Row {
-                      visible:(modelData.role==="user"||modelData.role==="assistant")&&!!modelData.text&&modelData.streaming!==true
-                      anchors.right:parent.right;spacing:Style.space(4)
-                      T3CopyButton{objectName:"copyChatMessage";bridge:root.bridge;copyText:message.modelData.text || ""}
-                    }
                     T3ContextDivider{visible:modelData.role==="context";width:parent.width;boundary:modelData.context || {};catalog:root.bridge.catalog;active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
-                    T3ActivityBlock{visible:modelData.role==="activity";bridge:root.bridge;activity:modelData.activity || {};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
-                    T3Changes{visible:modelData.role==="changes";summary:modelData.changes || {};onOpenDiff:{root.bridge.requestDiff(summary);diffPopup.open()}}
+                    T3ActivityBlock{visible:modelData.role==="activity";bridge:root.bridge;activity:modelData.activity || {};onInspectRequested:function(reference){toolPopup.open();toolInspector.openItem(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
+                    T3PlanWorkflow{visible:modelData.role==="plan";width:parent.width;planId:modelData.plan?modelData.plan.id:"";view:({plans:modelData.plan?[modelData.plan]:[],ready:null});onCopyRequested:function(markdown){root.bridge.copyText(markdown)};onLinkRequested:function(link){root.bridge.openReference(link)}}
+                    T3Changes{visible:modelData.role==="changes";summary:modelData.changes || {};onOpenDiff:function(filePath){diffPopup.initialPath=filePath;root.bridge.requestDiff(summary);diffPopup.open()}}
 
                   }
+                }
+                Row {
+                  id:messageActions;objectName:"t3MessageActions"
+                  visible:(message.modelData.role==="user"||message.modelData.role==="assistant")&&!message.commentary&&(!!message.modelData.text||message.modelData.canRewindMessage)&&message.modelData.streaming!==true
+                  anchors.top:bubble.bottom;anchors.topMargin:Style.space(6)
+                  anchors.right:message.userMessage?bubble.right:undefined
+                  anchors.left:message.userMessage?undefined:bubble.left
+                  layoutDirection:message.userMessage?Qt.RightToLeft:Qt.LeftToRight
+                  spacing:Style.space(8)
+                  opacity:messageHover.hovered||messageCopy.activeFocus||messageRevert.activeFocus||messageCopy.copyState!=="idle"?1:0
+                  T3IconButton{id:messageRevert;objectName:"t3EditFromHere";name:"undo-2";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:message.userMessage&&!!message.modelData.canRewindMessage;enabled:root.bridge.canRewind===true&&!root.bridge.rewindPending&&!(root.bridge.rewindPreview || {}).busy;tooltipText:T3I18n.tr("Edit from here");onClicked:root.bridge.requestRewindPreview(message.modelData.id)}
+                  T3CopyButton{id:messageCopy;objectName:"copyChatMessage";visible:!!message.modelData.text;implicitWidth:Style.space(20);implicitHeight:implicitWidth;bridge:root.bridge;copyText:message.modelData.text || ""}
+                  Text{visible:!!message.modelData.createdAt;text:root.date(message.modelData.createdAt);color:root.dim;font.pixelSize:Style.font.caption;anchors.verticalCenter:parent.verticalCenter}
+                }
                 }
               }
               Connections {
                 target: root.bridge
                 function onMessageSubmitted(key) { root.followSubmittedMessage(key) }
-                function onThreadWillChange() { root.findOpen=false;root.findQuery="";if(!root.bridge.connectionChanging)root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
+                function onThreadWillChange() { root.findOpen=false;root.findQuery="";if(!root.bridge.connectionChanging)root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
                 function onSnapshotAboutToChange() {
                   if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")
                   if (!root.restoringSettled) root.capturePosition(settledThreads,root.visibleSettledRows,"@settled")
@@ -1097,6 +1291,22 @@ Item {
               text: root.bridge.activityLabel()
             }
           }
+          RowLayout{
+            objectName:"t3RewindBanner";Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(6)
+            visible:root.bridge.rewindPending || !!(root.bridge.rewindPreview || {}).error || !!(root.bridge.rewindPreview || {}).busy
+            WorkIndicator{visible:!!(root.bridge.rewindPreview || {}).busy||!!(root.bridge.rewindRecoveries || {})[root.bridge.selectedKey];active:visible}
+            Text{Layout.fillWidth:true;text:(root.bridge.rewindPreview || {}).error?rewindWorkflow.errorText(root.bridge.rewindPreview.error):(root.bridge.rewindOperation || {}).recoveryError?rewindWorkflow.errorText(root.bridge.rewindOperation.recoveryError):T3I18n.tr((root.bridge.rewindPreview || {}).busy?"Loading…":(root.bridge.rewindOperation || {}).state==="complete"?"Restoring draft…":(root.bridge.rewindOperation || {}).state==="uncertain"?"Outcome unknown. Refresh to check before retrying the same action.":"Waiting for the thread to rewind…");color:(root.bridge.rewindOperation || {}).recoveryError?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+            T3PickerButton{primary:false;visible:root.bridge.rewindPending || false;enabled:!(root.bridge.rewindRecoveries || {})[root.bridge.selectedKey];text:T3I18n.tr((root.bridge.rewindOperation || {}).recoveryError?"Retry":"Edit from here");onClicked:if((root.bridge.rewindOperation || {}).recoveryError)root.bridge.recoverRewind(root.bridge.rewindOperation);else root.bridge.showPendingRewind()}
+          }
+          T3PlanWorkflow{
+            objectName:"t3ReadyPlan";compact:true;Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(8)
+            visible:!!root.bridge.readyPlan||!!(root.bridge.planView || {}).error||!!(root.bridge.planOperation || {}).error||!!(root.bridge.planOperation || {}).busy
+            view:root.bridge.readyPlanView || ({plans:[],ready:null});modeEnabled:root.bridge.interactionModeEnabled===true;interactionMode:root.bridge.interactionMode || "default";canOperate:!root.bridge.providerSubagent&&root.bridge.catalog.canWrite!==false;busy:!!(root.bridge.planOperation || {}).busy||root.bridge.draft.busy||!!root.bridge.draft.attempt;draftText:root.bridge.draft.text;hasAttachments:root.bridge.draft.attachments.length>0
+            onFollowUpRequested:function(plan,draft,newThread){root.bridge.requestPlanFollowUp(plan,draft,newThread)}
+            onModeRequested:function(mode){root.bridge.chooseInteractionMode(mode)}
+            onRetryRequested:root.bridge.retryPlanOperation()
+            onCancelRequested:root.bridge.cancelPlanOperation()
+          }
           T3Queue {
             objectName:"t3QueueControl"
             Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(5)
@@ -1127,20 +1337,34 @@ Item {
             }
             Button {objectName:"t3RecoverSubagentDraft";text:T3I18n.tr("Send and start new thread");visible:!!root.bridge.draft.text.trim()||root.bridge.draft.attachments.length>0;enabled:!root.bridge.draft.loading&&!root.bridge.draft.busy&&!root.bridge.draft.attempt&&!root.bridge.managementBusy;onClicked:root.bridge.submit(true)}
           }
+          Item {
+            id:composerSlot
+            Layout.fillWidth:true;Layout.fillHeight:root.composerExpanded
+            Layout.preferredHeight:composerPanel.implicitHeight+Style.space(18)
+            visible:!!root.bridge.selectedThread && root.bridge.providerSubagent!==true && !(root.bridge.questions || []).length
           T3Composer {
             id: composerPanel
-            Rectangle{anchors.top:parent.bottom;x:-Style.space(24);width:composerStack.width;height:Style.space(18);color:Color.popups.background}
-            Layout.fillWidth: true; Layout.leftMargin: Style.space(24); Layout.rightMargin: Style.space(24); Layout.bottomMargin: Style.space(18)
-            Layout.fillHeight: root.composerExpanded
-            Layout.preferredHeight: root.composerExpanded ? 0 : implicitHeight
-            visible: !!root.bridge.selectedThread && root.bridge.providerSubagent!==true && !(root.bridge.questions || []).length
+            anchors.horizontalCenter:parent.horizontalCenter
+            width:root.composerExpanded?parent.width-Style.space(48):Math.min(parent.width-Style.space(48),root.chatContentMaxWidth)
+            height:root.composerExpanded?parent.height-Style.space(18):implicitHeight
+            Rectangle{anchors.top:parent.bottom;x:-composerPanel.x;width:composerSlot.width;height:Style.space(18);color:Color.popups.background}
             bridge: root.bridge
             expanded: root.composerExpanded
             onToggleExpanded: root.expandComposer()
           }
           }
+          }
         }
       }
+      Item {
+        visible:root.browserShown&&root.browserInline;Layout.fillHeight:true;Layout.preferredWidth:Style.space(6);activeFocusOnTab:true
+        Accessible.role:Accessible.Slider;Accessible.name:T3I18n.tr("Browser width")
+        Keys.onLeftPressed:root.resizeBrowser(root.browserPanelWidth+10)
+        Keys.onRightPressed:root.resizeBrowser(root.browserPanelWidth-10)
+        Rectangle{anchors.centerIn:parent;width:browserDrag.containsMouse||browserDrag.pressed?2:1;height:parent.height;color:browserDrag.containsMouse||browserDrag.pressed?Color.accent:root.divider}
+        MouseArea{id:browserDrag;objectName:"t3BrowserResizer";anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.SizeHorCursor;property real startX:0;property real startWidth:540;onPressed:function(m){startX=mapToGlobal(m.x,m.y).x;startWidth=Math.min(root.browserMaxWidth,root.browserPanelWidth)};onPositionChanged:function(m){if(pressed)root.resizeBrowser(startWidth-(T3I18n.rtl?-1:1)*(mapToGlobal(m.x,m.y).x-startX)/Style.space(1))};onDoubleClicked:root.resizeBrowser(540)}
+      }
+      Loader{id:inlineBrowserLoader;objectName:"t3BrowserInline";visible:root.browserShown&&root.browserInline;active:visible;Layout.fillHeight:true;Layout.preferredWidth:Style.space(Math.min(root.browserMaxWidth,root.browserPanelWidth));sourceComponent:browserWorkspaceComponent}
     }
   }
 }

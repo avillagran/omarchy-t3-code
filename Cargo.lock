@@ -877,12 +877,13 @@ dependencies = [
 
 [[package]]
 name = "omarchy-t3-client"
-version = "0.2.0"
+version = "0.2.11"
 dependencies = [
  "aes",
  "base64 0.22.1",
  "cbc",
  "chrono",
+ "flate2",
  "image",
  "libc",
  "mime_guess",
@@ -1497,7 +1498,6 @@ dependencies = [
 [[package]]
 name = "t3-protocol"
 version = "0.2.0"
-source = "git+https://github.com/avillagran/lib-t3-rust?rev=1a616ab6ccb31b689f41ff6f74915e69c780b1a3#1a616ab6ccb31b689f41ff6f74915e69c780b1a3"
 dependencies = [
  "base64 0.22.1",
  "chrono",

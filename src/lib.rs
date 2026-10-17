@@ -9,6 +9,31 @@ pub mod terminal;
 pub mod clipboard;
 mod desktop_cloud;
 mod connections;
+pub mod connection_access;
+pub mod connection_network;
+pub mod connection_preferences;
+pub mod connection_cloud;
+pub mod connection_route;
+pub mod connection_github;
+pub mod native_settings;
+pub mod scoped_settings;
+pub mod plan_workflow;
+pub mod checkpoint_revert;
+pub mod checkpoint_journal;
+pub mod checkpoint_operations;
+pub mod drafts;
+pub mod prompt_recall;
+pub mod git_controls;
+pub mod git_operations;
+pub mod diff_review;
+pub mod working_review;
+pub mod review_document;
+pub mod archive_management;
+pub mod bounded_snapshot;
+pub mod keybinding_settings;
+pub mod third_party_licenses;
+pub mod integration_devices;
+pub mod tool_inspector;
 pub mod write;
 pub mod suggestions;
 pub use t3_protocol as protocol;
@@ -325,35 +350,36 @@ impl Client {
         protocol::Connection::with_http_client(self.http.clone(), &e.base_url, None,
             protocol::Credential::bearer(&environment_token(e,false)?)?)?.request_json("GET",path,None,protocol)
     }
+    pub fn bounded_thread(&self, e: &Environment, id: &str) -> Result<Value> {
+        if !valid_id(id) { return Err("invalid_id".into()); }
+        let mut u = reqwest::Url::parse(e.base_url.trim_end_matches('/')).map_err(|_| "invalid_endpoint")?;
+        u.path_segments_mut().map_err(|_| "invalid_endpoint")?.extend(["api", "orchestration", "threads", id, "bounded"]);
+        // Native opt-in removes duplicated local timeline items without dropping history.
+        u.query_pairs_mut().append_pair("compactTurnItems", "1");
+        let path = format!("{}?{}", u.path(), u.query().unwrap());
+        bounded_snapshot::restore(self.get(e, &path, true)?)
+    }
     pub fn messages(&self, e: &Environment, id: &str) -> Result<Value> {
-        if !valid_id(id) {
-            return Err("invalid_id".into());
-        }
-        let mut u = reqwest::Url::parse(e.base_url.trim_end_matches('/'))
-            .map_err(|_| "invalid_endpoint")?;
-        u.path_segments_mut()
-            .map_err(|_| "invalid_endpoint")?
-            .extend(["api", "orchestration", "threads", id, "bounded"]);
-        let d = self.get(e,u.path(),true)?;
-        normalize_messages(&d)
+        normalize_messages(&self.bounded_thread(e, id)?)
     }
 }
 pub type RenderCache=HashMap<String,(String,String,String,String,Vec<Value>)>;
 pub fn normalize_messages(d:&Value)->Result<Value>{normalize_messages_cached(d,&mut RenderCache::new())}
 pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>{
         let rows = d["projection"]["messages"].as_array().ok_or("malformed")?;
+        let rolled=rolled_back_runs(&d["projection"]);
         let queue=protocol::queue::derive(&d["projection"]);
         let hidden=queue["hiddenMessageIds"].as_array().unwrap();
         let mut messages = vec![];
         for m in rows {
-            if hidden.contains(&m["id"]){continue}
+            if hidden.contains(&m["id"])||rolled.contains(text(m,"runId")){continue}
             if !m["text"].is_string() || !m["role"].is_string() {
                 return Err("malformed".into());
             }
             let raw=text(m,"text");let id=text(m,"id").to_string();
             if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search,blocks));}
             let (_,display,rendered,search,blocks)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"{json!(prompt_recall::recall(raw))}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
         }
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");
@@ -361,9 +387,9 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         let mut sorting=p["thread"].as_object().cloned().map(Value::Object).unwrap_or_else(||json!({}));
         sorting["latestRun"]=p["runs"].as_array().and_then(|r|r.last()).cloned().unwrap_or(Value::Null);
         if sorting["latestRun"].is_object()&&sorting["latestRun"].get("requestedAt").is_none(){sorting["latestRun"]["requestedAt"]=sorting["latestRun"]["createdAt"].clone();}
-        let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status});
+        let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status,"providerInstanceId":p["thread"]["providerInstanceId"],"interactionMode":p["thread"]["interactionMode"],"latestRunSettled":plan_workflow::latest_run_settled(p)});
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
-        Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
+        Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 
 /// Read only the desktop client's grouping preferences; never touch its store.
@@ -380,29 +406,45 @@ pub fn is_settled(t: &Value) -> bool {
 }
 /// Summaries of real in-flight turn items; never expose tool inputs or reasoning bodies.
 pub fn active_run_id(p:&Value)->&str {p["runs"].as_array().into_iter().flatten().rev().find(|r|matches!(text(r,"status"),"preparing"|"starting"|"running"|"waiting")).map(|r|text(r,"id")).unwrap_or_else(||if p["runs"].as_array().is_some_and(|r|!r.is_empty()){""}else{text(&p["thread"],"activeRunId")} )}
+fn inspectable_activity(row:&Value)->Option<Value>{
+    let mut activity=protocol::activity::describe(row)?;
+    if let Ok(reference)=tool_inspector::compact_reference(row){activity["inspector"]=reference;}
+    Some(activity)
+}
 pub fn live_activity(projection: &Value) -> Value {
     let run=active_run_id(projection);
-    json!(projection["turnItems"].as_array().into_iter().flatten().filter_map(protocol::activity::describe)
+    json!(projection["turnItems"].as_array().into_iter().flatten().filter_map(inspectable_activity)
       .filter(|a| !run.is_empty() && text(a,"runId")==run && a["active"]==true).rev().take(3).collect::<Vec<_>>())
 }
+fn rolled_back_runs(projection:&Value)->HashSet<String>{projection["runs"].as_array().into_iter().flatten().filter(|r|r["status"]=="rolled_back").filter_map(|r|r["id"].as_str().map(str::to_owned)).collect()}
 pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
+ let rolled=rolled_back_runs(projection);
  let mut rows=messages.to_vec();
  let first=messages.first().map(|m|epoch(&m["createdAt"])).unwrap_or(0);
+ let plan_view=plan_workflow::view(projection,rendered_markdown);
  let items=projection["turnItems"].as_array().map(Vec::as_slice).unwrap_or(&[]);
  for row in &items[items.len().saturating_sub(600)..]{
   let native=protocol::activity::item(row);
+  if rolled.contains(text(native,"runId")){continue}
+  if native["type"]=="proposed_plan" {
+   if let Some(plan)=plan_view["plans"].as_array().into_iter().flatten().find(|p|p["id"]==native["planId"]){
+    let time=epoch(&native["startedAt"]).max(epoch(&native["updatedAt"]));
+    if time>=first{rows.push(json!({"id":format!("plan/{}",text(native,"id")),"role":"plan","createdAt":time,"plan":plan,"text":""}));}continue
+   }
+  }
+
   if let Some(a)=protocol::documents::html_render(native){let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));if time>=first{rows.push(json!({"id":format!("html/{}",text(native,"id")),"role":"assistant","createdAt":time,"text":"","attachments":[a]}))}}
   if let Some(boundary)=protocol::lifecycle::describe(row,projection["runs"].as_array().map(Vec::as_slice).unwrap_or(&[])){
    let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));
    if time>=first{rows.push(json!({"id":format!("context/{}",text(native,"id")),"role":"context","createdAt":time,"context":boundary,"text":""}))}continue
   }
-  let Some(mut activity)=protocol::activity::describe(row) else{continue};
+  let Some(mut activity)=inspectable_activity(row) else{continue};
   let item=protocol::activity::item(row);let time=epoch(&item["startedAt"]).max(epoch(&row["createdAt"]));
   if time<first{continue}
   activity["active"]=json!(activity["active"]==true && text(&activity,"runId")==active_run_id(projection) && !active_run_id(projection).is_empty());
   rows.push(json!({"id":format!("work/{}",text(item,"id")),"role":"activity","createdAt":time,"activity":activity,"text":""}));
  }
- for c in protocol::changes::summaries(projection){let time=epoch(&c["capturedAt"]);if time>=first{rows.push(json!({"id":format!("changes/{}",text(&c,"id")),"role":"changes","createdAt":time,"changes":c,"text":""}))}}
+ for c in protocol::changes::summaries(projection){if rolled.contains(text(&c,"runId")){continue}let time=epoch(&c["capturedAt"]);if time>=first{rows.push(json!({"id":format!("changes/{}",text(&c,"id")),"role":"changes","createdAt":time,"changes":c,"text":""}))}}
  rows.sort_by_key(|r|epoch(&r["createdAt"]));
  let mut grouped:Vec<Value>=vec![];
  for row in rows{
@@ -600,7 +642,7 @@ pub fn snapshot(client: &Client) -> Result<Value> {
     let working = threads.iter().filter(|t| t["working"] == true).count();
     let pending = threads.iter().filter(|t| t["pending"] == true).count();
     Ok(
-        json!({"protocol":"omarchy.t3.v1","observedAt":Utc::now().timestamp_millis(),"stale":states.iter().any(|e|e["state"]!="ready"),"environments":states,"nativeProjectGrouping":native_project_grouping(),"projects":projects,"threads":threads,"working":working,"pending":pending}),
+        json!({"protocol":"omarchy.t3.v1","observedAt":Utc::now().timestamp_millis(),"stale":states.iter().any(|e|e["state"]!="ready"),"environments":states,"primaryEnvironmentId":if connections::native_primary().is_some(){json!("local")}else{Value::Null},"nativeProjectGrouping":native_project_grouping(),"clientPreferences":connection_preferences::read_client_preferences().ok(),"projects":projects,"threads":threads,"working":working,"pending":pending}),
     )
 }
 
@@ -681,6 +723,14 @@ mod tests {
         assert!(!json!(rows).to_string().contains("secret.txt"));assert!(!json!(rows).to_string().contains("private output"));
     }
     #[test]
+    fn grouped_activity_retains_each_native_source_without_output(){
+        let rows=(0..2).map(|n|json!({"sourceThreadId":"ancestor","sourceItemId":format!("item{n}"),"item":{"id":format!("item{n}"),"threadId":"ancestor","runId":"r","providerTurnId":"p","type":"command_execution","status":"completed","startedAt":"2026-10-17T12:00:00Z","updatedAt":"2026-10-17T12:00:01Z","input":"printf private-input","output":"private-output"}})).collect::<Vec<_>>();
+        let timeline=conversation_timeline(&json!({"turnItems":rows}),&[]);
+        let entries=timeline[0]["activity"]["entries"].as_array().unwrap();assert_eq!(entries.len(),2);
+        for (n,entry) in entries.iter().enumerate(){assert_eq!(entry["inspector"]["sourceThreadId"],"ancestor");assert_eq!(entry["inspector"]["sourceItemId"],format!("item{n}"));assert_eq!(entry["inspector"]["providerTurnId"],"p")}
+        assert!(!json!(timeline).to_string().contains("private-"));
+    }
+    #[test]
     fn dates_and_path_boundaries() {
         assert_eq!(epoch(&json!(1792036800)), 1792036800000);
         assert_eq!(epoch(&json!("2026-10-15T04:00:00Z")), 1792036800000);
@@ -693,3 +743,23 @@ mod tests {
 }
 
 pub mod window_layout;
+
+pub mod browser_preferences;
+
+pub mod browser_profiles;
+
+pub mod browser_runtime;
+
+pub mod preview_transport;
+pub mod preview_actions;
+pub mod browser_guest;
+pub mod browser_sessions;
+pub mod browser_address;
+pub mod browser_cleanup;
+
+pub mod browser_sources;
+
+mod browser_cookie_database;
+pub mod browser_cookies;
+
+pub mod browser_import;

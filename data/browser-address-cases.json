@@ -1,0 +1,283 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "source": "packages/shared/src/preview.ts",
+  "sourceSha256": "83326e47aba11468ec93e51775b1f389af3092d2bb6298eafbcf635a7609fb1c",
+  "cases": [
+    {
+      "input": "",
+      "error": true
+    },
+    {
+      "input": " ",
+      "error": true
+    },
+    {
+      "input": "﻿localhost:5173﻿",
+      "url": "http://localhost:5173/"
+    },
+    {
+      "input": "localhost",
+      "url": "http://localhost/"
+    },
+    {
+      "input": "localhost:5173/a?x=1",
+      "url": "http://localhost:5173/a?x=1"
+    },
+    {
+      "input": "localhost?x=1",
+      "url": "https://localhost/?x=1"
+    },
+    {
+      "input": "LOCALHOST/#a",
+      "url": "http://localhost/#a"
+    },
+    {
+      "input": "127.0.0.1:8080",
+      "url": "http://127.0.0.1:8080/"
+    },
+    {
+      "input": "0.0.0.0",
+      "url": "http://0.0.0.0/"
+    },
+    {
+      "input": "[::1]:3000/path",
+      "url": "http://[::1]:3000/path"
+    },
+    {
+      "input": "[::]:5173",
+      "url": "http://[::]:5173/"
+    },
+    {
+      "input": "devbox:8080",
+      "url": "https://devbox:8080/"
+    },
+    {
+      "input": "example.com",
+      "url": "https://example.com/"
+    },
+    {
+      "input": "EXAMPLE.COM/a b",
+      "url": "https://duckduckgo.com/?q=EXAMPLE.COM%2Fa%20b"
+    },
+    {
+      "input": "https://example.com/a b?x=a b",
+      "url": "https://example.com/a%20b?x=a%20b"
+    },
+    {
+      "input": "HTTP://EXAMPLE.COM:80/",
+      "url": "http://example.com/"
+    },
+    {
+      "input": "https://mañana.cl/🦀",
+      "url": "https://xn--maana-pta.cl/%F0%9F%A6%80"
+    },
+    {
+      "input": "mañana.cl",
+      "url": "https://xn--maana-pta.cl/"
+    },
+    {
+      "input": "user:pass@example.com",
+      "error": true
+    },
+    {
+      "input": "user@example.com",
+      "url": "https://user@example.com/"
+    },
+    {
+      "input": "a@b@example.com",
+      "url": "https://a%40b@example.com/"
+    },
+    {
+      "input": "example.com:8080",
+      "url": "https://example.com:8080/"
+    },
+    {
+      "input": "example.com.",
+      "url": "https://example.com./"
+    },
+    {
+      "input": "example..com",
+      "url": "https://duckduckgo.com/?q=example..com"
+    },
+    {
+      "input": ".example.com",
+      "url": "https://duckduckgo.com/?q=.example.com"
+    },
+    {
+      "input": "1.2.3.4",
+      "url": "https://1.2.3.4/"
+    },
+    {
+      "input": "999.999.999.999",
+      "url": "https://duckduckgo.com/?q=999.999.999.999"
+    },
+    {
+      "input": "123",
+      "url": "https://duckduckgo.com/?q=123"
+    },
+    {
+      "input": "123.456",
+      "url": "https://123.0.1.200/"
+    },
+    {
+      "input": "0x7f.1",
+      "url": "https://127.0.0.1/"
+    },
+    {
+      "input": "[::ffff:127.0.0.1]",
+      "url": "https://[::ffff:7f00:1]/"
+    },
+    {
+      "input": "[bad]",
+      "url": "https://duckduckgo.com/?q=%5Bbad%5D"
+    },
+    {
+      "input": "example.com:bad",
+      "error": true
+    },
+    {
+      "input": "example.com:99999",
+      "url": "https://duckduckgo.com/?q=example.com%3A99999"
+    },
+    {
+      "input": "https://",
+      "error": true
+    },
+    {
+      "input": "http:example.com",
+      "error": true
+    },
+    {
+      "input": "mailto:a@example.com",
+      "error": true
+    },
+    {
+      "input": "ftp:21",
+      "error": true
+    },
+    {
+      "input": "ftp://example.com",
+      "error": true
+    },
+    {
+      "input": "file:///tmp/test",
+      "error": true
+    },
+    {
+      "input": "javascript:alert(1)",
+      "error": true
+    },
+    {
+      "input": "data:text/html,hello",
+      "error": true
+    },
+    {
+      "input": "ssh:22",
+      "error": true
+    },
+    {
+      "input": "tel:555",
+      "error": true
+    },
+    {
+      "input": "ws://localhost:8080",
+      "error": true
+    },
+    {
+      "input": "wss:443",
+      "error": true
+    },
+    {
+      "input": "about:blank",
+      "error": true
+    },
+    {
+      "input": "chrome://settings",
+      "error": true
+    },
+    {
+      "input": "search words",
+      "url": "https://duckduckgo.com/?q=search%20words"
+    },
+    {
+      "input": "qué es QML",
+      "url": "https://duckduckgo.com/?q=qu%C3%A9%20es%20QML"
+    },
+    {
+      "input": "!()*'~ test",
+      "url": "https://duckduckgo.com/?q=!()*'~%20test"
+    },
+    {
+      "input": "a+b & c=d",
+      "url": "https://duckduckgo.com/?q=a%2Bb%20%26%20c%3Dd"
+    },
+    {
+      "input": "one/two",
+      "url": "https://duckduckgo.com/?q=one%2Ftwo"
+    },
+    {
+      "input": "devbox",
+      "url": "https://duckduckgo.com/?q=devbox"
+    },
+    {
+      "input": "two\nwords",
+      "url": "https://duckduckgo.com/?q=two%0Awords"
+    },
+    {
+      "input": "foo",
+      "url": "https://duckduckgo.com/?q=%C2%85foo"
+    },
+    {
+      "input": "foo﻿bar",
+      "url": "https://duckduckgo.com/?q=foo%EF%BB%BFbar"
+    },
+    {
+      "input": "https://example.com/#hello",
+      "url": "https://example.com/#hello"
+    },
+    {
+      "input": "https://user:pass@example.com/a",
+      "url": "https://user:pass@example.com/a"
+    },
+    {
+      "input": "https://example.com:443",
+      "url": "https://example.com/"
+    },
+    {
+      "input": "localhost:3000?x=hello%20world",
+      "url": "http://localhost:3000/?x=hello%20world"
+    },
+    {
+      "input": "localhost:3000/a#b",
+      "url": "http://localhost:3000/a#b"
+    },
+    {
+      "input": "a.b.c.",
+      "url": "https://a.b.c./"
+    },
+    {
+      "input": "http://127.1",
+      "url": "http://127.0.0.1/"
+    },
+    {
+      "input": "http://[::1]/",
+      "url": "http://[::1]/"
+    },
+    {
+      "input": "https://example.com/%zz",
+      "url": "https://example.com/%zz"
+    },
+    {
+      "input": "https://user@example.com",
+      "url": "https://user@example.com/"
+    },
+    {
+      "input": "https://example.com/./a/../b",
+      "url": "https://example.com/b"
+    },
+    {
+      "input": "https://example.com/\\x",
+      "url": "https://example.com//x"
+    }
+  ]
+}

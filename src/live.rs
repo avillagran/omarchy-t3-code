@@ -12,18 +12,17 @@ impl Control{
     worker.connected.store(false,Ordering::Relaxed);crate::emit("live-state",json!({"serial":serial,"connected":false}));
     let result=(||->Result<()>{
      let e=environments()?.into_iter().find(|e|e.id==env).ok_or("unknown_environment")?;
-     let mut path=reqwest::Url::parse(&e.base_url).map_err(|_|"invalid_endpoint")?;path.path_segments_mut().map_err(|_|"invalid_endpoint")?.extend(["api","orchestration","threads",&thread,"bounded"]);
-     let mut envelope=client.get(&e,path.path(),true)?;
+     let mut envelope=client.bounded_thread(&e,&thread)?;
      if worker.generation.load(Ordering::Relaxed)!=generation{return Ok(())}
      crate::emit("messages",json!({"serial":serial,"result":normalize_messages_cached(&envelope,&mut rendered)?}));
      let c=if let Some(c)=e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,true)?)?)?};
      let mut sequence=envelope["snapshotSequence"].as_u64().ok_or("missing_sequence")?;let mut dirty=false;let mut emitted=Instant::now();
-     c.subscribe("orchestration.subscribeThread",json!({"threadId":thread,"afterSequence":sequence,"requestCompletionMarker":true,"acceptBoundedSnapshot":true}),||worker.generation.load(Ordering::Relaxed)!=generation,|update|{
+     c.subscribe("orchestration.subscribeThread",json!({"threadId":thread,"afterSequence":sequence,"requestCompletionMarker":true,"acceptBoundedSnapshot":true,"acceptCompactTurnItems":true}),||worker.generation.load(Ordering::Relaxed)!=generation,|update|{
       if worker.generation.load(Ordering::Relaxed)!=generation{return Ok(())}
       if let Some(item)=update{
        if !worker.connected.swap(true,Ordering::Relaxed){crate::emit("live-state",json!({"serial":serial,"connected":true}));}
        match text(&item,"kind"){
-        "snapshot"=>{envelope=item.clone();sequence=item["snapshotSequence"].as_u64().unwrap_or(sequence);dirty=true;},
+        "snapshot"=>{envelope=bounded_snapshot::restore(item.clone())?;sequence=item["snapshotSequence"].as_u64().unwrap_or(sequence);dirty=true;},
         "event"=>{let seq=item["sequence"].as_u64().unwrap_or(0);if seq>sequence{dirty|=protocol::projection::apply(&mut envelope["projection"],&item["event"]);sequence=seq;}},
         _=>{}
        }
