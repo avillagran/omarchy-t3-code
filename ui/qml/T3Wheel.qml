@@ -23,7 +23,7 @@ Item {
   var from=!native&&ease.running&&step.continueTarget?targetY:f.contentY;ease.stop()
   if(native)motionState=({});else{motionState=step.state;delta=step.delta}
   targetY=Math.max(lo,Math.min(hi,(native?f.contentY:from)-delta))
-  if(native)f.contentY=targetY;else ease.start()
+  if(native)f.contentY=targetY;else {ease.duration=Motion.duration(targetY-f.contentY);ease.start()}
   return true
  }
  function route(angle,pixel,touchpad){

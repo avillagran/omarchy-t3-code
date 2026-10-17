@@ -22,6 +22,17 @@ pub fn project_sources(e:&Environment)->Result<Value>{
     let providers=discovery["sourceControlProviders"].as_array().into_iter().flatten().map(|p|json!({"kind":p["kind"],"status":p["status"],"auth":{"status":p["auth"]["status"]}})).collect::<Vec<_>>();
     Ok(json!({"newProjectsRoot":config["newProjectsRoot"],"baseDirectory":config["settings"]["addProjectBaseDirectory"],"cloneTracking":config["environment"]["capabilities"]["projectCloneTracking"]==true,"providers":providers}))
 }
+pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
+    let project=text(input,"projectId");if !valid_id(project){return Err("invalid_project".into())}
+    let raw=if input["action"]=="workspace-update" {
+        if !matches!(input["mode"].as_str(),Some("local"|"worktree")){return Err("invalid_settings".into())}
+        rpc(e,"server.updateSettings",json!({"patch":{"defaultThreadEnvMode":input["mode"]}}))?
+    }else if input["action"]=="workspace-read"{rpc(e,"server.getSettings",json!({}))?}else{return Err("invalid_settings".into())};
+    let overrides=&raw["projectSettingsOverrides"][project];
+    let mode=overrides["defaultThreadEnvMode"].as_str().or(raw["defaultThreadEnvMode"].as_str()).filter(|s|matches!(*s,"local"|"worktree"));
+    let origin=overrides["newWorktreesStartFromOrigin"].as_bool().or(raw["newWorktreesStartFromOrigin"].as_bool()).unwrap_or(true);
+    Ok(json!({"mode":mode,"startFromOrigin":origin}))
+}
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
     let path=protocol::history::path(thread,text(input,"cursor"))?;
@@ -45,6 +56,49 @@ pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
     if let Some(error)=&e.connection_error {return Err(error.clone())}
     let connection=if let Some(c)=&e.connection {c.as_ref().clone()} else {protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?};
     connection.upload_attachment(name,&mime,size,file)
+}
+fn validate_message(input:&Value)->Result<()> {
+    let content=text(input,"text");
+    let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
+        if (content.trim().is_empty() && attachments.is_empty()) || content.chars().count()>120000 || attachments.len()>100 {return Err("invalid_message".into())}
+        for a in attachments {
+            let id = text(a,"id");
+            let size = a["sizeBytes"].as_u64().ok_or("invalid_attachments")?;
+            let image = a["type"] == "image";
+            if (!image && a["type"] != "file") || id.is_empty() || id.len()>128
+                || !id.bytes().all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
+                || text(a,"name").is_empty() || text(a,"name").chars().count()>255
+                || text(a,"mimeType").is_empty() || text(a,"mimeType").len()>100
+                || size==0 || size>if image {10*1024*1024} else {50*1024*1024}
+            { return Err("invalid_attachments".into()); }
+        }
+        let image_bytes:u64=attachments.iter().filter(|a|a["type"]=="image").map(|a|a["sizeBytes"].as_u64().unwrap_or(u64::MAX/100)).sum();
+        if image_bytes>80*1024*1024 {return Err("image_total_limit_80MiB".into())}
+    Ok(())
+}
+fn launch_command(input:&Value,thread:&str)->Result<Value>{
+    let strategy=&input["workspaceStrategy"];
+    let field=match text(strategy,"type") {"root"=>None,"existing_worktree"=>Some("worktreePath"),"worktree"=>Some("baseRef"),_=>return Err("invalid_workspace".into())};
+    let mut workspace=json!({"type":strategy["type"]});
+    if let Some(field)=field {
+        let value=text(strategy,field);
+        if value.trim().is_empty()||value.len()>4096||value.chars().any(char::is_control){return Err("invalid_workspace".into())}
+        workspace[field]=json!(value);
+    }
+    if let Some(branch)=strategy["branch"].as_str(){
+        if branch.trim().is_empty()||branch.len()>1024||branch.chars().any(char::is_control){return Err("invalid_workspace".into())}
+        workspace["branch"]=json!(branch);
+    }
+    if let Some(origin)=strategy["startFromOrigin"].as_bool(){workspace["startFromOrigin"]=json!(origin);}
+    let title=text(input,"title").trim();
+    if title.is_empty()||title.chars().count()>255{return Err("invalid_title".into())}
+    let mut command=json!({"threadId":thread,"projectId":input["projectId"],"title":title,"modelSelection":input["modelSelection"],"runtimeMode":runtime_mode(input)?,"interactionMode":"default","workspaceStrategy":workspace,"creationSource":"web"});
+    if input["launchWithMessage"]==true {
+        validate_message(input)?;
+        let message=uuid::Uuid::parse_str(text(input,"sendRequestId")).map_err(|_|"invalid_request_id")?;
+        command["initialMessage"]=json!({"messageId":format!("omarchy-{message}"),"text":protocol::composer::legacy_attachment_text(text(input,"text"),input["attachments"].as_array().unwrap()),"attachments":input["attachments"]});
+    }
+    Ok(command)
 }
 pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     let id=text(input,"requestId");
@@ -75,20 +129,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     } else {
         let content=text(input,"text");
         let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
-        if (content.trim().is_empty() && attachments.is_empty()) || content.chars().count()>120000 || attachments.len()>100 {return Err("invalid_message".into())}
-        for a in attachments {
-            let id = text(a,"id");
-            let size = a["sizeBytes"].as_u64().ok_or("invalid_attachments")?;
-            let image = a["type"] == "image";
-            if (!image && a["type"] != "file") || id.is_empty() || id.len()>128
-                || !id.bytes().all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
-                || text(a,"name").is_empty() || text(a,"name").chars().count()>255
-                || text(a,"mimeType").is_empty() || text(a,"mimeType").len()>100
-                || size==0 || size>if image {10*1024*1024} else {50*1024*1024}
-            { return Err("invalid_attachments".into()); }
-        }
-        let image_bytes:u64=attachments.iter().filter(|a|a["type"]=="image").map(|a|a["sizeBytes"].as_u64().unwrap_or(u64::MAX/100)).sum();
-        if image_bytes>80*1024*1024 {return Err("image_total_limit_80MiB".into())}
+        validate_message(input)?;
         let mut c=json!({"type":"message.dispatch","threadId":thread,"messageId":format!("omarchy-{id}"),"text":protocol::composer::legacy_attachment_text(content,attachments),"attachments":attachments,"createdBy":"user","creationSource":"web","dispatchMode":{"type":if input["delivery"]=="queue" {"queue_after_active"} else {"start_immediately"}}});
         if input["delivery"]!="queue" {c["deliveryIntent"]=json!("auto");}
         if input["modelSelection"].is_object() {c["modelSelection"]=input["modelSelection"].clone();}
@@ -107,7 +148,8 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     if let Some(mode)=permissions{rpc(e,"orchestration.dispatchCommand",mode)?;}
     rpc(e,"orchestration.dispatchCommand",cmd)
 }
-/// Header actions create metadata only; never starts a provider or an agent run.
+/// Explicit management actions. Native launches own workspace preparation and
+/// may durably accept an initial message; legacy thread.create remains metadata-only.
 pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     let id=text(input,"requestId"); uuid::Uuid::parse_str(id).map_err(|_| "invalid_request_id")?;
     let mut thread=String::new();
@@ -133,7 +175,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
             thread=format!("omarchy-thread-{id}");
             let mode=runtime_mode(input)?;
-            ("orchestration.dispatchCommand",json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":"default","branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))
+            if input["workspaceStrategy"].is_object(){("orchestration.launchThread",launch_command(input,&thread)?)}else{("orchestration.dispatchCommand",json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":"default","branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))}
         },
         "add-project" => {
             let path=if input["workspaceRoot"].is_string(){
@@ -187,6 +229,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "terminal-open"=>{let command=match input.get("command"){None|Some(Value::Null)=>None,Some(value)=>Some(value.as_str().ok_or("invalid_terminal_input")?)};crate::terminal::launch_command(&e,text(input,"thread"),command)},
         "document-open"=>crate::documents::read(&e,input),
         "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{rpc(&e,&tag,payload)}},
+        "settings" if matches!(text(input,"action"),"workspace-read"|"workspace-update")=>workspace_preference(&e,input),
         "settings"=>{if input["action"]=="update"{rpc(&e,"server.updateSettings",protocol::settings::patch(input)?)?;}else if input["action"]!="read"{return Err("invalid_settings".into())}rpc(&e,"server.getSettings",json!({})).map(|v|protocol::settings::snapshot(&v))},
         "catalog"=>catalog(&e),
         "project-sources"=>project_sources(&e),

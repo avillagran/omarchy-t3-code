@@ -17,7 +17,7 @@ Singleton {
   property var backendStart:({busy:false,error:"",status:""})
   property var localBackend:({owner:"unknown",running:false,canControl:false,installed:false})
   function refreshBackendStatus(){send({op:"backend-status"})}
-  function controlBackend(action){if(backendStart.busy)return;backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,requestId:uuid()})}
+  function controlBackend(action){if(backendStart.busy)return;if(!worker.running){backendStart={busy:false,error:"disconnected",status:""};return;}backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,requestId:uuid()})}
   signal copyFinished(string requestId,string error)
   function copyText(value){var id=uuid();send({op:"copy",kind:"text",text:value,requestId:id});return id}
   function copyImage(attachment){var id=uuid();send({op:"copy",kind:"image",environment:selectedEnvironment,attachment:attachment,requestId:id});return id}
@@ -108,6 +108,29 @@ Singleton {
   property string query: ""
   property int requestedSerial: 0
   property var drafts: ({})
+  // Native prompt-stash behavior, presented through a shared project drawer.
+  property var projectDrafts:({entries:[],busy:false,error:"",requestId:"",scope:"",command:null})
+  signal projectDraftRestored(string key)
+  function draftProject(key){var t=(state.threads || []).find(function(t){return t.key===key || t.environmentId+"/"+t.id===key});return t?t.projectId || "":""}
+  function projectDraftScope(){return selectedInfo.projectId?selectedEnvironment+"/"+selectedInfo.projectId:""}
+  function requestProjectDrafts(action,entry){
+    if(action==="list"&&projectDrafts.error&&projectDrafts.command){retryProjectDrafts();return}
+    if(projectDrafts.busy || !selectedInfo.projectId || !selectedKey || draft.loading || draft.loadError)return
+    if(action!=="list"&&(draft.busy||draft.attempt||draft.queueEdit||draft.attachments.some(function(f){return f.uploading})))return
+    var keys=(state.threads || []).filter(function(t){return t.environmentId===root.selectedEnvironment&&t.projectId===root.selectedInfo.projectId}).map(function(t){return t.key || t.environmentId+"/"+t.id})
+    if(keys.indexOf(selectedKey)<0)keys.push(selectedKey)
+    flushDrafts()
+    var command={op:"prompt-stash",action:action,environment:selectedEnvironment,projectId:selectedInfo.projectId,key:selectedKey,keys:keys,requestId:uuid(),draft:draft}
+    if(entry){command.id=entry.id;command.fingerprint=entry.fingerprint || ""}
+    if(action!=="list"){flushDraft(selectedKey);patchDraft(selectedKey,{busy:true});if(entry&&entry.sourceKey&&entry.sourceKey!==selectedKey&&drafts[entry.sourceKey])patchDraft(entry.sourceKey,{busy:true})}
+    projectDrafts={entries:projectDrafts.scope===projectDraftScope()?projectDrafts.entries:[],busy:true,error:"",requestId:command.requestId,scope:projectDraftScope(),command:command}
+    send(command)
+  }
+  function projectDraftTransferKey(key){var c=projectDrafts.command;return !!c&&c.action!=="list"&&(c.key===key||c.id==="thread:"+key)}
+  function retryProjectDrafts(){
+    var command=projectDrafts.command;if(!command||projectDrafts.busy)return
+    projectDrafts=Object.assign({},projectDrafts,{busy:true,error:""});send(command)
+  }
   property var dirtyDrafts: ({})
   property var pendingSends: ({})
   function flushDraft(key, submission) {
@@ -284,6 +307,8 @@ Singleton {
     managementRequest = command; managementBusy = true; managementError = ""; send(command)
   }
   readonly property var selectedInfo: state.threads.find(function(t) { return t.key === root.selectedKey }) || ({})
+  readonly property bool providerSubagent: selectedInfo.providerSubagent===true
+  function openParentThread(){if(providerSubagent&&selectedInfo.parentThreadId)selectThread(selectedEnvironment,selectedInfo.parentThreadId)}
   readonly property var draft: drafts[selectedKey] || ({text: "", attachments: [], modelSelection: selectedInfo.modelSelection || null, delivery: "auto", busy: false, error: "", attempt: null})
   readonly property var catalog: catalogs[selectedEnvironment] || ({models: [], canWrite: false})
   function uuid() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) { var r = Math.floor(Math.random()*16); return (c === "x" ? r : (r&3)|8).toString(16) }) }
@@ -374,8 +399,34 @@ Singleton {
     patchDraft(selectedKey,{busy:true,error:""})
     send({op:"clipboard",environment:selectedEnvironment,thread:selectedThread,requestId:id,capacity:100-draft.attachments.length})
   }
-  function submit(startNewThread) {
-    if(startNewThread===true&&(activeQuestion||managementBusy||managementRequest||draft.queueEdit||!selectedInfo.projectId))return
+  signal newThreadWorkspaceRequested(var request)
+  signal workspaceChoiceAccepted()
+  property var workspaceOperation:({busy:false,error:""})
+  function beginNewThread(request){
+    if(managementBusy||managementRequest||workspaceOperation.busy)return
+    if(request.sourceKey&&request.sourceKey!==selectedKey)return
+    var id=uuid();workspaceOperation={busy:true,error:"",request:request,requestId:id,action:"read"}
+    send({op:"settings",action:"workspace-read",environment:request.command.environment,projectId:request.command.projectId,requestId:id})
+  }
+  function requestNewThread(values){beginNewThread({command:values})}
+  function confirmNewThread(request,isolated,configured){
+    if(managementBusy||managementRequest||workspaceOperation.busy)return
+    if(request.sourceKey&&selectedKey!==request.sourceKey)return
+    if(!configured){
+      var id=uuid();workspaceOperation={busy:true,error:"",request:request,requestId:id,action:"write",isolated:isolated}
+      send({op:"settings",action:"workspace-update",environment:request.command.environment,projectId:request.command.projectId,mode:isolated?"worktree":"local",requestId:id});return
+    }
+    var command=request.command || {},branch=command.branch || "HEAD"
+    var strategy=isolated?{type:"worktree",baseRef:branch,startFromOrigin:!!request.startFromOrigin}:command.worktreePath?{type:"existing_worktree",worktreePath:command.worktreePath}:{type:"root"}
+    if(!isolated&&command.branch)strategy.branch=command.branch
+    workspaceChoiceAccepted()
+    if(request.sourceKey)submit(true,strategy)
+    else manage(Object.assign({},command,{workspaceStrategy:strategy}))
+  }
+  function submit(startNewThread,workspaceStrategy) {
+    if(providerSubagent&&startNewThread!==true)return
+    if(workspaceOperation.busy)return
+    if((startNewThread===true||draft.attempt&&draft.attempt.op==="manage")&&(activeQuestion||managementBusy||(managementRequest&&(!draft.attempt||managementRequest.requestId!==draft.attempt.requestId))||draft.queueEdit||(!draft.attempt&&!selectedInfo.projectId)))return
     if(activeQuestion){questionSubmitRequested();return}
     if (!selectedThread || draft.loading || draft.loadError || draft.busy || draft.attachments.some(function(f) { return f.uploading || f.error })) return
     if (!draft.attempt && !draft.text.trim() && draft.attachments.length === 0) return
@@ -383,7 +434,10 @@ Singleton {
       requestId: uuid(), text: draft.text, attachments: draft.attachments.map(function(f) { return f.attachment }),
       modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: selectedInfo.activeRunId ? "queue" : draft.delivery}
     if(!draft.attempt&&draft.runtimeMode&&draft.runtimeMode!==selectedInfo.runtimeMode)attempt.runtimeMode=draft.runtimeMode
-    if(startNewThread===true&&!draft.attempt)attempt.nextThread={projectId:selectedInfo.projectId,modelSelection:attempt.modelSelection,runtimeMode:draft.runtimeMode || selectedInfo.runtimeMode,branch:selectedInfo.branch,worktreePath:selectedInfo.worktreePath}
+    if(startNewThread===true&&!draft.attempt&&!workspaceStrategy){
+      beginNewThread({sourceKey:selectedKey,command:{environment:selectedEnvironment,projectId:selectedInfo.projectId,branch:selectedInfo.branch,worktreePath:selectedInfo.worktreePath}});return
+    }
+    if(startNewThread===true&&!draft.attempt)attempt=Object.assign({},attempt,{op:"manage",action:"new-thread",sendRequestId:uuid(),title:T3I18n.tr("New chat"),projectId:selectedInfo.projectId,runtimeMode:draft.runtimeMode || selectedInfo.runtimeMode,branch:selectedInfo.branch,worktreePath:selectedInfo.worktreePath,workspaceStrategy:workspaceStrategy,launchWithMessage:true,delivery:"auto"})
     if(!draft.attempt && draft.queueEdit){
       if(!queue.items.some(function(q){return q.runId===root.draft.queueEdit.runId})){patchDraft(selectedKey,{error:"queued_message_no_longer_pending"});return}
       attempt=Object.assign({},attempt,{op:"queue",action:"edit",runId:draft.queueEdit.runId,context:draft.queueEdit.context})
@@ -393,22 +447,25 @@ Singleton {
     patchDraft(selectedKey, {busy: true, attempt: attempt, error: ""}); flushDraft(selectedKey,attempt)
   }
   function stop() {
+    if(providerSubagent)return
     if (!selectedInfo.activeRunId || draft.stopping) return
     patchDraft(selectedKey, {stopping: true})
     send({op: "stop", environment: selectedEnvironment, thread: selectedThread, requestId: uuid(), runId: selectedInfo.activeRunId})
   }
   function connectionLost() {
+    if(backendStart.busy)backendStart={busy:false,error:"rpc_outcome_unknown",status:""}
     if(terminalOperation.busy)terminalOperation=Object.assign({},terminalOperation,{busy:false,error:"rpc_outcome_unknown"})
+    if(workspaceOperation.busy){workspaceOperation=Object.assign({},workspaceOperation,{busy:false,error:"rpc_outcome_unknown"});newThreadWorkspaceRequested(workspaceOperation.request)}
     if(connectionSettings.busy)connectionSettings=Object.assign({},connectionSettings,{busy:false,error:"rpc_outcome_unknown"})
-    historyOperation=Object.assign({},historyOperation,{busy:false,error:historyOperation.busy?"rpc_outcome_unknown":historyOperation.error});liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
+    clearInlineDocuments();historyOperation=Object.assign({},historyOperation,{busy:false,error:historyOperation.busy?"rpc_outcome_unknown":historyOperation.error});liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
     var operations=Object.assign({},queueOperations);Object.keys(operations).forEach(function(key){var o=operations[key];if(o.busy)operations[key]=Object.assign({},o,{busy:false,error:"rpc_outcome_unknown"})});queueOperations=operations
     var operations=Object.assign({},questionOperations);Object.keys(operations).forEach(function(k){if(operations[k].busy)operations[k]={busy:false,error:"rpc_outcome_unknown",requestId:operations[k].requestId}});questionOperations=operations
     var operations=Object.assign({},approvalOperations);Object.keys(operations).forEach(function(k){if(operations[k].busy)operations[k]=Object.assign({},operations[k],{busy:false,error:"rpc_outcome_unknown"})});approvalOperations=operations
-    pendingSends=({}); clipboardRequests=({})
+    pendingSends=({}); clipboardRequests=({});if(projectDrafts.busy)projectDrafts=Object.assign({},projectDrafts,{busy:false,error:"rpc_outcome_unknown"})
     if (managementBusy) { managementBusy = false; managementError = "rpc_outcome_unknown" }
     Object.keys(drafts).forEach(function(key) {
       var d = root.drafts[key]
-      root.patchDraft(key, {busy: false, stopping: false,
+      root.patchDraft(key, {busy: root.projectDraftTransferKey(key), stopping: false,
         error: d.attempt ? "rpc_outcome_unknown" : d.error,
         attachments: d.attachments.map(function(f) { return f.uploading ? {uploadId: f.uploadId, name: f.name, error: "disconnected", uploading: false} : f })})
     })
@@ -423,6 +480,16 @@ Singleton {
     send({op:"image",environment:selectedEnvironment,requestId:id,attachment:a})
   }
   property var documentOpen:({busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0})
+  property var inlineDocuments:({})
+  function openInlineDocument(attachment){
+    var id=uuid(),all=Object.assign({},inlineDocuments)
+    all[id]={busy:true,error:"",requestId:id,data:null,frameUrl:"",frameRevision:0};inlineDocuments=all
+    send({op:"document-open",inline:true,environment:selectedEnvironment,thread:selectedThread,attachment:attachment,requestId:id,theme:DocumentTheme.theme(Color.popups.background,Color.popups.text,Color.accent,T3Palette.values)})
+    return id
+  }
+  function closeInlineDocument(id){if(!id||!inlineDocuments[id])return;send({op:"document-close",requestId:id});var all=Object.assign({},inlineDocuments);delete all[id];inlineDocuments=all}
+  function updateInlineDocument(id,values){if(!inlineDocuments[id])return;var all=Object.assign({},inlineDocuments);all[id]=Object.assign({},all[id],values);inlineDocuments=all}
+  function clearInlineDocuments(){Object.keys(inlineDocuments).forEach(closeInlineDocument)}
   function openReference(link,attachment){
     var path=String(link || "");
     if(/^https?:\/\//i.test(path)){Qt.openUrlExternally(path);return}
@@ -437,7 +504,7 @@ Singleton {
   }
   property TextEdit documentClipboardBuffer:TextEdit{visible:false;textFormat:TextEdit.PlainText}
   function documentInput(event){if(documentOpen.requestId)send({op:"document-input",requestId:documentOpen.requestId,event:event})}
-  function closeDocument(){send({op:"document-close"});documentOpen={busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0}}
+  function closeDocument(){if(documentOpen.requestId)send({op:"document-close",requestId:documentOpen.requestId});documentOpen={busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0}}
   property var diffView: ({loading:false,text:"",error:"",requestId:""})
   function requestDiff(summary){var id=uuid();diffView={loading:true,text:"",error:"",requestId:id};send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:summary.fromTurnCount,toTurnCount:summary.toTurnCount})}
   function action(data) {
@@ -448,7 +515,17 @@ Singleton {
       if(!data.error&&here)terminalOpened()
       return
     }
-
+    if(data.op==="settings"&&data.requestId===workspaceOperation.requestId){
+      var op=workspaceOperation,request=op.request
+      workspaceOperation=Object.assign({},op,{busy:false,requestId:"",error:data.error || ""})
+      if(request.sourceKey&&request.sourceKey!==selectedKey)return
+      if(data.error){newThreadWorkspaceRequested(request);return}
+      request=Object.assign({},request,{startFromOrigin:!!data.result.startFromOrigin})
+      if(op.action==="write")confirmNewThread(request,data.result.mode==="worktree",true)
+      else if(data.result.mode)confirmNewThread(request,data.result.mode==="worktree",true)
+      else newThreadWorkspaceRequested(request)
+      return
+    }
     if(data.op==="connections-manage"){
       if(data.requestId!==connectionSettings.requestId)return
       var command=connectionSettingsCommand
@@ -481,7 +558,7 @@ Singleton {
     }
     if(data.op==="settings"){if(data.requestId===settingsResult.requestId)settingsResult=Object.assign({},settingsResult,{busy:false,error:data.error || ""},data.result || {});return}
     if(data.op==="copy"){copyFinished(data.requestId,data.error || "");return}
-    if(data.op==="document-open"){if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
+    if(data.op==="document-open"){if(inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{busy:false,error:data.error || "",data:data.result || null});return}if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
     if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)acceptBackendStatus(data.result.local);if(!data.error&&data.result&&data.result.status!=="stopped")recoverLocalBackend();refreshBackendStatus();refresh();return}
     if(data.op==="pull-requests"){var name=Object.keys(prOperations).find(function(k){return root.prOperations[k].requestId===data.requestId});if(!name)return;var all=Object.assign({},prOperations);all[name]={busy:false,requestId:data.requestId,error:data.error || "",data:data.result};prOperations=all;return}
     if(data.op==="question"){
@@ -521,12 +598,33 @@ Singleton {
       if (!managementRequest || data.requestId !== managementRequest.requestId) return
       // Older desktop clients returned no ID for Project.id responses.
       if(!data.error&&data.result&&data.result.action==="add-project"&&!data.result.projectId)data.result=Object.assign({},data.result,{projectId:"omarchy-project-"+data.requestId})
+      var creation=managementRequest
+      var sourceKey=creation.environment+"/"+creation.thread
+      var source=drafts[sourceKey]
+      var moving=source&&source.attempt&&source.attempt.op==="manage"&&source.attempt.requestId===creation.requestId
       managementBusy = false; managementError = data.error || ""
-      if (data.error !== "rpc_outcome_unknown") managementRequest = null
+      var localRejection=["invalid_workspace","invalid_project","invalid_request_id","invalid_title","invalid_message","invalid_attachments","image_limit_10MiB","image_total_limit_80MiB"].indexOf(data.error)>=0
+      var retryable=data.error==="rpc_outcome_unknown" || (!!creation.workspaceStrategy&&!!data.error&&!localRejection)
+      if(moving){
+        if(data.error)patchDraft(sourceKey,{busy:false,error:data.error,attempt:retryable?source.attempt:null})
+        else if(creation.workspaceStrategy){
+          // Native launch durably accepts the initial message and defers its
+          // execution until workspace preparation completes.
+          patchDraft(sourceKey,{text:"",attachments:[],attempt:null,busy:false,error:""});resetUndo(sourceKey);flushDraft(sourceKey)
+        } else {
+          var destination=data.environment+"/"+data.result.threadId
+          var attempt=Object.assign({},source.attempt,{op:"send",requestId:source.attempt.sendRequestId,thread:data.result.threadId,delivery:"auto",moveSource:sourceKey,creationRequestId:source.attempt.requestId})
+          delete attempt.nextThread
+          patchDraft(destination,{text:source.text,attachments:source.attachments,modelSelection:attempt.modelSelection,delivery:"auto",attempt:attempt,busy:true,loading:false,error:""})
+          // Save the destination before clearing the source or sending anything.
+          flushDraft(destination,attempt)
+        }
+      }
+      if (!retryable) managementRequest = null
       if (!data.error) {
         if(data.result.action==="project-remove" && selectedInfo.projectKey===data.environment+"/"+data.result.projectId){var next=state.threads.find(function(t){return t.projectKey!==root.selectedInfo.projectKey});if(next)selectThread(next.environmentId,next.id);else clearSelection()}
         if(["archive","delete-thread"].indexOf(data.result.action)>=0 && selectedKey===data.environment+"/"+data.result.threadId){var nextThread=state.threads.find(function(t){return t.key!==root.selectedKey});if(nextThread)selectThread(nextThread.environmentId,nextThread.id);else clearSelection()}
-        refresh(); if (data.result.action === "new-thread") selectThread(data.environment,data.result.threadId)
+        refresh(); if (data.result.action === "new-thread"&&(!moving||selectedKey===sourceKey)) selectThread(data.environment,data.result.threadId)
       }
       managementFinished(data)
       if(pendingProjectOpen&&pendingProjectOpen.requestId===data.requestId){var opened=pendingProjectOpen;if(data.error!=="rpc_outcome_unknown")pendingProjectOpen=null;projectOpened(opened.environment,opened.projectId,data.error || "")}
@@ -564,10 +662,7 @@ Singleton {
       else {
         var acceptedMode=d.attempt.runtimeMode
         if(acceptedMode){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===key?Object.assign({},t,{runtimeMode:acceptedMode}):t})});snapshotUpdated()}
-        var next=d.attempt.nextThread
         patchDraft(key, {text: "", attachments: [], busy: false, attempt: null, runtimeMode:null,error: ""},false); resetUndo(key);flushDraft(key); refresh()
-        // Navigate only after acknowledgement, and only if the user is still here.
-        if(next&&selectedKey===key&&!managementBusy&&!managementRequest)manage({action:"new-thread",environment:data.environment,title:T3I18n.tr("New chat"),projectId:next.projectId,modelSelection:next.modelSelection,runtimeMode:next.runtimeMode,branch:next.branch,worktreePath:next.worktreePath})
       }
     } else if (data.op === "stop") patchDraft(key, {stopping: false, error: data.error || ""})
   }
@@ -583,7 +678,7 @@ Singleton {
   function setPanelVisible(value) { visiblePanels = Math.max(0, visiblePanels + (value ? 1 : -1)) }
   onPanelVisibleChanged: {
     send({op: "visible", value: panelVisible});if(panelVisible){probeScroll();ensureSidebarCatalogs()}
-    if (!panelVisible) { liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});requestedSerial++; activity = []; loadingMessages = false; persistViewNow(); flushDrafts() }
+    if (!panelVisible) { clearInlineDocuments();liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});requestedSerial++; activity = []; loadingMessages = false; persistViewNow(); flushDrafts() }
     else if (selectedThread) fetchMessages()
   }
   function activityLabel(){return activity.length?activity.map(function(a){return root.activityText(a)}).join(" · "):T3I18n.tr("Thinking")}
@@ -599,14 +694,14 @@ Singleton {
   function clearSelection(){threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
   function selectThread(env, thread) {
     if (selectedEnvironment === env && selectedThread === thread) { fetchMessages(); return }
-    closeDocument();favoriteError="";liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});diffView=({loading:false,text:"",error:"",requestId:""});dismissSuggestions();threadWillChange()
+    clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});diffView=({loading:false,text:"",error:"",requestId:""});dismissSuggestions();threadWillChange()
     selectedEnvironment = env; selectedThread = thread; selectedKey = env + "/" + thread
     var found = state.threads.find(function(t) { return t.key === root.selectedKey })
     selectedTitle = found ? (found.title || thread) : thread
     selectedProject = found ? (found.project || env) : env
     if (!drafts[selectedKey]) {
       patchDraft(selectedKey, {loading:true,modelSelection: found ? found.modelSelection : null})
-      send({op:"draft-load",key:selectedKey})
+      send({op:"draft-load",key:selectedKey,projectId:draftProject(selectedKey)})
     }
     if (!catalogs[env]) send({op: "catalog", environment: env})
     resetHistory();transcript = []; activity = [];tasks=null;questions=[];approvals=[];queue=({items:[],held:false,canReorder:false,canSteer:false}); messageError = ""; fetchMessages()
@@ -622,7 +717,24 @@ Singleton {
   function receive(line) {
     try {
       var event = JSON.parse(line); var data = event.data
-      if (event.type === "draft-loaded") {
+      if(event.type==="prompt-stash"){
+        if(data.requestId!==projectDrafts.requestId)return
+        var command=projectDrafts.command,result=data.result || {},changes=result.changes || {}
+        Object.keys(changes).forEach(function(key){
+          root.patchDraft(key,Object.assign({},changes[key],{busy:false,error:"",saveState:"saved",saveError:""}),false);root.resetUndo(key)
+          var dirty=Object.assign({},root.dirtyDrafts);delete dirty[key];root.dirtyDrafts=dirty
+        })
+        var retryable=!!data.error&&["draft_save_failed","draft_read_failed","local_error","rpc_outcome_unknown","drafts_busy"].indexOf(data.error)>=0
+        if(command&&command.action!=="list"){
+          if(drafts[command.key])patchDraft(command.key,{busy:retryable,error:data.error || ""})
+          var source=command.id&&command.id.indexOf("thread:")===0?command.id.slice(7):""
+          if(source&&drafts[source])patchDraft(source,{busy:retryable})
+        }
+        projectDrafts=Object.assign({},projectDrafts,{busy:false,error:data.error || "",entries:data.error?projectDrafts.entries:result.entries || [],command:retryable?command:null})
+        if(!data.error&&command&&command.action==="restore")projectDraftRestored(command.key)
+        if(!data.error&&projectDrafts.scope!==projectDraftScope()&&selectedInfo.projectId)Qt.callLater(function(){root.requestProjectDrafts("list")})
+      }
+      else if (event.type === "draft-loaded") {
         var loaded=drafts[data.key];if(!loaded || !loaded.loading) return
         var saved=data.draft || {};var restored=Object.assign({},loaded,saved,{loading:false,loadError:data.error || "",saveState:data.error?"error":"saved",busy:false,error:saved.attempt?"rpc_outcome_unknown":data.error || ""})
         var cache=Object.assign({},drafts);cache[data.key]=restored;drafts=cache
@@ -642,8 +754,20 @@ Singleton {
             if(data.error){operations[questionKey]={busy:false,error:"draft_save_failed",requestId:submission.requestId};questionOperations=operations}
             else send(submission)
           }
-          else if(data.error) patchDraft(data.key,{busy:false,error:"draft_save_failed"})
-          else if (existing && existing.busy && existing.attempt && existing.attempt.requestId === submission.requestId) send(submission)
+          else if(data.error) {
+            patchDraft(data.key,{busy:false,error:"draft_save_failed"})
+            if(submission.moveSource)patchDraft(submission.moveSource,{busy:false,error:"draft_save_failed"})
+          }
+          else if (existing && existing.busy && existing.attempt && existing.attempt.requestId === submission.requestId) {
+            if(submission.op==="manage")manage(submission)
+            else {
+              if(submission.moveSource){
+                var source=drafts[submission.moveSource]
+                if(source&&source.attempt&&source.attempt.requestId===submission.creationRequestId){patchDraft(submission.moveSource,{text:"",attachments:[],attempt:null,busy:false,error:""});resetUndo(submission.moveSource);flushDraft(submission.moveSource)}
+              }
+              var command=Object.assign({},submission);delete command.moveSource;delete command.creationRequestId;send(command)
+            }
+          }
         }
       }
       else if (event.type === "ui-state" && !viewStateLoaded) {
@@ -653,7 +777,9 @@ Singleton {
       else if (event.type === "ui-state-error") { console.warn("T3 presentation state could not be saved: " + data.error) }
       else if(event.type==="live-state" && data.serial===requestedSerial && panelVisible){liveConnected=!!data.connected;if(data.error&&!transcript.length){loadingMessages=false;messageError=data.error}}
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
-      else if(event.type==="document-clipboard"&&data.requestId===documentOpen.requestId){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
+      else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
+      else if(event.type==="document-size" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{contentHeight:data.height})}
+      else if(event.type==="document-frame" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{frameUrl:data.url || inlineDocuments[data.requestId].frameUrl,frameRevision:data.revision,frameWidth:data.width,frameHeight:data.height,error:data.error || ""})}
       else if(event.type==="document-frame" && data.requestId===documentOpen.requestId){documentOpen=Object.assign({},documentOpen,{frameUrl:data.url || documentOpen.frameUrl,frameRevision:data.revision || documentOpen.frameRevision,frameWidth:data.width || documentOpen.frameWidth,frameHeight:data.height || documentOpen.frameHeight,error:data.error || ""})}
       else if (event.type === "action") action(data)
       else if (event.type === "backend-status") {acceptBackendStatus(data)}
@@ -690,7 +816,8 @@ Singleton {
       if (root.selectedEnvironment) root.send({op: "catalog", environment: root.selectedEnvironment})
       if(root.panelVisible)root.probeScroll()
       if (root.panelVisible && root.selectedThread) root.fetchMessages()
-      Object.keys(root.drafts).forEach(function(key){ if(root.drafts[key].loading)root.send({op:"draft-load",key:key});else root.flushDraft(key) })
+      if(root.projectDrafts.command&&root.projectDrafts.command.action!=="list")root.retryProjectDrafts()
+      Object.keys(root.drafts).forEach(function(key){ if(root.projectDraftTransferKey(key))return;if(root.drafts[key].loading)root.send({op:"draft-load",key:key,projectId:root.draftProject(key)});else root.flushDraft(key) })
     }
     stdout: SplitParser { onRead: function(line) { root.receive(line) } }
     onExited: { root.connectionLost(); root.stale = true; root.error = "disconnected"; reconnect.restart() }

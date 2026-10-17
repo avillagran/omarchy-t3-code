@@ -26,11 +26,20 @@ fn service_start_respects_running_owner_and_profile() {
     };
     assert_eq!(backend_service::control("stop").unwrap_err(), blocked);
     assert_eq!(backend_service::control("restart").unwrap_err(), blocked);
-    fs::remove_file(runtime).unwrap();
+    fs::remove_file(&runtime).unwrap();
+    std::env::set_var("T3_TEST_PID", std::process::id().to_string());
     let cli = root.join(".t3/bin/t3");
-    fs::write(&cli,"#!/bin/sh\n[ \"$1\" = service ] && [ \"$2\" = install ] && [ \"$3\" = --base-dir ] && [ \"$4\" = \"$HOME/.t3\" ]\n").unwrap();
+    fs::write(&cli, r#"#!/bin/sh
+if [ "$1" = __ssh-helper ]; then
+  if [ "$2" = runtime-port ]; then printf '%s 1234\n' "$T3_TEST_PID"; exit 0; fi
+  [ "$2" = wait-ready ] && [ "$3" = 1234 ] && [ "$4" = 15000 ] && [ -z "$T3_TEST_NOT_READY" ]; exit $?
+fi
+[ "$1" = service ] && [ "$2" = install ] && [ "$3" = --base-dir ] && [ "$4" = "$HOME/.t3" ] || exit 1
+printf '{"pid":%s}' "$T3_TEST_PID" > "$HOME/.t3/userdata/server-runtime.json"
+"#).unwrap();
     fs::set_permissions(&cli, fs::Permissions::from_mode(0o700)).unwrap();
-    assert_eq!(backend_service::start().unwrap()["status"], "starting");
+    assert_eq!(backend_service::start().unwrap()["status"], "started");
+    fs::remove_file(&runtime).unwrap();
     fs::create_dir_all(root.join(".config/systemd/user")).unwrap();
     fs::write(
         root.join(".config/systemd/user/t3code.service"),
@@ -47,7 +56,10 @@ fn service_start_respects_running_owner_and_profile() {
     let systemctl = root.join("test-bin/systemctl");
     fs::write(
         &systemctl,
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$T3_TEST_SYSTEMCTL_LOG\"\n",
+        r#"#!/bin/sh
+printf '%s\n' "$*" >> "$T3_TEST_SYSTEMCTL_LOG"
+printf '{"pid":%s}' "$T3_TEST_PID" > "$HOME/.t3/userdata/server-runtime.json"
+"#,
     )
     .unwrap();
     fs::set_permissions(&systemctl, fs::Permissions::from_mode(0o700)).unwrap();
@@ -64,10 +76,24 @@ fn service_start_respects_running_owner_and_profile() {
         ),
     )
     .unwrap();
-    assert_eq!(backend_service::start().unwrap()["status"], "starting");
+    assert_eq!(backend_service::start().unwrap()["status"], "started");
     assert_eq!(
         fs::read_to_string(log).unwrap().trim(),
-        "--user start t3code.service"
+        "--user restart t3code.service"
+    );
+    // Successful systemd activation is insufficient when native readiness fails.
+    fs::remove_file(&runtime).unwrap();
+    std::env::set_var("T3_TEST_NOT_READY", "1");
+    assert_eq!(
+        backend_service::start().unwrap_err(),
+        "service_start_failed"
+    );
+    std::env::remove_var("T3_TEST_NOT_READY");
+    fs::remove_file(&runtime).unwrap();
+    fs::write(&systemctl, "#!/bin/sh\nexit 0\n").unwrap();
+    assert_eq!(
+        backend_service::start().unwrap_err(),
+        "service_start_failed"
     );
     std::env::set_var("PATH", old_path);
     refresh_connections();

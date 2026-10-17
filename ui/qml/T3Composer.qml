@@ -12,6 +12,16 @@ Rectangle {
   property bool showOptions: false
   property bool expanded: false
   signal toggleExpanded()
+  property bool draftsOpen:false
+  readonly property bool projectDraftsVisible:draftsOpen&&!!bridge.selectedInfo.projectId
+  function toggleProjectDrafts(){draftsOpen=!draftsOpen;if(draftsOpen){bridge.requestProjectDrafts("list");Qt.callLater(function(){projectDraftDrawer.focusList()})}}
+  onExpandedChanged:{draftsOpen=expanded;if(expanded&&bridge.selectedInfo.projectId)bridge.requestProjectDrafts("list")}
+  readonly property bool draftReady:!draft.loading&&!draft.loadError&&!!bridge.selectedInfo.projectId
+  onDraftReadyChanged:if(draftReady&&projectDraftsVisible)bridge.requestProjectDrafts("list")
+  Connections{target:root.bridge;ignoreUnknownSignals:true
+    function onSelectedKeyChanged(){if(root.projectDraftsVisible)Qt.callLater(function(){root.bridge.requestProjectDrafts("list")})}
+    function onProjectDraftRestored(key){if(key===root.bridge.selectedKey){if(!root.expanded)root.draftsOpen=false;Qt.callLater(function(){editor.cursorPosition=editor.text.length;editor.forceActiveFocus()})}}
+  }
   property string lastDraftText:""
   property string pendingCursorKey:bridge.selectedKey
   function positionDraftAtEnd(){if(pendingCursorKey!==bridge.selectedKey||draft.loading)return;var key=pendingCursorKey;Qt.callLater(function(){if(key!==root.bridge.selectedKey||root.draft.loading)return;editor.cursorPosition=editor.text.length;root.bridge.rememberDraftCursor(editor.cursorPosition,editor.cursorPosition);root.pendingCursorKey=""})}
@@ -129,7 +139,7 @@ Rectangle {
     return o ? o.value : d.currentValue
   }
   implicitHeight: content.implicitHeight + Style.space(24)
-  color: Qt.rgba(fg.r, fg.g, fg.b, 0.035); radius: Style.space(17)
+  color: Color.popups.background; radius: Style.space(17)
   border.width: 1; border.color: editor.activeFocus ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45) : Qt.rgba(fg.r, fg.g, fg.b, 0.09)
   Behavior on border.color { ColorAnimation { duration: 130 } }
   ColumnLayout {
@@ -137,6 +147,12 @@ Rectangle {
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(12) }
     height:root.expanded ? Math.max(0,root.height-Style.space(24)) : implicitHeight
     spacing: Style.space(8)
+    T3ProjectDrafts {
+      id:projectDraftDrawer;objectName:"t3ProjectDrafts";Layout.fillWidth:true;Layout.preferredHeight:implicitHeight
+      visible:root.projectDraftsVisible
+      bridge:root.bridge
+      onCloseRequested:{root.draftsOpen=false;editor.forceActiveFocus()}
+    }
     RowLayout {
       Layout.fillWidth:true;visible:!!root.draft.queueEdit
       T3Icon{name:"square-pen";tint:Color.accent}
@@ -213,14 +229,14 @@ Rectangle {
         Keys.onReturnPressed: function(event) {
           if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
           if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
-          if(event.modifiers===(Qt.ControlModifier|Qt.AltModifier)){event.accepted=true;root.bridge.submit(true);return}
+          if(event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier)){event.accepted=true;root.bridge.submit(true);return}
           if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
           event.accepted = true; root.bridge.submit()
         }
         Keys.onEnterPressed: function(event) {
           if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
           if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
-          if(event.modifiers===(Qt.ControlModifier|Qt.AltModifier)){event.accepted=true;root.bridge.submit(true);return}
+          if(event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier)){event.accepted=true;root.bridge.submit(true);return}
           if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
           event.accepted = true; root.bridge.submit()
         }
@@ -252,7 +268,6 @@ Rectangle {
           }
         }
       }
-
     }
     Text {
       Layout.fillWidth: true
@@ -304,13 +319,14 @@ Rectangle {
         objectName:"t3ExpandEditor"
         KeyNavigation.backtab:editor
         name:root.expanded?"chevron-down":"square-pen"
-        tooltipText:(root.expanded?T3I18n.tr("Back to chat"):T3I18n.tr("Edit"))+" · "+(root.expanded?"Esc":"Super+E")
+        tooltipText:(root.expanded?T3I18n.tr("Back to chat"):T3I18n.tr("Edit"))+" · "+(root.expanded?"Esc":"Super+E")+" · "+T3I18n.tr("Right-click: project drafts")
         onClicked:root.toggleExpanded()
+        MouseArea{anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:root.toggleProjectDrafts()}
       }
       T3IconButton {
         objectName:"t3SendAndNewThread"
         name:"git-branch"
-        tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Alt+Enter"
+        tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Shift+Enter"
         enabled:!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
         onClicked:root.bridge.submit(true)
       }

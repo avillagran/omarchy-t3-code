@@ -134,7 +134,10 @@ pub fn start() -> Result<Value> {
         return Ok(json!({"status":"already-running","local":status()}));
     }
     if unit_path().exists() {
-        systemctl("start")?
+        // A GUI can replace/remove the runtime file while the older headless
+        // service remains active. `start` is then a successful no-op. Restart
+        // only this profile's native unit, with no live runtime to interrupt.
+        systemctl("restart")?
     } else {
         let cli = home().join(".t3/bin/t3");
         if !cli.is_file() {
@@ -152,8 +155,53 @@ pub fn start() -> Result<Value> {
             return Err("service_start_failed".into());
         }
     }
+    // systemd Type=simple acknowledges the launcher before the HTTP server is
+    // ready. Require native readiness rather than reporting a false success.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    let runtime = t3_home().join("userdata/server-runtime.json");
+    let cli = home().join(".t3/bin/t3");
+    loop {
+        if runtime_pid().is_some() {
+            let info = Command::new("timeout")
+                .arg("3")
+                .arg(&cli)
+                .arg("__ssh-helper")
+                .arg("runtime-port")
+                .arg(&runtime)
+                .stdin(Stdio::null())
+                .output()
+                .map_err(|_| "service_start_failed")?;
+            let port = String::from_utf8_lossy(&info.stdout)
+                .split_whitespace()
+                .nth(1)
+                .and_then(|s| s.parse::<u16>().ok());
+            if let Some(port) = port.filter(|_| info.status.success()) {
+                let ready = Command::new("timeout")
+                    .arg("18")
+                    .arg(&cli)
+                    .args([
+                        "__ssh-helper",
+                        "wait-ready",
+                        &port.to_string(),
+                        "15000",
+                        "1000",
+                    ])
+                    .stdin(Stdio::null())
+                    .output()
+                    .map_err(|_| "service_start_failed")?;
+                if !ready.status.success() {
+                    return Err("service_start_failed".into());
+                }
+                break;
+            }
+        }
+        if std::time::Instant::now() >= deadline {
+            return Err("service_start_failed".into());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
     refresh_connections();
-    Ok(json!({"status":"starting","local":status()}))
+    Ok(json!({"status":"started","local":status()}))
 }
 fn stop() -> Result<Value> {
     let s = status();

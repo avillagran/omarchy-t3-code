@@ -6,7 +6,7 @@ ShellRoot {
  id:root;property int phase:0
  function check(ok,msg){if(!ok){console.error("PROJECT_PICKER_QML_FAIL "+msg);Qt.exit(1)}}
  QtObject{id:b
-  property var state:({environments:[{id:"local",name:"T3 Code",state:"ready"},{id:"node",name:"NODE",state:"ready"}]})
+  property var state:({projects:[{id:"same",environmentId:"local",title:"Existing app",workspaceRoot:"/home/local/app"},{id:"same",environmentId:"node",title:"Existing app",workspaceRoot:"/srv/app"},{id:"offline",environmentId:"gone",title:"Disconnected",workspaceRoot:"/offline"}],environments:[{id:"local",name:"T3 Code",state:"ready"},{id:"node",name:"NODE",state:"ready"}]})
   property var folderBrowse:({busy:false,error:"",entries:[],parentPath:""})
   property bool managementBusy:false
   property var managementRequest:null
@@ -26,7 +26,10 @@ ShellRoot {
  }
  TestCase{id:keys;when:false;parent:win.contentItem}
  Timer{interval:240;running:true;repeat:true;onTriggered:{
-  if(phase===0){picker.begin();phase=1
+  if(phase===0){picker.begin();phase=10
+  }else if(phase===10){check(picker.existingProjects.length===2,"existing projects shown immediately across ready hosts only");keys.findChild(picker,"projectSearch").text="NODE /srv";phase=11
+  }else if(phase===11){check(picker.existingProjects.length===1&&picker.existingProjects[0].environmentId==="node","project search matches environment and path tokens");keys.mouseClick(picker.existingButton("node","same"));check(b.sent.action==="open-project"&&b.sent.environment==="node"&&b.sent.projectId==="same","existing row opens correct scoped ID without registering");check(picker.visible&&picker.openingProject,"existing project waits for navigation acknowledgement");b.managementError="model_unavailable";b.projectOpened("node","same","model_unavailable");check(picker.visible&&!picker.openingProject,"existing open error allows retry");keys.findChild(picker,"projectSearch").text="";phase=12
+  }else if(phase===12){keys.mouseClick(picker.existingButton("node","same"));b.projectOpened("local","same","");check(picker.visible,"other environment acknowledgement cannot close picker");b.projectOpened("node","same","");check(!picker.visible,"existing project success closes picker");picker.begin();check(keys.findChild(picker,"projectSearch").text==="","fresh opening resets search");picker.chooseEnvironment("local");check(picker.existingProjects.length===1&&picker.existingProjects[0].environmentId==="local","environment step scopes existing projects");picker.close();picker.begin();phase=1
   }else if(phase===1){check(picker.visible&&picker.step===0,"embedded environment step");picker.chooseEnvironment("node");phase=2
   }else if(phase===2){check(picker.step===1,"source selection before filesystem");check(picker.sourceButton("new").enabled,"name-only project available from server config");check(picker.sourceButton("github").enabled,"authenticated provider available");check(!picker.sourceButton("gitlab").enabled,"missing provider requires setup");picker.contentItem.grabToImage(function(r){r.saveToFile("/tmp/ot3-project-source-preview.png")});phase=20
   }else if(phase===20){keys.mouseClick(picker.sourceButton("local"));phase=3

@@ -17,6 +17,12 @@ Controls.Popup {
  readonly property var sources:buildSources()
  readonly property string filterText:path.text.endsWith("/")?"":path.text.slice(path.text.lastIndexOf("/")+1).toLocaleLowerCase()
  readonly property var filteredFolders:root.browse.environment===root.environment?(root.browse.entries || []).filter(function(e){return !root.filterText||e.name.toLocaleLowerCase().indexOf(root.filterText)>=0}):[]
+ readonly property var existingProjects:(bridge.state.projects || []).filter(function(p){
+  if(!root.environments.some(function(e){return e.id===p.environmentId}) || (root.environment&&p.environmentId!==root.environment))return false
+  var query=projectSearch.text.trim().toLocaleLowerCase()
+  var haystack=[p.title,p.workspaceRoot,root.environmentName(p.environmentId)].join(" ").toLocaleLowerCase()
+  return !query || query.split(/\s+/).every(function(token){return haystack.indexOf(token)>=0})
+ })
  readonly property var environments:(bridge.state.environments || []).filter(function(e){return e.state==="ready"})
  readonly property var browse:bridge.folderBrowse || ({entries:[]})
  readonly property bool locked:openingProject || !!bridge.managementBusy || !!bridge.managementRequest
@@ -27,14 +33,14 @@ Controls.Popup {
  padding:Style.space(16);modal:true;focus:true
  background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.18)}
  function begin(){
-  createdProjectId="";openingProject=false
+  createdProjectId="";openingProject=false;projectSearch.text=""
   if(bridge.pendingProjectOpen){
    var pending=bridge.pendingProjectOpen;environment=pending.environment;createdProjectId=pending.projectId;source="local";step=2;openingProject=!!bridge.managementBusy
    var registered=(bridge.state.projects || []).find(function(p){return p.id===root.createdProjectId&&p.environmentId===root.environment});path.text=registered?registered.workspaceRoot:"~/"
   }else if(bridge.managementRequest&&["add-project","create-project","clone-project"].indexOf(bridge.managementRequest.action)>=0){
    var request=bridge.managementRequest;environment=request.environment;source=request.action==="clone-project"?request.source:request.action==="create-project"?"new":"local";step=source==="new"?4:2;path.text=request.workspaceRoot || "~/";repository.text=request.repository || "";projectName.text=request.name || "";createdAt=request.createdAt || ""
   }else{environment=environments.length===1?environments[0].id:"";step=environments.length===1?1:0;source="local";path.text="~/";repository.text="";projectName.text="";createdAt=new Date().toISOString();bridge.managementError="";if(environment)bridge.loadProjectSources(environment)}
-  open()
+  open();resetList();Qt.callLater(function(){if(root.visible&&root.step<=1)projectSearch.forceActiveFocus()})
  }
  function buildSources(){
   var list=[];var state=sourceState.environment===environment?sourceState:({})
@@ -46,12 +52,20 @@ Controls.Popup {
   providers.sort(function(a,b){return Number(b.ready)-Number(a.ready)||a.title.localeCompare(b.title)})
   return list.concat(providers)
  }
+ function resetList(){Qt.callLater(function(){sourceScroll.contentItem.contentY=0})}
+ function environmentName(id){return (environments.find(function(e){return e.id===id}) || {}).name || id}
+ function openExisting(project){
+  if(locked || !environments.some(function(e){return e.id===project.environmentId}))return
+  environment=project.environmentId;createdProjectId=project.id;openingProject=true
+  bridge.openProject(environment,createdProjectId)
+ }
+ function existingButton(environment,id){for(var i=0;i<existingRows.count;i++){var item=existingRows.itemAt(i);if(item&&item.modelData.environmentId===environment&&item.modelData.id===id)return item}return null}
  function sourceButton(id){for(var i=0;i<sourceRows.count;i++){var item=sourceRows.itemAt(i);if(item&&item.modelData.id===id)return item}return null}
  function browsePath(value){if(locked||!environment)return;filterDelay.stop();path.text=value.endsWith("/")?value:value+"/";browseDirectory=path.text;bridge.browseFolders(environment,path.text);Qt.callLater(function(){if(root.visible&&root.step===2){path.forceActiveFocus();path.cursorPosition=path.text.length}})}
  function filterPath(){if(locked||step!==2)return;var t=path.text;var dir=t.indexOf("/")<0?browseDirectory:t.slice(0,t.lastIndexOf("/")+1);if(dir&&dir!==browseDirectory){browseDirectory=dir;bridge.browseFolders(environment,dir)}}
- function back(){if(locked)return;createdProjectId="";filterDelay.stop();if(step===2)step=source==="local"?1:3;else if(step>=3)step=1;else step=0}
- function chooseEnvironment(id){if(locked)return;environment=id;step=1;bridge.loadProjectSources(id)}
- function chooseSource(id){source=id;if(id==="local")openFolders();else if(id==="new"){step=4;projectName.forceActiveFocus()}else{step=3;repository.forceActiveFocus()}}
+ function back(){if(locked)return;createdProjectId="";filterDelay.stop();if(step===2)step=source==="local"?1:3;else if(step>=3)step=1;else step=0;if(step<=1)resetList()}
+ function chooseEnvironment(id){if(locked)return;createdProjectId="";environment=id;step=1;resetList();bridge.loadProjectSources(id)}
+ function chooseSource(id){if(locked)return;createdProjectId="";source=id;if(id==="local")openFolders();else if(id==="new"){step=4;projectName.forceActiveFocus()}else{step=3;repository.forceActiveFocus()}}
  function openFolders(){step=2;var state=sourceState.environment===environment?sourceState:({});browsePath(state.baseDirectory || "~/")}
  function cloneName(){return repository.text.trim().split(/[?#]/)[0].replace(/\/$/,"").split(/[/:]/).pop().replace(/\.git$/,"")}
  function create(){
@@ -77,32 +91,47 @@ Controls.Popup {
    Text{visible:root.step>0;text:(root.environments.find(function(e){return e.id===root.environment}) || {}).name || root.environment;color:root.muted;font.pixelSize:Style.font.caption;elide:Text.ElideRight;Layout.maximumWidth:Style.space(180)}
    T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:root.close()}
   }
-  ColumnLayout {
-   visible:root.step===0;Layout.fillWidth:true
-   Repeater{model:root.environments
-    delegate:T3PickerRow{required property var modelData;objectName:"projectEnvironment_"+modelData.id;Layout.fillWidth:true;text:modelData.name;iconName:"server";enabled:!root.locked;onClicked:root.chooseEnvironment(modelData.id)}
-   }
-   Text{visible:!root.environments.length;text:T3I18n.tr("Environment unavailable");color:root.muted}
-  }
   Controls.ScrollView {
    id:sourceScroll
-   visible:root.step===1;Layout.fillWidth:true;clip:true;contentWidth:availableWidth
-   Layout.preferredHeight:Math.min(sourceChoices.implicitHeight,root.parent?root.parent.height*0.58:Style.space(400))
+   visible:root.step<=1;Layout.fillWidth:true;clip:true;contentWidth:availableWidth
+   Layout.preferredHeight:Math.min(sourceChoices.implicitHeight,root.parent?root.parent.height*0.68:Style.space(480))
    ColumnLayout {
-   id:sourceChoices;width:sourceScroll.availableWidth;spacing:Style.space(2)
-   Text{visible:!!root.sourceState.busy;text:T3I18n.tr("Loading…");color:root.muted}
-   Repeater{id:sourceRows;model:root.sources
-    delegate:T3PickerRow {
-     required property var modelData
-     objectName:modelData.id==="local"?"projectLocalFolder":"projectSource_"+modelData.id
-     Layout.fillWidth:true;enabled:modelData.ready&&!root.locked
-     text:modelData.title;description:modelData.description;iconName:modelData.icon;trailingText:modelData.ready?"":T3I18n.tr("Setup required")
-     onClicked:root.chooseSource(modelData.id)
+    id:sourceChoices;width:sourceScroll.availableWidth;spacing:Style.space(2)
+    ColumnLayout {
+     visible:root.step===0;Layout.fillWidth:true
+     Repeater{model:root.step===0?root.environments:[]
+      delegate:T3PickerRow{required property var modelData;objectName:"projectEnvironment_"+modelData.id;Layout.fillWidth:true;text:modelData.name;iconName:"server";enabled:!root.locked;onClicked:root.chooseEnvironment(modelData.id)}
+     }
+     Text{visible:!root.environments.length;text:T3I18n.tr("Environment unavailable");color:root.muted}
     }
-   }
-   Text{visible:!!root.sourceState.error;Layout.fillWidth:true;text:T3I18n.error(root.sourceState.error || "");color:Color.urgent;wrapMode:Text.Wrap}
+    Text{Layout.topMargin:Style.space(8);text:T3I18n.tr("All projects");color:root.muted;font.pixelSize:Style.font.caption}
+    T3PickerField{id:projectSearch;objectName:"projectSearch";Layout.fillWidth:true;placeholderText:T3I18n.tr("Search projects…");enabled:!root.locked;onAccepted:if(root.existingProjects.length===1)root.openExisting(root.existingProjects[0])}
+    Repeater{id:existingRows;model:root.existingProjects
+     delegate:T3PickerRow {
+      required property var modelData
+      objectName:"existingProject_"+modelData.environmentId+"_"+modelData.id
+      Layout.fillWidth:true;enabled:!root.locked
+      text:modelData.title || modelData.workspaceRoot;description:modelData.workspaceRoot || "";iconName:"folder-git-2"
+      trailingText:root.environmentName(modelData.environmentId)
+      onClicked:root.openExisting(modelData)
+     }
+    }
+    Text{visible:!root.existingProjects.length;text:T3I18n.tr("No projects found");color:root.muted;font.pixelSize:Style.font.caption}
+    Text{visible:root.step===1&&!!root.sourceState.busy;Layout.topMargin:Style.space(8);text:T3I18n.tr("Loading…");color:root.muted}
+    Repeater{id:sourceRows;model:root.step===1?root.sources:[]
+     delegate:T3PickerRow {
+      required property var modelData
+      objectName:modelData.id==="local"?"projectLocalFolder":"projectSource_"+modelData.id
+      Layout.fillWidth:true;enabled:modelData.ready&&!root.locked
+      text:modelData.title;description:modelData.description;iconName:modelData.icon;trailingText:modelData.ready?"":T3I18n.tr("Setup required")
+      onClicked:root.chooseSource(modelData.id)
+     }
+    }
+    Text{visible:root.step===1&&!!root.sourceState.error;Layout.fillWidth:true;text:T3I18n.error(root.sourceState.error || "");color:Color.urgent;wrapMode:Text.Wrap}
    }
   }
+  Text{visible:root.step<=1&&!!root.bridge.managementError;Layout.fillWidth:true;text:T3I18n.error(root.bridge.managementError);color:Color.urgent;wrapMode:Text.Wrap}
+  WorkIndicator{visible:root.step<=1&&root.openingProject;active:visible&&root.visible}
   ColumnLayout {
    visible:root.step===3;Layout.fillWidth:true
    T3PickerField{id:repository;objectName:"projectRepository";Layout.fillWidth:true;placeholderText:root.source==="url"?"https://host/owner/repository.git":"owner/repository";enabled:!root.locked;onAccepted:if(text.trim())root.openFolders()}

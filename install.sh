@@ -11,7 +11,7 @@ t3_base=${t3_base/#\~/$HOME}
 [[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] || fail 'Install and open T3 Code once before installing this plugin: https://t3.codes'
 
 source_build=${OT3_BUILD_FROM_SOURCE:-0}
-packages=(ttf-firacode-nerd git curl ripgrep jq libsecret openssh wl-clipboard qt6-declarative qt6-webengine)
+packages=(ttf-firacode-nerd git curl ripgrep jq libsecret openssh wl-clipboard librsvg qt6-declarative qt6-webengine)
 if [[ $source_build == 1 ]]; then packages+=(base-devel pkgconf); fi
 if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1 && ! command -v rustup >/dev/null; then packages+=(rust); fi
 missing=()

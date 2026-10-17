@@ -13,7 +13,7 @@ ShellRoot {
   var b=Test.T3Backend
   if(phase===0){if(!b.viewStateLoaded)return;
    var theme=Theme.theme(Qt.color("#111111"),Qt.color("#bbbbbb"),Qt.color("#e99700"),{green:"#00aa00"});check(theme.appearance==="dark","appearance");check(theme.variables["--success"]==="#00aa00","semantic colors");
-   var html=Theme.page({contents:'<html><head></head><body>Report</body></html>',baseUrl:'about:blank',theme:theme});check(html.indexOf('sandbox="allow-scripts"')>=0,"sandbox");check(html.indexOf('--background:#111111')>=0,"native theme tokens");
+   var html=Theme.page({contents:'<html><head></head><body>Report</body></html>',baseUrl:'about:blank',theme:theme});check(html.indexOf('sandbox="allow-scripts allow-forms"')>=0,"sandbox");check(html.indexOf('--background:#111111')>=0,"native theme tokens");
    b.state={threads:[{id:"one",key:"fixture/one",environmentId:"fixture",title:"One"}],projects:[],environments:[]};fixture=b.state;b.selectThread("fixture","one");b.transcript=[{id:"report",role:"assistant",text:"Report",rendered:'<a href="/home/node/report.html">Report</a>',fileReferences:[{name:"report.html",path:"/home/node/report.html"}],createdAt:1}];panel.open();phase=1
   }else if(phase===1){
    var row=panel.conversationView.itemAtIndex(0);var refs=keys.findChild(row,"t3FileReference");check(!!refs,"file reference chip");check(refs.filePath==="/home/node/report.html","original host path");keys.mouseClick(refs,refs.width/2,refs.height/2);phase=2

@@ -2,6 +2,7 @@ mod auto_compact;
 mod document_session;
 mod live;
 mod drafts;
+mod prompt_stash;
 mod localization;
 mod ui_state;
 mod quotas;
@@ -27,8 +28,9 @@ fn emit(kind: &str, data: Value) {
 fn draft_command(cmd:&Value)->bool {
     let key=text(cmd,"key");
     match text(cmd,"op") {
-        "draft-load" => {let result=drafts::load(key);emit("draft-loaded",json!({"key":key,"draft":result.as_ref().ok(),"error":result.as_ref().err()}));true}
+        "draft-load" => {let result=prompt_stash::recover_before_load(key,text(cmd,"projectId")).and_then(|_|drafts::load(key));emit("draft-loaded",json!({"key":key,"draft":result.as_ref().ok(),"error":result.as_ref().err()}));true}
         "draft-save" => {let result=drafts::save(key,&cmd["draft"]);emit("draft-saved",json!({"key":key,"revision":cmd["revision"],"error":result.as_ref().err()}));true}
+        "prompt-stash" => {let result=prompt_stash::execute(cmd);emit("prompt-stash",json!({"requestId":cmd["requestId"],"environment":cmd["environment"],"projectId":cmd["projectId"],"key":key,"result":result.as_ref().ok(),"error":result.as_ref().err()}));true}
         _=>false
     }
 }
@@ -78,13 +80,16 @@ fn notify(snapshot: &Value) -> Result<()> {
             let changed = t["pending"] == true
                 && (old["pending"] != true || old["revision"] != t["revision"]);
             if changed && previous[&initialized] == true {
+                let icon=notification_icon::path(snapshot,t).ok();
                 let delivered = Command::new("timeout")
                     .args([
                         "4s",
                         "notify-send",
                         "--app-name=Omarchy T3",
+                        "--icon",
+                        icon.as_ref().and_then(|p|p.to_str()).unwrap_or("t3-code"),
                         "--",
-                        &format!("T3 · {}",localization::label(match text(t,"reason"){"response"=>"Done","failed"=>"Failed",_=>"Waiting"})),
+                        &format!("T3 · {}",localization::label(match text(t,"reason"){"response"|"review"=>"Done","failed"=>"Failed",_=>"Waiting"})),
                         text(t, "title"),
                     ])
                     .stdin(Stdio::null())
@@ -160,7 +165,7 @@ fn watch(client: Client) -> Result<()> {
     let compactor=auto_compact::Control::new(tx.clone());
     let (action_tx, action_rx) = mpsc::channel::<Value>();
     let input_action_tx=action_tx.clone();
-    let document_manager=document_session::start();
+    let mut document_manager=document_session::Pool::new();
     let (image_tx,image_rx)=mpsc::channel::<Value>();
     let image_generation=std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
     let image_worker_generation=image_generation.clone();
@@ -194,6 +199,17 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="image"{if !input_visible{continue}v["generation"]=json!(image_generation.load(std::sync::atomic::Ordering::Relaxed));let _=image_tx.send(v);continue}
                 // Draft durability must never wait behind a slow remote snapshot.
                 if v["op"]=="backend-status"{emit("backend-status",backend_service::status());continue}
+                // Lifecycle controls must not wait behind a remote snapshot.
+                if matches!(text(&v,"op"),"backend-start"|"backend-control") {
+                    let service_tx=input_tx.clone();
+                    std::thread::spawn(move||{
+                        static BUSY: std::sync::Mutex<()> = std::sync::Mutex::new(());
+                        let guard=BUSY.try_lock();
+                        let result=match guard {Ok(_guard)=>write::execute(&v),Err(_)=>Err("backend_control_busy".into())};
+                        emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
+                        let _=service_tx.send(json!({"op":"refresh"}));
+                    });continue
+                }
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
@@ -226,7 +242,6 @@ fn watch(client: Client) -> Result<()> {
     let mut next_poll = Instant::now();
     let mut next_quota = Instant::now();
     let mut quota_running = false;
-    let mut service_starting = false;
     let mut message_cache: Option<(String, String, i64, Value)> = None;
     loop {
         if Instant::now() >= next_quota && !quota_running {
@@ -307,15 +322,8 @@ fn watch(client: Client) -> Result<()> {
         };
         match text(&cmd, "op") {
             "ui-state-set" => { if let Err(error)=ui_state::save(&cmd["state"]) {emit("ui-state-error",json!({"error":error}));} }
-            "backend-start" | "backend-control" => {
-                if !service_starting {
-                    service_starting=true;let service_tx=tx.clone();
-                    std::thread::spawn(move||{let result=write::execute(&cmd);let _=service_tx.send(json!({"op":"action_result","input":cmd,"result":result.as_ref().ok(),"error":result.as_ref().err()}));});
-                }
-            }
             "window-layout" | "project-sources" | "browse-folders" | "history" | "pull-requests" | "approval" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" => { let _ = action_tx.send(cmd); }
             "action_result" => {
-                if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"){service_starting=false;}
                 emit("action",json!({"op":cmd["input"]["op"],"environment":cmd["input"]["environment"],"thread":cmd["input"]["thread"],"requestId":cmd["input"]["requestId"],"result":cmd["result"],"error":cmd["error"]}));
                 if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"|"approval"|"question"|"queue"|"send"|"stop"|"manage") { message_cache=None; next_poll=Instant::now(); }
             }
@@ -401,5 +409,30 @@ fn main() {
     if let Err(e) = run() {
         println!("{}", json!({"error":e}));
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod notification_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    #[test]
+    fn delivery_child() {
+        let Ok(root)=std::env::var("OT3_NOTIFY_TEST_ROOT") else{return};
+        std::env::set_var("XDG_STATE_HOME",format!("{root}/state"));
+        std::env::set_var("XDG_CACHE_HOME",format!("{root}/cache"));
+        let mut snapshot=json!({"environments":[{"id":"fixture","state":"ready"}],"projects":[],"threads":[{"environmentId":"fixture","key":"fixture/one","title":"Input required","pending":false,"revision":"1"}]});
+        notify(&snapshot).unwrap();
+        snapshot["threads"][0]["pending"]=json!(true);snapshot["threads"][0]["revision"]=json!("2");snapshot["threads"][0]["reason"]=json!("request");
+        notify(&snapshot).unwrap();notify(&snapshot).unwrap();
+    }
+    #[test]
+    fn delivers_once_with_composed_icon_without_desktop_notification() {
+        let root=std::env::temp_dir().join(format!("ot3-notify-test-{}",uuid::Uuid::new_v4()));fs::create_dir_all(root.join("bin")).unwrap();
+        let script=root.join("bin/notify-send");fs::write(&script,"#!/bin/sh\nprintf '%s\\n' \"$@\" >> \"$OT3_NOTIFY_TEST_ROOT/delivered\"\n").unwrap();fs::set_permissions(&script,fs::Permissions::from_mode(0o700)).unwrap();
+        let output=Command::new(std::env::current_exe().unwrap()).args(["--exact","notification_tests::delivery_child"]).env("OT3_NOTIFY_TEST_ROOT",&root).env("PATH",format!("{}:{}",root.join("bin").display(),std::env::var("PATH").unwrap_or_default())).output().unwrap();
+        assert!(output.status.success(),"{}",String::from_utf8_lossy(&output.stdout));
+        let args=fs::read_to_string(root.join("delivered")).unwrap();let lines=args.lines().collect::<Vec<_>>();assert_eq!(lines.iter().filter(|&&s|s=="--icon").count(),1);let position=lines.iter().position(|&s|s=="--icon").unwrap();let image=image::open(lines[position+1]).unwrap();assert_eq!((image.width(),image.height()),(96,96));assert!(args.contains("Input required"));
+        fs::remove_dir_all(root).unwrap();
     }
 }

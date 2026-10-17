@@ -122,6 +122,12 @@ rechecks ownership before each operation and never stops a GUI-owned or
 unidentified process. It does not migrate an active desktop session or start a
 competing server over the same data directory.
 
+Starting waits for T3's native readiness check and reports failures in the panel
+and Connections. If the GUI has removed its runtime file while the native service
+is still active, starting restarts that profile's service so it can publish a new
+runtime; systemd's successful acknowledgement alone does not count as success.
+Lifecycle actions run independently of remote snapshot queries.
+
 SSH startup uses T3's native `__ssh-helper runtime-port` and `wait-ready` checks.
 A stopped remote server starts through its existing `t3code.service`; if absent,
 T3 installs its own service. The adapter verifies the saved environment ID and
@@ -312,3 +318,30 @@ permissions and expired sessions must be resolved through T3 itself.
 ## Remaining feature gaps
 
 See [the interaction parity audit](FEATURE_PARITY.md).
+
+Sidebar groups keep their expanded/collapsed preference across panel unloading
+and grouping toggles. Selection, search and status filters do not force a closed
+group open. Working, Snoozed and Settled headers have horizontal separators and
+are hidden when their filtered group is empty.
+
+Shelf headers use the native inline geometry: label, horizontal rule, chevron
+(`CollapsibleSectionHeader` in T3). Ctrl+K focuses the current card or its closed
+shelf header. Up/Down traverse one order across all lists and headers; Left/Right
+collapse/expand a focused shelf. Enter/Space toggle a header or open a card.
+
+The timeline extends behind the prompt stack, matching T3 ChatView's composer
+overlay. An equal trailing inset keeps the last message above the prompt at the
+live edge. The prompt surface stays opaque so scrolling text does not obscure
+editing. `tools/test-qml composer-overlay` verifies overlap and end visibility;
+`sidebar-navigation` exercises actual Ctrl+K and arrow keys. The longer upward
+scroll fixture uses a floating window so desktop interaction cannot dismiss it.
+
+Desktop notifications pass a private 96px PNG to notify-send. Native project
+icon overrides take priority, followed by the native signed project-favicon
+asset and the bundled T3 logo. Input/waiting/plan, completed/review and failed
+notifications add an action badge. Asset downloads are bounded, same-origin and
+use no credentials on the signed GET; images are cached privately for one hour
+with a 128-file cap. SVG, emoji and monogram rendering uses librsvg; raster icons
+include PNG/JPEG/GIF/WebP/ICO support (native T3 extracts ICNS to PNG). The Lucide
+0.564.0 atlas matches T3's dependency and includes its license. Regenerate it with
+`tools/generate-project-icons` and the official lucide-static npm archive.

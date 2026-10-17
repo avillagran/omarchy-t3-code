@@ -66,7 +66,7 @@ Item {
             var selection = p.defaultModelSelection || (template ? template.modelSelection : null) || root.bridge.draft.modelSelection
             if (!selection) { root.bridge.managementError = T3I18n.tr("Select a model in an existing chat first."); return }
             var branchSource=root.sourceThread&&root.sourceThread.projectKey===p.key?root.sourceThread:null
-            root.bridge.manage({action: "new-thread", environment: p.environmentId, projectId: p.id, title: title.text.trim(), modelSelection: selection, runtimeMode: template ? template.runtimeMode : "approval-required",branch:branchSource?branchSource.branch:null,worktreePath:branchSource?branchSource.worktreePath:null})
+            root.bridge.requestNewThread({action: "new-thread", environment: p.environmentId, projectId: p.id, title: title.text.trim(), modelSelection: selection, runtimeMode: template ? template.runtimeMode : "approval-required",branch:branchSource?branchSource.branch:null,worktreePath:branchSource?branchSource.worktreePath:null})
           }
         }
       }
