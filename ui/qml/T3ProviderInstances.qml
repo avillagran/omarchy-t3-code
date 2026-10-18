@@ -111,21 +111,21 @@ ColumnLayout {
       Text{text:T3I18n.tr("Instance ID");color:root.fg;font.pixelSize:Style.font.caption}
       Controls.TextField{id:instanceId;objectName:"providerInstanceId";Layout.fillWidth:true;enabled:root.mode==="create";selectByMouse:true;onTextEdited:root.customId=true}
       Text{text:T3I18n.tr("Accent color (optional)");color:root.fg;font.pixelSize:Style.font.caption}
-      Controls.TextField{id:color;objectName:"providerAccentColor";Layout.fillWidth:true;placeholderText:"#4285F4";selectByMouse:true}
+      T3TextField{id:color;objectName:"providerAccentColor";Layout.fillWidth:true;placeholderText:"#4285F4";selectByMouse:true}
      }
      ColumnLayout{visible:root.step===2;Layout.fillWidth:true;spacing:Style.space(9)
       Repeater{model:root.fields
        ColumnLayout{required property var modelData;Layout.fillWidth:true;spacing:Style.space(4)
         Text{text:T3I18n.tr(modelData.label);color:root.fg;font.pixelSize:Style.font.caption}
         Loader{Layout.fillWidth:true;active:modelData.control==="select";visible:active;sourceComponent:Component{T3Select{width:parent.width;model:modelData.options;textRole:"name";currentIndex:Math.max(0,model.findIndex(function(o){return o.id===root.draftConfig[modelData.key]}));onActivated:function(i){root.setConfigValue(modelData.key,model[i].id)}}}}
-        Controls.TextField{objectName:"providerField_"+modelData.key;visible:modelData.control!=="select";Layout.fillWidth:true;placeholderText:modelData.control==="secret"||modelData.control==="password"&&root.selected&&root.selected.secrets[modelData.key]?T3I18n.tr("Saved value"):modelData.placeholder || "";text:root.draftConfig[modelData.key] || "";echoMode:modelData.control==="secret"||modelData.control==="password"?TextInput.Password:TextInput.Normal;selectByMouse:true;onTextEdited:root.setConfigValue(modelData.key,text)}
+        T3TextField{objectName:"providerField_"+modelData.key;visible:modelData.control!=="select";Layout.fillWidth:true;placeholderText:modelData.control==="secret"||modelData.control==="password"&&root.selected&&root.selected.secrets[modelData.key]?T3I18n.tr("Saved value"):modelData.placeholder || "";text:root.draftConfig[modelData.key] || "";echoMode:modelData.control==="secret"||modelData.control==="password"?TextInput.Password:TextInput.Normal;selectByMouse:true;onTextEdited:root.setConfigValue(modelData.key,text)}
        }
       }
       Text{Layout.fillWidth:true;text:T3I18n.tr("Environment variables");color:root.fg;font.pixelSize:Style.font.body}
       Repeater{model:root.draftEnvironment
        RowLayout{required property var modelData;required property int index;Layout.fillWidth:true;spacing:Style.space(6)
         Controls.TextField{Layout.preferredWidth:Style.space(135);placeholderText:T3I18n.tr("Name");text:modelData.name || "";selectByMouse:true;onEditingFinished:root.setEnvironment(index,"name",text.trim())}
-        Controls.TextField{Layout.fillWidth:true;placeholderText:modelData.configured?T3I18n.tr("Saved value"):T3I18n.tr("Value");text:modelData.value || "";echoMode:modelData.sensitive?TextInput.Password:TextInput.Normal;selectByMouse:true;onEditingFinished:root.setEnvironment(index,"value",text)}
+        T3TextField{Layout.fillWidth:true;placeholderText:modelData.configured?T3I18n.tr("Saved value"):T3I18n.tr("Value");text:modelData.value || "";echoMode:modelData.sensitive?TextInput.Password:TextInput.Normal;selectByMouse:true;onEditingFinished:root.setEnvironment(index,"value",text)}
         T3Switch{text:T3I18n.tr("Sensitive");checked:!!modelData.sensitive;onToggled:root.setEnvironment(index,"sensitive",checked)}
         T3IconButton{name:"x";tooltipText:T3I18n.tr("Remove");onClicked:root.draftEnvironment=root.draftEnvironment.filter(function(_,i){return i!==index})}
        }

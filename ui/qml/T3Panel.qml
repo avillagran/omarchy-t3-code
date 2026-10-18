@@ -220,6 +220,10 @@ Item {
   readonly property color fg: Color.popups.text
   readonly property color dim: Qt.rgba(fg.r, fg.g, fg.b, 0.57)
   readonly property color divider: Qt.rgba(fg.r, fg.g, fg.b, 0.09)
+  // Stock Controls (buttons, check boxes, text areas, popups) follow the
+  // Omarchy theme through the palette instead of Qt's light default.
+  readonly property color themeSurface: Color.popups.background
+  palette.window:root.themeSurface;palette.windowText:root.fg;palette.base:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05));palette.alternateBase:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.text:root.fg;palette.button:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.buttonText:root.fg;palette.highlight:Color.accent;palette.highlightedText:root.themeSurface;palette.placeholderText:root.dim;palette.toolTipBase:root.themeSurface;palette.toolTipText:root.fg;palette.link:Color.accent;palette.light:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.16));palette.midlight:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12));palette.mid:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.2));palette.dark:Qt.darker(root.themeSurface,1.4);palette.shadow:Qt.rgba(0,0,0,0.5)
   readonly property color surface: Qt.rgba(fg.r, fg.g, fg.b, 0.045)
   readonly property color healthy: Color.accent
   property string statusFilter: bridge.viewState.statusFilter || "all"
@@ -538,6 +542,7 @@ Item {
       parent:root.detached?desktop.contentItem:popup.surfaceItem
       LayoutMirroring.enabled:T3I18n.rtl;LayoutMirroring.childrenInherit:true
       anchors.fill: parent; spacing: 0
+      palette.window:root.themeSurface;palette.windowText:root.fg;palette.base:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05));palette.alternateBase:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.text:root.fg;palette.button:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.buttonText:root.fg;palette.highlight:Color.accent;palette.highlightedText:root.themeSurface;palette.placeholderText:root.dim;palette.toolTipBase:root.themeSurface;palette.toolTipText:root.fg;palette.link:Color.accent;palette.light:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.16));palette.midlight:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12));palette.mid:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.2));palette.dark:Qt.darker(root.themeSurface,1.4);palette.shadow:Qt.rgba(0,0,0,0.5)
       T3ShortcutRouter{id:nativeShortcuts;active:root.nativeKeybindingsEnabled&&root.nativeKeysActive;primary:root.nativePrimaryKeys;scripts:root.nativeScriptKeys;context:root.nativeShortcutContext;localOverrides:root.findOpen?["Ctrl+G","Ctrl+Shift+G"]:[];supports:function(command){return root.supportsNativeShortcut(command)};onTriggered:function(command){root.triggerNativeShortcut(command)}}
       Shortcut { sequence:"Meta+B";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+B");onActivated:root.toggleSidebar() }
       Shortcut { sequence:"Ctrl+F";enabled:!root.nativeKeybindingsEnabled&&(root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+F");onActivated:root.openFind() }
@@ -1099,7 +1104,7 @@ Item {
             id:findReveal;shown:root.findOpen;Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14);Layout.topMargin:Style.space(6)*extent;Layout.bottomMargin:Style.space(6)*extent
           RowLayout {
             anchors.fill:parent
-            Controls.TextField {
+            T3TextField {
               id:chatFindInput;objectName:"t3ChatFindInput";Layout.fillWidth:true;text:root.findQuery;placeholderText:T3I18n.tr("Find in conversation")
               onTextEdited:root.findQuery=text
               Keys.onReturnPressed:function(event){root.navigateFind(event.modifiers&Qt.ShiftModifier?-1:1);event.accepted=true}

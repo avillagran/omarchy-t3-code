@@ -11,6 +11,7 @@ T3Composer 1.0 T3Composer.qml
 singleton T3Palette 1.0 T3Palette.qml
 singleton T3Motion 1.0 T3Motion.qml
 T3Reveal 1.0 T3Reveal.qml
+T3TextField 1.0 T3TextField.qml
 T3ShelfResizer 1.0 T3ShelfResizer.qml
 singleton T3ProjectIcons 1.0 T3ProjectIcons.qml
 T3ProjectIcon 1.0 T3ProjectIcon.qml

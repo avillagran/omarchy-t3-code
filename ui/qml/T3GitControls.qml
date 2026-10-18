@@ -130,7 +130,7 @@ Item {
     Text{Layout.fillWidth:true;text:root.pendingLabel;color:root.fg;textFormat:Text.PlainText;font.bold:true}
     Text{Layout.fillWidth:true;visible:root.pending&&root.pending.operation==="script";text:root.pending&&root.pending.script?root.pending.script.command:"";font.family:"monospace";font.pixelSize:Style.font.caption;color:root.fg;wrapMode:Text.WrapAnywhere;textFormat:Text.PlainText}
     Text{Layout.fillWidth:true;text:T3I18n.tr("This operation can change files or remote state.");color:root.dim;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
-    Controls.TextField{visible:!!root.includesCommit;Layout.fillWidth:true;placeholderText:T3I18n.tr("Commit message (optional)");text:root.commitMessage;onTextEdited:root.commitMessage=text;color:root.fg;maximumLength:10000}
+    T3TextField{visible:!!root.includesCommit;Layout.fillWidth:true;placeholderText:T3I18n.tr("Commit message (optional)");text:root.commitMessage;onTextEdited:root.commitMessage=text;color:root.fg;maximumLength:10000}
     Text{visible:!!root.includesCommit;Layout.fillWidth:true;text:T3I18n.tr("Select files below, or leave all unchecked to commit all changes.");color:root.dim;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
     Controls.CheckBox{objectName:"t3GitDefaultConfirm";visible:!!root.needsDefaultConfirmation;text:T3I18n.tr("I confirm this operates on the default branch.");checked:root.defaultBranchConfirmed;onToggled:root.defaultBranchConfirmed=checked}
     RowLayout {
