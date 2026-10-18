@@ -35,17 +35,50 @@ pub fn apply(input: &Value) -> Result<Value> {
     }
     // Compare observed state first: some shipped Lua IPC implementations treat
     // set/unset like toggle. Avoid flipping an already-correct window on reopen.
-    if window["floating"].as_bool() == Some(mode == "floating") {
-        return Ok(json!({"mode":mode}));
+    if window["floating"].as_bool() != Some(mode == "floating") {
+        let command =
+            format!("hl.dsp.window.float({{ action = \"toggle\", window = \"address:{address}\" }})");
+        let result = Command::new("timeout")
+            .args(["2", "hyprctl", "dispatch", &command])
+            .output()
+            .map_err(|_| "window_manager_unavailable")?;
+        if !result.status.success() || String::from_utf8_lossy(&result.stdout).trim() != "ok" {
+            return Err("window_mode_failed".into());
+        }
     }
-    let command =
-        format!("hl.dsp.window.float({{ action = \"toggle\", window = \"address:{address}\" }})");
-    let result = Command::new("timeout")
-        .args(["2", "hyprctl", "dispatch", &command])
-        .output()
-        .map_err(|_| "window_manager_unavailable")?;
-    if !result.status.success() || String::from_utf8_lossy(&result.stdout).trim() != "ok" {
-        return Err("window_mode_failed".into());
-    }
+    restore_decorations(address);
     Ok(json!({"mode":mode}))
+}
+
+/// Broad `org.quickshell` rules (e.g. overlay veils) strip borders, shadows,
+/// animations and focus-follows-mouse from every shell window. As a regular
+/// window ot3 follows the user's own settings instead, so "no gaps or
+/// borders" and a normal border both apply. Best effort: a failure leaves
+/// the window usable, only undecorated.
+fn restore_decorations(address: &str) {
+    let border = Command::new("timeout")
+        .args(["2", "hyprctl", "getoption", "general:border_size", "-j"])
+        .output()
+        .ok()
+        .and_then(|o| serde_json::from_slice::<Value>(&o.stdout).ok())
+        .and_then(|v| v["int"].as_i64())
+        .filter(|n| (0..=100).contains(n))
+        .unwrap_or(2);
+    let props = [
+        ("border_size", border.to_string()),
+        ("decorate", "true".into()),
+        ("no_shadow", "false".into()),
+        ("no_anim", "false".into()),
+        ("no_follow_mouse", "false".into()),
+    ];
+    let batch = props
+        .iter()
+        .map(|(prop, value)| {
+            format!("dispatch hl.dsp.window.set_prop({{ window = \"address:{address}\", prop = \"{prop}\", value = \"{value}\" }})")
+        })
+        .collect::<Vec<_>>()
+        .join(" ; ");
+    let _ = Command::new("timeout")
+        .args(["2", "hyprctl", "--batch", &batch])
+        .output();
 }
