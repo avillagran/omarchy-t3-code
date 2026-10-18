@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.11
 import QtQml.Models
 import QtQuick.Layouts
 import QtQuick.Controls as Controls

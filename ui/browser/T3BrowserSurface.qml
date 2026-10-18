@@ -1,5 +1,5 @@
-import QtQuick
-import QtQuick.Window
+import QtQuick 6.11
+import QtQuick.Window 6.11
 import QtWebEngine
 Window {
  id:root;visible:true;width:browserData.width || 900;height:browserData.height || 620;color:"#ffffff"

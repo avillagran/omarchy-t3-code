@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.11
 import qs.Commons
 
 // Animated sky. One instance owns the clock; others follow it through
