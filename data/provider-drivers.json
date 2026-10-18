@@ -1,0 +1,14 @@
+{
+  "upstreamCommit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "drivers": [
+    {"id":"codex","label":"Codex","defaultEnabled":true,"fields":[{"key":"binaryPath","label":"Binary path","placeholder":"codex"},{"key":"homePath","label":"CODEX_HOME path","placeholder":"~/.codex"},{"key":"shadowHomePath","label":"Shadow home path","placeholder":"~/.codex-t3/personal"},{"key":"launchArgs","label":"Launch arguments"}]},
+    {"id":"claudeAgent","label":"Claude","defaultEnabled":true,"fields":[{"key":"binaryPath","label":"Binary path","placeholder":"claude"},{"key":"homePath","label":"CLAUDE_CONFIG_DIR path","placeholder":"~/.claude"},{"key":"autoCompactWindow","label":"Auto-compact after","placeholder":"300000"},{"key":"launchArgs","label":"Launch arguments"}]},
+    {"id":"cursor","label":"Cursor","defaultEnabled":false,"fields":[]},
+    {"id":"grok","label":"Grok","defaultEnabled":false,"fields":[{"key":"binaryPath","label":"Binary path","placeholder":"grok"}]},
+    {"id":"opencode","label":"OpenCode","defaultEnabled":false,"fields":[{"key":"binaryPath","label":"Binary path","placeholder":"opencode"},{"key":"serverUrl","label":"Server URL","placeholder":"http://127.0.0.1:4096"},{"key":"serverPassword","label":"Server password","control":"password","placeholder":"Optional"}]},
+    {"id":"antigravity","label":"Antigravity","defaultEnabled":false,"fields":[{"key":"authMethod","label":"Sign-in method","control":"select","options":[{"id":"oauth-personal","name":"Google account"},{"id":"oauth-business","name":"Gemini Enterprise"},{"id":"gemini-api-key","name":"Gemini API key"},{"id":"agent-platform","name":"Agent Platform (Vertex AI)"}]},{"key":"apiKey","label":"API key","control":"secret"},{"key":"gcpProject","label":"GCP project"},{"key":"gcpLocation","label":"GCP location"},{"key":"binaryPath","label":"Binary path"}]},
+    {"id":"muse","label":"Muse Code","defaultEnabled":false,"fields":[{"key":"binaryPath","label":"Binary path","placeholder":"muse"}]},
+    {"id":"pi","label":"Pi","defaultEnabled":false,"fields":[{"key":"binaryPath","label":"Binary path","placeholder":"pi"},{"key":"launchArgs","label":"Launch arguments"}]},
+    {"id":"acpRegistry","label":"ACP Registry","hasDefaultInstance":false,"fields":[{"key":"source","label":"ACP source","control":"select","options":[{"id":"registry","name":"ACP Registry"},{"id":"local","name":"Local command"}]},{"key":"agentId","label":"Registry agent ID"},{"key":"commandPath","label":"Executable override"},{"key":"authMethodId","label":"Authentication method"}]}
+  ]
+}

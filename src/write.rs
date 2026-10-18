@@ -266,6 +266,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{crate::connection_github::read(&e,&tag,payload)}},
         "settings" if matches!(text(input,"action"),"workspace-read"|"workspace-update")=>workspace_preference(&e,input),
         "settings"=>crate::native_settings::execute(&e,input),
+        "provider-instances"=>crate::provider_instances::execute(&e,input),
         "catalog"=>catalog(&e),
         "project-sources"=>project_sources(&e),
         "browse-folders"=>{

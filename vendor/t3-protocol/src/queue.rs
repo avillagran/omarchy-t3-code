@@ -11,7 +11,10 @@ pub fn derive(p:&Value)->Value{
  let mut queued:Vec<&Value>=rows(p,"runs").filter(|r|r["status"]=="queued" && !rows(p,"messages").any(|m|m["id"]==r["userMessageId"]&&(m.get("delegatedCompletion").is_some()||m.get("notification").is_some()))).collect();
  queued.sort_by_key(|r|(r["queuePosition"].as_u64().or(r["ordinal"].as_u64()).unwrap_or(0),r["ordinal"].as_u64().unwrap_or(0)));
  let items:Vec<Value>=queued.iter().map(|r|{let m=rows(p,"messages").find(|m|m["id"]==r["userMessageId"]);json!({"available":m.is_some(),"runId":r["id"],"messageId":r["userMessageId"],"text":m.map(|m|text(m,"text")).unwrap_or(""),"attachments":m.map(|m|m["attachments"].clone()).filter(Value::is_array).unwrap_or(json!([])),"context":m.map(|m|m["context"].clone()).unwrap_or(Value::Null)})}).collect();
- let hidden:Vec<Value>=rows(p,"runs").filter(|r|r["status"]=="queued" || (r["status"]=="cancelled"&&r["startedAt"].is_null())).map(|r|r["userMessageId"].clone()).collect();
+ // A promoted steer cancels its queued run but re-homes the message onto the
+ // active run; only hide messages still owned by the queued/cancelled run.
+ let owned=|r:&Value|rows(p,"messages").find(|m|m["id"]==r["userMessageId"]).map_or(true,|m|m["runId"].is_null()||m["runId"]==r["id"]);
+ let hidden:Vec<Value>=rows(p,"runs").filter(|r|(r["status"]=="queued" || (r["status"]=="cancelled"&&r["startedAt"].is_null()))&&owned(r)).map(|r|r["userMessageId"].clone()).collect();
  let steerable=active.is_some_and(|a|a["status"]=="running"&&a["activeAttemptId"].is_string()&&rows(p,"providerTurns").any(|t|t["runAttemptId"]==a["activeAttemptId"]&&t["status"]=="running"));
  json!({"acknowledgedMessageIds":rows(p,"messages").map(|m|m["id"].clone()).chain(rows(p,"runs").map(|r|r["userMessageId"].clone())).collect::<Vec<_>>(),"items":items,"hiddenMessageIds":hidden,"held":rows(p,"runs").any(|r|r["status"]=="queued"&&r["queueHeld"]==true),"activeRunId":active.map(|a|a["id"].clone()),"canReorder":caps.is_some_and(|c|c["supportsQueuedMessages"]==true),"canSteer":steerable&&caps.is_some_and(|c|c["supportsActiveSteering"]==true||c["supportsSteeringByInterruptRestart"]==true)})
 }
@@ -19,6 +22,9 @@ pub fn derive(p:&Value)->Value{
  #[test]fn queue_order_capabilities_and_timeline_visibility_follow_t3(){
  let mut p=json!({"thread":{"id":"thread"},"runs":[{"id":"active","status":"running","userMessageId":"sent","ordinal":1,"activeAttemptId":"attempt"},{"id":"later","status":"queued","userMessageId":"q2","ordinal":3},{"id":"first","status":"queued","userMessageId":"q1","ordinal":4,"queuePosition":1,"queueHeld":true},{"id":"cancel","status":"cancelled","userMessageId":"removed","startedAt":null},{"id":"auto","status":"queued","userMessageId":"notification"}],"messages":[{"id":"q1","text":"First","attachments":[{"id":"file"}]},{"id":"q2","text":"Later"},{"id":"notification","notification":{}}],"providerSessions":[{"id":"session","status":"ready","capabilities":{"turns":{"supportsQueuedMessages":true,"supportsActiveSteering":true}}}],"providerTurns":[{"status":"running","runAttemptId":"attempt"}]});
  let q=derive(&p);assert_eq!(q["items"].as_array().unwrap().len(),2);assert_eq!(q["items"][0]["runId"],"first");assert_eq!(q["items"][0]["attachments"][0]["id"],"file");assert_eq!(q["held"],true);assert_eq!(q["canSteer"],true);assert_eq!(q["canReorder"],true);assert!(!q["hiddenMessageIds"].as_array().unwrap().contains(&json!("sent")));p["runs"][1]["status"]=json!("running");p["runs"][1]["startedAt"]=json!(1);assert!(!derive(&p)["hiddenMessageIds"].as_array().unwrap().contains(&json!("q2")));p["providerTurns"]=json!([]);assert_eq!(derive(&p)["canSteer"],false);
+ // Promoted to steer: the queued run is cancelled, its message moves to the active run.
+ p["runs"][2]["status"]=json!("cancelled");p["messages"][0]["runId"]=json!("active");assert!(!derive(&p)["hiddenMessageIds"].as_array().unwrap().contains(&json!("q1")));
+ p["messages"][0]["runId"]=json!("first");assert!(derive(&p)["hiddenMessageIds"].as_array().unwrap().contains(&json!("q1")));
  }
 }
 /// Native queue commands. The host supplies a validated thread and stable commandId.

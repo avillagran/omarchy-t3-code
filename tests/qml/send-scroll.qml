@@ -21,8 +21,8 @@ ShellRoot {
   if(phase>0 && panel.restoringConversation)return
   if(phase===0){if(!b.viewStateLoaded)return;b.state={threads:[{key:"fixture/one",id:"one",environmentId:"fixture",title:"One"}],projects:[],environments:[]};fixtureState=b.state;b.selectThread("fixture","one");var rows=[];for(var i=0;i<45;i++)rows.push({id:"row-"+i,role:"assistant",text:"Message "+i,html:"<p>Message "+i+"</p><p>More text</p>"});b.transcript=rows;panel.open();phase=1
   }else if(phase===1){if(b.draft.loading)return;c.positionViewAtIndex(8,ListView.Beginning);panel.captureState();check(!c.atYEnd,"start from old messages");b.patchDraft(b.selectedKey,{text:"Test prompt",busy:false,attempt:null,attachments:[]});panel.composerView.inputField.forceActiveFocus();Qt.callLater(function(){panel.composerView.inputField.cursorPosition=b.draft.text.length});phase=101
-  }else if(phase===101){keys.keyClick(Qt.Key_Return);phase=102
-  }else if(phase===102){check(submissions===0&&b.draft.text.endsWith("\n"),"Enter inserts newline without sending");keys.keyClick(Qt.Key_Return,Qt.ControlModifier);check(submissions===1,"CtrlEnter emits accepted send intent");phase=2
+  }else if(phase===101){keys.keyClick(Qt.Key_Return,Qt.ShiftModifier);phase=102
+  }else if(phase===102){check(submissions===0&&b.draft.text.endsWith("\n"),"ShiftEnter inserts newline without sending");keys.keyClick(Qt.Key_Return);check(submissions===1,"Enter emits accepted send intent");phase=2
   }else if(phase===2){check(c.atYEnd,"send immediately returns to end");append("user","Test prompt");phase=3
   }else if(phase===3){check(c.atYEnd,"new sent message stays visible");b.patchDraft(b.selectedKey,{text:"",busy:false,attempt:null});append("assistant",Array(22).fill("A growing response<br>").join(""));phase=4
   }else if(phase===4){check(c.atYEnd,"response growth and composer shrink follow end");c.forceActiveFocus();keys.keyClick(Qt.Key_Home);phase=5

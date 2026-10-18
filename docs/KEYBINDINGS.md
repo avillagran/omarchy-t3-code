@@ -121,8 +121,9 @@ claimer must not accidentally invoke an earlier action or a legacy Qt alias.
 `T3ShortcutRouter.qml` registers effective Qt WindowShortcuts and rebuilds them
 when context/configuration changes. It coordinates the older local aliases,
 recording, Preferences, model/permission pickers and modal workflows. The
-requested Ctrl+Enter send and Ctrl+Shift+Enter new-thread behavior remain reserved
-ot3 adaptations. Native DOM Enter maps to both Qt Return and keypad Enter.
+requested Enter-send and Shift+Enter-newline behavior is reserved while the
+composer is focused. Ctrl+Enter remains a send alias, and Ctrl+Shift+Enter starts
+a new thread. The expanded editor keeps plain Enter for multiline editing. Native DOM Enter maps to both Qt Return and keypad Enter.
 
 Implemented dispatch: sidebar, conversation find, new/new-local, thread previous/
 next/jumps, existing external native-terminal frontend, working-tree diff,

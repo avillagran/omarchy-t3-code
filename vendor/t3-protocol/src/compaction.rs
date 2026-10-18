@@ -25,6 +25,13 @@ pub fn candidate(p: &Value, settings: &Value, now: i64) -> Value {
         return skip("disabled");
     }
     let t = &p["thread"];
+    // Rechecked on the fresh projection immediately before dispatch as well.
+    if t["settledOverride"] == "settled"
+        || t["settledOverride"] == true
+        || (t["settledOverride"] != "active" && timestamp(&t["settledAt"]) > 0)
+    {
+        return skip("unavailable");
+    }
     if t["archivedAt"].is_string()
         || t["deletedAt"].is_string()
         || t["lineage"]["relationshipToParent"] == "subagent"
@@ -213,6 +220,26 @@ mod tests {
         assert_eq!(
             candidate(&p, &json!({}), 3_320_000)["status"],
             "unknown_context"
+        );
+    }
+    #[test]
+    fn settled_threads_stay_asleep_until_explicitly_active() {
+        for override_value in [json!("settled"), json!(true), Value::Null] {
+            let mut p = fixture();
+            p["thread"]["settledOverride"] = override_value;
+            p["thread"]["settledAt"] = json!(25_000);
+            assert_eq!(
+                candidate(&p, &json!({}), 3_320_000)["status"],
+                "unavailable"
+            );
+            p["thread"]["settledOverride"] = json!("active");
+            assert_eq!(candidate(&p, &json!({}), 3_320_000)["status"], "due");
+        }
+        let mut p = fixture();
+        p["thread"]["settledOverride"] = json!("settled");
+        assert_eq!(
+            candidate(&p, &json!({}), 3_320_000)["status"],
+            "unavailable"
         );
     }
     #[test]

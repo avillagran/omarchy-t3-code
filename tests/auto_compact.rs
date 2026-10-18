@@ -36,7 +36,11 @@ impl Harness {
                 .unwrap()
                 .to_rfc3339()
         };
-        let raw = json!({"id":"thread","title":"Synthetic","projectId":"p","providerInstanceId":"codex","modelSelection":{"instanceId":"codex","model":"m"},"activeProviderThreadId":"pt","activeRunId":null,"status":"completed","updatedAt":iso(now-50000),"latestRunCompletedAt":iso(now-50000),"latestUserAuthoredMessageAt":iso(now-60000),"latestRunId":"r","latestRunStatus":"completed"});
+        let mut raw = json!({"id":"thread","title":"Synthetic","projectId":"p","providerInstanceId":"codex","modelSelection":{"instanceId":"codex","model":"m"},"activeProviderThreadId":"pt","activeRunId":null,"status":"completed","updatedAt":iso(now-50000),"latestRunCompletedAt":iso(now-50000),"latestUserAuthoredMessageAt":iso(now-60000),"latestRunId":"r","latestRunStatus":"completed"});
+        if mode == "settled" {
+            raw["settledOverride"] = json!("settled");
+            raw["settledAt"] = json!(iso(now - 40000));
+        }
         let projection = json!({"thread":raw,"messages":[{"id":"human","role":"user","createdBy":"user","text":"synthetic task","createdAt":iso(now-if mode=="expired"{120000}else{60000})}],"providerThreads":[{"id":"pt","appThreadId":"thread","providerInstanceId":"codex"}],"providerTurns":[{"id":"turn","providerThreadId":"pt","tokenUsage":{"usedTokens":50000,"updatedAt":iso(now-if mode=="scheduled"{43000}else if mode=="expired"{61000}else{50000})}}],"runs":[{"id":"r","providerThreadId":"pt","status":"completed","completedAt":iso(now-50000)}],"runtimeRequests":[],"plans":[],"subagents":[]});
         let stop = Arc::new(AtomicBool::new(false));
         let stopper = stop.clone();
@@ -101,6 +105,11 @@ impl Harness {
                                 let mut p = p.clone();
                                 let mut count = reads.lock().unwrap();
                                 *count += 1;
+                                if mode == "settled-race" && *count >= 2 {
+                                    p["thread"]["settledOverride"] = json!("settled");
+                                    p["thread"]["settledAt"] =
+                                        json!(chrono::Utc::now().to_rfc3339());
+                                }
                                 if mode == "busy" && *count >= 2 {
                                     p["thread"]["activeRunId"] = json!("other");
                                 }
@@ -279,4 +288,31 @@ fn expired_scheduled_entry_becomes_terminal_without_repeated_context_reads() {
     Harness::end(c, i);
     assert_eq!(*h.reads.lock().unwrap(), 1);
     assert!(h.commands.lock().unwrap().is_empty());
+}
+
+#[test]
+fn settled_snapshot_never_reads_context_or_dispatches() {
+    let h = Harness::new("settled");
+    // A previously scheduled deadline must be retired even without a context read.
+    let dir = h.root.join("state/omarchy-t3-code/compaction");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("ledger.json"),json!({"fixture/thread":{"status":"scheduled","episode":"old","dueAt":chrono::Utc::now().timestamp_millis()+1000}}).to_string()).unwrap();
+    let (c, input, rx) = h.start();
+    Harness::wait(&rx, "unavailable");
+    thread::sleep(Duration::from_millis(150));
+    assert_eq!(*h.reads.lock().unwrap(), 0);
+    assert!(h.commands.lock().unwrap().is_empty());
+    let ledger: Value =
+        serde_json::from_slice(&fs::read(dir.join("ledger.json")).unwrap()).unwrap();
+    assert_eq!(ledger["fixture/thread"]["status"], "unavailable");
+    Harness::end(c, input);
+}
+#[test]
+fn freshly_settled_thread_cannot_be_awakened_by_compaction() {
+    let h = Harness::new("settled-race");
+    let (c, input, rx) = h.start();
+    Harness::wait(&rx, "unavailable");
+    assert_eq!(*h.reads.lock().unwrap(), 2);
+    assert!(h.commands.lock().unwrap().is_empty());
+    Harness::end(c, input);
 }

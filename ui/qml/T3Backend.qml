@@ -11,6 +11,7 @@ import qs.Commons
 import "../js/DocumentTheme.js" as DocumentTheme
 import "../js/SidebarModel.js" as Sidebar
 import "../js/NativeKeybindings.js" as NativeKeys
+import "../js/UsageLimits.js" as Usage
 
 Singleton {
   id: root
@@ -92,6 +93,13 @@ Singleton {
     planOperation=Object.assign({},op,{busy:true,error:""});patchDraft(key,{attempt:c,busy:true,error:""});flushDraft(key,c)
   }
   property var settingsResult:({busy:false,error:"",fields:[],environment:""})
+  property var providerInstances:({busy:false,error:"",environment:"",instances:[],writable:false,requestId:""})
+  function requestProviderInstances(environment,action,values){
+    if(providerInstances.busy||!environment||environment==="*")return
+    if(!worker.running){providerInstances={busy:false,error:"disconnected",environment:environment,instances:[],drivers:[],writable:false,requestId:""};return}
+    var id=uuid();providerInstances={busy:true,error:"",environment:environment,instances:providerInstances.environment===environment?providerInstances.instances:[],writable:providerInstances.environment===environment&&providerInstances.writable,requestId:id,action:action}
+    send(Object.assign({op:"provider-instances",environment:environment,action:action,requestId:id},values || {}))
+  }
   property var connectionSettings:({busy:false,error:"",environments:[],revision:""})
   property var connectionSettingsCommand:null
   property bool connectionChanging:false
@@ -142,7 +150,7 @@ Singleton {
   function requestSettings(environment,key,value,scope,clear){
     if(settingsResult.busy&&key)return
     var id=uuid(),signature=scope?JSON.stringify(scope):""
-    settingsResult=Object.assign({},settingsResult,{busy:true,error:"",requestId:id,environment:environment,scopeSignature:signature,errors:[],savedTargets:[],writable:false,fields:settingsResult.environment===environment&&settingsResult.scopeSignature===signature?settingsResult.fields:[]})
+    settingsResult=Object.assign({},settingsResult,{busy:true,error:"",requestId:id,environment:environment,scopeSignature:signature,errors:[],savedTargets:[],writable:false,fields:settingsResult.environment===environment&&settingsResult.scopeSignature===signature?settingsResult.fields:[],storageScopes:settingsResult.environment===environment&&settingsResult.scopeSignature===signature?settingsResult.storageScopes || []:[]})
     var command={op:"settings",action:clear?"clear":key?"update":"read",key:key || "",value:value,environment:environment,requestId:id}
     if(scope)command.scope=scope
     send(command)
@@ -168,6 +176,12 @@ Singleton {
   Timer{interval:300;repeat:true;running:root.panelVisible&&root.scrollPolicy.trackUnderlay===true;onTriggered:root.probeScroll()}
   Timer{id:scrollProbeDelay;interval:150;onTriggered:if(root.panelVisible)root.probeScroll()}
   property var providers: []
+  property var quotaSnapshot:({environments:[],localSources:[]})
+  property var quotaNotices:[]
+  property var quotaExternal:[]
+  function presentQuotas(){var view=Usage.present(quotaSnapshot,Date.now());providers=view.providers;quotaNotices=view.notices;quotaExternal=view.external}
+  function refreshQuotas(){send({op:"quotas-refresh"})}
+  Timer{interval:60000;repeat:true;running:root.panelVisible;onTriggered:root.presentQuotas()}
   property bool stale: true
   property string error: ""
   property string quotaError: ""
@@ -344,14 +358,41 @@ Singleton {
   function ensureSidebarCatalogs(){if(panelVisible)(state.environments || []).filter(function(e){return e.state==="ready"}).forEach(function(e){root.ensureCatalog(e.id)})}
   function ensureCatalog(env){if(!env || catalogs[env] || catalogLoading[env])return;var pending=Object.assign({},catalogLoading);pending[env]=true;catalogLoading=pending;send({op:"catalog",environment:env})}
   function discardDraft(key){var d=drafts[key];if(!d || d.busy || d.loading || d.attempt || d.loadError)return;patchDraft(key,{text:"",attachments:[],error:""});flushDraft(key)}
+  // Capture sidebar order before Settle changes grouping. A selection epoch also
+  // prevents an away-and-back navigation during the RPC from being overridden.
+  property int selectionEpoch:0
+  onSelectedKeyChanged:selectionEpoch++
+  property var settleNavigation:null
+  property var settleNavigationOrder:[]
+  signal settleNavigationPlanning()
+  signal settledLastThread(var thread)
+  function planSettleNavigation(command){
+    if(command.action!=="settle"||selectedKey!==command.environment+"/"+command.thread)return null
+    settleNavigationOrder=state.threads || []
+    settleNavigationPlanning()
+    var order=settleNavigationOrder,at=order.findIndex(function(t){return t.key===root.selectedKey})
+    var candidates=at<0?[]:order.slice(at+1).concat(order.slice(0,at)).map(function(t){return t.key})
+    return {requestId:command.requestId,key:selectedKey,epoch:selectionEpoch,candidates:candidates,thread:Object.assign({},selectedInfo)}
+  }
+  function finishSettleNavigation(plan){
+    if(!plan||plan.epoch!==selectionEpoch||plan.key!==selectedKey)return
+    var next=null
+    for(var i=0;i<plan.candidates.length;i++){
+      var key=plan.candidates[i]
+      next=(state.threads || []).find(function(t){return t.key===key&&!t.settled&&!t.snoozed&&!t.archivedAt&&!t.deletedAt&&!t.providerSubagent&&t.relationshipToParent!=="subagent"})
+      if(next)break
+    }
+    if(next)selectThread(next.environmentId,next.id)
+    else {clearSelection();settledLastThread(plan.thread)}
+  }
   property var managementRequest: null
   property var folderBrowse:({busy:false,error:"",entries:[],parentPath:""})
   property var projectSources:({busy:false,providers:[]})
   property var pendingProjectOpen:null
   signal projectOpened(string environment,string projectId,string error)
-  function openProject(environment,projectId){
+  function openProject(environment,projectId,createThread){
     if(managementBusy||managementRequest)return
-    pendingProjectOpen={environment:environment,projectId:projectId,requestId:""}
+    pendingProjectOpen={environment:environment,projectId:projectId,requestId:"",createThread:createThread===true}
     managementError="";finishProjectOpen();refresh()
   }
   function finishProjectOpen(){
@@ -360,9 +401,9 @@ Singleton {
     var project=(state.projects || []).find(function(p){return p.environmentId===pending.environment&&p.id===pending.projectId})
     if(!project)return
     var threads=(state.threads || []).filter(function(t){return t.environmentId===pending.environment&&t.projectId===pending.projectId&&!t.settled})
-    if(threads.length){pendingProjectOpen=null;selectThread(pending.environment,threads[0].id);projectOpened(pending.environment,pending.projectId,"");return}
-    var selection=project.defaultModelSelection || (selectedEnvironment===pending.environment?(draft.modelSelection || selectedInfo.modelSelection):null)
-    if(!selection){var template=(state.threads || []).find(function(t){return t.environmentId===pending.environment&&t.modelSelection});selection=template?template.modelSelection:null}
+    if(threads.length&&!pending.createThread){pendingProjectOpen=null;selectThread(pending.environment,threads[0].id);projectOpened(pending.environment,pending.projectId,"");return}
+    var selection=project.defaultModelSelection || (selectedInfo.projectId===pending.projectId&&!selectedInfo.settled&&selectedEnvironment===pending.environment?(draft.modelSelection || selectedInfo.modelSelection):null)
+    if(!selection){var template=(state.threads || []).find(function(t){return t.environmentId===pending.environment&&t.projectId===pending.projectId&&!t.settled&&t.modelSelection});selection=template?template.modelSelection:null}
     if(!selection){
       var available=catalogs[pending.environment]
       if(!available){ensureCatalog(pending.environment);return}
@@ -401,6 +442,7 @@ Singleton {
   function manage(values) {
     if (managementBusy) return
     var command = managementRequest || Object.assign({op:"manage",requestId:uuid()},values)
+    if(!managementRequest)settleNavigation=planSettleNavigation(command)
     managementRequest = command; managementBusy = true; managementError = ""; send(command)
   }
   readonly property var selectedInfo: state.threads.find(function(t) { return t.key === root.selectedKey }) || ({})
@@ -1182,6 +1224,10 @@ Singleton {
       return
     }
     if(data.op==="settings"){if(settingsResult.busy&&data.requestId===settingsResult.requestId)settingsResult=Object.assign({},settingsResult,{busy:false,error:data.error || ""},data.result || {});return}
+    if(data.op==="provider-instances"){
+      if(providerInstances.busy&&data.requestId===providerInstances.requestId&&data.environment===providerInstances.environment){providerInstances=Object.assign({},providerInstances,{busy:false,error:data.error || ""},data.result || {});if(!data.error&&providerInstances.action!=="read")refreshCatalogIn(data.environment)}
+      return
+    }
     if(data.op==="copy"){copyFinished(data.requestId,data.error || "");return}
     if(data.op==="document-open"){if(inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{busy:false,error:data.error || "",data:data.result || null});return}if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
     if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)acceptBackendStatus(data.result.local);if(!data.error&&data.result&&data.result.status!=="stopped")recoverLocalBackend();refreshBackendStatus();refresh();return}
@@ -1231,6 +1277,7 @@ Singleton {
       // Older desktop clients returned no ID for Project.id responses.
       if(!data.error&&data.result&&data.result.action==="add-project"&&!data.result.projectId)data.result=Object.assign({},data.result,{projectId:"omarchy-project-"+data.requestId})
       var creation=managementRequest
+      var parked=settleNavigation&&settleNavigation.requestId===data.requestId?settleNavigation:null
       var sourceKey=creation.environment+"/"+creation.thread
       var source=drafts[sourceKey]
       var moving=source&&source.attempt&&source.attempt.op==="manage"&&source.attempt.requestId===creation.requestId
@@ -1254,15 +1301,16 @@ Singleton {
           flushDraft(destination,attempt)
         }
       }
-      if (!retryable) managementRequest = null
+      if (!retryable) {managementRequest = null;settleNavigation=null}
       if (!data.error) {
         if(data.result.action==="project-remove" && selectedInfo.projectKey===data.environment+"/"+data.result.projectId){var next=state.threads.find(function(t){return t.projectKey!==root.selectedInfo.projectKey});if(next)selectThread(next.environmentId,next.id);else clearSelection()}
         if(["archive","delete-thread"].indexOf(data.result.action)>=0 && selectedKey===data.environment+"/"+data.result.threadId){var nextThread=state.threads.find(function(t){return t.key!==root.selectedKey});if(nextThread)selectThread(nextThread.environmentId,nextThread.id);else clearSelection()}
+        if(data.result.action==="settle")finishSettleNavigation(parked)
         refresh(); if (data.result.action === "new-thread"&&creation.planFollowUp!==true&&(!moving||selectedKey===sourceKey)) selectThread(data.environment,data.result.threadId)
       }
       managementFinished(data)
       if(pendingProjectOpen&&pendingProjectOpen.requestId===data.requestId){var opened=pendingProjectOpen;if(data.error!=="rpc_outcome_unknown")pendingProjectOpen=null;projectOpened(opened.environment,opened.projectId,data.error || "")}
-      if(!data.error&&["add-project","create-project","clone-project"].indexOf(data.result.action)>=0){var environment=data.environment,projectId=data.result.projectId;Qt.callLater(function(){root.openProject(environment,projectId)})}
+      if(!data.error&&["add-project","create-project","clone-project"].indexOf(data.result.action)>=0){var environment=data.environment,projectId=data.result.projectId;Qt.callLater(function(){root.openProject(environment,projectId,true)})}
       return
     }
     var key = data.environment + "/" + data.thread
@@ -1330,7 +1378,7 @@ Singleton {
   }
   function refresh() { send({op: "refresh"}) }
   function search(value) { query = value }
-  function clearSelection(){dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""};threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";planView=({plans:[],ready:null});planOperation=({busy:false,error:"",command:null});transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
+  function clearSelection(){clearInlineDocuments();closeDocument();documentOpen=({busy:false,error:"",requestId:""});dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""};threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";planView=({plans:[],ready:null});planOperation=({busy:false,error:"",command:null});transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
   function selectThread(env, thread) {
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}
     if (selectedEnvironment === env && selectedThread === thread) { fetchMessages(); return }
@@ -1454,7 +1502,7 @@ Singleton {
         var current = state.threads.find(function(t) { return t.key === root.selectedKey })
         if (current) { selectedTitle = current.title; selectedProject = current.project }
         finishLocalRecovery();snapshotUpdated() }
-      else if (event.type === "quotas") { providers = data.providers || []; quotaError = "" }
+      else if (event.type === "quotas") { quotaSnapshot=data;presentQuotas();quotaError = "" }
       else if (event.type === "messages" && data.serial === requestedSerial && panelVisible) {
         loadingMessages = false; messageError = data.result.error || ""
         if(data.result.threadState){var currentKey=selectedKey,current=state.threads.find(function(t){return t.key===currentKey}),delta=data.result.threadState;if(current && Object.keys(delta).some(function(k){return current[k]!==delta[k]})){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===currentKey?Object.assign({},t,delta):t})});snapshotUpdated()}}

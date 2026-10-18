@@ -680,6 +680,82 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
         environment: "fixture".into(),
         origin_key: read["originKey"].as_str().unwrap().into(),
     }];
+    // A nonempty import must not recreate the existing Qt page or its history.
+    let page_loads = || {
+        server
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|r| r["http"].as_str().is_some_and(|v| v.starts_with("GET /")))
+            .count()
+    };
+    let before_import = page_loads();
+    let mut importing = manager.begin("default", &store, &scope).unwrap();
+    assert!(importing
+        .write_cookie(
+            "fixture",
+            omarchy_t3_client::browser_cookies::ImportedCookie {
+                url: format!("{}/", server.env.base_url),
+                name: "live-import".into(),
+                value: "PRIVATE_LIVE_COOKIE".into(),
+                domain: None,
+                path: "/".into(),
+                secure: false,
+                http_only: true,
+                expiration_date: None,
+                same_site: "strict",
+            }
+        )
+        .unwrap());
+    let flushing = thread::spawn(move || {
+        let result = importing.flush_import("fixture");
+        (importing, result)
+    });
+    thread::sleep(Duration::from_millis(100));
+    assert!(
+        !flushing.is_finished(),
+        "fresh cookie awaits Chromium persistence"
+    );
+    let parallel_start = Instant::now();
+    let parallel = manager.begin("parallel", &store, &scope).unwrap();
+    assert!(
+        parallel_start.elapsed() < Duration::from_secs(2),
+        "another profile remains available while live import persistence is pending"
+    );
+    drop(parallel);
+    let (importing, result) = flushing.join().unwrap();
+    result.unwrap();
+    drop(importing);
+    let mut resume = show.clone();
+    resume["requestId"] = json!("after-import");
+    manager.request(resume, true);
+    let until = Instant::now() + Duration::from_secs(8);
+    loop {
+        let v = rx
+            .recv_timeout(until.saturating_duration_since(Instant::now()))
+            .unwrap();
+        if v["requestId"] == "after-import" && v["kind"] == "frame" {
+            break;
+        }
+    }
+    assert_eq!(
+        page_loads(),
+        before_import,
+        "import/lease end/reattach cannot reload the live page"
+    );
+    let count = server.calls.lock().unwrap().len();
+    manager.request(
+        json!({"op":"browser-control","requestId":"after-import","action":"back"}),
+        true,
+    );
+    reported(count, &format!("{}/page", server.env.base_url));
+    let count = server.calls.lock().unwrap().len();
+    manager.request(
+        json!({"op":"browser-control","requestId":"after-import","action":"forward"}),
+        true,
+    );
+    reported(count, &format!("{}/next", server.env.base_url));
     let mut cleanup = manager.begin("default", &store, &scope).unwrap();
     let mut blocked = show.clone();
     blocked["requestId"] = json!("during-cleanup");

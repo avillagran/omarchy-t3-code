@@ -17,3 +17,6 @@ __pycache__/
 /ui/browser/browser-host.moc
 
 /bin/t3-browser-secret
+
+# Vendored crate build output.
+/vendor/t3-protocol/target/

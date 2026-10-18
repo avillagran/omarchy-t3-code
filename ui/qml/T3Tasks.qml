@@ -46,11 +46,14 @@ Rectangle{
    MouseArea{id:hover;anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.PointingHandCursor;onClicked:root.expanded=!root.expanded}
    Controls.ToolTip.visible:hover.containsMouse;Controls.ToolTip.text:header.Accessible.name
   }
+  T3Reveal{
+   id:listReveal;Layout.fillWidth:true;shown:root.expanded
+   size:Math.min(list.contentHeight,Style.space(180))
   ListView{
     T3Wheel {flickable:list}
    id:list;objectName:"t3TaskList"
-   Layout.fillWidth:true;Layout.preferredHeight:Math.min(contentHeight,Style.space(180))
-   visible:root.expanded;clip:true;reuseItems:false;cacheBuffer:0
+   anchors.fill:parent
+   clip:true;reuseItems:false;cacheBuffer:0
    model:root.tasks.items;spacing:Style.space(3)
    Controls.ScrollBar.vertical:Controls.ScrollBar{}
    delegate:Item{
@@ -65,6 +68,7 @@ Rectangle{
      Text{Layout.preferredWidth:Style.space(52);Layout.alignment:Qt.AlignTop;text:root.duration(modelData);color:root.dim;opacity:0.8;font.pixelSize:Style.font.caption;horizontalAlignment:Text.AlignRight}
     }
    }
+  }
   }
  }
 }

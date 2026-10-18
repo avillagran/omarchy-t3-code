@@ -32,11 +32,14 @@ Rectangle {
   }
   Text{Layout.fillWidth:true;visible:!!root.bridge.queueOperation.error;text:T3I18n.error(root.bridge.queueOperation.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
   Controls.Button{visible:!!root.bridge.queueOperation.command && !root.bridge.queueOperation.busy;enabled:!root.bridge.queueOperation.busy;text:T3I18n.tr("Retry same action");onClicked:root.bridge.queueAction(null,{})}
+  T3Reveal{
+   id:listReveal;Layout.fillWidth:true;shown:root.expanded&&root.items.length>0
+   size:Math.min(list.contentHeight,Style.space(144))
   ListView{
     T3Wheel {flickable:list}
    id:list;objectName:"t3QueuedMessages"
-   Layout.fillWidth:true;Layout.preferredHeight:Math.min(contentHeight,Style.space(144))
-   visible:root.expanded&&root.items.length>0;clip:true;reuseItems:true;cacheBuffer:0
+   anchors.fill:parent
+   clip:true;reuseItems:true;cacheBuffer:0
    model:root.items;spacing:Style.space(2)
    Controls.ScrollBar.vertical:Controls.ScrollBar{}
    delegate:Rectangle{
@@ -77,6 +80,7 @@ Rectangle {
      T3IconButton{objectName:"queueRemove_"+modelData.runId;name:"x";tooltipText:T3I18n.tr("Remove from queue");enabled:!root.busy&&!modelData.pending&&!(root.bridge.draft.queueEdit && root.bridge.draft.queueEdit.runId===modelData.runId);onClicked:root.bridge.queueAction("cancel",{runId:modelData.runId})}
     }
    }
+  }
   }
  }
 }

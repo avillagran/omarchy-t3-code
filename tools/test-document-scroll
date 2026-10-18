@@ -1,0 +1,26 @@
+#!/bin/bash
+# Exercise the real HTML renderer's wheel/capture transport, without a desktop window.
+set -eu
+cd -- "$(dirname -- "$0")/.."
+node <<'NODE'
+const fs=require('fs'),{spawn}=require('child_process'),assert=require('node:assert/strict'),crypto=require('crypto');
+const dir=fs.mkdtempSync('/tmp/t3-document-scroll-');fs.chmodSync(dir,0o700);
+const data={offscreen:true,frameDirectory:dir,width:900,height:620,html:true,title:'Scroll verification',baseUrl:'about:blank',contents:'<style>body{margin:0;background:#203040;color:#abcdef}p{height:65px;border-bottom:1px solid #abcdef}</style>'+Array.from({length:300},(_,i)=>`<p>Scroll row ${i} — repeated text to exercise real document capture and PNG transport</p>`).join(''),theme:{appearance:'dark',variables:{'--background':'#111111','--foreground':'#bbbbbb','--card':'#191919','--secondary':'#242424','--accent':'#e99700','--font-sans':'sans-serif','--border':'#444444'}}};
+const p=spawn(process.env.T3_DOCUMENT_TEST_CLIENT||'bin/omarchy-t3-client',['document-render'],{env:{...process.env,QT_QPA_PLATFORM:'offscreen',QT_QUICK_BACKEND:'software',QTWEBENGINE_CHROMIUM_FLAGS:'--disable-gpu'},stdio:['pipe','pipe','pipe']});
+const payload=Buffer.from(JSON.stringify(data)),header=Buffer.alloc(8);header.writeBigUInt64BE(BigInt(payload.length));p.stdin.write(header);p.stdin.write(payload);
+let out='',log='',exited=false,lastHash='',measuring=false,times=[],frames=0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),send=v=>p.stdin.write(JSON.stringify(v)+'\n');
+p.stderr.on('data',v=>log+=v);p.on('exit',()=>exited=true);
+p.stdout.on('data',v=>{out+=v;let n;while((n=out.indexOf('\n'))>=0){const line=out.slice(0,n);out=out.slice(n+1);if(!line.startsWith('{'))continue;const f=JSON.parse(line);if(!f.frame)continue;frames++;const hash=crypto.createHash('sha256').update(fs.readFileSync(dir+'/'+f.frame)).digest('hex');if(measuring&&hash!==lastHash)times.push(performance.now());lastHash=hash;}});
+(async()=>{try{
+ await sleep(1600);assert(!exited&&frames>0,'renderer failed: '+log);
+ measuring=true;const start=performance.now();while(performance.now()-start<2400){assert(!exited,log);send({type:'wheel',x:450,y:300,ax:0,ay:-24,px:0,py:-24,modifiers:0});await sleep(16)}measuring=false;
+ assert(times.length>15,'wheel must produce changing document frames');
+ const gaps=times.slice(1).map((v,i)=>v-times[i]).sort((a,b)=>a-b),fps=(times.length-1)*1000/(times.at(-1)-times[0]);
+ console.log(JSON.stringify({changedFrames:times.length,fps:+fps.toFixed(1),medianGapMs:+gaps[Math.floor(gaps.length/2)].toFixed(1),p95GapMs:+gaps[Math.floor(gaps.length*.95)].toFixed(1)}));
+ if(process.env.T3_DOCUMENT_MIN_FPS)assert(fps>=Number(process.env.T3_DOCUMENT_MIN_FPS),'scroll capture throughput below expected minimum');
+ await sleep(700);const idle=frames;await sleep(500);assert.equal(frames,idle,'idle renderer must stop capturing');
+ send({type:'close'});await sleep(300);assert(exited,'renderer must close');
+ console.log('DOCUMENT_SCROLL_PASS: real wheel, changing frames, bounded idle and close');
+ }catch(e){console.error(e);process.exitCode=1}finally{if(!exited)p.kill();fs.rmSync(dir,{recursive:true,force:true})}})();
+NODE

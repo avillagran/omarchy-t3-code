@@ -57,7 +57,7 @@ impl Site {
                 } else {
                     ""
                 };
-                let page="<!doctype html><title>Fixture</title><style>body{margin:0;background:#203040;color:white}button{width:160px;height:80px}</style><button onclick=\"fetch('/clicked');this.innerText='Clicked';document.body.style.background='green'\">Click</button>";
+                let page="<!doctype html><title>Fixture</title><style>body{margin:0;background:#203040;color:white}button{width:160px;height:80px;appearance:none;background:#eee;color:#111;border:1px solid #999;outline:none}button:hover,button:focus,button:active{background:#eee;outline:none}</style><button onclick=\"fetch('/clicked');this.innerText='Clicked';document.body.style.background='green'\">Click</button>";
                 let body=format!("{page}<script>if(location.pathname==='/one')localStorage.setItem('fixture','persisted');if(location.pathname==='/persisted'||location.pathname==='/after-clear')fetch('/storage-'+location.pathname.slice(1)+'?value='+(localStorage.getItem('fixture')||'empty'))</script>");
                 let _=write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n{}Connection: close\r\n\r\n{}",body.len(),cookie,body);
             }
@@ -114,6 +114,22 @@ fn frame_bytes(value: &Value) -> Vec<u8> {
         .to_file_path()
         .unwrap();
     fs::read(path).unwrap()
+}
+
+fn painted_frame(rx: &mpsc::Receiver<Value>, id: &str, background: [u8; 3]) -> image::RgbImage {
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        let v = rx
+            .recv_timeout(until.saturating_duration_since(Instant::now()))
+            .expect("known DOM background must finish painting");
+        if v["kind"] != "frame" || v["requestId"] != id {
+            continue;
+        }
+        let pixels = image::load_from_memory(&frame_bytes(&v)).unwrap().to_rgb8();
+        if pixels.get_pixel(300, 200).0 == background {
+            return pixels;
+        }
+    }
 }
 
 #[test]
@@ -570,6 +586,101 @@ fn private_import_channel_initializes_cold_profile_acknowledges_and_persists_wit
         site.request("/imported-page")
             .contains("imported-session=SESSION_PRIVATE"),
         "session cookies remain usable across in-app Qt profile flush/restart"
+    );
+    // Navigation Success precedes painting. Wait for content before clicking.
+    painted_frame(&rx, "view-imported", [32, 48, 64]);
+    // Change only the live DOM, then import without navigating or rebuilding it.
+    while rx.try_recv().is_ok() {}
+    pool.input(
+        "view-imported",
+        &json!({"type":"press","x":50,"y":40,"button":1,"buttons":1}),
+    )
+    .unwrap();
+    pool.input(
+        "view-imported",
+        &json!({"type":"release","x":50,"y":40,"button":1,"buttons":0}),
+    )
+    .unwrap();
+    let until = Instant::now() + Duration::from_secs(3);
+    while !site
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|r| r.starts_with("GET /clicked "))
+    {
+        assert!(Instant::now() < until, "live DOM click reached fixture");
+        thread::sleep(Duration::from_millis(10));
+    }
+    thread::sleep(Duration::from_millis(100));
+    while rx.try_recv().is_ok() {}
+    // Showing an existing tab captures its changed DOM without reopening it.
+    pool.show(
+        "fixture",
+        "origin",
+        &page,
+        "view-before-import",
+        640,
+        400,
+        &json!(1),
+    )
+    .unwrap();
+    // Activation is asynchronous: ignore intermediate hidden-window frames.
+    // Require the known clicked DOM's green background before comparing pixels.
+    let before_dom = painted_frame(&rx, "view-before-import", [0, 128, 0]);
+    let process = pool.process_id("fixture", "work");
+    assert!(pool.has_pages("fixture", "work"));
+    pool.hide();
+    let live_cookie = ImportedCookie {
+        url: cookie.url.clone(),
+        name: "live-cookie".into(),
+        value: "LIVE_PRIVATE".into(),
+        domain: None,
+        path: "/".into(),
+        secure: false,
+        http_only: true,
+        expiration_date: cookie.expiration_date,
+        same_site: "strict",
+    };
+    assert!(pool
+        .import_cookie("fixture", "work", "origin", &live_cookie)
+        .unwrap());
+    pool.verify_live_import("fixture", "work").unwrap();
+    assert_eq!(
+        pool.process_id("fixture", "work"),
+        process,
+        "import retains the live renderer process"
+    );
+    pool.show(
+        "fixture",
+        "origin",
+        &page,
+        "view-after-import",
+        640,
+        400,
+        &json!(1),
+    )
+    .unwrap();
+    let after_dom = painted_frame(&rx, "view-after-import", [0, 128, 0]);
+    if after_dom != before_dom {
+        before_dom.save("/tmp/ot3-import-dom-before.png").unwrap();
+        after_dom.save("/tmp/ot3-import-dom-after.png").unwrap();
+        let differing: Vec<_> = before_dom
+            .enumerate_pixels()
+            .filter_map(|(x, y, p)| (after_dom.get_pixel(x, y) != p).then_some((x, y)))
+            .collect();
+        eprintln!(
+            "DOM frame difference: {} pixels, x={:?}..{:?}, y={:?}..{:?}",
+            differing.len(),
+            differing.iter().map(|p| p.0).min(),
+            differing.iter().map(|p| p.0).max(),
+            differing.iter().map(|p| p.1).min(),
+            differing.iter().map(|p| p.1).max()
+        );
+    }
+    assert!(
+        after_dom == before_dom,
+        "clicked DOM pixels survive import, verification and reattachment"
     );
     assert!(!rx
         .try_iter()
