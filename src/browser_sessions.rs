@@ -126,6 +126,7 @@ struct Cleanup {
     locks: HashMap<String, crate::browser_runtime::ProfileLock>,
     cleared: Vec<String>,
     importing: std::collections::HashSet<String>,
+    retained: std::collections::HashSet<String>,
 }
 struct CleanupLease {
     sender: mpsc::SyncSender<Message>,
@@ -158,7 +159,7 @@ impl crate::browser_cleanup::Lease for CleanupLease {
                 done,
             })
             .map_err(|_| "browser_cookie_import_unknown")?;
-        wait.recv_timeout(Duration::from_secs(15))
+        wait.recv_timeout(Duration::from_secs(50))
             .map_err(|_| "browser_cookie_import_unknown")?
     }
     fn clear(&mut self, environment: &str) -> Result<()> {
@@ -378,6 +379,7 @@ impl Manager {
                                     locks: HashMap::new(),
                                     cleared: vec![],
                                     importing: Default::default(),
+                                    retained: Default::default(),
                                 },
                             );
                             worker_output(
@@ -452,9 +454,11 @@ impl Manager {
                             {
                                 return Err("browser_profile_scope_changed".into());
                             }
-                            // Remove all live pages from this partition before the first write.
+                            // Existing tabs own DOM/history that must survive import.
                             if !cleanup.importing.contains(&environment) {
-                                pool.close_profile(&environment, &cleanup.profile)?;
+                                if pool.has_pages(&environment, &cleanup.profile) {
+                                    cleanup.retained.insert(environment.clone());
+                                }
                                 cleanup.importing.insert(environment.clone());
                             }
                             pool.import_cookie(&environment, &cleanup.profile, expected, &cookie)
@@ -466,7 +470,7 @@ impl Manager {
                         environment,
                         done,
                     } => {
-                        let result = (|| -> Result<()> {
+                        let result = (|| -> Result<Option<browser_guest::ImportVerification>> {
                             let cleanup = cleanups
                                 .get_mut(&id)
                                 .ok_or("browser_profile_scope_changed")?;
@@ -481,7 +485,12 @@ impl Manager {
                                 return Err("browser_profile_scope_changed".into());
                             }
                             if !cleanup.importing.contains(&environment) {
-                                return Ok(());
+                                return Ok(None);
+                            }
+                            if cleanup.retained.contains(&environment) {
+                                return pool
+                                    .live_import_verification(&environment, &cleanup.profile)
+                                    .map(Some);
                             }
                             pool.close_profile(&environment, &cleanup.profile)?;
                             if !cleanup.locks.contains_key(&environment) {
@@ -494,14 +503,39 @@ impl Manager {
                                     )?,
                                 );
                             }
-                            Ok(())
+                            Ok(None)
                         })();
-                        let _ = done.send(result);
+                        match result {
+                            Ok(Some(verification)) => {
+                                let resolve = resolve.clone();
+                                let expected = cleanups[&id].scopes[&environment].clone();
+                                thread::spawn(move || {
+                                    let result = verification.verify().and_then(|()| {
+                                        let latest = resolve(&environment)?;
+                                        if format!(
+                                            "{:x}",
+                                            Sha256::digest(latest.base_url.as_bytes())
+                                        ) != expected
+                                            || latest.connection_error.is_some()
+                                        {
+                                            return Err("browser_profile_scope_changed".into());
+                                        }
+                                        Ok(())
+                                    });
+                                    let _ = done.send(result);
+                                });
+                            }
+                            result => {
+                                let _ = done.send(result.map(|_| ()));
+                            }
+                        }
                     }
                     Message::CleanupEnd(id) => {
                         if let Some(cleanup) = cleanups.remove(&id) {
                             for environment in &cleanup.importing {
-                                let _ = pool.close_profile(environment, &cleanup.profile);
+                                if !cleanup.retained.contains(environment) {
+                                    let _ = pool.close_profile(environment, &cleanup.profile);
+                                }
                             }
                             let environments = cleanup.scopes.keys().cloned().collect::<Vec<_>>();
                             drop(cleanup.locks);

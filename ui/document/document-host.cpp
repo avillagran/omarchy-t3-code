@@ -33,11 +33,14 @@ public:
  DocumentHost(QString directory):directory(directory){
   reviewPage.setFileTemplate(QDir(directory).filePath("review-XXXXXX.html"));
   connect(QGuiApplication::clipboard(),&QClipboard::dataChanged,this,[this](){if(!allowCopy)return;allowCopy=false;auto text=QGuiApplication::clipboard()->text();if(text.size()>120000)return;auto out=QJsonDocument(QJsonObject{{"clipboard",text}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);});
-  capture.setSingleShot(true);capture.setInterval(40);
+  // No capture FPS cap: service each repaint on the next event-loop turn.
+  // Coalesce pending requests; captures themselves never schedule idle work.
+  capture.setSingleShot(true);capture.setInterval(0);
   connect(&capture,&QTimer::timeout,this,[this](){
    if(!window)return;grabbing=true;auto image=window->grabWindow();grabbing=false;if(image.isNull())return;
    QString name=QString("frame-%1.png").arg(++sequence%2),path=this->directory+"/"+name,tmp=path+".next";
-   if(!image.save(tmp,"PNG"))return;QFile::setPermissions(tmp,QFileDevice::ReadOwner|QFileDevice::WriteOwner);if(::rename(QFile::encodeName(tmp).constData(),QFile::encodeName(path).constData())!=0)return;
+   // PNG remains lossless; favor fast local transport over smallest files.
+   if(!image.save(tmp,"PNG",80))return;QFile::setPermissions(tmp,QFileDevice::ReadOwner|QFileDevice::WriteOwner);if(::rename(QFile::encodeName(tmp).constData(),QFile::encodeName(path).constData())!=0)return;
    auto out=QJsonDocument(QJsonObject{{"frame",name},{"revision",sequence},{"width",image.width()},{"height",image.height()}}).toJson(QJsonDocument::Compact);
    fprintf(stdout,"%s\n",out.constData());fflush(stdout);
   });

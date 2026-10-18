@@ -15,10 +15,10 @@ Item {
  readonly property var claims:Routing.effective(primary,scripts,context)
  readonly property var routes:{
   var seen={},out=[]
-  claims.forEach(function(r){if(Routing.reserved(r.shortcut)||localOverrides.indexOf(r.sequence)>=0||!r.sequences.length||!root.supports(r.command))return;var identity=Routing.qtIdentity(r.shortcut);if(seen[identity])return;seen[identity]=true;out.push(r)})
+  claims.forEach(function(r){if(Routing.reserved(r.shortcut,root.context)||localOverrides.indexOf(r.sequence)>=0||!r.sequences.length||!root.supports(r.command))return;var identity=Routing.qtIdentity(r.shortcut);if(seen[identity])return;seen[identity]=true;out.push(r)})
   return out
  }
- function claimsSequence(sequence){var shortcut=QtKeys.fromQtSequence(sequence);if(!shortcut||localOverrides.indexOf(sequence)>=0)return false;var key=Routing.qtIdentity(shortcut);return claims.some(function(r){return r.sequences.length&&Routing.qtIdentity(r.shortcut)===key&&!Routing.reserved(r.shortcut)})}
+ function claimsSequence(sequence){var shortcut=QtKeys.fromQtSequence(sequence);if(!shortcut||localOverrides.indexOf(sequence)>=0)return false;var key=Routing.qtIdentity(shortcut);return claims.some(function(r){return r.sequences.length&&Routing.qtIdentity(r.shortcut)===key&&!Routing.reserved(r.shortcut,root.context)})}
  Instantiator {model:root.routes
   delegate:Shortcut{
    required property var modelData

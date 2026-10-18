@@ -1,3 +1,4 @@
+pub mod quota_sources;
 pub mod notification_icon;
 pub mod backend_service;
 pub mod images;
@@ -17,6 +18,7 @@ pub mod connection_cloud;
 pub mod connection_route;
 pub mod connection_github;
 pub mod native_settings;
+pub mod provider_instances;
 pub mod scoped_settings;
 pub mod plan_workflow;
 pub mod checkpoint_revert;
@@ -767,3 +769,5 @@ mod browser_cookie_database;
 pub mod browser_cookies;
 
 pub mod browser_import;
+
+pub mod storage_settings;

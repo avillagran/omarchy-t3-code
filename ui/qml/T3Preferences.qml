@@ -34,9 +34,9 @@ Rectangle {
  readonly property string scopeSignature:JSON.stringify(scope)
  readonly property string representativeEnvironment:scope.targets.length?scope.targets[0].environment:environment==="*"?(bridge.selectedEnvironment || "local"):environment
  readonly property bool projectScope:!!projectKey
- readonly property bool supportsScope:page==="integrations"||page==="general"||page==="source-control"||page==="projects"||page==="archived"||page==="shortcuts"
+ readonly property bool supportsScope:page==="storage"||page==="integrations"||page==="general"||page==="source-control"||page==="projects"||page==="archived"||page==="shortcuts"
  onScopeSignatureChanged:if(initialized){edits={};savingKey="";savingRequest="";load()}
- function selectProject(key){var ready=initialized;initialized=false;projectKey=key;checkoutKey="";if(key&&page!=="archived"&&page!=="shortcuts"&&page!=="integrations")page="projects";initialized=ready;if(ready){edits={};load()}}
+ function selectProject(key){var ready=initialized;initialized=false;projectKey=key;checkoutKey="";if(key&&page!=="archived"&&page!=="shortcuts"&&page!=="integrations"&&page!=="storage")page="projects";initialized=ready;if(ready){edits={};load()}}
  function selectEnvironment(id){var ready=initialized;initialized=false;checkoutKey="";environment=id;initialized=ready;if(ready){edits={};load()}}
  function selectInitialProject(){if(!initialProjectKey)return;var group=projectGroups.find(function(g){return g.key===root.initialProjectKey||g.members.some(function(p){return p.key===root.initialProjectKey})});if(group){var ready=initialized;initialized=false;var member=group.members.find(function(p){return p.key===root.initialProjectKey});if(member)environment=member.environmentId;projectKey=group.key;checkoutKey=member?member.key:"";page="projects";initialized=ready;if(ready){edits={};load()}}}
  readonly property color fg:Color.popups.text
@@ -50,7 +50,7 @@ Rectangle {
 
  property string query:""
  readonly property bool compact:width<Style.space(780)
- readonly property var pages:[{id:"general",name:"General",icon:"settings"},{id:"appearance",name:"Appearance",icon:"layers"},{id:"projects",name:"Projects",icon:"folder-git-2"},{id:"shortcuts",name:"Keyboard shortcuts",icon:"keyboard"},{id:"providers",name:"Providers",icon:"acp"},{id:"integrations",name:"Integrations",icon:"plug"},{id:"source-control",name:"Source control",icon:"git-branch"},{id:"connections",name:"Connections",icon:"server"},{id:"archived",name:"Archive",icon:"archive"},{id:"licenses",name:"Open-source licenses",icon:"file-text",nav:false}]
+ readonly property var pages:[{id:"general",name:"General",icon:"settings"},{id:"appearance",name:"Appearance",icon:"layers"},{id:"projects",name:"Projects",icon:"folder-git-2"},{id:"shortcuts",name:"Keyboard shortcuts",icon:"keyboard"},{id:"providers",name:"Providers",icon:"acp"},{id:"integrations",name:"Integrations",icon:"plug"},{id:"source-control",name:"Source control",icon:"git-branch"},{id:"connections",name:"Connections",icon:"server"},{id:"storage",name:"Storage",icon:"hard-drive"},{id:"archived",name:"Archive",icon:"archive"},{id:"licenses",name:"Open-source licenses",icon:"file-text",nav:false}]
  readonly property bool licenseSearchMatch:matches("Open-source licenses")||matches("Third-party notices")||matches("Notices for dependencies, assets, and tools used by ot3.")
  readonly property var currentPage:pages.find(function(p){return p.id===root.page}) || pages[0]
  readonly property var sections:[
@@ -65,7 +65,7 @@ Rectangle {
  function matches(text){return !query.trim() || (T3I18n.tr(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0 || String(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0)}
  readonly property var groups:sections.filter(function(s){return root.query.trim() || s.page===root.page || root.page==="projects"&&root.projectScope}).map(function(s){return Object.assign({},s,{fields:s.keys.map(function(key){return (root.result.fields || []).find(function(f){return f.key===key})}).filter(function(f){return f&&(root.matches(s.title)||root.matches(f.label)||root.matches(f.description || ""))})})}).filter(function(s){return s.fields.length>0})
  onQueryChanged:if(settingsScroll.contentItem)settingsScroll.contentItem.contentY=0
- onPageChanged:{if(!supportsScope&&projectKey){projectKey="";checkoutKey=""}if(!supportsScope&&environment==="*")environment=bridge.selectedEnvironment || "local";if(settingsScroll.contentItem)settingsScroll.contentItem.contentY=0;if(initialized&&(["archived","shortcuts","licenses","integrations"].indexOf(page)>=0||["archived","shortcuts","licenses","integrations"].indexOf(loadedPage)>=0))load()}
+ onPageChanged:{if(!supportsScope&&projectKey){projectKey="";checkoutKey=""}if(!supportsScope&&environment==="*")environment=bridge.selectedEnvironment || "local";if(settingsScroll.contentItem)settingsScroll.contentItem.contentY=0;if(initialized&&(["archived","shortcuts","licenses","integrations","providers"].indexOf(page)>=0||["archived","shortcuts","licenses","integrations"].indexOf(loadedPage)>=0))load()}
  RowLayout {
   anchors.fill:parent;spacing:0
   Rectangle {objectName:"preferencesNavigation";Layout.preferredWidth:Style.space(root.compact?185:256);Layout.fillHeight:true;color:Qt.darker(Color.popups.background,1.07)
@@ -159,22 +159,25 @@ Rectangle {
         T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceGrouping";field:({key:"grouping",label:"Group working, snoozed and settled threads",kind:"bool",value:!!root.bridge.viewState.sidebarCompact});writable:true;onChanged:function(value){root.groupingRequested(value)}}
        }}
       }
+      T3PreferenceSection{visible:!root.query.trim()&&root.page==="appearance";Layout.fillWidth:true;title:"Animations";icon:"star"
+       body:Component{Column{width:parent.width
+        T3PreferenceField{width:parent.width;controlName:"preferenceStarfield";field:({key:"starfieldMode",label:"Animated starfield",description:"Auto lowers the frame rate on slower machines and stays still with software rendering.",kind:"choice",value:root.bridge.viewState.starfieldMode || "auto",choices:[{id:"auto",name:"Auto"},{id:"full",name:"Full"},{id:"light",name:"Light"},{id:"off",name:"Off"}]});writable:true;onChanged:function(value){root.bridge.rememberView({starfieldMode:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"starfieldSpeed",label:"Star speed",kind:"choice",value:root.bridge.viewState.starfieldSpeed || "normal",choices:[{id:"slow",name:"Slow"},{id:"normal",name:"Normal"},{id:"fast",name:"Fast"}]});writable:true;onChanged:function(value){root.bridge.rememberView({starfieldSpeed:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"starfieldMeteors",label:"Shooting stars",description:"They cross the sky while a thread is working.",kind:"choice",value:root.bridge.viewState.starfieldMeteors || "normal",choices:[{id:"none",name:"None"},{id:"few",name:"Few"},{id:"normal",name:"Normal"},{id:"many",name:"Many"}]});writable:true;onChanged:function(value){root.bridge.rememberView({starfieldMeteors:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"threadWorkingEffect",label:"Working threads",description:"Thread effects stay still while the starfield is off.",kind:"choice",value:root.bridge.viewState.threadWorkingEffect || "comet",choices:[{id:"comet",name:"Comet"},{id:"pulse",name:"Pulse"},{id:"off",name:"Off"}]});writable:true;onChanged:function(value){root.bridge.rememberView({threadWorkingEffect:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"threadInputEffect",label:"Threads needing input",kind:"choice",value:root.bridge.viewState.threadInputEffect || "glints",choices:[{id:"glints",name:"Glints"},{id:"pulse",name:"Pulse"},{id:"static",name:"Static"},{id:"off",name:"Off"}]});writable:true;onChanged:function(value){root.bridge.rememberView({threadInputEffect:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"threadChangeEffect",label:"Thread state changes",kind:"choice",value:root.bridge.viewState.threadChangeEffect || "star",choices:[{id:"star",name:"Shooting star"},{id:"flash",name:"Flash"},{id:"off",name:"Off"}]});writable:true;onChanged:function(value){root.bridge.rememberView({threadChangeEffect:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"threadEffectIntensity",label:"Effect intensity",kind:"choice",value:root.bridge.viewState.threadEffectIntensity || "normal",choices:[{id:"subtle",name:"Subtle"},{id:"normal",name:"Normal"},{id:"vivid",name:"Vivid"}]});writable:true;onChanged:function(value){root.bridge.rememberView({threadEffectIntensity:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"transitionStyle",label:"Show and hide",description:"How the sidebar, usage, search and lists appear and disappear.",kind:"choice",value:root.bridge.viewState.transitionStyle || "nebula",choices:[{id:"nebula",name:"Nebula"},{id:"warp",name:"Hyperspace"},{id:"fold",name:"Fold"},{id:"spring",name:"Spring"},{id:"instant",name:"Instant"}]});writable:true;onChanged:function(value){root.bridge.rememberView({transitionStyle:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"transitionSpeed",label:"Transition speed",kind:"choice",value:root.bridge.viewState.transitionSpeed || "normal",choices:[{id:"slow",name:"Slow"},{id:"normal",name:"Normal"},{id:"fast",name:"Fast"}]});writable:true;onChanged:function(value){root.bridge.rememberView({transitionSpeed:value})}}
+       }}
+      }
+      Loader{Layout.fillWidth:true;active:root.page==="storage";visible:active;sourceComponent:Component{T3StorageSettings{settings:root.result;projectScope:root.projectScope;writable:root.writable;query:root.query;drafts:root.edits;onSettingChanged:function(key,value){root.save(key,value)};onStaged:function(key,value){root.stage(key,value)}}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="integrations";visible:active;sourceComponent:Component{T3Integrations{bridge:root.bridge;targets:root.scope.targets;settings:root.result;settingsWritable:root.writable;onSettingChanged:function(key,value){root.save(key,value)};onInheritRequested:function(key){root.clearOverride(key)}}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="licenses";visible:active;sourceComponent:Component{T3Licenses{bridge:root.bridge}}}
       Loader{Layout.fillWidth:true;Layout.preferredHeight:Math.max(Style.space(280),settingsScroll.height-Style.space(170));active:!root.query.trim()&&root.page==="archived";visible:active;sourceComponent:Component{T3Archive{bridge:root.bridge;targets:root.scope.targets}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="connections";visible:active;sourceComponent:Component{T3Connections{bridge:root.bridge;environment:root.environment}}}
-      T3PreferenceSection{visible:!root.query.trim()&&root.page==="providers";Layout.fillWidth:true;title:"Providers";icon:"acp"
-       body:Component{Column{width:parent.width;Repeater{model:(root.bridge.catalogs[root.environment] || {}).providers || []
-        Item{required property var modelData;required property int index;width:parent.width;implicitHeight:Style.space(62)
-         Rectangle{visible:index>0;width:parent.width;height:1;color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.065)}
-         RowLayout{anchors.fill:parent;anchors.margins:Style.space(16);spacing:Style.space(12)
-          T3ProviderIcon{provider:modelData;tint:root.fg;implicitWidth:Style.space(19)}
-          Text{Layout.fillWidth:true;text:modelData.name || modelData.instanceId;color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight}
-          Text{text:modelData.ready?T3I18n.tr("Done"):T3I18n.tr("Offline");color:modelData.ready?T3Palette.done:root.dim;font.pixelSize:Style.font.caption}
-         }
-        }
-       }}}
-      }
+      Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="providers";visible:active;sourceComponent:Component{T3ProviderInstances{bridge:root.bridge;environment:root.environment}}}
       T3PreferenceSection{visible:!root.query.trim()&&root.page==="providers";Layout.fillWidth:true;title:"Model options";icon:"star"
        body:Component{Column{width:parent.width;Repeater{model:(root.bridge.catalogs[root.environment] || {}).models || []
         Item{required property var modelData;required property int index;width:parent.width;implicitHeight:Style.space(52)

@@ -23,6 +23,7 @@ Rectangle {
   property bool showOptions: false
   property bool expanded: false
   signal toggleExpanded()
+  signal previewAttachment(var attachment)
   property bool draftsOpen:false
   readonly property bool projectDraftsVisible:draftsOpen&&!!bridge.selectedInfo.projectId
   function toggleProjectDrafts(){draftsOpen=!draftsOpen;if(draftsOpen){bridge.requestProjectDrafts("list");Qt.callLater(function(){projectDraftDrawer.focusList()})}}
@@ -129,6 +130,26 @@ Rectangle {
     else {var marker=match[2];if(/^\d/.test(marker))marker=String(Number(marker.slice(0,-1))+1)+marker.slice(-1);insert="\n"+match[1]+marker+" "+(match[3]?"[ ] ":"");next=cursor+insert.length}
     bridge.edit(before+insert+suffix);Qt.callLater(function(){editor.cursorPosition=next});return true
   }
+  function handleEnter(event) {
+    // Let the input method finish a composed character before interpreting send.
+    if(editor.inputMethodComposing){event.accepted=false;return}
+    var modifiers=event.modifiers
+    if(root.completionVisible && modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
+    if(modifiers===(Qt.ControlModifier|Qt.ShiftModifier)){event.accepted=true;if(!event.isAutoRepeat)root.bridge.submit(true);return}
+    if(modifiers===Qt.ControlModifier || (modifiers===Qt.NoModifier && !root.expanded)){
+      event.accepted=true;if(!event.isAutoRepeat)root.bridge.submit();return
+    }
+    if(modifiers===Qt.ShiftModifier || (modifiers===Qt.NoModifier && root.expanded)){
+      event.accepted=true
+      if(!root.locked && !root.continueList()){
+        var start=editor.selectionStart,end=editor.selectionEnd
+        root.bridge.edit(editor.text.slice(0,start)+"\n"+editor.text.slice(end),true)
+        Qt.callLater(function(){editor.cursorPosition=start+1})
+      }
+      return
+    }
+    event.accepted=false
+  }
   Text { id:compactMeasure;visible:false;width:Math.max(1,root.width-Style.space(36));text:editor.text;font:editor.font;wrapMode:Text.Wrap;textFormat:Text.PlainText }
   readonly property real compactEditorHeight: Math.min(Style.space(130),Math.max(Style.space(56),compactMeasure.implicitHeight+Style.space(12)))
   function attachFiles() { if(locked)return; files.environment=bridge.selectedEnvironment;files.thread=bridge.selectedThread;files.open() }
@@ -158,11 +179,13 @@ Rectangle {
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(12) }
     height:root.expanded ? Math.max(0,root.height-Style.space(24)) : implicitHeight
     spacing: Style.space(8)
+    T3Reveal {
+      id:draftsReveal;Layout.fillWidth:true;shown:root.projectDraftsVisible
     T3ProjectDrafts {
-      id:projectDraftDrawer;objectName:"t3ProjectDrafts";Layout.fillWidth:true;Layout.preferredHeight:implicitHeight
-      visible:root.projectDraftsVisible
+      id:projectDraftDrawer;objectName:"t3ProjectDrafts";anchors.left:parent.left;anchors.right:parent.right;visible:root.projectDraftsVisible||draftsReveal.moving
       bridge:root.bridge
       onCloseRequested:{root.draftsOpen=false;editor.forceActiveFocus()}
+    }
     }
     RowLayout {
       Layout.fillWidth:true;visible:!!root.draft.queueEdit
@@ -187,6 +210,7 @@ Rectangle {
             WorkIndicator { visible: modelData.uploading; active: visible && root.visible; implicitWidth: Style.space(13) }
             T3Icon { visible: !modelData.uploading; name: modelData.error ? "circle-alert" : "file"; tint: modelData.error ? Color.urgent : Color.accent; implicitWidth: Style.space(14) }
             Text { Layout.fillWidth: true; text: modelData.name; color: root.fg; font.pixelSize: Style.font.caption; elide: Text.ElideMiddle; textFormat: Text.PlainText }
+            T3IconButton { objectName:"t3PreviewDraftAttachment_"+index;name:"eye";glyph:"\uf06e";glyphScale:0.85;enabled:!modelData.uploading&&!modelData.error&&!!modelData.attachment;tooltipText:T3I18n.tr("Preview")+": "+modelData.name;onClicked:root.previewAttachment(modelData.attachment) }
             T3IconButton { name: "x"; enabled: !root.locked && !modelData.uploading; tooltipText: T3I18n.error(modelData.error) || T3I18n.tr("Remove attachment"); onClicked: root.bridge.removeAttachment(index) }
           }
         }
@@ -237,20 +261,8 @@ Rectangle {
         Keys.onEscapePressed: function(event) {event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
         KeyNavigation.priority: KeyNavigation.BeforeItem
         KeyNavigation.tab: expandEditorButton
-        Keys.onReturnPressed: function(event) {
-          if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
-          if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
-          if(event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier)){event.accepted=true;root.bridge.submit(true);return}
-          if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
-          event.accepted = true; root.bridge.submit()
-        }
-        Keys.onEnterPressed: function(event) {
-          if(root.completionVisible && event.modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
-          if(!(event.modifiers & (Qt.ControlModifier|Qt.AltModifier|Qt.MetaModifier)) && root.continueList()){event.accepted=true;return}
-          if(event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier)){event.accepted=true;root.bridge.submit(true);return}
-          if(event.modifiers!==Qt.ControlModifier){event.accepted=false;return}
-          event.accepted = true; root.bridge.submit()
-        }
+        Keys.onReturnPressed: function(event) {root.handleEnter(event)}
+        Keys.onEnterPressed: function(event) {root.handleEnter(event)}
       }
     }
     T3ModelOptions {id:modelOptions;Layout.fillWidth:true;visible:root.showOptions&&!root.draft.queueEdit;bridge:root.bridge;descriptors:root.descriptors;selection:root.selection;locked:root.locked}
@@ -350,7 +362,7 @@ Rectangle {
           onClicked: primaryAction.activate()
         }
         Controls.ToolTip.visible: sendHover.hovered
-        Controls.ToolTip.text: primaryAction.Accessible.name + (root.stopMode ? "" : " · Ctrl+Enter")
+        Controls.ToolTip.text: primaryAction.Accessible.name + (root.stopMode ? "" : root.expanded ? " · Ctrl+Enter" : " · Enter")
         HoverHandler { id: sendHover }
       }
 

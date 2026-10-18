@@ -16,7 +16,8 @@ function effective(primary,active,context){
  return out
 }
 function qtIdentity(shortcut){var k=Native.nativeKeys,key=shortcut.key;return k.shortcutConflictKey(Object.assign({},shortcut,{key:key}),"Linux")}
-function reserved(shortcut){
- // User-requested ot3 send/new-thread keys remain fixed across native settings.
- return (shortcut.key==="enter"||shortcut.key==="return")&&(shortcut.ctrlKey||shortcut.modKey)&&!shortcut.metaKey&&!shortcut.altKey
+function reserved(shortcut,context){
+ // Keep composer send/newline keys from being stolen by native shortcuts.
+ if(shortcut.key!=="enter"&&shortcut.key!=="return" || shortcut.metaKey || shortcut.altKey)return false
+ return !!(shortcut.ctrlKey||shortcut.modKey || (context && context.composerFocus))
 }

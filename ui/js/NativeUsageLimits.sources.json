@@ -1,0 +1,13 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "files": {
+    "packages/shared/src/usageLimits.ts": "51b3cf4a9246882d0e0227166e4ad34854cf8c0a4b4fbc5067df23eccfa0e903"
+  },
+  "adaptations": [
+    "Original helpers retained after TypeScript erasure and import/export removal",
+    "Qt object spread becomes Object.assign; toSorted becomes copying sort",
+    "Dense contract arrays use map/reduce for Qt flatMap compatibility",
+    "Original availability predicate inlined; DateTime ISO formatting uses native Date; no runtime dependencies"
+  ],
+  "outputSha256": "4659c3cacbe7e2114540de7e4c4148a30995457d9721fd375949a85312d87c42"
+}

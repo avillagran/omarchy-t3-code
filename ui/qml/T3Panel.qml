@@ -23,7 +23,7 @@ Item {
   property bool pullRequestsOpen:false
   property bool browserOpen:false
   property real browserPanelWidth:Math.max(360,Math.min(1600,bridge.viewState.browserPanelWidth || 540))
-  readonly property real browserAvailableWidth:panelLayout.width-(sidebar.visible?sidebar.width+sidebarResizer.width:0)
+  readonly property real browserAvailableWidth:panelLayout.width-(sidebarReveal.visible?sidebarReveal.width+sidebarResizer.width:0)
   readonly property bool browserInline:browserAvailableWidth>=Style.space(760)
   readonly property bool browserShown:browserOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
   readonly property real browserMaxWidth:Math.max(360,Math.min(Math.floor(panelLayout.width/Style.space(1)*0.7),Math.floor(browserAvailableWidth/Style.space(1))-366))
@@ -79,6 +79,11 @@ Item {
   property bool usageCollapsed: bridge.viewState.usageExpanded !== true
   onUsageCollapsedChanged: if(initialized && bridge.viewState.usageExpanded !== !usageCollapsed) bridge.rememberView({usageExpanded:!usageCollapsed,quotaCollapsed:usageCollapsed})
   property real sidebarWidth: Math.max(260,Math.min(600,bridge.viewState.sidebarWidth || 300))
+  // Shelf heights in logical px, resized from the handle above each shelf.
+  property real workingShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.workingShelfHeight || 220))
+  property real snoozedShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.snoozedShelfHeight || 164))
+  property real settledShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.settledShelfHeight || 220))
+  function resizeShelf(key,height) { var h=Math.round(Math.max(60,Math.min(1200,height)));root[key]=h;var v={};v[key]=h;bridge.rememberView(v) }
   function resizeSidebar(width) { sidebarWidth=Math.max(260,Math.min(600,width));bridge.rememberView({sidebarWidth:sidebarWidth}) }
   property bool composerExpanded: !!bridge.viewState.composerExpanded
   property real panelWidth: bridge.viewState.panelWidth || 1120
@@ -130,6 +135,14 @@ Item {
   readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true})
   readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
+  Connections{target:root.bridge;ignoreUnknownSignals:true
+    function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.activeRows.concat(root.workingRows).concat(root.snoozedRows).concat(root.settledRows)}
+    function onSettledLastThread(thread){
+      // Existing management dialogs close on the success signal; open afterwards.
+      var epoch=root.bridge.selectionEpoch
+      Qt.callLater(function(){if(root.opened&&!root.bridge.selectedKey&&root.bridge.selectionEpoch===epoch)sidebarActions.newThread(null,thread.projectKey)})
+    }
+  }
   function nativeThreadRows(){return activeRows.concat(visibleWorkingRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
   function supportsNativeShortcut(command){
     if(!nativeKeybindingsEnabled)return false
@@ -376,6 +389,30 @@ Item {
   readonly property var snoozedRows: Sidebar.rows(bridge.state.threads,statusFilter,projectFilter,true,bridge.query).filter(function(t){return !t.sectionHeader && !!t.snoozed})
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   function kind(t) { return Sidebar.state(t) }
+  // Last seen state per thread and when it changed, so rows can celebrate a
+  // transition even after moving to another sidebar section.
+  readonly property var starfield: sky
+  Binding { target: T3Motion; property: "style"; value: root.bridge.viewState.transitionStyle || "nebula" }
+  Binding { target: T3Motion; property: "pace"; value: ({slow: 1.6, fast: 0.6})[root.bridge.viewState.transitionSpeed] || 1 }
+  // Preferences > Appearance > Animations, resolved once for every row.
+  readonly property var threadEffects: {
+    var v = bridge.viewState
+    return {working: v.threadWorkingEffect || "comet", input: v.threadInputEffect || "glints", change: v.threadChangeEffect || "star",
+            intensity: ({subtle: 0.55, vivid: 1.6})[v.threadEffectIntensity] || 1}
+  }
+  property var threadKinds: ({})
+  property var stateChangedAt: ({})
+  function trackThreadStates() {
+    var previous = threadKinds, next = {}, changed = {}, now = Date.now(), dirty = false
+    Object.keys(stateChangedAt).forEach(function(key) { if (now - stateChangedAt[key] < 5000) changed[key] = stateChangedAt[key]; else dirty = true })
+    ;(bridge.state.threads || []).forEach(function(t) {
+      var k = kind(t); next[t.key] = k
+      if (previous[t.key] && previous[t.key] !== k) { changed[t.key] = now; dirty = true }
+    })
+    threadKinds = next
+    if (dirty) stateChangedAt = changed
+  }
+  Connections { target: root.bridge; function onStateChanged() { root.trackThreadStates() } }
   function stateColor(t) { return T3Palette.stateColor(kind(t)) }
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
   function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
@@ -420,7 +457,7 @@ Item {
     else [["Ctrl+F","Find in conversation"],["Ctrl+J","Open native terminal"],["Ctrl+S","Save draft"]].forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
     var local=[["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Meta+B","Chat list"],["Meta+E","Expand / return to chat"],["Meta+PgUp","Switch chat"],["Meta+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+Alt+Left","Resize"],["Ctrl+Alt+Right","Resize"],["Ctrl+Alt+Up","Resize"],["Ctrl+Alt+Down","Resize"]]
     local.filter(function(p){return root.localShortcutAvailable(p[0])}).forEach(function(p){shortcuts.push([p[0].replace("Meta+","Super+"),tr(p[1])])})
-    var fixed=[["Tab / Shift+Tab","Navigate controls"],["Super+A / Super+Z / Super+Shift+Z","Edit"],["Ctrl+Enter","Send"],["Ctrl+Shift+Enter","Send and start new thread"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Esc","Return / close"]]
+    var fixed=[["Tab / Shift+Tab","Navigate controls"],["Super+A / Super+Z / Super+Shift+Z","Edit"],[root.composerExpanded?"Ctrl+Enter":"Enter / Ctrl+Enter","Send"],[root.composerExpanded?"Enter / Shift+Enter":"Shift+Enter","New line"],["Ctrl+Shift+Enter","Send and start new thread"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Esc","Return / close"]]
     fixed.forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
     return shortcuts.map(function(p){return T3I18n.tr("{shortcut} · {action}",{shortcut:p[0],action:p[1]})}).join("\n")
   }
@@ -442,6 +479,7 @@ Item {
       panelVisible: root.opened
       keyboardCurrent: ListView.view ? ListView.view.activeFocus && ListView.view.currentIndex===index : false
       stateColor:root.stateColor(modelData);stateLabel:root.status(modelData)
+      sky:root.starfield;effects:root.threadEffects;stateChangedAt:root.stateChangedAt[modelData.key] || 0
       timeLabel:modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
@@ -482,6 +520,19 @@ Item {
     onResized: function(w,h) { root.resizePanel(w/Style.space(1),h/Style.space(1)) }
     padding: 0
     focusTarget: root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
+    T3Starfield {
+      id:sky;objectName:"t3Starfield"
+      parent:root.detached?desktop.contentItem:popup.surfaceItem
+      anchors.fill:parent;z:-1
+      mode:root.bridge.viewState.starfieldMode || "auto"
+      // Any working chat counts, including runs started from another device.
+      busy:!!root.bridge.selectedInfo.working||(root.bridge.state.working||0)>0
+      paused:!root.opened
+      brightness:0.5;meteorRate:0.3
+      speedScale:({slow:0.5,fast:1.8})[root.bridge.viewState.starfieldSpeed] || 1
+      meteorScale:({none:0,few:0.4,many:2.2})[root.bridge.viewState.starfieldMeteors] ?? 1
+      Connections{target:conversation;function onContentYChanged(){sky.follow(conversation.contentY)}}
+    }
     RowLayout {
       id:panelLayout;objectName:"t3PanelLayout"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
@@ -638,7 +689,7 @@ Item {
       }
       Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.browserShown){root.browserOpen=false}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
       T3WorkspaceConfirmation {popupHost:panelLayout;bridge:root.bridge}
-      T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || [] }
+      T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || []; preferredProjectKey:Array.isArray(root.projectScope)?root.projectScope.length===1?root.projectScope[0]:"":root.projectScope }
       Controls.Popup {
         id: filterMenu
         focus: true
@@ -675,278 +726,325 @@ Item {
           }
         }
       }
-      Rectangle {
-        id: sidebar
-        Layout.preferredWidth: Math.min(Style.space(root.sidebarWidth),Math.max(Style.space(260),panelLayout.width-Style.space(420))); Layout.fillHeight: true
-        visible: !root.preferencesOpen && !root.sidebarCollapsed && !root.composerExpanded
-        color: Qt.darker(Color.popups.background, 1.10)
-        ColumnLayout {
-          anchors.fill: parent; spacing: 0
-          Rectangle {
-            id: brand
-            Layout.fillWidth: true; Layout.preferredHeight: Style.space(76)
-            clip: true
-            gradient: Gradient {
-              orientation: Gradient.Horizontal
-              GradientStop { position: 0; color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12) }
-              GradientStop { position: 1; color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.025) }
-            }
-            Repeater {
-              model: 16
-              Rectangle {
-                required property int index
-                x: ((index * 47 + 19) % 291) * brand.width / 300
-                y: ((index * 23 + 9) % 65) * brand.height / 76
-                width: index % 3 === 0 ? 2 : 1; height: width; radius: 1
-                color: root.fg; opacity: 0.12 + (index % 4) * 0.08
-              }
-            }
-            RowLayout {
-              anchors.fill: parent; anchors.margins: Style.space(18); spacing: Style.space(10)
-              T3IconButton { name: "panel-left-close"; tooltipText: T3I18n.tr("Hide sidebar"); onClicked: root.toggleSidebar() }
-              Column {
-                spacing: Style.space(3)
-                Row {
-                  LayoutMirroring.enabled:false;layoutDirection:Qt.LeftToRight
-                  spacing: Style.space(4)
-                  T3Icon { name: "t3-logo"; implicitWidth: Style.space(32); implicitHeight: Style.space(20); tint: root.fg }
-                  Text { text: "Code"; font.pixelSize: Style.space(18); font.bold: true; color: root.fg }
+      // Collapsing animates with the transition chosen in Preferences; the
+      // preferences view still swaps instantly.
+      T3Reveal {
+        id: sidebarReveal; objectName: "sidebarReveal"
+        horizontal: true; Layout.fillHeight: true
+        size: Math.min(Style.space(root.sidebarWidth),Math.max(Style.space(260),panelLayout.width-Style.space(420)))
+        shown: !root.sidebarCollapsed && !root.composerExpanded
+        visible: present && !root.preferencesOpen
+        Rectangle {
+          id: sidebar
+          anchors.fill: parent
+          color: Qt.rgba(0, 0, 0, 0.09)
+          // Same sky as the panel, at night: darker base, brighter stars and most
+          // of the shooting stars while working. Solid behind the header, then it
+          // dissolves behind the search row into the panel sky.
+          T3Starfield {
+            width: parent.width; height: searchRow.y + searchRow.height + Style.space(12)
+            leader: sky; header: true
+            origin: Qt.vector2d(sidebar.x, 0)
+            base: Qt.darker(Color.popups.background, 2.4)
+            brightness: 1.25; nebula: 0.55; meteorRate: 0.85
+            fade: height > 0 ? 1 - brand.height * 0.85 / height : 0
+          }
+          ColumnLayout {
+            anchors.fill: parent; spacing: 0
+            Rectangle {
+              id: brand
+              Layout.fillWidth: true; Layout.preferredHeight: Style.space(62)
+              clip: true
+              color: "transparent"
+              RowLayout {
+                anchors.fill: parent; anchors.leftMargin: Style.space(18); anchors.rightMargin: Style.space(18); anchors.topMargin: Style.space(11); anchors.bottomMargin: Style.space(11); spacing: Style.space(10)
+                T3IconButton { name: "panel-left-close"; tooltipText: T3I18n.tr("Hide sidebar"); onClicked: root.toggleSidebar() }
+                Column {
+                  spacing: Style.space(3)
+                  Row {
+                    LayoutMirroring.enabled:false;layoutDirection:Qt.LeftToRight
+                    spacing: Style.space(4)
+                    T3Icon { name: "t3-logo"; implicitWidth: Style.space(32); implicitHeight: Style.space(20); tint: root.fg }
+                    Text { text: "Code"; font.pixelSize: Style.space(18); font.bold: true; color: root.fg }
+                  }
+                  Text { text: "OMARCHY"; font.pixelSize: Style.space(8); font.letterSpacing: 2; color: root.dim }
                 }
-                Text { text: "OMARCHY"; font.pixelSize: Style.space(8); font.letterSpacing: 2; color: root.dim }
+                Item { Layout.fillWidth: true }
+                T3IconButton{objectName:"t3PullRequestsToggle";name:"git-pull-request";tooltipText:T3I18n.tr("Pull requests");tint:root.pullRequestsOpen?Color.accent:root.dim;onClicked:{root.preferencesOpen=false;root.pullRequestsOpen=!root.pullRequestsOpen}}
+                T3IconButton {
+                  objectName:"t3UsageToggle";name:"chart-no-axes-column"
+                  tint:root.usageCollapsed ? root.dim : Color.accent
+                  tooltipText:root.usageCollapsed ? T3I18n.tr("Show provider usage") : T3I18n.tr("Hide provider usage")
+                  onClicked:root.usageCollapsed=!root.usageCollapsed
+                }
+                Rectangle { width: Style.space(6); height: width; radius: width / 2; color: root.bridge.stale ? Color.urgent : root.healthy }
               }
-              Item { Layout.fillWidth: true }
-              T3IconButton{objectName:"t3PullRequestsToggle";name:"git-pull-request";tooltipText:T3I18n.tr("Pull requests");tint:root.pullRequestsOpen?Color.accent:root.dim;onClicked:{root.preferencesOpen=false;root.pullRequestsOpen=!root.pullRequestsOpen}}
-              T3IconButton {
-                objectName:"t3UsageToggle";name:"chart-no-axes-column"
-                tint:root.usageCollapsed ? root.dim : Color.accent
-                tooltipText:root.usageCollapsed ? T3I18n.tr("Show provider usage") : T3I18n.tr("Hide provider usage")
-                onClicked:root.usageCollapsed=!root.usageCollapsed
-              }
-              Rectangle { width: Style.space(6); height: width; radius: width / 2; color: root.bridge.stale ? Color.urgent : root.healthy }
             }
-          }
-          RowLayout {
-            Layout.fillWidth: true; Layout.margins: Style.space(12); spacing: Style.space(7)
-            T3Icon { name: "search"; tint: root.dim }
-            Controls.TextField {
-              id: searchField
-              Layout.fillWidth: true
-              text: root.bridge.query
-              placeholderText: T3I18n.tr("Search threads…")
-              color: root.fg; placeholderTextColor: root.dim
-              font.pixelSize: Style.font.body
-              background: Rectangle { color: "transparent" }
-              onTextEdited: root.bridge.search(text)
-              Keys.onEscapePressed: if(root.bridge.query)root.bridge.search("");else root.close()
-              Keys.onDownPressed: root.focusSidebar()
-            }
-            T3IconButton{objectName:"clearThreadSearch";name:"x";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!!root.bridge.query;tooltipText:T3I18n.tr("Clear search");onClicked:{root.bridge.search("");searchField.forceActiveFocus()}}
-            T3IconButton {
-              id: filterButton
-              name: "list-filter"; tooltipText: T3I18n.tr("Filter by state and project")
-              tint: root.statusFilter !== "all" || root.projectFilter ? Color.accent : root.dim
-              onClicked: filterMenu.visible ? filterMenu.close() : filterMenu.open()
-            }
-            T3IconButton { objectName:"newProjectButton"; name: "folder-plus"; tooltipText: T3I18n.tr("Add project"); onClicked: sidebarActions.addProject() }
-            T3IconButton { objectName:"newChatButton"; name: "square-pen"; tooltipText: T3I18n.tr("New chat"); onClicked: sidebarActions.newThread() }
-          }
-          RowLayout {
-            Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12)
-            visible: !!root.bridge.managementError
-            Text { Layout.fillWidth: true; text: T3I18n.error(root.bridge.managementError); color: Color.urgent; font.pixelSize: Style.font.caption; elide: Text.ElideRight }
-            T3IconButton { name: "refresh-cw"; visible: !!root.bridge.managementRequest; tooltipText: T3I18n.tr("Retry action"); onClicked: root.bridge.manage({}) }
-          }
-          ListView {
-            id: threads
-            Keys.onUpPressed:root.moveSidebarFocus(threads,-1)
-            Keys.onDownPressed:root.moveSidebarFocus(threads,1)
-            T3Wheel {flickable:threads}
-            activeFocusOnTab: true
-            highlight: Rectangle {color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:threads.activeFocus;radius:Style.space(8)}
-            keyNavigationEnabled: true
-            highlightFollowsCurrentItem: activeFocus
-            Keys.onReturnPressed: {var t=root.activeRows[currentIndex];if(t){root.selectSidebarThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
-            Keys.onEnterPressed: {var t=root.activeRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
-            objectName: "threadList"
-            Layout.fillWidth: true; Layout.fillHeight: true
-            Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
-            clip: true; reuseItems: true; cacheBuffer: 0
-            visible: root.activeRows.length > 0 || (!root.workingRows.length && !root.snoozedRows.length && !root.settledRows.length)
-            model: root.activeRows
-            onContentYChanged: if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")
-            spacing: 0
-            Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
-            add: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 140 } }
-            delegate: threadDelegate
-            Text {
-              anchors.centerIn: parent; width: parent.width - Style.space(28)
-              visible: threads.count === 0
-              text: root.bridge.stale ? T3I18n.tr("T3 is offline") : T3I18n.tr("No threads here")
-              color: root.dim; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-            }
-          }
-          Rectangle {
-            id:workingToggle;objectName:"workingShelfToggle"
-            border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-            Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
-            color:"transparent";visible:root.workingRows.length>0;activeFocusOnTab:true
-            Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.workingRows.length})
-            Keys.onReturnPressed:root.workingExpanded=!root.workingExpanded
-            Keys.onSpacePressed:root.workingExpanded=!root.workingExpanded
-            Keys.onUpPressed:root.moveSidebarFocus(workingToggle,-1)
-            Keys.onDownPressed:root.moveSidebarFocus(workingToggle,1)
-            Keys.onLeftPressed:root.workingExpanded=false
-            Keys.onRightPressed:root.workingExpanded=true
-            RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:T3Palette.working;font.pixelSize:Style.font.caption}Rectangle{objectName:"workingShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.workingExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
-            MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.workingExpanded=!root.workingExpanded}
-          }
-          ListView {
-            id:workingThreads;objectName:"workingThreadList"
-            Keys.onUpPressed:root.moveSidebarFocus(workingThreads,-1)
-            Keys.onDownPressed:root.moveSidebarFocus(workingThreads,1)
-            T3Wheel{flickable:workingThreads}
-            Layout.fillWidth:true;Layout.fillHeight:root.activeRows.length===0
-            Layout.preferredHeight:Math.min(contentHeight,Style.space(220));Layout.maximumHeight:root.activeRows.length>0?Style.space(220):Infinity
-            Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
-            visible:root.visibleWorkingRows.length>0
-            activeFocusOnTab:true;keyNavigationEnabled:true;clip:true;reuseItems:true;cacheBuffer:0;spacing:0
-            highlightFollowsCurrentItem:activeFocus
-            highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:workingThreads.activeFocus;radius:Style.space(8)}
-            Keys.onReturnPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-            Keys.onEnterPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-            model:root.visibleWorkingRows;delegate:threadDelegate
-            onContentYChanged:if(!root.restoringWorking)root.capturePosition(workingThreads,root.visibleWorkingRows,"@working")
-            Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
-          }
-          Rectangle {
-            Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
-            id:snoozedToggle;objectName:"snoozedShelfToggle"
-            border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-            color:"transparent";visible:root.snoozedRows.length>0;activeFocusOnTab:true
-            Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Snoozed ({count})",{count:root.snoozedRows.length})
-            Keys.onReturnPressed:root.snoozedExpanded=!root.snoozedExpanded
-            Keys.onSpacePressed:root.snoozedExpanded=!root.snoozedExpanded
-            Keys.onUpPressed:root.moveSidebarFocus(snoozedToggle,-1)
-            Keys.onDownPressed:root.moveSidebarFocus(snoozedToggle,1)
-            Keys.onLeftPressed:root.snoozedExpanded=false
-            Keys.onRightPressed:root.snoozedExpanded=true
-            RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:root.dim;font.pixelSize:Style.font.caption}Rectangle{objectName:"snoozedShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.snoozedExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
-            MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.snoozedExpanded=!root.snoozedExpanded}
-          }
-          ListView {
-            id:snoozedThreads;objectName:"snoozedThreadList"
-            Keys.onUpPressed:root.moveSidebarFocus(snoozedThreads,-1)
-            Keys.onDownPressed:root.moveSidebarFocus(snoozedThreads,1)
-            T3Wheel{flickable:snoozedThreads}
-            Layout.fillWidth:true;Layout.preferredHeight:Math.min(contentHeight,Style.space(164));Layout.maximumHeight:Style.space(164)
-            Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
-            visible:root.visibleSnoozedRows.length>0
-            activeFocusOnTab:true;keyNavigationEnabled:true;clip:true;reuseItems:true;cacheBuffer:0;spacing:0
-            highlightFollowsCurrentItem:activeFocus
-            Keys.onReturnPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-            Keys.onEnterPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-            model:root.visibleSnoozedRows;delegate:threadDelegate
-            onContentYChanged:if(!root.restoringSnoozed)root.capturePosition(snoozedThreads,root.visibleSnoozedRows,"@snoozed")
-            Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
-          }
-          Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: Style.space(32)
-            activeFocusOnTab: true
-            Accessible.role: Accessible.Button
-            id:settledToggle;objectName:"settledShelfToggle"
-            border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-            Accessible.name: T3I18n.tr("Settled ({count})",{count:root.settledRows.length})
-            Keys.onReturnPressed: root.settledExpanded = !root.settledExpanded
-            Keys.onSpacePressed: root.settledExpanded = !root.settledExpanded
-            Keys.onUpPressed:root.moveSidebarFocus(settledToggle,-1)
-            Keys.onDownPressed:root.moveSidebarFocus(settledToggle,1)
-            Keys.onLeftPressed:root.settledExpanded=false
-            Keys.onRightPressed:root.settledExpanded=true
-            Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
-            visible: root.settledRows.length > 0
-            color: "transparent"
             RowLayout {
-              anchors.fill: parent; anchors.leftMargin: Style.space(5); anchors.rightMargin: Style.space(5)
-              Text { text:T3I18n.tr("Settled ({count})",{count:root.settledRows.length}); color: root.dim; font.pixelSize: Style.font.caption }
-              Rectangle {objectName:"settledShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}
-              T3Icon { name: root.settledShown ? "chevron-down" : "chevron-up"; tint: root.dim; implicitWidth: Style.space(12) }
+              id: searchRow
+              Layout.fillWidth: true; Layout.margins: Style.space(12); spacing: Style.space(7); Layout.topMargin: Style.space(4)
+              T3Icon { name: "search"; tint: root.dim }
+              Controls.TextField {
+                id: searchField
+                Layout.fillWidth: true
+                text: root.bridge.query
+                placeholderText: T3I18n.tr("Search threads…")
+                color: root.fg; placeholderTextColor: root.dim
+                font.pixelSize: Style.font.body
+                background: Rectangle { color: "transparent" }
+                onTextEdited: root.bridge.search(text)
+                Keys.onEscapePressed: if(root.bridge.query)root.bridge.search("");else root.close()
+                Keys.onDownPressed: root.focusSidebar()
+              }
+              T3IconButton{objectName:"clearThreadSearch";name:"x";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!!root.bridge.query;tooltipText:T3I18n.tr("Clear search");onClicked:{root.bridge.search("");searchField.forceActiveFocus()}}
+              T3IconButton {
+                id: filterButton
+                name: "list-filter"; tooltipText: T3I18n.tr("Filter by state and project")
+                tint: root.statusFilter !== "all" || root.projectFilter ? Color.accent : root.dim
+                onClicked: filterMenu.visible ? filterMenu.close() : filterMenu.open()
+              }
+              T3IconButton { objectName:"newProjectButton"; name: "folder-plus"; tooltipText: T3I18n.tr("Add project"); onClicked: sidebarActions.addProject() }
+              T3IconButton { objectName:"newChatButton"; name: "square-pen"; tooltipText: T3I18n.tr("New chat"); onClicked: sidebarActions.newThread() }
             }
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.settledExpanded = !root.settledExpanded }
-          }
-          ListView {
-            id: settledThreads;objectName:"settledThreadList"
-            Keys.onUpPressed:root.moveSidebarFocus(settledThreads,-1)
-            Keys.onDownPressed:root.moveSidebarFocus(settledThreads,1)
-            T3Wheel {flickable:settledThreads}
-            activeFocusOnTab: true
-            keyNavigationEnabled: true
-            highlightFollowsCurrentItem: activeFocus
-            highlight: Rectangle {color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:settledThreads.activeFocus;radius:Style.space(8)}
-            Keys.onReturnPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
-            Keys.onEnterPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
-            Layout.fillWidth: true
-            Layout.fillHeight: root.activeRows.length === 0
-            Layout.preferredHeight: Math.min(contentHeight,Style.space(220))
-            Layout.maximumHeight: root.activeRows.length > 0 ? Style.space(220) : Infinity
-            Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
-            visible: root.visibleSettledRows.length > 0
-            clip: true; reuseItems: true; cacheBuffer: 0; spacing: 0
-            model: root.visibleSettledRows; delegate: threadDelegate
-            onContentYChanged: if (!root.restoringSettled) root.capturePosition(settledThreads,root.visibleSettledRows,"@settled")
-            Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
-          }
-          Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
-          RowLayout {
-            objectName:"t3SidebarFooter"
-            Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
-            T3IconButton{objectName:"openPreferences";name:"settings";tooltipText:T3I18n.tr("Preferences");onClicked:root.preferencesOpen=!root.preferencesOpen}
-            T3Icon {
-              objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(18)
-              readonly property string statusText:root.bridge.stale?((root.bridge.state.environments || []).some(function(e){return e.state==="ready"})?T3I18n.tr("Partially connected"):T3I18n.tr("Offline")):T3I18n.tr("Direct connection")
-              tint:root.bridge.stale?Color.urgent:root.dim;Accessible.name:statusText
-              HoverHandler{id:connectionStatusHover}
-              Controls.ToolTip.visible:connectionStatusHover.hovered
-              Controls.ToolTip.text:statusText
+            RowLayout {
+              Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12)
+              visible: !!root.bridge.managementError
+              Text { Layout.fillWidth: true; text: T3I18n.error(root.bridge.managementError); color: Color.urgent; font.pixelSize: Style.font.caption; elide: Text.ElideRight }
+              T3IconButton { name: "refresh-cw"; visible: !!root.bridge.managementRequest; tooltipText: T3I18n.tr("Retry action"); onClicked: root.bridge.manage({}) }
             }
-            Item{Layout.fillWidth:true}
-            T3Icon {
-              objectName:"localBackendGuiIndicator";name:"monitor";implicitWidth:Style.space(20)
-              visible:root.bridge.localBackend.owner==="gui";tint:root.dim
-              Accessible.name:T3I18n.tr("Managed by T3 Code GUI")
-              HoverHandler{id:guiOwnerHover}
-              Controls.ToolTip.visible:guiOwnerHover.hovered
-              Controls.ToolTip.text:T3I18n.tr("Managed by T3 Code GUI")
-            }
-            T3IconButton {
-              id:localBackendControl;objectName:"startLocalBackend"
-              onVisibleChanged:if(!visible&&localBackendMenu)localBackendMenu.close()
-              visible:root.bridge.localBackend.owner!=="gui"
-              name:root.bridge.backendStart.busy?"loader-circle":root.bridge.localBackend.running?"server":"play"
-              tint:root.bridge.backendStart.error?Color.urgent:root.bridge.localBackend.running?Color.accent:root.dim
-              tooltipText:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):root.bridge.localBackend.error?T3I18n.error(root.bridge.localBackend.error):T3I18n.tr(root.bridge.backendStart.busy?"Loading…":root.bridge.localBackend.running?"Local backend controls":"Start local backend")
-              enabled:root.bridge.localBackend.canControl&&!root.bridge.backendStart.busy
-              onClicked:root.bridge.localBackend.running?localBackendMenu.popup():root.bridge.startBackend()
-              Controls.Menu {
-                id:localBackendMenu;objectName:"localBackendMenu";width:Style.space(260)
-                palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
-                background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.dim}
-                Controls.MenuItem{objectName:"localBackendStart";text:T3I18n.tr("Start local backend");enabled:root.bridge.localBackend.canControl&&!root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.startBackend()}
-                Controls.MenuItem{objectName:"localBackendRestart";text:T3I18n.tr("Restart local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("restart")}
-                Controls.MenuItem{objectName:"localBackendStop";text:T3I18n.tr("Stop local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("stop")}
+            ListView {
+              id: threads
+              Keys.onUpPressed:root.moveSidebarFocus(threads,-1)
+              Keys.onDownPressed:root.moveSidebarFocus(threads,1)
+              T3Wheel {flickable:threads}
+              activeFocusOnTab: true
+              highlight: Rectangle {color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:threads.activeFocus;radius:Style.space(8)}
+              keyNavigationEnabled: true
+              highlightFollowsCurrentItem: activeFocus
+              Keys.onReturnPressed: {var t=root.activeRows[currentIndex];if(t){root.selectSidebarThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
+              Keys.onEnterPressed: {var t=root.activeRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
+              objectName: "threadList"
+              Layout.fillWidth: true; Layout.fillHeight: true
+              Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
+              clip: true; reuseItems: true; cacheBuffer: 0
+              visible: root.activeRows.length > 0 || (!root.workingRows.length && !root.snoozedRows.length && !root.settledRows.length)
+              model: root.activeRows
+              // Rows move between sections as threads start or finish. Keep the
+              // first visible row where it was instead of letting the list jump;
+              // at the very top new rows still slide in.
+              property var anchor: null
+              property int anchorSerial: 0
+              function readAnchor() {
+                var rows = root.activeRows, index = indexAt(1, contentY + 1), item = itemAtIndex(index)
+                anchor = item && rows[index] ? {id: rows[index].key || rows[index].id, offset: contentY - item.y, top: contentY <= originY + 1} : null
+              }
+              // A reset scrolls to the top before onModelChanged fires, so the
+              // anchor is committed after the event and a reset cancels it.
+              function trackAnchor() { var serial = ++anchorSerial; Qt.callLater(function() { if (serial === anchorSerial) readAnchor() }) }
+              onModelChanged: {
+                var a = anchor, rows = root.activeRows, serial = ++anchorSerial
+                // Repositioning inside the model reset crashes the view; defer it.
+                Qt.callLater(function() {
+                  if (serial !== anchorSerial || root.activeRows !== rows) return
+                  if (a && !a.top && !root.restoringSidebar) {
+                    var index = rows.findIndex(function(row) { return (row.key || row.id) === a.id })
+                    if (index >= 0) {
+                      positionViewAtIndex(index, ListView.Beginning); forceLayout()
+                      var item = itemAtIndex(index)
+                      if (item) contentY = Math.max(originY, Math.min(originY + Math.max(0, contentHeight - height), item.y + a.offset))
+                    }
+                  }
+                  ++anchorSerial; readAnchor()
+                })
+              }
+              onContentYChanged: {trackAnchor(); if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")}
+              spacing: 0
+              Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
+              add: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 140 } }
+              delegate: threadDelegate
+              Text {
+                anchors.centerIn: parent; width: parent.width - Style.space(28)
+                visible: threads.count === 0
+                text: root.bridge.stale ? T3I18n.tr("T3 is offline") : T3I18n.tr("No threads here")
+                color: root.dim; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
               }
             }
-            T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
-            T3IconButton {name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:root.bridge.refresh()}
-            T3Select {id:languagePicker;objectName:"t3LanguagePicker";Layout.preferredWidth:Math.min(languageText.width+Style.space(36),root.sidebarWidth*Style.space(0.5));popupAbove:true;model:T3I18n.languages;textRole:"name";currentIndex:Math.max(0,model.findIndex(function(l){return l.id===T3I18n.choice}));onActivated:function(index){root.bridge.rememberView({language:model[index].id})}}
-            TextMetrics{id:languageText;text:languagePicker.displayText;font:languagePicker.font}
-          }
+            T3ShelfResizer{objectName:"workingShelfResizer";label:"Working threads height";visible:workingReveal.shown&&!workingReveal.moving;value:root.workingShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("workingShelfHeight",h)}}
+            Rectangle {
+              id:workingToggle;objectName:"workingShelfToggle"
+              border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+              Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              color:"transparent";visible:root.workingRows.length>0;activeFocusOnTab:true
+              Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.workingRows.length})
+              Keys.onReturnPressed:root.workingExpanded=!root.workingExpanded
+              Keys.onSpacePressed:root.workingExpanded=!root.workingExpanded
+              Keys.onUpPressed:root.moveSidebarFocus(workingToggle,-1)
+              Keys.onDownPressed:root.moveSidebarFocus(workingToggle,1)
+              Keys.onLeftPressed:root.workingExpanded=false
+              Keys.onRightPressed:root.workingExpanded=true
+              RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:T3Palette.working;font.pixelSize:Style.font.caption}Rectangle{objectName:"workingShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.workingExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
+              MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.workingExpanded=!root.workingExpanded}
+            }
+            T3Reveal {
+              id:workingReveal;shown:root.visibleWorkingRows.length>0
+              size:Math.min(workingThreads.contentHeight,Style.space(root.workingShelfHeight))
+              Layout.fillWidth:true;Layout.fillHeight:root.activeRows.length===0&&shown&&!moving
+              Layout.maximumHeight:root.activeRows.length>0?Style.space(root.workingShelfHeight):Infinity
+              Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              ListView {
+                id:workingThreads;objectName:"workingThreadList"
+                anchors.fill:parent
+                Keys.onUpPressed:root.moveSidebarFocus(workingThreads,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(workingThreads,1)
+                T3Wheel{flickable:workingThreads}
+                activeFocusOnTab:true;keyNavigationEnabled:true;clip:true;reuseItems:true;cacheBuffer:0;spacing:0
+                highlightFollowsCurrentItem:activeFocus
+                highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:workingThreads.activeFocus;radius:Style.space(8)}
+                Keys.onReturnPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                Keys.onEnterPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                model:workingReveal.present?root.workingRows:[];delegate:threadDelegate
+                onContentYChanged:if(!root.restoringWorking)root.capturePosition(workingThreads,root.visibleWorkingRows,"@working")
+                Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
+              }
+            }
+            T3ShelfResizer{objectName:"snoozedShelfResizer";label:"Snoozed threads height";visible:snoozedReveal.shown&&!snoozedReveal.moving;value:root.snoozedShelfHeight;defaultValue:164;onResized:function(h){root.resizeShelf("snoozedShelfHeight",h)}}
+            Rectangle {
+              Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              id:snoozedToggle;objectName:"snoozedShelfToggle"
+              border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+              color:"transparent";visible:root.snoozedRows.length>0;activeFocusOnTab:true
+              Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Snoozed ({count})",{count:root.snoozedRows.length})
+              Keys.onReturnPressed:root.snoozedExpanded=!root.snoozedExpanded
+              Keys.onSpacePressed:root.snoozedExpanded=!root.snoozedExpanded
+              Keys.onUpPressed:root.moveSidebarFocus(snoozedToggle,-1)
+              Keys.onDownPressed:root.moveSidebarFocus(snoozedToggle,1)
+              Keys.onLeftPressed:root.snoozedExpanded=false
+              Keys.onRightPressed:root.snoozedExpanded=true
+              RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:root.dim;font.pixelSize:Style.font.caption}Rectangle{objectName:"snoozedShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.snoozedExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
+              MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.snoozedExpanded=!root.snoozedExpanded}
+            }
+            T3Reveal {
+              id:snoozedReveal;shown:root.visibleSnoozedRows.length>0
+              size:Math.min(snoozedThreads.contentHeight,Style.space(root.snoozedShelfHeight))
+              Layout.fillWidth:true;Layout.maximumHeight:Style.space(root.snoozedShelfHeight)
+              Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              ListView {
+                id:snoozedThreads;objectName:"snoozedThreadList"
+                anchors.fill:parent
+                Keys.onUpPressed:root.moveSidebarFocus(snoozedThreads,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(snoozedThreads,1)
+                T3Wheel{flickable:snoozedThreads}
+                activeFocusOnTab:true;keyNavigationEnabled:true;clip:true;reuseItems:true;cacheBuffer:0;spacing:0
+                highlightFollowsCurrentItem:activeFocus
+                Keys.onReturnPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                Keys.onEnterPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                model:snoozedReveal.present?root.snoozedRows:[];delegate:threadDelegate
+                onContentYChanged:if(!root.restoringSnoozed)root.capturePosition(snoozedThreads,root.visibleSnoozedRows,"@snoozed")
+                Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
+              }
+            }
+            T3ShelfResizer{objectName:"settledShelfResizer";label:"Settled threads height";visible:settledReveal.shown&&!settledReveal.moving;value:root.settledShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("settledShelfHeight",h)}}
+            Rectangle {
+              Layout.fillWidth: true; Layout.preferredHeight: Style.space(32)
+              activeFocusOnTab: true
+              Accessible.role: Accessible.Button
+              id:settledToggle;objectName:"settledShelfToggle"
+              border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+              Accessible.name: T3I18n.tr("Settled ({count})",{count:root.settledRows.length})
+              Keys.onReturnPressed: root.settledExpanded = !root.settledExpanded
+              Keys.onSpacePressed: root.settledExpanded = !root.settledExpanded
+              Keys.onUpPressed:root.moveSidebarFocus(settledToggle,-1)
+              Keys.onDownPressed:root.moveSidebarFocus(settledToggle,1)
+              Keys.onLeftPressed:root.settledExpanded=false
+              Keys.onRightPressed:root.settledExpanded=true
+              Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
+              visible: root.settledRows.length > 0
+              color: "transparent"
+              RowLayout {
+                anchors.fill: parent; anchors.leftMargin: Style.space(5); anchors.rightMargin: Style.space(5)
+                Text { text:T3I18n.tr("Settled ({count})",{count:root.settledRows.length}); color: root.dim; font.pixelSize: Style.font.caption }
+                Rectangle {objectName:"settledShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}
+                T3Icon { name: root.settledShown ? "chevron-down" : "chevron-up"; tint: root.dim; implicitWidth: Style.space(12) }
+              }
+              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.settledExpanded = !root.settledExpanded }
+            }
+            T3Reveal {
+              id:settledReveal;shown:root.visibleSettledRows.length>0
+              size:Math.min(settledThreads.contentHeight,Style.space(root.settledShelfHeight))
+              Layout.fillWidth:true;Layout.fillHeight:root.activeRows.length===0&&shown&&!moving
+              Layout.maximumHeight:root.activeRows.length>0?Style.space(root.settledShelfHeight):Infinity
+              Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              ListView {
+                id: settledThreads;objectName:"settledThreadList"
+                anchors.fill:parent
+                Keys.onUpPressed:root.moveSidebarFocus(settledThreads,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(settledThreads,1)
+                T3Wheel {flickable:settledThreads}
+                activeFocusOnTab: true
+                keyNavigationEnabled: true
+                highlightFollowsCurrentItem: activeFocus
+                highlight: Rectangle {color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:settledThreads.activeFocus;radius:Style.space(8)}
+                Keys.onReturnPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
+                Keys.onEnterPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
+                clip: true; reuseItems: true; cacheBuffer: 0; spacing: 0
+                model: settledReveal.present ? root.settledRows : []; delegate: threadDelegate
+                onContentYChanged: if (!root.restoringSettled) root.capturePosition(settledThreads,root.visibleSettledRows,"@settled")
+                Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
+              }
+            }
+            Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
+            RowLayout {
+              objectName:"t3SidebarFooter"
+              Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
+              T3IconButton{objectName:"openPreferences";name:"settings";tooltipText:T3I18n.tr("Preferences");onClicked:root.preferencesOpen=!root.preferencesOpen}
+              T3Icon {
+                objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(18)
+                readonly property string statusText:root.bridge.stale?((root.bridge.state.environments || []).some(function(e){return e.state==="ready"})?T3I18n.tr("Partially connected"):T3I18n.tr("Offline")):T3I18n.tr("Direct connection")
+                tint:root.bridge.stale?Color.urgent:root.dim;Accessible.name:statusText
+                HoverHandler{id:connectionStatusHover}
+                Controls.ToolTip.visible:connectionStatusHover.hovered
+                Controls.ToolTip.text:statusText
+              }
+              Item{Layout.fillWidth:true}
+              T3Icon {
+                objectName:"localBackendGuiIndicator";name:"monitor";implicitWidth:Style.space(20)
+                visible:root.bridge.localBackend.owner==="gui";tint:root.dim
+                Accessible.name:T3I18n.tr("Managed by T3 Code GUI")
+                HoverHandler{id:guiOwnerHover}
+                Controls.ToolTip.visible:guiOwnerHover.hovered
+                Controls.ToolTip.text:T3I18n.tr("Managed by T3 Code GUI")
+              }
+              T3IconButton {
+                id:localBackendControl;objectName:"startLocalBackend"
+                onVisibleChanged:if(!visible&&localBackendMenu)localBackendMenu.close()
+                visible:root.bridge.localBackend.owner!=="gui"
+                name:root.bridge.backendStart.busy?"loader-circle":root.bridge.localBackend.running?"server":"play"
+                tint:root.bridge.backendStart.error?Color.urgent:root.bridge.localBackend.running?Color.accent:root.dim
+                tooltipText:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):root.bridge.localBackend.error?T3I18n.error(root.bridge.localBackend.error):T3I18n.tr(root.bridge.backendStart.busy?"Loading…":root.bridge.localBackend.running?"Local backend controls":"Start local backend")
+                enabled:root.bridge.localBackend.canControl&&!root.bridge.backendStart.busy
+                onClicked:root.bridge.localBackend.running?localBackendMenu.popup():root.bridge.startBackend()
+                Controls.Menu {
+                  id:localBackendMenu;objectName:"localBackendMenu";width:Style.space(260)
+                  palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
+                  background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.dim}
+                  Controls.MenuItem{objectName:"localBackendStart";text:T3I18n.tr("Start local backend");enabled:root.bridge.localBackend.canControl&&!root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.startBackend()}
+                  Controls.MenuItem{objectName:"localBackendRestart";text:T3I18n.tr("Restart local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("restart")}
+                  Controls.MenuItem{objectName:"localBackendStop";text:T3I18n.tr("Stop local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("stop")}
+                }
+              }
+              T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
+              T3IconButton {name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:root.bridge.refresh()}
+              T3Select {id:languagePicker;objectName:"t3LanguagePicker";Layout.preferredWidth:Math.min(languageText.width+Style.space(36),root.sidebarWidth*Style.space(0.5));popupAbove:true;model:T3I18n.languages;textRole:"name";currentIndex:Math.max(0,model.findIndex(function(l){return l.id===T3I18n.choice}));onActivated:function(index){root.bridge.rememberView({language:model[index].id})}}
+              TextMetrics{id:languageText;text:languagePicker.displayText;font:languagePicker.font}
+            }
 
+          }
         }
       }
       Item {
         id:sidebarResizer
         Layout.fillHeight:true;Layout.preferredWidth:Style.space(6)
-        visible:!root.preferencesOpen && !root.sidebarCollapsed && !root.composerExpanded
+        visible:!root.preferencesOpen && sidebarReveal.shown && !sidebarReveal.moving
         activeFocusOnTab:true
         Accessible.role:Accessible.Slider
         Accessible.name:T3I18n.tr("Sidebar width")
@@ -965,7 +1063,7 @@ Item {
       Rectangle {
         id:mainChatArea;objectName:"t3MainChatArea"
         Layout.fillWidth: true; Layout.fillHeight: true
-        color: Color.popups.background
+        color: "transparent"
         Loader{id:overlayBrowserLoader;objectName:"t3BrowserSheet";anchors.fill:parent;z:20;active:root.browserShown&&!root.browserInline;sourceComponent:browserWorkspaceComponent}
         Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
         Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
@@ -997,8 +1095,10 @@ Item {
             Text{Layout.fillWidth:true;text:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):T3I18n.tr("Local backend is offline");color:root.bridge.backendStart.error?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
           }
           Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
+          T3Reveal {
+            id:findReveal;shown:root.findOpen;Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14);Layout.topMargin:Style.space(6)*extent;Layout.bottomMargin:Style.space(6)*extent
           RowLayout {
-            visible:root.findOpen;Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14);Layout.topMargin:visible?Style.space(6):0;Layout.bottomMargin:visible?Style.space(6):0
+            anchors.fill:parent
             Controls.TextField {
               id:chatFindInput;objectName:"t3ChatFindInput";Layout.fillWidth:true;text:root.findQuery;placeholderText:T3I18n.tr("Find in conversation")
               onTextEdited:root.findQuery=text
@@ -1010,15 +1110,24 @@ Item {
             T3IconButton{objectName:"t3ChatFindNext";name:"chevron-down";tooltipText:T3I18n.tr("Next match");enabled:!!root.findMatches.length;onClicked:root.navigateFind(1)}
             T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:{root.findOpen=false;root.findQuery=""}}
           }
+          }
+          T3Reveal {
+            id:usageReveal;objectName:"t3HeaderUsageReveal";shown:!root.usageCollapsed
+            Layout.fillWidth:true
+            Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24)
+            Layout.topMargin:Style.space(4)*extent
+            Layout.bottomMargin:Style.space(4)*extent
           QuotaStrip {
             id:usage
             objectName:"t3HeaderUsage"
-            Layout.fillWidth:true
-            Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24)
-            Layout.topMargin:root.usageCollapsed?0:Style.space(10)
-            Layout.bottomMargin:root.usageCollapsed?0:Style.space(10)
+            anchors.left:parent.left;anchors.right:parent.right
             providers:root.bridge.providers
-            showHeader:false;collapsed:root.usageCollapsed
+            notices:root.bridge.quotaNotices || []
+            external:root.bridge.quotaExternal || []
+            onRefreshRequested:root.bridge.refreshQuotas()
+            // The reveal does the collapsing so the strip keeps its height.
+            showHeader:false;collapsed:false
+          }
           }
           Item {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -1231,7 +1340,7 @@ Item {
                     T3ContextDivider{visible:modelData.role==="context";width:parent.width;boundary:modelData.context || {};catalog:root.bridge.catalog;active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     T3ActivityBlock{visible:modelData.role==="activity";bridge:root.bridge;activity:modelData.activity || {};onInspectRequested:function(reference){toolPopup.open();toolInspector.openItem(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     T3PlanWorkflow{visible:modelData.role==="plan";width:parent.width;planId:modelData.plan?modelData.plan.id:"";view:({plans:modelData.plan?[modelData.plan]:[],ready:null});onCopyRequested:function(markdown){root.bridge.copyText(markdown)};onLinkRequested:function(link){root.bridge.openReference(link)}}
-                    T3Changes{visible:modelData.role==="changes";summary:modelData.changes || {};onOpenDiff:function(filePath){diffPopup.initialPath=filePath;root.bridge.requestDiff(summary);diffPopup.open()}}
+                    T3Changes{visible:modelData.role==="changes";summary:modelData.changes || {};onPreviewFile:function(filePath){root.bridge.openReference(filePath)};onOpenDiff:function(filePath){diffPopup.initialPath=filePath;root.bridge.requestDiff(summary);diffPopup.open()}}
 
                   }
                 }
@@ -1374,6 +1483,7 @@ Item {
             bridge: root.bridge
             expanded: root.composerExpanded
             onToggleExpanded: root.expandComposer()
+            onPreviewAttachment:function(a){if(a.type==="image"&&["image/png","image/jpeg","image/gif","image/webp"].indexOf(a.mimeType)>=0){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}else root.bridge.openReference("",a)}
           }
           }
           }

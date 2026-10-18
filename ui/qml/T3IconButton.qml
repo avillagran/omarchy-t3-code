@@ -6,6 +6,7 @@ Rectangle {
   property string name: "server"
   property string glyph: ""
   property string glyphFont: "FiraCode Nerd Font"
+  property real glyphScale: 1
   property string tooltipText: ""
   property color tint: Color.popups.text
   signal clicked()
@@ -23,7 +24,7 @@ Rectangle {
   opacity: enabled ? 1 : 0.3
   Behavior on color { ColorAnimation { duration: 130 } }
   T3Icon { anchors.centerIn: parent; visible: !root.glyph; name: root.name; tint: root.tint }
-  Text { anchors.centerIn: parent; visible: !!root.glyph; text: root.glyph; color: root.tint; font.family: root.glyphFont; font.pixelSize: Style.space(16); textFormat: Text.PlainText }
+  Text { anchors.centerIn: parent; visible: !!root.glyph; text: root.glyph; color: root.tint; font.family: root.glyphFont; font.pixelSize: Style.space(16); scale:root.glyphScale; textFormat: Text.PlainText }
   MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor; onClicked: root.clicked() }
   Controls.ToolTip.visible: mouse.containsMouse && root.tooltipText.length > 0
   Controls.ToolTip.text: tooltipText

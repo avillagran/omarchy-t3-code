@@ -1,255 +1,309 @@
-use base64::Engine;
-use chrono::Utc;
+//! Dynamic native subscription streams plus compatible local credential sources.
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    time::{Duration, Instant},
+};
 
-fn auth(provider: &str) -> String {
-    let a = read_json(&home().join(".hermes/auth.json")).unwrap_or(Value::Null);
-    for entry in a["credential_pool"][provider]
-        .as_array()
-        .into_iter()
-        .flatten()
-    {
-        if let Some(t) = entry["access_token"].as_str().filter(|s| !s.is_empty()) {
-            return t.into();
-        }
-    }
-    for v in [
-        &a["providers"][provider]["tokens"]["access_token"],
-        &a["providers"][provider]["access_token"],
-    ] {
-        if let Some(t) = v.as_str().filter(|s| !s.is_empty()) {
-            return t.into();
-        }
-    }
-    if provider == "openai-codex" {
-        let c = read_json(&home().join(".codex/auth.json")).unwrap_or(Value::Null);
-        for v in [&c["tokens"]["access_token"], &c["access_token"]] {
-            if let Some(t) = v.as_str().filter(|s| !s.is_empty()) {
-                return t.into();
-            }
-        }
-    }
-    String::new()
+#[derive(Default)]
+struct State {
+    environments: HashMap<String, Value>,
+    local: Vec<Value>,
 }
-fn number(v: &Value) -> Option<f64> {
-    v.as_f64()
-        .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+fn publish(state: &State) {
+    let mut environments = state.environments.values().cloned().collect::<Vec<_>>();
+    environments.sort_by(|a, b| text(a, "id").cmp(text(b, "id")));
+    crate::emit(
+        "quotas",
+        json!({"environments":environments,"localSources":state.local,"updatedAt":chrono::Utc::now().timestamp()}),
+    );
 }
-fn window(used: f64, seconds: i64, reset: f64, label: Option<String>) -> Value {
-    let label = label.unwrap_or_else(|| {
-        if seconds == 604800 {
-            "Semanal".into()
-        } else if seconds % 3600 == 0 && seconds > 0 {
-            format!("{} h", seconds / 3600)
-        } else {
-            "Cuota".into()
-        }
-    });
-    json!({"label":label,"usedPercent":used.clamp(0.,100.),"availablePercent":100.-used.clamp(0.,100.),"resetAt":reset,"windowSeconds":seconds})
+struct Watch {
+    signature: String,
+    cancel: Arc<AtomicBool>,
+    refresh: Arc<AtomicBool>,
 }
-pub fn openai_windows(d: &Value) -> Vec<Value> {
-    let mut result = vec![];
-    let mut limits = vec![("".to_string(), &d["rate_limit"])];
-    for e in d["additional_rate_limits"].as_array().into_iter().flatten() {
-        limits.push((text(e, "limit_name").to_string(), &e["rate_limit"]));
-    }
-    for (name, rate) in limits {
-        for key in ["primary_window", "secondary_window"] {
-            let w = &rate[key];
-            if let Some(used) = number(&w["used_percent"]) {
-                let sec = w["limit_window_seconds"].as_i64().unwrap_or(0);
-                result.push(window(
-                    used,
-                    sec,
-                    number(&w["reset_at"]).unwrap_or(0.),
-                    if name.is_empty() {
-                        None
-                    } else {
-                        Some(format!("{name} · {} h", sec / 3600))
-                    },
-                ));
-            }
-        }
-    }
-    result
+#[derive(Default)]
+pub struct Control {
+    state: Arc<Mutex<State>>,
+    watches: HashMap<String, Watch>,
 }
-pub fn kimi_windows(d: &Value) -> Vec<Value> {
-    let mut result = vec![];
-    if let Some(used) = number(&d["usage"]["used"]) {
-        result.push(window(
-            used,
-            604800,
-            epoch(&d["usage"]["resetTime"]) as f64 / 1000.,
-            None,
-        ));
-    }
-    for w in d["limits"].as_array().into_iter().flatten() {
-        if let Some(used) = number(&w["detail"]["used"]).or_else(|| {
-            let limit = number(&w["detail"]["limit"])?;
-            let remaining = number(&w["detail"]["remaining"])?;
-            if limit > 0. {
-                Some((limit - remaining) / limit * 100.)
+impl Control {
+    pub fn sync(&mut self, environments: Vec<Environment>) {
+        let mut state = self.state.lock().unwrap();
+        let ids = environments
+            .iter()
+            .map(|e| e.id.as_str())
+            .collect::<Vec<_>>();
+        let before = self.watches.len();
+        self.watches.retain(|id, w| {
+            if ids.contains(&id.as_str()) {
+                true
             } else {
-                None
+                w.cancel.store(true, Ordering::Relaxed);
+                state.environments.remove(id);
+                false
             }
-        }) {
-            let unit = text(&w["window"], "timeUnit");
-            let sec = w["window"]["duration"].as_i64().unwrap_or(0)
-                * if unit.ends_with("MINUTE") {
-                    60
-                } else if unit.ends_with("HOUR") {
-                    3600
-                } else {
-                    1
-                };
-            result.push(window(
-                used,
-                sec,
-                epoch(&w["detail"]["resetTime"]) as f64 / 1000.,
-                None,
-            ));
+        });
+        let mut changed = before != self.watches.len();
+        for e in environments {
+            let signature = format!("{}\n{}\n{:?}", e.name, e.base_url, e.connection_error);
+            if self
+                .watches
+                .get(&e.id)
+                .is_some_and(|w| w.signature == signature)
+            {
+                continue;
+            }
+            if let Some(old) = self.watches.remove(&e.id) {
+                old.cancel.store(true, Ordering::Relaxed);
+            }
+            let cancel = Arc::new(AtomicBool::new(false));
+            let refresh = Arc::new(AtomicBool::new(false));
+            self.watches.insert(
+                e.id.clone(),
+                Watch {
+                    signature,
+                    cancel: cancel.clone(),
+                    refresh: refresh.clone(),
+                },
+            );
+            state.environments.insert(e.id.clone(),json!({"id":e.id,"name":e.name,"connected":false,"providers":[],"usageLimitSources":[]}));
+            let shared = self.state.clone();
+            std::thread::spawn(move || watch(e, shared, cancel, refresh));
+            changed = true;
+        }
+        if changed {
+            publish(&state);
         }
     }
-    result
-}
-fn read_env(key: &str) -> String {
-    std::env::var(key)
-        .ok()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| {
-            std::fs::read_to_string(home().join(".hermes/.env"))
-                .unwrap_or_default()
-                .lines()
-                .filter(|l| !l.trim_start().starts_with('#'))
-                .filter_map(|l| l.split_once('='))
-                .find(|(k, _)| k.trim() == key)
-                .map(|(_, v)| v.trim().trim_matches(['\'', '"']).to_string())
-                .unwrap_or_default()
-        })
-}
-fn provider(client: &Client, name: &str) -> Value {
-    let token = if name == "kimi-coding" {
-        read_env("KIMI_CODING_API_KEY")
-    } else {
-        auth(name)
-    };
-    let mut status = "unauthenticated".to_string();
-    let mut windows = vec![];
-    let mut details = vec![];
-    let mut plan = String::new();
-    if !token.is_empty() {
-        let data = match name {
-            "openai-codex" => {
-                let claims = token
-                    .split('.')
-                    .nth(1)
-                    .and_then(|p| {
-                        base64::engine::general_purpose::URL_SAFE_NO_PAD
-                            .decode(p.trim_end_matches('='))
-                            .ok()
-                    })
-                    .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-                    .unwrap_or(Value::Null);
-                let account = text(&claims["https://api.openai.com/auth"], "chatgpt_account_id");
-                client.fetch_headers(
-                    "https://chatgpt.com/backend-api/wham/usage",
-                    &token,
-                    false,
-                    &if account.is_empty() {
-                        vec![]
-                    } else {
-                        vec![("ChatGPT-Account-Id", account)]
-                    },
-                )
-            }
-            "kimi-coding" => client.fetch("https://api.kimi.com/coding/v1/usages", &token, false),
-            _ => client.fetch(
-                "https://portal.nousresearch.com/api/oauth/account",
-                &token,
-                false,
-            ),
-        };
-        match data {
-            Ok(d) => {
-                status = "ok".into();
-                match name {
-                    "openai-codex" => windows = openai_windows(&d),
-                    "kimi-coding" => windows = kimi_windows(&d),
-                    _ => {
-                        let s = &d["subscription"];
-                        plan = text(s, "plan").into();
-                        if let (Some(cap), Some(left)) = (
-                            number(&s["monthly_credits"]),
-                            number(&s["credits_remaining"]),
-                        ) {
-                            if cap > 0. {
-                                windows.push(window(
-                                    (cap - left) / cap * 100.,
-                                    0,
-                                    epoch(&s["current_period_end"]) as f64 / 1000.,
-                                    Some("Mensual".into()),
-                                ));
-                            }
-                        }
-                        if let Some(total) =
-                            number(&d["paid_service_access"]["total_usable_credits"])
-                        {
-                            details.push(format!("US${total:.2} disponible"));
+    pub fn local(&self, sources: Vec<Value>, complete: bool) {
+        let mut state = self.state.lock().unwrap();
+        let previous = state
+            .local
+            .iter()
+            .flat_map(|s| s["accounts"].as_array().into_iter().flatten())
+            .map(|a| (text(a, "id").to_owned(), a["usageLimits"].clone()))
+            .collect::<HashMap<_, _>>();
+        let mut sources = quota_sources::sources(&json!(sources));
+        if !complete {
+            for source in &mut sources {
+                if let Some(accounts) = source["accounts"].as_array_mut() {
+                    let known = accounts
+                        .iter()
+                        .map(|a| text(a, "id").to_owned())
+                        .collect::<Vec<_>>();
+                    for old in state
+                        .local
+                        .iter()
+                        .flat_map(|s| s["accounts"].as_array().into_iter().flatten())
+                    {
+                        if !known.iter().any(|id| id == text(old, "id")) {
+                            accounts.push(old.clone());
                         }
                     }
                 }
             }
-            Err(e) => status = e,
+        }
+        for source in &mut sources {
+            let mut failed = false;
+            if let Some(accounts) = source["accounts"].as_array_mut() {
+                for account in accounts {
+                    if account["usageLimits"]["unavailable"]["reason"] == "probeFailed" {
+                        failed = true;
+                        if let Some(old) = previous.get(text(account, "id")).filter(|old| {
+                            old["unavailable"].is_null()
+                                && old["windows"].as_array().is_some_and(|w| !w.is_empty())
+                        }) {
+                            account["usageLimits"] = old.clone();
+                        }
+                    }
+                }
+            }
+            if failed {
+                source["error"] =
+                    json!("Could not refresh local accounts; readings may be outdated.");
+            }
+        }
+        state.local = sources;
+        publish(&state);
+    }
+    pub fn refresh(&self) {
+        for w in self.watches.values() {
+            w.refresh.store(true, Ordering::Relaxed);
         }
     }
-    // Preserve Ares' window semantics and calculate the pace once per refresh, outside QML.
-    let weekly = windows
-        .iter()
-        .find(|w| w["windowSeconds"] == 604800)
-        .or_else(|| {
-            windows
-                .iter()
-                .max_by_key(|w| w["windowSeconds"].as_i64().unwrap_or(0))
-        })
-        .cloned()
-        .unwrap_or(Value::Null);
-    let short = windows
-        .iter()
-        .find(|w| w["windowSeconds"] == 18000)
-        .cloned()
-        .unwrap_or(Value::Null);
-    let seconds = weekly["windowSeconds"].as_f64().unwrap_or(0.);
-    let reset = weekly["resetAt"].as_f64().unwrap_or(0.);
-    let expected = if seconds > 0. && reset > 0. {
-        ((reset - Utc::now().timestamp() as f64) / seconds * 100.).clamp(0., 100.)
-    } else {
-        -1.
-    };
-    json!({"provider":name,"label":match name{"openai-codex"=>"Codex","kimi-coding"=>"Kimi",_=>"Nous"},"quota":{"status":status,"windows":windows,"plan":plan,"details":details},"weekly":weekly,"shortWindow":short,"expectedAvailable":expected,"onPace":expected<0.||weekly["availablePercent"].as_f64().unwrap_or(0.)>=expected})
 }
-pub fn collect(client: &Client) -> Value {
-    let providers: Vec<Value> = ["openai-codex", "kimi-coding", "nous"]
-        .iter()
-        .map(|name| provider(client, name))
-        .collect();
-    json!({"updatedAt":Utc::now().timestamp(),"providers":providers})
+impl Drop for Control {
+    fn drop(&mut self) {
+        for w in self.watches.values() {
+            w.cancel.store(true, Ordering::Relaxed);
+        }
+    }
 }
+fn watch(
+    initial: Environment,
+    shared: Arc<Mutex<State>>,
+    cancel: Arc<AtomicBool>,
+    refresh: Arc<AtomicBool>,
+) {
+    let mut retry = 1;
+    let refresh_after = Arc::new(Mutex::new(Instant::now()));
+    let refreshing = Arc::new(AtomicBool::new(false));
+    while !cancel.load(Ordering::Relaxed) {
+        // Resolve routes/credentials again after reconnect, never persist raw config.
+        let e = environments()
+            .ok()
+            .and_then(|all| all.into_iter().find(|e| e.id == initial.id))
+            .unwrap_or_else(|| initial.clone());
+        let result = quota_sources::subscribe(
+            &e,
+            || cancel.load(Ordering::Relaxed),
+            |event| {
+                if cancel.load(Ordering::Relaxed) {
+                    return Ok(());
+                }
+                if let Some(event) = event {
+                    let mut state = shared.lock().unwrap();
+                    if cancel.load(Ordering::Relaxed) {
+                        return Ok(());
+                    }
+                    if let Some(view) = state.environments.get_mut(&e.id) {
+                        let id = view["id"].clone();
+                        let name = view["name"].clone();
+                        if quota_sources::apply(view, &event) {
+                            view["id"] = id;
+                            view["name"] = name;
+                            view["connected"] = json!(true);
+                            view.as_object_mut().unwrap().remove("error");
+                            publish(&state);
+                            retry = 1;
+                        }
+                    }
+                }
+                // The same five-minute budget as T3, also after failures. Native
+                // refresh has no refreshModels flag and cannot request a model session.
+                if (refresh.swap(false, Ordering::Relaxed)
+                    || Instant::now() >= *refresh_after.lock().unwrap())
+                    && !refreshing.swap(true, Ordering::Relaxed)
+                {
+                    *refresh_after.lock().unwrap() = Instant::now() + Duration::from_secs(300);
+                    let refresh_after = refresh_after.clone();
+                    let e = e.clone();
+                    let cancel = cancel.clone();
+                    let shared = shared.clone();
+                    let refreshing = refreshing.clone();
+                    std::thread::spawn(move || {
+                        let result = quota_sources::connection(&e).and_then(|c| {
+                            quota_sources::authorize(&c)?;
+                            c.rpc("server.refreshProviders", json!({}))
+                        });
+                        let mut state = shared.lock().unwrap();
+                        if !cancel.load(Ordering::Relaxed) {
+                            if let Some(view) = state.environments.get_mut(&e.id) {
+                                view["refreshFailed"] = json!(result.is_err());
+                            }
+                            publish(&state);
+                        }
+                        *refresh_after.lock().unwrap() = Instant::now() + Duration::from_secs(300);
+                        refreshing.store(false, Ordering::Relaxed);
+                    });
+                }
+                Ok(())
+            },
+        );
+        if cancel.load(Ordering::Relaxed) {
+            return;
+        }
+        {
+            let mut state = shared.lock().unwrap();
+            if cancel.load(Ordering::Relaxed) {
+                return;
+            }
+            if let Some(view) = state.environments.get_mut(&e.id) {
+                view["connected"] = json!(false);
+                let denied = result
+                    .as_ref()
+                    .err()
+                    .is_some_and(|e| matches!(e.as_str(), "permission_denied" | "unauthorized"));
+                view["error"] = json!(if denied {
+                    "permission_denied"
+                } else {
+                    "disconnected"
+                });
+                if denied {
+                    view["providers"] = json!([]);
+                    view["usageLimitSources"] = json!([]);
+                }
+                publish(&state);
+            }
+        }
+        for _ in 0..retry * 10 {
+            if cancel.load(Ordering::Relaxed) {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        retry = (retry * 2).min(30);
+    }
+}
+/// Bounded explicit CLI read, including the opt-in hub replay (not getConfig alone).
+pub fn collect(_client: &Client) -> Value {
+    let environments = environments().unwrap_or_default();
+    let views = std::thread::scope(|scope| {
+        let jobs=environments.into_iter().map(|e|scope.spawn(move|| {
+            let start=Instant::now();let mut state=json!({"id":e.id,"name":e.name,"providers":[],"usageLimitSources":[],"connected":false});
+            let result=quota_sources::subscribe(&e,||start.elapsed()>Duration::from_secs(2),|event| {
+                if let Some(event)=event {let id=state["id"].clone();let name=state["name"].clone();quota_sources::apply(&mut state,&event);state["id"]=id;state["name"]=name;}
+                Ok(())
+            });
+            if result.is_err(){state["error"]=json!("disconnected");state["connected"]=json!(false);}
+            state
+        })).collect::<Vec<_>>();
+        jobs.into_iter()
+            .filter_map(|job| job.join().ok())
+            .collect::<Vec<_>>()
+    });
+    json!({"environments":views,"localSources":crate::local_quotas::collect(&Client::new().unwrap()),"updatedAt":chrono::Utc::now().timestamp()})
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn source(id: &str, failed: bool) -> Value {
+        let mut usage = json!({"checkedAt":"2026-10-18T12:00:00Z","windows":[{"id":"weekly","label":"Weekly","kind":"weekly","usedPercent":25}]});
+        if failed {
+            usage = json!({"checkedAt":"2026-10-18T12:05:00Z","windows":[],"unavailable":{"reason":"probeFailed"}});
+        }
+        json!({"id":"source","label":"Local","accounts":[{"id":id,"driver":"codex","usageLimits":usage}]})
+    }
     #[test]
-    fn provider_windows_preserve_available() {
-        let w = openai_windows(
-            &json!({"rate_limit":{"primary_window":{"used_percent":20,"limit_window_seconds":18000,"reset_at":1900000000}}}),
+    fn failures_keep_last_good_timestamp_and_partial_refreshes_keep_unread_accounts() {
+        let control = Control::default();
+        control.local(vec![source("one", false)], true);
+        control.local(vec![source("two", false)], false);
+        assert_eq!(
+            control.state.lock().unwrap().local[0]["accounts"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
         );
-        assert_eq!(w[0]["availablePercent"], 80.);
-        assert_eq!(w[0]["windowSeconds"], 18000);
-        let w = kimi_windows(
-            &json!({"usage":{"used":"8","resetTime":"2026-10-15T04:00:00Z"},"limits":[{"window":{"duration":300,"timeUnit":"TIME_UNIT_MINUTE"},"detail":{"limit":"100","remaining":"92","resetTime":"2026-10-15T04:00:00Z"}}]}),
+        control.local(vec![source("one", true)], true);
+        let state = control.state.lock().unwrap();
+        assert_eq!(state.local[0]["accounts"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            state.local[0]["accounts"][0]["usageLimits"]["checkedAt"],
+            "2026-10-18T12:00:00Z"
         );
-        assert_eq!(w[1]["availablePercent"], 92.);
-        assert_eq!(w[0]["availablePercent"], 92.);
-        assert_eq!(w[0]["resetAt"], 1792036800.);
+        assert!(state.local[0].get("error").is_some());
+        drop(state);
+        control.local(vec![], true);
+        assert!(control.state.lock().unwrap().local.is_empty());
     }
 }

@@ -9,6 +9,9 @@ T3IconButton 1.0 T3IconButton.qml
 T3Select 1.0 T3Select.qml
 T3Composer 1.0 T3Composer.qml
 singleton T3Palette 1.0 T3Palette.qml
+singleton T3Motion 1.0 T3Motion.qml
+T3Reveal 1.0 T3Reveal.qml
+T3ShelfResizer 1.0 T3ShelfResizer.qml
 singleton T3ProjectIcons 1.0 T3ProjectIcons.qml
 T3ProjectIcon 1.0 T3ProjectIcon.qml
 T3ActivityText 1.0 T3ActivityText.qml
@@ -45,6 +48,7 @@ T3PullRequestBadge 1.0 T3PullRequestBadge.qml
 T3ContextDivider 1.0 T3ContextDivider.qml
 T3CopyButton 1.0 T3CopyButton.qml
 T3Preferences 1.0 T3Preferences.qml
+T3ProviderInstances 1.0 T3ProviderInstances.qml
 T3PreferenceField 1.0 T3PreferenceField.qml
 T3Switch 1.0 T3Switch.qml
 T3PreferenceSection 1.0 T3PreferenceSection.qml
@@ -101,3 +105,5 @@ T3BrowserPage 1.0 T3BrowserPage.qml
 T3BrowserView 1.0 T3BrowserView.qml
 T3BrowserWorkspace 1.0 T3BrowserWorkspace.qml
 T3BrowserImportWizard 1.0 T3BrowserImportWizard.qml
+T3StorageSettings 1.0 T3StorageSettings.qml
+T3Starfield 1.0 T3Starfield.qml

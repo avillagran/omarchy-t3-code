@@ -45,7 +45,7 @@ password and restarts the Omarchy shell when finished.
 ## Use
 
 Press **Super+Shift+A** or click **T3** in the status bar to open the agent.
-**Ctrl+Enter** sends; **Enter** inserts a newline. **Super+Enter** keeps Omarchy’s
+**Enter** sends; **Shift+Enter** inserts a new line. **Ctrl+Enter** also sends. **Super+Enter** keeps Omarchy’s
 terminal shortcut. The header’s window button cycles **panel → floating → tiled
 → panel**, keeping the same chat and draft. Add projects through the embedded
 environment and folder picker, including remote folders.

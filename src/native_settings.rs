@@ -82,6 +82,7 @@ pub fn snapshot(raw: &Value) -> Value {
     if raw.get("defaultThreadEnvMode").is_none_or(|v|v.is_null()||matches!(v.as_str(),Some("local"|"worktree"))) {
         fields.push(json!({"key":"defaultThreadEnvMode","label":"Workspace","kind":"choice","section":"general","value":raw["defaultThreadEnvMode"],"resetValue":null,"choices":[{"id":null,"name":"Automatic"},{"id":"local","name":"Current checkout"},{"id":"worktree","name":"New worktree"}]}));
     }
+    fields.extend(crate::storage_settings::fields(raw));
     for field in fields {
         let detail=description(text(field,"key"));if !detail.is_empty(){field["description"]=json!(detail);}
     }
@@ -89,6 +90,16 @@ pub fn snapshot(raw: &Value) -> Value {
 }
 pub fn patch(input:&Value,config:Option<&Value>)->Result<Value> {
     let key=text(input,"key");let value=input.get("value").ok_or("invalid_settings")?;
+    if crate::storage_settings::is_key(key) {
+        let config=config.ok_or("storage_settings_unsupported")?;
+        let capability=crate::storage_settings::capability(key);
+        if config["environment"]["capabilities"][capability]!=true
+            || key=="storageCleanup.worktreeKeepWhen"&&config["environment"]["capabilities"]["storageCleanupRun"]!=true {
+            return Err("storage_settings_unsupported".into());
+        }
+        let patch=crate::storage_settings::patch(input)?;
+        return crate::storage_settings::environment_patch(&config["settings"],key,&patch);
+    }
     if MODEL_KEYS.iter().any(|(k,_)|*k==key) {
         if value.is_null() {
             if key=="textGenerationModelSelection"{return Err("invalid_model".into())}
@@ -133,7 +144,7 @@ pub fn execute(e:&Environment,input:&Value)->Result<Value>{
     match text(input,"action") {
         "read"=>{},
         "update"=>{
-            let config=if MODEL_KEYS.iter().any(|(key,_)|*key==text(input,"key"))&&!input["value"].is_null(){Some(crate::write::rpc(e,"server.getConfig",json!({}))?)}else{None};
+            let config=if crate::storage_settings::is_key(text(input,"key"))||MODEL_KEYS.iter().any(|(key,_)|*key==text(input,"key"))&&!input["value"].is_null(){Some(crate::write::rpc(e,"server.getConfig",json!({}))?)}else{None};
             crate::write::rpc(e,"server.updateSettings",patch(input,config.as_ref())?)?;
         },
         _=>return Err("invalid_settings".into()),

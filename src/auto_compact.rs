@@ -150,6 +150,20 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
             let old = ledger[key].clone();
             let due =
                 old["status"] == "scheduled" && old["dueAt"].as_i64().is_some_and(|d| now >= d);
+            if thread["settled"] == true {
+                // Retire a pending deadline without losing a consumed episode's claim.
+                if old["status"] == "scheduled" {
+                    ledger[key]["status"] = json!("unavailable");
+                    save_json(&file, &ledger)?;
+                }
+                checked.remove(key);
+                let v = json!({"status":"unavailable"});
+                if statuses.get(key) != Some(&v) {
+                    emit(key, &v);
+                    statuses.insert(key.into(), v);
+                }
+                continue;
+            }
             if excluded
                 || thread["working"] == true
                 || thread["canSnooze"] == false

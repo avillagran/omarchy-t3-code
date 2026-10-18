@@ -28,6 +28,8 @@ ColumnLayout {
  property var confirmation:null
  property string observedRevision:""
  spacing:Style.space(10)
+ function profileLabel(profile){return profile.id==="default"?T3I18n.tr("Default"):profile.name}
+ function outcomeLabel(state){return T3I18n.tr(state==="complete"?"Completed":state==="failed"?"Failed":state==="pending"?"Pending":state==="uncertain"?"Outcome unknown. Check native T3 before retrying.":state)}
  function refresh(){bridge.requestBrowserProfiles(targets,true)}
  function create(){if(!writable||userProfiles.length>=maxProfiles)return;var names=profiles.map(function(p){return p.name}),name="New profile",index=2;while(names.indexOf(name)>=0)name="New profile "+index++;bridge.requestClientSettings({browserProfiles:userProfiles.concat([{id:"profile-"+bridge.uuid(),name:name,kind:"persistent"}])})}
  function rename(id,name){if(!writable||Original.nativeBrowser.isBuiltInBrowserProfileId(id))return;name=name.trim().slice(0,Original.nativeBrowser.BROWSER_PROFILE_NAME_MAX_LENGTH);if(!name)return;var current=userProfiles.find(function(p){return p.id===id});if(!current||current.name===name)return;bridge.requestClientSettings({browserProfiles:userProfiles.map(function(p){return p.id===id?Object.assign({},p,{name:name}):p})})}
@@ -66,7 +68,7 @@ ColumnLayout {
   Rectangle{required property var modelData;required property int index;width:parent.width;implicitHeight:profileRow.implicitHeight+Style.space(16);color:"transparent"
    Rectangle{visible:index>0;anchors.top:parent.top;width:parent.width;height:1;color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08)}
    RowLayout{id:profileRow;anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:Style.space(8);spacing:Style.space(12)
-    Controls.TextField{objectName:"browserProfileName_"+modelData.id;Layout.fillWidth:true;text:modelData.name;enabled:root.writable&&!Original.nativeBrowser.isBuiltInBrowserProfileId(modelData.id);maximumLength:Original.nativeBrowser.BROWSER_PROFILE_NAME_MAX_LENGTH;selectByMouse:true;color:root.fg;font.pixelSize:Style.font.caption;onEditingFinished:root.rename(modelData.id,text);background:Rectangle{color:"transparent";radius:Style.space(4);border.width:parent.activeFocus?1:0;border.color:Color.accent}}
+    Controls.TextField{objectName:"browserProfileName_"+modelData.id;Layout.fillWidth:true;text:root.profileLabel(modelData);enabled:root.writable&&!Original.nativeBrowser.isBuiltInBrowserProfileId(modelData.id);maximumLength:Original.nativeBrowser.BROWSER_PROFILE_NAME_MAX_LENGTH;selectByMouse:true;color:root.fg;font.pixelSize:Style.font.caption;onEditingFinished:root.rename(modelData.id,text);background:Rectangle{color:"transparent";radius:Style.space(4);border.width:parent.activeFocus?1:0;border.color:Color.accent}}
     Text{visible:root.defaultId===modelData.id;text:T3I18n.tr("Default");color:root.dim;font.pixelSize:Style.font.caption}
     T3IconButton{objectName:"browserProfileMenu_"+modelData.id;name:"ellipsis-vertical";tooltipText:T3I18n.tr("Profile actions");onClicked:profileMenu.popup()
      Controls.Menu{id:profileMenu;palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
@@ -88,13 +90,13 @@ ColumnLayout {
  }
  ColumnLayout{visible:!!root.operation.state&&root.operation.state!=="complete";Layout.fillWidth:true;Layout.margins:Style.space(14)
   Text{Layout.fillWidth:true;text:(root.operation.name || "")+" · "+T3I18n.tr(root.pending?"Operation pending in native T3.":root.operation.state==="uncertain"?"Outcome unknown. Check native T3 before retrying.":"Failed")+(root.operation.error?" · "+T3I18n.error(root.operation.error):"");color:root.pending?root.dim:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
-  Repeater{model:root.operation.results || [];Text{required property var modelData;Layout.fillWidth:true;text:modelData.environment+" · "+T3I18n.tr(modelData.state)+(modelData.error?" · "+T3I18n.error(modelData.error):"");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}}
+  Repeater{model:root.operation.results || [];Text{required property var modelData;Layout.fillWidth:true;text:modelData.environment+" · "+root.outcomeLabel(modelData.state)+(modelData.error?" · "+T3I18n.error(modelData.error):"");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}}
   T3PickerButton{visible:!root.pending;primary:false;text:T3I18n.tr("Dismiss");onClicked:root.bridge.acknowledgeBrowserProfile()}
  }
  Controls.Popup{id:confirmationPopup;objectName:"browserProfileConfirmation";parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(500),parent?parent.width-Style.space(32):Style.space(500));padding:Style.space(20);modal:true;focus:true;closePolicy:root.pending?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape
   background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.2)}
   contentItem:ColumnLayout{spacing:Style.space(12)
-   Text{Layout.fillWidth:true;text:T3I18n.tr(root.confirmation&&root.confirmation.action==="remove"?"Remove profile and data":"Clear cookies and cache")+" · "+(root.confirmation?root.confirmation.profile.name:"");color:root.fg;font.pixelSize:Style.font.body;font.bold:true;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+   Text{objectName:"browserProfileConfirmationTitle";Layout.fillWidth:true;text:T3I18n.tr(root.confirmation&&root.confirmation.action==="remove"?"Remove profile and data":"Clear cookies and cache")+" · "+(root.confirmation?root.profileLabel(root.confirmation.profile):"");color:root.fg;font.pixelSize:Style.font.body;font.bold:true;wrapMode:Text.Wrap;textFormat:Text.PlainText}
    Text{Layout.fillWidth:true;text:T3I18n.tr("You are signed out of its sites. Server browser tabs open in this profile close now.");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
    Text{visible:!!root.operation.error;Layout.fillWidth:true;text:T3I18n.error(root.operation.error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
    RowLayout{Layout.alignment:Qt.AlignRight

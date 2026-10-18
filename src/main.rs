@@ -9,6 +9,7 @@ mod prompt_stash;
 mod localization;
 mod ui_state;
 mod quotas;
+mod local_quotas;
 use omarchy_t3_client::write;
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
@@ -306,7 +307,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
-                if matches!(text(&v,"op"),"suggest"|"copy"|"client-settings"|"settings"|"window-layout"|"connections-manage"|"terminal-open"|"git-action"|"git-resolve"|"git-terminal") {let _=input_action_tx.send(v);continue}
+                if matches!(text(&v,"op"),"suggest"|"copy"|"client-settings"|"settings"|"provider-instances"|"window-layout"|"connections-manage"|"terminal-open"|"git-action"|"git-resolve"|"git-terminal") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;
                 }
@@ -325,7 +326,7 @@ fn watch(client: Client) -> Result<()> {
                 while let Ok(next)=action_rx.try_recv(){if next["op"]=="suggest"{input=next}else{pending=Some(next);break}}
             }
             let result = write::execute(&input);
-            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"client-settings"|"settings"|"window-layout"|"connections-manage") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
+            if matches!(text(&input,"op"),"suggest"|"catalog"|"model-favorite"|"scroll-config"|"copy"|"client-settings"|"settings"|"provider-instances"|"window-layout"|"connections-manage") {emit("action",json!({"op":input["op"],"environment":input["environment"],"thread":input["thread"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));continue}
             let _ = result_tx.send(json!({"op":"action_result","input":input,"result":result.as_ref().ok(),"error":result.as_ref().err()}));
         }
     });
@@ -334,6 +335,7 @@ fn watch(client: Client) -> Result<()> {
     let mut selected: Option<(String, String, i64)> = None;
     let mut query = String::new();
     let mut next_poll = Instant::now();
+    let mut quotas = quotas::Control::default();
     let mut next_quota = Instant::now();
     let mut quota_running = false;
     let mut message_cache: Option<(String, String, i64, Value)> = None;
@@ -344,11 +346,11 @@ fn watch(client: Client) -> Result<()> {
             let tx = tx.clone();
             let c = client.clone();
             std::thread::spawn(move || {
-                let d = quotas::collect(&c);
-                let _ = tx.send(json!({"op":"quota_result","data":d}));
+                local_quotas::collect_with(&c, |data,complete|{let _=tx.send(json!({"op":"quota_result","data":data,"complete":complete}));});
             });
         }
         if Instant::now() >= next_poll {
+            if let Ok(environments)=environments(){quotas.sync(environments);}
             match snapshot(&client) {
                 Ok(d) => {
                     let _ = notify(&d);
@@ -406,7 +408,7 @@ fn watch(client: Client) -> Result<()> {
             }
         }
         let timeout = next_poll
-            .min(next_quota)
+            .min(if quota_running {next_poll}else{next_quota})
             .saturating_duration_since(Instant::now())
             .max(Duration::from_millis(1));
         let cmd = match rx.recv_timeout(timeout) {
@@ -455,9 +457,11 @@ fn watch(client: Client) -> Result<()> {
                     emit("error", json!({"error":e}));
                 }
             }
+            "quotas-refresh" => {quotas.refresh();next_quota=Instant::now();}
             "quota_result" => {
-                quota_running = false;
-                emit("quotas", cmd["data"].clone());
+                quota_running = cmd["complete"]!=true;
+                if !quota_running {next_quota=Instant::now()+Duration::from_secs(300);}
+                quotas.local(cmd["data"].as_array().cloned().unwrap_or_default(),cmd["complete"]==true);
             }
             _ => {}
         }

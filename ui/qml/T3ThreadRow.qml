@@ -21,6 +21,18 @@ Item {
   property string stateLabel: ""
   property string timeLabel: ""
   property color stateColor: Color.accent
+  // Panel sky (T3Starfield leader): shared clock and motion mode for the aura.
+  property var sky: null
+  // When the panel saw this thread change state; a recent change plays a
+  // shooting star even if the row was just created in another section.
+  property real stateChangedAt: 0
+  readonly property bool needsInput: !!thread.pending && ["request","plan","waiting"].indexOf(thread.reason) >= 0
+  readonly property bool skyMoving: !!sky && sky.animated
+  // Styles chosen in Preferences; a still sky keeps every effect still.
+  property var effects: ({working: "comet", input: "glints", change: "star", intensity: 1})
+  readonly property int workingStyle: ["comet","pulse"].indexOf(effects.working)
+  readonly property int inputStyle: !skyMoving && effects.input !== "off" ? 2 : ["glints","pulse","static"].indexOf(effects.input)
+  readonly property int changeStyle: ["star","flash"].indexOf(effects.change)
   property string providerGlyph: "acp"
   property var catalog: bridge.catalogs[thread.environmentId] || ({})
   readonly property var projectInfo:(bridge.state.projects || []).find(function(p){return p.key===root.thread.projectKey}) || ({})
@@ -84,7 +96,15 @@ Item {
   }
   function openSnooze(context){snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
   onPanelVisibleChanged: if(!panelVisible)dismiss()
-  onPooledChanged: if(pooled)dismiss()
+  onPooledChanged: if(pooled){dismiss();burstAnimation.stop();aura.burst=0}
+  readonly property int burstMs: 1300
+  function playBurst() {
+    var age = Date.now() - stateChangedAt
+    if (!stateChangedAt || !skyMoving || changeStyle < 0 || pooled || age < 0 || age > burstMs - 200) return
+    burstAnimation.stop(); burstAnimation.from = age / burstMs; burstAnimation.duration = burstMs - age; burstAnimation.start()
+  }
+  onStateChangedAtChanged: playBurst()
+  Component.onCompleted: playBurst()
   property string identity: thread.key || ""
   onIdentityChanged: dismiss()
   Component.onDestruction: dismiss()
@@ -108,6 +128,34 @@ Item {
     color: root.selected ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.075) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.045) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
     border.width:root.keyboardCurrent?1:0;border.color:Color.accent
     Behavior on color {ColorAnimation{duration:130}}
+    ShaderEffect {
+      id: aura
+      objectName: "threadAura"
+      anchors.fill: parent
+      property real burst: 0
+      readonly property bool bursting: burst > 0 && burst < 1
+      property real working: !root.slim && !root.needsInput && !!root.thread.working && root.skyMoving && root.workingStyle >= 0 ? 1 : 0
+      property real attention: !root.slim && root.needsInput && root.inputStyle >= 0 ? 1 : 0
+      property real intensity: root.effects.intensity || 1
+      property real workingStyle: Math.max(0, root.workingStyle)
+      property real attentionStyle: Math.max(0, root.inputStyle)
+      property real burstStyle: Math.max(0, root.changeStyle)
+      Behavior on working { NumberAnimation { duration: 600 } }
+      Behavior on attention { NumberAnimation { duration: 600 } }
+      visible: root.panelVisible && !root.pooled && (working > 0 || attention > 0 || bursting)
+      // Only visible auras read the clock, so idle rows add no bindings work.
+      property real clock: visible && root.sky ? root.sky.clock : 1.2
+      property real radius: parent.radius
+      // Per-thread phase so neighbouring comets never orbit in lockstep.
+      property real seed: { var h = 0; for (var i = 0; i < root.identity.length; i++) h = (h * 31 + root.identity.charCodeAt(i)) % 9973; return h / 9973 }
+      property vector2d size: Qt.vector2d(width, height)
+      property color tone: T3Palette.working
+      property color alert: T3Palette.waiting
+      property color flash: root.stateColor
+      blending: true
+      fragmentShader: Qt.resolvedUrl("../assets/shaders/threadaura.frag.qsb")
+      NumberAnimation { id: burstAnimation; target: aura; property: "burst"; to: 1 }
+    }
     MouseArea {
       anchors.fill:parent;cursorShape:Qt.PointingHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton
       onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
@@ -153,7 +201,13 @@ Item {
           }
         }
       }
-      Text{objectName:"threadCardTitle";visible:!root.slim;Layout.fillWidth:true;Layout.topMargin:Style.space(2);text:root.thread.title || "";color:root.receding?root.dim:root.fg;font.weight:root.receding?Font.Normal:Font.Medium;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
+      RowLayout{
+        visible:!root.slim
+        Layout.fillWidth:true;Layout.topMargin:Style.space(2);spacing:Style.space(6)
+        Text{objectName:"threadCardTitle";Layout.fillWidth:true;text:root.thread.title || "";color:root.receding?root.dim:root.fg;font.weight:root.receding?Font.Normal:Font.Medium;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
+        // Under "Done": how long ago the thread finished, muted.
+        Text{objectName:"threadDoneAge";visible:root.stateLabel===T3I18n.tr("Done")&&!!root.timeLabel;text:root.timeLabel;color:root.dim;font.pixelSize:Style.font.caption}
+      }
       RowLayout{
         visible:!root.slim
         Layout.fillWidth:true;spacing:Style.space(6)

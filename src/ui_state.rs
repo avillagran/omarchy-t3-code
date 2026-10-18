@@ -24,7 +24,14 @@ pub fn sanitize(input: &Value) -> Value {
     if let Some(list)=input["autoCompactExcludedThreads"].as_array(){out["autoCompactExcludedThreads"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|s.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)))).take(1024).collect::<Vec<_>>());}
     if let Some(map)=input["sidebarProjectGroupingOverrides"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.len()<=2200&&!k.chars().any(char::is_control)&&matches!(v.as_str(),Some("inherit"|"repository"|"repository_path"|"separate")){clean.insert(k.clone(),v.clone());}}out["sidebarProjectGroupingOverrides"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
+    if matches!(input["starfieldMode"].as_str(),Some("auto"|"full"|"light"|"off")){out["starfieldMode"]=input["starfieldMode"].clone();}
+    for (key,allowed) in [("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..])] {
+        if input[key].as_str().is_some_and(|v|allowed.contains(&v)){out[key]=input[key].clone();}
+    }
     if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
+    for key in ["workingShelfHeight","snoozedShelfHeight","settledShelfHeight"] {
+        if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=60.0 && *n<=1200.0){out[key]=json!(value);}
+    }
     for key in ["panelWidth","panelHeight","sidebarWidth","browserPanelWidth","windowWidth","windowHeight"] {
         if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=100.0 && *n<=10000.0){out[key]=json!(value);}
     }
@@ -106,5 +113,19 @@ mod tests {
         fs::write(path(), "corrupt").unwrap();
         assert_eq!(load(), json!({"schemaVersion":1,"positions":{}}));
         fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn animation_preferences_keep_known_choices_only() {
+        let clean = sanitize(&json!({"starfieldSpeed":"fast","starfieldMeteors":"many","threadWorkingEffect":"pulse","threadInputEffect":"static","threadChangeEffect":"off","threadEffectIntensity":"turbo","transitionStyle":"fold","transitionSpeed":"warp","settledShelfHeight":480,"workingShelfHeight":5}));
+        assert_eq!(clean["starfieldSpeed"], "fast");
+        assert_eq!(clean["starfieldMeteors"], "many");
+        assert_eq!(clean["threadWorkingEffect"], "pulse");
+        assert_eq!(clean["threadInputEffect"], "static");
+        assert_eq!(clean["threadChangeEffect"], "off");
+        assert!(clean.get("threadEffectIntensity").is_none());
+        assert_eq!(clean["transitionStyle"], "fold");
+        assert!(clean.get("transitionSpeed").is_none());
+        assert_eq!(clean["settledShelfHeight"], 480.0);
+        assert!(clean.get("workingShelfHeight").is_none());
     }
 }

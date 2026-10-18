@@ -203,6 +203,33 @@ fn verify_import(
     })();
     verify.map_err(|_| "browser_cookie_import_unknown".into())
 }
+/// Owned metadata-only persistence check; may run outside the coordinator so
+/// another profile's browsing is not blocked by Chromium's write schedule.
+pub struct ImportVerification {
+    path: PathBuf,
+    checks: HashMap<(String, String, String), CookieCheck>,
+    alive: Arc<AtomicBool>,
+}
+impl ImportVerification {
+    pub fn verify(self) -> Result<()> {
+        if self.checks.is_empty() {
+            return Ok(());
+        }
+        let until = Instant::now() + Duration::from_secs(40);
+        loop {
+            if !self.alive.load(Ordering::SeqCst) {
+                return Err("browser_cookie_import_unknown".into());
+            }
+            if verify_import(&self.path, &self.checks).is_ok() {
+                return Ok(());
+            }
+            if Instant::now() >= until {
+                return Err("browser_cookie_import_unknown".into());
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+    }
+}
 struct Session {
     child: Child,
     input: ChildStdin,
@@ -641,10 +668,34 @@ impl Pool {
         }
         Ok(())
     }
+    pub fn has_pages(&self, environment: &str, profile: &str) -> bool {
+        self.sessions
+            .get(&(environment.into(), profile.into()))
+            .is_some_and(|session| !session.tabs.is_empty())
+    }
+    pub fn live_import_verification(
+        &mut self,
+        environment: &str,
+        profile: &str,
+    ) -> Result<ImportVerification> {
+        let session = self
+            .sessions
+            .get_mut(&(environment.into(), profile.into()))
+            .ok_or("browser_cookie_import_unknown")?;
+        Ok(ImportVerification {
+            path: session.cookie_database.clone(),
+            checks: std::mem::take(&mut session.cookie_checks),
+            alive: session.alive.clone(),
+        })
+    }
+    pub fn verify_live_import(&mut self, environment: &str, profile: &str) -> Result<()> {
+        self.live_import_verification(environment, profile)?
+            .verify()
+    }
     /// Caller must own a preflighted profile reservation. No evaluation or
     /// import command is accepted by the public page-input path.
-    /// A true receipt is provisional: close_profile must verify persistence
-    /// before the import controller reports success or registers metadata.
+    /// A true receipt is provisional: close_profile or verify_live_import must
+    /// verify persistence before success or new-profile registration.
     pub fn import_cookie(
         &mut self,
         environment: &str,

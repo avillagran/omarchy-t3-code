@@ -57,7 +57,12 @@ pub fn project_patch(raw:&Value,project:&Value,key:&str,patch:&Value,clear:bool)
     let (resolved,_,mut entry)=effective(raw,Some(project),None);
     if clear{entry.as_object_mut().ok_or("invalid_settings")?.remove(base);}else{
         let next=patch["patch"].get(base).ok_or("invalid_settings")?;
-        if next.is_null()&&!nullable(base){entry.as_object_mut().ok_or("invalid_settings")?.remove(base);}else if let (Some(next),Some(current))=(next.as_object(),resolved[base].as_object()){
+        if base=="worktreeCleanup"&&next["mode"]=="custom" {
+            let mut rules=crate::storage_settings::resolved_rules(&resolved)?;
+            for (key,value) in next["rules"].as_object().ok_or("invalid_settings")? {rules[key]=value.clone();}
+            entry[base]=json!({"mode":"custom","rules":rules});
+        }else if base=="worktreeCleanup"&&!next.is_null(){entry[base]=next.clone();
+        }else if next.is_null()&&!nullable(base){entry.as_object_mut().ok_or("invalid_settings")?.remove(base);}else if let (Some(next),Some(current))=(next.as_object(),resolved[base].as_object()){
             let mut merged=current.clone();for(k,v)in next{merged.insert(k.clone(),v.clone());}entry[base]=json!(merged);
         }else{entry[base]=next.clone()}
     }
@@ -69,9 +74,21 @@ pub fn aggregate(targets:&[Value])->Value{
     fields.retain(|f|targets.iter().all(|t|t["fields"].as_array().is_some_and(|fs|fs.iter().any(|o|o["key"]==f["key"]))));
     for f in &mut fields{
         let others=targets.iter().flat_map(|t|t["fields"].as_array().into_iter().flatten().filter(|o|o["key"]==f["key"])).collect::<Vec<_>>();
+        if f["kind"]=="worktree-policy" {
+            let mode=|o:&Value| if o["projectScoped"]==true&&o["source"]!="project" {"inherit".to_string()}else{o["value"]["mode"].as_str().unwrap_or("inherit").to_string()};
+            let first_mode=mode(f);f["mode"]=json!(first_mode);
+            f["modeMixed"]=json!(others.iter().any(|o|mode(o)!=first_mode));
+        }
         f["mixed"]=json!(others.iter().any(|o|o["value"]!=f["value"]));
         f["source"]=if others.iter().any(|o|o["source"]!=f["source"]){json!("mixed")}else{f["source"].clone()};
         f["overridden"]=json!(others.iter().any(|o|o["overridden"]==true));
+        if f["kind"]=="worktree-policy" {
+            let mut mixed=json!({});
+            for key in ["worktreeKeepWhen","worktreeAfterDays","worktreeOnMerge","worktreeOnDelete","worktreeUnchanged"] {
+                mixed[key]=json!(others.iter().any(|o|o["rules"][key]!=f["rules"][key]));
+            }
+            f["rulesMixed"]=mixed;
+        }
         f["scopeWritable"]=json!(others.iter().all(|o|o["scopeWritable"]==true));
     }
     json!({"fields":fields})
@@ -128,10 +145,10 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
             let project_capable=config["environment"]["capabilities"]["projectSettingsOverrides"]==true;
             if action!="read"&&project.is_none()&&key=="enableAgentDeviceAccess" {return Err("device_configuration_required".into())}
             if action!="read"{
-                if project.is_some()&&!project_capable{return Err("project_settings_unsupported".into())}
+                if project.is_some()&&(!project_capable||key=="worktreeCleanup"&&(config["environment"]["capabilities"]["projectWorktreeCleanup"]!=true||config["environment"]["capabilities"]["storageCleanup"]!=true)){return Err("project_settings_unsupported".into())}
                 let validation_config=project_catalog_config(config,&raw,project.as_ref());
                 let validated=if action=="clear"{json!({})}else{crate::native_settings::patch(input,Some(&validation_config))?};
-                let patch=if let Some(p)=&project{project_patch(&raw,p,key,&validated,action=="clear")?}else{if action=="clear"{return Err("invalid_settings".into())}validated};
+                let patch=if let Some(p)=&project{project_patch(&raw,p,key,&validated,action=="clear")?}else{if action=="clear"{return Err("invalid_settings".into())}crate::storage_settings::environment_patch(&raw,key,&validated)?};
                 let before=raw.clone();
                 crate::write::rpc(e,"server.updateSettings",patch.clone())?;
                 raw=crate::write::rpc(e,"server.getSettings",json!({}))?;
@@ -141,6 +158,7 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
             let file=if let Some(p)=&project{crate::write::rpc(e,"projects.readFile",json!({"cwd":p["workspaceRoot"],"relativePath":"t3.json"})).ok().filter(|v|v["truncated"]==false).and_then(|v|project_file(text(&v,"contents")))}else{None};
             let (effective,sources,overrides)=if project.is_some(){effective(&raw,project.as_ref(),file.as_ref())}else{(raw.clone(),json!({}),json!({}))};
             let mut view=crate::native_settings::snapshot(&effective);
+            view["fields"].as_array_mut().unwrap().retain(|f| f.get("capability").and_then(Value::as_str).is_none_or(|cap| config["environment"]["capabilities"][cap]==true));
             for field in view["fields"].as_array_mut().unwrap(){let base=base_key(text(field,"key")).to_string();let scopable=PROJECT_KEYS.contains(&base.as_str());
                 field["source"]=if project.is_some(){sources[&base].clone()}else{json!("environment")};
                 field["scopeWritable"]=json!(write_allowed&&(project.is_none()||(scopable&&project_capable)));
@@ -148,10 +166,10 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
                 field["overridden"]=json!(project.is_some()&&overrides.get(&base).is_some());
                 field["projectScoped"]=json!(project.is_some());
             }
-            Ok(json!({"target":target,"fields":view["fields"],"writeAllowed":write_allowed,"catalog":protocol::models::catalog(&project_catalog_config(config,&raw,project.as_ref()))}))
+            Ok(json!({"target":target,"fields":view["fields"],"writeAllowed":write_allowed,"storageCapabilities":crate::storage_settings::capabilities(config),"catalog":protocol::models::catalog(&project_catalog_config(config,&raw,project.as_ref()))}))
         })();
         match result{Ok(view)=>views.push(view),Err(error)=>errors.push(json!({"target":target,"error":error}))}
     }
-    let mut result=aggregate(&views);result["scope"]=input["scope"].clone();result["modelCatalog"]=views.first().map(|v|v["catalog"].clone()).unwrap_or(Value::Null);result["targets"]=json!(views.iter().map(|v|v["target"].clone()).collect::<Vec<_>>());result["errors"]=json!(errors);result["savedTargets"]=json!(saved);result["complete"]=json!(errors.is_empty()&&views.len()==requested.len());result["writable"]=json!(errors.is_empty()&&!views.is_empty()&&views.iter().all(|v|v["writeAllowed"]==true));
+    let mut result=aggregate(&views);result["storageScopes"]=json!(views.iter().map(|v|json!({"target":v["target"],"capabilities":v["storageCapabilities"]})).collect::<Vec<_>>());result["scope"]=input["scope"].clone();result["modelCatalog"]=views.first().map(|v|v["catalog"].clone()).unwrap_or(Value::Null);result["targets"]=json!(views.iter().map(|v|v["target"].clone()).collect::<Vec<_>>());result["errors"]=json!(errors);result["savedTargets"]=json!(saved);result["complete"]=json!(errors.is_empty()&&views.len()==requested.len());result["writable"]=json!(errors.is_empty()&&!views.is_empty()&&views.iter().all(|v|v["writeAllowed"]==true));
     Ok(result)
 }

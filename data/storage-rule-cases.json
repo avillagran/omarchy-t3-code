@@ -1,0 +1,212 @@
+{
+  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "source": "packages/shared/src/projectSettings.ts",
+  "sourceSha256": "a92a4cff7c5e26d130788780cf99170e3c570602c513d2be3d57f9326907eb48",
+  "adaptation": "Dependency adapter receives already-folded settings; original resolveWorktreeCleanup body unchanged after TypeScript erasure.",
+  "cases": [
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "any-local-files",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": null
+      },
+      "expected": {
+        "worktreeKeepWhen": "any-local-files",
+        "worktreeAfterDays": 8,
+        "worktreeOnMerge": true,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": true
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "any-local-files",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "off"
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "any-local-files",
+        "worktreeAfterDays": null,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "any-local-files",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "custom",
+          "rules": {
+            "worktreeKeepWhen": "tracked-changes",
+            "worktreeAfterDays": 3650,
+            "worktreeOnMerge": false,
+            "worktreeOnDelete": true,
+            "worktreeUnchanged": false
+          }
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 3650,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": true,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "uncommitted-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": null
+      },
+      "expected": {
+        "worktreeKeepWhen": "uncommitted-changes",
+        "worktreeAfterDays": 8,
+        "worktreeOnMerge": true,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": true
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "uncommitted-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "off"
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "uncommitted-changes",
+        "worktreeAfterDays": null,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "uncommitted-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "custom",
+          "rules": {
+            "worktreeKeepWhen": "tracked-changes",
+            "worktreeAfterDays": 3650,
+            "worktreeOnMerge": false,
+            "worktreeOnDelete": true,
+            "worktreeUnchanged": false
+          }
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 3650,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": true,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "tracked-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": null
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 8,
+        "worktreeOnMerge": true,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": true
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "tracked-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "off"
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": null,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "tracked-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "custom",
+          "rules": {
+            "worktreeKeepWhen": "tracked-changes",
+            "worktreeAfterDays": 3650,
+            "worktreeOnMerge": false,
+            "worktreeOnDelete": true,
+            "worktreeUnchanged": false
+          }
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 3650,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": true,
+        "worktreeUnchanged": false
+      }
+    }
+  ]
+}

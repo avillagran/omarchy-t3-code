@@ -31,7 +31,7 @@ Controls.Popup {
  parent:Controls.Overlay.overlay;anchors.centerIn:parent
  width:Math.min(Style.space(620),parent?parent.width-Style.space(32):Style.space(620))
  padding:Style.space(16);modal:true;focus:true
- background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.18)}
+ background:Rectangle{color:Color.popups.background;radius:0;border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.18)}
  function begin(){
   createdProjectId="";openingProject=false;projectSearch.text=""
   if(bridge.pendingProjectOpen){
@@ -57,7 +57,7 @@ Controls.Popup {
  function openExisting(project){
   if(locked || !environments.some(function(e){return e.id===project.environmentId}))return
   environment=project.environmentId;createdProjectId=project.id;openingProject=true
-  bridge.openProject(environment,createdProjectId)
+  bridge.openProject(environment,createdProjectId,true)
  }
  function existingButton(environment,id){for(var i=0;i<existingRows.count;i++){var item=existingRows.itemAt(i);if(item&&item.modelData.environmentId===environment&&item.modelData.id===id)return item}return null}
  function sourceButton(id){for(var i=0;i<sourceRows.count;i++){var item=sourceRows.itemAt(i);if(item&&item.modelData.id===id)return item}return null}
@@ -71,11 +71,11 @@ Controls.Popup {
  function create(){
   if(bridge.managementBusy)return
   if(bridge.managementRequest){if(createdProjectId)openingProject=true;bridge.manage({});return}
-  if(createdProjectId){openingProject=true;bridge.openProject(environment,createdProjectId);return}
+  if(createdProjectId){openingProject=true;bridge.openProject(environment,createdProjectId,true);return}
   if(filterDelay.running||browse.busy||browse.error||browse.environment!==environment||!browse.parentPath)return
   if(source==="local"){
    var existing=(bridge.state.projects || []).find(function(p){return p.environmentId===root.environment&&String(p.workspaceRoot).replace(/\/$/,"")===String(root.browse.parentPath).replace(/\/$/,"")})
-   if(existing){createdProjectId=existing.id;openingProject=true;bridge.openProject(environment,existing.id);return}
+   if(existing){createdProjectId=existing.id;openingProject=true;bridge.openProject(environment,existing.id,true);return}
    bridge.manage({action:"add-project",environment:environment,workspaceRoot:browse.parentPath})
   }
   else {var name=cloneName();if(!name||name==="."||name==="..")return;bridge.manage({action:"clone-project",environment:environment,source:source,repository:repository.text.trim(),workspaceRoot:browse.parentPath.replace(/\/$/,"")+"/"+name,createdAt:createdAt})}

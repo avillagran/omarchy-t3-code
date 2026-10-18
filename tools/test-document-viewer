@@ -6,7 +6,7 @@ node <<'NODE_DOCUMENT_TEST'
 const fs=require('fs'),{spawn,execFileSync}=require('child_process'),assert=require('node:assert/strict'),crypto=require('crypto');
 const dir=fs.mkdtempSync('/tmp/t3-document-test-');fs.chmodSync(dir,0o700);
 const data={offscreen:true,frameDirectory:dir,width:640,height:400,html:true,title:'Document verification',baseUrl:'about:blank',contents:'<style>body{margin:0;background:#203040;color:#abcdef}button{position:absolute;left:10px;top:10px;width:150px;height:70px}</style><button onclick="this.innerText=\'Clicked\';this.style.background=\'green\';setTimeout(()=>this.style.background=\'blue\',900)">Click</button><p style="position:absolute;top:120px">Inside the panel</p>',theme:{appearance:'dark',variables:{'--background':'#111111','--foreground':'#bbbbbb','--card':'#191919','--secondary':'#242424','--accent':'#e99700','--font-sans':'sans-serif','--border':'#444444'}}};
-const p=spawn('bin/omarchy-t3-client',['document-render'],{env:{...process.env,QT_QPA_PLATFORM:'offscreen',QT_QUICK_BACKEND:'software',QTWEBENGINE_CHROMIUM_FLAGS:'--disable-gpu',T3_DOCUMENT_VERIFY:'1'},stdio:['pipe','pipe','pipe']});
+const p=spawn(process.env.T3_DOCUMENT_TEST_CLIENT||'bin/omarchy-t3-client',['document-render'],{env:{...process.env,QT_QPA_PLATFORM:'offscreen',QT_QUICK_BACKEND:'software',QTWEBENGINE_CHROMIUM_FLAGS:'--disable-gpu',T3_DOCUMENT_VERIFY:'1'},stdio:['pipe','pipe','pipe']});
 const payload=Buffer.from(JSON.stringify(data)),header=Buffer.alloc(8);header.writeBigUInt64BE(BigInt(payload.length));p.stdin.write(header);p.stdin.write(payload);
 let out='',log='',latest=null,frames=0,clip='',exited=false,exitCode=null;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));

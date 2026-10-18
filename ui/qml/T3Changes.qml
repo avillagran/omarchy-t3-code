@@ -7,6 +7,7 @@ Rectangle {
  required property var summary
  property bool expanded:true
  signal openDiff(string filePath)
+ signal previewFile(string filePath)
  width:parent.width
  implicitHeight:content.implicitHeight+Style.space(22)
  height:implicitHeight
@@ -38,13 +39,14 @@ Rectangle {
     width:ListView.view.width;height:Style.space(25)
     activeFocusOnTab:true;Accessible.role:Accessible.Button;Accessible.name:modelData.path
     Keys.onReturnPressed:root.openDiff(modelData.path)
+    MouseArea{anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.PointingHandCursor;onClicked:{fileRow.forceActiveFocus();root.openDiff(fileRow.modelData.path)}}
     RowLayout {anchors.fill:parent
     T3Icon{name:"file";implicitWidth:Style.space(13);tint:modelData.kind==="added"?T3Palette.done:modelData.kind==="deleted"?Color.urgent:Color.muted}
     Text{Layout.fillWidth:true;text:modelData.path;color:Color.popups.text;font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
     Text{text:"+"+(modelData.additions || 0);color:T3Palette.done;font.pixelSize:Style.font.caption}
     Text{text:"−"+(modelData.deletions || 0);color:Color.urgent;font.pixelSize:Style.font.caption}
+    T3IconButton{objectName:"t3PreviewChangedFile_"+fileRow.modelData.path;name:"eye";glyph:"\uf06e";glyphScale:0.85;implicitWidth:Style.space(24);implicitHeight:Style.space(24);tooltipText:T3I18n.tr("Preview")+": "+fileRow.modelData.path;enabled:fileRow.modelData.kind!=="deleted";onClicked:root.previewFile(fileRow.modelData.path)}
     }
-    MouseArea{anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.PointingHandCursor;onClicked:{fileRow.forceActiveFocus();root.openDiff(fileRow.modelData.path)}}
    }
   }
  }

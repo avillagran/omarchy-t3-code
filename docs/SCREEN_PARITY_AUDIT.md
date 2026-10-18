@@ -95,16 +95,16 @@ Status below is a **route-level summary**; partial means reachable related funct
 | `settings.connections.tsx` | `/settings/connections` | Partial | Native catalog/access/network/CLI Connect/balancing/sharing present; Electron discovery/auth and enrollment differ. |
 | `settings.diagnostics.tsx` | `/settings/diagnostics` | Missing | No resource, process, trace or export panel. |
 | `settings.general.tsx` | `/settings/general` | Partial | Native default model/options, permissions and workspace controls added; scoped environment/project/checkout editing added; many omitted behavior/client controls remain partial. |
-| `settings.integrations.tsx` | `/settings/integrations` | Missing | No browser/profile/device integration settings UI. |
-| `settings.keybindings.tsx` | `/settings/keybindings` | Partial | Fixed shortcut reference; no recorder/editor. |
+| `settings.integrations.tsx` | `/settings/integrations` | Partial | Native browser defaults/profiles/import and device settings exist; complete runtime/automation and visual parity remain open; see INTEGRATIONS.md. |
+| `settings.keybindings.tsx` | `/settings/keybindings` | Partial | Native grouped editor, recording, scoped persistence and runtime routing exist; unsupported commands and full native pixels remain partial; see KEYBINDINGS.md. |
 | `settings.open-source-licenses.tsx` | `/settings/open-source-licenses` | Implemented/adapted | General drill-down, original search/key/bundle helpers,238actual app notices, count/source/one lazy selectable expansion/retry. Qt/theme/data differ; see LICENSES.md. |
 | `settings.projects.tsx` | `/settings/projects` | Partial | Scoped Projects/Checkouts settings page and direct sidebar entry added; complete project-management/scripts/cleanup sections remain pending. |
 | `settings.providers.tsx` | `/settings/providers` | Partial | Status/favorites; no full provider editor or authentication setup. |
 | `settings.scheduled-tasks.tsx` | `/settings/scheduled-tasks` | Missing | No task list, editor, delivery or webhook UI. |
 | `settings.snap-shot.tsx` | `/settings/snap-shot` | Missing/conditional | No SnapShots setup/settings; native functionality also depends on desktop/platform support. |
 | `settings.source-control.tsx` | `/settings/source-control` | Partial | Many native defaults; no source-control host credential/account UI. |
-| `settings.storage.tsx` | `/settings/storage` | Missing | No native worktree/retention/cleanup settings page. |
-| `settings.tsx` | `/settings` | Partial | Nine leaf counterparts (eight navigation categories plus licenses), several incomplete; native tree has14 leaf routes. |
+| `settings.storage.tsx` | `/settings/storage` | Missing UI; backend in progress | Typed native rules, capability guards and scope-preserving updates now exist; complete page and cleanup run/report controller remain missing; see STORAGE_SETTINGS.md. |
+| `settings.tsx` | `/settings` | Partial | Ten leaf counterparts (nine navigation categories plus licenses), several incomplete; native tree has14 leaf routes. |
 | `usage.tsx` | `/usage` | Partial | Quota strip implemented; standalone cost/tokens/limits history/dashboard missing. |
 | `welcome.tsx` | `/welcome` | Partial | Project/connection setup exposed separately; no complete onboarding/import wizard. |
 
@@ -141,4 +141,6 @@ Browser workspace update: [BROWSER_RUNTIME.md](BROWSER_RUNTIME.md) records sourc
 
 Profile cleanup update: native Qt and server cleanup are now coordinated in source. The local profile reservation spans graceful process flush, owned storage deletion, remote acknowledgements and metadata CAS; cold profiles and partial/unknown outcomes are covered by isolated tests. See [BROWSER_RUNTIME.md](BROWSER_RUNTIME.md). This feature remains uninstalled and does not close other browser or screen parity gaps.
 
-Import wizard update: the source-only native QML wizard now reuses original pure flow/failure helpers, with confirmed one-use worker-to-Qt import and post-verification profile registration. Isolated source-to-HTTP/worker/controller and actual tile/narrow-layout tests pass. New import translations, packaging, original visual comparison and existing-page DOM/history retention are still open; see BROWSER_RUNTIME.md.
+Import wizard update: the source-only native QML wizard now reuses original pure flow/failure helpers, with confirmed one-use worker-to-Qt import and post-verification profile registration. Isolated source-to-HTTP/worker/controller and actual tile/narrow-layout tests pass. Packaging and original visual comparison remain open; existing-page DOM/history retention now passes real Qt tests, while import completion-latency parity is still open; see BROWSER_RUNTIME.md.
+
+Storage follow-up: the native settings foundation now matches original worktree policy resolution and partial-write completion, with original resolver fixtures and isolated native RPC readback. The complete Storage page, cleanup report/run UI and translations remain missing. See [storage contracts](STORAGE_SETTINGS.md).

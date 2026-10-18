@@ -55,7 +55,7 @@ host-platform build; these desktop packages do not replace an Android build.
 The root [installer](../install.sh) installs runtime dependencies and prebuilt binaries, enables the widget and starts the local service only if stopped.
 It adds the keyboard integration to an existing Lua bindings file after making
 a backup: Super+Shift+A replaces ChatGPT/earlier Ares bindings with this client,
-and Ctrl+Enter sends inside ot3 without changing the terminal shortcut. Repeated runs update a clean checkout; local changes are never reset.
+and Enter sends inside ot3 without changing the terminal shortcut. Repeated runs update a clean checkout; local changes are never reset.
 T3 Code itself must already be installed and initialized. The installer is not
 run as root; only Pacman uses sudo.
 
@@ -100,7 +100,7 @@ dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-t3-code/integratio
 ```
 
 Reload your Hyprland configuration afterwards. Super+Shift+A opens this plugin
-in place of the default agent shortcut. Ctrl+Enter sends inside ot3; the
+in place of the default agent shortcut. Enter sends inside ot3; the
 Super+Enter terminal binding is untouched. Review the
 binding file before enabling it if you already customize these shortcuts. With a
 manual installation, the binding is not installed automatically.
@@ -164,8 +164,9 @@ sets the narrow content viewport so compositor tiling cannot mask layout bugs.
 ## Everyday use
 
 - **Super+Shift+A** opens Omarchy T3 Code as the default agent.
-- **Ctrl+Enter** submits the prompt. **Enter** inserts a newline and continues
-  supported lists. Other shortcuts follow the panel's keyboard help; system
+- **Enter** submits the prompt in the normal composer. **Shift+Enter** inserts a
+  new line and continues supported lists. The expanded editor keeps Enter for
+  new lines; **Ctrl+Enter** sends in either mode. Other shortcuts follow the panel's keyboard help; system
   bindings can affect availability.
 - Select a model through the native-style picker; favorites come from T3.
 - Use `@` for file/folder completion, `$` for skills and `/` for supported commands.
@@ -299,6 +300,7 @@ tools/test-qml upward-scroll
 
 # Requires the optional Qt HTML frontend:
 tools/test-document-viewer
+T3_DOCUMENT_MIN_FPS=40 tools/test-document-scroll
 
 # Optional user-systemd fixture; never stops the real T3 server:
 tools/test-backend-ownership
@@ -428,3 +430,23 @@ is proportional to the chat lane and clicking opens the existing native viewer.
 The generic document/plan Markdown renderer keeps its existing image policy.
 Run `cargo test --release --test markdown_images --test images --test history
 --test documents` and serial QML `markdown-images`, `live-media`, `history-find`.
+
+File references and changed-file rows expose a Nerd Font eye action that opens
+the existing native document viewer (HTML preview/source, rendered Markdown,
+UTF-8 text/code and supported images). Changed-file row clicks still open the
+diff; deleted files have no current-file preview. Composer attachments expose
+the same eye after upload completes: supported images reopen the full image
+viewer and other attachments use the document viewer, without sending or
+removing the draft. Run serial QML `file-previews`, `documents` and `clipboard`.
+
+HTML document capture has no application-imposed FPS cap: pending repaint
+requests coalesce on the next event-loop turn, with fast lossless PNG encoding.
+Requests remain demand driven, so idle documents stop capturing. Actual
+throughput still depends on Chromium repaints, rendering and desktop presentation. `tools/test-document-scroll` exercises
+real wheel input at 900×620, reports changing-frame throughput and frame gaps,
+and checks idle/close behavior. This measures renderer transport throughput,
+not the final desktop presentation rate; `T3_DOCUMENT_MIN_FPS` is an optional
+host-specific performance gate.
+
+Subscription account discovery, original T3 pooling, host ownership and focused
+checks are documented in [SUBSCRIPTIONS.md](SUBSCRIPTIONS.md).
