@@ -1,7 +1,7 @@
 {
   "target": "aarch64-unknown-linux-gnu",
   "rustcVersion": "1.99.1",
-  "cargoLockSha256": "bf5e3864fd3d2bff9ec0a516c8dd8e45ffb6f9b835ebd1f8344e9ed3fe055e8e",
+  "cargoLockSha256": "10364a83e0f3794d6e6513e5648a029057d7bb4b5f87dd12a484ea2e70217e9a",
   "nativeHelperSha256": "53d4dcb9bb8f9700623640d4b06b508a2e0e481d0c0a124a51036908e6edbd07",
   "inputs": {
     "cargo/adler2@2.0.1/LICENSE-0BSD": "861399f8c21c042b110517e76dc6b63a2b334276c8cf17412fc3c8908ca8dc17",
@@ -344,9 +344,9 @@
     "rust-stdlib/MIT": "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0",
     "rust-stdlib/Unicode-3.0": "f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443",
     "rust-stdlib/BSD-2-Clause": "f32fb3b417a194167cfad068223fc975ba96c5960513a10f66a3c28720aec1df",
-    "manifest.json": "798886a89b6ac41fe4041fdc75c141d3e6462d09c44c61635ea70f5db296c825",
+    "manifest.json": "e071833b61417350d9fc8d30a17388d4fa6fd0c39835e11584402ad287d6ab4d",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe"
   },
   "entries": 238,
-  "outputSha256": "394056d9edbf51e2e5dbf8616cbca8920354dcb8d808632789d18b45c7158dd3"
+  "outputSha256": "0209f25e7cfb9fb2bd333c30d7f91ad9c805f0534984cdef9c8155f83c54b3f7"
 }
