@@ -62,7 +62,7 @@ const rustDocs=[path.join(sysroot,'share/doc/rust'),...(sysroot==='/usr'?['/usr/
 const rustCopyright=rustDocs.flatMap(dir=>['COPYRIGHT-library.html','COPYRIGHT-library.html.rustc'].map(name=>path.join(dir,name))).find(file=>fs.existsSync(file));
 if(!rustCopyright)throw Error('Rust standard-library copyright notices missing; install the compiler documentation/license files');
 const copyrightHtml=read(rustCopyright,'rust-stdlib/COPYRIGHT-library.html');
-const copyrightText=cp.execFileSync('python3',[path.join(root,'tools/license-html-text.py')],{input:copyrightHtml,encoding:'utf8'});
+const copyrightText=cp.execFileSync('python3',[path.join(root,'tools/license-html-text.py')],{input:copyrightHtml,encoding:'utf8',maxBuffer:32*1024*1024});
 const rustLicenses=['Apache-2.0','MIT','Unicode-3.0','BSD-2-Clause'].map(id=>{
  const candidates=[...rustDocs.map(dir=>path.join(dir,'licenses',id+'.txt')),...rustDocs.map(dir=>path.join(dir,'LICENSE-'+(id==='Apache-2.0'?'APACHE':id)))];
  if(sysroot==='/usr')candidates.push('/usr/share/doc/rustc/licenses/'+id+'.txt');
