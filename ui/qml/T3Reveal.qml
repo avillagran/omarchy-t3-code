@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.11
 import qs.Commons
 
 // Shows and hides its single child with the transition chosen in

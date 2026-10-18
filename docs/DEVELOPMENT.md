@@ -237,6 +237,12 @@ and the desktop [adapter contract](protocol/t3-direct-v1.json). Portable protoco
 tests now run in the library repository; this repository tests desktop integration.
 Credentials stay in the host adapter and are not passed to QML.
 
+QML files import `QtQuick 6.11` on purpose. Qt 6.12 added a `QtQuick/Color`
+singleton that shadows Omarchy's `qs.Commons` `Color`, which leaves every
+theme colour undefined (white surfaces, black text). The versioned import
+keeps the theme singleton visible; keep it on new files. `QtQuick.Window`
+re-imports the latest QtQuick, so it is pinned to 6.11 as well.
+
 ## Project layout
 
 ```text

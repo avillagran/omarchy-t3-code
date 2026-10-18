@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.11
 import QtQml.Models
 import "../js/NativeKeybindings.js" as Native
 import "../js/ShortcutRouting.js" as Routing

@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.11
 import "../js/WheelMotion.js" as Motion
 
 // Precise native streams pass through; angle-only wheels retain visual easing.

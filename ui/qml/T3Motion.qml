@@ -1,5 +1,5 @@
 pragma Singleton
-import QtQuick
+import QtQuick 6.11
 import Quickshell
 
 // Show/hide transition chosen in Preferences > Animations, shared by every

@@ -4,7 +4,7 @@ import "../js/BrowserProfiles.js" as Profiles
 import "../js/BrowserImport.js" as ImportFlow
 import "../js/PreviewSessions.js" as Previews
 import "../js/BrowserSurface.js" as BrowserSurface
-import QtQuick
+import QtQuick 6.11
 import Quickshell
 import Quickshell.Io
 import qs.Commons

@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.11
 import qs.Commons
 Item {
  id:root;objectName:"t3InlineHtml"

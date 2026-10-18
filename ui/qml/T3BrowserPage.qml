@@ -1,4 +1,4 @@
-import QtQuick
+import QtQuick 6.11
 Item {
  id:root;objectName:"t3BrowserPage";clip:true
  // Website pixels only. Native workspace chrome is composed around this item.
