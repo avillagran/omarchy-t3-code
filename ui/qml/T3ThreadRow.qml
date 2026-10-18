@@ -258,7 +258,7 @@ Item {
     contentItem:ColumnLayout{
       spacing:Style.space(12)
       Text{text:T3I18n.tr("Snooze thread");color:root.fg;font.pixelSize:Style.font.body}
-      Controls.TextField{id:customDate;Layout.fillWidth:true;placeholderText:"YYYY-MM-DDTHH:mm";color:root.fg;selectByMouse:true;Accessible.name:T3I18n.tr("Wake date and time")}
+      T3TextField{id:customDate;Layout.fillWidth:true;placeholderText:"YYYY-MM-DDTHH:mm";color:root.fg;selectByMouse:true;Accessible.name:T3I18n.tr("Wake date and time")}
       Controls.Button{text:T3I18n.tr("Snooze thread");Layout.alignment:Qt.AlignRight;enabled:(root.snoozeContext?root.actionCanOperate&&root.actionCaps.threadSnooze===true&&root.actionThread.canSnooze===true:root.canSnooze)&&!root.busy&&isFinite(Date.parse(customDate.text))&&Date.parse(customDate.text)>Date.now();onClicked:{root.snoozeManage("snooze",{snoozedUntil:new Date(customDate.text).toISOString()});customSnooze.close()}}
     }
   }
