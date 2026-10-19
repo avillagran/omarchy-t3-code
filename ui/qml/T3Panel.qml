@@ -616,6 +616,8 @@ Item {
     leavingRows = ({}); arrivingRows = []
     ;[threads, workingThreads, snoozedThreads, settledThreads].forEach(function(view) { view.forceLayout() })
     arriving.forEach(function(item) {
+      // A row destroyed or recycled before this ran has nothing to land on.
+      if (!item || item.pooled || typeof item.arrive !== "function") return
       var key = item.thread.key || item.thread.id, from = leaving[key]
       if (!from) { item.flight = false; item.arrive(Math.round(rowMoveMs * 0.8)); return }
       landed[key] = true
