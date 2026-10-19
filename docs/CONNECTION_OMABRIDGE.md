@@ -53,6 +53,8 @@ The same section manages OmaBridge itself, so `omabridge-gui` is not needed. Eve
 - **Waiting for your approval**: claims on this device's invitations, with the requested services. *Approve…* confirms the device name, ID and services.
 - **Paired devices**: what you can reach on each peer and what it can reach here. *Revoke…* removes the pairing after confirmation.
 
+*Delete invitation file* only removes an `omabridge-invite-*.json` owned by you, with mode 0600, that is still a valid invitation, so it also works for invitations created by another front end.
+
 Only peer IDs, names, services and expiry times reach the UI. Invitation tokens, invitation IDs, peer addresses and keys stay with OmaBridge. CLI error output is mapped to fixed error codes and is never shown or logged.
 
 ## Publishing this device
@@ -64,6 +66,28 @@ ExecStart="<plugin>/bin/omabridge" --state-dir "<state dir>" serve --service t3=
 ```
 
 The T3 port comes from T3's `server-runtime.json`. If T3 later moves to another port, the section marks the unit as stale and offers *Publish again*. Only peers you approved can reach the published services, and T3 still authenticates every session. ot3 creates an identity first if none exists. It only rewrites or removes a unit that starts with its own `# Managed by Omarchy T3 Code` header, and refuses paths that systemd would reinterpret. Turning the switch off (also confirmed) disables and removes the unit, and keeps pairings. When the installer updates the bundled binary, it restarts a published unit with `systemctl --user try-restart`. Invitations need a running published device.
+
+## Other front ends
+
+Other Omarchy front ends (for example the control panel) manage OmaBridge through ot3 instead of the CLI, so validation, confirmation, secret handling and the published unit stay in one place. The client lives at `~/.config/omarchy/plugins/omarchy-t3-code/bin/omarchy-t3-client` (or under `io.github.avillagran.omarchy-t3-code`).
+
+- `omarchy-t3-client omabridge-read` prints the snapshot: `available`, `version`, `identity`, `device` (`{id,name}` or null), `peers` (`id`, `name`, `services` it can reach here, `remoteServices` you can reach there), `pending` (`id`, `name`, `services`, `expires`), `awaiting` (`id`, `name`, `expires`), `published` (`enabled`, `active`, `services`, `stale`, `sshAvailable`), `default`, `routes`, `active`, `revision` and `error`.
+- `omarchy-t3-client omabridge-action` reads one JSON request on stdin (at most 64 KiB, never on the command line) and prints the new snapshot. Every action except `read` needs `"confirmed":true`, which the front end must only send after the user confirms:
+
+| `action` | Fields | Adds to the snapshot |
+| --- | --- | --- |
+| `identity-create` | — | — |
+| `invite` | `services` (`["t3"]`, `["ssh"]` or both), `qr` (bool), optional `ttl` (60–3600 s, default 600), optional `directory` | `created`: `path`, `expires`, `services`, `qrImage` (SVG data URI or null). Secret: show it once and drop it. |
+| `invite-discard` | `path` | — |
+| `pair` | `path` of an invitation file | `paired`: `status` (`pending` or `approved`), `name` and, while pending, `id` |
+| `pair-retry` / `pair-discard` | `id` from `awaiting` | `paired` (retry only) |
+| `approve` | `peer`, plus `expires` from `pending` | — |
+| `revoke` | `peer` | — |
+| `publish` | `ssh` (bool) | — |
+| `unpublish` | — | — |
+| `set` / `clear` / `default` | route fields as in Preferences, plus `revision` | — |
+
+On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmation_required`, `invalid_command`, `omabridge_unavailable`, `omabridge_identity_missing`, `omabridge_not_published`, `omabridge_service_not_published`, `omabridge_ssh_unavailable`, `omabridge_invite_expired`, `omabridge_invite_invalid`, `omabridge_invite_unreadable`, `omabridge_peer_not_found`, `omabridge_unit_foreign`, `omabridge_publish_failed` and `omabridge_command_failed`. A running ot3 sees changes made this way on its next refresh.
 
 ## Verification
 
