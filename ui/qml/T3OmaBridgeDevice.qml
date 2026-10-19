@@ -54,6 +54,13 @@ ColumnLayout {
   T3PickerButton{objectName:"omabridgeCreateIdentity";visible:!root.device;primary:false;text:T3I18n.tr("Create identity");enabled:!root.store.busy
    onClicked:root.ask("identity-create",{},T3I18n.tr("Create an OmaBridge identity for this device?"),T3I18n.tr("A private key is created on this device and never leaves it."))}
  }
+ RowLayout{Layout.fillWidth:true
+  ColumnLayout{Layout.fillWidth:true
+   Text{Layout.fillWidth:true;text:T3I18n.tr("Show OmaBridge in the bar");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+   Text{Layout.fillWidth:true;text:T3I18n.tr("A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+  }
+  T3Switch{objectName:"omabridgeIndicatorPreference";checked:(root.bridge.viewState || {}).omabridgeIndicator===true;Accessible.name:T3I18n.tr("Show OmaBridge in the bar");onToggled:root.bridge.rememberView({omabridgeIndicator:checked})}
+ }
  // Publishing this device runs OmaBridge as a user service; off by default.
  RowLayout{Layout.fillWidth:true;visible:!!root.value.available
   ColumnLayout{Layout.fillWidth:true

@@ -1299,6 +1299,11 @@
     "Publish this device?": "Publish this device?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.",
     "Also share SSH": "Also share SSH",
-    "Publish": "Publish"
+    "Publish": "Publish",
+    "Not published": "Not published",
+    "{count} paired": "{count} paired",
+    "OmaBridge settings…": "OmaBridge settings…",
+    "Show OmaBridge in the bar": "Show OmaBridge in the bar",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval."
   }
 }
