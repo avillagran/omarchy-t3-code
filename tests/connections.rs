@@ -40,3 +40,24 @@ fn t3_is_authoritative_for_origin_credentials_disabled_routes_and_reload() {
     assert_eq!(omarchy_t3_client::environments().unwrap().len(),1);
     fs::remove_dir_all(root).unwrap();
 }
+#[test]
+fn only_idle_ot3_sessions_from_this_device_are_retired(){
+ use chrono::{TimeZone,Utc};
+ let now=Utc.with_ymd_and_hms(2026,10,19,12,0,0).unwrap();
+ let me="omarchy-t3-code:0123456789abcdef";
+ let s=|id:&str,subject:&str,label:&str,last:Option<&str>,issued:&str,connected:bool,current:bool|serde_json::json!({"sessionId":id,"subject":subject,"client":{"label":label},"lastConnectedAt":last,"issuedAt":issued,"connected":connected,"current":current});
+ let clients=serde_json::json!([
+  s("old",me,"omarchy-t3-code",Some("2026-10-19T11:50:00Z"),"2026-10-19T09:00:00Z",false,false),
+  s("never-used",me,"omarchy-t3-code",None,"2026-10-19T11:00:00Z",false,false),
+  s("just-issued",me,"omarchy-t3-code",None,"2026-10-19T11:59:30Z",false,false),
+  s("live",me,"omarchy-t3-code",Some("2026-10-19T10:00:00Z"),"2026-10-19T09:00:00Z",true,false),
+  s("mine-now",me,"omarchy-t3-code",None,"2026-10-19T09:00:00Z",false,true),
+  s("other-device","omarchy-t3-code:fedcba9876543210","omarchy-t3-code",None,"2026-10-01T00:00:00Z",false,false),
+  s("legacy","cli-issued-session","omarchy-t3-code",Some("2026-10-19T10:00:00Z"),"2026-10-18T00:00:00Z",false,false),
+  s("legacy-recent","cli-issued-session","omarchy-t3-code",Some("2026-10-19T11:30:00Z"),"2026-10-18T00:00:00Z",false,false),
+  s("someone-else","cli-issued-session","backup-script",None,"2026-10-01T00:00:00Z",false,false),
+  s("desktop","desktop-bootstrap","T3 Code",None,"2026-10-01T00:00:00Z",false,false),
+ ]);
+ assert_eq!(stale_ot3_sessions(&clients,me,now),vec!["old","never-used","legacy"]);
+ assert_eq!(stale_ot3_sessions(&serde_json::json!({"clientSessions":[clients[0].clone()]}),me,now),vec!["old"]);
+}

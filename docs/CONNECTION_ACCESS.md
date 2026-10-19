@@ -40,7 +40,13 @@ Local access management lazily upgrades the existing private local client token
 through `t3 auth session issue`. It reuses that same token for chat and access
 management; revoking other clients therefore keeps this client's grant. SSH
 bootstrap likewise requests the native administrative grant through the remote
-CLI. Bearer/relay pairing grants are never escalated: their actual scopes gate
+CLI, under the subject `omarchy-t3-code:<device id>` (a hash of the machine id
+and user, falling back to the generic subject on older T3 releases). Every SSH
+(re)connection issues a session. Once the new one works, ot3 revokes this
+device's earlier sessions on that host that are disconnected and idle for over
+two minutes. It also revokes sessions from older ot3 releases (label
+`omarchy-t3-code`, generic subject) idle for over an hour. Live sessions, other
+devices and other clients are left alone. Bearer/relay pairing grants are never escalated: their actual scopes gate
 the controls. SSH onboarding and access requests run outside the send/draft queue.
 No live user links or sessions are created/revoked during fixture validation.
 

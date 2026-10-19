@@ -28,4 +28,9 @@ port=${info#* }
 "$cli" __ssh-helper wait-ready "$port" 15000 1000 >/dev/null || exit 9
 cat "$runtime"
 printf '\nT3_AUTH\n'
-"$cli" auth session issue --base-dir "$base" --scope orchestration:read --scope orchestration:operate --scope filesystem:read --scope settings:write --scope terminal:read --scope terminal:operate --scope providers:manage --scope environment:maintain --scope preview:operate --scope diagnostics:read --scope source-control:write --scope filesystem:write --scope access:read --scope access:write --scope relay:read --scope relay:write --ttl 1d --label omarchy-t3-code --token-only
+# One session subject per ot3 device, so ot3 can retire its own stale sessions.
+subject=omarchy-t3-code
+case "${2:-}" in ''|*[!0-9a-f]*) ;; *) [ "${#2}" -ne 16 ] || subject="omarchy-t3-code:$2" ;; esac
+issue() { "$cli" auth session issue --base-dir "$base" "$@" --scope orchestration:read --scope orchestration:operate --scope filesystem:read --scope settings:write --scope terminal:read --scope terminal:operate --scope providers:manage --scope environment:maintain --scope preview:operate --scope diagnostics:read --scope source-control:write --scope filesystem:write --scope access:read --scope access:write --scope relay:read --scope relay:write --ttl 1d --label omarchy-t3-code --token-only; }
+# Older T3 releases have no --subject; their sessions keep the generic one.
+issue --subject "$subject" 2>/dev/null || issue
