@@ -102,6 +102,10 @@ Item {
   // so "flight" rows keep still here. Recycled rows always come back whole.
   property bool flight: false
   property real drift: 0
+  // A row recycled after its remove transition can stay drawn at its old
+  // place with stale data, over the row that took the slot. Keep the pool
+  // out of sight; the view shows the row again when it reuses it.
+  visible: !pooled
   transform: Translate { x: root.drift }
   function resetMotion() { arriveMotion.stop(); departMotion.stop(); flight = false; opacity = 1; drift = 0 }
   function arrive(ms) { departMotion.stop(); arriveMotion.duration = ms; arriveMotion.start() }
