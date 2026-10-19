@@ -108,6 +108,31 @@ fn ssh_args(target:&Value)->Result<Vec<String>> {
     args.extend(["--".into(),destination.into()]);Ok(args)
 }
 const REMOTE_DISCOVERY:&str=include_str!("remote-bootstrap.sh");
+/// Stable, non-identifying id for this device and user: the session subject's suffix.
+fn client_id()->String{
+    let mut seed=fs::read("/etc/machine-id").unwrap_or_default();seed.extend(unsafe{libc::geteuid()}.to_le_bytes());
+    format!("{:x}",Sha256::digest(&seed))[..16].to_string()
+}
+/// Sessions ot3 issued earlier from this device (or, before subjects, under its label)
+/// that are idle and not the caller's own. Live and recently used sessions are kept,
+/// so another ot3 process on this device is never cut off.
+pub fn stale_ot3_sessions(clients:&Value,subject:&str,now:DateTime<Utc>)->Vec<String>{
+    let list=clients.as_array().or_else(||clients["clientSessions"].as_array());
+    list.into_iter().flatten().filter(|c|c["current"]!=true&&c["connected"]!=true).filter_map(|c|{
+        let ours=c["subject"]==subject;
+        let legacy=c["subject"]=="cli-issued-session"&&c["client"]["label"]=="omarchy-t3-code";
+        let idle=if ours{120}else if legacy{3600}else{return None};
+        let last=c["lastConnectedAt"].as_str().or(c["issuedAt"].as_str()).and_then(|t|DateTime::parse_from_rfc3339(t).ok())?;
+        (now.signed_duration_since(last).num_seconds()>idle).then(||text(c,"sessionId").to_string()).filter(|id|!id.is_empty()&&id.len()<=128)
+    }).collect()
+}
+fn prune_sessions(base:&str,token:&str){
+    let Ok(http)=reqwest::blocking::Client::builder().timeout(Duration::from_secs(10)).build() else {return};
+    let Ok(clients)=http.get(format!("{base}/api/auth/clients")).bearer_auth(token).send().and_then(|r|r.error_for_status()).and_then(|r|r.json::<Value>()) else {return};
+    for id in stale_ot3_sessions(&clients,&format!("omarchy-t3-code:{}",client_id()),Utc::now()){
+        let _=http.post(format!("{base}/api/auth/clients/revoke")).bearer_auth(token).json(&json!({"sessionId":id})).send();
+    }
+}
 fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {connect_ssh_via(profile,env,None)}
 /// Resolve the host key name OpenSSH would use for this profile, so a bridged
 /// connection is still verified against the user's existing known_hosts entry.
@@ -142,7 +167,7 @@ fn connect_ssh_via(profile:&Value, env:&mut Environment, bridge:Option<&crate::o
     };
     // Until the tunnel owns it, any early return kills the forward.
     let mut guard=ChildGuard(forward);
-    let mut cmd=Command::new("timeout");cmd.args(["60s","ssh"]).args(&args).arg(format!("sh -s -- '{}'",env.id)).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
+    let mut cmd=Command::new("timeout");cmd.args(["60s","ssh"]).args(&args).arg(format!("sh -s -- '{}' '{}'",env.id,client_id())).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
     let mut child=cmd.spawn().map_err(|_|"ssh_unavailable")?;
     child.stdin.take().ok_or("ssh_unavailable")?.write_all(REMOTE_DISCOVERY.as_bytes()).map_err(|_|"ssh_unavailable")?;
     let output=child.wait_with_output().map_err(|_|"ssh_unavailable")?;
@@ -163,7 +188,10 @@ fn connect_ssh_via(profile:&Value, env:&mut Environment, bridge:Option<&crate::o
     while Instant::now()<deadline {
         if !tunnel.alive(){return Err("ssh_unavailable".into())}
         if TcpStream::connect_timeout(&format!("127.0.0.1:{port}").parse().unwrap(),Duration::from_millis(50)).is_ok(){
-            env.base_url=format!("http://127.0.0.1:{port}");env.bearer=Some(token.into());return Ok(tunnel)
+            env.base_url=format!("http://127.0.0.1:{port}");env.bearer=Some(token.into());
+            // Each (re)connection issues a session; retire this device's previous ones.
+            let (url,token)=(env.base_url.clone(),Zeroizing::new(token.to_string()));std::thread::spawn(move||prune_sessions(&url,&token));
+            return Ok(tunnel)
         }
         std::thread::sleep(Duration::from_millis(50));
     }
