@@ -1299,7 +1299,12 @@
     "Publish this device?": "Publish this device?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.",
     "Also share SSH": "Also share SSH",
-    "Publish": "Publish"
+    "Publish": "Publish",
+    "Not published": "Not published",
+    "{count} paired": "{count} paired",
+    "OmaBridge settings…": "OmaBridge settings…",
+    "Show OmaBridge in the bar": "Show OmaBridge in the bar",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2601,7 +2606,12 @@
     "Publish this device?": "¿Publicar este dispositivo?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge se ejecuta en segundo plano como servicio de usuario. Solo los dispositivos que apruebes pueden acceder a T3 Code aquí, y T3 sigue pidiendo su propio inicio de sesión. No se abre nada a nadie más.",
     "Also share SSH": "Compartir también SSH",
-    "Publish": "Publicar"
+    "Publish": "Publicar",
+    "Not published": "No publicado",
+    "{count} paired": "{count} emparejados",
+    "OmaBridge settings…": "Ajustes de OmaBridge…",
+    "Show OmaBridge in the bar": "Mostrar OmaBridge en la barra",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Un pequeño indicador junto a T3 Code que muestra el estado de este dispositivo y las solicitudes que esperan tu aprobación."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3903,7 +3913,12 @@
     "Publish this device?": "Publicar este dispositivo?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "O OmaBridge roda em segundo plano como serviço de usuário. Só os dispositivos que você aprovar podem acessar o T3 Code aqui, e o T3 continua pedindo o próprio login. Nada é aberto para mais ninguém.",
     "Also share SSH": "Compartilhar também SSH",
-    "Publish": "Publicar"
+    "Publish": "Publicar",
+    "Not published": "Não publicado",
+    "{count} paired": "{count} pareados",
+    "OmaBridge settings…": "Configurações do OmaBridge…",
+    "Show OmaBridge in the bar": "Mostrar o OmaBridge na barra",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Um pequeno indicador ao lado do T3 Code que mostra o estado deste dispositivo e os pedidos que aguardam sua aprovação."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5205,7 +5220,12 @@
     "Publish this device?": "Publier cet appareil ?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge s’exécute en arrière-plan comme service utilisateur. Seuls les appareils que vous approuvez peuvent joindre T3 Code ici, et T3 demande toujours sa propre connexion. Rien n’est ouvert à quiconque d’autre.",
     "Also share SSH": "Partager aussi SSH",
-    "Publish": "Publier"
+    "Publish": "Publier",
+    "Not published": "Non publié",
+    "{count} paired": "{count} appairés",
+    "OmaBridge settings…": "Réglages OmaBridge…",
+    "Show OmaBridge in the bar": "Afficher OmaBridge dans la barre",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Un petit indicateur à côté de T3 Code qui montre l’état de cet appareil et les demandes en attente de votre approbation."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6507,7 +6527,12 @@
     "Publish this device?": "Dieses Gerät veröffentlichen?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge läuft im Hintergrund als Benutzerdienst. Nur von dir freigegebene Geräte erreichen T3 Code hier, und T3 verlangt weiterhin eine eigene Anmeldung. Für niemanden sonst wird etwas geöffnet.",
     "Also share SSH": "Auch SSH teilen",
-    "Publish": "Veröffentlichen"
+    "Publish": "Veröffentlichen",
+    "Not published": "Nicht veröffentlicht",
+    "{count} paired": "{count} gekoppelt",
+    "OmaBridge settings…": "OmaBridge-Einstellungen…",
+    "Show OmaBridge in the bar": "OmaBridge in der Leiste anzeigen",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Eine kleine Anzeige neben T3 Code mit dem Zustand dieses Geräts und Anfragen, die auf deine Freigabe warten."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7809,7 +7834,12 @@
     "Publish this device?": "Pubblicare questo dispositivo?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge viene eseguito in background come servizio utente. Solo i dispositivi che approvi possono raggiungere T3 Code qui, e T3 chiede comunque il proprio accesso. Nulla viene aperto ad altri.",
     "Also share SSH": "Condividi anche SSH",
-    "Publish": "Pubblica"
+    "Publish": "Pubblica",
+    "Not published": "Non pubblicato",
+    "{count} paired": "{count} associati",
+    "OmaBridge settings…": "Impostazioni OmaBridge…",
+    "Show OmaBridge in the bar": "Mostra OmaBridge nella barra",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Un piccolo indicatore accanto a T3 Code che mostra lo stato di questo dispositivo e le richieste in attesa della tua approvazione."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9111,7 +9141,12 @@
     "Publish this device?": "Dit apparaat publiceren?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge draait op de achtergrond als gebruikersservice. Alleen apparaten die je goedkeurt kunnen T3 Code hier bereiken, en T3 vraagt nog steeds om een eigen aanmelding. Er wordt niets voor anderen geopend.",
     "Also share SSH": "Ook SSH delen",
-    "Publish": "Publiceren"
+    "Publish": "Publiceren",
+    "Not published": "Niet gepubliceerd",
+    "{count} paired": "{count} gekoppeld",
+    "OmaBridge settings…": "OmaBridge-instellingen…",
+    "Show OmaBridge in the bar": "OmaBridge in de balk tonen",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Een kleine indicator naast T3 Code met de status van dit apparaat en verzoeken die op je goedkeuring wachten."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10413,7 +10448,12 @@
     "Publish this device?": "Opublikować to urządzenie?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge działa w tle jako usługa użytkownika. Tylko zatwierdzone przez Ciebie urządzenia mają tu dostęp do T3 Code, a T3 nadal wymaga własnego logowania. Nic nie jest otwierane dla nikogo innego.",
     "Also share SSH": "Udostępnij też SSH",
-    "Publish": "Opublikuj"
+    "Publish": "Opublikuj",
+    "Not published": "Nieopublikowane",
+    "{count} paired": "Sparowane: {count}",
+    "OmaBridge settings…": "Ustawienia OmaBridge…",
+    "Show OmaBridge in the bar": "Pokaż OmaBridge na pasku",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Mały wskaźnik obok T3 Code pokazujący stan tego urządzenia i prośby czekające na Twoje zatwierdzenie."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11715,7 +11755,12 @@
     "Publish this device?": "Опубликовать это устройство?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge работает в фоне как пользовательская служба. Только одобренные вами устройства могут подключаться к T3 Code здесь, а T3 по-прежнему требует собственного входа. Больше никому ничего не открывается.",
     "Also share SSH": "Также предоставить SSH",
-    "Publish": "Опубликовать"
+    "Publish": "Опубликовать",
+    "Not published": "Не опубликовано",
+    "{count} paired": "Сопряжено: {count}",
+    "OmaBridge settings…": "Настройки OmaBridge…",
+    "Show OmaBridge in the bar": "Показывать OmaBridge на панели",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Небольшой индикатор рядом с T3 Code: состояние этого устройства и запросы, ожидающие вашего одобрения."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13017,7 +13062,12 @@
     "Publish this device?": "Опублікувати цей пристрій?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge працює у фоні як служба користувача. Лише схвалені вами пристрої можуть під’єднатися до T3 Code тут, а T3 і далі вимагає власного входу. Більше нікому нічого не відкривається.",
     "Also share SSH": "Також надати SSH",
-    "Publish": "Опублікувати"
+    "Publish": "Опублікувати",
+    "Not published": "Не опубліковано",
+    "{count} paired": "З’єднано: {count}",
+    "OmaBridge settings…": "Налаштування OmaBridge…",
+    "Show OmaBridge in the bar": "Показувати OmaBridge на панелі",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Невеликий індикатор поруч із T3 Code: стан цього пристрою та запити, що очікують вашого схвалення."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14319,7 +14369,12 @@
     "Publish this device?": "このデバイスを公開しますか？",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridgeはユーザーサービスとしてバックグラウンドで動作します。承認したデバイスだけがここのT3 Codeに接続でき、T3は引き続き独自のサインインを求めます。それ以外には何も公開されません。",
     "Also share SSH": "SSHも共有",
-    "Publish": "公開"
+    "Publish": "公開",
+    "Not published": "未公開",
+    "{count} paired": "ペアリング済み {count}",
+    "OmaBridge settings…": "OmaBridgeの設定…",
+    "Show OmaBridge in the bar": "バーにOmaBridgeを表示",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "T3 Codeの横に、このデバイスの状態と承認待ちの要求を示す小さなインジケーターを表示します。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15621,7 +15676,12 @@
     "Publish this device?": "이 기기를 공개할까요?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge는 사용자 서비스로 백그라운드에서 실행됩니다. 승인한 기기만 여기의 T3 Code에 접근할 수 있으며, T3는 여전히 자체 로그인을 요구합니다. 다른 누구에게도 열리지 않습니다.",
     "Also share SSH": "SSH도 공유",
-    "Publish": "공개"
+    "Publish": "공개",
+    "Not published": "공개 안 됨",
+    "{count} paired": "페어링 {count}개",
+    "OmaBridge settings…": "OmaBridge 설정…",
+    "Show OmaBridge in the bar": "바에 OmaBridge 표시",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "T3 Code 옆에 이 기기의 상태와 승인 대기 중인 요청을 보여 주는 작은 표시기입니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16923,7 +16983,12 @@
     "Publish this device?": "要发布此设备吗？",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge 作为用户服务在后台运行。只有你批准的设备才能访问此处的 T3 Code，且 T3 仍会要求自己的登录。不会向其他任何人开放。",
     "Also share SSH": "同时共享 SSH",
-    "Publish": "发布"
+    "Publish": "发布",
+    "Not published": "未发布",
+    "{count} paired": "已配对 {count} 个",
+    "OmaBridge settings…": "OmaBridge 设置…",
+    "Show OmaBridge in the bar": "在栏中显示 OmaBridge",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "T3 Code 旁的小指示器，显示此设备的状态和等待你批准的请求。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18225,7 +18290,12 @@
     "Publish this device?": "هل تريد نشر هذا الجهاز؟",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "يعمل OmaBridge في الخلفية كخدمة مستخدم. لا يمكن إلا للأجهزة التي توافق عليها الوصول إلى T3 Code هنا، ويظل T3 يطلب تسجيل دخوله الخاص. لا يُفتح شيء لأي شخص آخر.",
     "Also share SSH": "مشاركة SSH أيضًا",
-    "Publish": "نشر"
+    "Publish": "نشر",
+    "Not published": "غير منشور",
+    "{count} paired": "المقترنة: {count}",
+    "OmaBridge settings…": "إعدادات OmaBridge…",
+    "Show OmaBridge in the bar": "إظهار OmaBridge في الشريط",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "مؤشر صغير بجوار T3 Code يعرض حالة هذا الجهاز والطلبات التي تنتظر موافقتك."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19527,7 +19597,12 @@
     "Publish this device?": "Bu cihaz yayınlansın mı?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge arka planda kullanıcı hizmeti olarak çalışır. Buradaki T3 Code’a yalnızca onayladığınız cihazlar ulaşabilir ve T3 yine kendi oturum açma isteğini sorar. Başka kimseye bir şey açılmaz.",
     "Also share SSH": "SSH’yi de paylaş",
-    "Publish": "Yayınla"
+    "Publish": "Yayınla",
+    "Not published": "Yayınlanmadı",
+    "{count} paired": "{count} eşleşmiş",
+    "OmaBridge settings…": "OmaBridge ayarları…",
+    "Show OmaBridge in the bar": "OmaBridge’i çubukta göster",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "T3 Code’un yanında bu cihazın durumunu ve onayınızı bekleyen istekleri gösteren küçük bir gösterge."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20829,7 +20904,12 @@
     "Publish this device?": "Publicera den här enheten?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge körs i bakgrunden som en användartjänst. Bara enheter du godkänner kan nå T3 Code här, och T3 kräver fortfarande sin egen inloggning. Inget öppnas för någon annan.",
     "Also share SSH": "Dela även SSH",
-    "Publish": "Publicera"
+    "Publish": "Publicera",
+    "Not published": "Inte publicerad",
+    "{count} paired": "{count} parkopplade",
+    "OmaBridge settings…": "OmaBridge-inställningar…",
+    "Show OmaBridge in the bar": "Visa OmaBridge i fältet",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "En liten indikator bredvid T3 Code som visar enhetens status och förfrågningar som väntar på ditt godkännande."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22131,7 +22211,12 @@
     "Publish this device?": "Vil du udgive denne enhed?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge kører i baggrunden som en brugertjeneste. Kun enheder, du godkender, kan nå T3 Code her, og T3 kræver stadig sit eget login. Intet åbnes for andre.",
     "Also share SSH": "Del også SSH",
-    "Publish": "Udgiv"
+    "Publish": "Udgiv",
+    "Not published": "Ikke udgivet",
+    "{count} paired": "{count} parret",
+    "OmaBridge settings…": "OmaBridge-indstillinger…",
+    "Show OmaBridge in the bar": "Vis OmaBridge i bjælken",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "En lille indikator ved siden af T3 Code, der viser enhedens tilstand og anmodninger, der venter på din godkendelse."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23433,7 +23518,12 @@
     "Publish this device?": "Vil du publisere denne enheten?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge kjører i bakgrunnen som en brukertjeneste. Bare enheter du godkjenner kan nå T3 Code her, og T3 krever fortsatt sin egen pålogging. Ingenting åpnes for andre.",
     "Also share SSH": "Del også SSH",
-    "Publish": "Publiser"
+    "Publish": "Publiser",
+    "Not published": "Ikke publisert",
+    "{count} paired": "{count} paret",
+    "OmaBridge settings…": "OmaBridge-innstillinger…",
+    "Show OmaBridge in the bar": "Vis OmaBridge i linjen",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "En liten indikator ved siden av T3 Code som viser enhetens tilstand og forespørsler som venter på din godkjenning."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24735,7 +24825,12 @@
     "Publish this device?": "Julkaistaanko tämä laite?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge toimii taustalla käyttäjäpalveluna. Vain hyväksymäsi laitteet tavoittavat täällä T3 Coden, ja T3 pyytää edelleen omaa kirjautumistaan. Mitään ei avata muille.",
     "Also share SSH": "Jaa myös SSH",
-    "Publish": "Julkaise"
+    "Publish": "Julkaise",
+    "Not published": "Ei julkaistu",
+    "{count} paired": "Paritettu: {count}",
+    "OmaBridge settings…": "OmaBridge-asetukset…",
+    "Show OmaBridge in the bar": "Näytä OmaBridge palkissa",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Pieni ilmaisin T3 Coden vieressä: laitteen tila ja hyväksyntääsi odottavat pyynnöt."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26037,6 +26132,11 @@
     "Publish this device?": "Zveřejnit toto zařízení?",
     "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge běží na pozadí jako uživatelská služba. K T3 Code se zde dostanou jen zařízení, která schválíte, a T3 stále vyžaduje vlastní přihlášení. Nikomu jinému se nic neotevírá.",
     "Also share SSH": "Sdílet také SSH",
-    "Publish": "Zveřejnit"
+    "Publish": "Zveřejnit",
+    "Not published": "Nezveřejněno",
+    "{count} paired": "Spárováno: {count}",
+    "OmaBridge settings…": "Nastavení OmaBridge…",
+    "Show OmaBridge in the bar": "Zobrazit OmaBridge na liště",
+    "A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.": "Malý indikátor vedle T3 Code se stavem tohoto zařízení a žádostmi čekajícími na vaše schválení."
   }
 }
