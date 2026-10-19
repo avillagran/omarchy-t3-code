@@ -41,7 +41,8 @@ curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/ins
 The [installer](install.sh) installs runtime dependencies through
 Pacman, downloads verified **aarch64 / x86_64** binaries, enables its bar widget and makes **Super+Shift+A** open Omarchy T3 Code
 as your default agent on Omarchy's Lua configuration. It reuses an existing T3 server or starts the native
-headless service when stopped. Your T3 connections and data stay in place.
+headless service when stopped. It also installs the pinned, checksum-verified
+[OmaBridge](docs/CONNECTION_OMABRIDGE.md) CLI next to the client. Your T3 connections and data stay in place.
 The same command updates a clean Git installation. It may request your sudo
 password and restarts the Omarchy shell when finished.
 
@@ -62,8 +63,9 @@ official GUI owns the server, close it and use the sidebar's start button to run
 headless. The plugin does not stop a GUI-owned server. Inherited SSH connections reuse a running
 remote server or start its native headless service when stopped. Open the sidebar
 gear for preferences; server settings apply to the selected environment.
-When [OmaBridge](docs/CONNECTION_OMABRIDGE.md) is paired, SSH and pairing-link
-connections go through your paired devices first, without a VPN, and fall back to the saved route.
+ot3 bundles [OmaBridge](docs/CONNECTION_OMABRIDGE.md): once devices are paired, SSH and pairing-link
+connections go through them first, without a VPN, and fall back to the saved route. Pair, approve,
+revoke and optionally publish this device in Preferences → Connections → OmaBridge.
 
 Some T3 features are still being ported, and the PR view is currently read-only.
 See the [feature parity checklist](docs/FEATURE_PARITY.md).
