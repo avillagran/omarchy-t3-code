@@ -137,6 +137,14 @@ Singleton {
     var id=uuid();connectionNetwork=Object.assign({},connectionNetwork,{busy:true,error:"",requestId:id,action:action})
     send(Object.assign({op:"connection-network",action:action,revision:connectionNetwork.data?connectionNetwork.data.revision:"",requestId:id},values || {}))
   }
+  property var connectionOmaBridge:({busy:false,error:"",data:null})
+  signal connectionOmaBridgeFinished(string action,string error)
+  function requestConnectionOmaBridge(action,values){
+    if(connectionOmaBridge.busy)return
+    if(!worker.running){connectionOmaBridge=Object.assign({},connectionOmaBridge,{error:"disconnected"});return}
+    var id=uuid();connectionOmaBridge=Object.assign({},connectionOmaBridge,{busy:true,error:"",requestId:id,action:action})
+    send(Object.assign({op:"connection-omabridge",action:action,revision:connectionOmaBridge.data?connectionOmaBridge.data.revision:"",requestId:id},values || {}))
+  }
   property var connectionAccess:({busy:false,error:"",environment:"",data:null,created:null})
   signal connectionAccessFinished(string action,string error)
   function requestConnectionAccess(environment,action,values){
@@ -765,6 +773,7 @@ Singleton {
     if(connectionCloud.busy)connectionCloud=Object.assign({},connectionCloud,{busy:false,error:"rpc_outcome_unknown",device:null})
     if(connectionPreferences.busy)connectionPreferences=Object.assign({},connectionPreferences,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionNetwork.busy)connectionNetwork=Object.assign({},connectionNetwork,{busy:false,error:"rpc_outcome_unknown"})
+    if(connectionOmaBridge.busy)connectionOmaBridge=Object.assign({},connectionOmaBridge,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionAccess.busy)connectionAccess=Object.assign({},connectionAccess,{busy:false,error:"rpc_outcome_unknown",created:null})
     if(connectionSettings.busy)connectionSettings=Object.assign({},connectionSettings,{busy:false,error:"rpc_outcome_unknown"})
     clearInlineDocuments();historyOperation=Object.assign({},historyOperation,{busy:false,error:historyOperation.busy?"rpc_outcome_unknown":historyOperation.error});liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
@@ -1392,6 +1401,13 @@ Singleton {
       connectionNetwork=Object.assign({},connectionNetwork,{busy:false,error:data.error || "",data:data.result || connectionNetwork.data})
       if(action==="apply"){refreshBackendStatus();recoverLocalBackend();refresh()}
       connectionNetworkFinished(action,data.error || "");return
+    }
+    if(data.op==="connection-omabridge"){
+      if(data.requestId!==connectionOmaBridge.requestId)return
+      var action=connectionOmaBridge.action
+      connectionOmaBridge=Object.assign({},connectionOmaBridge,{busy:false,error:data.error || "",data:data.result || connectionOmaBridge.data})
+      if(action!=="read"&&!data.error)refresh()
+      connectionOmaBridgeFinished(action,data.error || "");return
     }
     if(data.op==="connection-access"){
       if(data.requestId!==connectionAccess.requestId)return

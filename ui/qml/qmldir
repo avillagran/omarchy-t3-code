@@ -72,6 +72,7 @@ T3ProjectDrafts 1.0 T3ProjectDrafts.qml
 
 T3ConnectionAccess 1.0 T3ConnectionAccess.qml
 T3ConnectionNetwork 1.0 T3ConnectionNetwork.qml
+T3ConnectionOmaBridge 1.0 T3ConnectionOmaBridge.qml
 T3ConnectionCloud 1.0 T3ConnectionCloud.qml
 T3ConnectionPreferences 1.0 T3ConnectionPreferences.qml
 T3LocalConnection 1.0 T3LocalConnection.qml
