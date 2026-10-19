@@ -95,6 +95,10 @@ else
     install -m755 "$downloads/unpacked/bin/$file" "$build_dir/bin/$file"
   done
 fi
+# OmaBridge is bundled but optional: without it, connections keep their saved routes.
+if [[ -x "$build_dir/bin/fetch-omabridge" ]]; then
+  "$build_dir/bin/fetch-omabridge" || printf '%s\n' 'OmaBridge was not installed; connections use their saved routes. Rerun the installer to retry.' >&2
+fi
 [[ -f "$build_dir/bin/libt3-document.so" ]] || fail 'The HTML preview did not build; check Qt development packages and retry.'
 omarchy plugin validate "$build_dir"
 if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi

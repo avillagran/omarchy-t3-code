@@ -1,0 +1,5 @@
+# OmaBridge release bundled with ot3. The only place the pinned version lives:
+# bin/fetch-omabridge installs it and the client reports it. Update all lines together.
+version=v0.1.0
+sha256_aarch64=27d213a93ef229af2f5c20598c0112af512cf3622da0ede068bd526a5dd52348
+sha256_x86_64=e6e7207345cfac19f68d41d9c083045020a04f6dbc86cc07978181971048ac30
