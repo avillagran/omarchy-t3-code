@@ -31,7 +31,7 @@ fn route_documents_and_forward_output_are_strictly_validated(){
  assert!(bridge::forwarding_url(&line.replace("127.0.0.1","0.0.0.0"),PEER,"t3").is_err());
  assert!(bridge::forwarding_url(&line,PEER,"egress").is_err());
  let peers=bridge::project_peers(&json!({"peers":[{"id":PEER,"name":"node","services":[],"remote_services":["t3"],"address":{"addrs":["192.0.2.1:1"]}},{"id":"bad","name":"x"}]}));
- assert_eq!(peers,vec![json!({"id":PEER,"name":"node","remoteServices":["t3"]})]);
+ assert_eq!(peers,vec![json!({"id":PEER,"name":"node","services":[],"remoteServices":["t3"]})]);
 }
 #[test]
 fn bearer_connections_prefer_verified_peers_and_fall_back_only_when_allowed(){

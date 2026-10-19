@@ -72,8 +72,8 @@ ColumnLayout {
   }
   T3Switch{id:defaultSwitch;objectName:"omabridgeDefault";checked:root.automatic;enabled:!root.store.busy;Accessible.name:T3I18n.tr("Use OmaBridge for every connection");onToggled:root.proposeDefault(checked)}
  }
- Text{Layout.fillWidth:true;visible:!!root.store.data&&!root.value.available;text:T3I18n.tr("OmaBridge is not installed on this device.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
- Text{Layout.fillWidth:true;visible:!!root.value.available&&!root.value.identity;text:T3I18n.tr("No OmaBridge identity yet. Pair this device with omabridge-gui first.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+ Text{Layout.fillWidth:true;visible:!!root.store.data&&!root.value.available;text:T3I18n.tr("OmaBridge is not installed. Rerun the installer to add it.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+ Text{Layout.fillWidth:true;visible:!!root.value.available&&!root.value.identity;text:T3I18n.tr("No OmaBridge identity yet. Create one below to pair this device.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
  Text{Layout.fillWidth:true;visible:!!root.value.identity&&!root.anyCandidate;text:T3I18n.tr("No paired device shares T3 Code with this one yet.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
  Text{Layout.fillWidth:true;visible:!!root.store.data&&root.linkable.length===0;text:T3I18n.tr("Add a pairing-link or SSH connection to route it through OmaBridge.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
  Repeater{model:root.epoch>=0?root.linkable:[]

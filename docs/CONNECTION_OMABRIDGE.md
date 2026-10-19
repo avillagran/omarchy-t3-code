@@ -39,9 +39,21 @@ The installer (and every update, which reruns it) downloads the OmaBridge releas
   "<directEnvironmentId>":{"mode":"off"}}}
 ```
 
-`stateDir` defaults to OmaBridge's `$XDG_DATA_HOME/omabridge`, and ot3 never creates an identity. `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. ot3 only runs the bundled `bin/omabridge` next to the client (see below), never one from `PATH`; `OT3_OMABRIDGE_BIN` overrides it for development. Pairing, approval and revocation happen in OmaBridge (`omabridge-gui` or its CLI), not in ot3.
+`stateDir` defaults to OmaBridge's `$XDG_DATA_HOME/omabridge`. ot3 creates an identity there only when you ask it to (see below). `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. ot3 only runs the bundled `bin/omabridge` next to the client (see below), never one from `PATH`; `OT3_OMABRIDGE_BIN` overrides it for development.
 
 Diagnostics: `omarchy-t3-client omabridge-read` prints the public snapshot (peer ids, names, granted services, routes). `omarchy-t3-client omabridge-status` also connects every environment and reports which ones OmaBridge carries (`active`) and any connection error. `connections-view` prints the credential-free catalog view.
+
+## Managing devices
+
+The same section manages OmaBridge itself, so `omabridge-gui` is not needed. Every action runs the bundled CLI against the private state directory and reads its JSON output. Each change of trust asks for confirmation first.
+
+- **This device**: its name and public device ID. *Create identity* runs `omabridge init` with the host name. The private key never leaves the state directory.
+- **Invite a device…** (needs this device to be [published](#publishing-this-device)): choose the services to share (T3 Code, SSH) and whether to show a QR code. OmaBridge writes a one-use invitation to `~/Downloads` (or `~`) with mode 0600, and it expires in 10 minutes. The dialog shows the file path and the optional QR once. Closing the dialog forgets both, and *Delete invitation file* removes the file. Treat the file and the QR as secrets.
+- **Pair from invitation file…**: the chosen file is copied to `$XDG_STATE_HOME/omarchy-t3-code/omabridge-pairing/` (0700 directory, 0600 file), and ot3 runs `omabridge pair` with the copy. Your original file is never changed. If no identity exists, ot3 creates one first. Until the other device approves, the request is listed as waiting, with *Check again* (which repeats `pair` and completes pairing) and *Cancel*. The copy is deleted once pairing is approved, or once the invitation expires.
+- **Waiting for your approval**: claims on this device's invitations, with the requested services. *Approve…* confirms the device name, ID and services.
+- **Paired devices**: what you can reach on each peer and what it can reach here. *Revoke…* removes the pairing after confirmation.
+
+Only peer IDs, names, services and expiry times reach the UI. Invitation tokens, invitation IDs, peer addresses and keys stay with OmaBridge. CLI error output is mapped to fixed error codes and is never shown or logged.
 
 ## Verification
 
@@ -57,9 +69,12 @@ Diagnostics: `omarchy-t3-client omabridge-read` prints the public snapshot (peer
 - the bearer request through the bridge;
 - `prefer` fallback, the `only` failure and clearing a route.
 
+`cargo test --release --locked --test omabridge_manage` drives the real bundled CLI with two throwaway identities on loopback (it is skipped when `bin/omabridge` is missing). It covers identity creation, the refusal to invite while unpublished, a 0600 invitation with a QR whose token never reaches the UI, pairing through a private copy, approval with confirmation, *Check again*, discarding the invitation, and revocation.
+
 Other checks:
 
 - Unit tests pin the bridged SSH arguments.
+- `tools/test-qml omabridge-device` covers identity creation, the confirmed approve, revoke and pair payloads, *Check again*, invitation services and QR, and clearing the shown-once invitation when its dialog closes.
 - `tools/test-qml connection-omabridge` covers the automatic default, eligible connections and services, the confirmed pin/strict/automatic/saved-only/default payloads and the live status.
 - The `connections`, `connection-network`, `connection-access`, `preferences` and `i18n` QML checks pass, and translations cover 20 locales.
 

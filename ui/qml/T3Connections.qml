@@ -84,7 +84,10 @@ ColumnLayout {
   }}
  }
  T3PreferenceSection{Layout.fillWidth:true;title:"OmaBridge";icon:"globe"
-  body:Component{ColumnLayout{width:parent.width;T3ConnectionOmaBridge{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge;environments:root.store.environments || []}}}
+  body:Component{ColumnLayout{width:parent.width;spacing:0
+   T3ConnectionOmaBridge{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge;environments:root.store.environments || []}
+   T3OmaBridgeDevice{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge}
+  }}
  }
  T3ConnectionPreferences{Layout.fillWidth:true;bridge:root.bridge}
  Controls.Popup {
