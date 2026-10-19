@@ -15,6 +15,9 @@ ShellRoot {
   property var connectionPreferences:({busy:false,error:"",client:{},github:{environments:[]}})
   signal connectionNetworkFinished(string action,string error)
   function requestConnectionNetwork(action,values){}
+  property var connectionOmaBridge:({busy:false,error:"",data:{revision:"r",available:true,identity:true,peers:[],routes:{}}})
+  signal connectionOmaBridgeFinished(string action,string error)
+  function requestConnectionOmaBridge(action,values){}
   function requestConnectionCloud(environment,action,values){}
   function manageConnectionPreferences(action,values){}
   property string selectedEnvironment:"node"

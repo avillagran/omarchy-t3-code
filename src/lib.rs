@@ -17,6 +17,7 @@ pub mod connection_network;
 pub mod connection_preferences;
 pub mod connection_cloud;
 pub mod connection_route;
+pub mod omabridge_route;
 pub mod connection_github;
 pub mod native_settings;
 pub mod provider_instances;

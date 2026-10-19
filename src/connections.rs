@@ -48,8 +48,12 @@ fn validate_catalog(c:Value)->Result<Value>{
 }
 
 use std::{net::{TcpListener,TcpStream},process::{Child,Stdio},sync::{Mutex,OnceLock},time::{Duration,Instant},io::Write,os::unix::process::CommandExt};
-struct Tunnel(Child);
-impl Drop for Tunnel {fn drop(&mut self){let _=self.0.kill();let _=self.0.wait();}}
+/// A local route: the SSH/OmaBridge child plus, for SSH carried over OmaBridge, its forward.
+struct Tunnel(Child,Option<Child>);
+impl Tunnel{fn alive(&mut self)->bool{self.0.try_wait().ok()==Some(None)&&self.1.as_mut().is_none_or(|c|c.try_wait().ok()==Some(None))}}
+struct ChildGuard(Option<Child>);
+impl Drop for ChildGuard {fn drop(&mut self){if let Some(c)=self.0.as_mut(){let _=c.kill();let _=c.wait();}}}
+impl Drop for Tunnel {fn drop(&mut self){let _=self.0.kill();let _=self.0.wait();if let Some(c)=self.1.as_mut(){let _=c.kill();let _=c.wait();}}}
 struct Cache { signature:String, remote_signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, routes:HashMap<String,String>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value> }
 static CACHE:OnceLock<Mutex<Option<Cache>>>=OnceLock::new();
 fn token_expiry_ms(token:&str)->Option<i64> {
@@ -104,9 +108,40 @@ fn ssh_args(target:&Value)->Result<Vec<String>> {
     args.extend(["--".into(),destination.into()]);Ok(args)
 }
 const REMOTE_DISCOVERY:&str=include_str!("remote-bootstrap.sh");
-fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {
+fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {connect_ssh_via(profile,env,None)}
+/// Resolve the host key name OpenSSH would use for this profile, so a bridged
+/// connection is still verified against the user's existing known_hosts entry.
+fn host_key_alias(args:&[String])->Result<String>{
+    let out=Command::new("timeout").args(["4s","ssh","-G"]).args(args).stdin(Stdio::null()).stderr(Stdio::null()).output().map_err(|_|"ssh_unavailable")?;
+    if !out.status.success(){return Err("ssh_unavailable".into())}
+    let config=String::from_utf8(out.stdout).map_err(|_|"ssh_unavailable")?;
+    let value=|key:&str|config.lines().find_map(|l|l.strip_prefix(key).and_then(|v|v.strip_prefix(' ')).map(str::trim).map(str::to_owned));
+    let host=value("hostname").filter(|h|!h.is_empty()&&h.len()<=255&&h.bytes().all(|b|b.is_ascii_alphanumeric()||b".:_-[]%".contains(&b))).ok_or("invalid_t3_ssh_profile")?;
+    let port=value("port").and_then(|p|p.parse::<u16>().ok()).unwrap_or(22);
+    Ok(if port==22{host}else{format!("[{host}]:{port}")})
+}
+/// Same destination and identity, but TCP goes to a loopback OmaBridge forward.
+pub(crate) fn bridged_ssh_args(target:&Value,alias:&str,local_port:u16)->Result<Vec<String>>{
+    let mut target=target.clone();target["port"]=Value::Null;
+    let mut args=ssh_args(&target)?;let split=args.iter().position(|a|a=="--").ok_or("invalid_t3_ssh_profile")?;
+    let extra=["HostName=127.0.0.1".to_string(),format!("Port={local_port}"),format!("HostKeyAlias={alias}"),"CheckHostIP=no".into(),"ProxyJump=none".into(),"ProxyCommand=none".into()];
+    for (i,o) in extra.into_iter().enumerate(){args.insert(split+i*2,"-o".into());args.insert(split+i*2+1,o);}
+    Ok(args)
+}
+fn connect_ssh_via(profile:&Value, env:&mut Environment, bridge:Option<&crate::omabridge_route::Route>)->Result<Tunnel> {
     uuid::Uuid::parse_str(&env.id).map_err(|_|"invalid_t3_environment_id")?;
-    let args=ssh_args(&profile["target"])?;
+    let mut forward=None;
+    let args=match bridge{
+        None=>ssh_args(&profile["target"])?,
+        Some(route)=>{
+            let alias=host_key_alias(&ssh_args(&profile["target"])?)?;
+            let (child,url)=crate::omabridge_route::connect(route,Duration::from_secs(15))?;forward=Some(child);
+            let port=reqwest::Url::parse(&url).ok().and_then(|u|u.port()).ok_or("omabridge_route_failed")?;
+            bridged_ssh_args(&profile["target"],&alias,port)?
+        }
+    };
+    // Until the tunnel owns it, any early return kills the forward.
+    let mut guard=ChildGuard(forward);
     let mut cmd=Command::new("timeout");cmd.args(["60s","ssh"]).args(&args).arg(format!("sh -s -- '{}'",env.id)).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
     let mut child=cmd.spawn().map_err(|_|"ssh_unavailable")?;
     child.stdin.take().ok_or("ssh_unavailable")?.write_all(REMOTE_DISCOVERY.as_bytes()).map_err(|_|"ssh_unavailable")?;
@@ -123,10 +158,10 @@ fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {
     command.args(["-N","-L",&format!("127.0.0.1:{port}:127.0.0.1:{remote_port}"),"-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30","-o","ServerAliveCountMax=2"]).args(&args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     let parent=unsafe{libc::getpid()};
     unsafe{command.pre_exec(move ||{if libc::prctl(libc::PR_SET_PDEATHSIG,libc::SIGTERM)!=0{return Err(std::io::Error::last_os_error())}if libc::getppid()!=parent{libc::raise(libc::SIGTERM);}Ok(())});}
-    let mut tunnel=Tunnel(command.spawn().map_err(|_|"ssh_unavailable")?);
+    let mut tunnel=Tunnel(command.spawn().map_err(|_|"ssh_unavailable")?,guard.0.take());
     let deadline=Instant::now()+Duration::from_secs(6);
     while Instant::now()<deadline {
-        if tunnel.0.try_wait().map_err(|_|"ssh_unavailable")?.is_some(){return Err("ssh_unavailable".into())}
+        if !tunnel.alive(){return Err("ssh_unavailable".into())}
         if TcpStream::connect_timeout(&format!("127.0.0.1:{port}").parse().unwrap(),Duration::from_millis(50)).is_ok(){
             env.base_url=format!("http://127.0.0.1:{port}");env.bearer=Some(token.into());return Ok(tunnel)
         }
@@ -136,15 +171,20 @@ fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {
 }
 pub fn inherited_environments()->Result<Vec<Environment>> {
     let mut cache=CACHE.get_or_init(||Mutex::new(None)).lock().map_err(|_|"local_error")?;
-    let signature=["userdata/server-runtime.json","userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).flatten().collect::<Vec<_>>();
+    let bridge_config=crate::omabridge_route::config_bytes();
+    let signature=["userdata/server-runtime.json","userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).flatten().chain(bridge_config.iter().copied()).collect::<Vec<_>>();
     let signature=format!("{:x}",Sha256::digest(&signature));
     let cloud_signature=format!("{:x}",Sha256::digest(fs::read(t3_home().join("userdata/clerk-tokens.json")).unwrap_or_default()));
-    if let Some(c)=cache.as_mut(){if c.signature==signature && c.cloud_signature==cloud_signature && Instant::now()<c.until && c.tunnels.values_mut().all(|t|t.0.try_wait().ok()==Some(None)){return Ok(c.environments.clone())}}
+    if let Some(c)=cache.as_mut(){if c.signature==signature && c.cloud_signature==cloud_signature && Instant::now()<c.until && c.tunnels.values_mut().all(Tunnel::alive){return Ok(c.environments.clone())}}
     let remote_signature=format!("{:x}",Sha256::digest(["userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().flat_map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).collect::<Vec<_>>()));
     let mut previous=cache.take();
     let mut result=vec![];let mut tunnels=HashMap::new();let mut routes=HashMap::new();
     let catalog=previous.as_ref().filter(|c|c.remote_signature==remote_signature).and_then(|c|c.catalog.as_ref().ok()).cloned().map(Ok).unwrap_or_else(read_catalog);
     let primary_id=fs::read_to_string(t3_home().join("userdata/environment-id")).unwrap_or_default();
+    // A malformed route file disables OmaBridge routing; inherited T3 routes still work.
+    let bridge_config=crate::omabridge_route::config().unwrap_or_default();
+    // Paired peers per service, listed at most once per rebuild and only when needed.
+    let mut auto_routes:HashMap<&str,Vec<crate::omabridge_route::Route>>=HashMap::new();
     let local_disabled=catalog.as_ref().ok().and_then(|c|c["disabledEnvironmentIds"].as_array()).is_some_and(|ids|ids.contains(&json!(primary_id.trim()))||ids.contains(&json!("local")));
     let local_disabled=local_disabled || read_json(&t3_home().join("userdata/desktop-settings.json")).ok().is_some_and(|c|c["localEnvironmentEnabled"]==false);
     if !local_disabled {
@@ -157,28 +197,66 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
                 let mut e=remote_base(target);
                 if e.id.is_empty() || e.id=="local" || e.id==primary_id.trim(){continue}
                 if result.iter().any(|known| known.id==e.id && known.connection_error.is_none()){continue}
+                let service=match text(target,"_tag"){"SshConnectionTarget"=>"ssh","BearerConnectionTarget"=>"t3",_=>""};
+                let plan=match bridge_config.plan(&e.id){
+                    crate::omabridge_route::Plan::Pinned(r) if !crate::omabridge_route::carries(text(target,"_tag"),&r.service)=>crate::omabridge_route::Plan::Off,
+                    crate::omabridge_route::Plan::Auto if service.is_empty()=>crate::omabridge_route::Plan::Off,
+                    plan=>plan,
+                };
+                let connection=target["connectionId"].as_str().unwrap_or("relay");
+                let route_id=match &plan{crate::omabridge_route::Plan::Pinned(r)=>format!("{connection}|{}",r.signature()),crate::omabridge_route::Plan::Auto=>format!("{connection}|omabridge:auto"),crate::omabridge_route::Plan::Off=>connection.to_string()};
                 if let Some(prior)=previous.as_mut(){
                     let unchanged=prior.catalog.as_ref().ok().is_some_and(|old|{let id=&target["connectionId"];let profile=|c:&Value|c["profiles"].as_array().into_iter().flatten().find(|p|p["connectionId"]==*id).map(|p|json!({"target":p["target"],"url":p["httpBaseUrl"]}));let credentials=|c:&Value|c["credentials"].as_array().into_iter().flatten().find(|p|p["connectionId"]==*id).cloned();old["targets"].as_array().into_iter().flatten().any(|t|t["environmentId"]==target["environmentId"]&&t["connectionId"]==target["connectionId"]&&t["_tag"]==target["_tag"])&&profile(old)==profile(catalog)&&credentials(old)==credentials(catalog)});
-                    let route_id=target["connectionId"].as_str().unwrap_or("relay");
-                    if let Some(known)=prior.environments.iter().filter(|_|unchanged&&prior.routes.get(&e.id).is_some_and(|id|id==route_id)).find(|known|known.id==e.id && known.connection_error.is_none()) {
-                        let alive=prior.tunnels.get_mut(&e.id).is_none_or(|t|t.0.try_wait().ok()==Some(None));
+                    if let Some(known)=prior.environments.iter().filter(|_|unchanged&&prior.routes.get(&e.id).is_some_and(|id|*id==route_id)).find(|known|known.id==e.id && known.connection_error.is_none()) {
+                        let alive=prior.tunnels.get_mut(&e.id).is_none_or(Tunnel::alive);
                         if alive && (known.connection.is_none() || prior.cloud_signature==cloud_signature) && known.connection.as_ref().is_none_or(|c|c.expires_at().is_none_or(|t|t>Utc::now().timestamp()+300)) && known.bearer.as_ref().is_none_or(|t|fresh_token(t)) {
-                            let mut known=known.clone();known.name=e.name.clone();routes.insert(e.id.clone(),route_id.to_string());result.push(known);if let Some(t)=prior.tunnels.remove(&e.id){tunnels.insert(e.id.clone(),t);}continue
+                            let mut known=known.clone();known.name=e.name.clone();routes.insert(e.id.clone(),route_id.clone());result.push(known);if let Some(t)=prior.tunnels.remove(&e.id){tunnels.insert(e.id.clone(),t);}continue
                         }
                     }
                 }
                 let profile=catalog["profiles"].as_array().into_iter().flatten().find(|p|p["connectionId"]==target["connectionId"]);
+                // Pinned routes are tried alone; automatic routing tries every granting peer.
+                let candidates:Vec<(crate::omabridge_route::Route,bool)>=match &plan{
+                    crate::omabridge_route::Plan::Pinned(r)=>vec![(r.clone(),false)],
+                    crate::omabridge_route::Plan::Auto=>auto_routes.entry(service).or_insert_with(||crate::omabridge_route::auto_routes(&bridge_config,service)).iter().map(|r|(r.clone(),true)).collect(),
+                    crate::omabridge_route::Plan::Off=>vec![],
+                };
+                let mut carried=None;
                 let status=match (text(target,"_tag"),profile) {
                     ("BearerConnectionTarget",Some(p))=>{
                         e.base_url=text(p,"httpBaseUrl").into();
                         e.bearer=catalog["credentials"].as_array().into_iter().flatten().find(|c|c["connectionId"]==target["connectionId"]).and_then(|c|c["credential"]["token"].as_str()).map(String::from);
-                        validate_base(&e.base_url).and_then(|_|if e.bearer.is_some(){Ok(())}else{Err("t3_credentials_unavailable".into())})
+                        validate_base(&e.base_url).and_then(|_|if e.bearer.is_some(){Ok(())}else{Err("t3_credentials_unavailable".into())}).and_then(|_|{
+                            // Same T3 bearer session, carried over the paired OmaBridge peer once
+                            // the peer's T3 descriptor names this environment.
+                            for (route,auto) in &candidates{
+                                let attempt=crate::omabridge_route::connect(route,Duration::from_secs(15)).and_then(|(child,url)|{let mut guard=ChildGuard(Some(child));crate::omabridge_route::verify_environment(&url,&e.id)?;Ok((guard.0.take().ok_or("omabridge_route_failed")?,url))});
+                                match attempt{
+                                    Ok((child,url))=>{e.base_url=url;tunnels.insert(e.id.clone(),Tunnel(child,None));carried=Some((route.clone(),*auto));return Ok(())},
+                                    Err(error) if route.only=>return Err(error),
+                                    Err(_)=>{},
+                                }
+                            }
+                            Ok(())
+                        })
                     },
-                    ("SshConnectionTarget",Some(p))=>connect_ssh(p,&mut e).map(|t|{tunnels.insert(e.id.clone(),t);}),
+                    ("SshConnectionTarget",Some(p))=>(||{
+                        // The bridged hop keeps host-key verification and the remote
+                        // environment check, so a wrong peer simply fails.
+                        for (route,auto) in &candidates{
+                            match connect_ssh_via(p,&mut e,Some(route)){
+                                Ok(t)=>{tunnels.insert(e.id.clone(),t);carried=Some((route.clone(),*auto));return Ok(())},
+                                Err(error) if route.only=>return Err(error),
+                                Err(_)=>{},
+                            }
+                        }
+                        connect_ssh(p,&mut e).map(|t|{tunnels.insert(e.id.clone(),t);})
+                    })(),
                     ("RelayConnectionTarget",_)=>crate::desktop_cloud::connect(&mut e),
                     _=>Err("invalid_t3_catalog".into())
                 };
-                if let Err(error)=status{e.connection_error=Some(error);}else{routes.insert(e.id.clone(),target["connectionId"].as_str().unwrap_or("relay").to_string());}
+                crate::omabridge_route::set_active(&e.id,carried.as_ref().map(|(r,auto)|(r,*auto)));
+                if let Err(error)=status{e.connection_error=Some(error);}else{routes.insert(e.id.clone(),route_id);}
                 result.retain(|prior| prior.id!=e.id);
                 result.push(e);
             }
@@ -224,5 +302,11 @@ mod tests {
         assert!(validate_catalog(json!({"schemaVersion":2})).is_err());
         assert!(ssh_args(&json!({"alias":"-oProxyCommand=bad"})).is_err());
         assert!(ssh_args(&json!({"alias":"node","username":"node","port":22})).is_ok());
+        // Bridged SSH keeps the user/destination, drops the profile port and pins host-key verification.
+        let bridged=bridged_ssh_args(&json!({"alias":"devbox.example","username":"node","port":2222}),"[devbox.example]:2222",41000).unwrap();
+        let tail=bridged.iter().position(|a|a=="--").unwrap();
+        assert_eq!(&bridged[tail..],["--","devbox.example"]);assert!(!bridged.contains(&"-p".to_string()));
+        for option in ["HostName=127.0.0.1","Port=41000","HostKeyAlias=[devbox.example]:2222","CheckHostIP=no","ProxyJump=none","ProxyCommand=none"]{assert!(bridged[..tail].contains(&option.to_string()),"{option}");}
+        assert!(bridged.windows(2).any(|w|w[0]=="-l"&&w[1]=="node"));assert!(bridged.windows(2).any(|w|w[0]=="-o"&&w[1]=="BatchMode=yes"));
     }
 }
