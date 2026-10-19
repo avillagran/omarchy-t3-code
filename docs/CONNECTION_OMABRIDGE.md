@@ -69,7 +69,7 @@ The T3 port comes from T3's `server-runtime.json`. If T3 later moves to another 
 
 ## Bar indicator
 
-*Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows this device's state (published services and number of paired devices) and lets you approve a request in two steps (the full device ID is shown before *Approve*) or *Check again* on a pairing you sent. *OmaBridge settings…* opens Preferences → Connections for everything else. Middle click refreshes. Invitations and their secrets are never shown in the bar.
+*Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows this device's state (published services and number of paired devices) and the same device management as Preferences: create the identity, publish or stop publishing, invite a device, pair from an invitation file, *Check again*, approve and revoke, each with the same confirmations. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
 
 ## Other front ends
 
@@ -91,7 +91,7 @@ Other Omarchy front ends (for example the control panel) manage OmaBridge throug
 | `unpublish` | — | — |
 | `set` / `clear` / `default` | route fields as in Preferences, plus `revision` | — |
 
-On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmation_required`, `invalid_command`, `omabridge_unavailable`, `omabridge_identity_missing`, `omabridge_not_published`, `omabridge_service_not_published`, `omabridge_ssh_unavailable`, `omabridge_invite_expired`, `omabridge_invite_invalid`, `omabridge_invite_unreadable`, `omabridge_peer_not_found`, `omabridge_unit_foreign`, `omabridge_publish_failed` and `omabridge_command_failed`. A running ot3 sees changes made this way on its next refresh.
+On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmation_required`, `invalid_command` (an unknown command on an older client, or a malformed request on a current one; a front end can tell the two apart because `read` only fails this way on an older client), `invalid_action`, `local_error`, `omabridge_unavailable`, `omabridge_identity_missing`, `omabridge_already_running`, `omabridge_not_published`, `omabridge_service_not_published`, `omabridge_service_not_granted`, `omabridge_ssh_unavailable`, `omabridge_invite_directory`, `omabridge_invite_expired`, `omabridge_invite_invalid`, `omabridge_invite_unreadable`, `omabridge_path_unsupported`, `omabridge_peer_not_found`, `omabridge_unit_foreign`, `omabridge_publish_failed` and `omabridge_command_failed`. Peer IDs are 64 hexadecimal characters; `awaiting` IDs are UUIDs. A running ot3 sees changes made this way on its next refresh.
 
 ## Verification
 

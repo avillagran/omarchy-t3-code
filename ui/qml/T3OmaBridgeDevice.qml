@@ -18,6 +18,12 @@ ColumnLayout {
  readonly property color fg:Color.popups.text
  readonly property color muted:Qt.rgba(fg.r,fg.g,fg.b,0.58)
  property var pending:null
+ // Preferences shows the bar toggle; the bar popup itself does not.
+ property bool showBarToggle:true
+ // Hosts in small windows (the bar popup) grow to fit an open dialog and keep
+ // their window while the file chooser is up.
+ readonly property real dialogHeight:Math.max(inviteDialog.visible?inviteDialog.implicitHeight:0,publishDialog.visible?publishDialog.implicitHeight:0,confirmation.visible?confirmation.implicitHeight:0)
+ property bool choosingFile:false
  function request(action,values){bridge.requestConnectionOmaBridge(action,values || {})}
  function shortId(id){return (id || "").slice(0,8)}
  function serviceLabel(s){return s==="t3"?"T3":s==="ssh"?"SSH":s}
@@ -40,6 +46,7 @@ ColumnLayout {
   if(!published.active)return T3I18n.tr("Published, but not running.")
   return T3I18n.tr("Published")+" · "+servicesText(published.services)
  }
+ function closeDialogs(){inviteDialog.close();publishDialog.close();confirmation.close()}
  function restorePublish(){publishSwitch.checked=Qt.binding(function(){return !!root.published.enabled})}
  function pairFile(url){var path=String(url).replace(/^file:\/\//,"");ask("pair",{path:decodeURIComponent(path)},T3I18n.tr("Pair with the device in this invitation?"),T3I18n.tr("The other device must approve this one before it can be reached."))}
  spacing:Style.space(10)
@@ -54,7 +61,7 @@ ColumnLayout {
   T3PickerButton{objectName:"omabridgeCreateIdentity";visible:!root.device;primary:false;text:T3I18n.tr("Create identity");enabled:!root.store.busy
    onClicked:root.ask("identity-create",{},T3I18n.tr("Create an OmaBridge identity for this device?"),T3I18n.tr("A private key is created on this device and never leaves it."))}
  }
- RowLayout{Layout.fillWidth:true
+ RowLayout{Layout.fillWidth:true;visible:root.showBarToggle
   ColumnLayout{Layout.fillWidth:true
    Text{Layout.fillWidth:true;text:T3I18n.tr("Show OmaBridge in the bar");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
    Text{Layout.fillWidth:true;text:T3I18n.tr("A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
@@ -74,7 +81,7 @@ ColumnLayout {
  }
  RowLayout{Layout.fillWidth:true;visible:!!root.value.available;spacing:Style.space(8)
   Item{Layout.fillWidth:true}
-  T3PickerButton{objectName:"omabridgePairFile";primary:false;text:T3I18n.tr("Pair from invitation file…");enabled:!root.store.busy;onClicked:inviteFile.open()}
+  T3PickerButton{objectName:"omabridgePairFile";primary:false;text:T3I18n.tr("Pair from invitation file…");enabled:!root.store.busy;onClicked:{root.choosingFile=true;inviteFile.open()}}
   T3PickerButton{objectName:"omabridgeInvite";primary:false;text:T3I18n.tr("Invite a device…");enabled:!root.store.busy&&!!root.device&&!!root.published.active;onClicked:{root.bridge.clearOmaBridgeInvite();inviteDialog.open()}}
  }
  // Pairings sent from here that the other device has not approved yet.
@@ -115,7 +122,7 @@ ColumnLayout {
   }
  }
  Text{Layout.fillWidth:true;visible:!!root.store.paired&&root.store.paired.status==="approved";text:T3I18n.tr("Paired with {name}.",{name:root.store.paired?root.store.paired.name || "":""});color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
- FileDialog{id:inviteFile;title:T3I18n.tr("Choose an OmaBridge invitation");fileMode:FileDialog.OpenFile;nameFilters:[T3I18n.tr("OmaBridge invitation")+" (*.json)","* (*)"];onAccepted:root.pairFile(selectedFile)}
+ FileDialog{id:inviteFile;title:T3I18n.tr("Choose an OmaBridge invitation");fileMode:FileDialog.OpenFile;nameFilters:[T3I18n.tr("OmaBridge invitation")+" (*.json)","* (*)"];onRejected:root.choosingFile=false;onAccepted:{root.choosingFile=false;root.pairFile(selectedFile)}}
  Controls.Popup{id:inviteDialog;objectName:"omabridgeInviteDialog";parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(480),parent?parent.width-Style.space(32):Style.space(480));padding:Style.space(20);modal:true
   closePolicy:root.store.busy?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape
   // The QR and path are secrets: forget them as soon as the dialog closes.
