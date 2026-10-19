@@ -37,7 +37,7 @@ ShellRoot{
    b.selectedKey="fixture/idle";root.check(!panel.visibleWorkingRows.length&&!panel.visibleSettledRows.length,"unselected collapsed rows hidden")
    var original=b.state;b.state={threads:[original.threads[3]],projects:[],environments:[]};
    root.check(panel.sidebarCompact&&!panel.workingRows.length&&!panel.snoozedRows.length&&!panel.settledRows.length,"idle data has no work to move")
-   root.check(!keys.findChild(panel,"workingShelfToggle").visible&&!keys.findChild(panel,"snoozedShelfToggle").visible&&!keys.findChild(panel,"settledShelfToggle").visible,"empty group headers are hidden")
+   root.check(!keys.findChild(panel,"workingShelfHeader").shown&&!keys.findChild(panel,"snoozedShelfHeader").shown&&!keys.findChild(panel,"settledShelfHeader").shown,"empty group headers hide")
    var button=keys.findChild(panel,"sidebarCompactToggle");root.check(button.name==="check","grouping is an icon-only active button");b.state=original;keys.mouseClick(button,button.width/2,button.height/2);phase=4
   }else if(phase===4){
    root.check(!panel.sidebarCompact&&panel.activeRows.length===4&&!panel.workingRows.length,"turning off restores inbox")

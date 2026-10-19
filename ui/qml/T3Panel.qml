@@ -407,6 +407,99 @@ Item {
     return {working: v.threadWorkingEffect || "comet", input: v.threadInputEffect || "glints", change: v.threadChangeEffect || "star",
             intensity: ({subtle: 0.55, vivid: 1.6})[v.threadEffectIntensity] || 1}
   }
+  // Sidebar sections are keyed models rather than plain arrays, so a state
+  // change moves, inserts and removes rows instead of resetting the views.
+  // Snapshot-driven changes animate: a row changing section flies from its
+  // old place to its new one (T3RowFlight), the rows around both slide to
+  // make room, and plain arrivals and departures fade. Preferences >
+  // Animations picks the path and speed; "off" keeps every list still.
+  ListModel { id: activeRowModel; dynamicRoles: true }
+  ListModel { id: workingRowModel; dynamicRoles: true }
+  ListModel { id: snoozedRowModel; dynamicRoles: true }
+  ListModel { id: settledRowModel; dynamicRoles: true }
+  readonly property string rowMoveEffect: ["arc","glide","fade","off"].indexOf(bridge.viewState.threadMoveEffect) >= 0 ? bridge.viewState.threadMoveEffect : "arc"
+  readonly property int rowMoveMs: ({slow: 820, fast: 300})[bridge.viewState.threadMoveSpeed] || 520
+  readonly property var sidebarSections: [activeRows, workingReveal.present ? workingRows : [], snoozedReveal.present ? snoozedRows : [], settledReveal.present ? settledRows : []]
+  onSidebarSectionsChanged: Qt.callLater(syncSidebar)
+  property var sidebarSyncState: [{ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}]
+  property bool rowMotionPending: false
+  property bool rowMotion: false
+  property var movingKeys: ({})
+  property var leavingRows: ({})
+  property var arrivingRows: []
+  Connections { target: root.bridge; function onSnapshotAboutToChange() { root.rowMotionPending = true } }
+  Timer { id: rowMotionHold; interval: root.rowMoveMs + 120; onTriggered: { root.rowMotion = false; root.movingKeys = ({}) } }
+  function syncSidebar() {
+    var models = [activeRowModel, workingRowModel, snoozedRowModel, settledRowModel], sections = sidebarSections
+    var states = sidebarSyncState.map(function(st) { return {ids: st.ids.slice(), prints: Object.assign({}, st.prints)} })
+    var removed = {}, added = {}, moving = {}, changed = false
+    sections.forEach(function(rows, n) {
+      var have = {}, want = {}
+      states[n].ids.forEach(function(id) { have[id] = true })
+      rows.forEach(function(r) { var id = r.key || r.id; want[id] = true; if (!have[id]) added[id] = true })
+      states[n].ids.forEach(function(id) { if (!want[id]) removed[id] = true })
+    })
+    Object.keys(removed).forEach(function(id) { if (added[id]) moving[id] = true })
+    var animate = rowMotionPending && rowMoveEffect !== "off" && opened
+    rowMotionPending = false
+    if (animate && (Object.keys(removed).length || Object.keys(added).length || sections.some(function(rows, n) { return rows.some(function(r, i) { return states[n].ids[i] !== (r.key || r.id) }) }))) {
+      rowMotion = true; movingKeys = rowMoveEffect === "fade" ? {} : moving; rowMotionHold.restart()
+    }
+    sections.forEach(function(rows, n) {
+      var model = models[n], ids = states[n].ids, prints = states[n].prints, wanted = {}
+      rows.forEach(function(r) { wanted[r.key || r.id] = true })
+      for (var k = ids.length - 1; k >= 0; k--) if (!wanted[ids[k]]) { model.remove(k); delete prints[ids[k]]; ids.splice(k, 1); changed = true }
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i], id = row.key || row.id, found = ids.indexOf(id), print = JSON.stringify(row)
+        if (found < 0) { model.insert(i, {row: row}); ids.splice(i, 0, id); changed = true }
+        else {
+          if (found !== i) { model.move(found, i, 1); ids.splice(i, 0, ids.splice(found, 1)[0]); changed = true }
+          if (prints[id] !== print) model.setProperty(i, "row", row)
+        }
+        prints[id] = print
+      }
+    })
+    sidebarSyncState = states
+    if (changed && rowMotion) Qt.callLater(startFlights)
+  }
+  // Called from the row delegates as the views add and remove them.
+  function rowLeaving(item) {
+    if (!rowMotion) return
+    var key = item.thread.key || item.thread.id
+    if (movingKeys[key]) { item.flight = true; var next = Object.assign({}, leavingRows); next[key] = {item: item, rect: item.mapToItem(sidebar, 0, 0, item.width, item.height)}; leavingRows = next }
+    else item.depart(Math.round(rowMoveMs * 0.6))
+  }
+  function rowArriving(item) {
+    if (!rowMotion) return
+    var key = item.thread.key || item.thread.id
+    if (movingKeys[key]) { item.flight = true; arrivingRows = arrivingRows.concat([item]) }
+    else item.arrive(Math.round(rowMoveMs * 0.8))
+  }
+  function sectionHeader(key) {
+    if (workingRows.some(function(t) { return t.key === key })) return workingToggle
+    if (snoozedRows.some(function(t) { return t.key === key })) return snoozedToggle
+    if (settledRows.some(function(t) { return t.key === key })) return settledToggle
+    return threads
+  }
+  function startFlights() {
+    var leaving = leavingRows, arriving = arrivingRows, landed = {}
+    leavingRows = ({}); arrivingRows = []
+    ;[threads, workingThreads, snoozedThreads, settledThreads].forEach(function(view) { view.forceLayout() })
+    arriving.forEach(function(item) {
+      var key = item.thread.key || item.thread.id, from = leaving[key]
+      if (!from) { item.flight = false; item.arrive(Math.round(rowMoveMs * 0.8)); return }
+      landed[key] = true
+      rowFlight.createObject(flightLayer, {key: key, source: from.item, target: item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: rowMoveMs})
+    })
+    // The destination row is not on screen (collapsed shelf or scrolled
+    // away): the card sinks into its section instead.
+    Object.keys(leaving).forEach(function(key) {
+      if (landed[key]) return
+      var from = leaving[key]
+      rowFlight.createObject(flightLayer, {key: key, source: from.item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: rowMoveMs})
+    })
+  }
+  Component { id: rowFlight; T3RowFlight {} }
   property var threadKinds: ({})
   property var stateChangedAt: ({})
   function trackThreadStates() {
@@ -475,11 +568,24 @@ Item {
   function status(t) {
     return kind(t) === "waiting" ? T3I18n.tr("Waiting") : kind(t) === "working" ? T3I18n.tr("Working") : kind(t) === "failed" ? T3I18n.tr("Failed") : kind(t) === "done" && t.pending ? T3I18n.tr("Done") : ""
   }
+  // Rows around a moving one slide to open or close its gap; a leaving row
+  // is kept alive while it fades or flies (see rowLeaving).
+  component RowRemove: Transition { enabled: root.rowMotion; PauseAnimation { duration: root.rowMoveMs + 60 } }
+  component RowDisplaced: Transition {
+    enabled: root.rowMotion
+    NumberAnimation { properties: "x,y"; duration: root.rowMoveMs * 0.85; easing.type: Easing.OutCubic }
+  }
+  component RowMove: Transition {
+    enabled: root.rowMotion
+    NumberAnimation { properties: "x,y"; duration: root.rowMoveMs; easing.type: Easing.InOutCubic }
+  }
   Component {
     id: threadDelegate
     T3ThreadRow {
-      required property var modelData
+      id: sidebarRow
+      required property var row
       required property int index
+      readonly property var modelData: row
       thread: modelData; bridge: root.bridge
       width: ListView.view ? ListView.view.width : 0
       projectScoped:!!root.projectFilter&&(Array.isArray(root.projectScope)?root.projectScope.indexOf(modelData.projectKey)>=0:root.projectScope===modelData.projectKey)
@@ -498,6 +604,8 @@ Item {
       onProjectContextRequested:function(item,px,py){projectMenu.showProject(modelData.projectKey,item,px,py)}
       ListView.onPooled:pooled=true
       ListView.onReused:pooled=false
+      ListView.onAdd:root.rowArriving(sidebarRow)
+      ListView.onRemove:root.rowLeaving(sidebarRow)
     }
   }
   T3ProjectMenu{id:projectMenu;bridge:root.bridge;scopedSettings:true;onSettingsRequested:function(key){root.openProjectSettings(key)};onGroupingChanged:function(previous,current){if(root.projectFilter===previous||root.projectFilter===projectMenu.project.key)root.projectFilter=current}}
@@ -757,6 +865,8 @@ Item {
             brightness: 1.25; nebula: 0.55; meteorRate: 0.85
             fade: height > 0 ? 1 - brand.height * 0.85 / height : 0
           }
+          // Rows flying between sections are drawn here, above every list.
+          Item { id: flightLayer; objectName: "sidebarFlightLayer"; anchors.fill: parent; z: 10 }
           ColumnLayout {
             anchors.fill: parent; spacing: 0
             Rectangle {
@@ -836,39 +946,13 @@ Item {
               Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
               clip: true; reuseItems: true; cacheBuffer: 0
               visible: root.activeRows.length > 0 || (!root.workingRows.length && !root.snoozedRows.length && !root.settledRows.length)
-              model: root.activeRows
-              // Rows move between sections as threads start or finish. Keep the
-              // first visible row where it was instead of letting the list jump;
-              // at the very top new rows still slide in.
-              property var anchor: null
-              property int anchorSerial: 0
-              function readAnchor() {
-                var rows = root.activeRows, index = indexAt(1, contentY + 1), item = itemAtIndex(index)
-                anchor = item && rows[index] ? {id: rows[index].key || rows[index].id, offset: contentY - item.y, top: contentY <= originY + 1} : null
-              }
-              // A reset scrolls to the top before onModelChanged fires, so the
-              // anchor is committed after the event and a reset cancels it.
-              function trackAnchor() { var serial = ++anchorSerial; Qt.callLater(function() { if (serial === anchorSerial) readAnchor() }) }
-              onModelChanged: {
-                var a = anchor, rows = root.activeRows, serial = ++anchorSerial
-                // Repositioning inside the model reset crashes the view; defer it.
-                Qt.callLater(function() {
-                  if (serial !== anchorSerial || root.activeRows !== rows) return
-                  if (a && !a.top && !root.restoringSidebar) {
-                    var index = rows.findIndex(function(row) { return (row.key || row.id) === a.id })
-                    if (index >= 0) {
-                      positionViewAtIndex(index, ListView.Beginning); forceLayout()
-                      var item = itemAtIndex(index)
-                      if (item) contentY = Math.max(originY, Math.min(originY + Math.max(0, contentHeight - height), item.y + a.offset))
-                    }
-                  }
-                  ++anchorSerial; readAnchor()
-                })
-              }
-              onContentYChanged: {trackAnchor(); if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")}
+              model: activeRowModel
+              remove: RowRemove {}
+              displaced: RowDisplaced {}
+              move: RowMove {}
+              onContentYChanged: if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")
               spacing: 0
               Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
-              add: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 140 } }
               delegate: threadDelegate
               Text {
                 anchors.centerIn: parent; width: parent.width - Style.space(28)
@@ -878,20 +962,25 @@ Item {
               }
             }
             T3ShelfResizer{objectName:"workingShelfResizer";label:"Working threads height";visible:workingReveal.shown&&!workingReveal.moving;value:root.workingShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("workingShelfHeight",h)}}
-            Rectangle {
-              id:workingToggle;objectName:"workingShelfToggle"
-              border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-              Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
-              color:"transparent";visible:root.workingRows.length>0;activeFocusOnTab:true
-              Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.workingRows.length})
-              Keys.onReturnPressed:root.workingExpanded=!root.workingExpanded
-              Keys.onSpacePressed:root.workingExpanded=!root.workingExpanded
-              Keys.onUpPressed:root.moveSidebarFocus(workingToggle,-1)
-              Keys.onDownPressed:root.moveSidebarFocus(workingToggle,1)
-              Keys.onLeftPressed:root.workingExpanded=false
-              Keys.onRightPressed:root.workingExpanded=true
-              RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:T3Palette.working;font.pixelSize:Style.font.caption}Rectangle{objectName:"workingShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.workingExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
-              MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.workingExpanded=!root.workingExpanded}
+            // Section headers come and go with the Show and hide transition.
+            T3Reveal {
+              objectName:"workingShelfHeader";shown:root.workingRows.length>0
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              Rectangle {
+                width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
+                id:workingToggle;objectName:"workingShelfToggle"
+                border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+                color:"transparent";activeFocusOnTab:true
+                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.workingRows.length})
+                Keys.onReturnPressed:root.workingExpanded=!root.workingExpanded
+                Keys.onSpacePressed:root.workingExpanded=!root.workingExpanded
+                Keys.onUpPressed:root.moveSidebarFocus(workingToggle,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(workingToggle,1)
+                Keys.onLeftPressed:root.workingExpanded=false
+                Keys.onRightPressed:root.workingExpanded=true
+                RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:T3Palette.working;font.pixelSize:Style.font.caption}Rectangle{objectName:"workingShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.workingExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
+                MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.workingExpanded=!root.workingExpanded}
+              }
             }
             T3Reveal {
               id:workingReveal;shown:root.visibleWorkingRows.length>0
@@ -910,26 +999,33 @@ Item {
                 highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:workingThreads.activeFocus;radius:Style.space(8)}
                 Keys.onReturnPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
                 Keys.onEnterPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-                model:workingReveal.present?root.workingRows:[];delegate:threadDelegate
+                model:workingRowModel;delegate:threadDelegate
+                remove:RowRemove{}
+                displaced:RowDisplaced{}
+                move:RowMove{}
                 onContentYChanged:if(!root.restoringWorking)root.capturePosition(workingThreads,root.visibleWorkingRows,"@working")
                 Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
               }
             }
             T3ShelfResizer{objectName:"snoozedShelfResizer";label:"Snoozed threads height";visible:snoozedReveal.shown&&!snoozedReveal.moving;value:root.snoozedShelfHeight;defaultValue:164;onResized:function(h){root.resizeShelf("snoozedShelfHeight",h)}}
-            Rectangle {
-              Layout.fillWidth:true;Layout.preferredHeight:Style.space(32);Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
-              id:snoozedToggle;objectName:"snoozedShelfToggle"
-              border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-              color:"transparent";visible:root.snoozedRows.length>0;activeFocusOnTab:true
-              Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Snoozed ({count})",{count:root.snoozedRows.length})
-              Keys.onReturnPressed:root.snoozedExpanded=!root.snoozedExpanded
-              Keys.onSpacePressed:root.snoozedExpanded=!root.snoozedExpanded
-              Keys.onUpPressed:root.moveSidebarFocus(snoozedToggle,-1)
-              Keys.onDownPressed:root.moveSidebarFocus(snoozedToggle,1)
-              Keys.onLeftPressed:root.snoozedExpanded=false
-              Keys.onRightPressed:root.snoozedExpanded=true
-              RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:root.dim;font.pixelSize:Style.font.caption}Rectangle{objectName:"snoozedShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.snoozedExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
-              MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.snoozedExpanded=!root.snoozedExpanded}
+            T3Reveal {
+              objectName:"snoozedShelfHeader";shown:root.snoozedRows.length>0
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              Rectangle {
+                width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
+                id:snoozedToggle;objectName:"snoozedShelfToggle"
+                border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+                color:"transparent";activeFocusOnTab:true
+                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Snoozed ({count})",{count:root.snoozedRows.length})
+                Keys.onReturnPressed:root.snoozedExpanded=!root.snoozedExpanded
+                Keys.onSpacePressed:root.snoozedExpanded=!root.snoozedExpanded
+                Keys.onUpPressed:root.moveSidebarFocus(snoozedToggle,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(snoozedToggle,1)
+                Keys.onLeftPressed:root.snoozedExpanded=false
+                Keys.onRightPressed:root.snoozedExpanded=true
+                RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:root.dim;font.pixelSize:Style.font.caption}Rectangle{objectName:"snoozedShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.snoozedExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
+                MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.snoozedExpanded=!root.snoozedExpanded}
+              }
             }
             T3Reveal {
               id:snoozedReveal;shown:root.visibleSnoozedRows.length>0
@@ -946,35 +1042,40 @@ Item {
                 highlightFollowsCurrentItem:activeFocus
                 Keys.onReturnPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
                 Keys.onEnterPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-                model:snoozedReveal.present?root.snoozedRows:[];delegate:threadDelegate
+                model:snoozedRowModel;delegate:threadDelegate
+                remove:RowRemove{}
+                displaced:RowDisplaced{}
+                move:RowMove{}
                 onContentYChanged:if(!root.restoringSnoozed)root.capturePosition(snoozedThreads,root.visibleSnoozedRows,"@snoozed")
                 Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
               }
             }
             T3ShelfResizer{objectName:"settledShelfResizer";label:"Settled threads height";visible:settledReveal.shown&&!settledReveal.moving;value:root.settledShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("settledShelfHeight",h)}}
-            Rectangle {
-              Layout.fillWidth: true; Layout.preferredHeight: Style.space(32)
-              activeFocusOnTab: true
-              Accessible.role: Accessible.Button
-              id:settledToggle;objectName:"settledShelfToggle"
-              border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-              Accessible.name: T3I18n.tr("Settled ({count})",{count:root.settledRows.length})
-              Keys.onReturnPressed: root.settledExpanded = !root.settledExpanded
-              Keys.onSpacePressed: root.settledExpanded = !root.settledExpanded
-              Keys.onUpPressed:root.moveSidebarFocus(settledToggle,-1)
-              Keys.onDownPressed:root.moveSidebarFocus(settledToggle,1)
-              Keys.onLeftPressed:root.settledExpanded=false
-              Keys.onRightPressed:root.settledExpanded=true
-              Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
-              visible: root.settledRows.length > 0
-              color: "transparent"
-              RowLayout {
-                anchors.fill: parent; anchors.leftMargin: Style.space(5); anchors.rightMargin: Style.space(5)
-                Text { text:T3I18n.tr("Settled ({count})",{count:root.settledRows.length}); color: root.dim; font.pixelSize: Style.font.caption }
-                Rectangle {objectName:"settledShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}
-                T3Icon { name: root.settledShown ? "chevron-down" : "chevron-up"; tint: root.dim; implicitWidth: Style.space(12) }
+            T3Reveal {
+              objectName:"settledShelfHeader";shown:root.settledRows.length>0
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              Rectangle {
+                width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                id:settledToggle;objectName:"settledShelfToggle"
+                border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+                Accessible.name: T3I18n.tr("Settled ({count})",{count:root.settledRows.length})
+                Keys.onReturnPressed: root.settledExpanded = !root.settledExpanded
+                Keys.onSpacePressed: root.settledExpanded = !root.settledExpanded
+                Keys.onUpPressed:root.moveSidebarFocus(settledToggle,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(settledToggle,1)
+                Keys.onLeftPressed:root.settledExpanded=false
+                Keys.onRightPressed:root.settledExpanded=true
+                color: "transparent"
+                RowLayout {
+                  anchors.fill: parent; anchors.leftMargin: Style.space(5); anchors.rightMargin: Style.space(5)
+                  Text { text:T3I18n.tr("Settled ({count})",{count:root.settledRows.length}); color: root.dim; font.pixelSize: Style.font.caption }
+                  Rectangle {objectName:"settledShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}
+                  T3Icon { name: root.settledShown ? "chevron-down" : "chevron-up"; tint: root.dim; implicitWidth: Style.space(12) }
+                }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.settledExpanded = !root.settledExpanded }
               }
-              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.settledExpanded = !root.settledExpanded }
             }
             T3Reveal {
               id:settledReveal;shown:root.visibleSettledRows.length>0
@@ -995,7 +1096,10 @@ Item {
                 Keys.onReturnPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
                 Keys.onEnterPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
                 clip: true; reuseItems: true; cacheBuffer: 0; spacing: 0
-                model: settledReveal.present ? root.settledRows : []; delegate: threadDelegate
+                model: settledRowModel; delegate: threadDelegate
+                remove: RowRemove {}
+                displaced: RowDisplaced {}
+                move: RowMove {}
                 onContentYChanged: if (!root.restoringSettled) root.capturePosition(settledThreads,root.visibleSettledRows,"@settled")
                 Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
               }
@@ -1345,10 +1449,25 @@ Item {
                         }
                       }
                     }
-                    T3ContextDivider{visible:modelData.role==="context";width:parent.width;boundary:modelData.context || {};catalog:root.bridge.catalog;active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
-                    T3ActivityBlock{visible:modelData.role==="activity";bridge:root.bridge;activity:modelData.activity || {};onInspectRequested:function(reference){toolPopup.open();toolInspector.openItem(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
-                    T3PlanWorkflow{visible:modelData.role==="plan";width:parent.width;planId:modelData.plan?modelData.plan.id:"";view:({plans:modelData.plan?[modelData.plan]:[],ready:null});onCopyRequested:function(markdown){root.bridge.copyText(markdown)};onLinkRequested:function(link){root.bridge.openReference(link)}}
-                    T3Changes{visible:modelData.role==="changes";summary:modelData.changes || {};onPreviewFile:function(filePath){root.bridge.openReference(filePath)};onOpenDiff:function(filePath){diffPopup.initialPath=filePath;root.bridge.requestDiff(summary);diffPopup.open()}}
+                    // Each row builds only the card for its own role. Hidden cards
+                    // in every message made each row ~3x slower to create, and
+                    // their on-screen bindings re-ran on every scroll frame.
+                    Loader{
+                      width:parent.width;active:message.modelData.role==="context";visible:active
+                      sourceComponent:T3ContextDivider{width:parent.width;boundary:message.modelData.context || {};catalog:root.bridge.catalog;active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
+                    }
+                    Loader{
+                      width:parent.width;active:message.modelData.role==="activity";visible:active
+                      sourceComponent:T3ActivityBlock{bridge:root.bridge;activity:message.modelData.activity || {};onInspectRequested:function(reference){toolPopup.open();toolInspector.openItem(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
+                    }
+                    Loader{
+                      width:parent.width;active:message.modelData.role==="plan";visible:active
+                      sourceComponent:T3PlanWorkflow{width:parent.width;planId:message.modelData.plan?message.modelData.plan.id:"";view:({plans:message.modelData.plan?[message.modelData.plan]:[],ready:null});onCopyRequested:function(markdown){root.bridge.copyText(markdown)};onLinkRequested:function(link){root.bridge.openReference(link)}}
+                    }
+                    Loader{
+                      width:parent.width;active:message.modelData.role==="changes";visible:active
+                      sourceComponent:T3Changes{summary:message.modelData.changes || {};onPreviewFile:function(filePath){root.bridge.openReference(filePath)};onOpenDiff:function(filePath){diffPopup.initialPath=filePath;root.bridge.requestDiff(summary);diffPopup.open()}}
+                    }
 
                   }
                 }

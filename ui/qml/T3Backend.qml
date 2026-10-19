@@ -415,7 +415,7 @@ Singleton {
       if(favorite)selection={instanceId:favorite.instanceId,model:favorite.model,options:[]}
     }
     if(!selection){managementError=T3I18n.tr("Select a model in an existing chat first.");pendingProjectOpen=null;projectOpened(pending.environment,pending.projectId,managementError);return}
-    manage({action:"new-thread",environment:pending.environment,projectId:pending.projectId,title:T3I18n.tr("New chat"),modelSelection:selection,runtimeMode:"approval-required"})
+    manage({action:"new-thread",environment:pending.environment,projectId:pending.projectId,title:T3I18n.tr("New chat"),modelSelection:selection,runtimeMode:currentRuntimeMode() || "approval-required"})
     pendingProjectOpen=Object.assign({},pending,{requestId:managementRequest.requestId})
   }
   function loadProjectSources(environment){var id=uuid();projectSources={busy:true,environment:environment,requestId:id,providers:[]};send({op:"project-sources",environment:environment,requestId:id})}
@@ -502,6 +502,8 @@ Singleton {
     var m = catalog.models[index]; if (!m) return
     patchDraft(selectedKey, {modelSelection: {instanceId: m.instanceId, model: m.model, options: []}})
   }
+  // Permissions shown in the open chat's composer, or "" with no chat open.
+  function currentRuntimeMode(){return selectedKey?(draft.runtimeMode || selectedInfo.runtimeMode || ""):""}
   function chooseRuntimeMode(mode){
     if(!selectedKey||draft.loading||draft.loadError||draft.busy||draft.attempt||draft.queueEdit||["approval-required","auto-accept-edits","auto","full-access"].indexOf(mode)<0)return
     var provider=(catalog.providers || []).find(function(p){return p.instanceId===(root.draft.modelSelection || root.selectedInfo.modelSelection || {}).instanceId})
@@ -1196,7 +1198,7 @@ Singleton {
       if(request.command.useProjectDefaults===true&&!request.sourceKey){
         var defaults=Object.assign({},request.command)
         if(data.result.defaultModelSelection)defaults.modelSelection=data.result.defaultModelSelection
-        if(data.result.defaultRuntimeMode)defaults.runtimeMode=data.result.defaultRuntimeMode
+        if(data.result.defaultRuntimeMode&&!defaults.inheritRuntimeMode)defaults.runtimeMode=data.result.defaultRuntimeMode
         request=Object.assign({},request,{command:defaults})
       }
       if(op.action==="write")confirmNewThread(request,data.result.mode==="worktree",true)

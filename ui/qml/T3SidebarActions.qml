@@ -15,11 +15,15 @@ Item {
   property bool addingProject: false
   property bool automaticChoice:true
   property string preferredProjectKey:""
+  // Permissions of the chat that was open when "New chat" was asked for; the
+  // new thread starts with the same ones instead of the project default.
+  property string inheritedRuntimeMode:""
   function newOnBranch(t){newThread();sourceThread=t;project.currentIndex=Math.max(0,projects.findIndex(function(p){return p.key===t.projectKey}))}
   function newThread(strategy,projectKey) {
     forcedWorkspaceStrategy=strategy || null
     if(bridge.managementRequest&&["add-project","create-project","clone-project"].indexOf(bridge.managementRequest.action)>=0){projectWizard.begin();return}
     sourceThread=null
+    inheritedRuntimeMode=bridge.currentRuntimeMode()
     automaticChoice=!strategy
     if(bridge.manageConnectionPreferences)bridge.manageConnectionPreferences("read",{})
     addingProject = bridge.managementRequest && bridge.managementRequest.action === "add-project"
@@ -82,7 +86,7 @@ Item {
             var selection = (root.sourceThread?root.sourceThread.modelSelection:null) || p.defaultModelSelection || (template ? template.modelSelection : null) || (available?{instanceId:available.instanceId,model:available.model,options:[]}:null) || root.bridge.draft.modelSelection
             if (!selection) { root.bridge.managementError = T3I18n.tr("Select a model in an existing chat first."); return }
             var branchSource=root.sourceThread&&root.sourceThread.projectKey===p.key?root.sourceThread:null
-            root.bridge.requestNewThread({action: "new-thread", environment: p.environmentId, projectId: p.id, title: title.text.trim(), modelSelection: selection, runtimeMode: root.sourceThread?root.sourceThread.runtimeMode:template ? template.runtimeMode : "approval-required",useProjectDefaults:!root.sourceThread,workspaceStrategy:root.forcedWorkspaceStrategy,automatic:!root.sourceThread&&root.automaticChoice&&!!((root.bridge.connectionPreferences || {}).client || {}).loadBalancingEnabled,branch:branchSource?branchSource.branch:null,worktreePath:branchSource?branchSource.worktreePath:null})
+            root.bridge.requestNewThread({action: "new-thread", environment: p.environmentId, projectId: p.id, title: title.text.trim(), modelSelection: selection, runtimeMode: root.sourceThread?root.sourceThread.runtimeMode:root.inheritedRuntimeMode || (template ? template.runtimeMode : "approval-required"),inheritRuntimeMode:!!root.sourceThread || !!root.inheritedRuntimeMode,useProjectDefaults:!root.sourceThread,workspaceStrategy:root.forcedWorkspaceStrategy,automatic:!root.sourceThread&&root.automaticChoice&&!!((root.bridge.connectionPreferences || {}).client || {}).loadBalancingEnabled,branch:branchSource?branchSource.branch:null,worktreePath:branchSource?branchSource.worktreePath:null})
           }
         }
       }
