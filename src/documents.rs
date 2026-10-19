@@ -12,6 +12,7 @@ pub fn read(e:&Environment,input:&Value)->Result<Value>{
   // Asset grants only serve browser media. Text uses the native Files RPC,
   // including absolute host paths and the selected thread's worktree cwd.
   let cwd=text(input,"cwd");if cwd.is_empty(){return Err("invalid_workspace".into())}
+  local_reference(e,cwd,text(input,"path"))?;
   let doc=c.rpc("projects.readFile",json!({"cwd":cwd,"relativePath":text(input,"path")}))?;
   if doc["truncated"]==true||text(&doc,"contents").len()>4*1024*1024{return Err("document_limit_4MiB".into())}doc
  }else{c.document(resource)?};
@@ -19,6 +20,21 @@ pub fn read(e:&Environment,input:&Value)->Result<Value>{
  doc["markdown"]=json!([".md",".markdown",".mdown",".mkd"].iter().any(|ext|name.to_ascii_lowercase().ends_with(ext))||text(&input["attachment"],"mimeType")=="text/markdown");
  if doc["markdown"]==true{doc["rendered"]=json!(rendered_markdown(text(&doc,"contents")))}
  doc["labels"]=input["labels"].clone();doc["title"]=json!(name);doc["theme"]=input["theme"].clone();doc["html"]=json!(name.to_ascii_lowercase().ends_with(".html")||name.to_ascii_lowercase().ends_with(".htm")||text(&input["attachment"],"mimeType")=="text/html");Ok(doc)
+}
+/// The server only previews existing text files and answers everything else
+/// with an opaque rejection. Local references are checked first: folders and
+/// non-executable binaries (PDFs, archives…) open in their desktop app.
+fn local_reference(e:&Environment,cwd:&str,path:&str)->Result<()>{
+ if e.id!="local"{return Ok(())}
+ let full=std::path::Path::new(cwd).join(path);
+ let metadata=fs::metadata(&full).map_err(|_|"file_not_found")?;
+ if !metadata.is_dir(){
+  let mut head=Vec::with_capacity(8192);fs::File::open(&full).and_then(|f|f.take(8192).read_to_end(&mut head)).map_err(|_|"file_not_found")?;
+  if !head.contains(&0){return Ok(())}
+  use std::os::unix::fs::PermissionsExt;if metadata.permissions().mode()&0o111!=0{return Err("binary_file".into())}
+ }
+ std::process::Command::new("xdg-open").arg(&full).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn().map_err(|_|"local_error")?;
+ Err("opened_externally".into())
 }
 /// Tiny Qt frontend bridge loaded explicitly so the Rust daemon has no Qt dependency.
 pub fn renderer()->Result<()>{viewer_mode(true)}

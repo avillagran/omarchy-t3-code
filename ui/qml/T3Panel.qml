@@ -204,6 +204,9 @@ Item {
   onManagedToplevelChanged:if(opened&&detached&&managedToplevel){applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})}
   readonly property bool shortcutActive:opened&&(!detached||!!(managedToplevel&&managedToplevel.activated))
   Connections{target:root.bridge;function onTerminalOpened(){if(!root.detached)root.close()}}
+  // The bar panel covers the screen, so step aside while a screenshot is taken.
+  property bool screenshotHidden:false
+  Connections{target:root.bridge;function onScreenshotCapture(active){if(active){if(root.opened&&!root.detached&&root.bridge.screenshotHidesPanel){root.screenshotHidden=true;root.close()}}else if(root.screenshotHidden){root.screenshotHidden=false;root.open();Qt.callLater(function(){composerPanel.inputField.forceActiveFocus()})}}}
   readonly property var normalWindow:desktop
   function setDetached(value){setWindowMode(value?"floating":"panel")}
   function cycleWindowMode(){setWindowMode(windowMode==="panel"?"floating":windowMode==="floating"?"tiled":"panel")}
@@ -683,7 +686,7 @@ Item {
         onClosed:root.bridge.closeDocument()
         contentItem:Loader{active:documentPopup.visible;sourceComponent:Component{T3DocumentView{bridge:root.bridge;onClosed:documentPopup.close()}}}
       }
-      Connections{target:root.bridge;function onDocumentOpenChanged(){if(root.opened&&root.bridge.documentOpen.requestId&&!documentPopup.visible)documentPopup.open()}}
+      Connections{target:root.bridge;function onDocumentOpenChanged(){if(root.opened&&root.bridge.documentOpen.requestId&&!documentPopup.visible)documentPopup.open();else if(!root.bridge.documentOpen.requestId&&documentPopup.visible)documentPopup.close()}function onDocumentOpenedExternally(){if(!root.detached)root.close()}}
       Controls.Popup {
         id:keyHelp; focus:true;x:Math.max(0,(parent.width-width)/2);y:Style.space(60);width:Style.space(420);padding:Style.space(18)
         height:Math.min(parent.height-Style.space(80),helpText.implicitHeight+2*padding)

@@ -933,6 +933,18 @@
     "Transition speed": "Transition speed",
     "Working threads height": "Working threads height",
     "Snoozed threads height": "Snoozed threads height",
-    "Settled threads height": "Settled threads height"
+    "Settled threads height": "Settled threads height",
+    "Screenshots": "Screenshots",
+    "Screenshot button": "Screenshot button",
+    "Show a button next to Attach that captures the screen and attaches the image.": "Show a button next to Attach that captures the screen and attaches the image.",
+    "Hide the panel while capturing": "Hide the panel while capturing",
+    "Screenshot command": "Screenshot command",
+    "Empty uses Omasnap, then Omarchy's screenshot tool, then grim and slurp. A command may write to {file}, print an image path, or copy a PNG to the clipboard.": "Empty uses Omasnap, then Omarchy's screenshot tool, then grim and slurp. A command may write to {file}, print an image path, or copy a PNG to the clipboard.",
+    "Take a screenshot": "Take a screenshot",
+    "Cancel screenshot": "Cancel screenshot",
+    "No screenshot tool found. Choose a command in Preferences.": "No screenshot tool found. Choose a command in Preferences.",
+    "The screenshot could not be taken.": "The screenshot could not be taken.",
+    "File not found.": "File not found.",
+    "This file is binary and can't be previewed.": "This file is binary and can't be previewed."
   }
 }
