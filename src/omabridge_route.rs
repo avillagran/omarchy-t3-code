@@ -11,11 +11,15 @@ pub fn config_path()->PathBuf{xdg("XDG_CONFIG_HOME",".config").join("omabridge-r
 fn default_state_dir()->PathBuf{
  std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).filter(|p|p.is_absolute()).unwrap_or_else(||home().join(".local/share")).join("omabridge")
 }
-/// Explicit override, then the user's install location, then PATH.
+/// The OmaBridge release ot3 bundles, from the single pinned file.
+pub fn bundled_version()->&'static str{
+ include_str!("../integrations/omabridge/release").lines().find_map(|l|l.strip_prefix("version=")).unwrap_or("")
+}
+/// The bundled `bin/omabridge` next to this client; never resolved from PATH.
+/// `OT3_OMABRIDGE_BIN` is an explicit override for tests and development.
 pub fn binary()->Option<PathBuf>{
  if let Some(raw)=std::env::var_os("OT3_OMABRIDGE_BIN"){let p=PathBuf::from(raw);return (p.is_absolute()&&p.is_file()).then_some(p)}
- let local=home().join(".local/bin/omabridge");if local.is_file(){return Some(local)}
- std::env::var_os("PATH").and_then(|path|std::env::split_paths(&path).map(|d|d.join("omabridge")).find(|p|p.is_absolute()&&p.is_file()))
+ std::env::current_exe().ok()?.parent().map(|d|d.join("omabridge")).filter(|p|p.is_file())
 }
 fn bytes(path:&Path)->Result<Option<Vec<u8>>>{match fs::read(path){Ok(v)=>Ok(Some(v)),Err(e) if e.kind()==std::io::ErrorKind::NotFound=>Ok(None),Err(_)=>Err("omabridge_routes_read_failed".into())}}
 fn revision_of(raw:&Option<Vec<u8>>)->String{format!("{:x}",Sha256::digest(raw.as_deref().unwrap_or_default()))}
@@ -172,7 +176,7 @@ pub fn snapshot()->Result<Value>{
  let mut routes=parsed.as_ref().map(|c|c.routes.iter().map(|(env,r)|(env.clone(),json!({"peer":r.peer,"service":r.service,"mode":if r.only{"only"}else{"prefer"},"relayUrl":r.relay_url}))).collect::<serde_json::Map<_,_>>()).unwrap_or_default();
  for env in parsed.as_ref().map(|c|c.off.clone()).unwrap_or_default(){routes.insert(env,json!({"mode":"off"}));}
  Ok(json!({
-  "revision":revision_of(&raw),"available":bin.is_some(),"identity":identity_ready(&state_dir),"stateDir":state_dir.display().to_string(),
+  "revision":revision_of(&raw),"available":bin.is_some(),"version":bundled_version(),"identity":identity_ready(&state_dir),"stateDir":state_dir.display().to_string(),
   "default":if parsed.as_ref().is_ok_and(|c|!c.auto){"off"}else{"auto"},
   "peers":peers.as_ref().cloned().unwrap_or_default(),"routes":routes,"active":active(),
   "error":parsed.err().or(peers.err()).unwrap_or_default(),
