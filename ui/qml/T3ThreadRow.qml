@@ -96,7 +96,33 @@ Item {
   }
   function openSnooze(context){snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
   onPanelVisibleChanged: if(!panelVisible)dismiss()
-  onPooledChanged: if(pooled){dismiss();burstAnimation.stop();aura.burst=0}
+  onPooledChanged: {resetMotion();statePop.complete();if(pooled){dismiss();burstAnimation.stop();aura.burst=0}}
+  // Sidebar motion (T3Panel.syncSidebar): rows entering or leaving a section
+  // fade and drift; rows moving between sections are drawn by T3RowFlight,
+  // so "flight" rows keep still here. Recycled rows always come back whole.
+  property bool flight: false
+  property real drift: 0
+  transform: Translate { x: root.drift }
+  function resetMotion() { arriveMotion.stop(); departMotion.stop(); flight = false; opacity = 1; drift = 0 }
+  function arrive(ms) { departMotion.stop(); arriveMotion.duration = ms; arriveMotion.start() }
+  function depart(ms) { arriveMotion.stop(); departMotion.duration = ms; departMotion.start() }
+  SequentialAnimation {
+    id: arriveMotion
+    property int duration: 360
+    PropertyAction { target: root; property: "opacity"; value: 0 }
+    PropertyAction { target: root; property: "drift"; value: -Style.space(18) }
+    PauseAnimation { duration: arriveMotion.duration * 0.2 }
+    ParallelAnimation {
+      NumberAnimation { target: root; property: "opacity"; to: 1; duration: arriveMotion.duration * 0.8; easing.type: Easing.OutCubic }
+      NumberAnimation { target: root; property: "drift"; to: 0; duration: arriveMotion.duration * 0.8; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+    }
+  }
+  ParallelAnimation {
+    id: departMotion
+    property int duration: 300
+    NumberAnimation { target: root; property: "opacity"; to: 0; duration: departMotion.duration; easing.type: Easing.InCubic }
+    NumberAnimation { target: root; property: "drift"; to: Style.space(22); duration: departMotion.duration; easing.type: Easing.InCubic }
+  }
   readonly property int burstMs: 1300
   function playBurst() {
     var age = Date.now() - stateChangedAt
@@ -104,9 +130,12 @@ Item {
     burstAnimation.stop(); burstAnimation.from = age / burstMs; burstAnimation.duration = burstMs - age; burstAnimation.start()
   }
   onStateChangedAtChanged: playBurst()
-  Component.onCompleted: playBurst()
+  Component.onCompleted: { playBurst(); Qt.callLater(function() { root.motionReady = true }) }
   property string identity: thread.key || ""
-  onIdentityChanged: dismiss()
+  // Icon motion only plays for changes on the same thread, never when a
+  // recycled row is handed a different one.
+  property bool motionReady: false
+  onIdentityChanged: { dismiss(); motionReady = false; Qt.callLater(function() { root.motionReady = true }) }
   Component.onDestruction: dismiss()
   Connections {
     target: root.ListView.view
@@ -165,7 +194,13 @@ Item {
       opacity:root.receding&&root.thread.working?0.7:1
       RowLayout {
         Layout.fillWidth:true;Layout.preferredHeight:Style.space(20);spacing:Style.space(6)
-        T3Icon {name:"square-pen";implicitWidth:Style.space(13);tint:root.dim;visible:root.showDraft}
+        T3Icon {
+          id:draftMark;objectName:"threadDraftMark";name:"square-pen";implicitWidth:Style.space(13);tint:root.dim
+          property real reveal:root.showDraft?1:0
+          Behavior on reveal{enabled:root.motionReady;NumberAnimation{duration:280;easing.type:Easing.OutCubic}}
+          Layout.preferredWidth:implicitWidth*reveal;Layout.rightMargin:-Style.space(6)*(1-reveal)
+          opacity:reveal;scale:0.4+0.6*reveal;visible:reveal>0
+        }
         T3ProjectIcon {
           project:root.projectInfo;projects:root.bridge.state.projects || [];monogram:root.thread.projectMonogram || "PR";projectKey:root.thread.projectKey || ""
           width:Style.space(16);height:width;radius:Style.space(4)
@@ -181,7 +216,23 @@ Item {
         T3PullRequestBadge{id:slimPRBadge;objectName:root.slim?"threadPullRequestBadge":"slimThreadPullRequestBadge";active:root.slim&&root.panelVisible&&!root.pooled;badge:root.thread.pullRequestBadge || null;visible:root.slim&&!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
         RowLayout {
           visible:!root.showActions || (!root.canSettle && !root.canSnooze && !root.showDraft);spacing:Style.space(4)
-          T3Icon{name:root.thread.pending&&["request","plan","waiting"].indexOf(root.thread.reason)>=0?"message-circle-question":root.thread.working?"circle-dashed":root.stateLabel===T3I18n.tr("Done")?"circle-check":"circle-alert";visible:!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor}
+          T3Icon{
+            id:stateIcon;objectName:"threadStateIcon"
+            name:root.thread.pending&&["request","plan","waiting"].indexOf(root.thread.reason)>=0?"message-circle-question":root.thread.working?"circle-dashed":root.stateLabel===T3I18n.tr("Done")?"circle-check":"circle-alert";visible:!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor
+            Behavior on tint{enabled:root.motionReady;ColorAnimation{duration:320}}
+            // Working turns slowly and continuously; a new state pops in.
+            readonly property bool spinning:name==="circle-dashed"&&visible&&root.panelVisible&&!root.pooled
+            onSpinningChanged:if(!spinning)rotation=0
+            onNameChanged:if(root.motionReady)statePop.restart()
+            NumberAnimation{target:stateIcon;property:"rotation";from:0;to:360;duration:3200;loops:Animation.Infinite;running:stateIcon.spinning}
+            SequentialAnimation{
+              id:statePop
+              ParallelAnimation{
+                NumberAnimation{target:stateIcon;property:"scale";from:0.3;to:1;duration:460;easing.type:Easing.OutBack;easing.overshoot:2.4}
+                NumberAnimation{target:stateIcon;property:"opacity";from:0;to:1;duration:200;easing.type:Easing.OutCubic}
+              }
+            }
+          }
           Text{text:!root.slim&&root.stateLabel ? root.stateLabel+(root.stateLabel===T3I18n.tr("Working") && root.timeLabel ? " "+root.timeLabel : "") : root.timeLabel;color:!root.slim&&root.stateLabel ? root.stateColor : root.dim;font.pixelSize:Style.font.caption}
         }
         RowLayout {

@@ -315,8 +315,20 @@ Rectangle {
         readonly property string statusText:failed?T3I18n.tr("Draft could not be saved/restored"):root.draft.loading?T3I18n.tr("Restoring draft…"):saving?T3I18n.tr("Saving…"):T3I18n.tr("Draft saved")
         Accessible.role:Accessible.StaticText
         Accessible.name:statusText
-        T3Icon{anchors.centerIn:parent;visible:!draftStatus.saving || draftStatus.failed;name:draftStatus.failed?"circle-alert":"check";tint:draftStatus.failed?Color.urgent:root.dim;implicitWidth:Style.space(14)}
-        WorkIndicator{anchors.centerIn:parent;visible:draftStatus.saving&&!draftStatus.failed;active:visible&&root.visible;implicitWidth:Style.space(14);tint:root.dim}
+        // Saving and saved cross-fade: the check pops in as the spinner fades.
+        T3Icon{
+          id:draftSavedIcon;anchors.centerIn:parent;name:draftStatus.failed?"circle-alert":"check";tint:draftStatus.failed?Color.urgent:root.dim;implicitWidth:Style.space(14)
+          readonly property bool shown:!draftStatus.saving || draftStatus.failed
+          opacity:shown?1:0;scale:shown?1:0.35;visible:opacity>0
+          Behavior on opacity{NumberAnimation{duration:draftSavedIcon.shown?240:140;easing.type:Easing.OutCubic}}
+          Behavior on scale{NumberAnimation{duration:draftSavedIcon.shown?420:140;easing.type:draftSavedIcon.shown?Easing.OutBack:Easing.InCubic;easing.overshoot:2.2}}
+        }
+        WorkIndicator{
+          id:draftSavingIcon;anchors.centerIn:parent;implicitWidth:Style.space(14);tint:root.dim
+          readonly property bool shown:draftStatus.saving&&!draftStatus.failed
+          opacity:shown?1:0;visible:opacity>0;active:visible&&root.visible
+          Behavior on opacity{NumberAnimation{duration:draftSavingIcon.shown?160:260;easing.type:Easing.InOutSine}}
+        }
         HoverHandler{id:draftStatusHover}
         Controls.ToolTip.visible:draftStatusHover.hovered
         Controls.ToolTip.text:statusText

@@ -13,8 +13,8 @@ void main() {
     float x = (qt_TexCoord0.x * ubuf.textWidth + ubuf.bandWidth
              - ubuf.progress * (ubuf.textWidth + 2.0 * ubuf.bandWidth)) / ubuf.bandWidth;
     float d = abs(x - 0.5);
-    float mask = d < 0.15 ? mix(1.0, 0.55, d / 0.15)
-               : d < 0.35 ? mix(0.55, 0.12, (d - 0.15) / 0.20)
-               : mix(0.12, 0.0, clamp((d - 0.35) / 0.15, 0.0, 1.0));
+    // Gaussian falloff: the same peak and half-brightness width as the CSS
+    // stops, without their visible kinks.
+    float mask = exp(-(d * d) / 0.04);
     fragColor = texture(source, qt_TexCoord0) * mask * ubuf.qt_Opacity;
 }

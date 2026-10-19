@@ -27,7 +27,7 @@ ShellRoot {
   }else if(phase===5){if(panel.restoringConversation)return;update(b.transcript.slice(5));phase=6
   }else if(phase===6){if(panel.restoringConversation)return;check(drift()<3,"pruning before viewport preserves pixel anchor");check(c.itemAtIndex(17)===retained,"pruning keeps surviving delegate");panel.followingTail=true;panel.settleSubmittedTail();tick=0;phase=7
   }else if(phase===7){if(panel.restoringConversation)return;check(c.atYEnd,"streaming stays at tail");var rows=JSON.parse(JSON.stringify(b.transcript));rows[rows.length-1].text+="\n"+"growing response ".repeat(15);update(rows);if(++tick===12)phase=8
-  }else if(phase===8){if(panel.restoringConversation)return;check(c.atYEnd,"tail stable after burst");var text=keys.findChild(panel,"t3LiveContextText");check(text.animating,"context animates while visible");text.step=15;text.grabToImage(function(r){root.captured=r.saveToFile("/tmp/t3-activity-shimmer.png")});phase=9
+  }else if(phase===8){if(panel.restoringConversation)return;check(c.atYEnd,"tail stable after burst");var text=keys.findChild(panel,"t3LiveContextText");check(text.animating,"context animates while visible");text.progress=0.5;text.grabToImage(function(r){root.captured=r.saveToFile("/tmp/t3-activity-shimmer.png")});phase=9
   }else if(phase===9){if(!captured)return;b.activity=[];check(b.activityLabel()==="Pensando","thinking fallback without timer");panel.close();console.log("T3_SCROLL_STABILITY_QML_PASS: stable delegates, expanded tools, pixel anchors during bursts/pruning, gesture interruption, tail growth, elapsed/context and shimmer");Qt.quit()}
  }}
 }
