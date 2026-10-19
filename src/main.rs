@@ -562,6 +562,8 @@ fn run() -> Result<()> {
         "quotas" => quotas::collect(&client),
         "backend-status" => backend_service::status(),
         "omabridge-read" => omabridge_route::snapshot()?,
+        // Same actions as Preferences, for other front ends; the request is read from stdin.
+        "omabridge-action" if args.len()==1 => {let mut raw=String::new();std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(),64*1024),&mut raw).map_err(|_|"invalid_command")?;let input:Value=serde_json::from_str(&raw).map_err(|_|"invalid_command")?;if !input.is_object(){return Err("invalid_command".into())}omabridge_route::execute(&input)?},
         // Connects every inherited environment, then reports which ones OmaBridge carries.
         "omabridge-status" => {let environments=environments()?;let mut v=omabridge_route::snapshot()?;v["environments"]=json!(environments.iter().map(|e|json!({"id":e.id,"name":e.name,"error":e.connection_error})).collect::<Vec<_>>());v},
         "connections-view" => write::execute(&json!({"op":"connections-manage","action":"read"}))?,
