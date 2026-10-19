@@ -7,7 +7,7 @@
 //! invitation is a file path plus an optional QR image, both treated as secrets.
 use crate::*;
 use crate::omabridge_route::{binary,valid_peer,valid_service};
-use std::{io::Write,process::{Command,Stdio},sync::Mutex};
+use std::{io::Write,process::{Command,Stdio}};
 fn state_dir()->PathBuf{crate::omabridge_route::config().map(|c|c.state_dir()).unwrap_or_else(|_|crate::omabridge_route::default_state_dir())}
 /// Invitations being paired from, copied here (0700/0600) until approved.
 fn awaiting_dir()->PathBuf{xdg("XDG_STATE_HOME",".local/state").join("omabridge-pairing")}
@@ -113,8 +113,6 @@ fn pair(source:&str)->Result<Value>{
  if f.write_all(&body).and_then(|_|f.sync_all()).is_err(){let _=fs::remove_file(&copy);return Err("local_error".into())}
  pair_copy(&id)
 }
-/// Invitations created in this process, the only files `invite-discard` may delete.
-static CREATED:Mutex<Vec<PathBuf>>=Mutex::new(vec![]);
 fn invite_directory(input:&Value)->Result<PathBuf>{
  let requested=text(input,"directory");
  let dir=if requested.is_empty(){[home().join("Downloads"),home()].into_iter().find(|p|p.is_dir()).ok_or("local_error")?}else{PathBuf::from(requested.strip_prefix("file://").unwrap_or(requested))};
@@ -148,16 +146,19 @@ fn invite(input:&Value)->Result<Value>{
  let (doc,rest)=run(&args.iter().map(|s|s.as_os_str()).collect::<Vec<_>>(),15)?;
  // OmaBridge writes the file itself (0600, never over an existing path); confirm that.
  if !fs::symlink_metadata(&path).is_ok_and(|m|m.is_file()&&m.mode()&0o077==0){let _=fs::remove_file(&path);return Err("omabridge_command_failed".into())}
- if let Ok(mut created)=CREATED.lock(){created.push(path.clone());}
  let qr=if input["qr"]==true{qr_svg(&rest)}else{None};
  Ok(json!({"path":path.display().to_string(),"expires":doc["expires"].as_i64(),"services":services(&doc["services"]),"qrImage":qr}))
 }
+/// Delete an invitation file this user created: only an `omabridge-invite-*.json`
+/// owned by us, private (0600) and still a valid invitation. Works across processes,
+/// so other front ends (the control panel) can discard what they created.
 fn invite_discard(input:&Value)->Result<()>{
  let path=PathBuf::from(text(input,"path"));
- let mut created=CREATED.lock().map_err(|_|"local_error")?;
- let index=created.iter().position(|p|*p==path).ok_or("invalid_command")?;
- match fs::remove_file(&path){Ok(())=>{},Err(e) if e.kind()==std::io::ErrorKind::NotFound=>{},Err(_)=>return Err("local_error".into())}
- created.remove(index);Ok(())
+ let named=path.file_name().and_then(|n|n.to_str()).is_some_and(|n|n.starts_with("omabridge-invite-")&&n.ends_with(".json"));
+ if !path.is_absolute()||!named{return Err("invalid_command".into())}
+ let meta=match fs::symlink_metadata(&path){Ok(m)=>m,Err(e) if e.kind()==std::io::ErrorKind::NotFound=>return Ok(()),Err(_)=>return Err("local_error".into())};
+ if !meta.is_file()||meta.uid()!=unsafe{libc::geteuid()}||meta.mode()&0o077!=0||invitation_summary(&path).is_err(){return Err("invalid_command".into())}
+ fs::remove_file(&path).map_err(|_|"local_error".into())
 }
 fn approve(input:&Value)->Result<()>{
  let peer=text(input,"peer");if !valid_peer(peer){return Err("invalid_command".into())}
