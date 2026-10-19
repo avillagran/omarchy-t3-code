@@ -1,6 +1,6 @@
 # OmaBridge connection routes
 
-[OmaBridge](https://github.com/avillagran/omabridge) is a separate program for private device-to-device links. Once two devices are paired, ot3 carries inherited T3 connections over that link first and keeps the network address saved in the T3 catalog as the fallback. You don't need a VPN, an open port or a public endpoint. T3 still owns every credential and authenticates every session. Without OmaBridge installed, or without a paired identity, nothing changes.
+[OmaBridge](https://github.com/avillagran/omabridge) provides private device-to-device links and ships with ot3. Once two devices are paired, ot3 carries inherited T3 connections over that link first and keeps the network address saved in the T3 catalog as the fallback. You don't need a VPN, an open port or a public endpoint. T3 still owns every credential and authenticates every session. Without the bundled binary, or without a paired identity, nothing changes.
 
 ## What is routed
 
@@ -25,6 +25,10 @@ Each environment follows one of three plans:
 
 `"default":"off"` turns automatic routing off for every environment that is not pinned.
 
+## Bundled binary
+
+The installer (and every update, which reruns it) downloads the OmaBridge release pinned in `integrations/omabridge/release` for the device's architecture. `bin/fetch-omabridge` accepts the archive only when its SHA256 matches both the pinned hash and the release's `SHA256SUMS`, checks that it loads on this system (it needs glibc 2.39 or newer), and installs `bin/omabridge` next to `bin/omarchy-t3-client`. An already-current copy is not downloaded again. If any step fails, the installer reports it and continues: ot3 works as before, with saved routes only. To bump OmaBridge, change the version and both hashes in that one file.
+
 ## Configuration
 
 **Preferences → Connections → OmaBridge** has a global *Use OmaBridge for every connection* switch and, per SSH or pairing-link connection, a selector: *Automatic*, *Saved route only*, or a paired peer that currently grants the matching service. Each row shows whether the connection is live through OmaBridge and which peer carries it. Every change asks for confirmation. Settings are stored in `$XDG_CONFIG_HOME/omarchy-t3-code/omabridge-routes.json` (mode 0600, compare-and-swap on its revision); a missing file means automatic routing:
@@ -35,7 +39,7 @@ Each environment follows one of three plans:
   "<directEnvironmentId>":{"mode":"off"}}}
 ```
 
-`stateDir` defaults to OmaBridge's `$XDG_DATA_HOME/omabridge`, and ot3 never creates an identity. `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. The binary is resolved from `OT3_OMABRIDGE_BIN`, then `~/.local/bin/omabridge`, then `PATH`. Pairing, approval and revocation happen in OmaBridge (`omabridge-gui` or its CLI), not in ot3.
+`stateDir` defaults to OmaBridge's `$XDG_DATA_HOME/omabridge`, and ot3 never creates an identity. `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. ot3 only runs the bundled `bin/omabridge` next to the client (see below), never one from `PATH`; `OT3_OMABRIDGE_BIN` overrides it for development. Pairing, approval and revocation happen in OmaBridge (`omabridge-gui` or its CLI), not in ot3.
 
 Diagnostics: `omarchy-t3-client omabridge-read` prints the public snapshot (peer ids, names, granted services, routes). `omarchy-t3-client omabridge-status` also connects every environment and reports which ones OmaBridge carries (`active`) and any connection error. `connections-view` prints the credential-free catalog view.
 

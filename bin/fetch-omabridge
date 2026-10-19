@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Install the pinned OmaBridge CLI as bin/omabridge, next to the client. Verified
+# against both the pinned hash and the release's SHA256SUMS; never uses PATH.
+# Exits non-zero without touching an existing copy; ot3 works without it.
+set -euo pipefail
+plugin_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+pin=$plugin_dir/integrations/omabridge/release
+field() { sed -n "s/^$1=\([A-Za-z0-9._-]*\)$/\1/p" "$pin" | head -1; }
+version=$(field version)
+arch=$(uname -m)
+expected=$(field "sha256_$arch")
+[[ $version =~ ^v[0-9][A-Za-z0-9._-]*$ ]] || { echo 'omabridge: invalid pinned version' >&2; exit 1; }
+[[ $expected =~ ^[0-9a-f]{64}$ ]] || { echo "omabridge: no pinned build for $arch" >&2; exit 1; }
+target=$plugin_dir/bin/omabridge
+if [[ -x $target && $("$target" --version 2>/dev/null) == "omabridge ${version#v}" ]]; then exit 0; fi
+work=$(mktemp -d)
+trap 'rm -rf -- "$work"' EXIT
+asset="omabridge-$version-$arch-linux.tar.gz"
+base_url=${OT3_OMABRIDGE_RELEASE_URL:-https://github.com/avillagran/omabridge/releases/download}/$version
+curl -fsSL "$base_url/$asset" -o "$work/$asset"
+curl -fsSL "$base_url/SHA256SUMS" -o "$work/SHA256SUMS"
+[[ $(sed -n "s/^\([0-9a-f]\{64\}\)  $asset$/\1/p" "$work/SHA256SUMS") == "$expected" ]] || { echo 'omabridge: SHA256SUMS does not match the pinned hash' >&2; exit 1; }
+[[ $(sha256sum "$work/$asset" | cut -d' ' -f1) == "$expected" ]] || { echo 'omabridge: checksum failed' >&2; exit 1; }
+mkdir "$work/unpacked"
+tar -xzf "$work/$asset" -C "$work/unpacked" "omabridge-$version-$arch-linux/omabridge"
+binary=$work/unpacked/omabridge-$version-$arch-linux/omabridge
+# Requires glibc 2.39 or newer; refuse a binary that cannot load here.
+if ldd "$binary" 2>&1 | grep -q 'not found'; then echo 'omabridge: runtime libraries do not match this system' >&2; exit 1; fi
+[[ $("$binary" --version 2>/dev/null) == "omabridge ${version#v}" ]] || { echo 'omabridge: the binary does not run on this system' >&2; exit 1; }
+install -m755 "$binary" "$target.new"
+mv -f -- "$target.new" "$target"
+printf 'Installed OmaBridge %s.\n' "$version"
