@@ -180,7 +180,7 @@ pub fn snapshot()->Result<Value>{
   "revision":revision_of(&raw),"available":bin.is_some(),"version":bundled_version(),"identity":identity_ready(&state_dir),"stateDir":state_dir.display().to_string(),
   "default":if parsed.as_ref().is_ok_and(|c|!c.auto){"off"}else{"auto"},
   "peers":peers.as_ref().cloned().unwrap_or_default(),"routes":routes,"active":active(),
-  "device":crate::omabridge_manage::identity(),"pending":crate::omabridge_manage::pending(),"awaiting":crate::omabridge_manage::awaiting(),
+  "device":crate::omabridge_manage::identity(),"pending":crate::omabridge_manage::pending(),"awaiting":crate::omabridge_manage::awaiting(),"published":crate::omabridge_manage::published(),
   "error":parsed.err().or(peers.err().filter(|e|e!="omabridge_identity_missing"&&e!="omabridge_unavailable")).unwrap_or_default(),
  }))
 }
