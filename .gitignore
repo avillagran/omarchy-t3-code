@@ -21,3 +21,6 @@ __pycache__/
 
 # Vendored crate build output.
 /vendor/t3-protocol/target/
+
+/bin/omabridge
+/bin/omabridge.new
