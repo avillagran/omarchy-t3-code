@@ -99,6 +99,11 @@ fi
 if [[ -x "$build_dir/bin/fetch-omabridge" ]]; then
   "$build_dir/bin/fetch-omabridge" || printf '%s\n' 'OmaBridge was not installed; connections use their saved routes. Rerun the installer to retry.' >&2
 fi
+# A device published from Preferences keeps running; restart it on the updated binary.
+bridge_unit=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/omarchy-t3-omabridge.service
+if [[ -f "$bridge_unit" ]] && command -v systemctl >/dev/null; then
+  systemctl --user try-restart omarchy-t3-omabridge.service || printf '%s\n' 'Could not restart the published OmaBridge service.' >&2
+fi
 [[ -f "$build_dir/bin/libt3-document.so" ]] || fail 'The HTML preview did not build; check Qt development packages and retry.'
 omarchy plugin validate "$build_dir"
 if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi

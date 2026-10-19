@@ -1285,6 +1285,20 @@
     "Delete invitation file": "Delete invitation file",
     "Create invitation": "Create invitation",
     "OmaBridge is not installed. Rerun the installer to add it.": "OmaBridge is not installed. Rerun the installer to add it.",
-    "No OmaBridge identity yet. Create one below to pair this device.": "No OmaBridge identity yet. Create one below to pair this device."
+    "No OmaBridge identity yet. Create one below to pair this device.": "No OmaBridge identity yet. Create one below to pair this device.",
+    "No SSH server is listening on this device.": "No SSH server is listening on this device.",
+    "Another omarchy-t3-omabridge service exists. Remove it to publish from here.": "Another omarchy-t3-omabridge service exists. Remove it to publish from here.",
+    "Off. Publish this device to invite others to it.": "Off. Publish this device to invite others to it.",
+    "T3 Code moved to another port. Publish again to follow it.": "T3 Code moved to another port. Publish again to follow it.",
+    "Published, but not running.": "Published, but not running.",
+    "Published": "Published",
+    "Publish this device": "Publish this device",
+    "Publish again": "Publish again",
+    "Stop publishing this device?": "Stop publishing this device?",
+    "Paired devices can no longer reach it. Pairings are kept.": "Paired devices can no longer reach it. Pairings are kept.",
+    "Publish this device?": "Publish this device?",
+    "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.": "OmaBridge runs in the background as a user service. Only devices you approve can reach T3 Code here, and T3 still asks for its own sign-in. Nothing is opened to anyone else.",
+    "Also share SSH": "Also share SSH",
+    "Publish": "Publish"
   }
 }
