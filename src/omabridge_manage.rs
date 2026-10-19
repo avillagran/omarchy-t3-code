@@ -171,11 +171,68 @@ fn approve(input:&Value)->Result<()>{
  }
  Ok(())
 }
+/// Publishing runs `omabridge serve` as a user unit owned by ot3, off by default.
+pub const UNIT:&str="omarchy-t3-omabridge.service";
+fn unit_path()->PathBuf{std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).filter(|p|p.is_absolute()).unwrap_or_else(||home().join(".config")).join("systemd/user").join(UNIT)}
+fn t3_port()->u16{read_json(&t3_home().join("userdata/server-runtime.json")).ok().and_then(|r|r["port"].as_u64()).and_then(|p|u16::try_from(p).ok()).filter(|p|*p>0).unwrap_or(3773)}
+fn ssh_listening()->bool{std::net::TcpStream::connect_timeout(&"127.0.0.1:22".parse().unwrap(),Duration::from_millis(300)).is_ok()}
+fn systemctl(args:&[&str])->bool{Command::new("timeout").arg("20s").arg("systemctl").arg("--user").args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s|s.success())}
+/// Services named in the unit ot3 wrote, as `name=127.0.0.1:port`.
+fn unit_services()->Option<Vec<(String,u16)>>{
+ let unit=fs::read_to_string(unit_path()).ok()?;
+ let line=unit.lines().find(|l|l.starts_with("ExecStart="))?;
+ Some(line.split_whitespace().filter_map(|w|w.split_once("=127.0.0.1:")).filter(|(n,_)|valid_service(n)).filter_map(|(n,p)|Some((n.to_string(),p.parse().ok()?))).collect())
+}
+pub fn published()->Value{
+ let services=unit_services();
+ let active=services.is_some()&&systemctl(&["is-active","--quiet",UNIT]);
+ let port=t3_port();
+ json!({
+  "enabled":services.is_some(),"active":active,
+  "services":services.as_ref().map(|s|s.iter().map(|(n,_)|n.clone()).collect::<Vec<_>>()).unwrap_or_default(),
+  // T3 moved to another port since publishing; publishing again follows it.
+  "stale":services.as_ref().is_some_and(|s|s.iter().any(|(n,p)|n=="t3"&&*p!=port)),
+  "sshAvailable":ssh_listening(),
+ })
+}
+pub fn unit_text(bin:&Path,state:&Path,ssh:bool)->Result<String>{
+ // Quoted for systemd; refuse anything that would need further escaping.
+ let quote=|p:&Path|->Result<String>{let s=p.to_str().ok_or("local_error")?;if !p.is_absolute()||s.chars().any(|c|c.is_control()||matches!(c,'"'|'\\'|'%'|'$')){return Err("omabridge_path_unsupported".into())}Ok(format!("\"{s}\""))};
+ let mut exec=format!("ExecStart={} --state-dir {} serve --service t3=127.0.0.1:{}",quote(bin)?,quote(state)?,t3_port());
+ if ssh{exec.push_str(" --service ssh=127.0.0.1:22");}
+ Ok(format!("# Managed by Omarchy T3 Code: publishes this device to paired OmaBridge peers.\n# Turn it off in Preferences, Connections, OmaBridge.\n[Unit]\nDescription=OmaBridge for Omarchy T3 Code\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\n{exec}\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=default.target\n"))
+}
+fn publish(input:&Value)->Result<()>{
+ let ssh=input["ssh"]==true;
+ if ssh&&!ssh_listening(){return Err("omabridge_ssh_unavailable".into())}
+ let bin=binary().ok_or("omabridge_unavailable")?;
+ ensure_identity()?;
+ let body=unit_text(&bin,&state_dir(),ssh)?;
+ let path=unit_path();let dir=path.parent().ok_or("local_error")?;fs::create_dir_all(dir).map_err(|_|"local_error")?;
+ if let Ok(existing)=fs::read_to_string(&path){if !existing.starts_with("# Managed by Omarchy T3 Code"){return Err("omabridge_unit_foreign".into())}}
+ let tmp=dir.join(format!(".{UNIT}.{}",uuid::Uuid::new_v4()));
+ let written=(||{let mut f=OpenOptions::new().write(true).create_new(true).mode(0o644).custom_flags(libc::O_NOFOLLOW).open(&tmp)?;f.write_all(body.as_bytes())?;f.sync_all()?;fs::rename(&tmp,&path)})();
+ if written.is_err(){let _=fs::remove_file(&tmp);return Err("local_error".into())}
+ if !systemctl(&["daemon-reload"])||!systemctl(&["enable",UNIT])||!systemctl(&["restart",UNIT]){return Err("omabridge_publish_failed".into())}
+ Ok(())
+}
+fn unpublish()->Result<()>{
+ let path=unit_path();
+ match fs::read_to_string(&path){
+  Ok(existing) if !existing.starts_with("# Managed by Omarchy T3 Code")=>return Err("omabridge_unit_foreign".into()),
+  Err(_)=>return Ok(()),
+  _=>{}
+ }
+ let _=systemctl(&["disable","--now",UNIT]);
+ fs::remove_file(&path).map_err(|_|"local_error")?;
+ let _=systemctl(&["daemon-reload"]);
+ Ok(())
+}
 /// Actions on OmaBridge itself; each changes device trust, so each needs confirmation.
 pub fn execute(action:&str,input:&Value)->Result<Option<Value>>{
- if !matches!(action,"identity-create"|"invite"|"invite-discard"|"pair"|"pair-retry"|"pair-discard"|"approve"|"revoke"){return Ok(None)}
+ if !matches!(action,"identity-create"|"invite"|"invite-discard"|"pair"|"pair-retry"|"pair-discard"|"approve"|"revoke"|"publish"|"unpublish"){return Ok(None)}
  if input["confirmed"]!=true{return Err("confirmation_required".into())}
- if binary().is_none(){return Err("omabridge_unavailable".into())}
+ if binary().is_none()&&action!="unpublish"{return Err("omabridge_unavailable".into())}
  let outcome=match action{
   "identity-create"=>{ensure_identity()?;json!({})},
   "invite"=>json!({"created":invite(input)?}),
@@ -184,6 +241,8 @@ pub fn execute(action:&str,input:&Value)->Result<Option<Value>>{
   "pair-retry"=>{let id=text(input,"id");uuid::Uuid::parse_str(id).map_err(|_|"invalid_command")?;json!({"paired":pair_copy(id)?})},
   "pair-discard"=>{let id=text(input,"id");uuid::Uuid::parse_str(id).map_err(|_|"invalid_command")?;let _=fs::remove_file(awaiting_dir().join(format!("{id}.json")));json!({})},
   "approve"=>{approve(input)?;json!({})},
+  "publish"=>{publish(input)?;json!({})},
+  "unpublish"=>{unpublish()?;json!({})},
   _=>{let peer=text(input,"peer");if !valid_peer(peer){return Err("invalid_command".into())}call(&["revoke",peer],10)?;json!({})},
  };
  if matches!(action,"approve"|"revoke"|"pair"|"pair-retry"){refresh_connections();}
