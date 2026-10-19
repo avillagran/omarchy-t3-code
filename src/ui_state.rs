@@ -16,6 +16,7 @@ pub fn sanitize(input: &Value) -> Value {
         "composerExpanded","detached",
         "screenshotButton","screenshotHidePanel",
         "fpsMeter",
+        "omabridgeIndicator",
     ] {
         if let Some(v) = input[key].as_bool() {
             out[key] = json!(v)
@@ -132,6 +133,12 @@ mod tests {
         assert!(clean.get("threadMoveSpeed").is_none());
         assert_eq!(clean["settledShelfHeight"], 480.0);
         assert!(clean.get("workingShelfHeight").is_none());
+    }
+    #[test]
+    fn omabridge_indicator_is_an_opt_in_boolean() {
+        assert_eq!(sanitize(&json!({"omabridgeIndicator":true}))["omabridgeIndicator"], true);
+        assert!(sanitize(&json!({})).get("omabridgeIndicator").is_none());
+        assert!(sanitize(&json!({"omabridgeIndicator":"yes"})).get("omabridgeIndicator").is_none());
     }
     #[test]
     fn screenshot_preferences_keep_single_line_commands() {

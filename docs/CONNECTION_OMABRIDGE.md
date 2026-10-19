@@ -67,6 +67,10 @@ ExecStart="<plugin>/bin/omabridge" --state-dir "<state dir>" serve --service t3=
 
 The T3 port comes from T3's `server-runtime.json`. If T3 later moves to another port, the section marks the unit as stale and offers *Publish again*. Only peers you approved can reach the published services, and T3 still authenticates every session. ot3 creates an identity first if none exists. It only rewrites or removes a unit that starts with its own `# Managed by Omarchy T3 Code` header, and refuses paths that systemd would reinterpret. Turning the switch off (also confirmed) disables and removes the unit, and keeps pairings. When the installer updates the bundled binary, it restarts a published unit with `systemctl --user try-restart`. Invitations need a running published device.
 
+## Bar indicator
+
+*Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows this device's state (published services and number of paired devices) and lets you approve a request in two steps (the full device ID is shown before *Approve*) or *Check again* on a pairing you sent. *OmaBridge settings…* opens Preferences → Connections for everything else. Middle click refreshes. Invitations and their secrets are never shown in the bar.
+
 ## Other front ends
 
 Other Omarchy front ends (for example the control panel) manage OmaBridge through ot3 instead of the CLI, so validation, confirmation, secret handling and the published unit stay in one place. The client lives at `~/.config/omarchy/plugins/omarchy-t3-code/bin/omarchy-t3-client` (or under `io.github.avillagran.omarchy-t3-code`).
@@ -108,6 +112,7 @@ On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmati
 Other checks:
 
 - Unit tests pin the bridged SSH arguments.
+- `tools/test-qml omabridge-indicator` covers the bar indicator's refresh, status, pending badge, two-step approval, *Check again* and the settings hand-off.
 - `tools/test-qml omabridge-device` covers identity creation, the confirmed approve, revoke and pair payloads, *Check again*, invitation services and QR, and clearing the shown-once invitation when its dialog closes.
 - `tools/test-qml connection-omabridge` covers the automatic default, eligible connections and services, the confirmed pin/strict/automatic/saved-only/default payloads and the live status.
 - The `connections`, `connection-network`, `connection-access`, `preferences` and `i18n` QML checks pass, and translations cover 20 locales.

@@ -9,8 +9,11 @@ BarWidget {
   id: root
   moduleName: "io.github.avillagran.omarchy-t3-code"
   readonly property var counts:Sidebar.counts(t3Backend.state.threads)
-  implicitWidth: root.vertical ? Style.bar.statusSlot : status.implicitWidth+Style.space(6)
-  implicitHeight: Style.bar.statusSlot
+  // The optional OmaBridge indicator sits after the T3 status, off by default.
+  readonly property bool bridgeIndicator: t3Backend.viewState.omabridgeIndicator === true
+  readonly property real statusWidth: root.vertical ? Style.bar.statusSlot : status.implicitWidth+Style.space(6)
+  implicitWidth: root.statusWidth + (root.bridgeIndicator && !root.vertical ? Style.bar.statusSlot : 0)
+  implicitHeight: Style.bar.statusSlot * (root.bridgeIndicator && root.vertical ? 2 : 1)
   readonly property bool working: t3Backend.state.working > 0
   property bool panelRequested: false
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened : false
@@ -101,12 +104,29 @@ BarWidget {
     function refresh(): void { t3Backend.refresh() }
     function openProject(environment: string, projectId: string): void {root.open();t3Backend.openProject(environment,projectId)}
   }
+  function openBridgeSettings() {
+    root.open()
+    Qt.callLater(function() { if (panelLoader.item) panelLoader.item.openPreferencesPage("connections") })
+  }
+  Loader {
+    active: root.bridgeIndicator
+    x: root.vertical ? 0 : root.statusWidth
+    y: root.vertical ? Style.bar.statusSlot : 0
+    width: Style.bar.statusSlot
+    height: Style.bar.statusSlot
+    sourceComponent: Component {
+      T3OmaBridgeIndicator { bridge: t3Backend; bar: root.bar; vertical: root.vertical; onSettingsRequested: root.openBridgeSettings() }
+    }
+  }
   BarIconButton {
     id: button
-    anchors.centerIn: parent
+    x: 0
+    y: 0
+    width: root.vertical ? Style.bar.statusSlot : root.statusWidth
+    height: Style.bar.statusSlot
     bar: root.bar
     active: root.opened
-    slotSize: root.vertical ? Style.bar.statusSlot : root.implicitWidth
+    slotSize: root.vertical ? Style.bar.statusSlot : root.statusWidth
     tooltipText:T3I18n.tr("Working: {working} · Ready: {ready} · Waiting for input: {waiting}",{working:root.counts.working,ready:root.counts.done,waiting:root.counts.waiting})+(t3Backend.stale?" · "+T3I18n.tr("Offline"):"")
     iconComponent: Component { Item {} }
     T3StatusBadges{id:status;anchors.centerIn:parent;counts:root.counts;stale:t3Backend.stale;indicatorStyle:t3Backend.viewState.barIndicator || "orbit";width:implicitWidth;height:Style.bar.statusSlot;scale:root.vertical?Math.min(1,(root.barSize-Style.space(4))/implicitWidth):1}
