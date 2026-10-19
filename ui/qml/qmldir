@@ -10,6 +10,8 @@ T3Select 1.0 T3Select.qml
 T3Composer 1.0 T3Composer.qml
 singleton T3Palette 1.0 T3Palette.qml
 singleton T3Motion 1.0 T3Motion.qml
+singleton T3Ticker 1.0 T3Ticker.qml
+T3Tick 1.0 T3Tick.qml
 T3Reveal 1.0 T3Reveal.qml
 T3TextField 1.0 T3TextField.qml
 T3ShelfResizer 1.0 T3ShelfResizer.qml
@@ -109,3 +111,6 @@ T3BrowserImportWizard 1.0 T3BrowserImportWizard.qml
 T3StorageSettings 1.0 T3StorageSettings.qml
 T3Starfield 1.0 T3Starfield.qml
 T3RowFlight 1.0 T3RowFlight.qml
+T3FpsMeter 1.0 T3FpsMeter.qml
+T3BarIndicator 1.0 T3BarIndicator.qml
+T3RenderPanel 1.0 T3RenderPanel.qml

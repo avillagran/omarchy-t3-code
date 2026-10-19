@@ -4,14 +4,11 @@ Item{
  id:root
  required property var counts
  property bool stale:false
+ property string indicatorStyle:"orbit"
  readonly property real pillWidth:Style.space(Math.max(counts.working,counts.done)>99?23:Math.max(counts.working,counts.done)>9?18:14)
  implicitWidth:Style.space(25)+pillWidth+(counts.waiting>0?Style.space(3+ (counts.waiting>99?23:counts.waiting>9?18:14)):0)
  implicitHeight:Style.bar.statusSlot
- Item{
-  x:0;anchors.verticalCenter:parent.verticalCenter;width:Style.space(24);height:width
-  WorkIndicator{anchors.centerIn:parent;implicitWidth:Style.space(24);visible:root.counts.working>0;active:visible;tint:T3Palette.working}
-  T3Icon{anchors.centerIn:parent;name:"t3-logo";implicitWidth:Style.space(18);tint:root.stale?Color.muted:Color.accent}
- }
+ T3BarIndicator{x:0;anchors.verticalCenter:parent.verticalCenter;counts:root.counts;stale:root.stale;style:root.indicatorStyle}
  Repeater{
   model:[{key:"working",count:root.counts.working,tint:T3Palette.working,top:true},{key:"done",count:root.counts.done,tint:T3Palette.done,top:false}]
   Rectangle{

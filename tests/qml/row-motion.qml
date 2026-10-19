@@ -14,12 +14,12 @@ ShellRoot{
  TestCase{id:keys;when:false}
  Connections{target:Test.T3Backend;function onSnapshotUpdated(){if(root.fixture)Test.T3Backend.state=root.fixture}function onNewThreadWorkspaceRequested(request){root.launched=request}}
  Timer{interval:150;running:true;repeat:true;onTriggered:{var b=Test.T3Backend
-  if(phase===0){if(!b.viewStateLoaded)return;b.rememberView({sidebarCompact:true,workingExpanded:true,settledExpanded:true,threadMoveEffect:"arc",threadMoveSpeed:"slow"});fixture={threads:threads([],[]),projects:[{key:"fixture/p",id:"p",title:"Project",environmentId:"fixture"}],environments:[]};b.state=fixture;panel.open();phase=1
+  if(phase===0){if(!b.viewStateLoaded)return;b.rememberView({sidebarCompact:true,workingExpanded:true,settledExpanded:true,threadMoveEffect:"arc",threadMoveSpeed:"slow",fpsMeter:true});fixture={threads:threads([],[]),projects:[{key:"fixture/p",id:"p",title:"Project",environmentId:"fixture"}],environments:[]};b.state=fixture;panel.open();phase=1
   }else if(phase===1){if(panel.restoringSidebar)return;check(!!row("workingThreadList","w"),"working row starts in the Working shelf");check(!!row("threadList","a"),"ready row in the inbox");check(flights()===0,"no motion for plain state");
    push(threads(["w"],[]));phase=2
   }else if(phase===2){check(panel.rowMotion,"a snapshot that moves a thread animates");check(flights()===1,"the thread flies between sections, got "+flights());
    var target=row("threadList","w");check(!!target&&target.flight,"arriving row waits for the flight");phase=3;waited=0
-  }else if(phase===3){if(++waited<9)return;check(flights()===0,"flight lands and cleans up");var target=row("threadList","w");check(!!target&&target.opacity===1&&!target.flight,"landed row is whole");check(!row("workingThreadList","w"),"left the Working shelf");
+  }else if(phase===3){if(++waited<9)return;check(flights()===0,"flight lands and cleans up");var target=row("threadList","w");check(!!target&&target.opacity===1&&!target.flight,"landed row is whole");check(!row("workingThreadList","w"),"left the Working shelf");var meter=keys.findChild(panel,"t3FpsMeter");check(meter.visible&&meter.fps>0,"frame rate meter counts the flight frames");
    push(threads(["w"],["a"]));phase=4;waited=0
   }else if(phase===4){if(++waited<9)return;check(!!row("settledThreadList","a"),"settled row arrives in Settled");check(flights()===0,"settle flight cleaned up");var settled=row("settledThreadList","a");check(settled.opacity===1&&settled.drift===0,"settled row whole");
    b.rememberView({threadMoveEffect:"off"});phase=5

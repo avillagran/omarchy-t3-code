@@ -461,8 +461,13 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
     let id=last["id"].clone();let active=if last["activity"]["active"]==true && row["activity"]["active"]!=true {Some(last["activity"].clone())}else{None};*last=row;if let Some(a)=active{last["activity"]=a;}last["id"]=id;last["activity"]["count"]=json!(count);last["activity"]["entries"]=json!(entries);continue
    }
   }grouped.push(row)
- }grouped
+ }
+ // A content fingerprint per row lets the panel skip unchanged rows on each
+ // streamed update without serialising the whole transcript on the UI thread.
+ for row in grouped.iter_mut(){row["rev"]=json!(revision(row))}
+ grouped
 }
+fn revision(row:&Value)->String{use std::hash::{Hash,Hasher};let mut h=std::collections::hash_map::DefaultHasher::new();row.to_string().hash(&mut h);format!("{:016x}",h.finish())}
 pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
     let rows = d["threads"].as_array().ok_or("malformed")?;
     let projects: HashMap<&str, &str> = d["projects"]
@@ -727,6 +732,13 @@ mod tests {
         assert_eq!(rows.len(),3);assert_eq!(rows[0]["id"],"u");assert_eq!(rows[2]["id"],"a");
         assert_eq!(rows[1]["activity"]["category"],"read");assert_eq!(rows[1]["activity"]["active"],true);assert_eq!(rows[1]["activity"]["count"],2);assert_eq!(rows[1]["activity"]["command"],"cat");assert_eq!(rows[1]["activity"]["entries"].as_array().unwrap().len(),2);
         assert!(!json!(rows).to_string().contains("secret.txt"));assert!(!json!(rows).to_string().contains("private output"));
+    }
+    #[test]
+    fn timeline_rows_carry_a_content_revision(){
+        let a=conversation_timeline(&json!({}),&[json!({"id":"m","role":"assistant","text":"one","createdAt":1})]);
+        let b=conversation_timeline(&json!({}),&[json!({"id":"m","role":"assistant","text":"one","createdAt":1})]);
+        let c=conversation_timeline(&json!({}),&[json!({"id":"m","role":"assistant","text":"two","createdAt":1})]);
+        assert_eq!(a[0]["rev"],b[0]["rev"]);assert_ne!(a[0]["rev"],c[0]["rev"]);assert_eq!(a[0]["rev"].as_str().unwrap().len(),16);
     }
     #[test]
     fn grouped_activity_retains_each_native_source_without_output(){
