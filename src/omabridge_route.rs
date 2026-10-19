@@ -8,7 +8,7 @@
 use crate::*;
 use std::{collections::HashSet,io::{BufRead,BufReader,Write},os::unix::process::CommandExt,process::{Child,Command,Stdio},sync::{mpsc,Mutex},time::Instant};
 pub fn config_path()->PathBuf{xdg("XDG_CONFIG_HOME",".config").join("omabridge-routes.json")}
-fn default_state_dir()->PathBuf{
+pub(crate) fn default_state_dir()->PathBuf{
  std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).filter(|p|p.is_absolute()).unwrap_or_else(||home().join(".local/share")).join("omabridge")
 }
 /// The OmaBridge release ot3 bundles, from the single pinned file.
@@ -109,7 +109,7 @@ pub fn set_active(environment:&str,route:Option<(&Route,bool)>){
  }
 }
 fn active()->Value{ACTIVE.lock().ok().and_then(|a|a.clone()).map(|m|json!(m)).unwrap_or_else(||json!({}))}
-fn identity_ready(state_dir:&Path)->bool{
+pub(crate) fn identity_ready(state_dir:&Path)->bool{
  fs::symlink_metadata(state_dir).is_ok_and(|m|m.is_dir()&&m.mode()&0o077==0)&&fs::symlink_metadata(state_dir.join("state.json")).is_ok_and(|m|m.is_file())
 }
 fn base(bin:&Path,state_dir:&Path,relay:Option<&str>)->Command{
@@ -129,6 +129,7 @@ pub fn peers(bin:&Path,state_dir:&Path)->Result<Vec<Value>>{
 pub fn project_peers(doc:&Value)->Vec<Value>{
  doc["peers"].as_array().into_iter().flatten().filter(|p|valid_peer(text(p,"id"))).map(|p|json!({
   "id":p["id"],"name":text(p,"name"),
+  "services":p["services"].as_array().cloned().unwrap_or_default().into_iter().filter(|s|s.as_str().is_some_and(valid_service)).collect::<Vec<_>>(),
   "remoteServices":p["remote_services"].as_array().cloned().unwrap_or_default().into_iter().filter(|s|s.as_str().is_some_and(valid_service)).collect::<Vec<_>>(),
  })).collect()
 }
@@ -179,7 +180,8 @@ pub fn snapshot()->Result<Value>{
   "revision":revision_of(&raw),"available":bin.is_some(),"version":bundled_version(),"identity":identity_ready(&state_dir),"stateDir":state_dir.display().to_string(),
   "default":if parsed.as_ref().is_ok_and(|c|!c.auto){"off"}else{"auto"},
   "peers":peers.as_ref().cloned().unwrap_or_default(),"routes":routes,"active":active(),
-  "error":parsed.err().or(peers.err()).unwrap_or_default(),
+  "device":crate::omabridge_manage::identity(),"pending":crate::omabridge_manage::pending(),"awaiting":crate::omabridge_manage::awaiting(),
+  "error":parsed.err().or(peers.err().filter(|e|e!="omabridge_identity_missing"&&e!="omabridge_unavailable")).unwrap_or_default(),
  }))
 }
 fn write_private(path:&Path,doc:&Value)->Result<()>{
@@ -194,6 +196,7 @@ fn write_private(path:&Path,doc:&Value)->Result<()>{
 pub fn execute(input:&Value)->Result<Value>{
  let action=text(input,"action");
  if action=="read"{return snapshot()}
+ if let Some(result)=crate::omabridge_manage::execute(action,input)?{return Ok(result)}
  if !matches!(action,"set"|"clear"|"default"){return Err("invalid_action".into())}
  if input["confirmed"]!=true{return Err("confirmation_required".into())}
  let path=config_path();let parent=path.parent().ok_or("local_error")?;fs::create_dir_all(parent).map_err(|_|"local_error")?;

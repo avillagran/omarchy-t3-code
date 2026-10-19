@@ -126,3 +126,4 @@ T3UsagePage 1.0 T3UsagePage.qml
 T3ScheduledTasks 1.0 T3ScheduledTasks.qml
 T3AgentSessions 1.0 T3AgentSessions.qml
 T3ProcessDiagnostics 1.0 T3ProcessDiagnostics.qml
+T3OmaBridgeDevice 1.0 T3OmaBridgeDevice.qml
