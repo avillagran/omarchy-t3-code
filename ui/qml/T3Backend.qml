@@ -197,7 +197,10 @@ Singleton {
     var positions = Object.assign({}, viewState.positions || {})
     delete positions[key]; positions[key] = position
     var keys = Object.keys(positions); while (keys.length > 128) { delete positions[keys.shift()] }
-    rememberView({positions:positions})
+    // Scrolling calls this every frame. Replacing viewState would re-run every
+    // binding that reads it (project groups, sidebar rows, row effects) and
+    // stutter the transcript, so positions are updated in place.
+    viewState.positions = positions; persistView.restart()
   }
   function persistViewNow() {
     if (!viewStateLoaded) return
@@ -521,6 +524,30 @@ Singleton {
     patchDraft(key, {attachments: files},false)
     send({op: "upload", environment: env, thread: thread, requestId: id, url: String(url)})
   }
+  // Preferences > General > Screenshots. The helper resolves Omasnap, Omarchy's
+  // tool or grim+slurp and prints the saved PNG; nothing printed means cancelled.
+  readonly property bool screenshotEnabled:viewState.screenshotButton!==false
+  readonly property bool screenshotHidesPanel:viewState.screenshotHidePanel!==false
+  property var screenshot:({busy:false,error:""})
+  signal screenshotCapture(bool active)
+  function captureScreenshot() {
+    if(screenshot.busy){if(screenshotProcess.running)screenshotProcess.signal(15);return}
+    var d=drafts[selectedKey];if(!selectedThread||!d||d.busy||d.attempt||d.loading||d.loadError||d.attachments.length>=100)return
+    screenshot={busy:true,error:"",environment:selectedEnvironment,thread:selectedThread};screenshotCapture(true)
+    screenshotStart.interval=screenshotHidesPanel?350:0;screenshotStart.restart()
+  }
+  Timer{id:screenshotStart;onTriggered:{screenshotProcess.command=[Qt.resolvedUrl("../../bin/ot3-screenshot").toString().replace(/^file:\/\//,""),String(root.viewState.screenshotCommand || "")];screenshotProcess.running=true}}
+  Process {
+    id: screenshotProcess
+    stdout: StdioCollector{id:screenshotOutput}
+    stderr: StdioCollector{id:screenshotErrors}
+    onExited: function(code) {
+      var job=root.screenshot,path=screenshotOutput.text.trim().split("\n").pop(),failure=screenshotErrors.text.trim()
+      root.screenshot={busy:false,error:code===0?"":failure==="screenshot_unavailable"?"No screenshot tool found. Choose a command in Preferences.":"The screenshot could not be taken."}
+      root.screenshotCapture(false)
+      if(code===0&&path.charAt(0)==="/")root.attach("file://"+encodeURI(path),job.environment,job.thread)
+    }
+  }
   function removeAttachment(index) {
     var files = draft.attachments.slice(); var f = files[index]
     if (!f || f.uploading || draft.busy || draft.attempt) return
@@ -676,12 +703,14 @@ Singleton {
     if(path.startsWith("#"))return
     if(/^[a-z][a-z0-9+.-]*:/i.test(path)&&!path.startsWith("file://"))return
     try{path=decodeURIComponent(path.replace(/^file:\/\//,""))}catch(e){return}
-    path=path.replace(/:[0-9]+(?::[0-9]+)?$/,"")
+    path=path.replace(/#[^/#]*$/,"").replace(/:[0-9]+(?::[0-9]+)?$/,"")
+    if(selectedEnvironment==="local"&&/^~(?:\/|$)/.test(path))path=Quickshell.env("HOME")+path.slice(1)
     if(documentOpen.busy)return
     var id=uuid();documentOpen={busy:true,error:"",requestId:id,data:null,frameUrl:"",frameRevision:0}
     var project=(state.projects || []).find(function(p){return p.environmentId===root.selectedEnvironment&&p.id===root.selectedInfo.projectId}) || {}
     send({op:"document-open",environment:selectedEnvironment,thread:selectedThread,cwd:selectedInfo.worktreePath || project.workspaceRoot || "",path:path,attachment:attachment || null,requestId:id,labels:{source:T3I18n.tr("Source"),preview:T3I18n.tr("Preview"),close:T3I18n.tr("Close")},theme:DocumentTheme.theme(Color.popups.background,Color.popups.text,Color.accent,T3Palette.values)})
   }
+  signal documentOpenedExternally()
   property TextEdit documentClipboardBuffer:TextEdit{visible:false;textFormat:TextEdit.PlainText}
   function documentInput(event){if(documentOpen.requestId)send({op:"document-input",requestId:documentOpen.requestId,event:event})}
   function closeDocument(){if(documentOpen.requestId)send({op:"document-close",requestId:documentOpen.requestId});documentOpen={busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0}}
@@ -1229,7 +1258,7 @@ Singleton {
       return
     }
     if(data.op==="copy"){copyFinished(data.requestId,data.error || "");return}
-    if(data.op==="document-open"){if(inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{busy:false,error:data.error || "",data:data.result || null});return}if(data.requestId===documentOpen.requestId)documentOpen=Object.assign({},documentOpen,{busy:false,error:data.error || "",requestId:data.requestId,data:data.result || null});return}
+    if(data.op==="document-open"){if(inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{busy:false,error:data.error || "",data:data.result || null});return}if(data.requestId===documentOpen.requestId){if(data.error==="opened_externally"){documentOpen={busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0};documentOpenedExternally();return}documentOpen=Object.assign({},documentOpen,{busy:false,error:({file_not_found:"File not found.",binary_file:"This file is binary and can't be previewed."})[data.error] || data.error || "",requestId:data.requestId,data:data.result || null})}return}
     if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)acceptBackendStatus(data.result.local);if(!data.error&&data.result&&data.result.status!=="stopped")recoverLocalBackend();refreshBackendStatus();refresh();return}
     if(data.op==="pull-requests"){var name=Object.keys(prOperations).find(function(k){return root.prOperations[k].requestId===data.requestId});if(!name)return;var all=Object.assign({},prOperations);all[name]={busy:false,requestId:data.requestId,error:data.error || "",data:data.result};prOperations=all;return}
     if(data.op==="question"){

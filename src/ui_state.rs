@@ -14,6 +14,7 @@ pub fn sanitize(input: &Value) -> Value {
         "sidebarCollapsed",
         "english",
         "composerExpanded","detached",
+        "screenshotButton","screenshotHidePanel",
     ] {
         if let Some(v) = input[key].as_bool() {
             out[key] = json!(v)
@@ -41,6 +42,7 @@ pub fn sanitize(input: &Value) -> Value {
         ("projectFilter", 2200),
         ("query", 256),
         ("language", 32),
+        ("screenshotCommand", 4096),
     ] {
         if let Some(v) = input[key]
             .as_str()
@@ -127,5 +129,14 @@ mod tests {
         assert!(clean.get("transitionSpeed").is_none());
         assert_eq!(clean["settledShelfHeight"], 480.0);
         assert!(clean.get("workingShelfHeight").is_none());
+    }
+    #[test]
+    fn screenshot_preferences_keep_single_line_commands() {
+        let clean = sanitize(&json!({"screenshotButton":false,"screenshotHidePanel":true,"screenshotCommand":"grim -g \"$(slurp)\" {file}"}));
+        assert_eq!(clean["screenshotButton"], false);
+        assert_eq!(clean["screenshotHidePanel"], true);
+        assert_eq!(clean["screenshotCommand"], "grim -g \"$(slurp)\" {file}");
+        assert!(sanitize(&json!({"screenshotCommand":"grim\nrm -rf ~"})).get("screenshotCommand").is_none());
+        assert!(sanitize(&json!({"screenshotCommand":"x".repeat(4097)})).get("screenshotCommand").is_none());
     }
 }

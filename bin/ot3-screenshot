@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Takes a screenshot for the composer and prints the PNG path on stdout.
+#
+#   ot3-screenshot [command]
+#
+# Without a command it uses Omasnap, then Omarchy's screenshot tool, then
+# grim + slurp. A custom command runs through bash and may write to {file},
+# print an image path, save into $OMARCHY_SCREENSHOT_DIR/$OMASNAP_SCREENSHOT_DIR
+# (both point at a private folder while it runs) or copy a PNG to the
+# clipboard. Exit 0 with no output means the capture was cancelled.
+set -uo pipefail
+
+dir="${XDG_RUNTIME_DIR:-/tmp}/omarchy-t3-code/screenshots"
+mkdir -p -m700 "$dir" || exit 2
+find "$dir" -maxdepth 1 -type f -mmin +1440 -delete 2>/dev/null
+file="$dir/screenshot-$(date +%Y-%m-%d_%H-%M-%S)-$$.png"
+marker="$dir/.started-$$" out="$dir/.output-$$"
+: >"$marker"
+trap 'rm -f "$marker" "$out"' EXIT
+
+runnable() { local path; path=$(command -v "$1") && ! ldd "$path" 2>/dev/null | grep -q 'not found'; }
+clipboard() {
+  timeout 2 wl-paste --list-types 2>/dev/null | grep -qx image/png || return 0
+  timeout 2 wl-paste --type image/png 2>/dev/null | sha256sum | cut -d' ' -f1
+}
+image() { [[ -f $1 && -s $1 ]] && file -b --mime-type "$1" 2>/dev/null | grep -q '^image/'; }
+
+command="${1:-}"
+if [[ -z ${command//[[:space:]]/} ]]; then
+  if runnable omasnap; then command=omasnap
+  elif runnable omarchy-capture-screenshot; then command='omarchy-capture-screenshot smart save'
+  elif runnable grim && runnable slurp; then command='region=$(slurp) && grim -g "$region" {file}'
+  else echo "screenshot_unavailable" >&2; exit 3
+  fi
+fi
+command="${command//\{file\}/$(printf '%q' "$file")}"
+
+before=$(clipboard)
+OMARCHY_SCREENSHOT_DIR="$dir" OMASNAP_SCREENSHOT_DIR="$dir" bash -c "$command" </dev/null >"$out" 2>/dev/null
+status=$?
+
+result=""
+image "$file" && result="$file"
+if [[ -z $result ]]; then
+  while IFS= read -r line; do
+    line="${line#file://}"
+    image "$line" && result="$line"
+  done < <(head -c 65536 "$out" | tr -d '\0')
+fi
+if [[ -z $result ]]; then
+  newest=$(find "$dir" -maxdepth 1 -type f -newer "$marker" ! -name '.*' ! -name '*.thumb.png' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+  [[ -n $newest ]] && image "$newest" && result="$newest"
+fi
+if [[ -z $result ]]; then
+  after=$(clipboard)
+  if [[ -n $after && $after != "$before" ]]; then
+    timeout 3 wl-paste --type image/png >"$file" 2>/dev/null && image "$file" && result="$file"
+  fi
+fi
+
+if [[ -n $result ]]; then
+  realpath -- "$result"
+  exit 0
+fi
+rm -f "$file"
+[[ $status -eq 0 || $status -eq 1 || $status -eq 130 ]] && exit 0
+echo "screenshot_failed" >&2
+exit 4

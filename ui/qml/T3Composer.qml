@@ -271,6 +271,7 @@ Rectangle {
       visible: !!text
       text: root.draft.error ? (root.draft.error === "rpc_outcome_unknown" ? T3I18n.tr("No confirmation from T3. Retry the same submission; it will not duplicate.") : T3I18n.error(root.draft.error))
         : root.invalidFiles ? T3I18n.tr("An upload failed. Remove it and attach it again.")
+        : root.bridge.screenshot.error ? T3I18n.tr(root.bridge.screenshot.error)
         : T3I18n.error(root.bridge.catalog.error || root.bridge.messageError)
       color: Color.urgent; font.pixelSize: Style.font.caption; wrapMode: Text.Wrap; textFormat: Text.PlainText
     }
@@ -280,6 +281,14 @@ Rectangle {
         name: "paperclip"; tooltipText: T3I18n.tr("Attach files · or drag them here")
         enabled: !root.locked
         onClicked: root.attachFiles()
+      }
+      T3IconButton {
+        objectName: "t3ComposerScreenshot"
+        visible: root.bridge.screenshotEnabled
+        name: "camera"; tint: root.bridge.screenshot.busy ? Color.accent : root.fg
+        tooltipText: T3I18n.tr(root.bridge.screenshot.busy ? "Cancel screenshot" : "Take a screenshot")
+        enabled: !root.locked && !!root.bridge.selectedThread
+        onClicked: root.bridge.captureScreenshot()
       }
       T3ModelPicker {
         id:modelPicker;objectName:"t3ComposerModel"

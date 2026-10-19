@@ -152,6 +152,13 @@ Rectangle {
         Text{width:parent.width;visible:!!(root.bridge.clientSettings || {}).error;text:T3I18n.error((root.bridge.clientSettings || {}).error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
        }}
       }
+      T3PreferenceSection{visible:root.page==="general"&&(!root.query.trim()||root.matches("Screenshots")||root.matches("Screenshot button")||root.matches("Screenshot command"));Layout.fillWidth:true;title:"Screenshots";icon:"camera"
+       body:Component{Column{width:parent.width
+        T3PreferenceField{width:parent.width;controlName:"preferenceScreenshotButton";field:({key:"screenshotButton",label:"Screenshot button",description:"Show a button next to Attach that captures the screen and attaches the image.",kind:"bool",value:root.bridge.viewState.screenshotButton!==false});writable:true;onChanged:function(value){root.bridge.rememberView({screenshotButton:value})}}
+        T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceScreenshotHide";field:({key:"screenshotHidePanel",label:"Hide the panel while capturing",kind:"bool",value:root.bridge.viewState.screenshotHidePanel!==false});writable:true;onChanged:function(value){root.bridge.rememberView({screenshotHidePanel:value})}}
+        T3PreferenceField{width:parent.width;divided:true;field:({key:"screenshotCommand",label:"Screenshot command",description:"Empty uses Omasnap, then Omarchy's screenshot tool, then grim and slurp. A command may write to {file}, print an image path, or copy a PNG to the clipboard.",kind:"text",commitOnBlur:true,maximumLength:4096,placeholder:"Automatic",value:root.bridge.viewState.screenshotCommand || ""});writable:true;onChanged:function(value){root.bridge.rememberView({screenshotCommand:value.trim()})}}
+       }}
+      }
       T3PreferenceSection{visible:!root.query.trim()&&root.page==="appearance";Layout.fillWidth:true;title:"Omarchy theme";icon:"layers"
        body:Component{Column{width:parent.width
         T3PreferenceField{width:parent.width;field:({key:"language",label:"Language",kind:"choice",value:T3I18n.choice,choices:T3I18n.languages.map(function(l){return {id:l.id,name:l.name}})});writable:true;onChanged:function(value){root.bridge.rememberView({language:value})}}
