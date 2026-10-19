@@ -56,7 +56,7 @@ pub mod tool_inspector;
 pub mod write;
 pub mod suggestions;
 pub use t3_protocol as protocol;
-pub use connections::{read_catalog, t3_home, refresh_connections};
+pub use connections::{read_catalog, t3_home, refresh_connections, stale_ot3_sessions};
 pub use desktop_cloud::{check_native_session,check_native_environment};
 use chrono::{DateTime, Utc};
 use reqwest::blocking::Client as Http;
