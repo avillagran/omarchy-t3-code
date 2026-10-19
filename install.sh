@@ -48,7 +48,14 @@ if [[ -e "$plugin_dir" ]]; then
   git -C "$plugin_dir" fetch origin "$release_ref"
   expected_commit=$(git -C "$plugin_dir" rev-parse FETCH_HEAD)
   # Verify the package before changing an existing installation.
-  git -C "$plugin_dir" merge-base --is-ancestor HEAD "$expected_commit" || fail 'Installed source is ahead of or diverges from this release. Use OT3_BUILD_FROM_SOURCE=1 for main.'
+  if ! git -C "$plugin_dir" merge-base --is-ancestor HEAD "$expected_commit"; then
+    # Commit messages were rewritten once (trees unchanged). Move a clean checkout to the
+    # rewritten commit with the identical tree; anything else really diverges.
+    head_tree=$(git -C "$plugin_dir" rev-parse 'HEAD^{tree}')
+    same_commit=$(git -C "$plugin_dir" log --format='%H %T' "$expected_commit" | awk -v tree="$head_tree" '$2 == tree { print $1; exit }')
+    [[ -n "$same_commit" ]] || fail 'Installed source is ahead of or diverges from this release. Use OT3_BUILD_FROM_SOURCE=1 for main.'
+    git -C "$plugin_dir" reset -q --hard "$same_commit"
+  fi
   build_dir=$plugin_dir
 else
   stage=$(mktemp -d "$plugins_dir/.t3-install.XXXXXXXX")

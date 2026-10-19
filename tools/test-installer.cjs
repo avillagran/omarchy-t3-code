@@ -8,6 +8,9 @@ const body=`const fs=require('fs'),path=require('path');const name=path.basename
 if(name==='pacman')process.exit(args[1]==='wl-clipboard'?1:0);
 if(name==='git'){
  if(args[0]==='clone'){const dir=args.at(-1);fs.mkdirSync(path.join(dir,'.git'));fs.mkdirSync(path.join(dir,'bin'));fs.mkdirSync(path.join(dir,'integrations','hyprland'),{recursive:true});fs.copyFileSync(path.join(process.env.INSTALL_TEST_REPO,'manifest.json'),path.join(dir,'manifest.json'));fs.copyFileSync(path.join(process.env.INSTALL_TEST_REPO,'integrations','hyprland','bindings.lua'),path.join(dir,'integrations','hyprland','bindings.lua'));fs.copyFileSync(path.join(root,'bin','build-client'),path.join(dir,'bin','build-client'));}
+ else if(args.includes('merge-base')&&process.env.INSTALL_TEST_REWRITTEN)process.exit(1);
+ else if(args.includes('log')&&process.env.INSTALL_TEST_REWRITTEN)console.log(process.env.INSTALL_TEST_REWRITTEN==='same-tree'?'rewritten-commit fixture-tree':'other-commit other-tree');
+ else if(args.includes('HEAD^{tree}'))console.log('fixture-tree');
  else if(args.includes('rev-parse'))console.log('fixture-commit');
  else if(args.includes('get-url'))console.log('https://github.com/avillagran/omarchy-t3-code.git');
  else if(args.includes('status')&&process.env.INSTALL_TEST_DIRTY)console.log(' M modified.qml');
@@ -34,10 +37,12 @@ try{
  pack();
  let {result,calls}=run();assert.equal(result.status,0,result.stderr);assert(called(calls,'sudo','pacman','wl-clipboard'));assert(called(calls,'git','clone'));assert(!called(calls,'build-client'));assert(!called(calls,'cargo'));assert(!called(calls,'rustup'));assert(called(calls,'omarchy','validate'));assert(called(calls,'omarchy','enable'));assert(called(calls,'omarchy-t3-client','backend-control','start'));assert(called(calls,'omarchy','restart','shell'));assert(fs.readFileSync(bindings,'utf8').startsWith('-- existing user setting\n'));assert.equal((fs.readFileSync(bindings,'utf8').match(/dofile/g)||[]).length,1);assert.equal(fs.readdirSync(path.dirname(bindings)).filter(f=>f.includes('.t3-backup-')).length,1);
  ({result,calls}=run({INSTALL_TEST_OWNER:'gui'}));assert.equal(result.status,0,result.stderr);assert(called(calls,'git','fetch','v0.2.1'));assert(called(calls,'git','merge','--ff-only'));assert(!called(calls,'omarchy-t3-client','backend-control'));assert.equal((fs.readFileSync(bindings,'utf8').match(/dofile/g)||[]).length,1);
+ ({result,calls}=run({INSTALL_TEST_REWRITTEN:'same-tree'}));assert.equal(result.status,0,result.stderr);assert(called(calls,'git','reset','--hard','rewritten-commit'));assert(called(calls,'git','merge','--ff-only'));
+ ({result,calls}=run({INSTALL_TEST_REWRITTEN:'diverged'}));assert.notEqual(result.status,0);assert(result.stderr.includes('diverges'));assert(!called(calls,'git','reset'));assert(!called(calls,'omarchy','restart'));
  ({result,calls}=run({INSTALL_TEST_DIRTY:'1'}));assert.notEqual(result.status,0);assert(result.stderr.includes('local changes'));assert(!called(calls,'build-client'));assert(!called(calls,'git','fetch'));
  ({result,calls}=run({OT3_BUILD_FROM_SOURCE:'1'}));assert.equal(result.status,0,result.stderr);assert(called(calls,'build-client'));
  pack('wrong-commit');({result,calls}=run());assert.notEqual(result.status,0);assert(result.stderr.includes('revisions differ'));assert(!called(calls,'omarchy','restart'));
  pack();fs.appendFileSync(path.join(root,'assets',asset),'corruption');({result,calls}=run());assert.notEqual(result.status,0);assert(result.stderr.includes('checksum failed'));
  pack();({result,calls}=run({INSTALL_TEST_LIBS:'1'}));assert.notEqual(result.status,0);assert(result.stderr.includes('Runtime libraries'));assert(!called(calls,'omarchy','restart'));
- console.log('INSTALLER_PASS: dependencies, verified prebuilt install/enable and explicit source build, checksum/revision/library rejection, headless start, preserved GUI server, repeat-safe binding/backup and dirty-checkout refusal; no real system changes');
+ console.log('INSTALLER_PASS: dependencies, verified prebuilt install/enable and explicit source build, checksum/revision/library rejection, headless start, preserved GUI server, repeat-safe binding/backup, rewritten-history migration and dirty-checkout refusal; no real system changes');
 }finally{fs.rmSync(root,{recursive:true,force:true})}
