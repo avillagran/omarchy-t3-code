@@ -221,6 +221,25 @@ previews do not need the browser renderer. Reports inherit the Omarchy palette
 when opened, run inside an opaque sandbox, and cannot access app credentials or
 local files through the document.
 
+Every frame the panel presents is recomposed by the compositor, so continuous
+motion shares one clock (`T3Ticker`) and each animation asks for the pace it
+needs: an idle sky drifts at 8 fps, the busy sky at 30, spinners, the working
+shimmer and thread comets at 60, and shooting stars at the display rate while
+one is on screen. Preferences › Animations › Animation smoothness switches
+between adaptive, saver (30 fps) and maximum. Live transcript rows carry a
+content revision (`rev`) so streamed updates only touch the rows that changed,
+and the detached window uses an opaque surface when the theme background is
+opaque.
+
+To measure on a running panel, enable Preferences › Animations › Frame rate
+meter, or use the diagnostics IPC:
+
+```bash
+omarchy-shell io.github.avillagran.omarchy-t3-code profileScroll  # 4 s of touchpad-style scrolling
+omarchy-shell io.github.avillagran.omarchy-t3-code profileResult  # fps and frame interval percentiles
+omarchy-shell io.github.avillagran.omarchy-t3-code skyState       # sky mode, meteor and clock pace
+```
+
 Resource consumption depends on transcript size, attachments, the shell and
 optional previews. The T3 server and provider workers still use resources.
 No fixed memory saving is promised, and an active HTML renderer adds browser

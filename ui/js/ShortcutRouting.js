@@ -4,7 +4,16 @@
 
 // Original effectiveShortcutsForCommand owns reverse-order precedence across ALL
 // commands, including commands whose workspace surface is not implemented yet.
+// Resolving every command costs several milliseconds and runs on each focus
+// change, so results are kept per context for the current keybinding lists.
+var claimCache={primary:null,active:null,entries:{},size:0}
 function effective(primary,active,context){
+ if(claimCache.primary!==primary||claimCache.active!==active||claimCache.size>=64)claimCache={primary:primary,active:active,entries:{},size:0}
+ var cacheKey=JSON.stringify(context || {})
+ if(!claimCache.entries.hasOwnProperty(cacheKey)){claimCache.entries[cacheKey]=resolve(primary,active,context);claimCache.size++}
+ return claimCache.entries[cacheKey]
+}
+function resolve(primary,active,context){
  var k=Native.nativeKeys,options={platform:"Linux",context:context},out=[],blocked={}
  var commands=Array.from(new Set(primary.map(function(r){return r.command})))
  commands.forEach(function(command){

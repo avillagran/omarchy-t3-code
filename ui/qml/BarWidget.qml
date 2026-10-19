@@ -88,6 +88,11 @@ BarWidget {
     function showSettled(value: bool): void { root.open(); if (panelLoader.item) panelLoader.item.settledExpanded = value }
     function toggleSidebar(): void { root.open(); if (panelLoader.item) panelLoader.item.toggleSidebar() }
     function closePanel(): void { root.close() }
+    // Diagnostics: scroll the open conversation for a few seconds and report
+    // the presented frame intervals (read the result with profileResult).
+    function profileScroll(): void { if (panelLoader.item) panelLoader.item.profileScroll() }
+    function profileResult(): string { return panelLoader.item ? JSON.stringify(panelLoader.item.profile) : "{}" }
+    function skyState(): string { var p=panelLoader.item;if(!p)return "{}";var s=p.starfield;return JSON.stringify({mode:s.effectiveMode,busy:s.busy,energy:s.energy,reach:s.meteorReach,meteorNow:s.meteorNow,clock:s.clock,ticker:T3Ticker.interval,sidebar:p.sidebarCollapsed,degraded:s.degraded,paused:s.paused,visible:s.visible}) }
     function usageCollapsed(value: bool): void { root.open(); if (panelLoader.item) panelLoader.item.usageCollapsed = value }
     function filters(value: bool): void { root.open(); if (panelLoader.item) { if (value) panelLoader.item.showFilters(); else panelLoader.item.hideFilters() } }
     function refresh(): void { t3Backend.refresh() }
@@ -101,7 +106,7 @@ BarWidget {
     slotSize: root.vertical ? Style.bar.statusSlot : root.implicitWidth
     tooltipText:T3I18n.tr("Working: {working} · Ready: {ready} · Waiting for input: {waiting}",{working:root.counts.working,ready:root.counts.done,waiting:root.counts.waiting})+(t3Backend.stale?" · "+T3I18n.tr("Offline"):"")
     iconComponent: Component { Item {} }
-    T3StatusBadges{id:status;anchors.centerIn:parent;counts:root.counts;stale:t3Backend.stale;width:implicitWidth;height:Style.bar.statusSlot;scale:root.vertical?Math.min(1,(root.barSize-Style.space(4))/implicitWidth):1}
+    T3StatusBadges{id:status;anchors.centerIn:parent;counts:root.counts;stale:t3Backend.stale;indicatorStyle:t3Backend.viewState.barIndicator || "orbit";width:implicitWidth;height:Style.bar.statusSlot;scale:root.vertical?Math.min(1,(root.barSize-Style.space(4))/implicitWidth):1}
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton) root.togglePanel()
       else if (mouseButton === Qt.MiddleButton) t3Backend.refresh()

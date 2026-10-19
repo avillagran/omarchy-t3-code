@@ -28,6 +28,49 @@ Item {
   readonly property bool browserShown:browserOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
   readonly property real browserMaxWidth:Math.max(360,Math.min(Math.floor(panelLayout.width/Style.space(1)*0.7),Math.floor(browserAvailableWidth/Style.space(1))-366))
   readonly property var browserWorkspaceItem:browserInline?inlineBrowserLoader.item:overlayBrowserLoader.item
+  Binding{target:T3Ticker;property:"mode";value:["saver","max"].indexOf(root.bridge.viewState.animationRate)>=0?root.bridge.viewState.animationRate:"adaptive"}
+  // HTML renders: inline in the conversation, or in a side panel when the
+  // window is wide enough (Preferences > HTML renders).
+  readonly property bool renderSide:bridge.viewState.htmlRenders==="side"&&browserInline
+  property var renderAttachment:null
+  property bool renderOpen:false
+  property real renderPanelWidth:Math.max(360,Math.min(1600,bridge.viewState.renderPanelWidth || 520))
+  readonly property bool renderShown:renderSide&&renderOpen&&!!renderAttachment&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded&&!browserShown
+  property var renderSeen:({})
+  function showRender(attachment){renderAttachment=attachment;renderOpen=true;browserOpen=false}
+  function resizeRenderPanel(width){renderPanelWidth=Math.max(360,Math.min(browserMaxWidth,width));bridge.rememberView({renderPanelWidth:renderPanelWidth})}
+  // Renders that arrive while a thread is open go straight to the panel;
+  // those already in the history only open on request.
+  function followRenders(){
+    var key=bridge.selectedKey;if(!key)return
+    var ids=[],latest=null
+    bridge.transcript.forEach(function(r){(r.attachments || []).forEach(function(a){if(a.mimeType==="text/html"){ids.push(a.id);latest=a}})})
+    var seen=renderSeen[key],next=Object.assign({},renderSeen)
+    if(seen&&renderSide&&latest&&seen.indexOf(latest.id)<0)showRender(latest)
+    next[key]=ids;renderSeen=next
+  }
+  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){root.renderOpen=false;root.renderAttachment=null}}
+  // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
+  // every 8 ms through the normal wheel path) and record the intervals
+  // between presented frames; profileResult reads them back.
+  property var profile:({})
+  property var profileFrames:[]
+  property double profileLast:0
+  property int profileTicks:0
+  function profileScroll(){
+    if(!conversation.visible||profilePad.running)return
+    profileFrames=[];profileLast=0;profileTicks=0;profile={running:true}
+    profilePad.start()
+  }
+  Connections{target:profilePad.running?panelLayout.Window.window:null;function onFrameSwapped(){var n=Date.now();if(root.profileLast)root.profileFrames.push(n-root.profileLast);root.profileLast=n}}
+  Timer{id:profilePad;interval:8;repeat:true
+    onTriggered:{
+      conversation.wheelScroll(0,root.profileTicks<250?24:-24,true)
+      if(++root.profileTicks<500)return
+      stop();var a=root.profileFrames.slice().sort(function(x,y){return x-y}),sum=a.reduce(function(s,v){return s+v},0)
+      root.profile={running:false,frames:a.length,fps:Math.round(1000*a.length/Math.max(1,sum)),p50:a[Math.floor(a.length*.5)],p90:a[Math.floor(a.length*.9)],p99:a[Math.floor(a.length*.99)],max:a[a.length-1],over12:a.filter(function(v){return v>12}).length,over20:a.filter(function(v){return v>20}).length}
+    }
+  }
   function resizeBrowser(width){browserPanelWidth=Math.max(360,Math.min(browserMaxWidth,width));bridge.rememberView({browserPanelWidth:browserPanelWidth})}
   function toggleBrowser(){browserOpen=!browserOpen;if(browserOpen&&composerExpanded)expandComposer(false)}
   function focusBrowserUrl(){if(browserWorkspaceItem)browserWorkspaceItem.focusUrl()}
@@ -304,8 +347,10 @@ Item {
     if(modelKey!==bridge.selectedKey){conversationRows.clear();ids=[];fingerprints={};modelKey=bridge.selectedKey}
     var wanted={};rows.forEach(function(r){wanted[r.id]=true})
     for(var n=ids.length-1;n>=0;n--)if(!wanted[ids[n]]){conversationRows.remove(n);delete fingerprints[ids[n]];ids.splice(n,1)}
+    // Rows from the client carry a content revision; local rows fall back to
+    // their JSON. Rows usually keep their order, so check in place first.
     for(var i=0;i<rows.length;i++){
-      var row=rows[i],found=ids.indexOf(row.id),print=JSON.stringify(row)
+      var row=rows[i],found=ids[i]===row.id?i:ids.indexOf(row.id),print=row.rev!==undefined?row.rev:JSON.stringify(row)
       if(found<0){conversationRows.insert(i,{row:row});ids.splice(i,0,row.id)}
       else {if(found!==i){conversationRows.move(found,i,1);ids.splice(i,0,ids.splice(found,1)[0])}if(fingerprints[row.id]!==print)conversationRows.setProperty(i,"row",row)}
       fingerprints[row.id]=print
@@ -615,6 +660,10 @@ Item {
     title:"Omarchy T3 Code"
     visible:root.panelOpen&&root.detached
     color:Color.popups.background
+    // An opaque surface lets Hyprland skip drawing and blurring what lies
+    // behind the window on every frame (~25% less compositor CPU while it
+    // animates). Translucent themes keep the blended surface.
+    surfaceFormat.opaque:Color.popups.background.a>=0.999
     implicitWidth:Style.space(root.bridge.viewState.windowWidth || root.panelWidth)
     implicitHeight:Style.space(root.bridge.viewState.windowHeight || root.panelHeight)
     minimumSize:Qt.size(Style.space(760),Style.space(360))
@@ -644,9 +693,17 @@ Item {
       busy:!!root.bridge.selectedInfo.working||(root.bridge.state.working||0)>0
       paused:!root.opened
       brightness:0.5;meteorRate:0.3
+      // The sidebar header sky (meteorRate 0.85) follows this clock.
+      meteorReach:effectiveMode==="off"?0:Math.min(1,(sidebarReveal.visible?0.85:effectiveMode==="full"?0.3:0)*meteorScale)
       speedScale:({slow:0.5,fast:1.8})[root.bridge.viewState.starfieldSpeed] || 1
       meteorScale:({none:0,few:0.4,many:2.2})[root.bridge.viewState.starfieldMeteors] ?? 1
       Connections{target:conversation;function onContentYChanged(){sky.follow(conversation.contentY)}}
+    }
+    T3FpsMeter {
+      objectName:"t3FpsMeter"
+      parent:root.detached?desktop.contentItem:popup.surfaceItem
+      anchors.left:parent.left;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);z:100
+      active:root.opened&&root.bridge.viewState.fpsMeter===true
     }
     RowLayout {
       id:panelLayout;objectName:"t3PanelLayout"
@@ -803,7 +860,7 @@ Item {
           Text{id:helpText;width:helpScroll.availableWidth;text:root.shortcutHelp();color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
         }
       }
-      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.browserShown){root.browserOpen=false}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
+      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.browserShown){root.browserOpen=false}else if(root.renderShown){root.renderOpen=false}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
       T3WorkspaceConfirmation {popupHost:panelLayout;bridge:root.bridge}
       T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || []; preferredProjectKey:Array.isArray(root.projectScope)?root.projectScope.length===1?root.projectScope[0]:"":root.projectScope }
       Controls.Popup {
@@ -1421,12 +1478,25 @@ Item {
                       }
                     }
                     Repeater {
-                      model:(modelData.attachments || []).filter(function(a){return a.mimeType==="text/html"})
+                      model:root.renderSide?[]:(modelData.attachments || []).filter(function(a){return a.mimeType==="text/html"})
                       T3InlineHtml {
                         required property var modelData
                         readonly property real viewportY:message.y+body.y+y-conversation.contentY
                         width:body.width;bridge:root.bridge;attachment:modelData
                         active:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+height>0
+                      }
+                    }
+                    Flow {
+                      width:parent.width;spacing:Style.space(6);visible:root.renderSide
+                      Repeater {
+                        model:root.renderSide?(modelData.attachments || []).filter(function(a){return a.mimeType==="text/html"}):[]
+                        T3FileReference {
+                          required property var modelData
+                          objectName:"t3RenderCard"
+                          fileName:String(modelData.name || "HTML").replace(/\.html$/i,"");filePath:T3I18n.tr("Show in side panel")
+                          border.width:root.renderShown&&root.renderAttachment&&root.renderAttachment.id===modelData.id?2:1
+                          onClicked:root.showRender(modelData)
+                        }
                       }
                     }
                     Flow {
@@ -1625,6 +1695,15 @@ Item {
         MouseArea{id:browserDrag;objectName:"t3BrowserResizer";anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.SizeHorCursor;property real startX:0;property real startWidth:540;onPressed:function(m){startX=mapToGlobal(m.x,m.y).x;startWidth=Math.min(root.browserMaxWidth,root.browserPanelWidth)};onPositionChanged:function(m){if(pressed)root.resizeBrowser(startWidth-(T3I18n.rtl?-1:1)*(mapToGlobal(m.x,m.y).x-startX)/Style.space(1))};onDoubleClicked:root.resizeBrowser(540)}
       }
       Loader{id:inlineBrowserLoader;objectName:"t3BrowserInline";visible:root.browserShown&&root.browserInline;active:visible;Layout.fillHeight:true;Layout.preferredWidth:Style.space(Math.min(root.browserMaxWidth,root.browserPanelWidth));sourceComponent:browserWorkspaceComponent}
+      Item {
+        visible:root.renderShown;Layout.fillHeight:true;Layout.preferredWidth:Style.space(6);activeFocusOnTab:true
+        Accessible.role:Accessible.Slider;Accessible.name:T3I18n.tr("Render panel width")
+        Keys.onLeftPressed:root.resizeRenderPanel(root.renderPanelWidth+10)
+        Keys.onRightPressed:root.resizeRenderPanel(root.renderPanelWidth-10)
+        Rectangle{anchors.centerIn:parent;width:renderDrag.containsMouse||renderDrag.pressed?2:1;height:parent.height;color:renderDrag.containsMouse||renderDrag.pressed?Color.accent:root.divider}
+        MouseArea{id:renderDrag;objectName:"t3RenderResizer";anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.SizeHorCursor;property real startX:0;property real startWidth:520;onPressed:function(m){startX=mapToGlobal(m.x,m.y).x;startWidth=Math.min(root.browserMaxWidth,root.renderPanelWidth)};onPositionChanged:function(m){if(pressed)root.resizeRenderPanel(startWidth-(T3I18n.rtl?-1:1)*(mapToGlobal(m.x,m.y).x-startX))}}
+      }
+      Loader{objectName:"t3RenderPanelSlot";visible:root.renderShown;active:visible;Layout.fillHeight:true;Layout.preferredWidth:Style.space(Math.min(root.browserMaxWidth,root.renderPanelWidth));sourceComponent:Component{T3RenderPanel{bridge:root.bridge;attachment:root.renderAttachment;onClosed:root.renderOpen=false}}}
     }
   }
 }

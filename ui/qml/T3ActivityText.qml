@@ -7,15 +7,17 @@ Item {
   property bool active: false
   property color tint: Color.popups.text
   property int fontSize: Style.font.caption
-  property real progress: 0
+  T3Tick { id: tick; running: root.animating }
+  // Overridable for still captures.
+  property real progress: (tick.time / 2.2) % 1
   readonly property bool animating: active && visible && width > 0
   implicitWidth: base.implicitWidth
   implicitHeight: base.implicitHeight
   clip: true
   Text { id: base; anchors.fill: parent; text: root.text; textFormat: Text.PlainText; color: root.tint; opacity: 0.50; font.pixelSize: root.fontSize; elide: Text.ElideRight }
-  // Same 72px focus band and 2.2s cycle as T3's live-activity-focus CSS, but
-  // swept continuously with a soft falloff instead of 30 hard steps. Only
-  // the small cached glyph texture is shaded.
+  // Same 72px focus band and 2.2s cycle as T3's live-activity-focus CSS,
+  // swept with a soft falloff on the shared T3Ticker clock. Only the small
+  // cached glyph texture is shaded.
   Loader {
     active: root.animating
     width: Math.min(root.width,base.implicitWidth); height: root.height
@@ -34,5 +36,4 @@ Item {
       }
     }
   }
-  NumberAnimation on progress { from: 0; to: 1; duration: 2200; loops: Animation.Infinite; running: root.animating }
 }

@@ -184,6 +184,9 @@ Item {
       blending: true
       fragmentShader: Qt.resolvedUrl("../assets/shaders/threadaura.frag.qsb")
       NumberAnimation { id: burstAnimation; target: aura; property: "burst"; to: 1 }
+      // Comets and glints move along the outline every frame; keep the shared
+      // clock at the smooth pace while one shows (they read the sky's clock).
+      T3Tick { running: aura.visible && (aura.working > 0 || aura.attention > 0) && root.skyMoving; pace: "smooth" }
     }
     MouseArea {
       anchors.fill:parent;cursorShape:Qt.PointingHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton
@@ -220,11 +223,13 @@ Item {
             id:stateIcon;objectName:"threadStateIcon"
             name:root.thread.pending&&["request","plan","waiting"].indexOf(root.thread.reason)>=0?"message-circle-question":root.thread.working?"circle-dashed":root.stateLabel===T3I18n.tr("Done")?"circle-check":"circle-alert";visible:!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor
             Behavior on tint{enabled:root.motionReady;ColorAnimation{duration:320}}
-            // Working turns slowly and continuously; a new state pops in.
-            readonly property bool spinning:name==="circle-dashed"&&visible&&root.panelVisible&&!root.pooled
-            onSpinningChanged:if(!spinning)rotation=0
+            // Working turns slowly on the sky clock, like the auras: its own
+            // animation would repaint the whole panel at the display rate for
+            // as long as any thread works. A still sky keeps it still.
+            readonly property bool spinning:name==="circle-dashed"&&visible&&root.panelVisible&&!root.pooled&&root.skyMoving
+            rotation:spinning?(root.sky.clock*112.5)%360:0
+            T3Tick{running:stateIcon.spinning;pace:"smooth"}
             onNameChanged:if(root.motionReady)statePop.restart()
-            NumberAnimation{target:stateIcon;property:"rotation";from:0;to:360;duration:3200;loops:Animation.Infinite;running:stateIcon.spinning}
             SequentialAnimation{
               id:statePop
               ParallelAnimation{

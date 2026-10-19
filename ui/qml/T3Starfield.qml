@@ -5,10 +5,12 @@ import qs.Commons
 // `leader` so every layer of the panel shares the same drifting field.
 //
 // mode: "auto" | "full" | "light" | "off". Animating any item re-renders the
-// whole window, so cost is frame rate, not memory: light ticks at 8 fps while
-// idle (drift is ~5 px/s, visually identical) and only speeds up while busy.
-// Auto starts full and drops to light for the session when ticks fall behind;
-// the software renderer is always static.
+// whole window, and the compositor recomposes it for every frame, so cost is
+// frame rate, not memory. Idle skies tick at 8 fps (drift is ~5 px/s, visually
+// identical). While busy the sky ticks at the ambient pace (25 fps in light),
+// an explicit "full" at the smooth pace, and any meteor on screen at the
+// display rate (Preferences > Animations > Animation smoothness). Auto drops to light for the
+// session when ticks fall behind; the software renderer is always static.
 ShaderEffect {
   id: field
   property var leader: null
@@ -55,22 +57,55 @@ ShaderEffect {
   property color base: "transparent"
   blending: true
 
-  property double lastTick: 0
+  property real lastTime: -1
   property real slowTicks: 0
-  Timer {
+  // Shooting stars cross the panel in about a second, so the leader runs at
+  // the display rate while one is on screen (or about to be) and drops back
+  // to the ambient cadence for the slow drift. The schedule below mirrors
+  // meteor() in starfield.frag, which is deterministic in `clock`.
+  // meteorReach: the highest meteor chance among the skies following this
+  // one (the sidebar header shows more of them than the panel).
+  property real meteorReach: 0
+  property bool meteorNow: false
+  function fract(v) { return v - Math.floor(v) }
+  function hash12(x, y) {
+    var a = fract(x * 0.1031), b = fract(y * 0.1031), c = a
+    var d = a * (b + 33.33) + b * (c + 33.33) + c * (a + 33.33)
+    a += d; b += d; c += d
+    return fract((a + b) * c)
+  }
+  function meteorLive(c, level) {
+    for (var channel = 0; channel < 4; channel++) {
+      var period = 2.1 + channel * 1.37, phase = c / period + channel * 0.31
+      var slot = Math.floor(phase), t = (phase - slot) * period
+      // A small margin covers float32 rounding on the GPU near the threshold.
+      if (hash12(slot, channel * 17) > level + 0.02) continue
+      if (t <= 0.75 + 0.5 * hash12(slot + 2, channel * 17 + 2) + 0.05) return true
+    }
+    return false
+  }
+  // The leader advances on the shared T3Ticker, so stars, spinners and the
+  // activity shimmer change in the same frame instead of each adding its own.
+  T3Tick {
+    id: tick
     running: !field.leader && field.visible && !field.paused && field.animated
-    repeat: true
-    interval: field.effectiveMode === "full" ? 16 : field.busy ? 40 : 125
-    onRunningChanged: { field.lastTick = 0; field.slowTicks = 0 }
-    onTriggered: {
-      var now = Date.now(), dt = field.lastTick ? Math.min((now - field.lastTick) / 1000, 0.25) : interval / 1000
-      field.lastTick = now
+    pace: field.meteorNow ? "fast" : field.mode === "full" ? "smooth" : !field.busy ? "slow" : "ambient"
+    interval: field.effectiveMode === "light" && !field.meteorNow ? Math.max(40, T3Ticker.intervalFor(pace)) : T3Ticker.intervalFor(pace)
+    onRunningChanged: { field.lastTime = -1; field.slowTicks = 0 }
+    onTimeChanged: {
+      if (!running) return
+      var dt = field.lastTime < 0 ? interval / 1000 : time - field.lastTime
+      field.lastTime = time
+      if (dt <= 0) return
       var step = dt * field.speedScale
       field.clock += step
       field.drift += step * (field.idleSpeed + (field.busySpeed - field.idleSpeed) * field.energy)
-      // Sustained >30 ms frames in full mode: this machine can't keep up.
-      if (field.mode === "auto" && field.effectiveMode === "full") {
-        field.slowTicks = dt > 0.03 ? field.slowTicks + 1 : Math.max(0, field.slowTicks - 0.5)
+      // Look one slow tick ahead so a meteor never starts at the low rate.
+      var reach = field.meteorReach * field.energy
+      field.meteorNow = reach > 0.001 && field.meteorLive(field.clock + 0.13 * field.speedScale, reach)
+      // Ticks sustained at twice their interval: this machine can't keep up.
+      if (field.mode === "auto" && field.effectiveMode === "full" && field.busy && !field.meteorNow) {
+        field.slowTicks = dt > interval / 500 ? field.slowTicks + 1 : Math.max(0, field.slowTicks - 0.5)
         if (field.slowTicks > 90) field.degraded = true
       }
     }

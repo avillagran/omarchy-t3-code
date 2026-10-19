@@ -3,8 +3,8 @@ import QtQuick.Shapes
 import qs.Commons
 
 // Busy spinner: a round-capped arc that stretches and contracts while it
-// travels around a faint track. Every frame is interpolated (no stepped
-// rotation), and it eases in when it starts.
+// travels around a faint track, eased in when it starts. It moves on the
+// shared T3Ticker clock so it never adds frames of its own.
 Item {
   id: root
   property bool active: false
@@ -17,7 +17,8 @@ Item {
   readonly property real radius: Math.max(0, (size - stroke) / 2)
   // One cycle: the head runs ahead, then the tail catches up; each cycle
   // starts where the previous tail stopped, so the motion never jumps.
-  property real phase: 0
+  T3Tick { id: tick; running: root.running }
+  readonly property real phase: (tick.time / 1.25) % 1
   property real cycle: 0
   readonly property real head: 270 * ease(Math.min(1, phase * 1.6))
   readonly property real tail: 270 * ease(Math.max(0, phase * 1.6 - 0.6))
@@ -43,9 +44,8 @@ Item {
         startAngle: root.cycle + root.tail - 90; sweepAngle: Math.max(14, root.head - root.tail)
       }
     }
-    RotationAnimator on rotation { from: 0; to: 360; duration: 1600; loops: Animation.Infinite; running: root.running }
+    rotation: (tick.time * 225) % 360
   }
-  NumberAnimation on phase { from: 0; to: 1; duration: 1250; loops: Animation.Infinite; running: root.running }
   ParallelAnimation {
     running: root.running
     NumberAnimation { target: spinner; property: "opacity"; from: 0; to: 1; duration: 220; easing.type: Easing.OutCubic }
