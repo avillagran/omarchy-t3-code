@@ -62,6 +62,8 @@ official GUI owns the server, close it and use the sidebar's start button to run
 headless. The plugin does not stop a GUI-owned server. Inherited SSH connections reuse a running
 remote server or start its native headless service when stopped. Open the sidebar
 gear for preferences; server settings apply to the selected environment.
+When [OmaBridge](docs/CONNECTION_OMABRIDGE.md) is paired, SSH and pairing-link
+connections go through your paired devices first, without a VPN, and fall back to the saved route.
 
 Some T3 features are still being ported, and the PR view is currently read-only.
 See the [feature parity checklist](docs/FEATURE_PARITY.md).

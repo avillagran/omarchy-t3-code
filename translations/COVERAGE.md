@@ -3,26 +3,26 @@
 Format: [omarchy-i18n](https://github.com/avillagran/omarchy-i18n/tree/5df6970583f9987369d11f15bec1b6f573025fb1).
 English source keys are stable, with named placeholders and full/base/English fallback.
 
-- en: 1226/1226 keys
-- es: 1226/1226 keys
-- pt: 1226/1226 keys
-- fr: 1226/1226 keys
-- de: 1226/1226 keys
-- it: 1226/1226 keys
-- nl: 1226/1226 keys
-- pl: 1226/1226 keys
-- ru: 1226/1226 keys
-- uk: 1226/1226 keys
-- ja: 1226/1226 keys
-- ko: 1226/1226 keys
-- zh: 1226/1226 keys
-- ar: 1226/1226 keys
-- tr: 1226/1226 keys
-- sv: 1226/1226 keys
-- da: 1226/1226 keys
-- no: 1226/1226 keys
-- fi: 1226/1226 keys
-- cs: 1226/1226 keys
+- en: 1248/1248 keys
+- es: 1248/1248 keys
+- pt: 1248/1248 keys
+- fr: 1248/1248 keys
+- de: 1248/1248 keys
+- it: 1248/1248 keys
+- nl: 1248/1248 keys
+- pl: 1248/1248 keys
+- ru: 1248/1248 keys
+- uk: 1248/1248 keys
+- ja: 1248/1248 keys
+- ko: 1248/1248 keys
+- zh: 1248/1248 keys
+- ar: 1248/1248 keys
+- tr: 1248/1248 keys
+- sv: 1248/1248 keys
+- da: 1248/1248 keys
+- no: 1248/1248 keys
+- fi: 1248/1248 keys
+- cs: 1248/1248 keys
 
 All non-English values are machine-authored drafts, not human-approved translations.
 Intentional identical values include placeholder-only templates, the technical 5H window,
