@@ -11,6 +11,12 @@ fn terminal_qr_and_cli_errors_are_mapped_without_echoing_output(){
  assert_eq!(manage::error_code("omabridge: server not running: No such file"),"omabridge_not_published");
  assert_eq!(manage::error_code("omabridge: grant only currently published services"),"omabridge_service_not_published");
  assert_eq!(manage::error_code("token=secret something else"),"omabridge_command_failed");
+ // The user unit quotes paths and refuses characters systemd would reinterpret.
+ let unit=manage::unit_text(Path::new("/opt/my plugin/bin/omabridge"),Path::new("/home/user/.local/share/omabridge"),true).unwrap();
+ assert!(unit.starts_with("# Managed by Omarchy T3 Code"));
+ assert!(unit.contains("ExecStart=\"/opt/my plugin/bin/omabridge\" --state-dir \"/home/user/.local/share/omabridge\" serve --service t3=127.0.0.1:"));
+ assert!(unit.contains(" --service ssh=127.0.0.1:22\n"));assert!(!manage::unit_text(Path::new("/a"),Path::new("/b"),false).unwrap().contains("ssh="));
+ for bad in ["/a%h/omabridge","/a$HOME/omabridge","/a\"b","relative/omabridge"]{assert!(manage::unit_text(Path::new(bad),Path::new("/b"),false).is_err(),"{bad}");}
 }
 /// End to end with the bundled CLI: two identities on loopback, one publishing.
 #[test]
@@ -27,9 +33,23 @@ fn identities_invitations_pairing_approval_and_revocation(){
  assert_eq!(fs::metadata(&host).unwrap().permissions().mode()&0o777,0o700);
  // Inviting needs this device to be published.
  assert_eq!(act("invite",json!({"services":["t3"],"directory":downloads})).unwrap_err(),"omabridge_not_published");
- let mut serve=Command::new(&bin).arg("--state-dir").arg(&host).args(["--bind","127.0.0.1:0","serve","--service","t3=127.0.0.1:9"]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap();
+ // A stand-in systemctl that really runs the unit's ExecStart, so the unit text is exercised.
+ let fakebin=root.join("fakebin");fs::create_dir_all(&fakebin).unwrap();let pid=root.join("serve.pid");
+ fs::write(fakebin.join("systemctl"),format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{calls}'\nunit=\"$XDG_CONFIG_HOME/systemd/user/{unit}\"\ncase \"$*\" in\n *is-active*) [ -f '{pid}' ] && kill -0 \"$(cat '{pid}')\" ;;\n *restart*) line=$(sed -n 's/^ExecStart=//p' \"$unit\"); eval \"set -- $line\"; \"$@\" </dev/null >/dev/null 2>&1 & echo $! > '{pid}' ;;\n *disable*) [ -f '{pid}' ] && kill \"$(cat '{pid}')\"; rm -f '{pid}' ;;\nesac\nexit 0\n",calls=root.join("systemctl.calls").display(),unit=manage::UNIT,pid=pid.display())).unwrap();
+ fs::set_permissions(fakebin.join("systemctl"),fs::Permissions::from_mode(0o700)).unwrap();
+ std::env::set_var("PATH",format!("{}:{}",fakebin.display(),std::env::var("PATH").unwrap()));
+ fs::create_dir_all(root.join("t3/userdata")).unwrap();fs::write(root.join("t3/userdata/server-runtime.json"),r#"{"port":9}"#).unwrap();
+ assert_eq!(bridge::execute(&json!({"action":"read"})).unwrap()["published"]["enabled"],false);
+ assert_eq!(bridge::execute(&json!({"action":"publish"})).unwrap_err(),"confirmation_required");
+ let published=act("publish",json!({"ssh":false})).unwrap()["published"].clone();
+ assert_eq!(published["enabled"],true);assert_eq!(published["services"],json!(["t3"]));assert_eq!(published["stale"],false);
+ let unit=fs::read_to_string(config.join("systemd/user").join(manage::UNIT)).unwrap();assert!(unit.contains(&format!("--state-dir \"{}\" serve --service t3=127.0.0.1:9",host.display())));
  for _ in 0..50{if host.join("endpoint.json").exists(){break}std::thread::sleep(std::time::Duration::from_millis(100));}
  std::thread::sleep(std::time::Duration::from_millis(300));
+ assert_eq!(bridge::execute(&json!({"action":"read"})).unwrap()["published"]["active"],true);
+ // T3 moving to another port marks the published unit as stale.
+ fs::write(root.join("t3/userdata/server-runtime.json"),r#"{"port":10}"#).unwrap();assert_eq!(bridge::execute(&json!({"action":"read"})).unwrap()["published"]["stale"],true);
+ fs::write(root.join("t3/userdata/server-runtime.json"),r#"{"port":9}"#).unwrap();
  let result=||{
   let invited=act("invite",json!({"services":["t3"],"qr":true,"directory":downloads})).unwrap();
   let created=&invited["created"];let path=created["path"].as_str().unwrap().to_string();
@@ -61,8 +81,12 @@ fn identities_invitations_pairing_approval_and_revocation(){
   assert_eq!(act("invite-discard",json!({"path":root.join("host/state.json")})).unwrap_err(),"invalid_command");
   act("invite-discard",json!({"path":path})).unwrap();assert!(!Path::new(&path).exists());
   let revoked=act("revoke",json!({"peer":guest_id})).unwrap();assert!(revoked["peers"].as_array().unwrap().is_empty());
+  let off=act("unpublish",json!({})).unwrap();assert_eq!(off["published"]["enabled"],false);assert_eq!(off["published"]["active"],false);
+  assert!(!config.join("systemd/user").join(manage::UNIT).exists());
+  let calls=fs::read_to_string(root.join("systemctl.calls")).unwrap();for call in ["--user daemon-reload","--user enable omarchy-t3-omabridge.service","--user restart omarchy-t3-omabridge.service","--user disable --now omarchy-t3-omabridge.service"]{assert!(calls.contains(call),"{call}");}
  };
  let outcome=std::panic::catch_unwind(result);
- let _=serve.kill();let _=serve.wait();fs::remove_dir_all(&root).unwrap();
+ if let Ok(p)=fs::read_to_string(&pid){let _=Command::new("kill").arg(p.trim()).stdout(Stdio::null()).stderr(Stdio::null()).status();}
+ fs::remove_dir_all(&root).unwrap();
  if let Err(e)=outcome{std::panic::resume_unwind(e)}
 }

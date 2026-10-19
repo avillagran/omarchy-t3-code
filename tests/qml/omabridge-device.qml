@@ -8,7 +8,7 @@ ShellRoot {
  readonly property string guest:"b21d3e5f5c3ee737761cbbc2bc2a427715b430ac3e7ec391e0a20a7c42d9e888"
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_DEVICE_QML_FAIL "+msg);Qt.exit(1)}}
  QtObject{id:b
-  property var connectionOmaBridge:({busy:false,error:"",created:null,paired:null,data:{revision:"r",available:true,identity:false,device:null,peers:[],pending:[],awaiting:[],routes:{}}})
+  property var connectionOmaBridge:({busy:false,error:"",created:null,paired:null,data:{revision:"r",available:true,identity:false,device:null,peers:[],pending:[],awaiting:[],routes:{},published:{enabled:false,active:false,services:[],sshAvailable:false}}})
   property var sent:null;property int cleared:0;property string copied:""
   signal connectionOmaBridgeFinished(string action,string error)
   function requestConnectionOmaBridge(action,values){sent=Object.assign({action:action},values || {})}
@@ -27,7 +27,7 @@ ShellRoot {
    create.clicked();check(b.sent===null,"identity creation waits for confirmation");phase++
   }else if(phase===1){
    confirm();check(b.sent.action==="identity-create"&&b.sent.confirmed===true,"confirmed identity payload");
-   b.update({identity:true,device:{id:root.me,name:"alpha"},pending:[{id:root.guest,name:"charlie",services:["t3"],expires:1792390449}],awaiting:[{id:"0b0a3e64-3a6b-4a4a-9c38-1f4f1c1e1a11",name:"node",expires:1792390449}],peers:[{id:root.guest,name:"charlie",services:["t3"],remoteServices:["ssh"]}]});
+   b.update({identity:true,device:{id:root.me,name:"alpha"},pending:[{id:root.guest,name:"charlie",services:["t3"],expires:1792390449}],awaiting:[{id:"0b0a3e64-3a6b-4a4a-9c38-1f4f1c1e1a11",name:"node",expires:1792390449}],peers:[{id:root.guest,name:"charlie",services:["t3"],remoteServices:["ssh"]}],published:{enabled:true,active:true,services:["t3","ssh"],sshAvailable:true}});
    b.connectionOmaBridgeFinished("identity-create","");phase++
   }else if(phase===2){
    check(keys.findChild(view,"omabridgeDeviceName").text==="alpha"&&!keys.findChild(view,"omabridgeCreateIdentity").visible,"identity shown");
@@ -54,7 +54,28 @@ ShellRoot {
   }else if(phase===9){
    check(b.cleared===2&&b.connectionOmaBridge.created===null,"closing forgets the invitation secret");
    check(view.errorText("omabridge_not_published").length>0&&view.errorText("omabridge_not_published").indexOf("omabridge_")<0,"readable publish error");
-   console.log("OMABRIDGE_DEVICE_QML_PASS: identity creation, confirmed approve/revoke/pair, check again, invitation services/QR, shown-once secret cleared on close");Qt.quit()
+   var status=keys.findChild(view,"omabridgePublishStatus").text;check(status.indexOf("T3")>=0&&status.indexOf("SSH")>=0,"published services shown: "+status);
+   // Turning publishing off asks first; cancelling restores the switch.
+   var sw=keys.findChild(view,"omabridgePublish");sw.toggle();sw.toggled();check(!sw.checked&&b.sent.action==="invite-discard","unpublish waits for confirmation");phase++
+  }else if(phase===10){
+   keys.findChild(view,"omabridgeDeviceCancel").clicked();phase++
+  }else if(phase===11){
+   check(keys.findChild(view,"omabridgePublish").checked,"cancel restores the publish switch");
+   var sw=keys.findChild(view,"omabridgePublish");sw.toggle();sw.toggled();phase++
+  }else if(phase===12){
+   confirm();check(b.sent.action==="unpublish"&&b.sent.confirmed===true,"confirmed unpublish payload");
+   b.update({published:{enabled:false,active:false,services:[],sshAvailable:true}});b.connectionOmaBridgeFinished("unpublish","");phase++
+  }else if(phase===13){
+   check(!keys.findChild(view,"omabridgeInvite").enabled,"inviting needs a published device");
+   var sw=keys.findChild(view,"omabridgePublish");check(!sw.checked,"switch follows the published state");sw.toggle();sw.toggled();check(b.sent.action==="unpublish","publishing waits for its dialog");phase++
+  }else if(phase===14){
+   keys.findChild(view,"omabridgePublishSsh").toggle();keys.findChild(view,"omabridgePublishConfirm").clicked();
+   check(b.sent.action==="publish"&&b.sent.ssh===true&&b.sent.confirmed===true,"confirmed publish payload with SSH");
+   b.update({published:{enabled:true,active:true,services:["t3"],stale:true,sshAvailable:true}});b.connectionOmaBridgeFinished("publish","");phase++
+  }else if(phase===15){
+   check(!keys.findChild(view,"omabridgePublishDialog").opened&&keys.findChild(view,"omabridgePublish").checked,"publish dialog closes on success");
+   check(keys.findChild(view,"omabridgeRepublish").visible,"a stale unit offers to publish again");
+   console.log("OMABRIDGE_DEVICE_QML_PASS: identity creation, confirmed approve/revoke/pair, check again, invitation services/QR, shown-once secret cleared on close, confirmed publish/unpublish with SSH, stale unit");Qt.quit()
   }
  }}
 }

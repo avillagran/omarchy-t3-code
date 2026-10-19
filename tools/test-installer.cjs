@@ -25,8 +25,8 @@ if(name==='curl'){
 if(name==='build-client'){const dir=path.dirname(process.argv[1]);fs.copyFileSync(path.join(root,'bin','omarchy-t3-client'),path.join(dir,'omarchy-t3-client'));for(const file of ['libt3-document.so','libt3-qml-preview.so','libt3-browser.so','t3-browser-secret'])fs.writeFileSync(path.join(dir,file),'fixture');}
 if(name==='omarchy-t3-client'){if(args[0]==='backend-status')console.log(JSON.stringify({owner:process.env.INSTALL_TEST_OWNER||'stopped'}));else console.log(JSON.stringify({status:'starting'}));}
 `;
-for(const name of ['pacman','sudo','git','cargo','rustup','omarchy','omarchy-shell','hyprctl','build-client','omarchy-t3-client','curl','ldd','uname'])fs.writeFileSync(path.join(bin,name),'#!'+process.execPath+'\n'+body,{mode:0o700});
-const base={...process.env,HOME:home,PATH:bin+':'+process.env.PATH,T3CODE_HOME:path.join(home,'.t3'),INSTALL_TEST_ROOT:root,INSTALL_TEST_REPO:repo};
+for(const name of ['systemctl','pacman','sudo','git','cargo','rustup','omarchy','omarchy-shell','hyprctl','build-client','omarchy-t3-client','curl','ldd','uname'])fs.writeFileSync(path.join(bin,name),'#!'+process.execPath+'\n'+body,{mode:0o700});
+const base={...process.env,HOME:home,XDG_CONFIG_HOME:path.join(home,'.config'),PATH:bin+':'+process.env.PATH,T3CODE_HOME:path.join(home,'.t3'),INSTALL_TEST_ROOT:root,INSTALL_TEST_REPO:repo};
 function run(extra={}){fs.writeFileSync(log,'');const result=spawnSync('bash',[path.join(repo,'install.sh')],{env:{...base,...extra},encoding:'utf8'});return {result,calls:fs.readFileSync(log,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)}}
 function called(calls,name,...parts){return calls.some(c=>c.name===name&&parts.every(p=>c.args.includes(p)))}
 try{
@@ -53,8 +53,11 @@ try{
  ({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(!called(calls,'curl',`https://github.com/avillagran/omabridge/releases/download/v0.1.0/${bridgeAsset}`));
  fs.rmSync(installed());pin('0'.repeat(64));({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(result.stderr.includes('does not match the pinned hash'));assert(!fs.existsSync(installed()));
  pin(bridgeHash,'1'.repeat(64));({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(!fs.existsSync(installed()));pin();
+ // A published device is restarted on the updated binary; otherwise systemd is not touched.
+ assert(!called(calls,'systemctl'));const unit=path.join(home,'.config','systemd','user','omarchy-t3-omabridge.service');fs.mkdirSync(path.dirname(unit),{recursive:true});fs.writeFileSync(unit,'# Managed by Omarchy T3 Code\n');
+ ({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(called(calls,'systemctl','--user','try-restart','omarchy-t3-omabridge.service'));fs.rmSync(unit);
  pack('wrong-commit');({result,calls}=run());assert.notEqual(result.status,0);assert(result.stderr.includes('revisions differ'));assert(!called(calls,'omarchy','restart'));
  pack();fs.appendFileSync(path.join(root,'assets',asset),'corruption');({result,calls}=run());assert.notEqual(result.status,0);assert(result.stderr.includes('checksum failed'));
  pack();({result,calls}=run({INSTALL_TEST_LIBS:'1'}));assert.notEqual(result.status,0);assert(result.stderr.includes('Runtime libraries'));assert(!called(calls,'omarchy','restart'));
- console.log('INSTALLER_PASS: dependencies, verified prebuilt install/enable and explicit source build, checksum/revision/library rejection, headless start, bundled OmaBridge pinned by hash and optional, preserved GUI server, repeat-safe binding/backup, rewritten-history migration and dirty-checkout refusal; no real system changes');
+ console.log('INSTALLER_PASS: dependencies, verified prebuilt install/enable and explicit source build, checksum/revision/library rejection, headless start, bundled OmaBridge pinned by hash, optional and restarted when published, preserved GUI server, repeat-safe binding/backup, rewritten-history migration and dirty-checkout refusal; no real system changes');
 }finally{fs.rmSync(root,{recursive:true,force:true})}

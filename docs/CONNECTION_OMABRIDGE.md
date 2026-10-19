@@ -55,6 +55,16 @@ The same section manages OmaBridge itself, so `omabridge-gui` is not needed. Eve
 
 Only peer IDs, names, services and expiry times reach the UI. Invitation tokens, invitation IDs, peer addresses and keys stay with OmaBridge. CLI error output is mapped to fixed error codes and is never shown or logged.
 
+## Publishing this device
+
+Publishing is optional and off by default. *Publish this device* (with confirmation, and *Also share SSH* only when an SSH server answers on `127.0.0.1:22`) writes a `systemd --user` unit, `omarchy-t3-omabridge.service`, and enables and starts it:
+
+```ini
+ExecStart="<plugin>/bin/omabridge" --state-dir "<state dir>" serve --service t3=127.0.0.1:<T3 port> [--service ssh=127.0.0.1:22]
+```
+
+The T3 port comes from T3's `server-runtime.json`. If T3 later moves to another port, the section marks the unit as stale and offers *Publish again*. Only peers you approved can reach the published services, and T3 still authenticates every session. ot3 creates an identity first if none exists. It only rewrites or removes a unit that starts with its own `# Managed by Omarchy T3 Code` header, and refuses paths that systemd would reinterpret. Turning the switch off (also confirmed) disables and removes the unit, and keeps pairings. When the installer updates the bundled binary, it restarts a published unit with `systemctl --user try-restart`. Invitations need a running published device.
+
 ## Verification
 
 `cargo test --release --locked --test omabridge_route` covers the following, using a fake `omabridge` binary and a loopback T3:
@@ -69,7 +79,7 @@ Only peer IDs, names, services and expiry times reach the UI. Invitation tokens,
 - the bearer request through the bridge;
 - `prefer` fallback, the `only` failure and clearing a route.
 
-`cargo test --release --locked --test omabridge_manage` drives the real bundled CLI with two throwaway identities on loopback (it is skipped when `bin/omabridge` is missing). It covers identity creation, the refusal to invite while unpublished, a 0600 invitation with a QR whose token never reaches the UI, pairing through a private copy, approval with confirmation, *Check again*, discarding the invitation, and revocation.
+`cargo test --release --locked --test omabridge_manage` drives the real bundled CLI with two throwaway identities on loopback (it is skipped when `bin/omabridge` is missing). It covers identity creation, the refusal to invite while unpublished, a 0600 invitation with a QR whose token never reaches the UI, pairing through a private copy, approval with confirmation, *Check again*, discarding the invitation, and revocation. Publishing goes through a stand-in `systemctl` that runs the unit's real `ExecStart`, so the generated unit is what serves the invitation. The test also covers the stale-port flag and unpublishing.
 
 Other checks:
 
