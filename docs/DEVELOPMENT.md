@@ -40,8 +40,10 @@ For a release, commit and push the source, then run
 `CARGO_BUILD_JOBS=2 tools/package-binaries` natively on each architecture.
 mbp-intel provides the x86_64 builder; ARM64 builds run on the development machine.
 Packages include the Rust client, document and browser Qt libraries, and the original browser secret helper. Manifest/Cargo versions, `--version`, archive filenames and `BUILD-INFO` carry the same release version. Create an annotated `vVERSION` tag for the source commit.
-Gather both versioned archives and their checksum files into `dist/`, then run
-`tools/publish-release vVERSION`. The publisher refuses stale packages and
+Write the release notes in `docs/releases/vVERSION.md` (what changed for users,
+upgrade notes and the archive checksums). Gather both versioned archives and
+their checksum files into `dist/`, then run `tools/publish-release vVERSION`;
+it refuses to publish without the notes. The publisher refuses stale packages and
 publishes a draft only after both matching architecture assets are uploaded.
 QML-only changes still need a release for installer updates, but Rust binaries
 need rebuilding only when their sources/dependencies change (the packaging tool

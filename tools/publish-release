@@ -17,5 +17,8 @@ for arch in aarch64 x86_64; do
   assets+=("$file" "$file.sha256")
 done
 # A draft keeps incomplete releases out of the installer's latest-release lookup.
-gh release create "$tag" --target "$commit" --draft --title "Omarchy T3 Code $tag" --notes 'Native aarch64 and x86_64 packages for Omarchy on Arch Linux. Includes the Rust client and Qt HTML preview frontend. Install or update using the README one-liner.' "${assets[@]}"
+# Release notes live in docs/releases/<tag>.md; every release must have them.
+notes="docs/releases/$tag.md"
+[[ -s $notes ]] || { echo "Write $notes first." >&2; exit 1; }
+gh release create "$tag" --target "$commit" --draft --title "Omarchy T3 Code $tag" --notes-file "$notes" "${assets[@]}"
 gh release edit "$tag" --draft=false --latest
