@@ -38,6 +38,7 @@ pub mod mcp_apps;
 pub mod provider_setup;
 pub mod agent_sessions;
 pub mod process_diagnostics;
+pub mod local_servers;
 pub mod git_operations;
 pub mod diff_review;
 pub mod working_review;
