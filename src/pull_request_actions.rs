@@ -50,6 +50,29 @@ pub fn payload(input: &Value) -> Result<(&'static str, Value)> {
             }
             ("pullRequests.runAction", p)
         }
+        "reviewer-candidates" => ("pullRequests.reviewerCandidates", p),
+        "label-candidates" => ("pullRequests.labelCandidates", p),
+        "reviewers" => {
+            let rows = input["reviewers"].as_array().filter(|r| !r.is_empty() && r.len() <= 25).ok_or("invalid_command")?;
+            let mut list = vec![];
+            for r in rows {
+                let id = r["id"].as_str().filter(|s| !s.trim().is_empty() && s.len() <= 256).ok_or("invalid_command")?;
+                let kind = r["kind"].as_str().filter(|k| matches!(*k, "user" | "team")).ok_or("invalid_command")?;
+                list.push(json!({"id":id,"kind":kind}));
+            }
+            p["reviewers"] = json!(list);
+            p["requested"] = json!(input["requested"] == true);
+            ("pullRequests.requestReviewers", p)
+        }
+        "labels" => {
+            let labels: Vec<&str> = input["labels"].as_array().into_iter().flatten().filter_map(Value::as_str).filter(|l| !l.trim().is_empty() && l.len() <= 256).collect();
+            if labels.is_empty() || labels.len() > 25 {
+                return Err("invalid_command".into());
+            }
+            p["labels"] = json!(labels);
+            p["applied"] = json!(input["applied"] == true);
+            ("pullRequests.setLabels", p)
+        }
         _ => return Err("invalid_command".into()),
     })
 }
