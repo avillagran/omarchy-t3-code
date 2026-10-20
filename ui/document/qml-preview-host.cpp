@@ -17,6 +17,9 @@
 #include <QQuickView>
 #include <fcntl.h>
 #include <unistd.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 // Directories (relative to Qt's QML import path) a preview may load from.
 // "Files only" entries expose a module's own files but not its sub-modules
@@ -83,6 +86,15 @@ static QString mirrorImports(const QString &frames,const QString &imports){
  return root.path();
 }
 
+// A component stuck in JavaScript (an endless loop) never returns to the event
+// loop: report it and exit instead of holding a core until the preview closes.
+static std::atomic<qint64> heartbeat{0};
+static qint64 nowMs(){return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();}
+static void startWatchdog(int limitMs){
+ heartbeat=nowMs();
+ std::thread([limitMs](){for(;;){std::this_thread::sleep_for(std::chrono::milliseconds(250));if(nowMs()-heartbeat.load()>limitMs){static const char out[]="{\"error\":\"qml_preview_unresponsive\"}\n";(void)!::write(STDOUT_FILENO,out,sizeof out-1);_exit(3);}}}).detach();
+}
+
 static QString errorText(const QQmlError &e){
  QString where=e.line()>0?QString("%1:%2  ").arg(e.line()).arg(qMax(1,e.column())):QString();
  return (where+e.description()).left(600);
@@ -97,6 +109,14 @@ extern "C" int t3_qml_preview_main(const char *payload, const char *wrapper) {
  QString frames=data["frameDirectory"].toString();
  if(frames.isEmpty()||!QFileInfo(frames).isDir())return 1;
  DocumentHost host(frames);
+ // Each capture renders and PNG-encodes the window (~13 ms here): 20 fps keeps
+ // a looping animation near a quarter of a core instead of two thirds.
+ host.setMinimumInterval(50);
+ // BMP encodes in ~1 ms and decodes in the shell almost for free; PNG took
+ // ~12 ms per frame here and most of the shell's cost for animated previews.
+ host.setFrameFormat("BMP");
+ startWatchdog(4000);
+ QTimer beat;QObject::connect(&beat,&QTimer::timeout,[](){heartbeat=nowMs();});beat.start(200);
  // Links opened from the preview go nowhere.
  for(auto scheme:{"http","https","file","mailto","ftp","sftp","ssh","tel","sms","data","about","javascript","t3-thread","ot3","xdg","smb","nfs","git"})QDesktopServices::setUrlHandler(scheme,&host,"blockedUrl");
 

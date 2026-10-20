@@ -15,6 +15,8 @@ if [ "$task_template" = shortcut-routing ] && [ -z "${HYPRLAND_INSTANCE_SIGNATUR
   HYPRLAND_INSTANCE_SIGNATURE=$(basename "$(dirname "${task_hypr_sockets[0]}")")
   export HYPRLAND_INSTANCE_SIGNATURE
 fi
+# QML previews wait out the renderer's 4 s endless-loop watchdog.
+task_timeout=12;[ "$task_template" = qml-preview ] && task_timeout=24
 task_root=$(mktemp -d /tmp/t3-qml-test-XXXXXX)
 trap 'rm -rf -- "$task_root"' EXIT
 for task_dir in Commons Ui plugins services; do ln -s "/usr/share/omarchy/shell/$task_dir" "$task_root/$task_dir"; done
@@ -36,6 +38,6 @@ if [ "$1" = --list-types ]; then printf '%s\n' text/plain; else printf '%s' 'pas
 CLIP
   chmod 700 "$task_root/bin/wl-paste"
 fi
-env -u KIMI_CODING_API_KEY -u OPENCODE_API_KEY -u OPENCODE_GO_API_KEY -u OMARCHY_T3_FIXTURE_ENVIRONMENTS PATH="$task_root/bin:$PATH" OMARCHY_T3_LANGUAGE=es HOME="$task_root/home" XDG_CONFIG_HOME="$task_root/config" XDG_STATE_HOME="$task_root/state" XDG_DATA_HOME="$task_root/data" T3CODE_HOME="$task_root/native" timeout 12 quickshell -p "$task_root/shell.qml" > "$task_root/log" 2>&1 || { cat "$task_root/log"; exit 1; }
+env -u KIMI_CODING_API_KEY -u OPENCODE_API_KEY -u OPENCODE_GO_API_KEY -u OMARCHY_T3_FIXTURE_ENVIRONMENTS PATH="$task_root/bin:$PATH" OMARCHY_T3_LANGUAGE=es HOME="$task_root/home" XDG_CONFIG_HOME="$task_root/config" XDG_STATE_HOME="$task_root/state" XDG_DATA_HOME="$task_root/data" T3CODE_HOME="$task_root/native" timeout "$task_timeout" quickshell -p "$task_root/shell.qml" > "$task_root/log" 2>&1 || { cat "$task_root/log"; exit 1; }
 if rg 'QML_FAIL|ReferenceError|TypeError|Binding loop' "$task_root/log"; then cat "$task_root/log"; exit 1; fi
 rg 'QML_PASS' "$task_root/log" || { cat "$task_root/log"; exit 1; }

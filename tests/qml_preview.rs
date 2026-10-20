@@ -113,3 +113,39 @@ fn renderer_cannot_read_files_outside_the_sandbox(){
  assert!(open>=300,"without the sandbox the probe image loads ({open})");
  assert!(sandboxed<200,"the sandboxed renderer must not read the file ({sandboxed})");
 }
+#[test]
+fn whitespace_line_endings_and_statement_forms_are_parsed(){
+ assert_eq!(qml_preview::imports("import\tQtQuick\r\nimport  QtQuick.Layouts\t1.15\r\nItem {}"),["QtQuick","QtQuick.Layouts"]);
+ assert_eq!(qml_preview::imports("import QtQuick; import QtQml; Item {}"),["QtQuick","QtQml"]);
+ assert_eq!(qml_preview::validate("import QtQuick\nimport Quickshell").unwrap_err(),"qml_import_blocked:Quickshell","an import at the very end counts");
+ assert_eq!(qml_preview::validate("import QtQuick\r\nimport Quickshell.Io\r\nItem {}").unwrap_err(),"qml_import_blocked:Quickshell.Io");
+ assert_eq!(qml_preview::validate("import QtQuick as Q\nimport QtCore as C\nQ.Item {}").unwrap_err(),"qml_import_blocked:QtCore");
+}
+#[test]
+fn private_submodules_of_allowed_modules_are_refused(){
+ for module in ["QtQuick.Controls.impl","QtQuick.Controls.Basic","QtQuick.Templates","QtQuick.Window","QtQml.Models","QtQml.WorkerScript","QtQuick.Particles","QtQuick.VectorImage"]{
+  assert_eq!(qml_preview::validate(&format!("import QtQuick\nimport {module}\nItem {{}}")).unwrap_err(),format!("qml_import_blocked:{module}"));
+ }
+}
+#[test]
+fn strings_hide_neither_comments_nor_imports(){
+ // A "//" inside a string is text, so the import after it on the next line still counts.
+ assert_eq!(qml_preview::validate("import QtQuick\nText { text: \"http://x\" }\nimport QtCore\n").unwrap_err(),"qml_import_blocked:QtCore");
+ // Comment markers inside strings do not open comments that would hide code.
+ assert_eq!(qml_preview::validate("import QtQuick\nItem { property string a: \"/*\"\n Component.onCompleted: Qt.createQmlObject('import Quickshell; Item {}', this)\n property string b: \"*/\" }").unwrap_err(),"qml_import_blocked:Quickshell");
+ // Escaped quotes do not end a string early.
+ assert!(qml_preview::validate("import QtQuick\nText { text: \"say \\\"import data\\\" now\" }").is_ok());
+}
+#[test]
+fn refused_module_names_are_bounded(){
+ let long=format!("Q{}",("a".repeat(50)+".").repeat(10));
+ let err=qml_preview::validate(&format!("import {long}\nItem {{}}")).unwrap_err();
+ assert!(err.starts_with("qml_import_blocked:")&&err.len()<=19+120,"{}",err.len());
+}
+#[test]
+fn validation_is_fast_on_the_largest_accepted_source(){
+ let body="Rectangle { width: 10; height: 10; color: \"red\" } // import nothing here\n".repeat(1000);
+ let source=format!("import QtQuick\nItem {{\n{}}}",&body[..60*1024]);
+ let at=std::time::Instant::now();for _ in 0..20{assert!(qml_preview::validate(&source).is_ok())}
+ assert!(at.elapsed()<std::time::Duration::from_millis(500),"20 validations of 60 KB took {:?}",at.elapsed());
+}

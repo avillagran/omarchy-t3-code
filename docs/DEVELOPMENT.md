@@ -223,6 +223,20 @@ previews do not need the browser renderer. Reports inherit the Omarchy palette
 when opened, run inside an opaque sandbox, and cannot access app credentials or
 local files through the document.
 
+QML previews (`qml` code blocks) use the same frame transport with a smaller
+Qt Quick-only renderer (`bin/libt3-qml-preview.so`, no WebEngine). It runs with
+an empty environment, `nice` 10, a 512 MiB data limit (`RLIMIT_DATA`) and a
+Landlock domain, imports only QtQuick, QtQuick.Controls, QtQuick.Layouts,
+QtQuick.Shapes, QtQuick.Effects and QtQml, and exits with
+`qml_preview_unresponsive` when a component blocks its event loop for 4 s.
+Animated components are captured at most 20 times a second as uncompressed BMP
+in `$XDG_RUNTIME_DIR` (PNG encoding cost ~13 ms per frame and dominated the
+renderer's CPU). Measured on an ARM laptop at 730×330: first frame 50–150 ms,
+25–70 MB PSS (WebEngine pages: ~150–240 MB over five processes), no CPU when
+static; a looping animation costs ~2% in the renderer and ~9% in the shell.
+`tests/qml_preview_renderer.rs` keeps these limits; `tests/qml_preview.rs`
+covers the import checks and the sandbox.
+
 Every frame the panel presents is recomposed by the compositor, so continuous
 motion shares one clock (`T3Ticker`) and each animation asks for the pace it
 needs: an idle sky drifts at 8 fps, the busy sky at 30, spinners, the working

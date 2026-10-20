@@ -1221,7 +1221,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "This preview can't import {module}. Allowed modules: {allowed}.",
     "This QML block is empty.": "This QML block is empty.",
     "This QML block is too large to preview (64 KB maximum).": "This QML block is too large to preview (64 KB maximum).",
-    "This QML block can't be previewed.": "This QML block can't be previewed."
+    "This QML block can't be previewed.": "This QML block can't be previewed.",
+    "This preview stopped responding (an endless loop?) and was closed.": "This preview stopped responding (an endless loop?) and was closed.",
+    "This preview closed unexpectedly (it may have run out of memory).": "This preview closed unexpectedly (it may have run out of memory)."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2445,7 +2447,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Esta vista previa no puede importar {module}. Módulos permitidos: {allowed}.",
     "This QML block is empty.": "Este bloque QML está vacío.",
     "This QML block is too large to preview (64 KB maximum).": "Este bloque QML es demasiado grande para la vista previa (máximo 64 KB).",
-    "This QML block can't be previewed.": "Este bloque QML no se puede previsualizar."
+    "This QML block can't be previewed.": "Este bloque QML no se puede previsualizar.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Esta vista previa dejó de responder (¿un bucle infinito?) y se cerró.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Esta vista previa se cerró inesperadamente (puede que se haya quedado sin memoria)."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3669,7 +3673,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Esta pré-visualização não pode importar {module}. Módulos permitidos: {allowed}.",
     "This QML block is empty.": "Este bloco QML está vazio.",
     "This QML block is too large to preview (64 KB maximum).": "Este bloco QML é grande demais para pré-visualizar (máximo de 64 KB).",
-    "This QML block can't be previewed.": "Este bloco QML não pode ser pré-visualizado."
+    "This QML block can't be previewed.": "Este bloco QML não pode ser pré-visualizado.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Esta pré-visualização parou de responder (um loop infinito?) e foi fechada.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Esta pré-visualização fechou inesperadamente (pode ter ficado sem memória)."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4893,7 +4899,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Cet aperçu ne peut pas importer {module}. Modules autorisés : {allowed}.",
     "This QML block is empty.": "Ce bloc QML est vide.",
     "This QML block is too large to preview (64 KB maximum).": "Ce bloc QML est trop grand pour l’aperçu (64 Ko maximum).",
-    "This QML block can't be previewed.": "Ce bloc QML ne peut pas être prévisualisé."
+    "This QML block can't be previewed.": "Ce bloc QML ne peut pas être prévisualisé.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Cet aperçu ne répondait plus (une boucle infinie ?) et a été fermé.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Cet aperçu s’est fermé de façon inattendue (il a peut-être manqué de mémoire)."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6117,7 +6125,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Diese Vorschau kann {module} nicht importieren. Erlaubte Module: {allowed}.",
     "This QML block is empty.": "Dieser QML-Block ist leer.",
     "This QML block is too large to preview (64 KB maximum).": "Dieser QML-Block ist zu groß für die Vorschau (maximal 64 KB).",
-    "This QML block can't be previewed.": "Dieser QML-Block kann nicht angezeigt werden."
+    "This QML block can't be previewed.": "Dieser QML-Block kann nicht angezeigt werden.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Diese Vorschau reagierte nicht mehr (eine Endlosschleife?) und wurde geschlossen.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Diese Vorschau wurde unerwartet geschlossen (möglicherweise war der Speicher erschöpft)."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7341,7 +7351,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Questa anteprima non può importare {module}. Moduli consentiti: {allowed}.",
     "This QML block is empty.": "Questo blocco QML è vuoto.",
     "This QML block is too large to preview (64 KB maximum).": "Questo blocco QML è troppo grande per l’anteprima (massimo 64 KB).",
-    "This QML block can't be previewed.": "Questo blocco QML non può essere visualizzato in anteprima."
+    "This QML block can't be previewed.": "Questo blocco QML non può essere visualizzato in anteprima.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Questa anteprima ha smesso di rispondere (un ciclo infinito?) ed è stata chiusa.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Questa anteprima si è chiusa inaspettatamente (potrebbe aver esaurito la memoria)."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8565,7 +8577,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Dit voorbeeld kan {module} niet importeren. Toegestane modules: {allowed}.",
     "This QML block is empty.": "Dit QML-blok is leeg.",
     "This QML block is too large to preview (64 KB maximum).": "Dit QML-blok is te groot voor een voorbeeld (maximaal 64 KB).",
-    "This QML block can't be previewed.": "Van dit QML-blok kan geen voorbeeld worden getoond."
+    "This QML block can't be previewed.": "Van dit QML-blok kan geen voorbeeld worden getoond.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Dit voorbeeld reageerde niet meer (een oneindige lus?) en is gesloten.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Dit voorbeeld is onverwacht gesloten (mogelijk was het geheugen op)."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9789,7 +9803,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Ten podgląd nie może importować {module}. Dozwolone moduły: {allowed}.",
     "This QML block is empty.": "Ten blok QML jest pusty.",
     "This QML block is too large to preview (64 KB maximum).": "Ten blok QML jest za duży na podgląd (maksymalnie 64 KB).",
-    "This QML block can't be previewed.": "Nie można wyświetlić podglądu tego bloku QML."
+    "This QML block can't be previewed.": "Nie można wyświetlić podglądu tego bloku QML.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Ten podgląd przestał odpowiadać (nieskończona pętla?) i został zamknięty.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Ten podgląd nieoczekiwanie się zamknął (mogło zabraknąć pamięci)."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11013,7 +11029,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Этот предпросмотр не может импортировать {module}. Разрешённые модули: {allowed}.",
     "This QML block is empty.": "Этот блок QML пуст.",
     "This QML block is too large to preview (64 KB maximum).": "Этот блок QML слишком велик для предпросмотра (максимум 64 КБ).",
-    "This QML block can't be previewed.": "Этот блок QML нельзя просмотреть."
+    "This QML block can't be previewed.": "Этот блок QML нельзя просмотреть.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Этот предпросмотр перестал отвечать (бесконечный цикл?) и был закрыт.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Этот предпросмотр неожиданно закрылся (возможно, не хватило памяти)."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12237,7 +12255,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Цей попередній перегляд не може імпортувати {module}. Дозволені модулі: {allowed}.",
     "This QML block is empty.": "Цей блок QML порожній.",
     "This QML block is too large to preview (64 KB maximum).": "Цей блок QML завеликий для попереднього перегляду (максимум 64 КБ).",
-    "This QML block can't be previewed.": "Цей блок QML не можна переглянути."
+    "This QML block can't be previewed.": "Цей блок QML не можна переглянути.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Цей попередній перегляд перестав відповідати (нескінченний цикл?) і був закритий.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Цей попередній перегляд несподівано закрився (можливо, забракло пам’яті)."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13461,7 +13481,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "このプレビューでは {module} をインポートできません。使用できるモジュール: {allowed}。",
     "This QML block is empty.": "この QML ブロックは空です。",
     "This QML block is too large to preview (64 KB maximum).": "この QML ブロックはプレビューするには大きすぎます(最大 64 KB)。",
-    "This QML block can't be previewed.": "この QML ブロックはプレビューできません。"
+    "This QML block can't be previewed.": "この QML ブロックはプレビューできません。",
+    "This preview stopped responding (an endless loop?) and was closed.": "このプレビューは応答しなくなったため (無限ループ?) 閉じられました。",
+    "This preview closed unexpectedly (it may have run out of memory).": "このプレビューは予期せず終了しました (メモリ不足の可能性があります)。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14685,7 +14707,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "이 미리보기는 {module}을(를) 가져올 수 없습니다. 허용된 모듈: {allowed}.",
     "This QML block is empty.": "이 QML 블록은 비어 있습니다.",
     "This QML block is too large to preview (64 KB maximum).": "이 QML 블록은 미리보기에 너무 큽니다(최대 64KB).",
-    "This QML block can't be previewed.": "이 QML 블록은 미리 볼 수 없습니다."
+    "This QML block can't be previewed.": "이 QML 블록은 미리 볼 수 없습니다.",
+    "This preview stopped responding (an endless loop?) and was closed.": "이 미리 보기가 응답하지 않아(무한 루프?) 닫혔습니다.",
+    "This preview closed unexpectedly (it may have run out of memory).": "이 미리 보기가 예기치 않게 닫혔습니다(메모리가 부족했을 수 있습니다)."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15909,7 +15933,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "此预览不能导入 {module}。允许的模块:{allowed}。",
     "This QML block is empty.": "此 QML 代码块为空。",
     "This QML block is too large to preview (64 KB maximum).": "此 QML 代码块太大,无法预览(最大 64 KB)。",
-    "This QML block can't be previewed.": "无法预览此 QML 代码块。"
+    "This QML block can't be previewed.": "无法预览此 QML 代码块。",
+    "This preview stopped responding (an endless loop?) and was closed.": "此预览已停止响应（无限循环？），已关闭。",
+    "This preview closed unexpectedly (it may have run out of memory).": "此预览意外关闭（可能内存不足）。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17133,7 +17159,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "لا يمكن لهذه المعاينة استيراد {module}. الوحدات المسموح بها: {allowed}.",
     "This QML block is empty.": "كتلة QML هذه فارغة.",
     "This QML block is too large to preview (64 KB maximum).": "كتلة QML هذه كبيرة جدًا للمعاينة (64 كيلوبايت كحد أقصى).",
-    "This QML block can't be previewed.": "لا يمكن معاينة كتلة QML هذه."
+    "This QML block can't be previewed.": "لا يمكن معاينة كتلة QML هذه.",
+    "This preview stopped responding (an endless loop?) and was closed.": "توقفت هذه المعاينة عن الاستجابة (حلقة لا نهائية؟) وأُغلقت.",
+    "This preview closed unexpectedly (it may have run out of memory).": "أُغلقت هذه المعاينة بشكل غير متوقع (ربما نفدت الذاكرة)."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18357,7 +18385,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Bu önizleme {module} modülünü içe aktaramaz. İzin verilen modüller: {allowed}.",
     "This QML block is empty.": "Bu QML bloğu boş.",
     "This QML block is too large to preview (64 KB maximum).": "Bu QML bloğu önizleme için çok büyük (en fazla 64 KB).",
-    "This QML block can't be previewed.": "Bu QML bloğu önizlenemiyor."
+    "This QML block can't be previewed.": "Bu QML bloğu önizlenemiyor.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Bu önizleme yanıt vermeyi bıraktı (sonsuz döngü mü?) ve kapatıldı.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Bu önizleme beklenmedik şekilde kapandı (belleği tükenmiş olabilir)."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19581,7 +19611,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Den här förhandsvisningen kan inte importera {module}. Tillåtna moduler: {allowed}.",
     "This QML block is empty.": "Det här QML-blocket är tomt.",
     "This QML block is too large to preview (64 KB maximum).": "Det här QML-blocket är för stort för förhandsvisning (högst 64 kB).",
-    "This QML block can't be previewed.": "Det här QML-blocket kan inte förhandsvisas."
+    "This QML block can't be previewed.": "Det här QML-blocket kan inte förhandsvisas.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Den här förhandsvisningen slutade svara (en oändlig loop?) och stängdes.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Den här förhandsvisningen stängdes oväntat (minnet kan ha tagit slut)."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20805,7 +20837,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Denne forhåndsvisning kan ikke importere {module}. Tilladte moduler: {allowed}.",
     "This QML block is empty.": "Denne QML-blok er tom.",
     "This QML block is too large to preview (64 KB maximum).": "Denne QML-blok er for stor til forhåndsvisning (maks. 64 KB).",
-    "This QML block can't be previewed.": "Denne QML-blok kan ikke forhåndsvises."
+    "This QML block can't be previewed.": "Denne QML-blok kan ikke forhåndsvises.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Denne forhåndsvisning holdt op med at svare (en uendelig løkke?) og blev lukket.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Denne forhåndsvisning lukkede uventet (den kan være løbet tør for hukommelse)."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22029,7 +22063,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Denne forhåndsvisningen kan ikke importere {module}. Tillatte moduler: {allowed}.",
     "This QML block is empty.": "Denne QML-blokken er tom.",
     "This QML block is too large to preview (64 KB maximum).": "Denne QML-blokken er for stor til forhåndsvisning (maks. 64 KB).",
-    "This QML block can't be previewed.": "Denne QML-blokken kan ikke forhåndsvises."
+    "This QML block can't be previewed.": "Denne QML-blokken kan ikke forhåndsvises.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Denne forhåndsvisningen sluttet å svare (en uendelig løkke?) og ble lukket.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Denne forhåndsvisningen ble uventet lukket (den kan ha gått tom for minne)."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23253,7 +23289,9 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Tämä esikatselu ei voi tuoda moduulia {module}. Sallitut moduulit: {allowed}.",
     "This QML block is empty.": "Tämä QML-lohko on tyhjä.",
     "This QML block is too large to preview (64 KB maximum).": "Tämä QML-lohko on liian suuri esikatseltavaksi (enintään 64 kt).",
-    "This QML block can't be previewed.": "Tätä QML-lohkoa ei voi esikatsella."
+    "This QML block can't be previewed.": "Tätä QML-lohkoa ei voi esikatsella.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Tämä esikatselu lakkasi vastaamasta (ikuinen silmukka?) ja suljettiin.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Tämä esikatselu sulkeutui odottamatta (muisti saattoi loppua)."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24477,6 +24515,8 @@
     "This preview can't import {module}. Allowed modules: {allowed}.": "Tento náhled nemůže importovat {module}. Povolené moduly: {allowed}.",
     "This QML block is empty.": "Tento blok QML je prázdný.",
     "This QML block is too large to preview (64 KB maximum).": "Tento blok QML je pro náhled příliš velký (maximálně 64 KB).",
-    "This QML block can't be previewed.": "Tento blok QML nelze zobrazit v náhledu."
+    "This QML block can't be previewed.": "Tento blok QML nelze zobrazit v náhledu.",
+    "This preview stopped responding (an endless loop?) and was closed.": "Tento náhled přestal reagovat (nekonečná smyčka?) a byl zavřen.",
+    "This preview closed unexpectedly (it may have run out of memory).": "Tento náhled se nečekaně zavřel (možná došla paměť)."
   }
 }
