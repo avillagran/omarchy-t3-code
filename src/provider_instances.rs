@@ -37,7 +37,6 @@ fn visible_instance(id:&str,instance:&Value,config:&Value,definition:Option<&Val
         "canAuthenticate":status.is_some_and(|p|p["setup"]["canAuthenticate"]==true),
         "canInstall":status.is_some_and(|p|p["setup"]["canInstall"]==true),
         "canLogout":status.is_some_and(|p|p["auth"]["canLogout"]==true),
-        "email":status.map(|p|&p["auth"]["email"]).unwrap_or(&Value::Null),
         "versionStatus":status.map(|p|&p["versionAdvisory"]["status"]).unwrap_or(&Value::Null),
         "currentVersion":status.map(|p|&p["versionAdvisory"]["currentVersion"]).unwrap_or(&Value::Null),
         "latestVersion":status.map(|p|&p["versionAdvisory"]["latestVersion"]).unwrap_or(&Value::Null),
