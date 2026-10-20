@@ -1065,6 +1065,20 @@
     "Declined": "Declined",
     "Request ended": "Request ended",
     "Paste the secret": "Paste the secret",
-    "Stored securely, never shown to the agent": "Stored securely, never shown to the agent"
+    "Stored securely, never shown to the agent": "Stored securely, never shown to the agent",
+    "Ready for review": "Ready for review",
+    "Convert to draft": "Convert to draft",
+    "Reopen": "Reopen",
+    "Squash and merge": "Squash and merge",
+    "Merge commit": "Merge commit",
+    "Rebase and merge": "Rebase and merge",
+    "This branch has conflicts that must be resolved.": "This branch has conflicts that must be resolved.",
+    "Leave a comment": "Leave a comment",
+    "Comment": "Comment",
+    "Request changes": "Request changes",
+    "Unlink from thread": "Unlink from thread",
+    "Link to thread": "Link to thread",
+    "Stop watching": "Stop watching",
+    "Watch checks": "Watch checks"
   }
 }

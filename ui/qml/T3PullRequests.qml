@@ -22,6 +22,18 @@ Rectangle{
  readonly property var detailResult:bridge.prOperations.detail || ({})
  readonly property var detail:detailResult.data || selected || ({})
  readonly property var tabResult:bridge.prOperations[tab===1?"checks":tab===2?"activity":"diff"] || ({})
+ readonly property var writeResult:bridge.prOperations.write || ({})
+ readonly property var permissions:root.detail.viewerPermissions || ({})
+ readonly property var allowed:(permissions.actions || []).filter(function(a){var d=root.detail;if(a==="merge")return d.state==="open"&&!d.isDraft;if(a==="ready")return d.state==="open"&&d.isDraft;if(a==="draft")return d.state==="open"&&!d.isDraft;if(a==="close")return d.state==="open";if(a==="reopen")return d.state==="closed";return false})
+ readonly property var mergeMethods:["squash","merge","rebase"].filter(function(m){return !!(root.detail.mergeCapabilities || {})[m]})
+ property string mergeMethod:""
+ property string confirming:""
+ function write(values){bridge.pullRequestWrite(environment,Object.assign({reference:reference()},values))}
+ Connections{target:root.bridge;function onPullRequestWritten(data){if(data.error||!root.selected)return;if(data.result&&data.result.kind!=="action")reply.text="";root.confirming="";root.bridge.requestPullRequests("detail",{environment:root.environment,reference:root.reference()});if(root.tab>0)root.loadTab(root.tab)}}
+ // This thread's links to pull requests, for link/unlink/watch.
+ readonly property var threadLinks:((bridge.selectedInfo.pullRequestBadge || {}).links) || []
+ readonly property var currentLink:{var d=root.detail;return root.threadLinks.find(function(l){return l.number===d.number&&String(l.repository).toLowerCase()===String(d.repository||"").toLowerCase()}) || null}
+ function linkRef(){var d=root.detail;var host=root.selected&&root.selected.host||(String(d.url||"").match(/^https?:\/\/([^\/]+)/)||[])[1]||"";return {host:host,repository:d.repository,number:d.number,url:d.url}}
  readonly property color fg:Color.popups.text
  readonly property color dim:Qt.rgba(fg.r,fg.g,fg.b,0.57)
  readonly property var environments:(bridge.state.environments || []).filter(function(e){return e.state==="ready"})
@@ -86,6 +98,21 @@ Rectangle{
     RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:root.detail.title || "";color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}T3IconButton{name:"external-link";tooltipText:T3I18n.tr("Open in browser");onClicked:if(/^https?:\/\//.test(root.detail.url || ""))Qt.openUrlExternally(root.detail.url)}}
     Text{Layout.fillWidth:true;text:(root.detail.headBranch || "")+" → "+(root.detail.baseBranch || "")+"   +"+(root.detail.additions || 0)+" −"+(root.detail.deletions || 0);color:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
     RowLayout{Layout.fillWidth:true;Repeater{model:["Overview","Checks","Conversation","Code"];T3IconButton{required property string modelData;required property int index;name:["list-ordered","circle-check","square-pen","file"][index];tooltipText:T3I18n.tr(modelData);tint:root.tab===index?Color.accent:root.dim;onClicked:root.loadTab(index)}}Text{Layout.fillWidth:true;text:T3I18n.tr(["Overview","Checks","Conversation","Code"][root.tab]);color:root.dim;font.pixelSize:Style.font.caption}}
+    // Host actions the viewer may take, as in T3's pull request header. Merging and
+    // closing ask once more before running.
+    Flow{
+     objectName:"pullRequestActions";Layout.fillWidth:true;spacing:Style.space(6);visible:root.tab===0&&!root.detailResult.busy&&(root.allowed.length>0||!!root.detail.url)
+     Repeater{model:root.allowed
+      T3PickerButton{required property string modelData;objectName:"pullRequestAction_"+modelData;implicitHeight:Style.space(30);primary:modelData==="merge";enabled:!root.writeResult.busy&&(modelData!=="merge"||root.detail.mergeability!=="conflicting")
+       text:root.confirming===modelData?T3I18n.tr("Confirm"):T3I18n.tr(({merge:"Merge",ready:"Ready for review",draft:"Convert to draft",close:"Close",reopen:"Reopen"})[modelData])
+       onClicked:{if((modelData==="merge"||modelData==="close")&&root.confirming!==modelData){root.confirming=modelData;return}var v={kind:"action",action:modelData};if(modelData==="merge"&&root.mergeMethods.length)v.mergeMethod=root.mergeMethod||root.mergeMethods[0];root.write(v)}}
+     }
+     T3Select{objectName:"pullRequestMergeMethod";visible:root.allowed.indexOf("merge")>=0&&root.mergeMethods.length>1;implicitWidth:Style.space(130);model:root.mergeMethods.map(function(m){return T3I18n.tr(({squash:"Squash and merge",merge:"Merge commit",rebase:"Rebase and merge"})[m])});currentIndex:Math.max(0,root.mergeMethods.indexOf(root.mergeMethod));onActivated:function(i){root.mergeMethod=root.mergeMethods[i]}}
+     T3PickerButton{objectName:"pullRequestLink";visible:!!root.bridge.selectedThread&&!!root.detail.url;implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.link||{}).busy;text:T3I18n.tr(root.currentLink?"Unlink from thread":"Link to thread");onClicked:root.bridge.threadPullRequest(root.currentLink?"unlink":"link",root.linkRef())}
+     T3PickerButton{objectName:"pullRequestWatch";visible:!!root.currentLink&&root.detail.state==="open";implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.link||{}).busy;text:T3I18n.tr(root.currentLink&&root.currentLink.watch?"Stop watching":"Watch checks");onClicked:root.bridge.threadPullRequest(root.currentLink.watch?"unwatch":"watch",root.linkRef())}
+     Text{visible:root.detail.mergeability==="conflicting";text:T3I18n.tr("This branch has conflicts that must be resolved.");color:Color.urgent;font.pixelSize:Style.font.caption}
+    }
+    Text{Layout.fillWidth:true;visible:!!root.writeResult.error;text:T3I18n.error(root.writeResult.error || "");color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText}
     Text{Layout.fillWidth:true;visible:!!root.detailResult.error||!!root.tabResult.error;text:T3I18n.error(root.detailResult.error || root.tabResult.error || "");color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText}
     Controls.ScrollView{
      id:description;Layout.fillWidth:true;Layout.fillHeight:true;visible:root.tab===0;clip:true;contentWidth:availableWidth
@@ -101,6 +128,17 @@ Rectangle{
      id:comments;Layout.fillWidth:true;Layout.fillHeight:true;visible:root.tab===2;model:root.tabResult.data?(root.tabResult.data.comments || []):[];clip:true;reuseItems:false;cacheBuffer:0;spacing:Style.space(14)
      T3Wheel{flickable:comments}Controls.ScrollBar.vertical:Controls.ScrollBar{}
      delegate:Column{required property var modelData;width:comments.width;spacing:Style.space(5);Text{width:parent.width;text:modelData.author?modelData.author.login:"";color:root.dim;font.bold:true;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}Text{width:parent.width;text:modelData.body;color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.MarkdownText}}
+    }
+    // Reply and review, as in T3's conversation tab.
+    ColumnLayout{
+     objectName:"pullRequestReply";Layout.fillWidth:true;visible:root.tab===2&&(root.permissions.comment===true||(root.permissions.verdicts || []).length>0);spacing:Style.space(6)
+     Controls.TextArea{id:reply;objectName:"pullRequestReplyText";Layout.fillWidth:true;Layout.preferredHeight:Style.space(70);wrapMode:TextEdit.Wrap;placeholderText:T3I18n.tr("Leave a comment");color:root.fg;font.pixelSize:Style.font.caption;enabled:!root.writeResult.busy;background:Rectangle{radius:Style.space(6);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05);border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.15)}}
+     RowLayout{Layout.fillWidth:true;spacing:Style.space(6)
+      Item{Layout.fillWidth:true}
+      T3PickerButton{objectName:"pullRequestComment";visible:root.permissions.comment===true;implicitHeight:Style.space(30);primary:false;text:T3I18n.tr("Comment");enabled:!root.writeResult.busy&&!!reply.text.trim();onClicked:root.write({kind:"comment",body:reply.text})}
+      T3PickerButton{objectName:"pullRequestRequestChanges";visible:(root.permissions.verdicts || []).indexOf("request-changes")>=0;implicitHeight:Style.space(30);primary:false;text:T3I18n.tr("Request changes");enabled:!root.writeResult.busy&&!!reply.text.trim();onClicked:root.write({kind:"review",verdict:"request-changes",body:reply.text})}
+      T3PickerButton{objectName:"pullRequestApprove";visible:(root.permissions.verdicts || []).indexOf("approve")>=0;implicitHeight:Style.space(30);text:T3I18n.tr("Approve");enabled:!root.writeResult.busy;onClicked:root.write({kind:"review",verdict:"approve",body:reply.text})}
+     }
     }
     ListView{
      id:code;Layout.fillWidth:true;Layout.fillHeight:true;visible:root.tab===3;model:root.patch.split("\n");clip:true;reuseItems:false;cacheBuffer:0
