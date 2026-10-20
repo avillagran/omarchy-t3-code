@@ -180,8 +180,7 @@ pub fn snapshot()->Result<Value>{
   "revision":revision_of(&raw),"available":bin.is_some(),"version":bundled_version(),"identity":identity_ready(&state_dir),"stateDir":state_dir.display().to_string(),
   "default":if parsed.as_ref().is_ok_and(|c|!c.auto){"off"}else{"auto"},
   "peers":peers.as_ref().cloned().unwrap_or_default(),"routes":routes,"active":active(),
-  "device":crate::omabridge_manage::identity(),"pending":crate::omabridge_manage::pending(),"awaiting":crate::omabridge_manage::awaiting(),"published":crate::omabridge_manage::published(),
-  "error":parsed.err().or(peers.err().filter(|e|e!="omabridge_identity_missing"&&e!="omabridge_unavailable")).unwrap_or_default(),
+   "error":parsed.err().or(peers.err().filter(|e|e!="omabridge_identity_missing"&&e!="omabridge_unavailable")).unwrap_or_default(),
  }))
 }
 fn write_private(path:&Path,doc:&Value)->Result<()>{
@@ -196,7 +195,6 @@ fn write_private(path:&Path,doc:&Value)->Result<()>{
 pub fn execute(input:&Value)->Result<Value>{
  let action=text(input,"action");
  if action=="read"{return snapshot()}
- if let Some(result)=crate::omabridge_manage::execute(action,input)?{return Ok(result)}
  if let Some(result)=crate::omabridge_gateway::execute(action,input)?{return Ok(result)}
  if !matches!(action,"set"|"clear"|"default"){return Err("invalid_action".into())}
  if input["confirmed"]!=true{return Err("confirmation_required".into())}

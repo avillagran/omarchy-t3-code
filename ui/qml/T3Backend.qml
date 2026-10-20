@@ -141,6 +141,15 @@ Singleton {
   // A created invitation (path and QR) is a secret; drop it as soon as its dialog closes.
   function clearOmaBridgeInvite(){connectionOmaBridge=Object.assign({},connectionOmaBridge,{created:null,error:""})}
   signal connectionOmaBridgeFinished(string action,string error)
+  // This device's OmaBridge, exactly as the Control Panel manages it: each
+  // request goes unchanged to `omabridge manage`; answers come back by id.
+  signal omabridgeManageFinished(string requestId,string text,int exitCode)
+  property var omabridgeManagePending:({})
+  function requestOmaBridgeManage(request){
+    if(!worker.running || !request || typeof request!=="object")return ""
+    var id=uuid(),pending=Object.assign({},omabridgeManagePending);pending[id]=true;omabridgeManagePending=pending
+    send({op:"omabridge-manage",request:request,requestId:id});return id
+  }
   // Reading and checking public addresses asks other devices and can take a
   // while, so it has its own channel and never blocks approvals or pairing.
   function requestOmaBridgeGateways(action,values){
@@ -784,6 +793,8 @@ Singleton {
     if(connectionPreferences.busy)connectionPreferences=Object.assign({},connectionPreferences,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionNetwork.busy)connectionNetwork=Object.assign({},connectionNetwork,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionOmaBridge.busy)connectionOmaBridge=Object.assign({},connectionOmaBridge,{busy:false,error:"rpc_outcome_unknown",created:null})
+    for(var lost in omabridgeManagePending)omabridgeManageFinished(lost,'{"error":"failed_start"}',1)
+    omabridgeManagePending=({})
     if(connectionOmaBridge.gatewaysBusy)connectionOmaBridge=Object.assign({},connectionOmaBridge,{gatewaysBusy:false,gatewaysError:"rpc_outcome_unknown"})
     if(connectionAccess.busy)connectionAccess=Object.assign({},connectionAccess,{busy:false,error:"rpc_outcome_unknown",created:null})
     if(connectionSettings.busy)connectionSettings=Object.assign({},connectionSettings,{busy:false,error:"rpc_outcome_unknown"})
@@ -1412,6 +1423,12 @@ Singleton {
       connectionNetwork=Object.assign({},connectionNetwork,{busy:false,error:data.error || "",data:data.result || connectionNetwork.data})
       if(action==="apply"){refreshBackendStatus();recoverLocalBackend();refresh()}
       connectionNetworkFinished(action,data.error || "");return
+    }
+    if(data.op==="omabridge-manage"){
+      if(!omabridgeManagePending[data.requestId])return
+      var waiting=Object.assign({},omabridgeManagePending);delete waiting[data.requestId];omabridgeManagePending=waiting
+      var answer=data.result || ({})
+      omabridgeManageFinished(data.requestId,JSON.stringify(answer.output || {error:data.error || "invalid_response"}),answer.status===undefined?1:answer.status);return
     }
     if(data.op==="connection-omabridge"&&data.requestId&&data.requestId===connectionOmaBridge.gatewaysRequestId){
       var found=data.result || ({}),checked=connectionOmaBridge.gatewayChecks || ({})

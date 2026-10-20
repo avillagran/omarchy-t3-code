@@ -53,9 +53,11 @@ try{
  ({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(!called(calls,'curl',`https://github.com/avillagran/omabridge/releases/download/v0.1.0/${bridgeAsset}`));
  fs.rmSync(installed());pin('0'.repeat(64));({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(result.stderr.includes('does not match the pinned hash'));assert(!fs.existsSync(installed()));
  pin(bridgeHash,'1'.repeat(64));({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(!fs.existsSync(installed()));pin();
- // A published device is restarted on the updated binary; otherwise systemd is not touched.
- assert(!called(calls,'systemctl'));const unit=path.join(home,'.config','systemd','user','omarchy-t3-omabridge.service');fs.mkdirSync(path.dirname(unit),{recursive:true});fs.writeFileSync(unit,'# Managed by Omarchy T3 Code\n');
- ({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(called(calls,'systemctl','--user','try-restart','omarchy-t3-omabridge.service'));fs.rmSync(unit);
+ // A device published with the bundled binary is restarted on it; another unit, or none, leaves systemd alone.
+ assert(!called(calls,'systemctl'));const unit=path.join(home,'.config','systemd','user','omabridge-serve.service');fs.mkdirSync(path.dirname(unit),{recursive:true});fs.writeFileSync(unit,'ExecStart=/usr/bin/omabridge serve\n');
+ ({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(!called(calls,'systemctl'));
+ fs.writeFileSync(unit,`ExecStart="${path.dirname(installed())}/omabridge" manage-serve\n`);
+ ({result,calls}=run());assert.equal(result.status,0,result.stderr);assert(called(calls,'systemctl','--user','try-restart','omabridge-serve.service'));fs.rmSync(unit);
  pack('wrong-commit');({result,calls}=run());assert.notEqual(result.status,0);assert(result.stderr.includes('revisions differ'));assert(!called(calls,'omarchy','restart'));
  pack();fs.appendFileSync(path.join(root,'assets',asset),'corruption');({result,calls}=run());assert.notEqual(result.status,0);assert(result.stderr.includes('checksum failed'));
  pack();({result,calls}=run({INSTALL_TEST_LIBS:'1'}));assert.notEqual(result.status,0);assert(result.stderr.includes('Runtime libraries'));assert(!called(calls,'omarchy','restart'));
