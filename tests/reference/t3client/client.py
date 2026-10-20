@@ -25,7 +25,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def valid_id(value):
     # T3-owned child IDs contain percent-encoded components. Encode again as one segment.
-    return isinstance(value, str) and bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_:%-]{0,2047}', value))
+    return isinstance(value, str) and bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_:%.-]{0,2047}', value))
 
 def endpoint(value):
     try:

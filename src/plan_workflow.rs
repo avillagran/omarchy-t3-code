@@ -12,7 +12,7 @@ fn id(value: &Value) -> Option<&str> {
             && s.len() <= 2048
             && s.as_bytes()[0].is_ascii_alphanumeric()
             && s.bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b"_:%-".contains(&b))
+                .all(|b| b.is_ascii_alphanumeric() || b"_:%.-".contains(&b))
     })
 }
 

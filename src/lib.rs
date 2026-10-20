@@ -90,7 +90,7 @@ pub fn valid_id(s: &str) -> bool {
         && s.len() <= 2048
         && s.as_bytes()[0].is_ascii_alphanumeric()
         && s.bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"_:%-".contains(&b))
+            .all(|b| b.is_ascii_alphanumeric() || b"_:%.-".contains(&b))
 }
 pub fn epoch(v: &Value) -> i64 {
     if let Some(s) = v.as_str() {
@@ -785,6 +785,13 @@ mod tests {
                 v["name"]
             );
         }
+    }
+    #[test]
+    fn delegated_task_ids_may_contain_dots() {
+        // T3 derives delegated-task thread ids from the caller's clientRequestId, e.g. "upload-1.2".
+        let id="thread:delegated-task:command%3Amcp%3Aabc%3Adelegate-task%3Aupload-1.2";
+        assert!(valid_id(id));
+        assert_eq!(normalize(&json!({"threads":[{"id":id,"title":"Upload"}]}),"fixture",0).unwrap().len(),1);
     }
     #[test]
     fn lineage_remains_available_without_conflating_forks_and_subagents() {
