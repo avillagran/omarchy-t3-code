@@ -1,17 +1,22 @@
 import QtQuick
 import QtTest
 import Quickshell
+import qs.Commons
 import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int phase:0
  readonly property string me:"4b4980a5435d5c3714e458c7c416035070c027fbef47e426c2077c32f677952d"
+ readonly property string vps:"9f1e3c1a4b5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7"
+ readonly property string node:"5c0de0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d"
  readonly property string guest:"b21d3e5f5c3ee737761cbbc2bc2a427715b430ac3e7ec391e0a20a7c42d9e888"
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_DEVICE_QML_FAIL "+msg);Qt.exit(1)}}
  QtObject{id:b
-  property var connectionOmaBridge:({busy:false,error:"",created:null,paired:null,data:{revision:"r",available:true,identity:false,device:null,peers:[],pending:[],awaiting:[],routes:{},published:{enabled:false,active:false,services:[],sshAvailable:false}}})
+  property var connectionOmaBridge:({busy:false,error:"",created:null,paired:null,gatewayChecks:({}),gatewaysBusy:false,gateways:null,data:{revision:"r",available:true,identity:false,device:null,peers:[],pending:[],awaiting:[],routes:{},published:{enabled:false,active:false,services:[],sshAvailable:false}}})
   property var sent:null;property int cleared:0;property string copied:""
   signal connectionOmaBridgeFinished(string action,string error)
   function requestConnectionOmaBridge(action,values){sent=Object.assign({action:action},values || {})}
+  property var looked:null
+  function requestOmaBridgeGateways(action,values){looked=Object.assign({action:action},values || {})}
   function clearOmaBridgeInvite(){cleared++;connectionOmaBridge=Object.assign({},connectionOmaBridge,{created:null})}
   function copyText(value){copied=value}
   function update(data){connectionOmaBridge=Object.assign({},connectionOmaBridge,{data:Object.assign({},connectionOmaBridge.data,data)})}
@@ -75,7 +80,35 @@ ShellRoot {
   }else if(phase===15){
    check(!keys.findChild(view,"omabridgePublishDialog").opened&&keys.findChild(view,"omabridgePublish").checked,"publish dialog closes on success");
    check(keys.findChild(view,"omabridgeRepublish").visible,"a stale unit offers to publish again");
-   console.log("OMABRIDGE_DEVICE_QML_PASS: identity creation, confirmed approve/revoke/pair, check again, invitation services/QR, shown-once secret cleared on close, confirmed publish/unpublish with SSH, stale unit");Qt.quit()
+   b.connectionOmaBridge=Object.assign({},b.connectionOmaBridge,{gateways:{supported:true,hosts:[
+    {id:root.vps,name:"vps",managed:true,public:false,gateways:[],zones:["vpn.example.net"],error:""},
+    {id:root.node,name:"node",managed:true,public:true,gateways:[{url:"https://gw.example.net:55944/",running:true,error:""}],zones:[],error:""},
+    {id:root.guest,name:"charlie",managed:false,public:true,gateways:[],zones:[],error:"omabridge_not_managed"}],hosted:[]}});phase++
+  }else if(phase===16){
+   check(keys.findChild(view,"omabridgeGatewayOpen_"+root.vps).visible&&!keys.findChild(view,"omabridgeGatewayOpen_"+root.node).visible&&!keys.findChild(view,"omabridgeGatewayOpen_"+root.guest).visible,"only a managed device without an address offers to open one");
+   check(!keys.findChild(view,"omabridgeGatewayClose_"+root.vps).visible&&keys.findChild(view,"omabridgeGatewayClose_"+root.node).visible&&keys.findChild(view,"omabridgeGatewayClose_"+root.guest).visible,"consent can be withdrawn where it was given");
+   check(keys.findChild(view,"omabridgeGatewayUrl").text==="https://gw.example.net:55944/","public address shown");
+   check(keys.findChild(view,"omabridgeGatewayHostState_"+root.guest).color!==Color.urgent,"a device managed elsewhere is not an error");
+   var before=b.sent;keys.findChild(view,"omabridgeGatewayCheck").clicked();check(b.looked.action==="gateway-check"&&b.looked.url==="https://gw.example.net:55944/"&&b.looked.confirmed===undefined&&b.sent===before,"checking reads only, on its own channel");
+   keys.findChild(view,"omabridgeGatewayOpen_"+root.vps).clicked();check(b.sent===before,"opening waits for its dialog");phase++
+  }else if(phase===17){
+   check(keys.findChild(view,"omabridgeGatewayDialog").opened,"open dialog shown");keys.findChild(view,"omabridgeGatewayName").text=" laptop.vpn.example.net ";
+   keys.findChild(view,"omabridgeGatewayConfirm").clicked();check(b.sent.action==="gateway-open"&&b.sent.peer===root.vps&&b.sent.host==="laptop.vpn.example.net"&&b.sent.confirmed===true,"confirmed open payload");
+   b.connectionOmaBridgeFinished("gateway-open","");phase++
+  }else if(phase===18){
+   check(!keys.findChild(view,"omabridgeGatewayDialog").opened,"open dialog closes on success");
+   keys.findChild(view,"omabridgeGatewayClose_"+root.node).clicked();check(b.sent.action==="gateway-open","closing waits for confirmation");confirm();
+   check(b.sent.action==="gateway-close"&&b.sent.peer===root.node&&b.sent.confirmed===true,"confirmed close payload");b.connectionOmaBridgeFinished("gateway-close","");
+   b.connectionOmaBridge=Object.assign({},b.connectionOmaBridge,{gatewayChecks:{"https://gw.example.net:55944/":{url:"https://gw.example.net:55944/",reachable:true,sameEnvironment:false}}});
+   check(view.gatewayState({url:"https://gw.example.net:55944/",running:true})===Test.T3I18n.tr("Answers with another T3 Code"),"a check that finds another T3 says so");
+   check(view.errorText("omabridge_peer_unreachable").indexOf("omabridge_")<0&&view.errorText("omabridge_manage_unsupported").indexOf("omabridge_")<0,"readable gateway errors");
+   // Public addresses load on their own once the view has a device.
+   b.connectionOmaBridge=Object.assign({},b.connectionOmaBridge,{gateways:null});view.gatewaysAsked=false;b.looked=null;phase++
+  }else if(phase<=24){
+   if(b.looked&&b.looked.action==="gateways-read")phase=25;else if(phase===24)phase=26;else phase++
+  }else if(phase===25){
+   console.log("OMABRIDGE_DEVICE_QML_PASS: identity creation, confirmed approve/revoke/pair, check again, invitation services/QR, shown-once secret cleared on close, confirmed publish/unpublish with SSH, stale unit, public addresses open/close/check and loaded on their own");Qt.quit()
+  }else{check(false,"public addresses were not loaded")
   }
  }}
 }

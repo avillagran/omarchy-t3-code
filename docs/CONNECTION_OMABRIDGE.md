@@ -67,6 +67,18 @@ ExecStart="<plugin>/bin/omabridge" --state-dir "<state dir>" serve --service t3=
 
 The T3 port comes from T3's `server-runtime.json`. If T3 later moves to another port, the section marks the unit as stale and offers *Publish again*. Only peers you approved can reach the published services, and T3 still authenticates every session. ot3 creates an identity first if none exists. It only rewrites or removes a unit that starts with its own `# Managed by Omarchy T3 Code` header, and refuses paths that systemd would reinterpret. Turning the switch off (also confirmed) disables and removes the unit, and keeps pairings. When the installer updates the bundled binary, it restarts a published unit with `systemctl --user try-restart`. Invitations need a running published device.
 
+## Public addresses
+
+T3 Code's own apps (mobile and desktop) cannot run OmaBridge. They can still reach this device through a *gateway*: a paired device with a public IP that opens an HTTPS address leading only to this device's T3 Code. T3's own pairing still guards it, so anyone who finds the address reaches T3's sign-in, as with T3's own remote access. This needs an OmaBridge with `omabridge manage`; with an older one the section says so and stays read-only.
+
+*Public addresses* (in the same OmaBridge section) lists, for every paired device this one manages, the addresses it opens for this device, read from that device in parallel. It also lists devices allowed to expose T3 Code that are managed elsewhere (their addresses cannot be read from here), and any addresses this device opens for others. Reading and *Check* use their own request, so a slow or unreachable device never blocks approvals or pairing.
+
+- *Open address…* (confirmed) grants T3 Code to that device, consents to its public exposure, and asks it to open the address. Grants it already had are kept. An optional name under one of its wildcard zones shares one port with other devices; without one, it uses its own name and a free port.
+- *Close…* (confirmed) withdraws the consent here first, which closes the address at once even if that device is unreachable, then asks it to stop listening. OmaBridge pairing is kept.
+- *Check* confirms the address answers with this device's own T3 Code.
+
+To pair a T3 Code app through an address, create a pairing link for this device in Access: the dialog offers the running public addresses as endpoints, so the link and its QR carry that address.
+
 ## Bar indicator
 
 *Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows this device's state (published services and number of paired devices) and the same device management as Preferences: create the identity, publish or stop publishing, invite a device, pair from an invitation file, *Check again*, approve and revoke, each with the same confirmations. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
@@ -89,9 +101,13 @@ Other Omarchy front ends (for example the control panel) manage OmaBridge throug
 | `revoke` | `peer` | — |
 | `publish` | `ssh` (bool) | — |
 | `unpublish` | — | — |
+| `gateways-read` (no confirmation) | — | `gateways`: `supported`, `device`, `hosts` (`id`, `name`, `managed`, `public`, `gateways` with `url`, `running`, `error`, `zones`, `error`) and `hosted` (`peer`, `name`, `service`, `url`, `running`, `error`). `{"supported":false}` with an OmaBridge without `manage`. |
+| `gateway-check` (no confirmation) | `url` (HTTPS) | `gatewayCheck`: `url`, `reachable`, `sameEnvironment` |
+| `gateway-open` | `peer` it manages, optional `host` | `gatewayOpened`: `url`, `dns`; `gateways` |
+| `gateway-close` | `peer` | `gatewayClosed`: `stopped` (whether that device also stopped listening); `gateways` |
 | `set` / `clear` / `default` | route fields as in Preferences, plus `revision` | — |
 
-On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmation_required`, `invalid_command` (an unknown command on an older client, or a malformed request on a current one; a front end can tell the two apart because `read` only fails this way on an older client), `invalid_action`, `local_error`, `omabridge_unavailable`, `omabridge_identity_missing`, `omabridge_already_running`, `omabridge_not_published`, `omabridge_service_not_published`, `omabridge_service_not_granted`, `omabridge_ssh_unavailable`, `omabridge_invite_directory`, `omabridge_invite_expired`, `omabridge_invite_invalid`, `omabridge_invite_unreadable`, `omabridge_path_unsupported`, `omabridge_peer_not_found`, `omabridge_unit_foreign`, `omabridge_publish_failed` and `omabridge_command_failed`. Peer IDs are 64 hexadecimal characters; `awaiting` IDs are UUIDs. A running ot3 sees changes made this way on its next refresh.
+On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmation_required`, `invalid_command` (an unknown command on an older client, or a malformed request on a current one; a front end can tell the two apart because `read` only fails this way on an older client), `invalid_action`, `local_error`, `omabridge_unavailable`, `omabridge_identity_missing`, `omabridge_already_running`, `omabridge_not_published`, `omabridge_service_not_published`, `omabridge_service_not_granted`, `omabridge_ssh_unavailable`, `omabridge_invite_directory`, `omabridge_invite_expired`, `omabridge_invite_invalid`, `omabridge_invite_unreadable`, `omabridge_path_unsupported`, `omabridge_peer_not_found`, `omabridge_peer_unreachable`, `omabridge_not_managed`, `omabridge_name_invalid`, `omabridge_manage_unsupported`, `omabridge_remote_forbidden`, `omabridge_unit_foreign`, `omabridge_publish_failed` and `omabridge_command_failed`. Peer IDs are 64 hexadecimal characters; `awaiting` IDs are UUIDs. A running ot3 sees changes made this way on its next refresh.
 
 ## Verification
 

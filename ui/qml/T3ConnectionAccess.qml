@@ -26,12 +26,15 @@ ColumnLayout {
   {scope:"filesystem:read",title:"Read files"},{scope:"filesystem:write",title:"Write files"},
   {scope:"access:read",title:"View access"},{scope:"access:write",title:"Manage access"},
   {scope:"relay:read",title:"View relay"},{scope:"relay:write",title:"Manage relay"}]
+ // This device's OmaBridge public addresses, offered as pairing endpoints for T3 Code apps.
+ readonly property var publicAddresses:environment!=="local"?[]:(((bridge.connectionOmaBridge || {}).gateways || {}).hosts || []).reduce(function(all,h){return all.concat((h.gateways || []).filter(function(g){return g.running}).map(function(g){return g.url}))},[])
  function can(scope){return granted.indexOf(scope)>=0}
  function request(action,values){bridge.requestConnectionAccess(environment,action,values || {})}
  function load(){if(environment)request("read")}
  function beginPairing(){
   selectedScopes=granted.filter(function(s){return s!=="access:read"&&s!=="access:write"&&s!=="relay:write"&&root.options.some(function(o){return o.scope===s})})
   pairingLabel.text="";pairingEndpoint.text=accessData.endpoint || "";pairing.open()
+  if(environment==="local"&&!(bridge.connectionOmaBridge || {}).gateways&&bridge.requestOmaBridgeGateways)bridge.requestOmaBridgeGateways("gateways-read")
  }
  function toggleScope(scope,checked){
   var next=selectedScopes.filter(function(s){return s!==scope})
@@ -142,6 +145,12 @@ ColumnLayout {
    RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:T3I18n.tr("Create pairing link");color:root.fg;font.bold:true;font.pixelSize:Style.font.body}T3IconButton{name:"x";enabled:!root.busy;tooltipText:T3I18n.tr("Close");onClicked:pairing.close()}}
    T3PickerField{id:pairingLabel;objectName:"connectionNewLinkLabel";Layout.fillWidth:true;placeholderText:T3I18n.tr("Name");enabled:!root.busy&&!root.store.created;selectByMouse:true}
    T3PickerField{id:pairingEndpoint;objectName:"connectionPairingEndpoint";Layout.fillWidth:true;placeholderText:T3I18n.tr("Endpoint");text:root.accessData.endpoint || "";selectByMouse:true;enabled:!root.busy&&!root.store.created}
+   Flow{objectName:"connectionPairingPublic";Layout.fillWidth:true;spacing:Style.space(6);visible:!root.store.created&&root.publicAddresses.length>0
+    Text{text:T3I18n.tr("Public addresses");color:root.muted;font.pixelSize:Style.font.caption;height:Style.space(28);verticalAlignment:Text.AlignVCenter}
+    Repeater{model:root.publicAddresses
+     T3PickerButton{required property string modelData;primary:false;text:modelData.replace(/^https:\/\//,"").replace(/\/$/,"");enabled:!root.busy;onClicked:pairingEndpoint.text=modelData}
+    }
+   }
    Controls.ScrollView{Layout.fillWidth:true;Layout.preferredHeight:Style.space(280);visible:!root.store.created;contentWidth:availableWidth;clip:true
     Column{width:parent.width;Repeater{model:root.options.filter(function(o){return root.can(o.scope)})
      Controls.CheckBox{required property var modelData;width:parent.width;text:T3I18n.tr(modelData.title);palette.windowText:root.fg;palette.text:root.fg;checked:root.selectedScopes.indexOf(modelData.scope)>=0;enabled:!root.busy;onToggled:root.toggleScope(modelData.scope,checked)}
