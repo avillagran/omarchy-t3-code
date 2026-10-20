@@ -28,6 +28,31 @@ Item {
   property string sideTab:"browser"
   readonly property bool sideShown:sidePanelOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
   readonly property bool browserOpen:sidePanelOpen&&sideTab==="browser"
+  function openPreferencesPage(page){preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page=page})}
+  // Command palette groups, built when it opens (T3 CommandPalette: actions, threads, projects, settings).
+  function paletteGroups(){
+    var b=bridge,thread=!!b.selectedThread,actions=[]
+    function add(id,title,icon,available,run,shortcut){if(available)actions.push({id:id,title:title,icon:icon,run:run,shortcut:shortcut||""})}
+    add("new-thread","New thread","plus",true,function(){sidebarActions.newThread()},"Ctrl+N")
+    add("find","Find in current thread","search",thread,function(){openFind()},"Ctrl+F")
+    add("branch","Switch branch","git-branch",supportsNativeShortcut("composer.branch"),function(){composerPanel.nativeModelControl("composer.branch")},"Ctrl+Shift+G")
+    add("merge-back",b.mergeBackTitle?T3I18n.tr("Merge this conversation back into {title}",{title:b.mergeBackTitle}):"Merge this conversation back into its source","git-merge",!!b.mergeBackTarget&&!!b.mergeBackRunId,function(){b.mergeBack()})
+    add("changes","Review changes","git-pull-request",b.canOpenGit===true,function(){b.requestWorkingReview("working-tree","",b.diffPreferences.ignoreWhitespace,"");workingPopup.open()},"Ctrl+D")
+    add("terminal","Open terminal","terminal",b.canOpenTerminal===true,function(){b.openTerminal()},"Ctrl+J")
+    add("browser","Open browser","globe",thread,function(){openSide("browser")},"Ctrl+Shift+J")
+    add("renders","Show HTML renders","code",thread,function(){openSide("renders")})
+    add("devices","Show devices","smartphone",thread,function(){openSide("devices")})
+    add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Meta+B")
+    add("copy-reference","Copy thread reference","copy",thread,function(){var badge=b.selectedInfo.pullRequestBadge || {};b.copyText((badge.current || {}).url || b.selectedThread)})
+    add("add-project","Add project","folder",true,function(){sidebarActions.addProject()})
+    add("settings","Open settings","settings",true,function(){preferencesOpen=true})
+    add("shortcuts","Keyboard shortcuts","keyboard",true,function(){keyHelp.open()},"F1")
+    var threads=(b.state.threads||[]).filter(function(t){return t.key!==b.selectedKey}).slice().sort(function(x,y){return (y.updatedAt||0)-(x.updatedAt||0)}).map(function(t){return {id:"thread:"+t.key,title:String(t.title||T3I18n.tr("Untitled thread")),detail:String(t.project||""),icon:t.working?"circle-dot":"message-square",run:function(){b.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}})
+    var projects=(b.state.projects||[]).filter(function(p){return !p.isScratch}).map(function(p){return {id:"project:"+p.key,title:String(p.title||""),detail:T3I18n.tr("New thread"),icon:"folder-git-2",run:function(){sidebarActions.newThread(null,p.key)}}})
+    var pages=[["general","General","settings"],["appearance","Appearance","layers"],["projects","Projects","folder-git-2"],["shortcuts","Keyboard shortcuts","keyboard"],["providers","Providers","acp"],["integrations","Integrations","plug"],["source-control","Source control","git-branch"],["connections","Connections","server"],["storage","Storage","hard-drive"],["archived","Archive","archive"]].map(function(p){return {id:"settings:"+p[0],title:p[1],detail:T3I18n.tr("Settings"),icon:p[2],run:function(){openPreferencesPage(p[0])}}})
+    return [{label:"Actions",items:actions,limit:actions.length},{label:"Recent threads",items:threads,limit:8},{label:"Projects",items:projects,limit:6},{label:"Settings",items:pages,limit:pages.length}]
+  }
+  function toggleCommandPalette(){if(commandPalette.opened){commandPalette.close();return}commandPalette.groups=paletteGroups();commandPalette.show()}
   function openSide(tab){sideTab=tab;sidePanelOpen=true;if(composerExpanded)expandComposer(false)}
   function closeSide(){sidePanelOpen=false}
   function toggleSide(){if(sidePanelOpen)closeSide();else openSide(sideTab)}
@@ -215,6 +240,8 @@ Item {
     if(command==="modelPicker.toggle")return composerPanel.modelPickerAvailable
     if(command==="composer.mode")return composerPanel.permissionPickerAvailable
     if(command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort")return !composerPanel.locked&&composerPanel.descriptors.some(function(d){return /effort|thinking|reasoning/i.test(d.id+" "+d.label)})
+    if(command==="commandPalette.toggle")return true
+    if(command==="composer.branch")return !!bridge.selectedThread&&!!bridge.selectedInfo.projectId&&bridge.selectedInfo.projectIsScratch!==true&&!bridge.selectedInfo.working&&!composerPanel.locked
     if(command==="thread.undo")return bridge.canRewind===true&&!bridge.rewindPending&&!((bridge.rewindPreview || {}).busy)&&!!lastUserMessage&&lastUserMessage.canRewindMessage===true
     if(command==="thread.stop")return !!bridge.selectedInfo.activeRunId&&!bridge.draft.stopping&&!bridge.providerSubagent
     if(command==="thread.copyReference")return !!bridge.selectedThread
@@ -227,7 +254,8 @@ Item {
   }
   function triggerNativeShortcut(command){
     if(!nativeKeysActive||!supportsNativeShortcut(command))return
-    if(command==="sidebar.toggle")toggleSidebar()
+    if(command==="commandPalette.toggle")toggleCommandPalette()
+    else if(command==="sidebar.toggle")toggleSidebar()
     else if(command==="chat.find")openFind()
     else if(command==="chat.new"||command==="chat.newLocal")sidebarActions.newThread(command==="chat.newLocal"?{type:"root"}:null)
     else if(command==="thread.previous"||command==="thread.next")navigateThread(command==="thread.next"?1:-1)
@@ -238,7 +266,7 @@ Item {
     else if(command==="preview.zoomIn"||command==="preview.zoomOut"||command==="preview.resetZoom")bridge.browserControl(command==="preview.zoomIn"?"zoom-in":command==="preview.zoomOut"?"zoom-out":"zoom-reset")
     else if(command==="terminal.toggle")bridge.openTerminal()
     else if(command==="diff.toggle"){if(workingPopup.visible)workingPopup.close();else{bridge.requestWorkingReview("working-tree","",bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}}
-    else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort")composerPanel.nativeModelControl(command)
+    else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort"||command==="composer.branch")composerPanel.nativeModelControl(command)
     else if(command==="thread.undo")bridge.requestRewindPreview(lastUserMessage.id)
     else if(command==="thread.stop")bridge.stop()
     else if(command==="thread.copyReference"){var badge=bridge.selectedInfo.pullRequestBadge || {};bridge.copyText((badge.current || {}).url || bridge.selectedThread)}
@@ -745,6 +773,7 @@ Item {
       Shortcut { sequence:"Ctrl+Alt+Up";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Up");onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
       Shortcut { sequence:"Ctrl+Alt+Down";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Down");onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
       Shortcut { sequence:"F1";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
+      T3CommandPalette{id:commandPalette}
       Controls.Popup {
         id:imagePopup
         objectName:"t3ImagePopup"
@@ -1260,6 +1289,7 @@ Item {
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
             Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
+            T3IconButton {objectName:"t3MergeBack";visible:!!root.bridge.mergeBackTarget;name:"git-merge";enabled:!!root.bridge.mergeBackRunId&&!root.bridge.managementBusy&&!root.bridge.selectedInfo.working;tint:root.dim;tooltipText:!root.bridge.mergeBackRunId?T3I18n.tr("Complete a run in this fork before merging it back"):root.bridge.mergeBackTitle?T3I18n.tr("Merge this conversation back into {title}",{title:root.bridge.mergeBackTitle}):T3I18n.tr("Merge this conversation back into its source");onClicked:root.bridge.mergeBack()}
             T3IconButton {objectName:"t3OpenSidePanel";name:"panel-right";enabled:!!root.bridge.selectedThread;tint:root.sidePanelOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Side panel");onClicked:root.toggleSide()}
             T3IconButton {objectName:"t3OpenGit";name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
             T3IconButton {objectName:"t3OpenTerminal";name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
@@ -1566,8 +1596,9 @@ Item {
                   anchors.left:message.userMessage?undefined:bubble.left
                   layoutDirection:message.userMessage?Qt.RightToLeft:Qt.LeftToRight
                   spacing:Style.space(8)
-                  opacity:messageHover.hovered||messageCopy.activeFocus||messageRevert.activeFocus||messageCopy.copyState!=="idle"?1:0
+                  opacity:messageHover.hovered||messageCopy.activeFocus||messageRevert.activeFocus||messageFork.activeFocus||messageCopy.copyState!=="idle"?1:0
                   T3IconButton{id:messageRevert;objectName:"t3EditFromHere";name:"undo-2";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:message.userMessage&&!!message.modelData.canRewindMessage;enabled:root.bridge.canRewind===true&&!root.bridge.rewindPending&&!(root.bridge.rewindPreview || {}).busy;tooltipText:T3I18n.tr("Edit from here");onClicked:root.bridge.requestRewindPreview(message.modelData.id)}
+                  T3IconButton{id:messageFork;objectName:"t3ForkFromHere";name:"git-fork";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!message.userMessage&&!!message.modelData.forkRunId&&!root.bridge.providerSubagent;enabled:!root.bridge.managementBusy;tooltipText:T3I18n.tr("Fork from this response");onClicked:root.bridge.forkFromRun(message.modelData.forkRunId)}
                   T3CopyButton{id:messageCopy;objectName:"copyChatMessage";visible:!!message.modelData.text;implicitWidth:Style.space(20);implicitHeight:implicitWidth;bridge:root.bridge;copyText:message.modelData.text || ""}
                   Text{visible:!!message.modelData.createdAt;text:root.date(message.modelData.createdAt);color:root.dim;font.pixelSize:Style.font.caption;anchors.verticalCenter:parent.verticalCenter}
                 }

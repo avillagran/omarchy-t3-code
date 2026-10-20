@@ -27,6 +27,7 @@ pub mod checkpoint_operations;
 pub mod drafts;
 pub mod prompt_recall;
 pub mod git_controls;
+pub mod branch_picker;
 pub mod git_operations;
 pub mod diff_review;
 pub mod working_review;
@@ -385,7 +386,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
             let (attribution,raw)=prompt_recall::attribution(m);let id=text(m,"id").to_string();
             if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);let images=markdown_images::descriptors(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search,blocks,images));}
             let (_,display,rendered,search,blocks,images)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
         }
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");
@@ -395,9 +396,21 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         if sorting["latestRun"].is_object()&&sorting["latestRun"].get("requestedAt").is_none(){sorting["latestRun"]["requestedAt"]=sorting["latestRun"]["createdAt"].clone();}
         let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status,"providerInstanceId":p["thread"]["providerInstanceId"],"interactionMode":p["thread"]["interactionMode"],"latestRunSettled":plan_workflow::latest_run_settled(p)});
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
+        for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
         Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 
+/// Ports of T3 threadWorkflows/threadRelationships: where a fork merges back and
+/// which finished run it would carry.
+pub fn thread_workflows(p:&Value)->Value{
+    let thread=&p["thread"];
+    let target=if thread["lineage"]["relationshipToParent"]!="fork"{Value::Null}else if thread["forkedFrom"]["type"]=="run"{thread["forkedFrom"]["threadId"].clone()}else{thread["lineage"]["parentThreadId"].clone()};
+    let runs=p["runs"].as_array().cloned().unwrap_or_default();
+    let ordinal=|r:&Value|r["ordinal"].as_i64().unwrap_or(-1);
+    let latest=runs.iter().filter(|r|matches!(text(r,"status"),"waiting"|"completed")).max_by_key(|r|ordinal(r));
+    let run=latest.filter(|l|!runs.iter().any(|r|ordinal(r)>ordinal(l)&&matches!(text(r,"status"),"preparing"|"starting"|"running"))).map(|r|r["id"].clone()).unwrap_or(Value::Null);
+    json!({"mergeBackTargetThreadId":target,"mergeBackRunId":run})
+}
 /// Read only the desktop client's grouping preferences; never touch its store.
 pub fn native_project_grouping()->Value{
  let p=t3_home().join("userdata/client-settings.json");let mut out=json!({"mode":"repository","overrides":{}});

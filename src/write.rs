@@ -209,6 +209,20 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             let title=path.trim_end_matches('/').rsplit('/').next().filter(|s|!s.is_empty()).unwrap_or("Project");
             ("projects.mutate",json!({"type":"project.create","projectId":format!("omarchy-project-{id}"),"title":title,"workspaceRoot":path,"createWorkspaceRootIfMissing":false}))
         },
+        // Forks open as a new thread; merge-back carries a fork's finished run to its source.
+        "fork" => {
+            let source=text(input,"thread"); let run=text(input,"runId");
+            if !valid_id(source)||!valid_id(run){return Err("invalid_id".into())}
+            thread=format!("omarchy-thread-{id}");
+            let title=text(input,"title").trim(); let title=if title.is_empty(){"Fork".to_string()}else{format!("{} fork",title.chars().take(250).collect::<String>())};
+            ("orchestration.dispatchCommand",json!({"type":"thread.fork","createdBy":"user","creationSource":"web","sourceThreadId":source,"targetThreadId":thread,"sourcePoint":{"type":"run","runId":run},"title":title}))
+        },
+        "merge-back" => {
+            let source=text(input,"thread"); let run=text(input,"runId"); let target=text(input,"targetThread");
+            if !valid_id(source)||!valid_id(run)||!valid_id(target){return Err("invalid_id".into())}
+            thread=target.to_string();
+            ("orchestration.dispatchCommand",json!({"type":"thread.merge_back","createdBy":"user","creationSource":"web","sourceThreadId":source,"targetThreadId":target,"sourcePoint":{"type":"run","runId":run}}))
+        },
         "thread-rename"|"regenerate-title"|"pin"|"unpin"|"mark-unread"|"auto-settle"|"archive"|"delete-thread" => {thread=text(input,"thread").to_string();("orchestration.dispatchCommand",protocol::sidebar::thread_action(input)?)},
         "project-rename" | "project-settings" | "project-remove" => ("projects.mutate",protocol::projects::command(input)?),
         "settle" | "unsettle" | "snooze" | "unsnooze" => {
@@ -288,6 +302,8 @@ pub fn execute(input:&Value) -> Result<Value> {
         "archive-action"=>crate::archive_management::action(&e,input),
         "archive-state"=>crate::archive_management::observe(&e,input),
         "review-refs"=>crate::working_review::refs(&e,input),
+        "branch-refs"=>crate::branch_picker::refs(&e,input),
+        "branch-switch"=>crate::branch_picker::switch(&e,input),
         "working-review"=>crate::working_review::execute(&e,input),
         "git-read"=>crate::git_operations::read(&e,input),
         "git-action"=>crate::git_operations::action(&e,input),

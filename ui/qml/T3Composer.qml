@@ -15,6 +15,7 @@ Rectangle {
   function nativeModelControl(command){
     if(command==="modelPicker.toggle"){if(modelPicker.enabled)modelPicker.popup.visible?modelPicker.popup.close():modelPicker.popup.open();return}
     if(command==="composer.mode"){if(permissionPicker.enabled)permissionPicker.popup.open();return}
+    if(command==="composer.branch"){branchPicker.open();return}
     if(command==="composer.increaseEffort"||command==="composer.decreaseEffort"){modelOptions.stepEffort(command==="composer.increaseEffort"?1:-1);return}
     if(command==="composer.effort"){showOptions=true;Qt.callLater(function(){modelOptions.focusEffort()});return}
     if(command==="modelPicker.previousProvider"||command==="modelPicker.nextProvider"){modelPicker.moveProvider(command==="modelPicker.nextProvider"?1:-1);return}
@@ -305,6 +306,7 @@ Rectangle {
         onPicked:editor.forceActiveFocus()
       }
       T3PickerButton{objectName:"t3InteractionMode";primary:false;implicitHeight:Style.space(28);leftPadding:Style.space(8);rightPadding:leftPadding;visible:root.bridge.interactionModeEnabled===true;text:T3I18n.tr(root.bridge.interactionMode==="plan"?"Plan":"Build");enabled:!root.locked&&!root.draft.queueEdit&&root.bridge.catalog.canWrite!==false;onClicked:root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan")}
+      T3BranchPicker { id:branchPicker;bridge:root.bridge;Layout.maximumWidth:Style.space(190) }
       T3IconButton { enabled:!root.draft.queueEdit;name: "sliders-horizontal"; tooltipText: T3I18n.tr("Model options"); onClicked: root.showOptions = !root.showOptions }
       Item { Layout.fillWidth: true }
       Item {
