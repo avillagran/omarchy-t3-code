@@ -325,6 +325,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "agent-sessions"=>crate::agent_sessions::run(&e,input),
         "process-diagnostics"=>crate::process_diagnostics::run(&e,input),
         "local-servers"=>crate::local_servers::read(&e),
+        "worktree-setup-cancel"=>rpc(&e,"worktreeSetup.cancel",json!({"threadId":input["thread"]})),
         "git-init"=>{let cwd=input["cwd"].as_str().filter(|c|c.starts_with('/')&&c.len()<=4096).ok_or("invalid_folder")?;rpc(&e,"vcs.init",json!({"cwd":cwd}))},
         "acp-registry"=>crate::acp_registry::run(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),

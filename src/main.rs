@@ -3,6 +3,7 @@ mod document_session;
 mod live;
 mod shell_watch;
 mod command_output;
+mod worktree_setup;
 mod keybinding_watch;
 mod device_watch;
 mod device_screen;
@@ -262,6 +263,7 @@ fn watch(client: Client) -> Result<()> {
     let live=live::Control::new(client.clone());
     shell_watch::start(tx.clone());
     let command_watch=command_output::Watch::default();
+    let setup_watch=worktree_setup::Watch::default();
     let input_live=live.clone();
     let browser_manager=browser_sessions::Manager::start(browser_guest::Config::native()?,|id|environments()?.into_iter().find(|e|e.id==id).ok_or("unknown_environment".into()),connection_preferences::read_client_preferences,|data|emit("browser-surface",data));
     std::thread::spawn(move || {
@@ -309,6 +311,8 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="preview-watch"{preview_watches.select(&v,input_visible);continue}
                 if v["op"]=="clear-select"{preview_watches.clear();browser_manager.hide();device_screens.stop();}
                 if v["op"]=="devices-watch"{device_watches.select(&v,input_visible);continue}
+                if v["op"]=="select"&&input_visible{setup_watch.start(text(&v,"environment").into(),text(&v,"thread").into());}
+                if (v["op"]=="visible"&&v["value"]==false)||v["op"]=="clear-select"{setup_watch.stop();}
                 if v["op"]=="command-output"{command_watch.start(text(&v,"environment").into(),text(&v,"thread").into(),text(&v,"itemId").into(),text(&v,"requestId").into());continue}
                 if v["op"]=="command-output-stop"||(v["op"]=="visible"&&v["value"]==false){command_watch.stop();if v["op"]=="command-output-stop"{continue}}
                 if matches!(text(&v,"op"),"device-screen-open"|"device-screen-input"|"device-screen-close"|"device-screen-action"|"device-screen-detail"){device_screens.request(&v,input_visible);continue}
@@ -356,7 +360,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
-                if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
+                if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"|"worktree-setup-cancel"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"suggest"|"copy"|"client-settings"|"settings"|"provider-instances"|"window-layout"|"connections-manage"|"terminal-open"|"git-action"|"git-resolve"|"git-terminal") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;

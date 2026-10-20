@@ -1190,7 +1190,14 @@
     "Follow live output": "Follow live output",
     "Stop following": "Stop following",
     "Running…": "Running…",
-    "Finished": "Finished"
+    "Finished": "Finished",
+    "Worktree setup failed": "Worktree setup failed",
+    "Setting up worktree {branch}": "Setting up worktree {branch}",
+    "Fetching": "Fetching",
+    "Checking out": "Checking out",
+    "Submodules": "Submodules",
+    "Setup script": "Setup script",
+    "Starting agent": "Starting agent"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2383,7 +2390,14 @@
     "Follow live output": "Seguir salida en vivo",
     "Stop following": "Dejar de seguir",
     "Running…": "Ejecutando…",
-    "Finished": "Terminado"
+    "Finished": "Terminado",
+    "Worktree setup failed": "Falló la preparación del worktree",
+    "Setting up worktree {branch}": "Preparando el worktree {branch}",
+    "Fetching": "Descargando cambios",
+    "Checking out": "Cambiando de rama",
+    "Submodules": "Submódulos",
+    "Setup script": "Script de preparación",
+    "Starting agent": "Iniciando agente"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3576,7 +3590,14 @@
     "Follow live output": "Acompanhar saída ao vivo",
     "Stop following": "Parar de acompanhar",
     "Running…": "Executando…",
-    "Finished": "Concluído"
+    "Finished": "Concluído",
+    "Worktree setup failed": "A preparação do worktree falhou",
+    "Setting up worktree {branch}": "Preparando o worktree {branch}",
+    "Fetching": "Buscando alterações",
+    "Checking out": "Fazendo checkout",
+    "Submodules": "Submódulos",
+    "Setup script": "Script de preparação",
+    "Starting agent": "Iniciando agente"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4769,7 +4790,14 @@
     "Follow live output": "Suivre la sortie en direct",
     "Stop following": "Arrêter de suivre",
     "Running…": "En cours…",
-    "Finished": "Terminé"
+    "Finished": "Terminé",
+    "Worktree setup failed": "La préparation du worktree a échoué",
+    "Setting up worktree {branch}": "Préparation du worktree {branch}",
+    "Fetching": "Récupération",
+    "Checking out": "Extraction",
+    "Submodules": "Sous-modules",
+    "Setup script": "Script de préparation",
+    "Starting agent": "Démarrage de l’agent"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5962,7 +5990,14 @@
     "Follow live output": "Live-Ausgabe verfolgen",
     "Stop following": "Nicht mehr verfolgen",
     "Running…": "Läuft…",
-    "Finished": "Beendet"
+    "Finished": "Beendet",
+    "Worktree setup failed": "Einrichtung des Worktrees fehlgeschlagen",
+    "Setting up worktree {branch}": "Worktree {branch} wird eingerichtet",
+    "Fetching": "Abrufen",
+    "Checking out": "Auschecken",
+    "Submodules": "Submodule",
+    "Setup script": "Einrichtungsskript",
+    "Starting agent": "Agent wird gestartet"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7155,7 +7190,14 @@
     "Follow live output": "Segui l’output dal vivo",
     "Stop following": "Smetti di seguire",
     "Running…": "In esecuzione…",
-    "Finished": "Terminato"
+    "Finished": "Terminato",
+    "Worktree setup failed": "Preparazione del worktree non riuscita",
+    "Setting up worktree {branch}": "Preparazione del worktree {branch}",
+    "Fetching": "Recupero",
+    "Checking out": "Checkout",
+    "Submodules": "Sottomoduli",
+    "Setup script": "Script di preparazione",
+    "Starting agent": "Avvio dell’agente"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8348,7 +8390,14 @@
     "Follow live output": "Live-uitvoer volgen",
     "Stop following": "Stoppen met volgen",
     "Running…": "Bezig…",
-    "Finished": "Klaar"
+    "Finished": "Klaar",
+    "Worktree setup failed": "Worktree instellen mislukt",
+    "Setting up worktree {branch}": "Worktree {branch} instellen",
+    "Fetching": "Ophalen",
+    "Checking out": "Uitchecken",
+    "Submodules": "Submodules",
+    "Setup script": "Instelscript",
+    "Starting agent": "Agent starten"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9541,7 +9590,14 @@
     "Follow live output": "Śledź wynik na żywo",
     "Stop following": "Przestań śledzić",
     "Running…": "Działa…",
-    "Finished": "Zakończono"
+    "Finished": "Zakończono",
+    "Worktree setup failed": "Przygotowanie worktree nie powiodło się",
+    "Setting up worktree {branch}": "Przygotowywanie worktree {branch}",
+    "Fetching": "Pobieranie",
+    "Checking out": "Przełączanie",
+    "Submodules": "Podmoduły",
+    "Setup script": "Skrypt przygotowania",
+    "Starting agent": "Uruchamianie agenta"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10734,7 +10790,14 @@
     "Follow live output": "Следить за выводом",
     "Stop following": "Перестать следить",
     "Running…": "Выполняется…",
-    "Finished": "Завершено"
+    "Finished": "Завершено",
+    "Worktree setup failed": "Не удалось подготовить worktree",
+    "Setting up worktree {branch}": "Подготовка worktree {branch}",
+    "Fetching": "Получение",
+    "Checking out": "Переключение",
+    "Submodules": "Подмодули",
+    "Setup script": "Скрипт подготовки",
+    "Starting agent": "Запуск агента"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11927,7 +11990,14 @@
     "Follow live output": "Стежити за виводом",
     "Stop following": "Припинити стежити",
     "Running…": "Виконується…",
-    "Finished": "Завершено"
+    "Finished": "Завершено",
+    "Worktree setup failed": "Не вдалося підготувати worktree",
+    "Setting up worktree {branch}": "Підготовка worktree {branch}",
+    "Fetching": "Отримання",
+    "Checking out": "Перемикання",
+    "Submodules": "Підмодулі",
+    "Setup script": "Скрипт підготовки",
+    "Starting agent": "Запуск агента"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13120,7 +13190,14 @@
     "Follow live output": "ライブ出力を追跡",
     "Stop following": "追跡を停止",
     "Running…": "実行中…",
-    "Finished": "完了"
+    "Finished": "完了",
+    "Worktree setup failed": "worktree の準備に失敗しました",
+    "Setting up worktree {branch}": "worktree {branch} を準備中",
+    "Fetching": "取得中",
+    "Checking out": "チェックアウト中",
+    "Submodules": "サブモジュール",
+    "Setup script": "セットアップスクリプト",
+    "Starting agent": "エージェントを起動中"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14313,7 +14390,14 @@
     "Follow live output": "실시간 출력 따라가기",
     "Stop following": "따라가기 중지",
     "Running…": "실행 중…",
-    "Finished": "완료"
+    "Finished": "완료",
+    "Worktree setup failed": "worktree 준비 실패",
+    "Setting up worktree {branch}": "worktree {branch} 준비 중",
+    "Fetching": "가져오는 중",
+    "Checking out": "체크아웃 중",
+    "Submodules": "서브모듈",
+    "Setup script": "설정 스크립트",
+    "Starting agent": "에이전트 시작 중"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15506,7 +15590,14 @@
     "Follow live output": "跟踪实时输出",
     "Stop following": "停止跟踪",
     "Running…": "运行中…",
-    "Finished": "已完成"
+    "Finished": "已完成",
+    "Worktree setup failed": "worktree 准备失败",
+    "Setting up worktree {branch}": "正在准备 worktree {branch}",
+    "Fetching": "拉取中",
+    "Checking out": "检出中",
+    "Submodules": "子模块",
+    "Setup script": "设置脚本",
+    "Starting agent": "正在启动智能体"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16699,7 +16790,14 @@
     "Follow live output": "تابع المخرجات المباشرة",
     "Stop following": "أوقف المتابعة",
     "Running…": "قيد التشغيل…",
-    "Finished": "انتهى"
+    "Finished": "انتهى",
+    "Worktree setup failed": "فشل إعداد worktree",
+    "Setting up worktree {branch}": "جارٍ إعداد worktree {branch}",
+    "Fetching": "جلب",
+    "Checking out": "التبديل",
+    "Submodules": "الوحدات الفرعية",
+    "Setup script": "سكربت الإعداد",
+    "Starting agent": "بدء الوكيل"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17892,7 +17990,14 @@
     "Follow live output": "Canlı çıktıyı izle",
     "Stop following": "İzlemeyi durdur",
     "Running…": "Çalışıyor…",
-    "Finished": "Bitti"
+    "Finished": "Bitti",
+    "Worktree setup failed": "Worktree hazırlığı başarısız",
+    "Setting up worktree {branch}": "{branch} worktree'i hazırlanıyor",
+    "Fetching": "Getiriliyor",
+    "Checking out": "Geçiş yapılıyor",
+    "Submodules": "Alt modüller",
+    "Setup script": "Kurulum betiği",
+    "Starting agent": "Ajan başlatılıyor"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19085,7 +19190,14 @@
     "Follow live output": "Följ utdata live",
     "Stop following": "Sluta följa",
     "Running…": "Körs…",
-    "Finished": "Klar"
+    "Finished": "Klar",
+    "Worktree setup failed": "Förberedelsen av worktree misslyckades",
+    "Setting up worktree {branch}": "Förbereder worktree {branch}",
+    "Fetching": "Hämtar",
+    "Checking out": "Checkar ut",
+    "Submodules": "Undermoduler",
+    "Setup script": "Förberedelseskript",
+    "Starting agent": "Startar agent"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20278,7 +20390,14 @@
     "Follow live output": "Følg output live",
     "Stop following": "Stop med at følge",
     "Running…": "Kører…",
-    "Finished": "Færdig"
+    "Finished": "Færdig",
+    "Worktree setup failed": "Klargøring af worktree mislykkedes",
+    "Setting up worktree {branch}": "Klargør worktree {branch}",
+    "Fetching": "Henter",
+    "Checking out": "Tjekker ud",
+    "Submodules": "Undermoduler",
+    "Setup script": "Opsætningsscript",
+    "Starting agent": "Starter agent"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21471,7 +21590,14 @@
     "Follow live output": "Følg utdata live",
     "Stop following": "Slutt å følge",
     "Running…": "Kjører…",
-    "Finished": "Ferdig"
+    "Finished": "Ferdig",
+    "Worktree setup failed": "Klargjøring av worktree mislyktes",
+    "Setting up worktree {branch}": "Klargjør worktree {branch}",
+    "Fetching": "Henter",
+    "Checking out": "Sjekker ut",
+    "Submodules": "Undermoduler",
+    "Setup script": "Oppsettskript",
+    "Starting agent": "Starter agent"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22664,7 +22790,14 @@
     "Follow live output": "Seuraa tulostetta",
     "Stop following": "Lopeta seuraaminen",
     "Running…": "Käynnissä…",
-    "Finished": "Valmis"
+    "Finished": "Valmis",
+    "Worktree setup failed": "Worktreen valmistelu epäonnistui",
+    "Setting up worktree {branch}": "Valmistellaan worktreetä {branch}",
+    "Fetching": "Haetaan",
+    "Checking out": "Haetaan haaraa",
+    "Submodules": "Alimoduulit",
+    "Setup script": "Valmisteluskripti",
+    "Starting agent": "Käynnistetään agenttia"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23857,6 +23990,13 @@
     "Follow live output": "Sledovat živý výstup",
     "Stop following": "Přestat sledovat",
     "Running…": "Běží…",
-    "Finished": "Dokončeno"
+    "Finished": "Dokončeno",
+    "Worktree setup failed": "Příprava worktree selhala",
+    "Setting up worktree {branch}": "Připravuje se worktree {branch}",
+    "Fetching": "Načítání",
+    "Checking out": "Přepínání",
+    "Submodules": "Submoduly",
+    "Setup script": "Přípravný skript",
+    "Starting agent": "Spouštění agenta"
   }
 }

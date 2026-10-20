@@ -195,6 +195,22 @@ Rectangle {
       Text{Layout.fillWidth:true;text:T3I18n.tr("Editing queued message");color:Color.accent;font.pixelSize:Style.font.caption}
       Controls.Button{objectName:"t3CancelQueueEdit";text:T3I18n.tr("Cancel edit");enabled:!root.draft.busy&&!root.draft.attempt;onClicked:root.bridge.cancelQueueEdit()}
     }
+    // Worktree setup progress (T3's worktree setup card).
+    ColumnLayout {
+      objectName:"t3WorktreeSetup";Layout.fillWidth:true;spacing:Style.space(4)
+      readonly property var setup:root.bridge.selectedWorktreeSetup
+      visible:!!setup&&(setup.phase==="running"||setup.phase==="failed")
+      RowLayout{Layout.fillWidth:true;spacing:Style.space(6)
+        WorkIndicator{active:!!parent.parent.setup&&parent.parent.setup.phase==="running";visible:active;implicitWidth:Style.space(12);implicitHeight:implicitWidth}
+        Text{Layout.fillWidth:true;text:parent.parent.setup?(parent.parent.setup.phase==="failed"?T3I18n.tr("Worktree setup failed"):T3I18n.tr("Setting up worktree {branch}",{branch:parent.parent.setup.branch||""})):"";color:parent.parent.setup&&parent.parent.setup.phase==="failed"?Color.urgent:Color.popups.text;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+        T3PickerButton{visible:!!parent.parent.setup&&parent.parent.setup.phase==="running";primary:false;implicitHeight:Style.space(24);text:T3I18n.tr("Cancel");onClicked:root.bridge.cancelWorktreeSetup()}
+      }
+      Repeater{model:parent.setup?parent.setup.stages.filter(function(s){return s.status!=="pending"&&s.status!=="skipped"}):[]
+        Text{required property var modelData;Layout.fillWidth:true;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;elide:Text.ElideRight;color:modelData.status==="failed"?Color.urgent:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.7)
+          text:(modelData.status==="done"?"✓ ":modelData.status==="failed"?"✕ ":modelData.status==="warning"?"! ":"… ")+T3I18n.tr(({fetch:"Fetching",checkout:"Checking out",submodules:"Submodules","setup-script":"Setup script",agent:"Starting agent"})[modelData.id]||modelData.id)+(modelData.percent!==null&&modelData.percent!==undefined?" "+modelData.percent+"%":"")+(modelData.detail?" · "+modelData.detail:"")}
+      }
+      Text{visible:!!parent.setup&&!!parent.setup.error;Layout.fillWidth:true;wrapMode:Text.Wrap;color:Color.urgent;font.pixelSize:Style.font.caption;text:parent.setup&&parent.setup.error?parent.setup.error:""}
+    }
     // Subagents still working for this thread (T3's subagent bar).
     Flow {
       objectName:"t3SubagentBar";Layout.fillWidth:true;spacing:Style.space(6);visible:(root.bridge.activeSubagents||[]).length>0

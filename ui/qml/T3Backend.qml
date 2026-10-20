@@ -488,6 +488,10 @@ Singleton {
   property var acpRegistry:({busy:false,error:"",agents:[],requestId:""})
   signal acpAgentPrepared(var agent)
   function acpRegistryAction(environment,values){var id=uuid();acpRegistry=Object.assign({},acpRegistry,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,action:values.action,agent:values.agent||null});send({op:"acp-registry",environment:environment,action:values.action,query:values.query||"",agentId:values.agent?values.agent.id:"",requestId:id})}
+  // Worktree setup progress of the open thread (stages, setup script, errors).
+  property var worktreeSetup:({})
+  readonly property var selectedWorktreeSetup:worktreeSetup.key===selectedKey?worktreeSetup.snapshot:null
+  function cancelWorktreeSetup(){if(selectedThread)send({op:"worktree-setup-cancel",environment:selectedEnvironment,thread:selectedThread,requestId:uuid()})}
   // Live output of a command row while the tool inspector follows it.
   property var commandOutput:({requestId:"",text:"",running:false,error:""})
   function followCommandOutput(environment,threadId,itemId){var id=uuid();commandOutput={requestId:id,text:"",running:true,error:"",itemId:itemId};send({op:"command-output",environment:environment,thread:threadId,itemId:itemId,requestId:id})}
@@ -1681,6 +1685,7 @@ Singleton {
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
+      else if(event.type==="worktree-setup"){worktreeSetup={key:data.environment+"/"+data.thread,snapshot:data.snapshot||null}}
       else if(event.type==="command-output"){if(data.requestId===commandOutput.requestId)commandOutput=Object.assign({},commandOutput,{text:data.text!==undefined?data.text:commandOutput.text,running:!!data.running,error:data.error||"",truncated:!!data.truncated})}
       else if(event.type==="document-app-request" && inlineDocuments[data.requestId]){appRequest(data.requestId,data.request)}
       else if(event.type==="document-size" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{contentHeight:data.height})}

@@ -1190,6 +1190,13 @@
     "Follow live output": "Follow live output",
     "Stop following": "Stop following",
     "Running…": "Running…",
-    "Finished": "Finished"
+    "Finished": "Finished",
+    "Worktree setup failed": "Worktree setup failed",
+    "Setting up worktree {branch}": "Setting up worktree {branch}",
+    "Fetching": "Fetching",
+    "Checking out": "Checking out",
+    "Submodules": "Submodules",
+    "Setup script": "Setup script",
+    "Starting agent": "Starting agent"
   }
 }
