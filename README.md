@@ -65,8 +65,8 @@ remote server or start its native headless service when stopped. Open the sideba
 gear for preferences; server settings apply to the selected environment.
 ot3 bundles [OmaBridge](docs/CONNECTION_OMABRIDGE.md): once devices are paired, SSH and pairing-link
 connections go through them first, without a VPN, and fall back to the saved route. Pair, approve,
-revoke and optionally publish this device in Preferences → Connections → OmaBridge, or from the
-optional OmaBridge indicator in the bar.
+revoke, publish and manage your devices in Preferences → Connections → OmaBridge or from the
+optional bar indicator: the same page as the Omarchy Control Panel, on the same device.
 
 Some T3 features are still being ported, and the PR view is currently read-only.
 See the [feature parity checklist](docs/FEATURE_PARITY.md).
