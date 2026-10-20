@@ -103,6 +103,10 @@ fn validated_targets(input:&Value)->Result<Vec<Value>>{
     Ok(targets.clone())
 }
 fn write_was_dropped(next:&Value,before:&Value,saved:&Value)->bool{
+    // Servers may omit empty members (a model selection saved without `options: []`);
+    // an empty value and a missing one are the same write.
+    let empty=|v:&Value|v.is_null()||v.as_array().is_some_and(|a|a.is_empty())||v.as_object().is_some_and(|o|o.is_empty());
+    if empty(next)&&empty(before){return false}
     if next.is_null(){return !before.is_null()&&before==saved}
     if let Some(m)=next.as_object(){if !before.is_array()&&!saved.is_array(){return m.iter().any(|(k,v)|write_was_dropped(v,&before[k],&saved[k]))}}
     let unchanged=if let (Some(n),Some(b))=(next.as_str(),before.as_str()){n.trim()==b}else{next==before};
@@ -172,4 +176,18 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
     }
     let mut result=aggregate(&views);result["storageScopes"]=json!(views.iter().map(|v|json!({"target":v["target"],"capabilities":v["storageCapabilities"]})).collect::<Vec<_>>());result["scope"]=input["scope"].clone();result["modelCatalog"]=views.first().map(|v|v["catalog"].clone()).unwrap_or(Value::Null);result["targets"]=json!(views.iter().map(|v|v["target"].clone()).collect::<Vec<_>>());result["errors"]=json!(errors);result["savedTargets"]=json!(saved);result["complete"]=json!(errors.is_empty()&&views.len()==requested.len());result["writable"]=json!(errors.is_empty()&&!views.is_empty()&&views.iter().all(|v|v["writeAllowed"]==true));
     Ok(result)
+}
+#[cfg(test)]
+mod dropped_tests {
+    use super::write_was_dropped;
+    use serde_json::json;
+    #[test]
+    fn omitted_empty_members_are_not_dropped_writes() {
+        let before = json!({"textGenerationModelSelection":{"instanceId":"a","model":"x"}});
+        let next = json!({"textGenerationModelSelection":{"instanceId":"a","model":"y","options":[]}});
+        let saved = json!({"textGenerationModelSelection":{"instanceId":"a","model":"y"}});
+        assert!(!write_was_dropped(&next, &before, &saved));
+        assert!(write_was_dropped(&next, &before, &before));
+        assert!(write_was_dropped(&json!({"a":true}), &json!({"a":false}), &json!({"a":false})));
+    }
 }

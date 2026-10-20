@@ -1294,8 +1294,6 @@ Item {
               }
               T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
               T3IconButton {name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:root.bridge.refresh()}
-              T3Select {id:languagePicker;objectName:"t3LanguagePicker";Layout.preferredWidth:Math.min(languageText.width+Style.space(36),root.sidebarWidth*Style.space(0.5));popupAbove:true;model:T3I18n.languages;textRole:"name";currentIndex:Math.max(0,model.findIndex(function(l){return l.id===T3I18n.choice}));onActivated:function(index){root.bridge.rememberView({language:model[index].id})}}
-              TextMetrics{id:languageText;text:languagePicker.displayText;font:languagePicker.font}
             }
 
           }
