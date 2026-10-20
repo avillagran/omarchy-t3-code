@@ -1213,7 +1213,15 @@
     "Show workflow script": "Show workflow script",
     "Stop workflow": "Stop workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "The script is longer than shown."
+    "The script is longer than shown.": "The script is longer than shown.",
+    "Show preview": "Show preview",
+    "QML preview": "QML preview",
+    "QML errors": "QML errors",
+    "The root object must be an Item, not a Window.": "The root object must be an Item, not a Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "This preview can't import {module}. Allowed modules: {allowed}.",
+    "This QML block is empty.": "This QML block is empty.",
+    "This QML block is too large to preview (64 KB maximum).": "This QML block is too large to preview (64 KB maximum).",
+    "This QML block can't be previewed.": "This QML block can't be previewed."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2429,7 +2437,15 @@
     "Show workflow script": "Ver script del workflow",
     "Stop workflow": "Detener workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "El script es más largo de lo que se muestra."
+    "The script is longer than shown.": "El script es más largo de lo que se muestra.",
+    "Show preview": "Vista previa",
+    "QML preview": "Vista previa QML",
+    "QML errors": "Errores de QML",
+    "The root object must be an Item, not a Window.": "El objeto raíz debe ser un Item, no un Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Esta vista previa no puede importar {module}. Módulos permitidos: {allowed}.",
+    "This QML block is empty.": "Este bloque QML está vacío.",
+    "This QML block is too large to preview (64 KB maximum).": "Este bloque QML es demasiado grande para la vista previa (máximo 64 KB).",
+    "This QML block can't be previewed.": "Este bloque QML no se puede previsualizar."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3645,7 +3661,15 @@
     "Show workflow script": "Ver script do workflow",
     "Stop workflow": "Parar workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "O script é maior do que o exibido."
+    "The script is longer than shown.": "O script é maior do que o exibido.",
+    "Show preview": "Pré-visualizar",
+    "QML preview": "Pré-visualização QML",
+    "QML errors": "Erros de QML",
+    "The root object must be an Item, not a Window.": "O objeto raiz deve ser um Item, não um Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Esta pré-visualização não pode importar {module}. Módulos permitidos: {allowed}.",
+    "This QML block is empty.": "Este bloco QML está vazio.",
+    "This QML block is too large to preview (64 KB maximum).": "Este bloco QML é grande demais para pré-visualizar (máximo de 64 KB).",
+    "This QML block can't be previewed.": "Este bloco QML não pode ser pré-visualizado."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4861,7 +4885,15 @@
     "Show workflow script": "Afficher le script du workflow",
     "Stop workflow": "Arrêter le workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Le script est plus long que ce qui est affiché."
+    "The script is longer than shown.": "Le script est plus long que ce qui est affiché.",
+    "Show preview": "Aperçu",
+    "QML preview": "Aperçu QML",
+    "QML errors": "Erreurs QML",
+    "The root object must be an Item, not a Window.": "L’objet racine doit être un Item, pas une Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Cet aperçu ne peut pas importer {module}. Modules autorisés : {allowed}.",
+    "This QML block is empty.": "Ce bloc QML est vide.",
+    "This QML block is too large to preview (64 KB maximum).": "Ce bloc QML est trop grand pour l’aperçu (64 Ko maximum).",
+    "This QML block can't be previewed.": "Ce bloc QML ne peut pas être prévisualisé."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6077,7 +6109,15 @@
     "Show workflow script": "Workflow-Skript anzeigen",
     "Stop workflow": "Workflow stoppen",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Das Skript ist länger als angezeigt."
+    "The script is longer than shown.": "Das Skript ist länger als angezeigt.",
+    "Show preview": "Vorschau anzeigen",
+    "QML preview": "QML-Vorschau",
+    "QML errors": "QML-Fehler",
+    "The root object must be an Item, not a Window.": "Das Wurzelobjekt muss ein Item sein, kein Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Diese Vorschau kann {module} nicht importieren. Erlaubte Module: {allowed}.",
+    "This QML block is empty.": "Dieser QML-Block ist leer.",
+    "This QML block is too large to preview (64 KB maximum).": "Dieser QML-Block ist zu groß für die Vorschau (maximal 64 KB).",
+    "This QML block can't be previewed.": "Dieser QML-Block kann nicht angezeigt werden."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7293,7 +7333,15 @@
     "Show workflow script": "Mostra lo script del workflow",
     "Stop workflow": "Arresta workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Lo script è più lungo di quanto mostrato."
+    "The script is longer than shown.": "Lo script è più lungo di quanto mostrato.",
+    "Show preview": "Mostra anteprima",
+    "QML preview": "Anteprima QML",
+    "QML errors": "Errori QML",
+    "The root object must be an Item, not a Window.": "L’oggetto radice deve essere un Item, non una Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Questa anteprima non può importare {module}. Moduli consentiti: {allowed}.",
+    "This QML block is empty.": "Questo blocco QML è vuoto.",
+    "This QML block is too large to preview (64 KB maximum).": "Questo blocco QML è troppo grande per l’anteprima (massimo 64 KB).",
+    "This QML block can't be previewed.": "Questo blocco QML non può essere visualizzato in anteprima."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8509,7 +8557,15 @@
     "Show workflow script": "Workflowscript tonen",
     "Stop workflow": "Workflow stoppen",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Het script is langer dan getoond."
+    "The script is longer than shown.": "Het script is langer dan getoond.",
+    "Show preview": "Voorbeeld tonen",
+    "QML preview": "QML-voorbeeld",
+    "QML errors": "QML-fouten",
+    "The root object must be an Item, not a Window.": "Het hoofdobject moet een Item zijn, geen Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Dit voorbeeld kan {module} niet importeren. Toegestane modules: {allowed}.",
+    "This QML block is empty.": "Dit QML-blok is leeg.",
+    "This QML block is too large to preview (64 KB maximum).": "Dit QML-blok is te groot voor een voorbeeld (maximaal 64 KB).",
+    "This QML block can't be previewed.": "Van dit QML-blok kan geen voorbeeld worden getoond."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9725,7 +9781,15 @@
     "Show workflow script": "Pokaż skrypt workflow",
     "Stop workflow": "Zatrzymaj workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Skrypt jest dłuższy niż pokazano."
+    "The script is longer than shown.": "Skrypt jest dłuższy niż pokazano.",
+    "Show preview": "Pokaż podgląd",
+    "QML preview": "Podgląd QML",
+    "QML errors": "Błędy QML",
+    "The root object must be an Item, not a Window.": "Obiekt główny musi być typu Item, nie Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Ten podgląd nie może importować {module}. Dozwolone moduły: {allowed}.",
+    "This QML block is empty.": "Ten blok QML jest pusty.",
+    "This QML block is too large to preview (64 KB maximum).": "Ten blok QML jest za duży na podgląd (maksymalnie 64 KB).",
+    "This QML block can't be previewed.": "Nie można wyświetlić podglądu tego bloku QML."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10941,7 +11005,15 @@
     "Show workflow script": "Показать скрипт workflow",
     "Stop workflow": "Остановить workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Скрипт длиннее, чем показано."
+    "The script is longer than shown.": "Скрипт длиннее, чем показано.",
+    "Show preview": "Показать предпросмотр",
+    "QML preview": "Предпросмотр QML",
+    "QML errors": "Ошибки QML",
+    "The root object must be an Item, not a Window.": "Корневой объект должен быть Item, а не Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Этот предпросмотр не может импортировать {module}. Разрешённые модули: {allowed}.",
+    "This QML block is empty.": "Этот блок QML пуст.",
+    "This QML block is too large to preview (64 KB maximum).": "Этот блок QML слишком велик для предпросмотра (максимум 64 КБ).",
+    "This QML block can't be previewed.": "Этот блок QML нельзя просмотреть."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12157,7 +12229,15 @@
     "Show workflow script": "Показати скрипт workflow",
     "Stop workflow": "Зупинити workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Скрипт довший, ніж показано."
+    "The script is longer than shown.": "Скрипт довший, ніж показано.",
+    "Show preview": "Показати попередній перегляд",
+    "QML preview": "Попередній перегляд QML",
+    "QML errors": "Помилки QML",
+    "The root object must be an Item, not a Window.": "Кореневий об’єкт має бути Item, а не Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Цей попередній перегляд не може імпортувати {module}. Дозволені модулі: {allowed}.",
+    "This QML block is empty.": "Цей блок QML порожній.",
+    "This QML block is too large to preview (64 KB maximum).": "Цей блок QML завеликий для попереднього перегляду (максимум 64 КБ).",
+    "This QML block can't be previewed.": "Цей блок QML не можна переглянути."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13373,7 +13453,15 @@
     "Show workflow script": "ワークフローのスクリプトを表示",
     "Stop workflow": "ワークフローを停止",
     "Workflow": "ワークフロー",
-    "The script is longer than shown.": "スクリプトは表示されている部分より長いです。"
+    "The script is longer than shown.": "スクリプトは表示されている部分より長いです。",
+    "Show preview": "プレビューを表示",
+    "QML preview": "QML プレビュー",
+    "QML errors": "QML のエラー",
+    "The root object must be an Item, not a Window.": "ルートオブジェクトは Window ではなく Item にしてください。",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "このプレビューでは {module} をインポートできません。使用できるモジュール: {allowed}。",
+    "This QML block is empty.": "この QML ブロックは空です。",
+    "This QML block is too large to preview (64 KB maximum).": "この QML ブロックはプレビューするには大きすぎます(最大 64 KB)。",
+    "This QML block can't be previewed.": "この QML ブロックはプレビューできません。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14589,7 +14677,15 @@
     "Show workflow script": "워크플로 스크립트 보기",
     "Stop workflow": "워크플로 중지",
     "Workflow": "워크플로",
-    "The script is longer than shown.": "스크립트가 표시된 것보다 깁니다."
+    "The script is longer than shown.": "스크립트가 표시된 것보다 깁니다.",
+    "Show preview": "미리보기 표시",
+    "QML preview": "QML 미리보기",
+    "QML errors": "QML 오류",
+    "The root object must be an Item, not a Window.": "루트 객체는 Window가 아니라 Item이어야 합니다.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "이 미리보기는 {module}을(를) 가져올 수 없습니다. 허용된 모듈: {allowed}.",
+    "This QML block is empty.": "이 QML 블록은 비어 있습니다.",
+    "This QML block is too large to preview (64 KB maximum).": "이 QML 블록은 미리보기에 너무 큽니다(최대 64KB).",
+    "This QML block can't be previewed.": "이 QML 블록은 미리 볼 수 없습니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15805,7 +15901,15 @@
     "Show workflow script": "显示工作流脚本",
     "Stop workflow": "停止工作流",
     "Workflow": "工作流",
-    "The script is longer than shown.": "脚本比显示的更长。"
+    "The script is longer than shown.": "脚本比显示的更长。",
+    "Show preview": "显示预览",
+    "QML preview": "QML 预览",
+    "QML errors": "QML 错误",
+    "The root object must be an Item, not a Window.": "根对象必须是 Item,而不是 Window。",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "此预览不能导入 {module}。允许的模块:{allowed}。",
+    "This QML block is empty.": "此 QML 代码块为空。",
+    "This QML block is too large to preview (64 KB maximum).": "此 QML 代码块太大,无法预览(最大 64 KB)。",
+    "This QML block can't be previewed.": "无法预览此 QML 代码块。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17021,7 +17125,15 @@
     "Show workflow script": "اعرض سكربت سير العمل",
     "Stop workflow": "أوقف سير العمل",
     "Workflow": "سير العمل",
-    "The script is longer than shown.": "السكربت أطول مما يظهر."
+    "The script is longer than shown.": "السكربت أطول مما يظهر.",
+    "Show preview": "اعرض المعاينة",
+    "QML preview": "معاينة QML",
+    "QML errors": "أخطاء QML",
+    "The root object must be an Item, not a Window.": "يجب أن يكون الكائن الجذر Item وليس Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "لا يمكن لهذه المعاينة استيراد {module}. الوحدات المسموح بها: {allowed}.",
+    "This QML block is empty.": "كتلة QML هذه فارغة.",
+    "This QML block is too large to preview (64 KB maximum).": "كتلة QML هذه كبيرة جدًا للمعاينة (64 كيلوبايت كحد أقصى).",
+    "This QML block can't be previewed.": "لا يمكن معاينة كتلة QML هذه."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18237,7 +18349,15 @@
     "Show workflow script": "İş akışı betiğini göster",
     "Stop workflow": "İş akışını durdur",
     "Workflow": "İş akışı",
-    "The script is longer than shown.": "Betik gösterilenden daha uzun."
+    "The script is longer than shown.": "Betik gösterilenden daha uzun.",
+    "Show preview": "Önizlemeyi göster",
+    "QML preview": "QML önizlemesi",
+    "QML errors": "QML hataları",
+    "The root object must be an Item, not a Window.": "Kök nesne Window değil, Item olmalıdır.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Bu önizleme {module} modülünü içe aktaramaz. İzin verilen modüller: {allowed}.",
+    "This QML block is empty.": "Bu QML bloğu boş.",
+    "This QML block is too large to preview (64 KB maximum).": "Bu QML bloğu önizleme için çok büyük (en fazla 64 KB).",
+    "This QML block can't be previewed.": "Bu QML bloğu önizlenemiyor."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19453,7 +19573,15 @@
     "Show workflow script": "Visa arbetsflödets skript",
     "Stop workflow": "Stoppa arbetsflöde",
     "Workflow": "Arbetsflöde",
-    "The script is longer than shown.": "Skriptet är längre än det som visas."
+    "The script is longer than shown.": "Skriptet är längre än det som visas.",
+    "Show preview": "Visa förhandsvisning",
+    "QML preview": "QML-förhandsvisning",
+    "QML errors": "QML-fel",
+    "The root object must be an Item, not a Window.": "Rotobjektet måste vara ett Item, inte ett Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Den här förhandsvisningen kan inte importera {module}. Tillåtna moduler: {allowed}.",
+    "This QML block is empty.": "Det här QML-blocket är tomt.",
+    "This QML block is too large to preview (64 KB maximum).": "Det här QML-blocket är för stort för förhandsvisning (högst 64 kB).",
+    "This QML block can't be previewed.": "Det här QML-blocket kan inte förhandsvisas."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20669,7 +20797,15 @@
     "Show workflow script": "Vis workflow-script",
     "Stop workflow": "Stop workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Scriptet er længere end vist."
+    "The script is longer than shown.": "Scriptet er længere end vist.",
+    "Show preview": "Vis forhåndsvisning",
+    "QML preview": "QML-forhåndsvisning",
+    "QML errors": "QML-fejl",
+    "The root object must be an Item, not a Window.": "Rodobjektet skal være et Item, ikke et Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Denne forhåndsvisning kan ikke importere {module}. Tilladte moduler: {allowed}.",
+    "This QML block is empty.": "Denne QML-blok er tom.",
+    "This QML block is too large to preview (64 KB maximum).": "Denne QML-blok er for stor til forhåndsvisning (maks. 64 KB).",
+    "This QML block can't be previewed.": "Denne QML-blok kan ikke forhåndsvises."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21885,7 +22021,15 @@
     "Show workflow script": "Vis arbeidsflytskript",
     "Stop workflow": "Stopp arbeidsflyt",
     "Workflow": "Arbeidsflyt",
-    "The script is longer than shown.": "Skriptet er lengre enn det som vises."
+    "The script is longer than shown.": "Skriptet er lengre enn det som vises.",
+    "Show preview": "Vis forhåndsvisning",
+    "QML preview": "QML-forhåndsvisning",
+    "QML errors": "QML-feil",
+    "The root object must be an Item, not a Window.": "Rotobjektet må være et Item, ikke et Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Denne forhåndsvisningen kan ikke importere {module}. Tillatte moduler: {allowed}.",
+    "This QML block is empty.": "Denne QML-blokken er tom.",
+    "This QML block is too large to preview (64 KB maximum).": "Denne QML-blokken er for stor til forhåndsvisning (maks. 64 KB).",
+    "This QML block can't be previewed.": "Denne QML-blokken kan ikke forhåndsvises."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23101,7 +23245,15 @@
     "Show workflow script": "Näytä työnkulun skripti",
     "Stop workflow": "Pysäytä työnkulku",
     "Workflow": "Työnkulku",
-    "The script is longer than shown.": "Skripti on pidempi kuin näytetään."
+    "The script is longer than shown.": "Skripti on pidempi kuin näytetään.",
+    "Show preview": "Näytä esikatselu",
+    "QML preview": "QML-esikatselu",
+    "QML errors": "QML-virheet",
+    "The root object must be an Item, not a Window.": "Juuriobjektin on oltava Item, ei Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Tämä esikatselu ei voi tuoda moduulia {module}. Sallitut moduulit: {allowed}.",
+    "This QML block is empty.": "Tämä QML-lohko on tyhjä.",
+    "This QML block is too large to preview (64 KB maximum).": "Tämä QML-lohko on liian suuri esikatseltavaksi (enintään 64 kt).",
+    "This QML block can't be previewed.": "Tätä QML-lohkoa ei voi esikatsella."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24317,6 +24469,14 @@
     "Show workflow script": "Zobrazit skript workflow",
     "Stop workflow": "Zastavit workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "Skript je delší, než je zobrazeno."
+    "The script is longer than shown.": "Skript je delší, než je zobrazeno.",
+    "Show preview": "Zobrazit náhled",
+    "QML preview": "Náhled QML",
+    "QML errors": "Chyby QML",
+    "The root object must be an Item, not a Window.": "Kořenový objekt musí být Item, ne Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "Tento náhled nemůže importovat {module}. Povolené moduly: {allowed}.",
+    "This QML block is empty.": "Tento blok QML je prázdný.",
+    "This QML block is too large to preview (64 KB maximum).": "Tento blok QML je pro náhled příliš velký (maximálně 64 KB).",
+    "This QML block can't be previewed.": "Tento blok QML nelze zobrazit v náhledu."
   }
 }

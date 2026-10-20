@@ -4,5 +4,7 @@ set -eu
 cd -- "$(dirname -- "$0")/.."
 mkdir -p bin
 task_moc="$(pkg-config --variable=libexecdir Qt6Core)/moc"
-"$task_moc" ui/document/document-host.cpp -o ui/document/document-host.moc
+"$task_moc" ui/document/document-host.h -o ui/document/document-host.moc
 c++ -std=c++17 -Os -shared -fPIC ui/document/document-host.cpp -o bin/libt3-document.so $(pkg-config --cflags --libs Qt6Quick Qt6WebEngineQuick)
+# QML previews: Qt Quick only, no WebEngine in the sandboxed renderer.
+c++ -std=c++17 -Os -shared -fPIC ui/document/qml-preview-host.cpp -o bin/libt3-qml-preview.so $(pkg-config --cflags --libs Qt6Quick Qt6Network)

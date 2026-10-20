@@ -1213,6 +1213,14 @@
     "Show workflow script": "Show workflow script",
     "Stop workflow": "Stop workflow",
     "Workflow": "Workflow",
-    "The script is longer than shown.": "The script is longer than shown."
+    "The script is longer than shown.": "The script is longer than shown.",
+    "Show preview": "Show preview",
+    "QML preview": "QML preview",
+    "QML errors": "QML errors",
+    "The root object must be an Item, not a Window.": "The root object must be an Item, not a Window.",
+    "This preview can't import {module}. Allowed modules: {allowed}.": "This preview can't import {module}. Allowed modules: {allowed}.",
+    "This QML block is empty.": "This QML block is empty.",
+    "This QML block is too large to preview (64 KB maximum).": "This QML block is too large to preview (64 KB maximum).",
+    "This QML block can't be previewed.": "This QML block can't be previewed."
   }
 }

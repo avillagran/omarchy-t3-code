@@ -7,6 +7,9 @@ Item {
  property bool active:false
  property string sessionId:""
  property real pageHeight:620
+ // Generated previews (QML) can be dismissed from the conversation.
+ property bool closable:false
+ signal dismissed()
  height:pageHeight
  function sync(){
   if(active&&!sessionId)sessionId=bridge.openInlineDocument(attachment)
@@ -15,10 +18,11 @@ Item {
  onActiveChanged:sync()
  Component.onCompleted:sync()
  Component.onDestruction:if(sessionId)bridge.closeInlineDocument(sessionId)
- Connections{target:root.bridge;function onInlineDocumentsChanged(){var d=root.bridge.inlineDocuments[root.sessionId];if(d&&d.contentHeight)root.pageHeight=Math.max(240,Math.min(1800,d.contentHeight+Math.round(view.height-view.surfaceHeight)))}}
+ Connections{target:root.bridge;function onInlineDocumentsChanged(){var d=root.bridge.inlineDocuments[root.sessionId];if(d&&d.error&&!d.frameUrl){root.pageHeight=Math.round(view.height-view.surfaceHeight)+Style.space(8);return}if(d&&d.contentHeight)root.pageHeight=Math.max(240,Math.min(1800,d.contentHeight+Math.round(view.height-view.surfaceHeight)))}}
  T3DocumentView{
   id:view;anchors.fill:parent;bridge:root.bridge;sessionId:root.sessionId;inlineMode:true;fallbackTitle:root.attachment.name || "HTML"
-  visible:!!root.sessionId
+  visible:!!root.sessionId;dismissible:root.closable
+  onDismissed:root.dismissed()
   onClosed:root.bridge.openReference("",root.attachment)
  }
 }

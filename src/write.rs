@@ -260,8 +260,9 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="licenses-read"{return crate::third_party_licenses::read()}
     if input["op"]=="thread-search"{return crate::thread_search::search(input)}
     if input["op"]=="pin-reorder"{return pin_reorder(input)}
-    // Generated pages (Mermaid diagrams) need no environment.
+    // Generated pages (Mermaid diagrams, QML previews) need no environment.
     if input["op"]=="document-open"&&input["attachment"]["generated"]=="mermaid"{return crate::documents::mermaid_page(input)}
+    if input["op"]=="document-open"&&input["attachment"]["generated"]=="qml"{return crate::qml_preview::page(input)}
     if input["op"]=="licenses-notice"{return crate::third_party_licenses::notice(input)}
     if input["op"]=="client-settings"{return match text(input,"action"){
         "read"=>crate::connection_preferences::read_client_preferences(),

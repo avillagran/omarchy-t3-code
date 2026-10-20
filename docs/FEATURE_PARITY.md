@@ -30,7 +30,9 @@ method exists on the installed server, plus QML and Rust tests:
   a response, merge back, reorder pinned threads, thread links across
   environments, notifications with T3's sounds.
 - Conversation: secret requests, MCP apps (host JSON-RPC bridge through
-  `mcpApps.*`), Mermaid diagrams (bundled mermaid.js), LaTeX math (Qt rich
+  `mcpApps.*`), Mermaid diagrams (bundled mermaid.js), QML previews (`qml`
+  fences render in a sandboxed Qt process: allowed imports only, no network,
+  files or launches; Omarchy colours as `omarchy.*`), LaTeX math (Qt rich
   text, behind T3's `mathRenderingEnabled`), copy tables as Markdown/CSV,
   HEIC/AVIF attachments, live command output in the tool inspector.
 - Pull requests: merge/close/reopen/ready/draft, comment, approve, request
