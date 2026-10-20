@@ -1167,7 +1167,12 @@
     "{count} sessions": "{count} sessions",
     "Import new": "Import new",
     "Copy prompt link": "Copy prompt link",
-    "Copy prompt link with repo and model": "Copy prompt link with repo and model"
+    "Copy prompt link with repo and model": "Copy prompt link with repo and model",
+    "Processes": "Processes",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processes · {cpu}% CPU · {memory}",
+    "Interrupt": "Interrupt",
+    "Kill": "Kill",
+    "Click again to kill": "Click again to kill"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2337,7 +2342,12 @@
     "{count} sessions": "{count} sesiones",
     "Import new": "Importar nuevas",
     "Copy prompt link": "Copiar enlace del prompt",
-    "Copy prompt link with repo and model": "Copiar enlace del prompt con repositorio y modelo"
+    "Copy prompt link with repo and model": "Copiar enlace del prompt con repositorio y modelo",
+    "Processes": "Procesos",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} procesos · {cpu}% de CPU · {memory}",
+    "Interrupt": "Interrumpir",
+    "Kill": "Forzar cierre",
+    "Click again to kill": "Haz clic de nuevo para forzar el cierre"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3507,7 +3517,12 @@
     "{count} sessions": "{count} sessões",
     "Import new": "Importar novas",
     "Copy prompt link": "Copiar link do prompt",
-    "Copy prompt link with repo and model": "Copiar link do prompt com repositório e modelo"
+    "Copy prompt link with repo and model": "Copiar link do prompt com repositório e modelo",
+    "Processes": "Processos",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processos · {cpu}% de CPU · {memory}",
+    "Interrupt": "Interromper",
+    "Kill": "Forçar encerramento",
+    "Click again to kill": "Clique novamente para forçar o encerramento"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4677,7 +4692,12 @@
     "{count} sessions": "{count} sessions",
     "Import new": "Importer les nouvelles",
     "Copy prompt link": "Copier le lien du prompt",
-    "Copy prompt link with repo and model": "Copier le lien du prompt avec dépôt et modèle"
+    "Copy prompt link with repo and model": "Copier le lien du prompt avec dépôt et modèle",
+    "Processes": "Processus",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processus · {cpu} % CPU · {memory}",
+    "Interrupt": "Interrompre",
+    "Kill": "Tuer",
+    "Click again to kill": "Cliquez à nouveau pour tuer"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5847,7 +5867,12 @@
     "{count} sessions": "{count} Sitzungen",
     "Import new": "Neue importieren",
     "Copy prompt link": "Prompt-Link kopieren",
-    "Copy prompt link with repo and model": "Prompt-Link mit Repository und Modell kopieren"
+    "Copy prompt link with repo and model": "Prompt-Link mit Repository und Modell kopieren",
+    "Processes": "Prozesse",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} Prozesse · {cpu} % CPU · {memory}",
+    "Interrupt": "Unterbrechen",
+    "Kill": "Beenden erzwingen",
+    "Click again to kill": "Zum Erzwingen erneut klicken"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7017,7 +7042,12 @@
     "{count} sessions": "{count} sessioni",
     "Import new": "Importa nuove",
     "Copy prompt link": "Copia link del prompt",
-    "Copy prompt link with repo and model": "Copia link del prompt con repository e modello"
+    "Copy prompt link with repo and model": "Copia link del prompt con repository e modello",
+    "Processes": "Processi",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processi · {cpu}% CPU · {memory}",
+    "Interrupt": "Interrompi",
+    "Kill": "Termina forzatamente",
+    "Click again to kill": "Fai di nuovo clic per terminare"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8187,7 +8217,12 @@
     "{count} sessions": "{count} sessies",
     "Import new": "Nieuwe importeren",
     "Copy prompt link": "Promptlink kopiëren",
-    "Copy prompt link with repo and model": "Promptlink kopiëren met repository en model"
+    "Copy prompt link with repo and model": "Promptlink kopiëren met repository en model",
+    "Processes": "Processen",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processen · {cpu}% CPU · {memory}",
+    "Interrupt": "Onderbreken",
+    "Kill": "Geforceerd stoppen",
+    "Click again to kill": "Klik nogmaals om te stoppen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9357,7 +9392,12 @@
     "{count} sessions": "Sesje: {count}",
     "Import new": "Importuj nowe",
     "Copy prompt link": "Kopiuj link do promptu",
-    "Copy prompt link with repo and model": "Kopiuj link do promptu z repozytorium i modelem"
+    "Copy prompt link with repo and model": "Kopiuj link do promptu z repozytorium i modelem",
+    "Processes": "Procesy",
+    "{count} processes · {cpu}% CPU · {memory}": "Procesy: {count} · {cpu}% CPU · {memory}",
+    "Interrupt": "Przerwij",
+    "Kill": "Zabij",
+    "Click again to kill": "Kliknij ponownie, aby zabić"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10527,7 +10567,12 @@
     "{count} sessions": "Сеансов: {count}",
     "Import new": "Импортировать новые",
     "Copy prompt link": "Копировать ссылку на промпт",
-    "Copy prompt link with repo and model": "Копировать ссылку на промпт с репозиторием и моделью"
+    "Copy prompt link with repo and model": "Копировать ссылку на промпт с репозиторием и моделью",
+    "Processes": "Процессы",
+    "{count} processes · {cpu}% CPU · {memory}": "Процессов: {count} · ЦП {cpu}% · {memory}",
+    "Interrupt": "Прервать",
+    "Kill": "Завершить принудительно",
+    "Click again to kill": "Нажмите ещё раз для завершения"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11697,7 +11742,12 @@
     "{count} sessions": "Сеансів: {count}",
     "Import new": "Імпортувати нові",
     "Copy prompt link": "Копіювати посилання на промпт",
-    "Copy prompt link with repo and model": "Копіювати посилання на промпт із репозиторієм і моделлю"
+    "Copy prompt link with repo and model": "Копіювати посилання на промпт із репозиторієм і моделлю",
+    "Processes": "Процеси",
+    "{count} processes · {cpu}% CPU · {memory}": "Процесів: {count} · ЦП {cpu}% · {memory}",
+    "Interrupt": "Перервати",
+    "Kill": "Завершити примусово",
+    "Click again to kill": "Натисніть ще раз для завершення"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12867,7 +12917,12 @@
     "{count} sessions": "{count} セッション",
     "Import new": "新しいものをインポート",
     "Copy prompt link": "プロンプトのリンクをコピー",
-    "Copy prompt link with repo and model": "リポジトリとモデル付きでプロンプトのリンクをコピー"
+    "Copy prompt link with repo and model": "リポジトリとモデル付きでプロンプトのリンクをコピー",
+    "Processes": "プロセス",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} プロセス · CPU {cpu}% · {memory}",
+    "Interrupt": "中断",
+    "Kill": "強制終了",
+    "Click again to kill": "もう一度クリックで強制終了"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14037,7 +14092,12 @@
     "{count} sessions": "세션 {count}개",
     "Import new": "새 항목 가져오기",
     "Copy prompt link": "프롬프트 링크 복사",
-    "Copy prompt link with repo and model": "저장소와 모델을 포함한 프롬프트 링크 복사"
+    "Copy prompt link with repo and model": "저장소와 모델을 포함한 프롬프트 링크 복사",
+    "Processes": "프로세스",
+    "{count} processes · {cpu}% CPU · {memory}": "프로세스 {count}개 · CPU {cpu}% · {memory}",
+    "Interrupt": "중단",
+    "Kill": "강제 종료",
+    "Click again to kill": "다시 클릭하면 강제 종료"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15207,7 +15267,12 @@
     "{count} sessions": "{count} 个会话",
     "Import new": "导入新的",
     "Copy prompt link": "复制提示链接",
-    "Copy prompt link with repo and model": "复制含仓库和模型的提示链接"
+    "Copy prompt link with repo and model": "复制含仓库和模型的提示链接",
+    "Processes": "进程",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} 个进程 · CPU {cpu}% · {memory}",
+    "Interrupt": "中断",
+    "Kill": "强制结束",
+    "Click again to kill": "再次点击以强制结束"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16377,7 +16442,12 @@
     "{count} sessions": "{count} جلسات",
     "Import new": "استورد الجديد",
     "Copy prompt link": "انسخ رابط الموجّه",
-    "Copy prompt link with repo and model": "انسخ رابط الموجّه مع المستودع والنموذج"
+    "Copy prompt link with repo and model": "انسخ رابط الموجّه مع المستودع والنموذج",
+    "Processes": "العمليات",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} عمليات · ‏{cpu}% من CPU · {memory}",
+    "Interrupt": "قاطع",
+    "Kill": "أنهِ قسرًا",
+    "Click again to kill": "انقر مجددًا للإنهاء القسري"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17547,7 +17617,12 @@
     "{count} sessions": "{count} oturum",
     "Import new": "Yenileri içe aktar",
     "Copy prompt link": "İstem bağlantısını kopyala",
-    "Copy prompt link with repo and model": "Depo ve modelle istem bağlantısını kopyala"
+    "Copy prompt link with repo and model": "Depo ve modelle istem bağlantısını kopyala",
+    "Processes": "İşlemler",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} işlem · %{cpu} CPU · {memory}",
+    "Interrupt": "Kes",
+    "Kill": "Zorla sonlandır",
+    "Click again to kill": "Sonlandırmak için tekrar tıklayın"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18717,7 +18792,12 @@
     "{count} sessions": "{count} sessioner",
     "Import new": "Importera nya",
     "Copy prompt link": "Kopiera promptlänk",
-    "Copy prompt link with repo and model": "Kopiera promptlänk med repo och modell"
+    "Copy prompt link with repo and model": "Kopiera promptlänk med repo och modell",
+    "Processes": "Processer",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processer · {cpu} % CPU · {memory}",
+    "Interrupt": "Avbryt",
+    "Kill": "Tvinga avslut",
+    "Click again to kill": "Klicka igen för att avsluta"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19887,7 +19967,12 @@
     "{count} sessions": "{count} sessioner",
     "Import new": "Importér nye",
     "Copy prompt link": "Kopiér promptlink",
-    "Copy prompt link with repo and model": "Kopiér promptlink med repo og model"
+    "Copy prompt link with repo and model": "Kopiér promptlink med repo og model",
+    "Processes": "Processer",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processer · {cpu} % CPU · {memory}",
+    "Interrupt": "Afbryd",
+    "Kill": "Tving afslutning",
+    "Click again to kill": "Klik igen for at afslutte"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21057,7 +21142,12 @@
     "{count} sessions": "{count} økter",
     "Import new": "Importer nye",
     "Copy prompt link": "Kopier prompt-lenke",
-    "Copy prompt link with repo and model": "Kopier prompt-lenke med repo og modell"
+    "Copy prompt link with repo and model": "Kopier prompt-lenke med repo og modell",
+    "Processes": "Prosesser",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} prosesser · {cpu} % CPU · {memory}",
+    "Interrupt": "Avbryt",
+    "Kill": "Tving avslutning",
+    "Click again to kill": "Klikk igjen for å avslutte"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22227,7 +22317,12 @@
     "{count} sessions": "{count} istuntoa",
     "Import new": "Tuo uudet",
     "Copy prompt link": "Kopioi kehotteen linkki",
-    "Copy prompt link with repo and model": "Kopioi kehotteen linkki repolla ja mallilla"
+    "Copy prompt link with repo and model": "Kopioi kehotteen linkki repolla ja mallilla",
+    "Processes": "Prosessit",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} prosessia · {cpu} % CPU · {memory}",
+    "Interrupt": "Keskeytä",
+    "Kill": "Pakota lopetus",
+    "Click again to kill": "Napsauta uudelleen lopettaaksesi"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23397,6 +23492,11 @@
     "{count} sessions": "Relace: {count}",
     "Import new": "Importovat nové",
     "Copy prompt link": "Kopírovat odkaz na prompt",
-    "Copy prompt link with repo and model": "Kopírovat odkaz na prompt s repozitářem a modelem"
+    "Copy prompt link with repo and model": "Kopírovat odkaz na prompt s repozitářem a modelem",
+    "Processes": "Procesy",
+    "{count} processes · {cpu}% CPU · {memory}": "Procesy: {count} · {cpu} % CPU · {memory}",
+    "Interrupt": "Přerušit",
+    "Kill": "Násilně ukončit",
+    "Click again to kill": "Klikněte znovu pro ukončení"
   }
 }

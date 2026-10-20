@@ -50,6 +50,7 @@ Item {
     add("prompt-link","Copy prompt link","link",draftText.length>0&&draftText.length<=8000,function(){b.copyText(promptLink(false))})
     add("prompt-link-context","Copy prompt link with repo and model","link",draftText.length>0&&draftText.length<=8000&&!!b.selectedInfo.projectKey,function(){b.copyText(promptLink(true))})
     add("add-project","Add project","folder",true,function(){sidebarActions.addProject()})
+    add("processes","Processes","server",true,function(){processDiagnosticsPage.show()})
     add("agent-sessions","Import agent sessions","folder-git-2",true,function(){agentSessionsPage.show()})
     add("scheduled-tasks","Scheduled tasks","clock",true,function(){scheduledTasksPage.show()})
     add("usage","Open usage","chart-no-axes-column",true,function(){usagePage.show()},"Ctrl+U")
@@ -794,6 +795,7 @@ Item {
       T3UsagePage{id:usagePage;bridge:root.bridge}
       T3ScheduledTasks{id:scheduledTasksPage;bridge:root.bridge}
       T3AgentSessions{id:agentSessionsPage;bridge:root.bridge}
+      T3ProcessDiagnostics{id:processDiagnosticsPage;bridge:root.bridge}
       T3CommandPalette{id:commandPalette;onSearched:function(q){root.bridge.searchThreads(q)};onClosed:root.bridge.searchThreads("")
         liveGroups:{var b=root.bridge,s=b.threadSearch;if(!s.query||s.query!==commandPalette.query.trim()&&commandPalette.query.trim().indexOf(s.query)!==0)return [];var seen={};var items=(s.matches||[]).filter(function(m){var k=m.environmentId+"/"+m.threadId;if(seen[k])return false;seen[k]=true;return true}).map(function(m){var t=(b.state.threads||[]).find(function(x){return x.id===m.threadId&&x.environmentId===m.environmentId});return {id:"match:"+m.environmentId+"/"+m.threadId,title:t?String(t.title||T3I18n.tr("Untitled thread")):T3I18n.tr("Untitled thread"),detail:String(m.snippet||"").replace(/\s+/g," ").trim(),icon:"search",run:function(){b.selectThread(m.environmentId,m.threadId);composerPanel.inputField.forceActiveFocus()}}});return items.length?[{label:"Messages",items:items,limit:12,live:true}]:[]}}
       Controls.Popup {
