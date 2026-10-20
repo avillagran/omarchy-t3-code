@@ -195,6 +195,20 @@ Rectangle {
       Text{Layout.fillWidth:true;text:T3I18n.tr("Editing queued message");color:Color.accent;font.pixelSize:Style.font.caption}
       Controls.Button{objectName:"t3CancelQueueEdit";text:T3I18n.tr("Cancel edit");enabled:!root.draft.busy&&!root.draft.attempt;onClicked:root.bridge.cancelQueueEdit()}
     }
+    // Subagents still working for this thread (T3's subagent bar).
+    Flow {
+      objectName:"t3SubagentBar";Layout.fillWidth:true;spacing:Style.space(6);visible:(root.bridge.activeSubagents||[]).length>0
+      Repeater{model:root.bridge.activeSubagents||[]
+        Rectangle{required property var modelData;height:Style.space(26);width:subRow.implicitWidth+Style.space(14);radius:height/2;color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.1)
+          Row{id:subRow;anchors.centerIn:parent;spacing:Style.space(6)
+            WorkIndicator{active:modelData.status==="running";visible:active;implicitWidth:Style.space(10);implicitHeight:implicitWidth;anchors.verticalCenter:parent.verticalCenter}
+            Text{text:modelData.title;color:Color.popups.text;font.pixelSize:Style.font.caption;elide:Text.ElideRight;width:Math.min(implicitWidth,Style.space(220));textFormat:Text.PlainText;anchors.verticalCenter:parent.verticalCenter}
+            T3IconButton{name:"square";implicitWidth:Style.space(18);implicitHeight:implicitWidth;visible:!!modelData.runId;tooltipText:T3I18n.tr("Stop subagent");enabled:!root.bridge.managementBusy;onClicked:root.bridge.stopSubagent(modelData);anchors.verticalCenter:parent.verticalCenter}
+            T3IconButton{name:"arrow-right";implicitWidth:Style.space(18);implicitHeight:implicitWidth;visible:!!modelData.childThreadId;tooltipText:T3I18n.tr("Open subagent thread");onClicked:root.bridge.selectThread(root.bridge.selectedEnvironment,modelData.childThreadId);anchors.verticalCenter:parent.verticalCenter}
+          }
+        }
+      }
+    }
     // The checkout moved off the thread's branch (T3's branch change notice).
     RowLayout {
       objectName:"t3BranchMismatch"

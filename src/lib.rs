@@ -452,6 +452,8 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
         for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
         thread_state["contextWindow"]=context_window(p);
+        // Subagents still working for this thread (T3's subagent bar).
+        thread_state["subagents"]=json!(p["subagents"].as_array().into_iter().flatten().filter(|s|matches!(text(s,"status"),"pending"|"running"|"waiting")).take(16).map(|s|json!({"id":s["id"],"runId":s["runId"],"title":s["title"].as_str().filter(|t|!t.trim().is_empty()).unwrap_or_else(||text(s,"prompt")).chars().take(120).collect::<String>(),"status":s["status"],"childThreadId":s["childThreadId"],"origin":s["origin"]})).collect::<Vec<_>>());
         Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 

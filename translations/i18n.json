@@ -1156,7 +1156,9 @@
     "Continue": "Continue",
     "Show diagram": "Show diagram",
     "Copy as Markdown": "Copy as Markdown",
-    "Copy as CSV": "Copy as CSV"
+    "Copy as CSV": "Copy as CSV",
+    "Stop subagent": "Stop subagent",
+    "Open subagent thread": "Open subagent thread"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2315,7 +2317,9 @@
     "Continue": "Continuar",
     "Show diagram": "Mostrar diagrama",
     "Copy as Markdown": "Copiar como Markdown",
-    "Copy as CSV": "Copiar como CSV"
+    "Copy as CSV": "Copiar como CSV",
+    "Stop subagent": "Detener subagente",
+    "Open subagent thread": "Abrir hilo del subagente"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3474,7 +3478,9 @@
     "Continue": "Continuar",
     "Show diagram": "Mostrar diagrama",
     "Copy as Markdown": "Copiar como Markdown",
-    "Copy as CSV": "Copiar como CSV"
+    "Copy as CSV": "Copiar como CSV",
+    "Stop subagent": "Parar subagente",
+    "Open subagent thread": "Abrir conversa do subagente"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4633,7 +4639,9 @@
     "Continue": "Continuer",
     "Show diagram": "Afficher le diagramme",
     "Copy as Markdown": "Copier en Markdown",
-    "Copy as CSV": "Copier en CSV"
+    "Copy as CSV": "Copier en CSV",
+    "Stop subagent": "Arrêter le sous-agent",
+    "Open subagent thread": "Ouvrir le fil du sous-agent"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5792,7 +5800,9 @@
     "Continue": "Weiter",
     "Show diagram": "Diagramm anzeigen",
     "Copy as Markdown": "Als Markdown kopieren",
-    "Copy as CSV": "Als CSV kopieren"
+    "Copy as CSV": "Als CSV kopieren",
+    "Stop subagent": "Subagent stoppen",
+    "Open subagent thread": "Thread des Subagenten öffnen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6951,7 +6961,9 @@
     "Continue": "Continua",
     "Show diagram": "Mostra diagramma",
     "Copy as Markdown": "Copia come Markdown",
-    "Copy as CSV": "Copia come CSV"
+    "Copy as CSV": "Copia come CSV",
+    "Stop subagent": "Arresta sottoagente",
+    "Open subagent thread": "Apri il thread del sottoagente"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8110,7 +8122,9 @@
     "Continue": "Doorgaan",
     "Show diagram": "Diagram tonen",
     "Copy as Markdown": "Kopiëren als Markdown",
-    "Copy as CSV": "Kopiëren als CSV"
+    "Copy as CSV": "Kopiëren als CSV",
+    "Stop subagent": "Subagent stoppen",
+    "Open subagent thread": "Thread van subagent openen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9269,7 +9283,9 @@
     "Continue": "Kontynuuj",
     "Show diagram": "Pokaż diagram",
     "Copy as Markdown": "Kopiuj jako Markdown",
-    "Copy as CSV": "Kopiuj jako CSV"
+    "Copy as CSV": "Kopiuj jako CSV",
+    "Stop subagent": "Zatrzymaj subagenta",
+    "Open subagent thread": "Otwórz wątek subagenta"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10428,7 +10444,9 @@
     "Continue": "Продолжить",
     "Show diagram": "Показать диаграмму",
     "Copy as Markdown": "Копировать как Markdown",
-    "Copy as CSV": "Копировать как CSV"
+    "Copy as CSV": "Копировать как CSV",
+    "Stop subagent": "Остановить субагента",
+    "Open subagent thread": "Открыть тред субагента"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11587,7 +11605,9 @@
     "Continue": "Продовжити",
     "Show diagram": "Показати діаграму",
     "Copy as Markdown": "Копіювати як Markdown",
-    "Copy as CSV": "Копіювати як CSV"
+    "Copy as CSV": "Копіювати як CSV",
+    "Stop subagent": "Зупинити субагента",
+    "Open subagent thread": "Відкрити тред субагента"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12746,7 +12766,9 @@
     "Continue": "続行",
     "Show diagram": "図を表示",
     "Copy as Markdown": "Markdown としてコピー",
-    "Copy as CSV": "CSV としてコピー"
+    "Copy as CSV": "CSV としてコピー",
+    "Stop subagent": "サブエージェントを停止",
+    "Open subagent thread": "サブエージェントのスレッドを開く"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13905,7 +13927,9 @@
     "Continue": "계속",
     "Show diagram": "다이어그램 보기",
     "Copy as Markdown": "Markdown으로 복사",
-    "Copy as CSV": "CSV로 복사"
+    "Copy as CSV": "CSV로 복사",
+    "Stop subagent": "하위 에이전트 중지",
+    "Open subagent thread": "하위 에이전트 스레드 열기"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15064,7 +15088,9 @@
     "Continue": "继续",
     "Show diagram": "显示图表",
     "Copy as Markdown": "复制为 Markdown",
-    "Copy as CSV": "复制为 CSV"
+    "Copy as CSV": "复制为 CSV",
+    "Stop subagent": "停止子智能体",
+    "Open subagent thread": "打开子智能体线程"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16223,7 +16249,9 @@
     "Continue": "متابعة",
     "Show diagram": "اعرض المخطط",
     "Copy as Markdown": "انسخ بصيغة Markdown",
-    "Copy as CSV": "انسخ بصيغة CSV"
+    "Copy as CSV": "انسخ بصيغة CSV",
+    "Stop subagent": "أوقف الوكيل الفرعي",
+    "Open subagent thread": "افتح محادثة الوكيل الفرعي"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17382,7 +17410,9 @@
     "Continue": "Devam",
     "Show diagram": "Diyagramı göster",
     "Copy as Markdown": "Markdown olarak kopyala",
-    "Copy as CSV": "CSV olarak kopyala"
+    "Copy as CSV": "CSV olarak kopyala",
+    "Stop subagent": "Alt ajanı durdur",
+    "Open subagent thread": "Alt ajan konusunu aç"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18541,7 +18571,9 @@
     "Continue": "Fortsätt",
     "Show diagram": "Visa diagram",
     "Copy as Markdown": "Kopiera som Markdown",
-    "Copy as CSV": "Kopiera som CSV"
+    "Copy as CSV": "Kopiera som CSV",
+    "Stop subagent": "Stoppa underagent",
+    "Open subagent thread": "Öppna underagentens tråd"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19700,7 +19732,9 @@
     "Continue": "Fortsæt",
     "Show diagram": "Vis diagram",
     "Copy as Markdown": "Kopiér som Markdown",
-    "Copy as CSV": "Kopiér som CSV"
+    "Copy as CSV": "Kopiér som CSV",
+    "Stop subagent": "Stop underagent",
+    "Open subagent thread": "Åbn underagentens tråd"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20859,7 +20893,9 @@
     "Continue": "Fortsett",
     "Show diagram": "Vis diagram",
     "Copy as Markdown": "Kopier som Markdown",
-    "Copy as CSV": "Kopier som CSV"
+    "Copy as CSV": "Kopier som CSV",
+    "Stop subagent": "Stopp underagent",
+    "Open subagent thread": "Åpne underagentens tråd"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22018,7 +22054,9 @@
     "Continue": "Jatka",
     "Show diagram": "Näytä kaavio",
     "Copy as Markdown": "Kopioi Markdownina",
-    "Copy as CSV": "Kopioi CSV:nä"
+    "Copy as CSV": "Kopioi CSV:nä",
+    "Stop subagent": "Pysäytä aliagentti",
+    "Open subagent thread": "Avaa aliagentin ketju"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23177,6 +23215,8 @@
     "Continue": "Pokračovat",
     "Show diagram": "Zobrazit diagram",
     "Copy as Markdown": "Kopírovat jako Markdown",
-    "Copy as CSV": "Kopírovat jako CSV"
+    "Copy as CSV": "Kopírovat jako CSV",
+    "Stop subagent": "Zastavit podagenta",
+    "Open subagent thread": "Otevřít vlákno podagenta"
   }
 }

@@ -1156,6 +1156,8 @@
     "Continue": "Continue",
     "Show diagram": "Show diagram",
     "Copy as Markdown": "Copy as Markdown",
-    "Copy as CSV": "Copy as CSV"
+    "Copy as CSV": "Copy as CSV",
+    "Stop subagent": "Stop subagent",
+    "Open subagent thread": "Open subagent thread"
   }
 }
