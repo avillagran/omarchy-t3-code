@@ -30,7 +30,7 @@ Rectangle{
  property string confirming:""
  function write(values){bridge.pullRequestWrite(environment,Object.assign({reference:reference()},values))}
  Connections{target:root.bridge;ignoreUnknownSignals:true;function onPullRequestThreadOpened(){root.closed()}}
- Connections{target:root.bridge;function onPullRequestWritten(data){if(data.error||!root.selected)return;if(data.result&&data.result.kind!=="action")reply.text="";root.confirming="";root.bridge.requestPullRequests("detail",{environment:root.environment,reference:root.reference()});if(root.tab>0)root.loadTab(root.tab)}}
+ Connections{target:root.bridge;function onPullRequestWritten(data){if(data.error||!root.selected)return;if(data.result&&/-candidates$/.test(data.result.kind)){people.candidates=(data.result.result||{}).candidates||[];return}if(people.opened)root.write({kind:people.mode==="labels"?"label-candidates":"reviewer-candidates"});if(data.result&&data.result.kind!=="action")reply.text="";root.confirming="";root.bridge.requestPullRequests("detail",{environment:root.environment,reference:root.reference()});if(root.tab>0)root.loadTab(root.tab)}}
  // This thread's links to pull requests, for link/unlink/watch.
  readonly property var threadLinks:((bridge.selectedInfo.pullRequestBadge || {}).links) || []
  readonly property var currentLink:{var d=root.detail;return root.threadLinks.find(function(l){return l.number===d.number&&String(l.repository).toLowerCase()===String(d.repository||"").toLowerCase()}) || null}
@@ -113,6 +113,8 @@ Rectangle{
      T3PickerButton{objectName:"pullRequestWatch";visible:!!root.currentLink&&root.detail.state==="open";implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.link||{}).busy;text:T3I18n.tr(root.currentLink&&root.currentLink.watch?"Stop watching":"Watch checks");onClicked:root.bridge.threadPullRequest(root.currentLink.watch?"unwatch":"watch",root.linkRef())}
      T3PickerButton{objectName:"pullRequestOpenThread";visible:!!root.detail.workspaceRoot&&!!root.detail.url;implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.prThread||{}).busy;text:T3I18n.tr("Open in a thread");onClicked:root.bridge.openPullRequestThread(root.environment,root.detail,"local")}
      T3PickerButton{objectName:"pullRequestOpenWorktree";visible:!!root.detail.workspaceRoot&&!!root.detail.url;implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.prThread||{}).busy;text:T3I18n.tr("Open in a worktree");onClicked:root.bridge.openPullRequestThread(root.environment,root.detail,"worktree")}
+     T3PickerButton{objectName:"pullRequestReviewers";visible:root.permissions.requestReviewers===true;implicitHeight:Style.space(30);primary:false;text:T3I18n.tr("Reviewers");onClicked:people.show("reviewers")}
+     T3PickerButton{objectName:"pullRequestLabels";visible:root.permissions.labels===true;implicitHeight:Style.space(30);primary:false;text:T3I18n.tr("Labels");onClicked:people.show("labels")}
      Text{visible:root.detail.mergeability==="conflicting";text:T3I18n.tr("This branch has conflicts that must be resolved.");color:Color.urgent;font.pixelSize:Style.font.caption}
     }
     Text{Layout.fillWidth:true;visible:!!root.writeResult.error;text:T3I18n.error(root.writeResult.error || "");color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText}
@@ -154,4 +156,23 @@ Rectangle{
   }
  }
  Timer{id:searchDelay;interval:300;onTriggered:root.loadList(false)}
+ // Reviewers or labels to toggle, from the host's candidates.
+ Controls.Popup{
+  id:people;objectName:"pullRequestPeople";property string mode:"reviewers";property var candidates:[]
+  function show(m){mode=m;candidates=[];open();root.write({kind:m==="labels"?"label-candidates":"reviewer-candidates"})}
+  parent:root;modal:true;focus:true;x:Math.round((root.width-width)/2);y:Math.round((root.height-height)/3);width:Math.min(Style.space(360),root.width-Style.space(30));height:Math.min(Style.space(420),peopleCol.implicitHeight+padding*2);padding:Style.space(12)
+  background:Rectangle{radius:Style.space(10);color:Color.popups.background;border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.14)}
+  ColumnLayout{id:peopleCol;anchors.fill:parent;spacing:Style.space(6)
+   Text{text:T3I18n.tr(people.mode==="labels"?"Labels":"Reviewers");color:root.fg;font.weight:Font.DemiBold;font.pixelSize:Style.font.body}
+   WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:!people.candidates.length&&!!root.writeResult.busy;active:visible}
+   ListView{id:peopleList;Layout.fillWidth:true;Layout.fillHeight:true;implicitHeight:Math.min(Style.space(340),contentHeight);clip:true;model:people.candidates
+    T3Wheel{flickable:peopleList}
+    delegate:RowLayout{required property var modelData;width:peopleList.width;height:Style.space(30);spacing:Style.space(8)
+     T3Switch{checked:people.mode==="labels"?!!modelData.isApplied:!!modelData.isRequested;enabled:!root.writeResult.busy;Accessible.name:modelData.login||modelData.name;onToggled:{if(people.mode==="labels")root.write({kind:"labels",labels:[modelData.name],applied:checked});else root.write({kind:"reviewers",reviewers:[{id:modelData.id,kind:modelData.kind}],requested:checked})}}
+     Rectangle{visible:people.mode==="labels";implicitWidth:Style.space(10);implicitHeight:implicitWidth;radius:width/2;color:modelData.color?("#"+String(modelData.color).replace(/^#/,"")):root.dim}
+     Text{Layout.fillWidth:true;text:people.mode==="labels"?modelData.name:(modelData.login+(modelData.name?" · "+modelData.name:""));color:root.fg;elide:Text.ElideRight;textFormat:Text.PlainText;font.pixelSize:Style.font.caption}
+    }
+   }
+  }
+ }
 }

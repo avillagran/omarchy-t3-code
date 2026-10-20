@@ -1177,7 +1177,9 @@
     "Move up": "Move up",
     "Move down": "Move down",
     "Open in a thread": "Open in a thread",
-    "Open in a worktree": "Open in a worktree"
+    "Open in a worktree": "Open in a worktree",
+    "Reviewers": "Reviewers",
+    "Labels": "Labels"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2357,7 +2359,9 @@
     "Move up": "Subir",
     "Move down": "Bajar",
     "Open in a thread": "Abrir en un hilo",
-    "Open in a worktree": "Abrir en un worktree"
+    "Open in a worktree": "Abrir en un worktree",
+    "Reviewers": "Revisores",
+    "Labels": "Etiquetas"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3537,7 +3541,9 @@
     "Move up": "Mover para cima",
     "Move down": "Mover para baixo",
     "Open in a thread": "Abrir em uma conversa",
-    "Open in a worktree": "Abrir em um worktree"
+    "Open in a worktree": "Abrir em um worktree",
+    "Reviewers": "Revisores",
+    "Labels": "Rótulos"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4717,7 +4723,9 @@
     "Move up": "Monter",
     "Move down": "Descendre",
     "Open in a thread": "Ouvrir dans un fil",
-    "Open in a worktree": "Ouvrir dans un worktree"
+    "Open in a worktree": "Ouvrir dans un worktree",
+    "Reviewers": "Relecteurs",
+    "Labels": "Libellés"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5897,7 +5905,9 @@
     "Move up": "Nach oben",
     "Move down": "Nach unten",
     "Open in a thread": "In einem Thread öffnen",
-    "Open in a worktree": "In einem Worktree öffnen"
+    "Open in a worktree": "In einem Worktree öffnen",
+    "Reviewers": "Prüfer",
+    "Labels": "Labels"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7077,7 +7087,9 @@
     "Move up": "Sposta su",
     "Move down": "Sposta giù",
     "Open in a thread": "Apri in un thread",
-    "Open in a worktree": "Apri in un worktree"
+    "Open in a worktree": "Apri in un worktree",
+    "Reviewers": "Revisori",
+    "Labels": "Etichette"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8257,7 +8269,9 @@
     "Move up": "Omhoog",
     "Move down": "Omlaag",
     "Open in a thread": "Openen in een thread",
-    "Open in a worktree": "Openen in een worktree"
+    "Open in a worktree": "Openen in een worktree",
+    "Reviewers": "Reviewers",
+    "Labels": "Labels"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9437,7 +9451,9 @@
     "Move up": "Przenieś w górę",
     "Move down": "Przenieś w dół",
     "Open in a thread": "Otwórz w wątku",
-    "Open in a worktree": "Otwórz w worktree"
+    "Open in a worktree": "Otwórz w worktree",
+    "Reviewers": "Recenzenci",
+    "Labels": "Etykiety"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10617,7 +10633,9 @@
     "Move up": "Переместить вверх",
     "Move down": "Переместить вниз",
     "Open in a thread": "Открыть в треде",
-    "Open in a worktree": "Открыть в worktree"
+    "Open in a worktree": "Открыть в worktree",
+    "Reviewers": "Рецензенты",
+    "Labels": "Метки"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11797,7 +11815,9 @@
     "Move up": "Перемістити вгору",
     "Move down": "Перемістити вниз",
     "Open in a thread": "Відкрити в треді",
-    "Open in a worktree": "Відкрити у worktree"
+    "Open in a worktree": "Відкрити у worktree",
+    "Reviewers": "Рецензенти",
+    "Labels": "Мітки"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12977,7 +12997,9 @@
     "Move up": "上へ移動",
     "Move down": "下へ移動",
     "Open in a thread": "スレッドで開く",
-    "Open in a worktree": "worktree で開く"
+    "Open in a worktree": "worktree で開く",
+    "Reviewers": "レビュアー",
+    "Labels": "ラベル"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14157,7 +14179,9 @@
     "Move up": "위로 이동",
     "Move down": "아래로 이동",
     "Open in a thread": "스레드에서 열기",
-    "Open in a worktree": "worktree에서 열기"
+    "Open in a worktree": "worktree에서 열기",
+    "Reviewers": "리뷰어",
+    "Labels": "레이블"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15337,7 +15361,9 @@
     "Move up": "上移",
     "Move down": "下移",
     "Open in a thread": "在线程中打开",
-    "Open in a worktree": "在 worktree 中打开"
+    "Open in a worktree": "在 worktree 中打开",
+    "Reviewers": "审查者",
+    "Labels": "标签"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16517,7 +16543,9 @@
     "Move up": "انقل لأعلى",
     "Move down": "انقل لأسفل",
     "Open in a thread": "افتح في محادثة",
-    "Open in a worktree": "افتح في worktree"
+    "Open in a worktree": "افتح في worktree",
+    "Reviewers": "المراجعون",
+    "Labels": "التسميات"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17697,7 +17725,9 @@
     "Move up": "Yukarı taşı",
     "Move down": "Aşağı taşı",
     "Open in a thread": "Bir konuda aç",
-    "Open in a worktree": "Bir worktree'de aç"
+    "Open in a worktree": "Bir worktree'de aç",
+    "Reviewers": "İnceleyenler",
+    "Labels": "Etiketler"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18877,7 +18907,9 @@
     "Move up": "Flytta upp",
     "Move down": "Flytta ned",
     "Open in a thread": "Öppna i en tråd",
-    "Open in a worktree": "Öppna i ett worktree"
+    "Open in a worktree": "Öppna i ett worktree",
+    "Reviewers": "Granskare",
+    "Labels": "Etiketter"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20057,7 +20089,9 @@
     "Move up": "Flyt op",
     "Move down": "Flyt ned",
     "Open in a thread": "Åbn i en tråd",
-    "Open in a worktree": "Åbn i et worktree"
+    "Open in a worktree": "Åbn i et worktree",
+    "Reviewers": "Korrekturlæsere",
+    "Labels": "Etiketter"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21237,7 +21271,9 @@
     "Move up": "Flytt opp",
     "Move down": "Flytt ned",
     "Open in a thread": "Åpne i en tråd",
-    "Open in a worktree": "Åpne i et worktree"
+    "Open in a worktree": "Åpne i et worktree",
+    "Reviewers": "Kontrollører",
+    "Labels": "Etiketter"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22417,7 +22453,9 @@
     "Move up": "Siirrä ylös",
     "Move down": "Siirrä alas",
     "Open in a thread": "Avaa ketjussa",
-    "Open in a worktree": "Avaa worktreessä"
+    "Open in a worktree": "Avaa worktreessä",
+    "Reviewers": "Tarkistajat",
+    "Labels": "Tunnisteet"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23597,6 +23635,8 @@
     "Move up": "Posunout nahoru",
     "Move down": "Posunout dolů",
     "Open in a thread": "Otevřít ve vlákně",
-    "Open in a worktree": "Otevřít ve worktree"
+    "Open in a worktree": "Otevřít ve worktree",
+    "Reviewers": "Recenzenti",
+    "Labels": "Štítky"
   }
 }

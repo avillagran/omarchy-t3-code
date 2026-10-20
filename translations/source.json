@@ -1177,6 +1177,8 @@
     "Move up": "Move up",
     "Move down": "Move down",
     "Open in a thread": "Open in a thread",
-    "Open in a worktree": "Open in a worktree"
+    "Open in a worktree": "Open in a worktree",
+    "Reviewers": "Reviewers",
+    "Labels": "Labels"
   }
 }
