@@ -10569,7 +10569,7 @@
     "Copy prompt link": "Копировать ссылку на промпт",
     "Copy prompt link with repo and model": "Копировать ссылку на промпт с репозиторием и моделью",
     "Processes": "Процессы",
-    "{count} processes · {cpu}% CPU · {memory}": "Процессов: {count} · ЦП {cpu}% · {memory}",
+    "{count} processes · {cpu}% CPU · {memory}": "Процессов: {count} · CPU {cpu}% · {memory}",
     "Interrupt": "Прервать",
     "Kill": "Завершить принудительно",
     "Click again to kill": "Нажмите ещё раз для завершения"
@@ -11744,7 +11744,7 @@
     "Copy prompt link": "Копіювати посилання на промпт",
     "Copy prompt link with repo and model": "Копіювати посилання на промпт із репозиторієм і моделлю",
     "Processes": "Процеси",
-    "{count} processes · {cpu}% CPU · {memory}": "Процесів: {count} · ЦП {cpu}% · {memory}",
+    "{count} processes · {cpu}% CPU · {memory}": "Процесів: {count} · CPU {cpu}% · {memory}",
     "Interrupt": "Перервати",
     "Kill": "Завершити примусово",
     "Click again to kill": "Натисніть ще раз для завершення"
