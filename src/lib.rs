@@ -388,6 +388,8 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
             let (_,display,rendered,search,blocks,images)=&cache[&id];
             messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
         }
+        // One fork action per run: on its last response.
+        let mut seen_runs=HashSet::new();for m in messages.iter_mut().rev(){if let Some(run)=m["forkRunId"].as_str().map(str::to_string){if !seen_runs.insert(run){m["forkRunId"]=Value::Null;}}}
         let retained=messages.iter().map(|m|text(m,"id").to_string()).collect::<HashSet<_>>();cache.retain(|id,_|retained.contains(id));
         let p=&d["projection"];let active=active_run_id(p);let status=p["runs"].as_array().and_then(|r|r.last()).map(|r|text(r,"status")).unwrap_or("idle");
         let started=p["runs"].as_array().into_iter().flatten().find(|r|text(r,"id")==active).map(|r|epoch(&r["startedAt"]).max(epoch(&r["createdAt"]))).unwrap_or(0);
@@ -397,9 +399,30 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status,"providerInstanceId":p["thread"]["providerInstanceId"],"interactionMode":p["thread"]["interactionMode"],"latestRunSettled":plan_workflow::latest_run_settled(p)});
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
         for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
+        thread_state["contextWindow"]=context_window(p);
         Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 
+/// Port of T3 contextWindow.ts: the newest provider turn usage, else the active provider
+/// thread's context usage, else the last compaction's token count.
+pub fn context_window(p:&Value)->Value{
+    let num=|v:&Value|v.as_f64().filter(|n|n.is_finite());
+    let build=|used:f64,max:Option<f64>,u:&Value|{
+        let pct=max.filter(|m|*m>0.0).map(|m|(used/m*100.0).min(100.0));
+        json!({"usedTokens":used.max(0.0),"maxTokens":max,"usedPercentage":pct,"remainingTokens":max.map(|m|(m-used).round().max(0.0)),"inputTokens":num(&u["inputTokens"]),"cachedInputTokens":num(&u["cachedInputTokens"]),"outputTokens":num(&u["outputTokens"]),"reasoningOutputTokens":num(&u["reasoningOutputTokens"]),"totalProcessedTokens":num(&u["totalProcessedTokens"]),"compactsAutomatically":u.get("compactsAutomatically").cloned().unwrap_or(json!(true)),"autoCompactThreshold":num(&u["autoCompactThreshold"]),"cost":num(&u["cost"])})
+    };
+    let live=p["providerTurns"].as_array().into_iter().flatten().map(|t|&t["tokenUsage"]).filter(|u|u.is_object())
+        .fold(None::<&Value>,|best,u|match best{Some(b) if protocol::compaction::timestamp(&u["updatedAt"])<protocol::compaction::timestamp(&b["updatedAt"])=>Some(b),_=>Some(u)});
+    if let Some(u)=live{if let Some(used)=num(&u["usedTokens"]){let mut out=build(used,num(&u["maxTokens"]),u);out["totalProcessedTokens"]=Value::Null;out["autoCompactThreshold"]=Value::Null;out["cost"]=Value::Null;out["compactsAutomatically"]=json!(true);return out}}
+    let active=&p["thread"]["activeProviderThreadId"];
+    if let Some(u)=p["providerThreads"].as_array().into_iter().flatten().find(|t|!active.is_null()&&&t["id"]==active).map(|t|&t["contextUsage"]).filter(|u|u.is_object()){
+        if let Some(used)=num(&u["usedTokens"]){return build(used,num(&u["maxTokens"]),u)}
+    }
+    if let Some(c)=p["turnItems"].as_array().into_iter().flatten().rev().find(|i|i["type"]=="compaction"&&num(&i["afterTokenCount"]).is_some_and(|n|n>=0.0)){
+        let mut out=build(num(&c["afterTokenCount"]).unwrap(),None,&Value::Null);out["totalProcessedTokens"]=json!(num(&c["beforeTokenCount"]));out["compactsAutomatically"]=json!(true);return out
+    }
+    Value::Null
+}
 /// Ports of T3 threadWorkflows/threadRelationships: where a fork merges back and
 /// which finished run it would carry.
 pub fn thread_workflows(p:&Value)->Value{
@@ -796,3 +819,23 @@ pub mod browser_cookies;
 pub mod browser_import;
 
 pub mod storage_settings;
+#[cfg(test)]
+mod context_window_tests {
+    use super::context_window;
+    use serde_json::json;
+    #[test]
+    fn newest_turn_usage_then_provider_thread_then_compaction() {
+        let p = json!({"thread":{"activeProviderThreadId":"pt"},"providerTurns":[{"tokenUsage":{"usedTokens":10,"maxTokens":100,"updatedAt":"2026-01-02T00:00:00Z"}},{"tokenUsage":{"usedTokens":50,"maxTokens":200,"updatedAt":"2026-01-01T00:00:00Z"}}],"providerThreads":[{"id":"pt","contextUsage":{"usedTokens":7,"maxTokens":70}}]});
+        let w = context_window(&p);
+        assert_eq!(w["usedTokens"], 10.0);
+        assert_eq!(w["usedPercentage"], 10.0);
+        assert_eq!(w["remainingTokens"], 90.0);
+        let p = json!({"thread":{"activeProviderThreadId":"pt"},"providerTurns":[],"providerThreads":[{"id":"pt","contextUsage":{"usedTokens":7,"maxTokens":70,"cost":0.5}}]});
+        assert_eq!(context_window(&p)["usedPercentage"], 10.0);
+        assert_eq!(context_window(&p)["cost"], 0.5);
+        let p = json!({"thread":{},"turnItems":[{"type":"compaction","afterTokenCount":1200,"beforeTokenCount":90000}]});
+        assert_eq!(context_window(&p)["usedTokens"], 1200.0);
+        assert!(context_window(&p)["maxTokens"].is_null());
+        assert!(context_window(&json!({"thread":{}})).is_null());
+    }
+}

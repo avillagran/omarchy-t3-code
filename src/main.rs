@@ -61,6 +61,11 @@ fn notify(snapshot: &Value) -> Result<()> {
     }
     let p = dir.join("seen-rust.json");
     let mut previous = read_json(&p).unwrap_or(json!({}));
+    // T3 notificationMode: desktop notifications, a sound, both or neither.
+    let mode = ui_state::load()["threadNotifications"].as_str().unwrap_or("notifications").to_string();
+    let banners = matches!(mode.as_str(), "notifications" | "notifications-and-sound");
+    let sound = matches!(mode.as_str(), "sound" | "notifications-and-sound");
+    let mut chime: Option<&str> = None;
     for env in snapshot["environments"].as_array().into_iter().flatten() {
         if env["state"] != "ready" {
             continue;
@@ -86,6 +91,13 @@ fn notify(snapshot: &Value) -> Result<()> {
             let changed = t["pending"] == true
                 && (old["pending"] != true || old["revision"] != t["revision"]);
             if changed && previous[&initialized] == true {
+                // Threads that finish together play one sound; a question outranks a completion.
+                let waiting = !matches!(text(t, "reason"), "response" | "review" | "failed");
+                if sound && (chime.is_none() || waiting) {
+                    chime = Some(if waiting { "notification-input.mp3" } else { "notification-completion.mp3" });
+                }
+            }
+            if changed && previous[&initialized] == true && banners {
                 let icon=notification_icon::path(snapshot,t).ok();
                 let delivered = Command::new("timeout")
                     .args([
@@ -121,7 +133,21 @@ fn notify(snapshot: &Value) -> Result<()> {
         }
         previous[initialized] = json!(true);
     }
+    if let Some(name) = chime {
+        play_sound(name);
+    }
     save_json(&p, &previous)
+}
+fn play_sound(name: &str) {
+    let Ok(exe) = std::env::current_exe() else { return };
+    // bin/omarchy-t3-client sits next to ui/ in the plugin directory.
+    let Some(file) = exe.parent().and_then(|bin| bin.parent()).map(|root| root.join("ui/assets/sounds").join(name)).filter(|f| f.is_file()) else { return };
+    for player in ["pw-play", "paplay"] {
+        if let Ok(mut child) = Command::new(player).arg(&file).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() {
+            std::thread::spawn(move || child.wait());
+            return;
+        }
+    }
 }
 fn open_thread(client: &Client, env: &str, id: &str) -> Result<Value> {
     if !valid_id(id) {
