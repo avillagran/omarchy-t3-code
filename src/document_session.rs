@@ -50,21 +50,25 @@ pub fn start_with(exe:std::path::PathBuf)->Manager{
 
 /// Each visible inline page has an independent renderer; modal previews keep
 /// their own slot. Leaving the viewport cancels pending reads and frees Qt.
-pub struct Pool{modal:Manager,modal_id:String,review:Manager,review_id:String,inline:std::collections::HashMap<String,Manager>}
+/// QML previews (Qt Quick only, 30-70 MB each) have their own, larger budget
+/// than WebEngine pages, so a message with several QML blocks still renders.
+pub struct Pool{modal:Manager,modal_id:String,review:Manager,review_id:String,inline:std::collections::HashMap<String,Manager>,qml:std::collections::HashSet<String>}
 impl Pool{
- pub fn new()->Self{Self{modal:start(),modal_id:String::new(),review:start(),review_id:String::new(),inline:std::collections::HashMap::new()}}
+ pub fn new()->Self{Self{modal:start(),modal_id:String::new(),review:start(),review_id:String::new(),inline:std::collections::HashMap::new(),qml:std::collections::HashSet::new()}}
  pub fn send(&mut self,input:Value){
   let id=text(&input,"requestId").to_string();
   match text(&input,"op"){
    "document-open" if input["reviewSnapshotId"].is_string()=>{self.review_id=id;self.review.send(input)},
    "document-open" if input["inline"]==true=>{
-    if !self.inline.contains_key(&id)&&self.inline.len()>=4{super::emit("action",json!({"op":"document-open","requestId":id,"error":"viewer_unavailable"}));return}
+    let qml=input["attachment"]["generated"]=="qml";let used=self.inline.keys().filter(|k|self.qml.contains(*k)==qml).count();
+    if !self.inline.contains_key(&id)&&used>=if qml{8}else{4}{super::emit("action",json!({"op":"document-open","requestId":id,"error":"viewer_unavailable"}));return}
+    if qml{self.qml.insert(id.clone());}
     self.inline.entry(id).or_insert_with(start).send(input);
    },
    "document-open"=>{self.modal_id=id;self.modal.send(input)},
-   "document-close" if id.is_empty()=>{self.modal_id.clear();self.review_id.clear();self.review.send(json!({"op":"document-close"}));for(_,manager)in self.inline.drain(){manager.send(json!({"op":"document-close"}));}self.modal.send(input)},
+   "document-close" if id.is_empty()=>{self.modal_id.clear();self.review_id.clear();self.qml.clear();self.review.send(json!({"op":"document-close"}));for(_,manager)in self.inline.drain(){manager.send(json!({"op":"document-close"}));}self.modal.send(input)},
    "document-close" if id==self.review_id=>{self.review_id.clear();self.review.send(input)},
-   "document-close"=>{if let Some(manager)=self.inline.remove(&id){manager.send(input)}else if id==self.modal_id{self.modal_id.clear();self.modal.send(input)}},
+   "document-close"=>{self.qml.remove(&id);if let Some(manager)=self.inline.remove(&id){manager.send(input)}else if id==self.modal_id{self.modal_id.clear();self.modal.send(input)}},
    _ if id==self.review_id=>self.review.send(input),
    _=>{if let Some(manager)=self.inline.get(&id){manager.send(input)}else if id==self.modal_id{self.modal.send(input)}},
   }

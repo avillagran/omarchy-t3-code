@@ -1223,6 +1223,8 @@
     "This QML block is too large to preview (64 KB maximum).": "This QML block is too large to preview (64 KB maximum).",
     "This QML block can't be previewed.": "This QML block can't be previewed.",
     "This preview stopped responding (an endless loop?) and was closed.": "This preview stopped responding (an endless loop?) and was closed.",
-    "This preview closed unexpectedly (it may have run out of memory).": "This preview closed unexpectedly (it may have run out of memory)."
+    "This preview closed unexpectedly (it may have run out of memory).": "This preview closed unexpectedly (it may have run out of memory).",
+    "Show code": "Show code",
+    "Shown in the side panel": "Shown in the side panel"
   }
 }

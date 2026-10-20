@@ -49,10 +49,18 @@ fn previews_open_without_an_environment_and_blocked_ones_never_reach_qt(){
  assert_eq!(blocked.unwrap_err(),"qml_import_blocked:Quickshell.Io");
 }
 #[test]
-fn qml_code_blocks_offer_a_preview(){
- let blocks=vec![json!({"language":"qml","code":"import QtQuick\nItem {}"}),json!({"language":"rust","code":"fn main(){}"})];
- let html=markdown_render("```qml\nimport QtQuick\nItem {}\n```\n\n```rust\nfn main(){}\n```",Some(&blocks),false);
- assert!(html.contains("ot3-code-preview://0"),"{html}");assert!(!html.contains("ot3-code-preview://1"),"{html}");
+fn qml_code_blocks_are_marked_for_an_in_place_preview(){
+ let blocks=vec![json!({"language":"qml","code":"import QtQuick\nItem {}"}),json!({"language":"rust","code":"fn main(){}"}),json!({"language":"QML","code":"Item {}"})];
+ let html=markdown_render("Antes\n\n```qml\nimport QtQuick\nItem {}\n```\n\nEntre\n\n```rust\nfn main(){}\n```\n\n```QML\nItem {}\n```\n\nDespués",Some(&blocks),false);
+ let open=html.find("<!--ot3-qml:0-->").expect("start marker");let close=html.find("<!--/ot3-qml:0-->").expect("end marker");
+ let inside=&html[open..close];assert!(inside.contains("Item {}")&&inside.contains("ot3-code-copy://0"),"{inside}");
+ assert!(html[..open].contains("Antes")&&html[close..].contains("Entre"),"{html}");
+ assert!(!html.contains("ot3-qml:1"),"other languages stay as code: {html}");
+ assert!(html.contains("<!--ot3-qml:2-->")&&html.contains("<!--/ot3-qml:2-->"),"language match ignores case");
+ assert!(html.rfind("<!--/ot3-qml:2-->").unwrap()<html.rfind("Después").unwrap());
+ assert!(!html.contains("ot3-code-preview://"),"no separate preview link: {html}");
+ // Without code-block metadata (plans, documents) nothing is marked.
+ assert!(!markdown_render("```qml\nItem {}\n```",None,false).contains("ot3-qml"));
 }
 
 fn landlock()->bool{unsafe{libc::syscall(444,std::ptr::null::<u8>(),0usize,1u32)>=1}}

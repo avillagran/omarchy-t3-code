@@ -39,9 +39,12 @@ Item {
   return T3I18n.error(e)
  }
  function resize(){if(html&&!sourceMode)send({type:"resize",width:Math.round(surface.width),height:Math.round(surface.height)})}
+ // Height above the page: the title bar and an error line, when shown.
+ readonly property real chromeHeight:(chromeRow.visible?chromeRow.implicitHeight+Style.space(8):0)+(errorLine.visible?errorLine.implicitHeight+Style.space(8):0)
  ColumnLayout{
   anchors.fill:parent;spacing:Style.space(8)
   RowLayout{
+   id:chromeRow
    visible:root.chromeVisible
    Layout.fillWidth:true
    T3Icon{name:"file";tint:Color.accent}
@@ -53,7 +56,7 @@ Item {
    T3IconButton{objectName:"t3DocumentDismiss";name:"x";visible:root.dismissible;tooltipText:T3I18n.tr("Close");onClicked:root.dismissed()}
    T3IconButton{objectName:"t3DocumentClose";name:root.inlineMode?"maximize-2":"x";tooltipText:T3I18n.tr(root.inlineMode?"Preview":"Close");onClicked:root.closed()}
   }
-  Text{Layout.fillWidth:true;objectName:"t3DocumentError";visible:!!root.doc.error;text:root.errorText(root.doc.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+  Text{id:errorLine;Layout.fillWidth:true;objectName:"t3DocumentError";visible:!!root.doc.error;text:root.errorText(root.doc.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:root.doc.busy || root.html&&!root.sourceMode&&!root.doc.error&&(!root.doc.frameUrl || root.doc.data.internalReview&&!root.doc.rendererReady);active:visible}
   Item{
    id:surface;Layout.fillWidth:true;Layout.fillHeight:true;clip:true

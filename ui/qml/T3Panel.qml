@@ -89,31 +89,45 @@ Item {
   // Mermaid diagrams drawn on request join this thread's renders.
   property var diagrams:[]
   function showDiagram(attachment){var rest=diagrams.filter(function(d){return d.id!==attachment.id});diagrams=rest.concat([attachment]);followRenders();showRender(attachment)}
-  // QML previews follow the HTML renders preference: the side panel, or under
-  // their message (clicking the action again closes an inline preview).
-  property var inlinePreviews:({})
-  function showQmlPreview(attachment){
-    if(renderSide){showDiagram(attachment);return}
-    var all=Object.assign({},inlinePreviews),list=(all[attachment.messageId] || []).slice(),at=list.findIndex(function(a){return a.id===attachment.id})
-    if(at>=0)list.splice(at,1);else list.push(attachment)
-    all[attachment.messageId]=list;inlinePreviews=all
+  // QML blocks of finished messages show their preview in place (the side
+  // panel with side renders); the code stays one click away per block.
+  property var qmlCode:({})
+  function setQmlCode(attachment,show){var all=Object.assign({},qmlCode);all[attachment.id]=show;qmlCode=all}
+  function showQmlPreview(attachment){if(renderSide)showRender(attachment);else setQmlCode(attachment,false)}
+  // Rendered HTML split around its QML blocks: [{html}, {qml: attachment}, {html}, ...].
+  // Streaming messages keep their code until the block is complete.
+  function messageSegments(message){
+    var html=message&&message.rendered
+    if(!html||message.role!=="assistant"||message.streaming||html.indexOf("<!--ot3-qml:")<0)return null
+    var parts=[],re=/<!--ot3-qml:(\d+)-->[\s\S]*?<!--\/ot3-qml:\1-->/g,last=0,m
+    while((m=re.exec(html))){parts.push({html:html.slice(last,m.index)});var a=bridge.qmlAttachment(message,Number(m[1]));parts.push(a?{qml:a}:{html:m[0]});last=re.lastIndex}
+    parts.push({html:html.slice(last)})
+    return parts
   }
-  function closeQmlPreview(attachment){var all=Object.assign({},inlinePreviews);all[attachment.messageId]=(all[attachment.messageId] || []).filter(function(a){return a.id!==attachment.id});inlinePreviews=all}
+  function qmlAttachments(message){
+    if(message.role!=="assistant"||message.streaming)return []
+    return (message.codeBlocks || []).map(function(_,i){return bridge.qmlAttachment(message,i)}).filter(function(a){return !!a})
+  }
+  function messageLink(modelData,link){
+    if(String(link).indexOf("ot3-image-open://")===0){var a=(modelData.markdownImages || [])[Number(String(link).slice(17))];if(a){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}return}
+    if(String(link).indexOf("ot3-code-")===0||String(link).indexOf("ot3-table-copy://")===0){root.bridge.codeAction(modelData,link);return}
+    root.bridge.openReference(link)
+  }
   // Renders that arrive while a thread is open go straight to the panel;
   // those already in the history only open on request.
   function followRenders(){
     var key=bridge.selectedKey;if(!key)return
     var ids=[],latest=null
-    bridge.transcript.forEach(function(r){(r.attachments || []).forEach(function(a){if(a.mimeType==="text/html"){ids.push(a.id);latest=a}})})
+    bridge.transcript.forEach(function(r){(r.attachments || []).forEach(function(a){if(a.mimeType==="text/html"){ids.push(a.id);latest=a}});root.qmlAttachments(r).forEach(function(a){ids.push(a.id);latest=a})})
     var seen=renderSeen[key],next=Object.assign({},renderSeen)
     if(seen&&renderSide&&latest&&seen.indexOf(latest.id)<0)showRender(latest)
     next[key]=ids;renderSeen=next
-    var list=[];bridge.transcript.forEach(function(r){(r.attachments || []).forEach(function(a){if(a.mimeType==="text/html")list.push(a)})})
-    list=list.concat(diagrams)
+    var list=[];bridge.transcript.forEach(function(r){(r.attachments || []).forEach(function(a){if(a.mimeType==="text/html")list.push(a)});list=list.concat(root.qmlAttachments(r))})
+    list=list.concat(diagrams.filter(function(d){return !list.some(function(a){return a.id===d.id})}))
     if(JSON.stringify(list)!==JSON.stringify(renderList))renderList=list
     if(!renderAttachment&&latest)renderAttachment=latest
   }
-  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.inlinePreviews={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
+  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.qmlCode={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
   // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
   // every 8 ms through the normal wheel path) and record the intervals
   // between presented frames; profileResult reads them back.
@@ -650,9 +664,9 @@ Item {
     var rect=edit.positionToRectangle(label)
     return String(edit.linkAt(rect.x+2,rect.y+rect.height/2)).indexOf("ot3-code-copy://")===0
   }
-  function renderMessage(message,availableWidth){
+  function renderMessage(message,availableWidth,part){
     if(!message.rendered)return message.text || ""
-    var html=message.rendered
+    var html=part!==undefined?part:message.rendered
     html=html.replace(/<a href="ot3-image-open:\/\/([0-9]+)">([\s\S]*?)<\/a>/g,function(full,index,label){
       var a=(message.markdownImages || [])[Number(index)];if(!a)return label;
       var state=root.bridge.imageStates[root.bridge.imageKey(a)] || {};
@@ -665,7 +679,6 @@ Item {
     html=html.replace(new RegExp('(href="ot3-code-run://[0-9]+">)Run in terminal(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Run in terminal")+b})
     html=html.replace(new RegExp('(href="ot3-code-copy://[0-9]+">)Copy code(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy code")+b})
     html=html.replace(new RegExp('(href="ot3-code-diagram://[0-9]+">)Show diagram(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Show diagram")+b})
-    html=html.replace(new RegExp('(href="ot3-code-preview://[0-9]+">)Show preview(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Show preview")+b})
     html=html.replace(new RegExp('(href="ot3-table-copy://[0-9]+/markdown">)Copy as Markdown(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as Markdown")+b}).replace(new RegExp('(href="ot3-table-copy://[0-9]+/csv">)Copy as CSV(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as CSV")+b})
     html=MarkdownStyle.render(html,Style.font.body,Style.spaceReal(1),String(root.fg),String(root.dim),String(root.surface),String(root.divider))
     return MarkdownLinks.decorate(html).replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ")
@@ -1502,6 +1515,7 @@ Item {
                 required property var row
                 readonly property var modelData: row
                 readonly property var textItem:messageText
+                readonly property var segments:root.messageSegments(row)
                 property bool pooled:false
                 ListView.onPooled:{pooled=true;opacity=1}
                 ListView.onReused:{pooled=false;opacity=1}
@@ -1542,11 +1556,11 @@ Item {
                       id:messageText;objectName:"chatMessageText"
                       HoverHandler{objectName:"chatLinkCursor";cursorShape:messageText.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
                       LayoutMirroring.enabled:false
-                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context" && modelData.role !== "plan" && modelData.role !== "secret"
+                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context" && modelData.role !== "plan" && modelData.role !== "secret" && !(message.segments&&!message.segments[0].html.trim())
                       width: parent.width
-                      text: message.userMessage ? modelData.text || "" : root.renderMessage(modelData,width)
+                      text: message.userMessage ? modelData.text || "" : message.segments ? root.renderMessage(modelData,width,message.segments[0].html) : root.renderMessage(modelData,width)
                       textFormat: message.userMessage || !modelData.rendered ? TextEdit.PlainText : TextEdit.RichText; readOnly: true; selectByMouse: true
-                      onLinkActivated:function(link){if(String(link).indexOf("ot3-image-open://")===0){var a=(message.modelData.markdownImages || [])[Number(String(link).slice(17))];if(a){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}return}if(String(link).indexOf("ot3-code-")===0||String(link).indexOf("ot3-table-copy://")===0){root.bridge.codeAction(message.modelData,link);return}root.bridge.openReference(link)}
+                      onLinkActivated:function(link){root.messageLink(message.modelData,link)}
                       wrapMode: TextEdit.Wrap
                       color: root.fg; selectionColor: Color.accent; selectedTextColor: Color.popups.background
                       font.pixelSize: Style.font.body
@@ -1558,6 +1572,38 @@ Item {
                         visible:!message.userMessage&&messageText.selectedText.trim().length>0&&!root.bridge.draft.queueEdit
                         x:Math.max(0,Math.min(messageText.width-width,anchorRect.x-width/2));y:anchorRect.y+anchorRect.height+Style.space(4)
                         text:T3I18n.tr("Quote");onClicked:{root.quoteSelection(messageText.selectedText);messageText.deselect()}
+                      }
+                    }
+                    // After the first part: each QML block as its preview, then the text that follows it.
+                    Repeater {
+                      model:message.segments?message.segments.slice(1).filter(function(p){return p.qml||p.html.trim()}):[]
+                      Loader {
+                        required property var modelData
+                        width:body.width
+                        readonly property real viewportY:message.y+body.y+y-conversation.contentY
+                        readonly property bool inView:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+height>0
+                        sourceComponent:modelData.qml?qmlPart:htmlPart
+                        Component {
+                          id:qmlPart
+                          T3QmlBlock {
+                            bridge:root.bridge;attachment:modelData.qml;side:root.renderSide
+                            active:inView;showCode:root.qmlCode[modelData.qml.id]===true
+                            shownInSide:root.renderShown&&!!root.renderAttachment&&root.renderAttachment.id===modelData.qml.id
+                            onCodeToggled:function(show){root.setQmlCode(modelData.qml,show)}
+                            onSideRequested:root.showRender(modelData.qml)
+                          }
+                        }
+                        Component {
+                          id:htmlPart
+                          TextEdit {
+                            objectName:"chatMessagePart"
+                            text:root.renderMessage(message.modelData,width,modelData.html)
+                            textFormat:TextEdit.RichText;readOnly:true;selectByMouse:true;wrapMode:TextEdit.Wrap
+                            color:root.fg;selectionColor:Color.accent;selectedTextColor:Color.popups.background;font.pixelSize:Style.font.body
+                            onLinkActivated:function(link){root.messageLink(message.modelData,link)}
+                            HoverHandler{cursorShape:parent.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
+                          }
+                        }
                       }
                     }
                     Repeater {
@@ -1598,17 +1644,6 @@ Item {
                         readonly property real viewportY:message.y+body.y+y-conversation.contentY
                         width:body.width;bridge:root.bridge;attachment:modelData
                         active:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+height>0
-                      }
-                    }
-                    Repeater {
-                      model:root.renderSide?[]:(root.inlinePreviews[modelData.id] || [])
-                      T3InlineHtml {
-                        required property var modelData
-                        objectName:"t3InlineQmlPreview"
-                        readonly property real viewportY:message.y+body.y+y-conversation.contentY
-                        width:body.width;bridge:root.bridge;attachment:modelData;closable:true
-                        active:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+height>0
-                        onDismissed:root.closeQmlPreview(modelData)
                       }
                     }
                     Flow {

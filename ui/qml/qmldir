@@ -66,6 +66,7 @@ T3PickerButton 1.0 T3PickerButton.qml
 T3PermissionPicker 1.0 T3PermissionPicker.qml
 
 T3InlineHtml 1.0 T3InlineHtml.qml
+T3QmlBlock 1.0 T3QmlBlock.qml
 
 T3ProjectDrafts 1.0 T3ProjectDrafts.qml
 
