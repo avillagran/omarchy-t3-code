@@ -113,6 +113,17 @@ fn production_transport_journals_scopes_permissions_exact_retry_and_observed_com
                 write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
                 continue;
             }
+            if header.starts_with("GET /api/orchestration/shell") {
+                let mut b = vec![];
+                let mut byte = [0];
+                while !b.ends_with(b"\r\n\r\n") {
+                    stream.read_exact(&mut byte).unwrap();
+                    b.push(byte[0])
+                }
+                let body = json!({"schemaVersion":1,"snapshotSequence":20,"threads":mm.lock().unwrap().clone(),"archivedThreads":aa.lock().unwrap()["threads"],"projects":[]}).to_string();
+                write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
+                continue;
+            }
             let mut ws = tungstenite::accept(stream).unwrap();
             let request: Value =
                 serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
@@ -121,9 +132,6 @@ fn production_transport_journals_scopes_permissions_exact_retry_and_observed_com
                 "orchestration.getArchivedShellSnapshot" => {
                     assert_eq!(p, &json!({}));
                     aa.lock().unwrap().clone()
-                }
-                "orchestration.getShellSnapshot" => {
-                    json!({"schemaVersion":1,"snapshotSequence":20,"threads":mm.lock().unwrap().clone(),"archivedThreads":aa.lock().unwrap()["threads"],"projects":[]})
                 }
                 "orchestration.dispatchCommand" => {
                     assert!(oo.load(Ordering::Relaxed));

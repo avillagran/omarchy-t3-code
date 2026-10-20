@@ -1,6 +1,7 @@
 mod auto_compact;
 mod document_session;
 mod live;
+mod shell_watch;
 mod keybinding_watch;
 mod device_watch;
 mod device_screen;
@@ -218,6 +219,7 @@ fn watch(client: Client) -> Result<()> {
     std::thread::spawn(move||{for v in rewind_rx{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"operationId":v["operationId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
     let input_tx = tx.clone();
     let live=live::Control::new(client.clone());
+    shell_watch::start(tx.clone());
     let input_live=live.clone();
     let browser_manager=browser_sessions::Manager::start(browser_guest::Config::native()?,|id|environments()?.into_iter().find(|e|e.id==id).ok_or("unknown_environment".into()),connection_preferences::read_client_preferences,|data|emit("browser-surface",data));
     std::thread::spawn(move || {
@@ -338,6 +340,7 @@ fn watch(client: Client) -> Result<()> {
     let mut selected: Option<(String, String, i64)> = None;
     let mut query = String::new();
     let mut next_poll = Instant::now();
+    let mut last_snapshot = Instant::now();
     let mut quotas = quotas::Control::default();
     let mut next_quota = Instant::now();
     let mut quota_running = false;
@@ -353,6 +356,7 @@ fn watch(client: Client) -> Result<()> {
             });
         }
         if Instant::now() >= next_poll {
+            last_snapshot = Instant::now();
             if let Ok(environments)=environments(){quotas.sync(environments);}
             match snapshot(&client) {
                 Ok(d) => {
@@ -428,6 +432,8 @@ fn watch(client: Client) -> Result<()> {
             }
             "quit" => return Ok(()),
             "refresh" => { refresh_connections(); next_poll = Instant::now(); },
+            // Coalesce bursts of shell events into one snapshot.
+            "shell-changed" => { next_poll = next_poll.min((Instant::now() + Duration::from_millis(200)).max(last_snapshot + Duration::from_secs(1))); },
             "compaction-deadline"=>{if let Some(at)=cmd["at"].as_i64(){let remaining=at.saturating_sub(chrono::Utc::now().timestamp_millis()).max(0) as u64;next_poll=next_poll.min(Instant::now()+Duration::from_millis(remaining));}},
             "visible" => {
                 visible = cmd["value"] == true;

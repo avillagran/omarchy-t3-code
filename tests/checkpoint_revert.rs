@@ -305,14 +305,16 @@ fn native_pinned_source_contracts_have_not_drifted() {
         commands.contains("candidate.ordinalWithinScope === 0 && candidate.appRunOrdinal === null")
     );
     assert!(commands.contains("candidate.appRunOrdinal === input.turnCount"));
-    let view =
-        std::fs::read_to_string(native.join("apps/web/src/components/ChatView.tsx")).unwrap();
+    let view = std::fs::read_to_string(
+        native.join("apps/web/src/components/chat/ChatOverlayHosts.tsx"),
+    )
+    .unwrap();
     for contract in [
         "Edit from here?",
         "Revert files too",
         "Revert and keep changes",
-        "pendingRevert.messageId, true",
-        "pendingRevert.messageId, false",
+        "props.onConfirm(pending.turnCount, pending.messageId, restoreFiles)",
+        "confirm(false)",
     ] {
         assert!(
             view.contains(contract),

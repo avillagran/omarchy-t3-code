@@ -21,7 +21,7 @@
     "src/lib.rs": "caa23308be63886f8fc114c9cade94c47376a4cbadd34800dfe047751e85fcbd",
     "src/lifecycle.rs": "52b1a2581e9d80880e603d48f82f36e4bcb43b4ed3ecd3fa06bafabffdca2563",
     "src/models.rs": "cdeb2da96de219219920db96cafa126dbf8811dd5d4777ea034c91b91d95cd89",
-    "src/projection.rs": "28c7667ae764c7e1cd54b1e5f3642dcb3ced93bf1993b53a2ba68a1a99efac6d",
+    "src/projection.rs": "3bd5ce4f8530c6d9e44d113819b1d1db9c05c3d818f9c75eba529d3296ff49a2",
     "src/projects.rs": "ec4f71bcb5207969a8e2190bf0d8c51b341decf47d651a395991c04f069480f5",
     "src/pull_requests.rs": "81a8d5f45f348c06d033470c8d79bcb34a5f81434706e89bfd2a00d53662286b",
     "src/questions.rs": "47f6dfc72bfadfbb0b0f2e27cf144cbbc1e6f910506d92797df3db0e049bdee5",
@@ -38,6 +38,7 @@
     "src/stream.rs uses the 64 MiB websocket cap only for orchestration.subscribeThread with acceptBoundedSnapshot=true; authentication and other streams unchanged",
     "src/lib.rs adds media_image using the same signed same-origin image grant reader as attachment_image, with exact thread/path scope and existing 10 MiB bound",
     "src/projection.rs keeps the htmlRender reference (attachment id and title) of html_render turn items when the live mirror drops tool outputs, so renders that arrive while a chat is open still reach the timeline",
-    "src/lib.rs declares pub mod device_hub; src/device_hub.rs builds only the native device hub proxy paths (MJPEG, screenshot, input sockets) with a session wsTicket and hostId, splits MJPEG/JPEG streams, parses Android SEMU packets and encodes panel input for serve-sim and serve-emu"
+    "src/lib.rs declares pub mod device_hub; src/device_hub.rs builds only the native device hub proxy paths (MJPEG, screenshot, input sockets) with a session wsTicket and hostId, splits MJPEG/JPEG streams, parses Android SEMU packets and encodes panel input for serve-sim and serve-emu",
+    "src/projection.rs applies the partial-payload events of upstream 0.1 (thread.pull-request-link-updated, provider-session.detached, run.background-work-cancelled, checkpoint.rollback-requested), mirrors context handoffs and transfers, and keeps a provider turn's token usage when an update omits it"
   ]
 }

@@ -171,7 +171,7 @@ fn archived<'a>(snapshot: &'a Value, id: &str) -> Option<&'a Value> {
         .find(|t| t["id"] == id && !t["archivedAt"].is_null() && t["deletedAt"].is_null())
 }
 fn observe_with(c: &protocol::Connection, r: &mut Value, archive: &Value) -> Result<()> {
-    let main = c.rpc("orchestration.getShellSnapshot", json!({}))?;
+    let main = c.request_json("GET", "/api/orchestration/shell", None, true)?;
     if main["schemaVersion"].as_u64().is_none_or(|n| n == 0)
         || main["snapshotSequence"].as_u64().is_none()
     {
