@@ -71,7 +71,7 @@ Rectangle {
    Rectangle{visible:!!root.snapshot&&root.profileId!=="default";implicitWidth:Math.min(Style.space(90),profileText.implicitWidth+Style.space(12));implicitHeight:Style.space(22);radius:Style.space(4);border.width:1;border.color:root.divider;color:"transparent";Text{id:profileText;anchors.fill:parent;anchors.margins:Style.space(4);text:root.profileName;elide:Text.ElideRight;textFormat:Text.PlainText;color:root.dim;font.pixelSize:Style.font.caption}}
    Controls.TextField {
     id:addressInput;objectName:"t3BrowserAddress";maximumLength:2048;Layout.fillWidth:true;implicitHeight:Style.space(28);text:activeFocus?root.addressDraft:root.url;placeholderText:T3I18n.tr("Search or enter URL");enabled:root.writable;selectByMouse:true;color:root.fg;placeholderTextColor:root.dim;selectionColor:Color.accent;selectedTextColor:root.fg;font.pixelSize:Style.font.caption
-    onActiveFocusChanged:if(activeFocus){root.addressDraft=root.url;Qt.callLater(selectAll)}
+    onActiveFocusChanged:if(activeFocus){root.addressDraft=root.url;Qt.callLater(selectAll);if(typeof root.bridge.requestLocalServers==="function")root.bridge.requestLocalServers()}
     onTextEdited:root.addressDraft=text
     onAccepted:root.submit(text)
     Keys.onEscapePressed:function(e){root.addressDraft=root.url;focus=false;e.accepted=true}
@@ -79,6 +79,13 @@ Rectangle {
    }
    T3IconButton{objectName:"t3BrowserOpenExternal";name:"external-link";implicitWidth:Style.space(24);tooltipText:T3I18n.tr("Open in system browser");enabled:!!root.url;onClicked:root.bridge.openReference(root.url)}
    T3IconButton{objectName:"t3BrowserMore";name:"ellipsis-vertical";implicitWidth:Style.space(24);tooltipText:T3I18n.tr("Preview menu");onClicked:moreMenu.popup()}
+  }
+  // Dev servers the environment sees listening (T3's discovered local servers).
+  Flow{
+   objectName:"t3BrowserLocalServers";Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8);spacing:Style.space(6)
+   visible:(addressInput.activeFocus||!root.snapshot)&&((root.bridge.localServers||{}).servers||[]).length>0
+   Repeater{model:(root.bridge.localServers||{}).servers||[]
+    T3PickerButton{required property var modelData;primary:false;implicitHeight:Style.space(24);leftPadding:Style.space(8);rightPadding:Style.space(8);text:modelData.url.replace(/^https?:\/\//,"")+(modelData.processName?" · "+modelData.processName:"");onClicked:{addressInput.focus=false;root.submit(modelData.url)}}}
   }
   Rectangle{Layout.fillWidth:true;height:1;color:root.divider}
   RowLayout{
