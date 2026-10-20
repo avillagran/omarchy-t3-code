@@ -1184,6 +1184,7 @@
     "Search": "Search",
     "Install and add": "Install and add",
     "Update to {version}": "Update to {version}",
-    "Updating…": "Updating…"
+    "Updating…": "Updating…",
+    "Initialize repository": "Initialize repository"
   }
 }

@@ -1184,7 +1184,8 @@
     "Search": "Search",
     "Install and add": "Install and add",
     "Update to {version}": "Update to {version}",
-    "Updating…": "Updating…"
+    "Updating…": "Updating…",
+    "Initialize repository": "Initialize repository"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2371,7 +2372,8 @@
     "Search": "Buscar",
     "Install and add": "Instalar y agregar",
     "Update to {version}": "Actualizar a {version}",
-    "Updating…": "Actualizando…"
+    "Updating…": "Actualizando…",
+    "Initialize repository": "Inicializar repositorio"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3558,7 +3560,8 @@
     "Search": "Pesquisar",
     "Install and add": "Instalar e adicionar",
     "Update to {version}": "Atualizar para {version}",
-    "Updating…": "Atualizando…"
+    "Updating…": "Atualizando…",
+    "Initialize repository": "Inicializar repositório"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4745,7 +4748,8 @@
     "Search": "Rechercher",
     "Install and add": "Installer et ajouter",
     "Update to {version}": "Mettre à jour vers {version}",
-    "Updating…": "Mise à jour…"
+    "Updating…": "Mise à jour…",
+    "Initialize repository": "Initialiser le dépôt"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5932,7 +5936,8 @@
     "Search": "Suchen",
     "Install and add": "Installieren und hinzufügen",
     "Update to {version}": "Auf {version} aktualisieren",
-    "Updating…": "Wird aktualisiert…"
+    "Updating…": "Wird aktualisiert…",
+    "Initialize repository": "Repository initialisieren"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7119,7 +7124,8 @@
     "Search": "Cerca",
     "Install and add": "Installa e aggiungi",
     "Update to {version}": "Aggiorna a {version}",
-    "Updating…": "Aggiornamento…"
+    "Updating…": "Aggiornamento…",
+    "Initialize repository": "Inizializza repository"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8306,7 +8312,8 @@
     "Search": "Zoeken",
     "Install and add": "Installeren en toevoegen",
     "Update to {version}": "Bijwerken naar {version}",
-    "Updating…": "Bijwerken…"
+    "Updating…": "Bijwerken…",
+    "Initialize repository": "Repository initialiseren"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9493,7 +9500,8 @@
     "Search": "Szukaj",
     "Install and add": "Zainstaluj i dodaj",
     "Update to {version}": "Zaktualizuj do {version}",
-    "Updating…": "Aktualizowanie…"
+    "Updating…": "Aktualizowanie…",
+    "Initialize repository": "Zainicjuj repozytorium"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10680,7 +10688,8 @@
     "Search": "Найти",
     "Install and add": "Установить и добавить",
     "Update to {version}": "Обновить до {version}",
-    "Updating…": "Обновление…"
+    "Updating…": "Обновление…",
+    "Initialize repository": "Инициализировать репозиторий"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11867,7 +11876,8 @@
     "Search": "Шукати",
     "Install and add": "Встановити й додати",
     "Update to {version}": "Оновити до {version}",
-    "Updating…": "Оновлення…"
+    "Updating…": "Оновлення…",
+    "Initialize repository": "Ініціалізувати репозиторій"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13054,7 +13064,8 @@
     "Search": "検索",
     "Install and add": "インストールして追加",
     "Update to {version}": "{version} に更新",
-    "Updating…": "更新中…"
+    "Updating…": "更新中…",
+    "Initialize repository": "リポジトリを初期化"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14241,7 +14252,8 @@
     "Search": "검색",
     "Install and add": "설치 후 추가",
     "Update to {version}": "{version}(으)로 업데이트",
-    "Updating…": "업데이트 중…"
+    "Updating…": "업데이트 중…",
+    "Initialize repository": "저장소 초기화"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15428,7 +15440,8 @@
     "Search": "搜索",
     "Install and add": "安装并添加",
     "Update to {version}": "更新到 {version}",
-    "Updating…": "正在更新…"
+    "Updating…": "正在更新…",
+    "Initialize repository": "初始化仓库"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16615,7 +16628,8 @@
     "Search": "ابحث",
     "Install and add": "ثبّت وأضف",
     "Update to {version}": "حدّث إلى {version}",
-    "Updating…": "جارٍ التحديث…"
+    "Updating…": "جارٍ التحديث…",
+    "Initialize repository": "هيّئ المستودع"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17802,7 +17816,8 @@
     "Search": "Ara",
     "Install and add": "Yükle ve ekle",
     "Update to {version}": "{version} sürümüne güncelle",
-    "Updating…": "Güncelleniyor…"
+    "Updating…": "Güncelleniyor…",
+    "Initialize repository": "Depoyu başlat"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18989,7 +19004,8 @@
     "Search": "Sök",
     "Install and add": "Installera och lägg till",
     "Update to {version}": "Uppdatera till {version}",
-    "Updating…": "Uppdaterar…"
+    "Updating…": "Uppdaterar…",
+    "Initialize repository": "Initiera arkiv"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20176,7 +20192,8 @@
     "Search": "Søg",
     "Install and add": "Installér og tilføj",
     "Update to {version}": "Opdatér til {version}",
-    "Updating…": "Opdaterer…"
+    "Updating…": "Opdaterer…",
+    "Initialize repository": "Initialisér repository"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21363,7 +21380,8 @@
     "Search": "Søk",
     "Install and add": "Installer og legg til",
     "Update to {version}": "Oppdater til {version}",
-    "Updating…": "Oppdaterer…"
+    "Updating…": "Oppdaterer…",
+    "Initialize repository": "Initialiser repository"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22550,7 +22568,8 @@
     "Search": "Hae",
     "Install and add": "Asenna ja lisää",
     "Update to {version}": "Päivitä versioon {version}",
-    "Updating…": "Päivitetään…"
+    "Updating…": "Päivitetään…",
+    "Initialize repository": "Alusta repositorio"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23737,6 +23756,7 @@
     "Search": "Hledat",
     "Install and add": "Nainstalovat a přidat",
     "Update to {version}": "Aktualizovat na {version}",
-    "Updating…": "Aktualizace…"
+    "Updating…": "Aktualizace…",
+    "Initialize repository": "Inicializovat repozitář"
   }
 }
