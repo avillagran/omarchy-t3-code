@@ -58,12 +58,13 @@ public:
   auto parent=QFileInfo(real).absolutePath();
   return filesOnly.contains(parent);
  }
- QUrl intercept(const QUrl &url,DataType)override{
+ QUrl intercept(const QUrl &url,DataType type)override{
   if(trusted.contains(url))return url;
   // Qt's built-in resources and inline data (images, SVG) are inert.
   if(url.scheme()=="qrc"||url.scheme()=="data")return url;
   if(url.isLocalFile()&&allowedPath(url.toLocalFile()))return url;
-  fprintf(stderr,"QML preview: refused %s\n",qPrintable(url.toString().left(200)));
+  // Versioned qmldir probes (QtQuick.6.12/…) are routine lookups, not refusals worth logging.
+  if(type!=QmldirFile)fprintf(stderr,"QML preview: refused %s\n",qPrintable(url.toString().left(200)));
   return blocked;
  }
 };

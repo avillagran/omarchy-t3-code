@@ -19,6 +19,9 @@ your Omarchy theme and inherits T3's connections, models and favorites.
 - Live messages, contextual work indicators, tasks, queues and changed files.
 - Durable drafts, expanded prompt editor, mentions, skills and commands.
 - Image/file/HTML previews inside the panel; copy messages and images.
+- QML previews of `qml` code blocks, inline or in the side panel, in a sandboxed
+  Qt process (allowed Qt imports only; no network, file access or launches;
+  Omarchy colours as `omarchy.background`, `.foreground`, `.accent`…).
 - Thread actions, branch/PR badges, conversation minimap and a PR browser.
 - Subscription usage bars and work/ready/input badges on your desktop bar.
 - Switch between the bar panel and a normal Hyprland window from the header.
