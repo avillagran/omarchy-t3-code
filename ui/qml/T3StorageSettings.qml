@@ -5,6 +5,11 @@ ColumnLayout {
  id:root
  objectName:"storageSettings"
  required property var settings
+ property var bridge:null
+ readonly property var cleanup:bridge?bridge.storageCleanup:({})
+ readonly property var report:cleanup.report || null
+ function size(bytes){bytes=Number(bytes||0);if(bytes<1024)return bytes+" B";var u=["KB","MB","GB","TB"],i=-1;do{bytes/=1024;i++}while(bytes>=1024&&i<u.length-1);return bytes.toFixed(bytes<10?1:0)+" "+u[i]}
+ Component.onCompleted:if(bridge&&!projectScope)bridge.storageCleanupAction("report")
  property bool projectScope:false
  property bool writable:false
  property string query:""
@@ -57,5 +62,16 @@ ColumnLayout {
  }
  T3PreferenceSection {Layout.fillWidth:true;visible:root.artifacts.length>0;title:"Artifacts and logs";icon:"archive"
   body:Component {Column {width:parent.width;Repeater {model:root.artifacts;T3PreferenceField {required property var modelData;required property int index;width:parent.width;field:modelData;divided:index>0;writable:root.writable;onChanged:function(value){root.updateRule(modelData.key.slice("storageCleanup.".length),value)}}}}}
+ }
+ // The last cleanup and a manual run (T3's Clean up now).
+ T3PreferenceSection {Layout.fillWidth:true;visible:!!root.bridge&&!root.projectScope&&root.supported&&(!root.query.trim()||root.matches({label:"Clean up now",description:""}));title:"Cleanup";icon:"trash-2"
+  body:Component {ColumnLayout {width:parent.width;spacing:Style.space(8)
+   Text{Layout.fillWidth:true;wrapMode:Text.Wrap;textFormat:Text.PlainText;color:Color.popups.text;opacity:0.75;font.pixelSize:Style.font.caption
+    text:root.report?T3I18n.tr("Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.",{removed:root.report.counts.removed,kept:root.report.counts.kept,failed:root.report.counts.failed,freed:root.size(root.report.bytesFreed)}):root.cleanup.busy?T3I18n.tr("Loading…"):T3I18n.tr("No cleanup has run yet.")}
+   Repeater{model:root.report?root.report.entries.filter(function(e){return e.outcome!=="kept"}).slice(0,8):[]
+    Text{required property var modelData;Layout.fillWidth:true;elide:Text.ElideMiddle;textFormat:Text.PlainText;font.pixelSize:Style.font.caption;color:modelData.outcome==="failed"?Color.urgent:Color.popups.text;opacity:0.7;text:(modelData.outcome==="removed"?"✓ ":"✕ ")+(modelData.threadTitle||modelData.path||modelData.kind)+(modelData.reason?" · "+modelData.reason:"")}}
+   Text{visible:!!root.cleanup.error;Layout.fillWidth:true;wrapMode:Text.Wrap;text:T3I18n.error(root.cleanup.error||"");color:Color.urgent;font.pixelSize:Style.font.caption}
+   T3PickerButton{objectName:"storageCleanupRun";primary:false;implicitHeight:Style.space(30);enabled:root.writable&&!root.cleanup.busy;text:T3I18n.tr(root.cleanup.running?"Cleaning up…":"Clean up now");onClicked:root.bridge.storageCleanupAction("run")}
+  }}
  }
 }

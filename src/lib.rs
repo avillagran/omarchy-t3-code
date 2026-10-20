@@ -33,6 +33,7 @@ pub mod thread_search;
 pub mod pull_request_actions;
 pub mod usage_summary;
 pub mod scheduled_tasks;
+pub mod storage_cleanup;
 pub mod git_operations;
 pub mod diff_review;
 pub mod working_review;
