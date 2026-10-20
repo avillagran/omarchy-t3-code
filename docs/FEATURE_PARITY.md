@@ -42,10 +42,16 @@ method exists on the installed server, plus QML and Rust tests:
   browser search engine, settled worktree retention, discovered dev servers,
   device settings and actions, Initialize repository.
 
+Also added: telemetry export endpoints with checks, resource history in the
+process view, live client activity reports, worktree setup progress and
+Initialize repository.
+
 Still different by design: the terminal opens in an Omarchy terminal instead
-of an embedded drawer, and the theme follows Omarchy instead of T3's theme
-editor. Not covered yet: workflow scripts, OTLP endpoint checks, the relay
-client installer, ChatGPT profile import and resource telemetry history.
+of an embedded drawer; the theme follows Omarchy instead of T3's theme editor;
+T3 Connect's relay client is installed through the `t3 connect` CLI flow ot3
+already drives; and ChatGPT profile import (moving Codex credentials between
+environments) is left to the T3 desktop app, since ot3 never handles provider
+tokens. T3's web app has no workflow script viewer either, only the RPC.
 
 ## Recommended implementation order
 
