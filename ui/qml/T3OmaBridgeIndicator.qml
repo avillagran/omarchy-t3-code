@@ -4,23 +4,23 @@ import qs.Commons
 import qs.Ui
 // Optional OmaBridge mini widget next to the T3 status in the bar: the device's
 // state at a glance, a badge for requests waiting for approval, and a popup that
-// manages OmaBridge like Preferences does (T3OmaBridgeQuick).
+// manages OmaBridge like Preferences and the Control Panel (T3OmaBridgeQuick).
 Item {
  id:root
  required property var bridge
  property var bar:null
  property bool vertical:false
  signal settingsRequested()
- readonly property var store:bridge.connectionOmaBridge || ({})
- readonly property var value:store.data || ({})
+ readonly property var value:quick.manage.snapshot || ({})
  readonly property var published:value.published || ({})
- readonly property int pendingCount:(value.pending || []).length
+ readonly property int pendingCount:quick.manage.pendingCount
+ readonly property bool busy:quick.manage.busy
  readonly property color muted:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.58)
  property bool popupOpen:false
  // Closing the popup closes its dialogs too, which forgets a shown invitation.
- onPopupOpenChanged:if(!popupOpen)quick.device.closeDialogs()
+ onPopupOpenChanged:if(!popupOpen)quick.manage.forget()
  function close(){popupOpen=false}
- function refresh(){if(!store.busy)bridge.requestConnectionOmaBridge("read")}
+ function refresh(){if(!quick.manage.busy)quick.manage.refresh()}
  implicitWidth:Style.bar.statusSlot
  implicitHeight:Style.bar.statusSlot
  Component.onCompleted:refresh()
@@ -45,10 +45,10 @@ Item {
   id:popup
   anchorItem:root;owner:root;bar:root.bar;open:root.popupOpen
   // The file chooser is another window: drop the outside-click grab while it is up.
-  triggerMode:quick.device.choosingFile?"hover":"click"
+  triggerMode:quick.manage.choosingFile?"hover":"click"
   contentWidth:popup.fittedContentWidth(Style.space(420))
   // Grow while a dialog is open so it is not clipped by the small popup window.
-  contentHeight:popup.fittedContentHeight(Math.max(quick.implicitHeight,quick.device.dialogHeight+Style.space(32)))
+  contentHeight:popup.fittedContentHeight(Math.max(quick.implicitHeight,quick.manage.dialogHeight+Style.space(32)))
   Flickable{anchors.fill:parent;contentWidth:width;contentHeight:quick.implicitHeight;clip:true;boundsBehavior:Flickable.StopAtBounds;interactive:contentHeight>height
    T3OmaBridgeQuick{id:quick;width:parent.width;bridge:root.bridge;onSettingsRequested:{root.close();root.settingsRequested()}}
   }

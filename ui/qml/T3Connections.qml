@@ -86,7 +86,15 @@ ColumnLayout {
  T3PreferenceSection{Layout.fillWidth:true;title:"OmaBridge";icon:"globe"
   body:Component{ColumnLayout{width:parent.width;spacing:0
    T3ConnectionOmaBridge{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge;environments:root.store.environments || []}
-   T3OmaBridgeDevice{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge}
+   RowLayout{Layout.fillWidth:true;Layout.margins:Style.space(14)
+    ColumnLayout{Layout.fillWidth:true
+     Text{Layout.fillWidth:true;text:T3I18n.tr("Show OmaBridge in the bar");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+     Text{Layout.fillWidth:true;text:T3I18n.tr("A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+    }
+    T3Switch{objectName:"omabridgeIndicatorPreference";checked:(root.bridge.viewState || {}).omabridgeIndicator===true;Accessible.name:T3I18n.tr("Show OmaBridge in the bar");onToggled:root.bridge.rememberView({omabridgeIndicator:checked})}
+   }
+   // The same OmaBridge page as the Omarchy Control Panel, on the same device.
+   T3OmaBridgeManage{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge}
   }}
  }
  T3ConnectionPreferences{Layout.fillWidth:true;bridge:root.bridge}

@@ -43,71 +43,27 @@ The installer (and every update, which reruns it) downloads the OmaBridge releas
 
 Diagnostics: `omarchy-t3-client omabridge-read` prints the public snapshot (peer ids, names, granted services, routes). `omarchy-t3-client omabridge-status` also connects every environment and reports which ones OmaBridge carries (`active`) and any connection error. `connections-view` prints the credential-free catalog view.
 
-## Managing devices
+## Managing this device
 
-The same section manages OmaBridge itself, so `omabridge-gui` is not needed. Every action runs the bundled CLI against the private state directory and reads its JSON output. Each change of trust asks for confirmation first.
+Preferences → Connections → OmaBridge shows the same OmaBridge page as the Omarchy Control Panel, on the same device: ot3 sends each request unchanged to `omabridge manage`, with OmaBridge's own state directory and publishing unit (`omabridge-serve.service`). Both front ends therefore show the same identity, peers and state, and offer the same management. OmaBridge validates every request, requires `"confirmed":true` for changes (sent only from a dialog's confirm button), and keeps keys and invitation tokens. The binary is found as the Control Panel finds it: `OT3_OMABRIDGE_BIN`, `omabridge` on `PATH`, `~/.local/bin/omabridge`, then the copy bundled with ot3. An OmaBridge without `manage` is reported as outdated.
 
-- **This device**: its name and public device ID. *Create identity* runs `omabridge init` with the host name. The private key never leaves the state directory.
-- **Invite a device…** (needs this device to be [published](#publishing-this-device)): choose the services to share (T3 Code, SSH) and whether to show a QR code. OmaBridge writes a one-use invitation to `~/Downloads` (or `~`) with mode 0600, and it expires in 10 minutes. The dialog shows the file path and the optional QR once. Closing the dialog forgets both, and *Delete invitation file* removes the file. Treat the file and the QR as secrets.
-- **Pair from invitation file…**: the chosen file is copied to `$XDG_STATE_HOME/omarchy-t3-code/omabridge-pairing/` (0700 directory, 0600 file), and ot3 runs `omabridge pair` with the copy. Your original file is never changed. If no identity exists, ot3 creates one first. Until the other device approves, the request is listed as waiting, with *Check again* (which repeats `pair` and completes pairing) and *Cancel*. The copy is deleted once pairing is approved, or once the invitation expires.
-- **Waiting for your approval**: claims on this device's invitations, with the requested services. *Approve…* confirms the device name, ID and services.
-- **Paired devices**: what you can reach on each peer and what it can reach here. *Revoke…* removes the pairing after confirmation.
+The page covers this device's identity and name, publishing T3 Code and SSH, the relay (public, a custom HTTPS relay or direct only), one-use invitations (optionally asking to manage the device that accepts, with a QR shown once), pairing from an invitation file (inspected first; one that asks to manage this device needs explicit consent), approvals, revocation, letting a paired device manage this one, and managing paired devices that allow it: rename, publish, relay, a hosted relay, approvals, revocation and public gateways. *Refresh* also asks paired devices for their current names.
 
-*Delete invitation file* only removes an `omabridge-invite-*.json` owned by you, with mode 0600, that is still a valid invitation, so it also works for invitations created by another front end.
+Public gateways let T3 Code's own apps, which cannot run OmaBridge, reach this device: a managed device with a public IP opens an HTTPS address that leads only to this device's T3 Code, guarded by T3's own pairing. Open, check and close it from that device's management dialog. In Access, the pairing dialog for this device offers the running public addresses as endpoints, so the link and its QR carry that address.
 
-Only peer IDs, names, services and expiry times reach the UI. Invitation tokens, invitation IDs, peer addresses and keys stay with OmaBridge. CLI error output is mapped to fixed error codes and is never shown or logged.
-
-## Publishing this device
-
-Publishing is optional and off by default. *Publish this device* (with confirmation, and *Also share SSH* only when an SSH server answers on `127.0.0.1:22`) writes a `systemd --user` unit, `omarchy-t3-omabridge.service`, and enables and starts it:
-
-```ini
-ExecStart="<plugin>/bin/omabridge" --state-dir "<state dir>" serve --service t3=127.0.0.1:<T3 port> [--service ssh=127.0.0.1:22]
-```
-
-The T3 port comes from T3's `server-runtime.json`. If T3 later moves to another port, the section marks the unit as stale and offers *Publish again*. Only peers you approved can reach the published services, and T3 still authenticates every session. ot3 creates an identity first if none exists. It only rewrites or removes a unit that starts with its own `# Managed by Omarchy T3 Code` header, and refuses paths that systemd would reinterpret. Turning the switch off (also confirmed) disables and removes the unit, and keeps pairings. When the installer updates the bundled binary, it restarts a published unit with `systemctl --user try-restart`. Invitations need a running published device.
-
-## Public addresses
-
-T3 Code's own apps (mobile and desktop) cannot run OmaBridge. They can still reach this device through a *gateway*: a paired device with a public IP that opens an HTTPS address leading only to this device's T3 Code. T3's own pairing still guards it, so anyone who finds the address reaches T3's sign-in, as with T3's own remote access. This needs an OmaBridge with `omabridge manage`; with an older one the section says so and stays read-only.
-
-*Public addresses* (in the same OmaBridge section) lists, for every paired device this one manages, the addresses it opens for this device, read from that device in parallel. It also lists devices allowed to expose T3 Code that are managed elsewhere (their addresses cannot be read from here), and any addresses this device opens for others. Reading and *Check* use their own request, so a slow or unreachable device never blocks approvals or pairing.
-
-- *Open address…* (confirmed) grants T3 Code to that device, consents to its public exposure, and asks it to open the address. Grants it already had are kept. An optional name under one of its wildcard zones shares one port with other devices; without one, it uses its own name and a free port.
-- *Close…* (confirmed) withdraws the consent here first, which closes the address at once even if that device is unreachable, then asks it to stop listening. OmaBridge pairing is kept.
-- *Check* confirms the address answers with this device's own T3 Code.
-
-To pair a T3 Code app through an address, create a pairing link for this device in Access: the dialog offers the running public addresses as endpoints, so the link and its QR carry that address.
+Per-connection routes (above) still use the identity in the routes file's `stateDir`, because OmaBridge forwards cannot yet share a running server's identity.
 
 ## Bar indicator
 
-*Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows this device's state (published services and number of paired devices) and the same device management as Preferences: create the identity, publish or stop publishing, invite a device, pair from an invitation file, *Check again*, approve and revoke, each with the same confirmations. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
+*Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows the same OmaBridge page as Preferences. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
 
 ## Other front ends
 
-Other Omarchy front ends (for example the control panel) manage OmaBridge through ot3 instead of the CLI, so validation, confirmation, secret handling and the published unit stay in one place. The client lives at `~/.config/omarchy/plugins/omarchy-t3-code/bin/omarchy-t3-client` (or under `io.github.avillagran.omarchy-t3-code`).
+Other front ends manage this device by calling `omabridge manage` themselves, as the Omarchy Control Panel does. ot3 adds:
 
-- `omarchy-t3-client omabridge-read` prints the snapshot: `available`, `version`, `identity`, `device` (`{id,name}` or null), `peers` (`id`, `name`, `services` it can reach here, `remoteServices` you can reach there), `pending` (`id`, `name`, `services`, `expires`), `awaiting` (`id`, `name`, `expires`), `published` (`enabled`, `active`, `services`, `stale`, `sshAvailable`), `default`, `routes`, `active`, `revision` and `error`.
-- `omarchy-t3-client omabridge-action` reads one JSON request on stdin (at most 64 KiB, never on the command line) and prints the new snapshot. Every action except `read` needs `"confirmed":true`, which the front end must only send after the user confirms:
-
-| `action` | Fields | Adds to the snapshot |
-| --- | --- | --- |
-| `identity-create` | — | — |
-| `invite` | `services` (`["t3"]`, `["ssh"]` or both), `qr` (bool), optional `ttl` (60–3600 s, default 600), optional `directory` | `created`: `path`, `expires`, `services`, `qrImage` (SVG data URI or null). Secret: show it once and drop it. |
-| `invite-discard` | `path` | — |
-| `pair` | `path` of an invitation file | `paired`: `status` (`pending` or `approved`), `name` and, while pending, `id` |
-| `pair-retry` / `pair-discard` | `id` from `awaiting` | `paired` (retry only) |
-| `approve` | `peer`, plus `expires` from `pending` | — |
-| `revoke` | `peer` | — |
-| `publish` | `ssh` (bool) | — |
-| `unpublish` | — | — |
-| `gateways-read` (no confirmation) | — | `gateways`: `supported`, `device`, `hosts` (`id`, `name`, `managed`, `public`, `gateways` with `url`, `running`, `error`, `zones`, `error`) and `hosted` (`peer`, `name`, `service`, `url`, `running`, `error`). `{"supported":false}` with an OmaBridge without `manage`. |
-| `gateway-check` (no confirmation) | `url` (HTTPS) | `gatewayCheck`: `url`, `reachable`, `sameEnvironment` |
-| `gateway-open` | `peer` it manages, optional `host` | `gatewayOpened`: `url`, `dns`; `gateways` |
-| `gateway-close` | `peer` | `gatewayClosed`: `stopped` (whether that device also stopped listening); `gateways` |
-| `set` / `clear` / `default` | route fields as in Preferences, plus `revision` | — |
-
-On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmation_required`, `invalid_command` (an unknown command on an older client, or a malformed request on a current one; a front end can tell the two apart because `read` only fails this way on an older client), `invalid_action`, `local_error`, `omabridge_unavailable`, `omabridge_identity_missing`, `omabridge_already_running`, `omabridge_not_published`, `omabridge_service_not_published`, `omabridge_service_not_granted`, `omabridge_ssh_unavailable`, `omabridge_invite_directory`, `omabridge_invite_expired`, `omabridge_invite_invalid`, `omabridge_invite_unreadable`, `omabridge_path_unsupported`, `omabridge_peer_not_found`, `omabridge_peer_unreachable`, `omabridge_not_managed`, `omabridge_name_invalid`, `omabridge_manage_unsupported`, `omabridge_remote_forbidden`, `omabridge_unit_foreign`, `omabridge_publish_failed` and `omabridge_command_failed`. Peer IDs are 64 hexadecimal characters; `awaiting` IDs are UUIDs. A running ot3 sees changes made this way on its next refresh.
+- `omarchy-t3-client omabridge-manage`: one `omabridge manage` request on stdin (at most 64 KiB), answered as `{"output":<OmaBridge's JSON>,"status":<exit code>}`, with the same binary lookup as Preferences.
+- `omarchy-t3-client omabridge-read`: the routing snapshot (`available`, `version`, `identity`, `peers`, `default`, `routes`, `active`, `revision`, `error`).
+- `omarchy-t3-client omabridge-action`: one routing request on stdin. `set`, `clear` and `default` change routes (with `revision` and `"confirmed":true`). `gateways-read` and `gateway-check` read this device's public addresses from every device it manages, for the Access pairing dialog; `gateway-open` and `gateway-close` (confirmed) open or close one. On failure it prints `{"error":"<code>"}` and exits 1.
 
 ## Verification
 
@@ -123,7 +79,6 @@ On failure it prints `{"error":"<code>"}` and exits 1. Codes include `confirmati
 - the bearer request through the bridge;
 - `prefer` fallback, the `only` failure and clearing a route.
 
-`cargo test --release --locked --test omabridge_manage` drives the real bundled CLI with two throwaway identities on loopback (it is skipped when `bin/omabridge` is missing). It covers identity creation, the refusal to invite while unpublished, a 0600 invitation with a QR whose token never reaches the UI, pairing through a private copy, approval with confirmation, *Check again*, discarding the invitation, and revocation. Publishing goes through a stand-in `systemctl` that runs the unit's real `ExecStart`, so the generated unit is what serves the invitation. The test also covers the stale-port flag and unpublishing.
 
 Other checks:
 
