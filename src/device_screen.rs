@@ -72,6 +72,32 @@ impl Manager {
                     let _ = session.input.send(v["event"].clone());
                 }
             }
+            // Settings and actions on the open device (device.action / device.detail).
+            "device-screen-action" | "device-screen-detail" => {
+                let Some(session) = self.current.as_ref().filter(|s| s.request_id == request_id) else { return };
+                let target = session.target.clone();
+                let device = session.device.lock().unwrap().clone();
+                let detail = text(v, "op") == "device-screen-detail";
+                let action = v["action"].clone();
+                std::thread::spawn(move || {
+                    let result = (|| -> Result<Value> {
+                        let env = crate::env_by_id(&target.environment)?;
+                        let c = integration_devices::connection(&env)?;
+                        if detail {
+                            return c.rpc_with_timeout("device.detail", json!({"hostId":target.host_id,"deviceId":device}), Duration::from_secs(20));
+                        }
+                        let mut payload = action_payload(&action)?;
+                        payload["hostId"] = json!(target.host_id);
+                        payload["deviceId"] = json!(device);
+                        c.rpc_with_timeout("device.action", payload, Duration::from_secs(30))?;
+                        c.rpc_with_timeout("device.detail", json!({"hostId":target.host_id,"deviceId":device}), Duration::from_secs(20))
+                    })();
+                    match result {
+                        Ok(detail) => surface(&target.request_id, json!({"kind":"detail","detail":detail})),
+                        Err(error) => surface(&target.request_id, json!({"kind":"action-error","error":error})),
+                    }
+                });
+            }
             "device-screen-close" => {
                 let Some(session) = self.current.as_ref().filter(|s| s.request_id == request_id) else { return };
                 let mut target = session.target.clone();
@@ -111,6 +137,24 @@ impl Manager {
             }
         }
     }
+}
+
+/// The device.action variants the panel offers, checked before they reach the hub.
+pub fn action_payload(a: &Value) -> Result<Value> {
+    let bad = || "invalid_device_action".to_string();
+    Ok(match text(a, "type") {
+        "setAppearance" => json!({"type":"setAppearance","value":a["value"].as_str().filter(|v| matches!(*v, "light" | "dark")).ok_or_else(bad)?}),
+        "setTextSize" => json!({"type":"setTextSize","value":a["value"].as_str().filter(|v| matches!(*v, "small" | "default" | "large" | "extra-large")).ok_or_else(bad)?}),
+        "setOrientation" => json!({"type":"setOrientation","value":a["value"].as_str().filter(|v| matches!(*v, "portrait" | "landscape_left" | "portrait_upside_down" | "landscape_right")).ok_or_else(bad)?}),
+        "setToggle" => json!({"type":"setToggle","setting":a["setting"].as_str().filter(|v| matches!(*v, "reduceMotion" | "increaseContrast" | "reduceTransparency" | "showBorders" | "voiceOver" | "networkEnabled")).ok_or_else(bad)?,"value":a["value"].as_bool().ok_or_else(bad)?}),
+        "openUrl" => {
+            let url = a["url"].as_str().map(str::trim).filter(|u| !u.is_empty() && u.len() <= 4096 && !u.chars().any(char::is_control)).ok_or_else(bad)?;
+            json!({"type":"openUrl","url":url})
+        }
+        "shake" => json!({"type":"shake"}),
+        "clearLocation" => json!({"type":"clearLocation"}),
+        _ => return Err(bad()),
+    })
 }
 
 fn target(v: &Value) -> Result<Target> {
@@ -460,5 +504,18 @@ mod tests {
         let mut missing = ok.clone();
         missing["deviceId"] = json!("");
         assert!(target(&missing).is_err());
+    }
+}
+#[cfg(test)]
+mod action_tests {
+    use super::action_payload;
+    use serde_json::json;
+    #[test]
+    fn only_known_actions_pass() {
+        assert_eq!(action_payload(&json!({"type":"setAppearance","value":"dark"})).unwrap()["value"], "dark");
+        assert!(action_payload(&json!({"type":"setAppearance","value":"blue"})).is_err());
+        assert_eq!(action_payload(&json!({"type":"setToggle","setting":"networkEnabled","value":false})).unwrap()["value"], false);
+        assert!(action_payload(&json!({"type":"sendPush"})).is_err());
+        assert_eq!(action_payload(&json!({"type":"openUrl","url":" https://t3.codes "})).unwrap()["url"], "https://t3.codes");
     }
 }

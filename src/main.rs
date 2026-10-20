@@ -293,7 +293,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="preview-watch"{preview_watches.select(&v,input_visible);continue}
                 if v["op"]=="clear-select"{preview_watches.clear();browser_manager.hide();device_screens.stop();}
                 if v["op"]=="devices-watch"{device_watches.select(&v,input_visible);continue}
-                if matches!(text(&v,"op"),"device-screen-open"|"device-screen-input"|"device-screen-close"){device_screens.request(&v,input_visible);continue}
+                if matches!(text(&v,"op"),"device-screen-open"|"device-screen-input"|"device-screen-close"|"device-screen-action"|"device-screen-detail"){device_screens.request(&v,input_visible);continue}
                 if v["op"]=="keybindings-watch"{keybinding_watches.select(&v,input_visible);continue}
                 if v["op"]=="select" || (v["op"]=="visible"&&v["value"]==false){image_generation.fetch_add(1,std::sync::atomic::Ordering::Relaxed);}
                 if v["op"]=="select"&&input_visible{input_live.select(Some((text(&v,"environment").into(),text(&v,"thread").into(),v["serial"].as_i64().unwrap_or(0))));}

@@ -1120,7 +1120,18 @@
     "Restoring...": "Restoring...",
     "Restore branch": "Restore branch",
     "Use {branch}": "Use {branch}",
-    "Dismiss branch change notice": "Dismiss branch change notice"
+    "Dismiss branch change notice": "Dismiss branch change notice",
+    "Device settings": "Device settings",
+    "Light appearance": "Light appearance",
+    "Dark appearance": "Dark appearance",
+    "Turn network on": "Turn network on",
+    "Turn network off": "Turn network off",
+    "Small text": "Small text",
+    "Default text": "Default text",
+    "Large text": "Large text",
+    "Extra large text": "Extra large text",
+    "Shake": "Shake",
+    "Open URL on device": "Open URL on device"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2243,7 +2254,18 @@
     "Restoring...": "Restaurando...",
     "Restore branch": "Restaurar rama",
     "Use {branch}": "Usar {branch}",
-    "Dismiss branch change notice": "Descartar aviso de cambio de rama"
+    "Dismiss branch change notice": "Descartar aviso de cambio de rama",
+    "Device settings": "Ajustes del dispositivo",
+    "Light appearance": "Apariencia clara",
+    "Dark appearance": "Apariencia oscura",
+    "Turn network on": "Activar red",
+    "Turn network off": "Desactivar red",
+    "Small text": "Texto pequeño",
+    "Default text": "Texto normal",
+    "Large text": "Texto grande",
+    "Extra large text": "Texto muy grande",
+    "Shake": "Agitar",
+    "Open URL on device": "Abrir URL en el dispositivo"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3366,7 +3388,18 @@
     "Restoring...": "Restaurando...",
     "Restore branch": "Restaurar branch",
     "Use {branch}": "Usar {branch}",
-    "Dismiss branch change notice": "Dispensar aviso de troca de branch"
+    "Dismiss branch change notice": "Dispensar aviso de troca de branch",
+    "Device settings": "Configurações do dispositivo",
+    "Light appearance": "Aparência clara",
+    "Dark appearance": "Aparência escura",
+    "Turn network on": "Ativar rede",
+    "Turn network off": "Desativar rede",
+    "Small text": "Texto pequeno",
+    "Default text": "Texto padrão",
+    "Large text": "Texto grande",
+    "Extra large text": "Texto extra grande",
+    "Shake": "Agitar",
+    "Open URL on device": "Abrir URL no dispositivo"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4489,7 +4522,18 @@
     "Restoring...": "Restauration...",
     "Restore branch": "Restaurer la branche",
     "Use {branch}": "Utiliser {branch}",
-    "Dismiss branch change notice": "Ignorer l’avis de changement de branche"
+    "Dismiss branch change notice": "Ignorer l’avis de changement de branche",
+    "Device settings": "Réglages de l’appareil",
+    "Light appearance": "Apparence claire",
+    "Dark appearance": "Apparence sombre",
+    "Turn network on": "Activer le réseau",
+    "Turn network off": "Désactiver le réseau",
+    "Small text": "Petit texte",
+    "Default text": "Texte par défaut",
+    "Large text": "Grand texte",
+    "Extra large text": "Très grand texte",
+    "Shake": "Secouer",
+    "Open URL on device": "Ouvrir une URL sur l’appareil"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5612,7 +5656,18 @@
     "Restoring...": "Wird wiederhergestellt...",
     "Restore branch": "Branch wiederherstellen",
     "Use {branch}": "{branch} verwenden",
-    "Dismiss branch change notice": "Hinweis zum Branchwechsel schließen"
+    "Dismiss branch change notice": "Hinweis zum Branchwechsel schließen",
+    "Device settings": "Geräteeinstellungen",
+    "Light appearance": "Helles Design",
+    "Dark appearance": "Dunkles Design",
+    "Turn network on": "Netzwerk einschalten",
+    "Turn network off": "Netzwerk ausschalten",
+    "Small text": "Kleiner Text",
+    "Default text": "Standardtext",
+    "Large text": "Großer Text",
+    "Extra large text": "Sehr großer Text",
+    "Shake": "Schütteln",
+    "Open URL on device": "URL auf dem Gerät öffnen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6735,7 +6790,18 @@
     "Restoring...": "Ripristino...",
     "Restore branch": "Ripristina branch",
     "Use {branch}": "Usa {branch}",
-    "Dismiss branch change notice": "Ignora avviso di cambio branch"
+    "Dismiss branch change notice": "Ignora avviso di cambio branch",
+    "Device settings": "Impostazioni del dispositivo",
+    "Light appearance": "Aspetto chiaro",
+    "Dark appearance": "Aspetto scuro",
+    "Turn network on": "Attiva rete",
+    "Turn network off": "Disattiva rete",
+    "Small text": "Testo piccolo",
+    "Default text": "Testo predefinito",
+    "Large text": "Testo grande",
+    "Extra large text": "Testo molto grande",
+    "Shake": "Scuoti",
+    "Open URL on device": "Apri URL sul dispositivo"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7858,7 +7924,18 @@
     "Restoring...": "Herstellen...",
     "Restore branch": "Branch herstellen",
     "Use {branch}": "{branch} gebruiken",
-    "Dismiss branch change notice": "Melding over branchwissel sluiten"
+    "Dismiss branch change notice": "Melding over branchwissel sluiten",
+    "Device settings": "Apparaatinstellingen",
+    "Light appearance": "Lichte weergave",
+    "Dark appearance": "Donkere weergave",
+    "Turn network on": "Netwerk aanzetten",
+    "Turn network off": "Netwerk uitzetten",
+    "Small text": "Kleine tekst",
+    "Default text": "Standaardtekst",
+    "Large text": "Grote tekst",
+    "Extra large text": "Extra grote tekst",
+    "Shake": "Schudden",
+    "Open URL on device": "URL openen op apparaat"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8981,7 +9058,18 @@
     "Restoring...": "Przywracanie...",
     "Restore branch": "Przywróć gałąź",
     "Use {branch}": "Użyj {branch}",
-    "Dismiss branch change notice": "Odrzuć powiadomienie o zmianie gałęzi"
+    "Dismiss branch change notice": "Odrzuć powiadomienie o zmianie gałęzi",
+    "Device settings": "Ustawienia urządzenia",
+    "Light appearance": "Jasny wygląd",
+    "Dark appearance": "Ciemny wygląd",
+    "Turn network on": "Włącz sieć",
+    "Turn network off": "Wyłącz sieć",
+    "Small text": "Mały tekst",
+    "Default text": "Domyślny tekst",
+    "Large text": "Duży tekst",
+    "Extra large text": "Bardzo duży tekst",
+    "Shake": "Potrząśnij",
+    "Open URL on device": "Otwórz URL na urządzeniu"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10104,7 +10192,18 @@
     "Restoring...": "Восстановление...",
     "Restore branch": "Вернуть ветку",
     "Use {branch}": "Использовать {branch}",
-    "Dismiss branch change notice": "Скрыть уведомление о смене ветки"
+    "Dismiss branch change notice": "Скрыть уведомление о смене ветки",
+    "Device settings": "Настройки устройства",
+    "Light appearance": "Светлое оформление",
+    "Dark appearance": "Тёмное оформление",
+    "Turn network on": "Включить сеть",
+    "Turn network off": "Отключить сеть",
+    "Small text": "Мелкий текст",
+    "Default text": "Обычный текст",
+    "Large text": "Крупный текст",
+    "Extra large text": "Очень крупный текст",
+    "Shake": "Встряхнуть",
+    "Open URL on device": "Открыть URL на устройстве"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11227,7 +11326,18 @@
     "Restoring...": "Відновлення...",
     "Restore branch": "Повернути гілку",
     "Use {branch}": "Використати {branch}",
-    "Dismiss branch change notice": "Сховати сповіщення про зміну гілки"
+    "Dismiss branch change notice": "Сховати сповіщення про зміну гілки",
+    "Device settings": "Налаштування пристрою",
+    "Light appearance": "Світле оформлення",
+    "Dark appearance": "Темне оформлення",
+    "Turn network on": "Увімкнути мережу",
+    "Turn network off": "Вимкнути мережу",
+    "Small text": "Дрібний текст",
+    "Default text": "Звичайний текст",
+    "Large text": "Великий текст",
+    "Extra large text": "Дуже великий текст",
+    "Shake": "Струснути",
+    "Open URL on device": "Відкрити URL на пристрої"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12350,7 +12460,18 @@
     "Restoring...": "復元中...",
     "Restore branch": "ブランチを戻す",
     "Use {branch}": "{branch} を使用",
-    "Dismiss branch change notice": "ブランチ変更の通知を閉じる"
+    "Dismiss branch change notice": "ブランチ変更の通知を閉じる",
+    "Device settings": "デバイスの設定",
+    "Light appearance": "ライトモード",
+    "Dark appearance": "ダークモード",
+    "Turn network on": "ネットワークをオン",
+    "Turn network off": "ネットワークをオフ",
+    "Small text": "小さい文字",
+    "Default text": "標準の文字",
+    "Large text": "大きい文字",
+    "Extra large text": "特大の文字",
+    "Shake": "シェイク",
+    "Open URL on device": "デバイスで URL を開く"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13473,7 +13594,18 @@
     "Restoring...": "복원 중...",
     "Restore branch": "브랜치 복원",
     "Use {branch}": "{branch} 사용",
-    "Dismiss branch change notice": "브랜치 변경 알림 닫기"
+    "Dismiss branch change notice": "브랜치 변경 알림 닫기",
+    "Device settings": "기기 설정",
+    "Light appearance": "라이트 모드",
+    "Dark appearance": "다크 모드",
+    "Turn network on": "네트워크 켜기",
+    "Turn network off": "네트워크 끄기",
+    "Small text": "작은 텍스트",
+    "Default text": "기본 텍스트",
+    "Large text": "큰 텍스트",
+    "Extra large text": "매우 큰 텍스트",
+    "Shake": "흔들기",
+    "Open URL on device": "기기에서 URL 열기"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14596,7 +14728,18 @@
     "Restoring...": "正在恢复...",
     "Restore branch": "恢复分支",
     "Use {branch}": "使用 {branch}",
-    "Dismiss branch change notice": "关闭分支变更提示"
+    "Dismiss branch change notice": "关闭分支变更提示",
+    "Device settings": "设备设置",
+    "Light appearance": "浅色外观",
+    "Dark appearance": "深色外观",
+    "Turn network on": "开启网络",
+    "Turn network off": "关闭网络",
+    "Small text": "小号文字",
+    "Default text": "默认文字",
+    "Large text": "大号文字",
+    "Extra large text": "特大号文字",
+    "Shake": "摇动",
+    "Open URL on device": "在设备上打开 URL"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15719,7 +15862,18 @@
     "Restoring...": "جارٍ الاستعادة...",
     "Restore branch": "استعد الفرع",
     "Use {branch}": "استخدم {branch}",
-    "Dismiss branch change notice": "تجاهل إشعار تغيير الفرع"
+    "Dismiss branch change notice": "تجاهل إشعار تغيير الفرع",
+    "Device settings": "إعدادات الجهاز",
+    "Light appearance": "مظهر فاتح",
+    "Dark appearance": "مظهر داكن",
+    "Turn network on": "شغّل الشبكة",
+    "Turn network off": "أوقف الشبكة",
+    "Small text": "نص صغير",
+    "Default text": "نص افتراضي",
+    "Large text": "نص كبير",
+    "Extra large text": "نص كبير جدًا",
+    "Shake": "هز",
+    "Open URL on device": "افتح عنوان URL على الجهاز"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16842,7 +16996,18 @@
     "Restoring...": "Geri yükleniyor...",
     "Restore branch": "Dalı geri yükle",
     "Use {branch}": "{branch} kullan",
-    "Dismiss branch change notice": "Dal değişikliği bildirimini kapat"
+    "Dismiss branch change notice": "Dal değişikliği bildirimini kapat",
+    "Device settings": "Cihaz ayarları",
+    "Light appearance": "Açık görünüm",
+    "Dark appearance": "Koyu görünüm",
+    "Turn network on": "Ağı aç",
+    "Turn network off": "Ağı kapat",
+    "Small text": "Küçük metin",
+    "Default text": "Varsayılan metin",
+    "Large text": "Büyük metin",
+    "Extra large text": "Çok büyük metin",
+    "Shake": "Salla",
+    "Open URL on device": "Cihazda URL aç"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17965,7 +18130,18 @@
     "Restoring...": "Återställer...",
     "Restore branch": "Återställ gren",
     "Use {branch}": "Använd {branch}",
-    "Dismiss branch change notice": "Stäng meddelandet om grenbyte"
+    "Dismiss branch change notice": "Stäng meddelandet om grenbyte",
+    "Device settings": "Enhetsinställningar",
+    "Light appearance": "Ljust utseende",
+    "Dark appearance": "Mörkt utseende",
+    "Turn network on": "Slå på nätverk",
+    "Turn network off": "Stäng av nätverk",
+    "Small text": "Liten text",
+    "Default text": "Standardtext",
+    "Large text": "Stor text",
+    "Extra large text": "Extra stor text",
+    "Shake": "Skaka",
+    "Open URL on device": "Öppna URL på enheten"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19088,7 +19264,18 @@
     "Restoring...": "Gendanner...",
     "Restore branch": "Gendan branch",
     "Use {branch}": "Brug {branch}",
-    "Dismiss branch change notice": "Afvis besked om branchskift"
+    "Dismiss branch change notice": "Afvis besked om branchskift",
+    "Device settings": "Enhedsindstillinger",
+    "Light appearance": "Lyst udseende",
+    "Dark appearance": "Mørkt udseende",
+    "Turn network on": "Slå netværk til",
+    "Turn network off": "Slå netværk fra",
+    "Small text": "Lille tekst",
+    "Default text": "Standardtekst",
+    "Large text": "Stor tekst",
+    "Extra large text": "Ekstra stor tekst",
+    "Shake": "Ryst",
+    "Open URL on device": "Åbn URL på enheden"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20211,7 +20398,18 @@
     "Restoring...": "Gjenoppretter...",
     "Restore branch": "Gjenopprett gren",
     "Use {branch}": "Bruk {branch}",
-    "Dismiss branch change notice": "Lukk varselet om grenbytte"
+    "Dismiss branch change notice": "Lukk varselet om grenbytte",
+    "Device settings": "Enhetsinnstillinger",
+    "Light appearance": "Lyst utseende",
+    "Dark appearance": "Mørkt utseende",
+    "Turn network on": "Slå på nettverk",
+    "Turn network off": "Slå av nettverk",
+    "Small text": "Liten tekst",
+    "Default text": "Standardtekst",
+    "Large text": "Stor tekst",
+    "Extra large text": "Ekstra stor tekst",
+    "Shake": "Rist",
+    "Open URL on device": "Åpne URL på enheten"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21334,7 +21532,18 @@
     "Restoring...": "Palautetaan...",
     "Restore branch": "Palauta haara",
     "Use {branch}": "Käytä haaraa {branch}",
-    "Dismiss branch change notice": "Sulje haaranvaihdon ilmoitus"
+    "Dismiss branch change notice": "Sulje haaranvaihdon ilmoitus",
+    "Device settings": "Laitteen asetukset",
+    "Light appearance": "Vaalea ulkoasu",
+    "Dark appearance": "Tumma ulkoasu",
+    "Turn network on": "Ota verkko käyttöön",
+    "Turn network off": "Poista verkko käytöstä",
+    "Small text": "Pieni teksti",
+    "Default text": "Oletusteksti",
+    "Large text": "Suuri teksti",
+    "Extra large text": "Erittäin suuri teksti",
+    "Shake": "Ravista",
+    "Open URL on device": "Avaa URL laitteessa"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22457,6 +22666,17 @@
     "Restoring...": "Obnovování...",
     "Restore branch": "Obnovit větev",
     "Use {branch}": "Použít {branch}",
-    "Dismiss branch change notice": "Zavřít oznámení o změně větve"
+    "Dismiss branch change notice": "Zavřít oznámení o změně větve",
+    "Device settings": "Nastavení zařízení",
+    "Light appearance": "Světlý vzhled",
+    "Dark appearance": "Tmavý vzhled",
+    "Turn network on": "Zapnout síť",
+    "Turn network off": "Vypnout síť",
+    "Small text": "Malý text",
+    "Default text": "Výchozí text",
+    "Large text": "Velký text",
+    "Extra large text": "Extra velký text",
+    "Shake": "Zatřást",
+    "Open URL on device": "Otevřít URL v zařízení"
   }
 }
