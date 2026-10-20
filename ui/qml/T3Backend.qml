@@ -929,11 +929,16 @@ Singleton {
     if(endSession)deviceScreen=Object.assign({},deviceScreen,{stage:"closing"})
     else{deviceScreen={requestId:"",stage:"idle",error:"",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0}}
   }
+  // Settings of the open device (device.detail) and actions on it (device.action).
+  property var deviceSettings:({busy:false,error:"",detail:null})
+  function deviceSetting(action){if(!deviceScreen.requestId||deviceSettings.busy)return;deviceSettings=Object.assign({},deviceSettings,{busy:true,error:""});send({op:action?"device-screen-action":"device-screen-detail",requestId:deviceScreen.requestId,action:action||null})}
   function receiveDeviceSurface(d){
     if(!d||d.requestId!==deviceScreen.requestId)return
     if(d.kind==="frame"){deviceFrame={url:d.url,revision:d.revision,width:d.width,height:d.height};if(deviceScreen.stage!=="live")deviceScreen=Object.assign({},deviceScreen,{stage:"live"});return}
     if(d.kind==="status")deviceScreen=Object.assign({},deviceScreen,{stage:d.stage,input:d.input===undefined?deviceScreen.input:!!d.input,decoder:d.decoder===undefined?deviceScreen.decoder:!!d.decoder})
     else if(d.kind==="config")deviceScreen=Object.assign({},deviceScreen,{config:{width:d.width,height:d.height,orientation:d.orientation,inputUnavailable:!!d.inputUnavailable}})
+    else if(d.kind==="detail")deviceSettings={busy:false,error:"",detail:d.detail||null}
+    else if(d.kind==="action-error")deviceSettings=Object.assign({},deviceSettings,{busy:false,error:d.error||"device_action_failed"})
     else if(d.kind==="error")deviceScreen=Object.assign({},deviceScreen,{stage:"error",error:d.error || "device_stream_failed"})
     else if(d.kind==="closed"||d.kind==="stopped"){deviceScreen={requestId:"",stage:"idle",error:d.error || "",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0}}
   }

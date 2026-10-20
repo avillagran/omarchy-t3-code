@@ -1120,6 +1120,17 @@
     "Restoring...": "Restoring...",
     "Restore branch": "Restore branch",
     "Use {branch}": "Use {branch}",
-    "Dismiss branch change notice": "Dismiss branch change notice"
+    "Dismiss branch change notice": "Dismiss branch change notice",
+    "Device settings": "Device settings",
+    "Light appearance": "Light appearance",
+    "Dark appearance": "Dark appearance",
+    "Turn network on": "Turn network on",
+    "Turn network off": "Turn network off",
+    "Small text": "Small text",
+    "Default text": "Default text",
+    "Large text": "Large text",
+    "Extra large text": "Extra large text",
+    "Shake": "Shake",
+    "Open URL on device": "Open URL on device"
   }
 }

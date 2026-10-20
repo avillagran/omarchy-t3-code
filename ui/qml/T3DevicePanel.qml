@@ -1,5 +1,6 @@
 import QtQuick 6.11
 import QtQuick.Layouts
+import QtQuick.Controls as Controls
 import qs.Commons
 
 // Devices tab of the side panel: simulators and emulators from native T3
@@ -194,7 +195,24 @@ Item {
       }
       // Close only stops viewing (the session stays); power off ends the
       // session and shuts the device down, like native T3.
+      T3IconButton { objectName: "t3DeviceSettingsToggle"; name: "sliders-horizontal"; tooltipText: T3I18n.tr("Device settings"); tint: settingsBar.visible ? Color.accent : root.dim; enabled: root.screen.stage === "live"; onClicked: { settingsBar.shown = !settingsBar.shown; if (settingsBar.shown) root.bridge.deviceSetting(null) } }
       T3PickerButton { objectName: "t3DevicePowerOff"; primary: false; text: T3I18n.tr("Power off"); enabled: root.screen.stage !== "closing"; onClicked: root.bridge.closeDeviceScreen(true, true) }
+    }
+    // Device settings and actions from T3's device panel (device.action).
+    Flow {
+      id: settingsBar
+      objectName: "t3DeviceSettings"
+      property bool shown: false
+      readonly property var settings: ((root.bridge.deviceSettings || {}).detail || {}).settings || ({})
+      readonly property bool busy: !!(root.bridge.deviceSettings || {}).busy
+      Layout.fillWidth: true; spacing: Style.space(6); visible: shown && root.screen.stage === "live"
+      T3PickerButton { objectName: "t3DeviceAppearance"; primary: false; implicitHeight: Style.space(28); enabled: !settingsBar.busy; text: T3I18n.tr(settingsBar.settings.appearance === "dark" ? "Light appearance" : "Dark appearance"); onClicked: root.bridge.deviceSetting({ type: "setAppearance", value: settingsBar.settings.appearance === "dark" ? "light" : "dark" }) }
+      T3PickerButton { objectName: "t3DeviceRotate"; primary: false; implicitHeight: Style.space(28); enabled: !settingsBar.busy; text: T3I18n.tr("Rotate"); onClicked: { var o = root.screen.config && root.screen.config.orientation; root.bridge.deviceSetting({ type: "setOrientation", value: o === "landscape_left" || o === "landscape_right" ? "portrait" : "landscape_left" }) } }
+      T3PickerButton { objectName: "t3DeviceNetwork"; primary: false; implicitHeight: Style.space(28); enabled: !settingsBar.busy; text: T3I18n.tr(settingsBar.settings.networkEnabled === false ? "Turn network on" : "Turn network off"); onClicked: root.bridge.deviceSetting({ type: "setToggle", setting: "networkEnabled", value: settingsBar.settings.networkEnabled === false }) }
+      T3Select { objectName: "t3DeviceTextSize"; implicitWidth: Style.space(130); enabled: !settingsBar.busy; model: [T3I18n.tr("Small text"), T3I18n.tr("Default text"), T3I18n.tr("Large text"), T3I18n.tr("Extra large text")]; currentIndex: Math.max(0, ["small", "default", "large", "extra-large"].indexOf(settingsBar.settings.textSize || "default")); onActivated: function(i) { root.bridge.deviceSetting({ type: "setTextSize", value: ["small", "default", "large", "extra-large"][i] }) } }
+      T3PickerButton { objectName: "t3DeviceShake"; primary: false; implicitHeight: Style.space(28); enabled: !settingsBar.busy; text: T3I18n.tr("Shake"); onClicked: root.bridge.deviceSetting({ type: "shake" }) }
+      Controls.TextField { id: deviceUrl; objectName: "t3DeviceUrl"; implicitWidth: Style.space(200); placeholderText: T3I18n.tr("Open URL on device"); color: root.fg; font.pixelSize: Style.font.caption; onAccepted: if (text.trim()) { root.bridge.deviceSetting({ type: "openUrl", url: text.trim() }); text = "" } }
+      Text { visible: !!(root.bridge.deviceSettings || {}).error; text: T3I18n.error((root.bridge.deviceSettings || {}).error || ""); color: Color.urgent; font.pixelSize: Style.font.caption }
     }
     Text {
       Layout.fillWidth: true; wrapMode: Text.Wrap; visible: text.length > 0 && root.screen.stage !== "live"
