@@ -12,9 +12,13 @@ QtObject {
   property int interval: T3Ticker.intervalFor(pace)
   property int ticket: 0
   readonly property real time: running ? T3Ticker.time : 0
+  // Reading `interval` can re-enter sync() (its binding settles during
+  // creation); read it first and never overwrite a ticket a nested call took,
+  // or the orphan keeps the shared clock at full rate for good.
   function sync() {
-    if (ticket && (!running || T3Ticker.requests[ticket] !== Math.max(8, interval))) { T3Ticker.release(ticket); ticket = 0 }
-    if (running && !ticket) ticket = T3Ticker.acquire(interval)
+    var want = running ? Math.max(8, interval) : 0
+    if (ticket && T3Ticker.requests[ticket] !== want) { T3Ticker.release(ticket); ticket = 0 }
+    if (want && !ticket) { var taken = T3Ticker.acquire(want); if (ticket) T3Ticker.release(taken); else ticket = taken }
   }
   onRunningChanged: sync()
   onIntervalChanged: sync()
