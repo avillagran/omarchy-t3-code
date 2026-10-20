@@ -1172,7 +1172,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processes · {cpu}% CPU · {memory}",
     "Interrupt": "Interrupt",
     "Kill": "Kill",
-    "Click again to kill": "Click again to kill"
+    "Click again to kill": "Click again to kill",
+    "Quote": "Quote"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2347,7 +2348,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} procesos · {cpu}% de CPU · {memory}",
     "Interrupt": "Interrumpir",
     "Kill": "Forzar cierre",
-    "Click again to kill": "Haz clic de nuevo para forzar el cierre"
+    "Click again to kill": "Haz clic de nuevo para forzar el cierre",
+    "Quote": "Citar"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3522,7 +3524,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processos · {cpu}% de CPU · {memory}",
     "Interrupt": "Interromper",
     "Kill": "Forçar encerramento",
-    "Click again to kill": "Clique novamente para forçar o encerramento"
+    "Click again to kill": "Clique novamente para forçar o encerramento",
+    "Quote": "Citar"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4697,7 +4700,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processus · {cpu} % CPU · {memory}",
     "Interrupt": "Interrompre",
     "Kill": "Tuer",
-    "Click again to kill": "Cliquez à nouveau pour tuer"
+    "Click again to kill": "Cliquez à nouveau pour tuer",
+    "Quote": "Citer"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5872,7 +5876,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} Prozesse · {cpu} % CPU · {memory}",
     "Interrupt": "Unterbrechen",
     "Kill": "Beenden erzwingen",
-    "Click again to kill": "Zum Erzwingen erneut klicken"
+    "Click again to kill": "Zum Erzwingen erneut klicken",
+    "Quote": "Zitieren"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7047,7 +7052,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processi · {cpu}% CPU · {memory}",
     "Interrupt": "Interrompi",
     "Kill": "Termina forzatamente",
-    "Click again to kill": "Fai di nuovo clic per terminare"
+    "Click again to kill": "Fai di nuovo clic per terminare",
+    "Quote": "Cita"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8222,7 +8228,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processen · {cpu}% CPU · {memory}",
     "Interrupt": "Onderbreken",
     "Kill": "Geforceerd stoppen",
-    "Click again to kill": "Klik nogmaals om te stoppen"
+    "Click again to kill": "Klik nogmaals om te stoppen",
+    "Quote": "Citeren"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9397,7 +9404,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "Procesy: {count} · {cpu}% CPU · {memory}",
     "Interrupt": "Przerwij",
     "Kill": "Zabij",
-    "Click again to kill": "Kliknij ponownie, aby zabić"
+    "Click again to kill": "Kliknij ponownie, aby zabić",
+    "Quote": "Cytuj"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10572,7 +10580,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "Процессов: {count} · CPU {cpu}% · {memory}",
     "Interrupt": "Прервать",
     "Kill": "Завершить принудительно",
-    "Click again to kill": "Нажмите ещё раз для завершения"
+    "Click again to kill": "Нажмите ещё раз для завершения",
+    "Quote": "Цитировать"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11747,7 +11756,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "Процесів: {count} · CPU {cpu}% · {memory}",
     "Interrupt": "Перервати",
     "Kill": "Завершити примусово",
-    "Click again to kill": "Натисніть ще раз для завершення"
+    "Click again to kill": "Натисніть ще раз для завершення",
+    "Quote": "Цитувати"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12922,7 +12932,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} プロセス · CPU {cpu}% · {memory}",
     "Interrupt": "中断",
     "Kill": "強制終了",
-    "Click again to kill": "もう一度クリックで強制終了"
+    "Click again to kill": "もう一度クリックで強制終了",
+    "Quote": "引用"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14097,7 +14108,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "프로세스 {count}개 · CPU {cpu}% · {memory}",
     "Interrupt": "중단",
     "Kill": "강제 종료",
-    "Click again to kill": "다시 클릭하면 강제 종료"
+    "Click again to kill": "다시 클릭하면 강제 종료",
+    "Quote": "인용"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15272,7 +15284,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} 个进程 · CPU {cpu}% · {memory}",
     "Interrupt": "中断",
     "Kill": "强制结束",
-    "Click again to kill": "再次点击以强制结束"
+    "Click again to kill": "再次点击以强制结束",
+    "Quote": "引用"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16447,7 +16460,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} عمليات · ‏{cpu}% من CPU · {memory}",
     "Interrupt": "قاطع",
     "Kill": "أنهِ قسرًا",
-    "Click again to kill": "انقر مجددًا للإنهاء القسري"
+    "Click again to kill": "انقر مجددًا للإنهاء القسري",
+    "Quote": "اقتبس"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17622,7 +17636,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} işlem · %{cpu} CPU · {memory}",
     "Interrupt": "Kes",
     "Kill": "Zorla sonlandır",
-    "Click again to kill": "Sonlandırmak için tekrar tıklayın"
+    "Click again to kill": "Sonlandırmak için tekrar tıklayın",
+    "Quote": "Alıntıla"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18797,7 +18812,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processer · {cpu} % CPU · {memory}",
     "Interrupt": "Avbryt",
     "Kill": "Tvinga avslut",
-    "Click again to kill": "Klicka igen för att avsluta"
+    "Click again to kill": "Klicka igen för att avsluta",
+    "Quote": "Citera"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19972,7 +19988,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processer · {cpu} % CPU · {memory}",
     "Interrupt": "Afbryd",
     "Kill": "Tving afslutning",
-    "Click again to kill": "Klik igen for at afslutte"
+    "Click again to kill": "Klik igen for at afslutte",
+    "Quote": "Citér"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21147,7 +21164,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} prosesser · {cpu} % CPU · {memory}",
     "Interrupt": "Avbryt",
     "Kill": "Tving avslutning",
-    "Click again to kill": "Klikk igjen for å avslutte"
+    "Click again to kill": "Klikk igjen for å avslutte",
+    "Quote": "Siter"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22322,7 +22340,8 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} prosessia · {cpu} % CPU · {memory}",
     "Interrupt": "Keskeytä",
     "Kill": "Pakota lopetus",
-    "Click again to kill": "Napsauta uudelleen lopettaaksesi"
+    "Click again to kill": "Napsauta uudelleen lopettaaksesi",
+    "Quote": "Lainaa"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23497,6 +23516,7 @@
     "{count} processes · {cpu}% CPU · {memory}": "Procesy: {count} · {cpu} % CPU · {memory}",
     "Interrupt": "Přerušit",
     "Kill": "Násilně ukončit",
-    "Click again to kill": "Klikněte znovu pro ukončení"
+    "Click again to kill": "Klikněte znovu pro ukončení",
+    "Quote": "Citovat"
   }
 }

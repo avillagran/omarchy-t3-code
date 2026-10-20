@@ -28,6 +28,11 @@ Item {
   property string sideTab:"browser"
   readonly property bool sideShown:sidePanelOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
   readonly property bool browserOpen:sidePanelOpen&&sideTab==="browser"
+  function quoteSelection(selection){
+    var quote=String(selection||"").replace(/\u2029/g,"\n").trim().split("\n").map(function(l){return "> "+l}).join("\n");if(!quote||!bridge.selectedKey)return
+    var current=String(bridge.draft.text||"");var next=current.trim()?current.replace(/\s+$/,"")+"\n\n"+quote+"\n\n":quote+"\n\n"
+    bridge.patchDraft(bridge.selectedKey,{text:next});Qt.callLater(function(){composerPanel.inputField.forceActiveFocus();composerPanel.inputField.cursorPosition=composerPanel.inputField.length})
+  }
   function openPreferencesPage(page){preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page=page})}
   // Command palette groups, built when it opens (T3 CommandPalette: actions, threads, projects, settings).
   function paletteGroups(){
@@ -1516,6 +1521,14 @@ Item {
                       color: root.fg; selectionColor: Color.accent; selectedTextColor: Color.popups.background
                       font.pixelSize: Style.font.body
                       Accessible.name:message.userMessage?T3I18n.tr("You"):"T3"
+                      // Quote a selection into the composer (T3's assistant selection toolbar).
+                      T3PickerButton{
+                        objectName:"t3QuoteSelection";z:5;primary:false;implicitHeight:Style.space(26);leftPadding:Style.space(8);rightPadding:Style.space(8)
+                        readonly property rect anchorRect:messageText.positionToRectangle(messageText.selectionEnd)
+                        visible:!message.userMessage&&messageText.selectedText.trim().length>0&&!root.bridge.draft.queueEdit
+                        x:Math.max(0,Math.min(messageText.width-width,anchorRect.x-width/2));y:anchorRect.y+anchorRect.height+Style.space(4)
+                        text:T3I18n.tr("Quote");onClicked:{root.quoteSelection(messageText.selectedText);messageText.deselect()}
+                      }
                     }
                     Repeater {
                       model:message.modelData.markdownImages || []

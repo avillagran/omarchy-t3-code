@@ -1172,6 +1172,7 @@
     "{count} processes · {cpu}% CPU · {memory}": "{count} processes · {cpu}% CPU · {memory}",
     "Interrupt": "Interrupt",
     "Kill": "Kill",
-    "Click again to kill": "Click again to kill"
+    "Click again to kill": "Click again to kill",
+    "Quote": "Quote"
   }
 }
