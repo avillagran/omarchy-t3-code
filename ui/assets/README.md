@@ -40,3 +40,11 @@ Preferences navigation uses the Lucide keyboard SVG from lucide-icons/lucide
 `sounds/notification-completion.mp3` and `sounds/notification-input.mp3` are copied
 unchanged from `apps/web/src/assets/` of pingdotgg/t3code, commit
 `fb990765a49414a5bfbdc73365455fc8b5fbe691`. License: T3-LICENSE (MIT).
+
+# Mermaid
+
+`mermaid/mermaid.min.js` is `dist/mermaid.min.js` from the npm package
+`mermaid@11.17.2` (the version T3 Code pins; integrity
+`sha512-V6K3C8EBdEsPFZXSKMJe6ppQOENxuHARr9GvHX4hh47lAbhMRD9qf4oEK7LoaRQxULMa80/qt5gHO73aCleBBg==`).
+License: `mermaid/LICENSE` (MIT). It only runs inside the sandboxed document
+renderer when you choose Show diagram on a Mermaid code block.

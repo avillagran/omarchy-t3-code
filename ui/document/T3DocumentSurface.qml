@@ -16,7 +16,7 @@ Window {
   onNavigationRequested:function(r){if(r.isMainFrame&&r.url.toString()!=="about:blank"&&r.url.toString()!==root.reviewPageUrl&&!r.url.toString().startsWith("data:"))r.action=WebEngineNavigationRequest.IgnoreRequest}
   onLoadingChanged:documentHost.requestFrame()
   onScrollPositionChanged:documentHost.requestFrame()
-  Component.onCompleted:{forceActiveFocus();if(documentData.internalReview){root.reviewPageUrl=documentHost.reviewPageUrl(Theme.page(documentData)).toString();url=root.reviewPageUrl}else loadHtml(Theme.page(documentData))}
+  Component.onCompleted:{forceActiveFocus();if(documentData.internalReview){root.reviewPageUrl=documentHost.reviewPageUrl(Theme.page(documentData)).toString();url=root.reviewPageUrl}else{var page=Theme.page(documentData);/* loadHtml stops near 2 MB; larger pages (bundled Mermaid) load from a private file. */if(page.length>1500000){root.reviewPageUrl=documentHost.reviewPageUrl(page).toString();url=root.reviewPageUrl}else loadHtml(page)}}
  }
  property string reviewPageUrl:""
  property bool reviewReady:false

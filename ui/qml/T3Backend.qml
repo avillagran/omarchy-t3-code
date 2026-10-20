@@ -422,11 +422,14 @@ Singleton {
   property var terminalOperation:({busy:false,error:"",requestId:"",key:""})
   readonly property bool canOpenTerminal:!!selectedThread && catalog.canWrite!==false && (state.environments || []).some(function(e){return e.id===root.selectedEnvironment&&e.state==="ready"})
   signal terminalOpened()
+  // A Mermaid block to draw in the side panel's renders tab.
+  signal diagramRequested(var attachment)
   function codeAction(message,link){
-    var match=String(link).match(/^ot3-code-(run|copy):\/\/(\d+)$/)
+    var match=String(link).match(/^ot3-code-(run|copy|diagram):\/\/(\d+)$/)
     if(!match||!message||message.role!=="assistant"||!transcript.some(function(m){return m.id===message.id}))return false
     var block=(message.codeBlocks || [])[Number(match[2])];if(!block)return false
     if(match[1]==="copy"){copyText(block.code || "");return true}
+    if(match[1]==="diagram"){var code=String(block.code || ""),h=0;for(var i=0;i<code.length;i++)h=(h*31+code.charCodeAt(i))|0;diagramRequested({id:"diagram-"+message.id+"-"+match[2]+"-"+(h>>>0).toString(16),name:"Diagram.html",mimeType:"text/html",generated:"mermaid",source:code});return true}
     if(message.streaming||!block.command)return false
     openTerminal(block.command);return true
   }
@@ -1194,7 +1197,10 @@ Singleton {
     }
     if(data.op==="client-settings"){
       if(!clientSettings.busy||data.requestId!==clientSettings.requestId)return
+      var mathBefore=!!(clientSettings.data || {}).mathRenderingEnabled
       clientSettings=Object.assign({},clientSettings,{busy:false,error:data.error || "",data:data.result || clientSettings.data})
+      // Messages are rendered by the worker; reload them when math typesetting changes.
+      if(!!(clientSettings.data || {}).mathRenderingEnabled!==mathBefore&&clientSettings.data)fetchMessages()
       var update=diffPreferenceUpdate
       if(update.stage){
         if(data.error)diffPreferenceUpdate=Object.assign({},update,{stage:"",error:data.error})

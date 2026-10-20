@@ -339,6 +339,7 @@
     "T3-assets-LICENSE": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43",
     "lucide-project-icons.LICENSE": "668dcc52803480e0a026b31140a4cae668772663cd764e5991d252eef03f98db",
     "LUCIDE-LICENSE": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+    "mermaid-LICENSE": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80",
     "rust-stdlib/COPYRIGHT-library.html": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27",
     "rust-stdlib/Apache-2.0": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
     "rust-stdlib/MIT": "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0",
@@ -347,6 +348,6 @@
     "manifest.json": "d2a3d8fda5ae17df42bf9cce28e42ce6621178fa507a05e9a52c501d60ac66ce",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe"
   },
-  "entries": 238,
-  "outputSha256": "62a31a2db4322bf8c2e5e16ab06401a099ff27f925d1e91d5ab830ec8113dc6f"
+  "entries": 239,
+  "outputSha256": "9088f5bb15d2beb5ab825d50b40b8ed1d31e732e0897238a63e6c3c92c27ed56"
 }

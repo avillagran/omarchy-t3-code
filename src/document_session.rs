@@ -32,7 +32,7 @@ pub fn start_with(exe:std::path::PathBuf)->Manager{
    match text(&input,"op"){
     "document-open"=>{
      session=None;let result=write::execute(&input);if stamp!=current.load(Ordering::SeqCst){continue}
-     let result=result.and_then(|mut doc|{if doc["html"]==true{session=Some(launch(&exe,&doc,text(&input,"requestId"),stamp,current.clone())?)}if doc["internalReview"]==true{doc["contents"]=json!("");}Ok(doc)});
+     let result=result.and_then(|mut doc|{if doc["html"]==true{session=Some(launch(&exe,&doc,text(&input,"requestId"),stamp,current.clone())?)}if doc["internalReview"]==true||doc["generated"]==true{doc["contents"]=json!("");}Ok(doc)});
      super::emit("action",json!({"op":"document-open","requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
     },
     "document-input"=>{if let Some(s)=session.as_mut(){if s.id==text(&input,"requestId"){let v=&input["event"];if v.to_string().len()<=8192&&matches!(text(v,"type"),"press"|"release"|"move"|"double"|"wheel"|"key"|"keyup"|"resize"|"zoom"|"capture"|"review-options"){let _=writeln!(s.stdin,"{v}");}}}},

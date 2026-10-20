@@ -5,6 +5,7 @@ use std::os::fd::FromRawFd;
 
 pub fn read(e:&Environment,input:&Value)->Result<Value>{
  if input["reviewSnapshotId"].is_string(){return crate::review_document::open(e,input)}
+ if input["attachment"]["generated"]=="mermaid"{return mermaid_page(input)}
  let resource=if input["attachment"].is_object(){let a=&input["attachment"];let id=text(a,"id");if !valid_id(id){return Err("invalid_file".into())}json!({"_tag":"attachment","attachmentId":id,"fileName":text(a,"name"),"mimeType":text(a,"mimeType"),"disposition":"inline"})}else{protocol::documents::resource(text(input,"thread"),text(input,"path"))?};
  let name=if input["attachment"].is_object(){text(&input["attachment"],"name")}else{text(input,"path")};
  let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?};
@@ -51,4 +52,31 @@ fn viewer_mode(offscreen:bool)->Result<()>{
  let run:unsafe extern "C" fn(*const libc::c_char,*const libc::c_char)->libc::c_int=std::mem::transmute(symbol);
  if run(payload.as_ptr(),qml.as_ptr())!=0{return Err("viewer_unavailable".into())}}
  Ok(())
+}
+/// A Mermaid code block drawn by the bundled mermaid.js (the version T3 pins), in the
+/// same sandboxed page renderer as HTML renders. Strict security: no HTML labels or links.
+pub fn mermaid_page(input:&Value)->Result<Value>{
+ let exe=std::env::current_exe().map_err(|_|"viewer_unavailable")?;
+ let script=exe.parent().and_then(|bin|bin.parent()).map(|root|root.join("ui/assets/mermaid/mermaid.min.js")).ok_or("viewer_unavailable")?;
+ mermaid_page_with(input,&script)
+}
+fn mermaid_page_with(input:&Value,script:&std::path::Path)->Result<Value>{
+ let source=input["attachment"]["source"].as_str().filter(|s|!s.trim().is_empty()&&s.len()<=64*1024).ok_or("invalid_file")?;
+ let library=fs::read_to_string(script).map_err(|_|"viewer_unavailable")?;
+ let dark=input["theme"]["appearance"]=="dark";
+ let code=serde_json::to_string(source).map_err(|_|"invalid_file")?.replace("</","<\\/");
+ let contents=format!("<!doctype html><html><head><meta charset=\"utf-8\"><style>body{{margin:0;padding:16px;display:flex;justify-content:center}}#d svg{{max-width:100%;height:auto}}#e{{color:#e5484d;font:13px monospace;white-space:pre-wrap}}</style></head><body><div id=\"d\"></div><pre id=\"e\"></pre><script>{}</script><script>mermaid.initialize({{startOnLoad:false,securityLevel:\"strict\",theme:\"{}\"}});mermaid.render(\"t3-diagram\",{}).then(function(r){{document.getElementById(\"d\").innerHTML=r.svg}}).catch(function(err){{document.getElementById(\"e\").textContent=String(err&&err.message||err)}});</script></body></html>",library.replace("</script","<\\/script"),if dark{"dark"}else{"default"},code);
+ Ok(json!({"generated":true,"contents":contents,"baseUrl":"about:blank","html":true,"markdown":false,"internalReview":false,"title":"Diagram","labels":input["labels"],"theme":input["theme"]}))
+}
+#[cfg(test)]
+mod mermaid_page_tests {
+    #[test]
+    fn writes_page_for_inspection() {
+        if let Ok(out) = std::env::var("OT3_MERMAID_DUMP") {
+            let input = serde_json::json!({"attachment":{"generated":"mermaid","source":"graph TD\n  A[Start] --> B{Works?}\n  B -->|yes| C[Done]"},"theme":{"appearance":"dark"}});
+            // current_exe in tests is target/debug/deps/...; point at the repo copy instead.
+            let doc = super::mermaid_page_with(&input, std::path::Path::new("ui/assets/mermaid/mermaid.min.js")).unwrap();
+            std::fs::write(out, doc["contents"].as_str().unwrap()).unwrap();
+        }
+    }
 }

@@ -28,6 +28,7 @@ pub mod drafts;
 pub mod prompt_recall;
 pub mod git_controls;
 pub mod branch_picker;
+pub mod latex;
 pub mod git_operations;
 pub mod diff_review;
 pub mod working_review;
@@ -97,14 +98,32 @@ pub fn epoch(v: &Value) -> i64 {
         .unwrap_or(0)
 }
 pub fn rendered_markdown(input:&str)->String{markdown_with_code_actions(input,None)}
+/// T3's mathRenderingEnabled client setting (off by default), re-read when the file changes.
+pub fn math_enabled()->bool{
+    static CACHE:std::sync::Mutex<Option<(std::time::SystemTime,bool)>>=std::sync::Mutex::new(None);
+    let path=t3_home().join("userdata/client-settings.json");
+    let Ok(modified)=fs::metadata(&path).and_then(|m|m.modified()) else {return false};
+    let mut cache=CACHE.lock().unwrap();
+    if let Some((at,value))=*cache{if at==modified{return value}}
+    let value=connection_preferences::client_settings().map(|s|s["mathRenderingEnabled"]==true).unwrap_or(false);
+    *cache=Some((modified,value));value
+}
 fn markdown_with_code_actions(input: &str, blocks:Option<&[Value]>) -> String {
+    markdown_render(input,blocks,math_enabled())
+}
+pub fn markdown_render(input: &str, blocks:Option<&[Value]>, math:bool) -> String {
     use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
     let mut image_index=0;
+    let normalized;
+    let input=if math{normalized=latex::normalize_delimiters(input);normalized.as_str()}else{input};
+    let options=Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | if math{Options::ENABLE_MATH}else{Options::empty()};
     let events = Parser::new_ext(
         input,
-        Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH,
+        options,
     )
     .filter_map(|event| match event {
+        Event::InlineMath(tex) => Some(Event::Html(latex::to_rich_text(&tex,false).into())),
+        Event::DisplayMath(tex) => Some(Event::Html(latex::to_rich_text(&tex,true).into())),
         Event::Start(Tag::Image { .. }) if blocks.is_some() => {
             let marker=format!("<a href=\"ot3-image-open://{image_index}\">");image_index+=1;Some(Event::Html(marker.into()))
         },
@@ -120,7 +139,7 @@ fn markdown_with_code_actions(input: &str, blocks:Option<&[Value]>) -> String {
     });
     let mut out = String::new();
     let mut index=0;
-    let events=events.flat_map(|event|{let mut batch=Vec::new();if matches!(&event,Event::Start(Tag::CodeBlock(_))){if let Some(block)=blocks.and_then(|b|b.get(index)){let run=if block["command"].is_string(){format!("<a href=\"ot3-code-run://{index}\">Run in terminal</a> · ")}else{String::new()};batch.push(Event::Html(format!("<table width=\"100%\"><tr><td>{}</td><td align=\"right\">{run}<a href=\"ot3-code-copy://{index}\">Copy code</a></td></tr></table>",text(block,"language").replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")).into()));}index+=1;}batch.push(event);batch});
+    let events=events.flat_map(|event|{let mut batch=Vec::new();if matches!(&event,Event::Start(Tag::CodeBlock(_))){if let Some(block)=blocks.and_then(|b|b.get(index)){let run=if block["command"].is_string(){format!("<a href=\"ot3-code-run://{index}\">Run in terminal</a> · ")}else if text(block,"language").eq_ignore_ascii_case("mermaid"){format!("<a href=\"ot3-code-diagram://{index}\">Show diagram</a> · ")}else{String::new()};batch.push(Event::Html(format!("<table width=\"100%\"><tr><td>{}</td><td align=\"right\">{run}<a href=\"ot3-code-copy://{index}\">Copy code</a></td></tr></table>",text(block,"language").replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")).into()));}index+=1;}batch.push(event);batch});
     html::push_html(&mut out, events);
     out
 }
@@ -378,13 +397,14 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         let queue=protocol::queue::derive(&d["projection"]);
         let hidden=queue["hiddenMessageIds"].as_array().unwrap();
         let mut messages = vec![];
+        let math=math_enabled();
         for m in rows {
             if hidden.contains(&m["id"])||rolled.contains(text(m,"runId")){continue}
             if !m["text"].is_string() || !m["role"].is_string() {
                 return Err("malformed".into());
             }
             let (attribution,raw)=prompt_recall::attribution(m);let id=text(m,"id").to_string();
-            if !cache.get(&id).is_some_and(|c|c.0==raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);let images=markdown_images::descriptors(&display);cache.insert(id.clone(),(raw.to_string(),display,rendered,search,blocks,images));}
+            let cache_raw=if math{format!("\u{1}{raw}")}else{raw.to_string()};if !cache.get(&id).is_some_and(|c|c.0==cache_raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);let images=markdown_images::descriptors(&display);cache.insert(id.clone(),(cache_raw,display,rendered,search,blocks,images));}
             let (_,display,rendered,search,blocks,images)=&cache[&id];
             messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
         }
@@ -837,5 +857,22 @@ mod context_window_tests {
         assert_eq!(context_window(&p)["usedTokens"], 1200.0);
         assert!(context_window(&p)["maxTokens"].is_null());
         assert!(context_window(&json!({"thread":{}})).is_null());
+    }
+}
+#[cfg(test)]
+mod math_markdown_tests {
+    use super::markdown_render;
+    use serde_json::json;
+    #[test]
+    fn math_is_typeset_only_when_enabled_and_mermaid_blocks_offer_a_diagram() {
+        let on = markdown_render("Energy $E=mc^2$ and\n\n$$\\sum_i x_i$$\n\nprice \\(a\\)", None, true);
+        assert!(on.contains("mc<sup>2</sup>"), "{on}");
+        assert!(on.contains("<p align=\"center\">"), "{on}");
+        assert!(on.contains("∑<sub>i</sub>"), "{on}");
+        let off = markdown_render("Energy $E=mc^2$", None, false);
+        assert!(off.contains("$E=mc^2$"), "{off}");
+        let blocks = vec![json!({"language":"mermaid","code":"graph TD; A-->B"})];
+        let html = markdown_render("```mermaid\ngraph TD; A-->B\n```", Some(&blocks), false);
+        assert!(html.contains("ot3-code-diagram://0"), "{html}");
     }
 }

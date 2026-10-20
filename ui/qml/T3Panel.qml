@@ -72,6 +72,9 @@ Item {
   readonly property bool renderShown:sideShown&&sideTab==="renders"&&!!renderAttachment
   property var renderSeen:({})
   function showRender(attachment){renderAttachment=attachment;openSide("renders")}
+  // Mermaid diagrams drawn on request join this thread's renders.
+  property var diagrams:[]
+  function showDiagram(attachment){var rest=diagrams.filter(function(d){return d.id!==attachment.id});diagrams=rest.concat([attachment]);followRenders();showRender(attachment)}
   // Renders that arrive while a thread is open go straight to the panel;
   // those already in the history only open on request.
   function followRenders(){
@@ -82,10 +85,11 @@ Item {
     if(seen&&renderSide&&latest&&seen.indexOf(latest.id)<0)showRender(latest)
     next[key]=ids;renderSeen=next
     var list=[];bridge.transcript.forEach(function(r){(r.attachments || []).forEach(function(a){if(a.mimeType==="text/html")list.push(a)})})
+    list=list.concat(diagrams)
     if(JSON.stringify(list)!==JSON.stringify(renderList))renderList=list
     if(!renderAttachment&&latest)renderAttachment=latest
   }
-  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[]}}
+  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[]}function onDiagramRequested(attachment){root.showDiagram(attachment)}}
   // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
   // every 8 ms through the normal wheel path) and record the intervals
   // between presented frames; profileResult reads them back.
@@ -742,7 +746,7 @@ Item {
     T3FpsMeter {
       objectName:"t3FpsMeter"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
-      anchors.left:parent.left;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);z:100
+      anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);z:100
       active:root.opened&&root.bridge.viewState.fpsMeter===true
     }
     RowLayout {
