@@ -1004,6 +1004,16 @@
     "No screenshot tool found. Choose a command in Preferences.": "No screenshot tool found. Choose a command in Preferences.",
     "The screenshot could not be taken.": "The screenshot could not be taken.",
     "File not found.": "File not found.",
-    "This file is binary and can't be previewed.": "This file is binary and can't be previewed."
+    "This file is binary and can't be previewed.": "This file is binary and can't be previewed.",
+    "Delete settled worktrees": "Delete settled worktrees",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.",
+    "Search engine": "Search engine",
+    "What the address bar searches when you type something that isn't a URL.": "What the address bar searches when you type something that isn't a URL.",
+    "Custom search URL": "Custom search URL",
+    "Use %s where the search terms go.": "Use %s where the search terms go.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.",
+    "Sent by automation": "Sent by automation",
+    "Sent by T3 Code": "Sent by T3 Code",
+    "Sent by another agent": "Sent by another agent"
   }
 }

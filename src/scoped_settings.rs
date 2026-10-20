@@ -84,7 +84,7 @@ pub fn aggregate(targets:&[Value])->Value{
         f["overridden"]=json!(others.iter().any(|o|o["overridden"]==true));
         if f["kind"]=="worktree-policy" {
             let mut mixed=json!({});
-            for key in ["worktreeKeepWhen","worktreeAfterDays","worktreeOnMerge","worktreeOnDelete","worktreeUnchanged"] {
+            for key in ["worktreeKeepWhen","worktreeAfterDays","worktreeSettledAfterDays","worktreeOnMerge","worktreeOnDelete","worktreeUnchanged"] {
                 mixed[key]=json!(others.iter().any(|o|o["rules"][key]!=f["rules"][key]));
             }
             f["rulesMixed"]=mixed;

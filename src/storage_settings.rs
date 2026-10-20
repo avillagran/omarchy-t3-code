@@ -5,6 +5,7 @@ use serde_json::Value;
 const RULES: &[&str] = &[
     "worktreeKeepWhen",
     "worktreeAfterDays",
+    "worktreeSettledAfterDays",
     "worktreeOnMerge",
     "worktreeOnDelete",
     "worktreeUnchanged",
@@ -21,9 +22,20 @@ fn valid(key: &str, value: &Value) -> bool {
                     n.is_finite() && n.fract() == 0. && (1.0..=3650.0).contains(&n)
                 })
         }
+        // Settled worktrees may go at the next cleanup, so 0 days is allowed.
+        "worktreeSettledAfterDays" => {
+            value.is_null()
+                || value
+                    .as_f64()
+                    .is_some_and(|n| n.is_finite() && n.fract() == 0. && (0.0..=3650.0).contains(&n))
+        }
         "worktreeOnMerge" | "worktreeOnDelete" | "worktreeUnchanged" => value.is_boolean(),
         _ => false,
     }
+}
+/// Added in T3 0.1; servers decode a missing value as null.
+fn optional(key: &str) -> bool {
+    key == "worktreeSettledAfterDays"
 }
 pub fn is_key(key: &str) -> bool {
     key == "worktreesDirectory" || key == "worktreeCleanup" || key.starts_with("storageCleanup.")
@@ -50,7 +62,10 @@ pub fn policy(value: &Value, partial: bool) -> Result<Value> {
             if rules
                 .iter()
                 .any(|(k, v)| !RULES.contains(&k.as_str()) || !valid(k, v))
-                || !partial && RULES.iter().any(|k| !rules.contains_key(*k))
+                || !partial
+                    && RULES
+                        .iter()
+                        .any(|k| !rules.contains_key(*k) && !optional(k))
             {
                 return Err("invalid_settings".into());
             }
@@ -63,9 +78,11 @@ pub fn policy(value: &Value, partial: bool) -> Result<Value> {
 pub fn resolved_rules(settings: &Value) -> Result<Value> {
     let mut rules = json!({});
     for key in RULES {
-        let v = settings["storageCleanup"]
-            .get(*key)
-            .ok_or("invalid_settings")?;
+        let v = match settings["storageCleanup"].get(*key) {
+            Some(v) => v,
+            None if optional(key) => continue,
+            None => return Err("invalid_settings".into()),
+        };
         if !valid(key, v) {
             return Err("invalid_settings".into());
         }
@@ -78,6 +95,7 @@ pub fn resolved_rules(settings: &Value) -> Result<Value> {
         v if v["mode"] == "custom" => Ok(v["rules"].clone()),
         v if v["mode"] == "off" => {
             rules["worktreeAfterDays"] = Value::Null;
+            rules["worktreeSettledAfterDays"] = Value::Null;
             for key in ["worktreeOnMerge", "worktreeOnDelete", "worktreeUnchanged"] {
                 rules[key] = json!(false);
             }
@@ -128,6 +146,7 @@ pub fn fields(raw: &Value) -> Vec<Value> {
     for (key, label) in [
         ("worktreeOnDelete", "Delete worktrees with deleted threads"),
         ("worktreeAfterDays", "Delete inactive worktrees"),
+        ("worktreeSettledAfterDays", "Delete settled worktrees"),
         ("worktreeOnMerge", "Delete merged worktrees"),
         ("worktreeUnchanged", "Delete unchanged worktrees"),
         ("worktreeKeepWhen", "Keep worktrees with local changes"),
@@ -144,10 +163,14 @@ pub fn fields(raw: &Value) -> Vec<Value> {
         } else {
             raw["storageCleanup"].get(key)
         };
+        // Only servers that know the setting report it.
+        if optional(key) && raw["storageCleanup"].get(key).is_none() {
+            continue;
+        }
         if let Some(v) = value.filter(|v| valid(key, v)) {
             let mut f = json!({"key":format!("storageCleanup.{key}"),"label":label,"section":"storage","value":v,"capability":"storageCleanup","kind":if key.ends_with("Days"){"days"}else if key=="worktreeKeepWhen"{"choice"}else{"bool"}});
             if key.ends_with("Days") {
-                f["minimum"] = json!(1);
+                f["minimum"] = json!(if optional(key) { 0 } else { 1 });
                 f["maximum"] = json!(3650);
                 f["enabledValue"] = json!(8);
             }

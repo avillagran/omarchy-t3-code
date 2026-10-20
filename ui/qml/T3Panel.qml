@@ -214,7 +214,7 @@ Item {
     if(command==="diff.toggle")return bridge.canOpenGit===true
     if(command==="modelPicker.toggle")return composerPanel.modelPickerAvailable
     if(command==="composer.mode")return composerPanel.permissionPickerAvailable
-    if(command==="composer.effort")return !composerPanel.locked&&composerPanel.descriptors.some(function(d){return /effort|thinking|reasoning/i.test(d.id+" "+d.label)})
+    if(command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort")return !composerPanel.locked&&composerPanel.descriptors.some(function(d){return /effort|thinking|reasoning/i.test(d.id+" "+d.label)})
     if(command==="thread.undo")return bridge.canRewind===true&&!bridge.rewindPending&&!((bridge.rewindPreview || {}).busy)&&!!lastUserMessage&&lastUserMessage.canRewindMessage===true
     if(command==="thread.stop")return !!bridge.selectedInfo.activeRunId&&!bridge.draft.stopping&&!bridge.providerSubagent
     if(command==="thread.copyReference")return !!bridge.selectedThread
@@ -238,7 +238,7 @@ Item {
     else if(command==="preview.zoomIn"||command==="preview.zoomOut"||command==="preview.resetZoom")bridge.browserControl(command==="preview.zoomIn"?"zoom-in":command==="preview.zoomOut"?"zoom-out":"zoom-reset")
     else if(command==="terminal.toggle")bridge.openTerminal()
     else if(command==="diff.toggle"){if(workingPopup.visible)workingPopup.close();else{bridge.requestWorkingReview("working-tree","",bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}}
-    else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort")composerPanel.nativeModelControl(command)
+    else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort")composerPanel.nativeModelControl(command)
     else if(command==="thread.undo")bridge.requestRewindPreview(lastUserMessage.id)
     else if(command==="thread.stop")bridge.stop()
     else if(command==="thread.copyReference"){var badge=bridge.selectedInfo.pullRequestBadge || {};bridge.copyText((badge.current || {}).url || bridge.selectedThread)}
@@ -1422,16 +1422,21 @@ Item {
                 readonly property real verticalInset:Style.space(userMessage?12:modelData.role==="activity"?0:2)
                 readonly property real laneWidth:messageLane.width
                 width: conversation.width
-                height: bubble.height+(messageActions.visible?messageActions.height+Style.space(6):0)+bottomGap
+                // Automations and agents also send user-role messages; say who sent them.
+                readonly property string attribution:userMessage?String(modelData.attribution || ""):""
+                readonly property real attributionHeight:attribution?Style.space(18):0
+                height: attributionHeight+bubble.height+(messageActions.visible?messageActions.height+Style.space(6):0)+bottomGap
                 HoverHandler{id:messageHover}
                 FontMetrics{id:userMeasure;font:messageText.font}
                 readonly property real naturalUserWidth:userMessage?String(modelData.text || "").split("\n").reduce(function(width,line){return Math.max(width,userMeasure.advanceWidth(line))},0):0
                 Item {
                 id:messageLane;objectName:"t3MessageLane"
                 width:Math.min(message.width,root.chatContentMaxWidth);height:message.height;anchors.horizontalCenter:parent.horizontalCenter
+                Text{objectName:"t3MessageAttribution";visible:!!message.attribution;anchors.right:parent.right;anchors.rightMargin:Style.space(4);text:T3I18n.tr(message.attribution==="automation"?"Sent by automation":message.attribution==="t3code"?"Sent by T3 Code":"Sent by another agent");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.55);font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
                 Rectangle {
                   id: bubble
                   objectName:"t3MessageBubble"
+                  y:message.attributionHeight
                   anchors.right: parent.right
                   width: message.userMessage ? Math.min(parent.width*0.8,Math.max(Style.space(80),message.naturalUserWidth+Style.space(24),(message.modelData.attachments || []).length?Style.space(240):0)) : parent.width
                   height: body.implicitHeight + 2*message.verticalInset

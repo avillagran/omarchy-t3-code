@@ -34,6 +34,12 @@ Column {
   }
   T3IconButton{objectName:"browserViewportRotate";Layout.rightMargin:Style.space(16);Layout.bottomMargin:Style.space(14);name:"refresh-cw";tooltipText:T3I18n.tr("Rotate");enabled:root.writable;onClicked:root.rotate()}
  }
+ readonly property string searchEngine:values.browserSearchEngine || "duckduckgo"
+ readonly property string customSearchUrl:values.browserCustomSearchUrl || ""
+ // Mirrors isValidSearchUrlTemplate: %s must sit after the host.
+ function validSearchUrl(t){if(t.indexOf("%s")<0)return false;var a=t.split("%s").join("a"),b=t.split("%s").join("b"),m=/^(https?):\/\/([^\/?#]*)/i;var x=m.exec(a),y=m.exec(b);return !!x&&!!y&&x[2].toLowerCase()===y[2].toLowerCase()&&x[2].length>0}
+ T3PreferenceField{objectName:"browserSearchEngine";width:parent.width;divided:true;field:({key:"browserSearchEngine",label:"Search engine",description:"What the address bar searches when you type something that isn't a URL.",kind:"choice",value:root.searchEngine,resetValue:"duckduckgo",choices:[{id:"duckduckgo",name:"DuckDuckGo"},{id:"google",name:"Google"},{id:"bing",name:"Bing"},{id:"brave",name:"Brave Search"},{id:"kagi",name:"Kagi"},{id:"ecosia",name:"Ecosia"},{id:"custom",name:"Custom"}]});writable:root.writable;onChanged:function(v){root.save("browserSearchEngine",v)}}
+ T3PreferenceField{objectName:"browserCustomSearchUrl";visible:root.searchEngine==="custom";width:parent.width;divided:true;field:({key:"browserCustomSearchUrl",label:"Custom search URL",description:root.validSearchUrl(root.customSearchUrl)?"Use %s where the search terms go.":"Enter an http or https URL containing %s. Searches use DuckDuckGo until then.",kind:"text",value:root.customSearchUrl,resetValue:"",commitOnBlur:true,placeholder:"https://example.com/search?q=%s"});writable:root.writable;onChanged:function(v){root.save("browserCustomSearchUrl",String(v).trim())}}
  Repeater{model:root.fields
   T3PreferenceField{required property var modelData;width:parent.width;divided:true;field:Object.assign({},modelData,{value:root.values[modelData.key]});writable:root.writable;onChanged:function(v){root.save(modelData.key,v)}}
  }

@@ -3,7 +3,7 @@
 const vm=require('node:vm');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process'),{stripTypeScriptTypes}=require('node:module');
 const repo=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(repo,'../t3code-nightly'));
-const pinned='5a4e9980533705774dc3f45b35cacf76c3d78dbc';
+const pinned='fb990765a49414a5bfbdc73365455fc8b5fbe691';
 if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pinned)throw Error('Native keybindings source must be pinned to '+pinned);
 const files=['packages/contracts/src/keybindings.ts','packages/shared/src/keybindings.ts','apps/web/src/components/usage/usageShortcuts.ts','apps/web/src/components/settings/KeybindingsSettings.logic.ts','apps/web/src/components/settings/KeybindingsSettings.tsx','apps/web/src/keybindings.ts','packages/contracts/src/editor.ts','apps/web/src/projectScripts.ts'];
 const inputs=files.map(f=>{const text=fs.readFileSync(path.join(source,f),'utf8');if(cp.execFileSync('git',['-C',source,'show',pinned+':'+f],{encoding:'utf8'})!==text)throw Error('Native input differs from pinned revision: '+f);return text;});
@@ -13,7 +13,7 @@ const constants=[...inputs[0].matchAll(/export const MAX_[A-Z_]+ = \d+;/g)].map(
 const arrays=[...inputs[0].matchAll(/(?:export )?const (?:THREAD_JUMP_KEYBINDING_COMMANDS|MODEL_PICKER_JUMP_KEYBINDING_COMMANDS|THREAD_KEYBINDING_COMMANDS|MODEL_PICKER_KEYBINDING_COMMANDS|STATIC_KEYBINDING_COMMANDS) = \[[\s\S]*?\] as const;/g)].map(m=>m[0]);
 if(arrays.length!==5)throw Error('Native command declarations changed');
 const usage=inputs[2].slice(0,inputs[2].indexOf('/** Resolves page shortcuts'));
-const tree=inputs[4].slice(inputs[4].indexOf('function flattenWhenChildren('),inputs[4].indexOf('/** Warning glyph'));
+const tree=inputs[4].slice(inputs[4].indexOf('function flattenWhenChildren('),inputs[4].indexOf('function WarningTooltipIcon('));
 if(!tree||tree.includes('<Tooltip>'))throw Error('Native condition helper boundaries changed');
 const runtime=inputs[5].slice(inputs[5].indexOf('function resolvePlatform('),inputs[5].indexOf('export function formatShortcutKeyLabel('));
 const runtimeQt=runtime.replace('  return {\n    terminalFocus: false,','  return Object.assign({\n    terminalFocus: false,').replace('    ...options?.context,\n  };','  }, options?.context);');
@@ -31,7 +31,9 @@ const header='// Generated from pinned T3 Code '+pinned+'. MIT, see licenses/T3-
 const qtDeclarations=declarations.replace(/\.toSorted\(/g,'.slice().sort(')
  .replace('return [...KEYBINDING_GROUPS, OTHER_KEYBINDING_GROUP].flatMap(', 'return flattenNativeGroups([...KEYBINDING_GROUPS, OTHER_KEYBINDING_GROUP], ')
  .replace('const parsePrimary =', 'let parseOr;\n  const parsePrimary =')
- .replace('const parseOr =', 'parseOr =');
+ .replace('const parseOr =', 'parseOr =')
+ // Qt's engine has no object spread.
+ .replace('return { ...shortcut, shiftKey: true };', 'return Object.assign({}, shortcut, { shiftKey: true });');
 const scriptIdLimit=Number(inputs[0].match(/MAX_SCRIPT_ID_LENGTH = (\d+);/)[1]);
 const compatibility='const isElectron=true;\nconst scriptIdLimit='+scriptIdLimit+';\nconst SCRIPT_RUN_COMMAND_PATTERN={parts:[{literal:"script."},null,{literal:".run"}]};\nfunction isScriptRunCommand(command){const id=command.slice(7,-4);return command.startsWith("script.")&&command.endsWith(".run")&&id.length>0&&id.length<=scriptIdLimit&&/^[a-z0-9][a-z0-9-]*$/.test(id); }\nfunction flattenNativeGroups(groups,mapper){return [].concat.apply([],groups.map(mapper));}\n';
 const script=header+'var nativeKeys=(function(){\n"use strict";\n'+compatibility+qtDeclarations+'\nreturn {'+unique.join(',')+'};\n})();\n';

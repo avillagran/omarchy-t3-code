@@ -22,8 +22,8 @@ ColumnLayout {
  readonly property var primary:ids.length?configs[ids[0]]:null
  readonly property var snapshot:primary?primary.data:null
  readonly property var bindings:presentedBindings
- readonly property var allRows:k.buildKeybindingRows(bindings,"")
- readonly property var groups:{var english=k.buildKeybindingRows(bindings,query),q=query.trim().toLocaleLowerCase();return k.groupKeybindingRows(allRows.filter(function(row){return english.some(function(r){return r.id===row.id})||Labels.command(row.command,function(key){return T3I18n.tr(key)}).toLocaleLowerCase().indexOf(q)>=0}))}
+ readonly property var allRows:k.buildKeybindingRows(bindings)
+ readonly property var groups:{var english=k.filterKeybindingRows(allRows,query),q=query.trim().toLocaleLowerCase();return k.groupKeybindingRows(allRows.filter(function(row){return english.some(function(r){return r.id===row.id})||Labels.command(row.command,function(key){return T3I18n.tr(key)}).toLocaleLowerCase().indexOf(q)>=0}))}
  readonly property bool loading:ids.some(function(id){return root.configs[id]&&root.configs[id].busy})
  readonly property bool saving:!!bridge.keybindingWrite.busy
  readonly property bool writable:ids.length>0&&!scope.error&&!saving&&ids.every(function(id){var c=root.configs[id];return c&&!c.busy&&!c.error&&c.data&&c.data.writable})

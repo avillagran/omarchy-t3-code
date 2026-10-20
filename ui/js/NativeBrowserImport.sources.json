@@ -1,14 +1,14 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "files": {
-    "apps/web/src/components/settings/browserImportWizard.logic.ts": "e83ca49b38cad64b2c25a2164f68f60f42cd1097fe2b3db8992583d54fc5fb66",
-    "packages/contracts/src/browserImport.ts": "fc10b3bce8f67e4ba271227b3376150cc7f680bcd5c46de6be02206b826c300a",
-    "apps/web/src/components/BranchToolbar.logic.ts": "2e0e7e84acfd52d6724a04699604932108bcc964c30f23f044f46a443de9b646"
+    "apps/web/src/components/settings/browserImportWizard.logic.ts": "b936259b129c063d7efe4ab3ada383a6da78b4def43947d25ffffeb04dda4b12",
+    "packages/contracts/src/browserImport.ts": "8d321d899b39e9781506e3bd01e352aeb297ee3069b01fc7ed84cd683c25e358",
+    "apps/web/src/components/BranchToolbar.logic.ts": "74225b9a4ab113386f3e3c2a92eaf545d29b18396953ebdfe0cfee04416bf23c"
   },
   "adaptations": [
     "TypeScript erasure/import and export removal; trailing erasure whitespace removed",
     "Object spread becomes Object.assign, Array.at(-1) becomes final-index lookup for Qt",
     "Failure dictionary spread merged with Object.assign"
   ],
-  "outputSha256": "ad208f65d03484d85aee7ce02bdef1e7f03f96df5d362f8587e2501b3c3322a1"
+  "outputSha256": "f2029d641ac5180c3ad6394c3a700ae56ef6898a0f314f8dcf2dcf27fca5fa91"
 }

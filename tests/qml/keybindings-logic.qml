@@ -5,7 +5,7 @@ ShellRoot {
  function check(ok,msg){if(!ok){console.error("KEYBINDINGS_LOGIC_QML_FAIL "+msg);Qt.exit(1)}}
  function run(){
   var k=Original.nativeKeys,defaults=k.mergeWithDefaultKeybindings([]),rows=k.buildKeybindingRows(defaults,"")
-  check(defaults.length===82&&k.STATIC_KEYBINDING_COMMANDS.length===82,"actual pinned native defaults and command catalog")
+  check(defaults.length===82&&k.STATIC_KEYBINDING_COMMANDS.length===84,"actual pinned native defaults and command catalog")
   check(rows.length===82&&rows.every(function(r){return r.source==="Default"}),"native default source and row metadata")
   var groups=k.groupKeybindingRows(rows)
   check(groups[0].id==="navigation"&&groups[1].id==="threads"&&groups[2].id==="composer","native group order")
@@ -13,7 +13,7 @@ ShellRoot {
   check(customRows.some(function(r){return r.command==="composer.sendAndNewThread"&&r.key==="ctrl+alt+enter"&&r.source==="Custom"}),"native custom combination is preserved")
   check(customRows.filter(function(r){return r.command==="composer.sendAndNewThread"}).length===1,"native per-command overrides remove defaults")
   check(customRows.some(function(r){return r.command==="script.check.run"&&r.source==="Project"}),"native script commands join project group")
-  check(k.buildKeybindingRows(merged,"Composer: Send and Start").length===1,"native command-label filtering")
+  check(k.filterKeybindingRows(k.buildKeybindingRows(merged),"Composer: Send and Start").length===1,"native command-label filtering")
   check(k.parseKeybindingShortcut("mod++").key==="+","literal plus key follows original parser")
   check(k.parseKeybindingShortcut("ctrl+ctrl+x").ctrlKey===true&&k.parseKeybindingShortcut("ctrl+ctrl+x").key==="x","repeated modifier is normalized as in native parser")
   check(!k.parseWhenExpressionDraft("terminalFocus && (").ok,"original parser rejects malformed expression")

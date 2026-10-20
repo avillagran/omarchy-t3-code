@@ -90,7 +90,61 @@ fn encode(s: &str) -> String {
     }
     out
 }
+/// Address bar search URL templates; `%s` is replaced with the encoded query.
+const SEARCH_TEMPLATES: &[(&str, &str)] = &[
+    ("duckduckgo", "https://duckduckgo.com/?q=%s"),
+    ("google", "https://www.google.com/search?q=%s"),
+    ("bing", "https://www.bing.com/search?q=%s"),
+    ("brave", "https://search.brave.com/search?q=%s"),
+    ("kagi", "https://kagi.com/search?q=%s"),
+    ("ecosia", "https://www.ecosia.org/search?q=%s"),
+];
+pub const SEARCH_ENGINES: &[&str] = &[
+    "duckduckgo",
+    "google",
+    "bing",
+    "brave",
+    "kagi",
+    "ecosia",
+    "custom",
+];
+fn fill(template: &str, query: &str) -> String {
+    template.replace("%s", &encode(query))
+}
+/// Port of isValidSearchUrlTemplate: an http(s) URL with `%s` after the authority,
+/// so a query always reaches the same search host.
+pub fn valid_search_template(template: &str) -> bool {
+    if !template.contains("%s") {
+        return false;
+    }
+    let authority = |q: &str| {
+        reqwest::Url::parse(&fill(template, q)).ok().filter(|u| matches!(u.scheme(), "http" | "https")).map(|u| {
+            format!("{}:{}@{}:{:?}", u.username(), u.password().unwrap_or(""), u.host_str().unwrap_or(""), u.port())
+        })
+    };
+    matches!((authority("a"), authority("b")), (Some(a), Some(b)) if a == b)
+}
+/// Port of resolveSearchUrlTemplate over raw client settings. An unusable custom
+/// template falls back to DuckDuckGo so a typed query always searches.
+pub fn search_template(settings: &serde_json::Value) -> String {
+    let engine = settings["browserSearchEngine"].as_str().unwrap_or("duckduckgo");
+    if engine == "custom" {
+        let custom = settings["browserCustomSearchUrl"].as_str().unwrap_or("").trim();
+        if valid_search_template(custom) {
+            return custom.into();
+        }
+    }
+    SEARCH_TEMPLATES
+        .iter()
+        .find(|(id, _)| *id == engine)
+        .unwrap_or(&SEARCH_TEMPLATES[0])
+        .1
+        .into()
+}
 pub fn resolve(raw: &str) -> Result<String> {
+    resolve_with(raw, SEARCH_TEMPLATES[0].1)
+}
+pub fn resolve_with(raw: &str, template: &str) -> Result<String> {
     if raw.encode_utf16().count() > 2048 || raw.contains('\0') {
         return Err("invalid_preview_address".into());
     }
@@ -144,5 +198,5 @@ pub fn resolve(raw: &str) -> Result<String> {
             }
         }
     }
-    Ok(format!("https://duckduckgo.com/?q={}", encode(s)))
+    Ok(fill(template, s))
 }

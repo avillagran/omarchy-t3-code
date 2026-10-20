@@ -15,6 +15,7 @@ Rectangle {
   function nativeModelControl(command){
     if(command==="modelPicker.toggle"){if(modelPicker.enabled)modelPicker.popup.visible?modelPicker.popup.close():modelPicker.popup.open();return}
     if(command==="composer.mode"){if(permissionPicker.enabled)permissionPicker.popup.open();return}
+    if(command==="composer.increaseEffort"||command==="composer.decreaseEffort"){modelOptions.stepEffort(command==="composer.increaseEffort"?1:-1);return}
     if(command==="composer.effort"){showOptions=true;Qt.callLater(function(){modelOptions.focusEffort()});return}
     if(command==="modelPicker.previousProvider"||command==="modelPicker.nextProvider"){modelPicker.moveProvider(command==="modelPicker.nextProvider"?1:-1);return}
     var jump=/^modelPicker\.jump\.([1-9])$/.exec(command);if(jump)modelPicker.selectResult(Number(jump[1])-1)
@@ -45,7 +46,7 @@ Rectangle {
   Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;editor.cursorPosition=cursor;editor.forceActiveFocus()})}}
   property int historyIndex: -1
   property string historyScratch: ""
-  readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"}).map(function(m){return String(m.recallableText!==undefined?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
+  readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
   Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";saveQuietPeriod.stop()} }
   property var completion: null
   property int completionIndex: 0

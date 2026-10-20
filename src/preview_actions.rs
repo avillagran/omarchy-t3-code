@@ -22,7 +22,10 @@ fn preference(key: &str, value: &Value) -> Result<Value> {
     crate::browser_preferences::validate(key, value).map_err(|_| "invalid_preview_command".into())
 }
 fn address(value: &Value) -> Result<String> {
-    let url = crate::browser_address::resolve(string(value, 2048)?)?;
+    let template = crate::connection_preferences::client_settings()
+        .map(|s| crate::browser_address::search_template(&s))
+        .unwrap_or_else(|_| crate::browser_address::search_template(&Value::Null));
+    let url = crate::browser_address::resolve_with(string(value, 2048)?, &template)?;
     if url.encode_utf16().count() > 2048 {
         return Err("invalid_preview_address".into());
     }

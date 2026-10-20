@@ -218,3 +218,73 @@ pub fn recall(message: &str) -> String {
         prompt.into()
     }
 }
+/// Port of resolveUserMessagePresentation: who sent a user-role message other than the
+/// user, and the text to show. Automations and agents send user-role messages too.
+pub fn attribution(m: &serde_json::Value) -> (Option<&'static str>, &str) {
+    let text = m["text"].as_str().unwrap_or("");
+    if m["role"] != "user" {
+        return (None, text);
+    }
+    if !m["scheduledTaskId"].is_null() {
+        return (Some("automation"), text);
+    }
+    // Legacy automation messages carried a "[Triggered by schedule task: ...]" header.
+    let legacy = text
+        .strip_prefix("[Triggered by schedule task: ")
+        .and_then(|rest| {
+            let close = rest.find(']')?;
+            if rest[..close].contains(['\r', '\n']) || close == 0 {
+                return None;
+            }
+            let after = &rest[close + 1..];
+            after
+                .strip_prefix("\r\n\r\n")
+                .or_else(|| after.strip_prefix("\n\n"))
+                .or_else(|| after.strip_prefix("\r\n\n"))
+                .or_else(|| after.strip_prefix("\n\r\n"))
+        });
+    let legacy_id = m["id"].as_str().is_some_and(|id| {
+        id.strip_prefix("scheduled-task-message:")
+            .and_then(|rest| {
+                let (rest, kind) = rest.rsplit_once(':')?;
+                let (task, n) = rest.rsplit_once(':')?;
+                Some(
+                    matches!(kind, "scheduled" | "manual")
+                        && !task.is_empty()
+                        && !n.is_empty()
+                        && n.bytes().all(|b| b.is_ascii_digit()),
+                )
+            })
+            .unwrap_or(false)
+    });
+    if let Some(body) = legacy {
+        if legacy_id || m["createdBy"] == "agent" {
+            return (Some("automation"), body);
+        }
+    }
+    if m["createdBy"] != "agent" {
+        (None, text)
+    } else if m["creationSource"] == "server" {
+        (Some("t3code"), text)
+    } else {
+        (Some("agent"), text)
+    }
+}
+#[cfg(test)]
+mod attribution_tests {
+    use super::attribution;
+    use serde_json::json;
+    #[test]
+    fn recall_skips_messages_sent_by_automations_agents_and_t3() {
+        let typed = json!({"id":"m1","role":"user","text":"typed"});
+        assert_eq!(attribution(&typed), (None, "typed"));
+        assert_eq!(attribution(&json!({"id":"m2","role":"user","text":"scheduled","scheduledTaskId":"task"})).0, Some("automation"));
+        assert_eq!(
+            attribution(&json!({"id":"scheduled-task-message:task:1:scheduled","role":"user","text":"[Triggered by schedule task: Daily]\n\nlegacy scheduled"})),
+            (Some("automation"), "legacy scheduled")
+        );
+        assert_eq!(attribution(&json!({"id":"m3","role":"user","text":"x","createdBy":"agent","creationSource":"mcp"})).0, Some("agent"));
+        assert_eq!(attribution(&json!({"id":"m4","role":"user","text":"x","createdBy":"agent","creationSource":"server"})).0, Some("t3code"));
+        assert_eq!(attribution(&json!({"id":"m5","role":"user","text":"[Triggered by schedule task: Daily]\n\nby hand"})), (None, "[Triggered by schedule task: Daily]\n\nby hand"));
+    }
+}
