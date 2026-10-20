@@ -801,6 +801,26 @@ Item {
       T3ScheduledTasks{id:scheduledTasksPage;bridge:root.bridge}
       T3AgentSessions{id:agentSessionsPage;bridge:root.bridge}
       T3ProcessDiagnostics{id:processDiagnosticsPage;bridge:root.bridge}
+      // A workflow's script, read-only (orchestration.getWorkflowScript).
+      Controls.Popup{
+        id:workflowScriptPopup;objectName:"t3WorkflowScriptPopup";modal:true;focus:true;padding:Style.space(16)
+        x:Math.round((parent.width-width)/2);y:Math.round((parent.height-height)/2);width:Math.min(Style.space(820),parent.width-Style.space(40));height:Math.min(Style.space(620),parent.height-Style.space(40))
+        background:Rectangle{radius:Style.space(12);color:Color.popups.background;border.width:1;border.color:root.divider}
+        Connections{target:root.bridge;function onWorkflowScriptRequested(){workflowScriptPopup.open()}}
+        ColumnLayout{anchors.fill:parent;spacing:Style.space(8)
+          RowLayout{Layout.fillWidth:true
+            Text{Layout.fillWidth:true;text:(root.bridge.workflowScript.title||T3I18n.tr("Workflow"))+" · "+root.bridge.workflowScript.path;color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideMiddle;textFormat:Text.PlainText}
+            T3IconButton{name:"copy";tooltipText:T3I18n.tr("Copy");visible:!!root.bridge.workflowScript.contents;onClicked:root.bridge.copyText(root.bridge.workflowScript.contents)}
+            T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:workflowScriptPopup.close()}
+          }
+          Text{visible:!!root.bridge.workflowScript.error;Layout.fillWidth:true;wrapMode:Text.Wrap;text:T3I18n.error(root.bridge.workflowScript.error||"");color:Color.urgent;font.pixelSize:Style.font.caption}
+          Text{visible:!!root.bridge.workflowScript.truncated;text:T3I18n.tr("The script is longer than shown.");color:root.dim;font.pixelSize:Style.font.caption}
+          WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:!!root.bridge.workflowScript.busy;active:visible}
+          Controls.ScrollView{Layout.fillWidth:true;Layout.fillHeight:true;clip:true;visible:!!root.bridge.workflowScript.contents
+            Controls.TextArea{objectName:"t3WorkflowScriptText";readOnly:true;selectByMouse:true;textFormat:TextEdit.PlainText;wrapMode:TextEdit.NoWrap;font.family:"monospace";font.pixelSize:Style.font.caption;color:root.fg;text:root.bridge.workflowScript.contents||"";background:Rectangle{color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.04);radius:Style.space(6)}}
+          }
+        }
+      }
       T3CommandPalette{id:commandPalette;onSearched:function(q){root.bridge.searchThreads(q)};onClosed:root.bridge.searchThreads("")
         liveGroups:{var b=root.bridge,s=b.threadSearch;if(!s.query||s.query!==commandPalette.query.trim()&&commandPalette.query.trim().indexOf(s.query)!==0)return [];var seen={};var items=(s.matches||[]).filter(function(m){var k=m.environmentId+"/"+m.threadId;if(seen[k])return false;seen[k]=true;return true}).map(function(m){var t=(b.state.threads||[]).find(function(x){return x.id===m.threadId&&x.environmentId===m.environmentId});return {id:"match:"+m.environmentId+"/"+m.threadId,title:t?String(t.title||T3I18n.tr("Untitled thread")):T3I18n.tr("Untitled thread"),detail:String(m.snippet||"").replace(/\s+/g," ").trim(),icon:"search",run:function(){b.selectThread(m.environmentId,m.threadId);composerPanel.inputField.forceActiveFocus()}}});return items.length?[{label:"Messages",items:items,limit:12,live:true}]:[]}}
       Controls.Popup {

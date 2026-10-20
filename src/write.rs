@@ -327,6 +327,8 @@ pub fn execute(input:&Value) -> Result<Value> {
         "local-servers"=>crate::local_servers::read(&e),
         "worktree-setup-cancel"=>rpc(&e,"worktreeSetup.cancel",json!({"threadId":input["thread"]})),
         "otlp-check"=>{let signal=text(input,"signal");if !matches!(signal,"traces"|"metrics"|"logs"){return Err("invalid_command".into())}let url=input["url"].as_str().filter(|u|(u.starts_with("http://")||u.starts_with("https://"))&&u.len()<=2048).ok_or("invalid_settings")?;let r=rpc(&e,"server.checkOtlpEndpoint",json!({"signal":signal,"url":url}))?;Ok(json!({"signal":signal,"result":r}))},
+        "workflow-script"=>{let path=input["scriptPath"].as_str().filter(|p|p.starts_with('/')&&p.len()<=4096).ok_or("invalid_file")?;rpc(&e,"orchestration.getWorkflowScript",json!({"threadId":input["thread"],"scriptPath":path}))},
+        "workflow-stop"=>{let node=input["subagentId"].as_str().filter(|n|!n.is_empty()&&n.len()<=512).ok_or("invalid_id")?;rpc(&e,"orchestration.stopWorkflow",json!({"threadId":input["thread"],"subagentId":node}))?;Ok(json!({}))},
         "git-init"=>{let cwd=input["cwd"].as_str().filter(|c|c.starts_with('/')&&c.len()<=4096).ok_or("invalid_folder")?;rpc(&e,"vcs.init",json!({"cwd":cwd}))},
         "acp-registry"=>crate::acp_registry::run(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),

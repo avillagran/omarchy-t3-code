@@ -1209,6 +1209,10 @@
     "Timed out": "Timed out",
     "Unreachable": "Unreachable",
     "Check": "Check",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Last 30 minutes: CPU (line) and memory (bars)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Last 30 minutes: CPU (line) and memory (bars)",
+    "Show workflow script": "Show workflow script",
+    "Stop workflow": "Stop workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "The script is longer than shown."
   }
 }
