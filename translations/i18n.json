@@ -1153,7 +1153,10 @@
     "Sign-in cancelled": "Sign-in cancelled",
     "Code: {code}": "Code: {code}",
     "Open sign-in page": "Open sign-in page",
-    "Continue": "Continue"
+    "Continue": "Continue",
+    "Show diagram": "Show diagram",
+    "Copy as Markdown": "Copy as Markdown",
+    "Copy as CSV": "Copy as CSV"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2309,7 +2312,10 @@
     "Sign-in cancelled": "Inicio de sesión cancelado",
     "Code: {code}": "Código: {code}",
     "Open sign-in page": "Abrir página de inicio de sesión",
-    "Continue": "Continuar"
+    "Continue": "Continuar",
+    "Show diagram": "Mostrar diagrama",
+    "Copy as Markdown": "Copiar como Markdown",
+    "Copy as CSV": "Copiar como CSV"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3465,7 +3471,10 @@
     "Sign-in cancelled": "Login cancelado",
     "Code: {code}": "Código: {code}",
     "Open sign-in page": "Abrir página de login",
-    "Continue": "Continuar"
+    "Continue": "Continuar",
+    "Show diagram": "Mostrar diagrama",
+    "Copy as Markdown": "Copiar como Markdown",
+    "Copy as CSV": "Copiar como CSV"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4621,7 +4630,10 @@
     "Sign-in cancelled": "Connexion annulée",
     "Code: {code}": "Code : {code}",
     "Open sign-in page": "Ouvrir la page de connexion",
-    "Continue": "Continuer"
+    "Continue": "Continuer",
+    "Show diagram": "Afficher le diagramme",
+    "Copy as Markdown": "Copier en Markdown",
+    "Copy as CSV": "Copier en CSV"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5777,7 +5789,10 @@
     "Sign-in cancelled": "Anmeldung abgebrochen",
     "Code: {code}": "Code: {code}",
     "Open sign-in page": "Anmeldeseite öffnen",
-    "Continue": "Weiter"
+    "Continue": "Weiter",
+    "Show diagram": "Diagramm anzeigen",
+    "Copy as Markdown": "Als Markdown kopieren",
+    "Copy as CSV": "Als CSV kopieren"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6933,7 +6948,10 @@
     "Sign-in cancelled": "Accesso annullato",
     "Code: {code}": "Codice: {code}",
     "Open sign-in page": "Apri la pagina di accesso",
-    "Continue": "Continua"
+    "Continue": "Continua",
+    "Show diagram": "Mostra diagramma",
+    "Copy as Markdown": "Copia come Markdown",
+    "Copy as CSV": "Copia come CSV"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8089,7 +8107,10 @@
     "Sign-in cancelled": "Aanmelden geannuleerd",
     "Code: {code}": "Code: {code}",
     "Open sign-in page": "Aanmeldpagina openen",
-    "Continue": "Doorgaan"
+    "Continue": "Doorgaan",
+    "Show diagram": "Diagram tonen",
+    "Copy as Markdown": "Kopiëren als Markdown",
+    "Copy as CSV": "Kopiëren als CSV"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9245,7 +9266,10 @@
     "Sign-in cancelled": "Anulowano logowanie",
     "Code: {code}": "Kod: {code}",
     "Open sign-in page": "Otwórz stronę logowania",
-    "Continue": "Kontynuuj"
+    "Continue": "Kontynuuj",
+    "Show diagram": "Pokaż diagram",
+    "Copy as Markdown": "Kopiuj jako Markdown",
+    "Copy as CSV": "Kopiuj jako CSV"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10401,7 +10425,10 @@
     "Sign-in cancelled": "Вход отменён",
     "Code: {code}": "Код: {code}",
     "Open sign-in page": "Открыть страницу входа",
-    "Continue": "Продолжить"
+    "Continue": "Продолжить",
+    "Show diagram": "Показать диаграмму",
+    "Copy as Markdown": "Копировать как Markdown",
+    "Copy as CSV": "Копировать как CSV"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11557,7 +11584,10 @@
     "Sign-in cancelled": "Вхід скасовано",
     "Code: {code}": "Код: {code}",
     "Open sign-in page": "Відкрити сторінку входу",
-    "Continue": "Продовжити"
+    "Continue": "Продовжити",
+    "Show diagram": "Показати діаграму",
+    "Copy as Markdown": "Копіювати як Markdown",
+    "Copy as CSV": "Копіювати як CSV"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12713,7 +12743,10 @@
     "Sign-in cancelled": "サインインを取り消しました",
     "Code: {code}": "コード: {code}",
     "Open sign-in page": "サインインページを開く",
-    "Continue": "続行"
+    "Continue": "続行",
+    "Show diagram": "図を表示",
+    "Copy as Markdown": "Markdown としてコピー",
+    "Copy as CSV": "CSV としてコピー"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13869,7 +13902,10 @@
     "Sign-in cancelled": "로그인 취소됨",
     "Code: {code}": "코드: {code}",
     "Open sign-in page": "로그인 페이지 열기",
-    "Continue": "계속"
+    "Continue": "계속",
+    "Show diagram": "다이어그램 보기",
+    "Copy as Markdown": "Markdown으로 복사",
+    "Copy as CSV": "CSV로 복사"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15025,7 +15061,10 @@
     "Sign-in cancelled": "已取消登录",
     "Code: {code}": "代码：{code}",
     "Open sign-in page": "打开登录页面",
-    "Continue": "继续"
+    "Continue": "继续",
+    "Show diagram": "显示图表",
+    "Copy as Markdown": "复制为 Markdown",
+    "Copy as CSV": "复制为 CSV"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16181,7 +16220,10 @@
     "Sign-in cancelled": "أُلغي تسجيل الدخول",
     "Code: {code}": "الرمز: {code}",
     "Open sign-in page": "افتح صفحة تسجيل الدخول",
-    "Continue": "متابعة"
+    "Continue": "متابعة",
+    "Show diagram": "اعرض المخطط",
+    "Copy as Markdown": "انسخ بصيغة Markdown",
+    "Copy as CSV": "انسخ بصيغة CSV"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17337,7 +17379,10 @@
     "Sign-in cancelled": "Oturum açma iptal edildi",
     "Code: {code}": "Kod: {code}",
     "Open sign-in page": "Oturum açma sayfasını aç",
-    "Continue": "Devam"
+    "Continue": "Devam",
+    "Show diagram": "Diyagramı göster",
+    "Copy as Markdown": "Markdown olarak kopyala",
+    "Copy as CSV": "CSV olarak kopyala"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18493,7 +18538,10 @@
     "Sign-in cancelled": "Inloggningen avbröts",
     "Code: {code}": "Kod: {code}",
     "Open sign-in page": "Öppna inloggningssidan",
-    "Continue": "Fortsätt"
+    "Continue": "Fortsätt",
+    "Show diagram": "Visa diagram",
+    "Copy as Markdown": "Kopiera som Markdown",
+    "Copy as CSV": "Kopiera som CSV"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19649,7 +19697,10 @@
     "Sign-in cancelled": "Login annulleret",
     "Code: {code}": "Kode: {code}",
     "Open sign-in page": "Åbn loginsiden",
-    "Continue": "Fortsæt"
+    "Continue": "Fortsæt",
+    "Show diagram": "Vis diagram",
+    "Copy as Markdown": "Kopiér som Markdown",
+    "Copy as CSV": "Kopiér som CSV"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20805,7 +20856,10 @@
     "Sign-in cancelled": "Pålogging avbrutt",
     "Code: {code}": "Kode: {code}",
     "Open sign-in page": "Åpne påloggingssiden",
-    "Continue": "Fortsett"
+    "Continue": "Fortsett",
+    "Show diagram": "Vis diagram",
+    "Copy as Markdown": "Kopier som Markdown",
+    "Copy as CSV": "Kopier som CSV"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21961,7 +22015,10 @@
     "Sign-in cancelled": "Kirjautuminen peruttiin",
     "Code: {code}": "Koodi: {code}",
     "Open sign-in page": "Avaa kirjautumissivu",
-    "Continue": "Jatka"
+    "Continue": "Jatka",
+    "Show diagram": "Näytä kaavio",
+    "Copy as Markdown": "Kopioi Markdownina",
+    "Copy as CSV": "Kopioi CSV:nä"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23117,6 +23174,9 @@
     "Sign-in cancelled": "Přihlášení zrušeno",
     "Code: {code}": "Kód: {code}",
     "Open sign-in page": "Otevřít přihlašovací stránku",
-    "Continue": "Pokračovat"
+    "Continue": "Pokračovat",
+    "Show diagram": "Zobrazit diagram",
+    "Copy as Markdown": "Kopírovat jako Markdown",
+    "Copy as CSV": "Kopírovat jako CSV"
   }
 }

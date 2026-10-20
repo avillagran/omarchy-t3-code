@@ -146,9 +146,34 @@ pub fn markdown_render(input: &str, blocks:Option<&[Value]>, math:bool) -> Strin
     });
     let mut out = String::new();
     let mut index=0;
-    let events=events.flat_map(|event|{let mut batch=Vec::new();if matches!(&event,Event::Start(Tag::CodeBlock(_))){if let Some(block)=blocks.and_then(|b|b.get(index)){let run=if block["command"].is_string(){format!("<a href=\"ot3-code-run://{index}\">Run in terminal</a> · ")}else if text(block,"language").eq_ignore_ascii_case("mermaid"){format!("<a href=\"ot3-code-diagram://{index}\">Show diagram</a> · ")}else{String::new()};batch.push(Event::Html(format!("<table width=\"100%\"><tr><td>{}</td><td align=\"right\">{run}<a href=\"ot3-code-copy://{index}\">Copy code</a></td></tr></table>",text(block,"language").replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")).into()));}index+=1;}batch.push(event);batch});
+    let mut table_index=0;
+    let events=events.flat_map(|event|{let mut batch=Vec::new();
+        // Copy actions after each table, as in T3's table menu (Markdown or CSV).
+        if blocks.is_some()&&matches!(&event,Event::End(TagEnd::Table)){batch.push(event);batch.push(Event::Html(format!("<p align=\"right\"><a href=\"ot3-table-copy://{table_index}/markdown\">Copy as Markdown</a> · <a href=\"ot3-table-copy://{table_index}/csv\">Copy as CSV</a></p>").into()));table_index+=1;return batch}
+        if matches!(&event,Event::Start(Tag::CodeBlock(_))){if let Some(block)=blocks.and_then(|b|b.get(index)){let run=if block["command"].is_string(){format!("<a href=\"ot3-code-run://{index}\">Run in terminal</a> · ")}else if text(block,"language").eq_ignore_ascii_case("mermaid"){format!("<a href=\"ot3-code-diagram://{index}\">Show diagram</a> · ")}else{String::new()};batch.push(Event::Html(format!("<table width=\"100%\"><tr><td>{}</td><td align=\"right\">{run}<a href=\"ot3-code-copy://{index}\">Copy code</a></td></tr></table>",text(block,"language").replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")).into()));}index+=1;}batch.push(event);batch});
     html::push_html(&mut out, events);
     out
+}
+/// Tables of a Markdown message as Markdown and CSV, for the copy actions.
+pub fn markdown_tables(input:&str)->Vec<Value>{
+    use pulldown_cmark::{Event,Options,Parser,Tag,TagEnd};
+    let mut tables=vec![];let mut rows:Vec<Vec<String>>=vec![];let mut row:Vec<String>=vec![];let mut cell=String::new();let mut inside=false;
+    for event in Parser::new_ext(input,Options::ENABLE_TABLES|Options::ENABLE_STRIKETHROUGH){
+        match event{
+            Event::Start(Tag::Table(_))=>{inside=true;rows.clear();}
+            Event::End(TagEnd::TableCell)=>{row.push(cell.trim().to_string());cell.clear();}
+            Event::End(TagEnd::TableHead)|Event::End(TagEnd::TableRow)=>{rows.push(std::mem::take(&mut row));}
+            Event::End(TagEnd::Table)=>{inside=false;
+                let md=rows.iter().enumerate().map(|(i,r)|{let line=format!("| {} |",r.iter().map(|c|c.replace('|',"\\|")).collect::<Vec<_>>().join(" | "));if i==0{format!("{line}\n|{}|",r.iter().map(|_|" --- ").collect::<Vec<_>>().join("|"))}else{line}}).collect::<Vec<_>>().join("\n");
+                let csv=rows.iter().map(|r|r.iter().map(|c|if c.contains([',','"','\n']){format!("\"{}\"",c.replace('"',"\"\""))}else{c.clone()}).collect::<Vec<_>>().join(",")).collect::<Vec<_>>().join("\n");
+                tables.push(json!({"markdown":md,"csv":csv}));
+            }
+            Event::Text(t)|Event::Code(t) if inside=>cell.push_str(&t),
+            Event::SoftBreak|Event::HardBreak if inside=>cell.push(' '),
+            _=>{}
+        }
+    }
+    tables
 }
 pub fn markdown_search_text(input:&str)->String{
     use pulldown_cmark::{Event,Options,Parser,TagEnd};
@@ -413,7 +438,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
             let (attribution,raw)=prompt_recall::attribution(m);let id=text(m,"id").to_string();
             let cache_raw=if math{format!("\u{1}{raw}")}else{raw.to_string()};if !cache.get(&id).is_some_and(|c|c.0==cache_raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);let images=markdown_images::descriptors(&display);cache.insert(id.clone(),(cache_raw,display,rendered,search,blocks,images));}
             let (_,display,rendered,search,blocks,images)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"createdAt":epoch(&m["createdAt"])}));
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"tables":if m["role"]=="assistant"&&display.contains('|'){json!(markdown_tables(display))}else{json!([])},"createdAt":epoch(&m["createdAt"])}));
         }
         // One fork action per run: on its last response.
         let mut seen_runs=HashSet::new();for m in messages.iter_mut().rev(){if let Some(run)=m["forkRunId"].as_str().map(str::to_string){if !seen_runs.insert(run){m["forkRunId"]=Value::Null;}}}
@@ -894,5 +919,16 @@ mod math_markdown_tests {
         let blocks = vec![json!({"language":"mermaid","code":"graph TD; A-->B"})];
         let html = markdown_render("```mermaid\ngraph TD; A-->B\n```", Some(&blocks), false);
         assert!(html.contains("ot3-code-diagram://0"), "{html}");
+    }
+}
+#[cfg(test)]
+mod table_tests {
+    #[test]
+    fn tables_copy_as_markdown_and_csv() {
+        let md = "| a | b |\n|---|---|\n| 1, x | `y` |\n";
+        let t = super::markdown_tables(md);
+        assert_eq!(t[0]["csv"], "a,b\n\"1, x\",y");
+        assert_eq!(t[0]["markdown"], "| a | b |\n| --- | --- |\n| 1, x | y |");
+        assert!(super::markdown_render(md, Some(&[]), false).contains("ot3-table-copy://0/csv"));
     }
 }

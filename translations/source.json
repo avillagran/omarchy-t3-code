@@ -1153,6 +1153,9 @@
     "Sign-in cancelled": "Sign-in cancelled",
     "Code: {code}": "Code: {code}",
     "Open sign-in page": "Open sign-in page",
-    "Continue": "Continue"
+    "Continue": "Continue",
+    "Show diagram": "Show diagram",
+    "Copy as Markdown": "Copy as Markdown",
+    "Copy as CSV": "Copy as CSV"
   }
 }
