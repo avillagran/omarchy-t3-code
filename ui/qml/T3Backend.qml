@@ -162,6 +162,8 @@ Singleton {
   // Pull request writes (comment, review, merge, close...). The page refreshes what changed.
   signal pullRequestWritten(var data)
   function threadPullRequest(link,reference){if((prOperations.link||{}).busy||!selectedThread)return;var id=uuid(),all=Object.assign({},prOperations);all.link={busy:true,requestId:id,error:""};prOperations=all;send({op:"thread-pull-request",environment:selectedEnvironment,thread:selectedThread,link:link,reference:reference,requestId:id})}
+  signal pullRequestThreadOpened(string environment,string threadId)
+  function openPullRequestThread(environment,detail,mode){if((prOperations.prThread||{}).busy)return;var id=uuid(),all=Object.assign({},prOperations);all.prThread={busy:true,error:"",requestId:id,environment:environment};prOperations=all;send({op:"pull-request-thread",environment:environment,projectId:detail.projectId,cwd:detail.workspaceRoot,url:detail.url,mode:mode,modelSelection:selectedInfo.modelSelection||(catalog.models&&catalog.models[0]?{instanceId:catalog.models[0].instanceId,model:catalog.models[0].model}:null),requestId:id})}
   function pullRequestWrite(environment,values){if((prOperations.write||{}).busy)return;var id=uuid(),all=Object.assign({},prOperations);all.write={busy:true,requestId:id,error:"",data:null,kind:values.kind};prOperations=all;send(Object.assign({op:"pull-request-action",environment:environment,requestId:id},values))}
   property var scrollPolicy:({touchpadNative:false,mouseNative:false})
   property var favoritePending:({})
@@ -1227,6 +1229,7 @@ Singleton {
       if(result&&result.state==="complete")refresh()
       return
     }
+    if(data.op==="pull-request-thread"){var pt=prOperations.prThread||{};if(pt.requestId!==data.requestId)return;var pa=Object.assign({},prOperations);pa.prThread={busy:false,error:data.error||""};prOperations=pa;if(!data.error){refresh();selectThread(pt.environment,data.result.threadId);pullRequestThreadOpened(pt.environment,data.result.threadId)}return}
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
     if(data.op==="pin-reorder"){refresh();return}
