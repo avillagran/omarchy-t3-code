@@ -433,6 +433,13 @@ Singleton {
   signal diagramRequested(var attachment)
   // A QML block to preview in the sandboxed renderer (inline or side panel).
   signal qmlPreviewRequested(var attachment)
+  // The preview document for a message's QML block; the id follows the code,
+  // so an edited block gets a fresh renderer.
+  function qmlAttachment(message,index){
+    var block=(message&&message.codeBlocks || [])[index];if(!block||String(block.language || "").toLowerCase()!=="qml")return null
+    var source=String(block.code || ""),k=0;for(var j=0;j<source.length;j++)k=(k*31+source.charCodeAt(j))|0
+    return {id:"qml-"+message.id+"-"+index+"-"+(k>>>0).toString(16),messageId:message.id,blockIndex:index,name:T3I18n.tr("QML preview"),mimeType:"text/x-qml",generated:"qml",source:source,labels:{errors:T3I18n.tr("QML errors"),rootItem:T3I18n.tr("The root object must be an Item, not a Window.")}}
+  }
   function codeAction(message,link){
     var table=String(link).match(/^ot3-table-copy:\/\/(\d+)\/(markdown|csv)$/)
     if(table){var t=(message&&message.tables||[])[Number(table[1])];if(!t)return false;copyText(t[table[2]]||"");return true}
@@ -440,7 +447,7 @@ Singleton {
     if(!match||!message||message.role!=="assistant"||!transcript.some(function(m){return m.id===message.id}))return false
     var block=(message.codeBlocks || [])[Number(match[2])];if(!block)return false
     if(match[1]==="copy"){copyText(block.code || "");return true}
-    if(match[1]==="preview"){if(String(block.language || "").toLowerCase()!=="qml")return false;var source=String(block.code || ""),k=0;for(var j=0;j<source.length;j++)k=(k*31+source.charCodeAt(j))|0;qmlPreviewRequested({id:"qml-"+message.id+"-"+match[2]+"-"+(k>>>0).toString(16),messageId:message.id,name:T3I18n.tr("QML preview"),mimeType:"text/x-qml",generated:"qml",source:source,labels:{errors:T3I18n.tr("QML errors"),rootItem:T3I18n.tr("The root object must be an Item, not a Window.")}});return true}
+    if(match[1]==="preview"){var preview=qmlAttachment(message,Number(match[2]));if(!preview)return false;qmlPreviewRequested(preview);return true}
     if(match[1]==="diagram"){var code=String(block.code || ""),h=0;for(var i=0;i<code.length;i++)h=(h*31+code.charCodeAt(i))|0;diagramRequested({id:"diagram-"+message.id+"-"+match[2]+"-"+(h>>>0).toString(16),name:"Diagram.html",mimeType:"text/html",generated:"mermaid",source:code});return true}
     if(message.streaming||!block.command)return false
     openTerminal(block.command);return true
