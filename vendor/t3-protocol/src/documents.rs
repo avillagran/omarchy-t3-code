@@ -30,6 +30,25 @@ impl Connection {
     }
 }
 
+/// MCP app of a completed tool call (T3 mcpAppFromToolItem): the app's HTML is an attachment,
+/// and the call is `server.tool`. Returns the app reference plus a file attachment for it.
+pub fn mcp_app(item:&Value)->Option<Value>{
+ if item["status"]!="completed"&&!item["status"].is_null(){return None}
+ fn read(v:&Value,depth:u8)->Option<Value>{
+  if depth>6 || v["isError"]==true || v["is_error"]==true{return None}
+  if let Some(s)=v.as_str(){if s.len()>128*1024{return None}return read(&serde_json::from_str::<Value>(s).ok()?,depth+1)}
+  if let Some(a)=v.as_array(){return a.iter().take(32).find_map(|v|read(&v["text"],depth+1))}
+  if v["t3McpApp"].is_object(){return Some(v["t3McpApp"].clone())}
+  for key in ["structuredContent","content"]{if !v[key].is_null(){return read(&v[key],depth+1)}}
+  None
+ }
+ let app=read(&item["output"],0)?;
+ let bounded=|k:&str|app[k].as_str().filter(|s|!s.trim().is_empty()&&s.len()<=256).map(str::to_string);
+ let (id,server,tool)=(bounded("attachmentId")?,bounded("server")?,bounded("tool")?);
+ let uri=app["resourceUri"].as_str().filter(|u|u.starts_with("ui://")&&u.len()<=2048)?;
+ if item["toolName"].as_str()!=Some(format!("{server}.{tool}").as_str()){return None}
+ Some(json!({"type":"file","id":id,"name":format!("{}.html",tool.chars().filter(|c|!c.is_control()&&!"/\\".contains(*c)).take(120).collect::<String>()),"mimeType":"text/html","mcpApp":{"attachmentId":id,"server":server,"tool":tool,"resourceUri":uri,"itemId":item["id"],"threadId":item["threadId"]}}))
+}
 pub fn html_render(item:&Value)->Option<Value>{
  let name=item["toolName"].as_str()?;
  if name!="html_render" && !name.ends_with("__html_render") && !name.ends_with(".html_render"){return None}
@@ -43,4 +62,20 @@ pub fn html_render(item:&Value)->Option<Value>{
   Some(json!({"type":"file","id":id,"name":format!("{}.html",title.chars().filter(|c|!c.is_control()&&!"/\\".contains(*c)).take(120).collect::<String>()),"mimeType":"text/html"}))
  }
  read(&item["output"],0)
+}
+#[cfg(test)]
+mod mcp_app_tests {
+    use serde_json::json;
+    #[test]
+    fn reads_app_reference_of_matching_tool() {
+        let item = json!({"id":"i1","threadId":"t","status":"completed","toolName":"weather.forecast","output":{"structuredContent":{"t3McpApp":{"attachmentId":"att","server":"weather","tool":"forecast","resourceUri":"ui://weather/forecast"}}}});
+        let a = super::mcp_app(&item).unwrap();
+        assert_eq!((a["id"].as_str(), a["mcpApp"]["itemId"].as_str(), a["name"].as_str()), (Some("att"), Some("i1"), Some("forecast.html")));
+        let mut other = item.clone();
+        other["toolName"] = json!("weather.other");
+        assert!(super::mcp_app(&other).is_none());
+        let mut bad = item;
+        bad["output"]["structuredContent"]["t3McpApp"]["resourceUri"] = json!("https://x");
+        assert!(super::mcp_app(&bad).is_none());
+    }
 }

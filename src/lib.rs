@@ -34,6 +34,7 @@ pub mod pull_request_actions;
 pub mod usage_summary;
 pub mod scheduled_tasks;
 pub mod storage_cleanup;
+pub mod mcp_apps;
 pub mod git_operations;
 pub mod diff_review;
 pub mod working_review;
@@ -506,6 +507,12 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
    let local=native["threadId"].is_null()||native["threadId"]==projection["thread"]["id"];
    if time>=first{rows.push(json!({"id":format!("secret/{}",text(native,"id")),"role":"secret","createdAt":time,"text":"","secret":{"turnItemId":native["id"],"threadId":native["threadId"],"label":native["label"],"reason":native["reason"],"placeholder":native["placeholder"],"status":native["secretStatus"],"local":local}}))}
    continue
+  }
+  if let Some(mut a)=protocol::documents::mcp_app(native){
+   // An MCP app is drawn like an HTML render; its requests go back through mcpApps.*.
+   if a["mcpApp"]["threadId"].is_null(){a["mcpApp"]["threadId"]=projection["thread"]["id"].clone();}
+   let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));
+   if time>=first{rows.push(json!({"id":format!("app/{}",text(native,"id")),"role":"assistant","createdAt":time,"text":"","attachments":[a]}))}
   }
   if let Some(a)=protocol::documents::html_render(native){let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));if time>=first{rows.push(json!({"id":format!("html/{}",text(native,"id")),"role":"assistant","createdAt":time,"text":"","attachments":[a]}))}}
   if let Some(boundary)=protocol::lifecycle::describe(row,projection["runs"].as_array().map(Vec::as_slice).unwrap_or(&[])){

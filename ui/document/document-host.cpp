@@ -59,6 +59,11 @@ public:
  }
  Q_INVOKABLE void requestFrame(){if(!capture.isActive())capture.start();}
  Q_INVOKABLE void reviewState(const QString &error){auto out=QJsonDocument(QJsonObject{{"reviewReady",true},{"reviewError",error.left(256)}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);}
+ // A JSON-RPC request from an MCP app page, for the host to answer.
+ Q_INVOKABLE void appRequest(const QString &json){
+  if(json.size()>256*1024)return;auto doc=QJsonDocument::fromJson(json.toUtf8());if(!doc.isObject())return;
+  auto out=QJsonDocument(QJsonObject{{"appRequest",doc.object()}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);
+ }
  Q_INVOKABLE void contentHeight(int height){
   if(height<1||height>100000)return;auto out=QJsonDocument(QJsonObject{{"contentHeight",height}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);
  }
@@ -66,6 +71,7 @@ public:
   if(!window)return;QString type=v["type"].toString();
   if(type=="close"){QCoreApplication::quit();return;}
   if(type=="review-options"){QString layout=v["layout"].toString();if((layout=="split"||layout=="stacked")&&v["wrap"].isBool())QMetaObject::invokeMethod(window,"setReviewOptions",Q_ARG(QVariant,layout),Q_ARG(QVariant,v["wrap"].toBool()));}
+  else if(type=="app-response"){auto r=v["response"];if(r.isObject()){auto json=QString::fromUtf8(QJsonDocument(r.toObject()).toJson(QJsonDocument::Compact));QMetaObject::invokeMethod(window,"appResponse",Q_ARG(QVariant,json));}}
   else if(type=="resize"){window->resize(qBound(240,v["width"].toInt(),2560),qBound(180,v["height"].toInt(),1800));}
   else if(type=="zoom"){QMetaObject::invokeMethod(window,"setZoom",Q_ARG(QVariant,qBound(0.5,v["value"].toDouble(),2.0)));}
   else if(type=="wheel"){

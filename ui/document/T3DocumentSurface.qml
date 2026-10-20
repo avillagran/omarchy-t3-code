@@ -21,8 +21,10 @@ Window {
  property string reviewPageUrl:""
  property bool reviewReady:false
  property int measuredHeight:0
- Timer{interval:200;running:true;repeat:true;onTriggered:web.runJavaScript("({height:window.__t3ContentHeight || 0,review:window.__t3DiffStatus || null})",function(v){if(!v)return;var h=v.height;if(h>0&&h!==root.measuredHeight){root.measuredHeight=h;documentHost.contentHeight(h);documentHost.requestFrame()}if(documentData.internalReview&&v.review&&!root.reviewReady){root.reviewReady=true;documentHost.reviewState(v.review.error || "")}})}
+ Timer{interval:200;running:true;repeat:true;onTriggered:web.runJavaScript("({height:window.__t3ContentHeight || 0,review:window.__t3DiffStatus || null,app:(window.__t3AppRequests||[]).splice(0)})",function(v){if(!v)return;if(v.app&&v.app.length)v.app.forEach(function(r){documentHost.appRequest(JSON.stringify(r))});var h=v.height;if(h>0&&h!==root.measuredHeight){root.measuredHeight=h;documentHost.contentHeight(h);documentHost.requestFrame()}if(documentData.internalReview&&v.review&&!root.reviewReady){root.reviewReady=true;documentHost.reviewState(v.review.error || "")}})}
  function verifyDocument(){web.runJavaScript("JSON.stringify({status:window.__t3DocumentStatus,diff:window.__t3DiffStatus,sandbox:document.querySelector('iframe').getAttribute('sandbox')})",function(value){console.log("DOCUMENT_VERIFY "+value)})}
+ // MCP app replies from the host, posted back into the page's frame.
+ function appResponse(json){web.runJavaScript("window.__t3AppRespond&&window.__t3AppRespond("+json+")")}
  function setReviewOptions(layout,wrap){if(!documentData.internalReview)return;var message=JSON.stringify({type:"t3-review-options",layout:layout,wrap:wrap});web.runJavaScript("document.querySelector('iframe').contentWindow.postMessage("+message+",'*')");documentHost.requestFrame()}
  function copySelection(){web.triggerWebAction(WebEngineView.Copy)}
  function setZoom(value){web.zoomFactor=value;documentHost.requestFrame()}
