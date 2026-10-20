@@ -55,6 +55,7 @@ const t3Notices=[read(path.join(root,'licenses/T3-Code-MIT.txt'),'T3-Code-MIT.tx
 entry('T3 Code',pinned,'MIT',['desktop'],[...new Set(t3Notices)].join('\n\n'),'https://github.com/pingdotgg/t3code','custom');
 entry('Lucide icons','0.564.0','ISC',['assets'],read(path.join(root,'ui/assets/lucide-project-icons.LICENSE'),'lucide-project-icons.LICENSE'),'https://lucide.dev','custom');
 entry('Lucide action icons',null,'ISC',['assets'],read(path.join(root,'ui/assets/LUCIDE-LICENSE'),'LUCIDE-LICENSE'),'https://lucide.dev','custom');
+entry('mermaid','11.17.2','MIT',['assets'],read(path.join(root,'ui/assets/mermaid/LICENSE'),'mermaid-LICENSE'),'https://github.com/mermaid-js/mermaid','custom');
 // Rust's standard library is linked into the native executable but is not a
 // Cargo package. Preserve its supplied copyright summary and license texts too.
 const sysroot=cp.execFileSync('rustc',['--print','sysroot'],{encoding:'utf8'}).trim();

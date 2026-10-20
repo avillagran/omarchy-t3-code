@@ -252,6 +252,8 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
 pub fn execute(input:&Value) -> Result<Value> {
     if matches!(text(input,"op"),"browser-profiles-read"|"browser-profiles-action"){return crate::browser_profiles::execute(input)}
     if input["op"]=="licenses-read"{return crate::third_party_licenses::read()}
+    // Generated pages (Mermaid diagrams) need no environment.
+    if input["op"]=="document-open"&&input["attachment"]["generated"]=="mermaid"{return crate::documents::mermaid_page(input)}
     if input["op"]=="licenses-notice"{return crate::third_party_licenses::notice(input)}
     if input["op"]=="client-settings"{return match text(input,"action"){
         "read"=>crate::connection_preferences::read_client_preferences(),

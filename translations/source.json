@@ -1055,6 +1055,10 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.",
     "Notifications only": "Notifications only",
     "Notifications with sound": "Notifications with sound",
-    "Sound only": "Sound only"
+    "Sound only": "Sound only",
+    "Math rendering": "Math rendering",
+    "Messages": "Messages",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.",
+    "Diagram": "Diagram"
   }
 }

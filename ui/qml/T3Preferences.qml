@@ -172,6 +172,11 @@ Rectangle {
         T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceGrouping";field:({key:"grouping",label:"Group working, snoozed and settled threads",kind:"bool",value:!!root.bridge.viewState.sidebarCompact});writable:true;onChanged:function(value){root.groupingRequested(value)}}
        }}
       }
+      T3PreferenceSection{visible:root.page==="appearance"&&(!root.query.trim()||root.matches("Math rendering")||root.matches("Messages"));Layout.fillWidth:true;title:"Messages";icon:"message-square"
+       body:Component{Column{width:parent.width
+        T3PreferenceField{width:parent.width;controlName:"preferenceMathRendering";field:({key:"mathRenderingEnabled",label:"Math rendering",description:"Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.",kind:"bool",value:!!((root.bridge.clientSettings || {}).data || {}).mathRenderingEnabled});writable:!!((root.bridge.clientSettings || {}).data || {}).revision&&!((root.bridge.clientSettings || {}).busy);onChanged:function(value){root.bridge.requestClientSettings({mathRenderingEnabled:value})}}
+       }}
+      }
       T3PreferenceSection{visible:!root.query.trim()&&root.page==="appearance";Layout.fillWidth:true;title:"Animations";icon:"star"
        body:Component{Column{width:parent.width
         T3PreferenceField{width:parent.width;controlName:"preferenceStarfield";field:({key:"starfieldMode",label:"Animated starfield",description:"Auto lowers the frame rate on slower machines and stays still with software rendering.",kind:"choice",value:root.bridge.viewState.starfieldMode || "auto",choices:[{id:"auto",name:"Auto"},{id:"full",name:"Full"},{id:"light",name:"Light"},{id:"off",name:"Off"}]});writable:true;onChanged:function(value){root.bridge.rememberView({starfieldMode:value})}}

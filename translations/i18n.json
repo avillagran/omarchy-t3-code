@@ -1055,7 +1055,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.",
     "Notifications only": "Notifications only",
     "Notifications with sound": "Notifications with sound",
-    "Sound only": "Sound only"
+    "Sound only": "Sound only",
+    "Math rendering": "Math rendering",
+    "Messages": "Messages",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.",
+    "Diagram": "Diagram"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2113,7 +2117,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Cómo te enteras de los hilos que terminan o necesitan una respuesta mientras el panel está cerrado. Los hilos que terminan juntos suenan una sola vez.",
     "Notifications only": "Solo notificaciones",
     "Notifications with sound": "Notificaciones con sonido",
-    "Sound only": "Solo sonido"
+    "Sound only": "Solo sonido",
+    "Math rendering": "Renderizado de fórmulas",
+    "Messages": "Mensajes",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Muestra fórmulas LaTeX, como $x^2$ o \\[x^2\\], en los mensajes y las vistas previas de Markdown. El editor conserva el código TeX editable.",
+    "Diagram": "Diagrama"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3171,7 +3179,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Como você fica sabendo de conversas que terminam ou precisam de resposta com o painel fechado. Conversas que terminam juntas tocam um único som.",
     "Notifications only": "Somente notificações",
     "Notifications with sound": "Notificações com som",
-    "Sound only": "Somente som"
+    "Sound only": "Somente som",
+    "Math rendering": "Renderização de fórmulas",
+    "Messages": "Mensagens",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Exibe fórmulas LaTeX, como $x^2$ ou \\[x^2\\], nas mensagens e prévias de Markdown. O editor mantém o código TeX editável.",
+    "Diagram": "Diagrama"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4229,7 +4241,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Comment vous êtes averti des fils terminés ou en attente de réponse quand le panneau est fermé. Les fils qui se terminent ensemble ne jouent qu’un son.",
     "Notifications only": "Notifications uniquement",
     "Notifications with sound": "Notifications avec son",
-    "Sound only": "Son uniquement"
+    "Sound only": "Son uniquement",
+    "Math rendering": "Rendu des formules",
+    "Messages": "Messages",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Met en forme les formules LaTeX, comme $x^2$ ou \\[x^2\\], dans les messages et les aperçus Markdown. L’éditeur garde la source TeX modifiable.",
+    "Diagram": "Diagramme"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5287,7 +5303,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Wie Sie bei geschlossenem Panel von fertigen oder wartenden Threads erfahren. Gleichzeitig fertige Threads spielen nur einen Ton.",
     "Notifications only": "Nur Benachrichtigungen",
     "Notifications with sound": "Benachrichtigungen mit Ton",
-    "Sound only": "Nur Ton"
+    "Sound only": "Nur Ton",
+    "Math rendering": "Formeldarstellung",
+    "Messages": "Nachrichten",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Setzt LaTeX-Formeln wie $x^2$ oder \\[x^2\\] in Nachrichten und Markdown-Vorschauen. Im Editor bleibt der TeX-Quelltext bearbeitbar.",
+    "Diagram": "Diagramm"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6345,7 +6365,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Come vieni avvisato dei thread completati o in attesa quando il pannello è chiuso. I thread che finiscono insieme emettono un solo suono.",
     "Notifications only": "Solo notifiche",
     "Notifications with sound": "Notifiche con suono",
-    "Sound only": "Solo suono"
+    "Sound only": "Solo suono",
+    "Math rendering": "Rendering delle formule",
+    "Messages": "Messaggi",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Impagina le formule LaTeX, come $x^2$ o \\[x^2\\], nei messaggi e nelle anteprime Markdown. L’editor mantiene modificabile il sorgente TeX.",
+    "Diagram": "Diagramma"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7403,7 +7427,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Hoe je hoort over threads die klaar zijn of input nodig hebben terwijl het paneel gesloten is. Threads die tegelijk klaar zijn spelen één geluid.",
     "Notifications only": "Alleen meldingen",
     "Notifications with sound": "Meldingen met geluid",
-    "Sound only": "Alleen geluid"
+    "Sound only": "Alleen geluid",
+    "Math rendering": "Formuleweergave",
+    "Messages": "Berichten",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Toont LaTeX-formules, zoals $x^2$ of \\[x^2\\], in berichten en Markdown-voorbeelden. De editor houdt de TeX-bron bewerkbaar.",
+    "Diagram": "Diagram"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8461,7 +8489,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Jak dowiadujesz się o wątkach, które się zakończyły lub czekają na odpowiedź, gdy panel jest zamknięty. Wątki kończące się razem odtwarzają jeden dźwięk.",
     "Notifications only": "Tylko powiadomienia",
     "Notifications with sound": "Powiadomienia z dźwiękiem",
-    "Sound only": "Tylko dźwięk"
+    "Sound only": "Tylko dźwięk",
+    "Math rendering": "Renderowanie wzorów",
+    "Messages": "Wiadomości",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Wyświetla wzory LaTeX, takie jak $x^2$ lub \\[x^2\\], w wiadomościach i podglądach Markdown. Edytor zachowuje edytowalny kod TeX.",
+    "Diagram": "Diagram"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9519,7 +9551,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Как вы узнаёте о завершённых или ожидающих ответа тредах, пока панель закрыта. Треды, завершившиеся одновременно, воспроизводят один звук.",
     "Notifications only": "Только уведомления",
     "Notifications with sound": "Уведомления со звуком",
-    "Sound only": "Только звук"
+    "Sound only": "Только звук",
+    "Math rendering": "Отображение формул",
+    "Messages": "Сообщения",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Отображает формулы LaTeX, например $x^2$ или \\[x^2\\], в сообщениях и превью Markdown. В редакторе остаётся редактируемый исходный TeX.",
+    "Diagram": "Диаграмма"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10577,7 +10613,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Як ви дізнаєтеся про завершені або очікувані треди, поки панель закрита. Треди, що завершилися разом, відтворюють один звук.",
     "Notifications only": "Лише сповіщення",
     "Notifications with sound": "Сповіщення зі звуком",
-    "Sound only": "Лише звук"
+    "Sound only": "Лише звук",
+    "Math rendering": "Відображення формул",
+    "Messages": "Повідомлення",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Відображає формули LaTeX, наприклад $x^2$ або \\[x^2\\], у повідомленнях і переглядах Markdown. У редакторі лишається редагований код TeX.",
+    "Diagram": "Діаграма"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11635,7 +11675,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "パネルを閉じている間に、完了したスレッドや入力待ちのスレッドを知らせる方法です。同時に完了したスレッドは 1 回だけ鳴ります。",
     "Notifications only": "通知のみ",
     "Notifications with sound": "サウンド付き通知",
-    "Sound only": "サウンドのみ"
+    "Sound only": "サウンドのみ",
+    "Math rendering": "数式の表示",
+    "Messages": "メッセージ",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "メッセージと Markdown プレビューで $x^2$ や \\[x^2\\] などの LaTeX 数式を表示します。エディターでは TeX ソースのまま編集できます。",
+    "Diagram": "図"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12693,7 +12737,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "패널이 닫혀 있을 때 완료되었거나 입력이 필요한 스레드를 알리는 방법입니다. 함께 완료된 스레드는 소리를 한 번만 냅니다.",
     "Notifications only": "알림만",
     "Notifications with sound": "소리와 함께 알림",
-    "Sound only": "소리만"
+    "Sound only": "소리만",
+    "Math rendering": "수식 렌더링",
+    "Messages": "메시지",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "메시지와 Markdown 미리보기에서 $x^2$ 또는 \\[x^2\\] 같은 LaTeX 수식을 표시합니다. 편집기에서는 TeX 소스를 계속 편집할 수 있습니다.",
+    "Diagram": "다이어그램"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13751,7 +13799,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "面板关闭时，线程完成或需要输入时如何提醒你。同时完成的线程只播放一次声音。",
     "Notifications only": "仅通知",
     "Notifications with sound": "带声音的通知",
-    "Sound only": "仅声音"
+    "Sound only": "仅声音",
+    "Math rendering": "数学公式渲染",
+    "Messages": "消息",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "在消息和 Markdown 预览中排版 LaTeX 公式，例如 $x^2$ 或 \\[x^2\\]。编辑器中仍保留可编辑的 TeX 源码。",
+    "Diagram": "图表"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14809,7 +14861,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "كيف تعرف بالمحادثات المكتملة أو التي تنتظر ردًا أثناء إغلاق اللوحة. المحادثات التي تنتهي معًا تُصدر صوتًا واحدًا.",
     "Notifications only": "الإشعارات فقط",
     "Notifications with sound": "إشعارات مع صوت",
-    "Sound only": "الصوت فقط"
+    "Sound only": "الصوت فقط",
+    "Math rendering": "عرض الصيغ الرياضية",
+    "Messages": "الرسائل",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "يعرض صيغ LaTeX مثل $x^2$ أو \\[x^2\\] في الرسائل ومعاينات Markdown. يبقى مصدر TeX قابلًا للتحرير في المحرر.",
+    "Diagram": "مخطط"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15867,7 +15923,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Panel kapalıyken biten veya yanıt bekleyen konulardan nasıl haberdar olacağınız. Birlikte biten konular tek bir ses çalar.",
     "Notifications only": "Yalnızca bildirimler",
     "Notifications with sound": "Sesli bildirimler",
-    "Sound only": "Yalnızca ses"
+    "Sound only": "Yalnızca ses",
+    "Math rendering": "Formül görüntüleme",
+    "Messages": "Mesajlar",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Mesajlarda ve Markdown önizlemelerinde $x^2$ veya \\[x^2\\] gibi LaTeX formüllerini dizer. Düzenleyicide TeX kaynağı düzenlenebilir kalır.",
+    "Diagram": "Diyagram"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16925,7 +16985,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Hur du får veta om trådar som är klara eller behöver svar när panelen är stängd. Trådar som blir klara samtidigt spelar ett ljud.",
     "Notifications only": "Endast aviseringar",
     "Notifications with sound": "Aviseringar med ljud",
-    "Sound only": "Endast ljud"
+    "Sound only": "Endast ljud",
+    "Math rendering": "Formelvisning",
+    "Messages": "Meddelanden",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Visar LaTeX-formler som $x^2$ eller \\[x^2\\] i meddelanden och Markdown-förhandsvisningar. I redigeraren förblir TeX-källan redigerbar.",
+    "Diagram": "Diagram"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17983,7 +18047,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Hvordan du får besked om tråde, der er færdige eller venter på svar, mens panelet er lukket. Tråde, der bliver færdige samtidig, afspiller én lyd.",
     "Notifications only": "Kun notifikationer",
     "Notifications with sound": "Notifikationer med lyd",
-    "Sound only": "Kun lyd"
+    "Sound only": "Kun lyd",
+    "Math rendering": "Formelvisning",
+    "Messages": "Beskeder",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Viser LaTeX-formler som $x^2$ eller \\[x^2\\] i beskeder og Markdown-forhåndsvisninger. I editoren forbliver TeX-kilden redigerbar.",
+    "Diagram": "Diagram"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19041,7 +19109,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Hvordan du får vite om tråder som er ferdige eller venter på svar mens panelet er lukket. Tråder som blir ferdige samtidig spiller én lyd.",
     "Notifications only": "Bare varsler",
     "Notifications with sound": "Varsler med lyd",
-    "Sound only": "Bare lyd"
+    "Sound only": "Bare lyd",
+    "Math rendering": "Formelvisning",
+    "Messages": "Meldinger",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Viser LaTeX-formler som $x^2$ eller \\[x^2\\] i meldinger og Markdown-forhåndsvisninger. I redigeringsfeltet forblir TeX-kilden redigerbar.",
+    "Diagram": "Diagram"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20099,7 +20171,11 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Miten saat tiedon valmistuneista tai vastausta odottavista ketjuista, kun paneeli on suljettu. Yhtä aikaa valmistuvat ketjut soittavat yhden äänen.",
     "Notifications only": "Vain ilmoitukset",
     "Notifications with sound": "Ilmoitukset äänen kanssa",
-    "Sound only": "Vain ääni"
+    "Sound only": "Vain ääni",
+    "Math rendering": "Kaavojen näyttäminen",
+    "Messages": "Viestit",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Näyttää LaTeX-kaavat, kuten $x^2$ tai \\[x^2\\], viesteissä ja Markdown-esikatseluissa. Editorissa TeX-lähde pysyy muokattavana.",
+    "Diagram": "Kaavio"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21157,6 +21233,10 @@
     "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "Jak se dozvíte o vláknech, která skončila nebo čekají na odpověď, když je panel zavřený. Vlákna dokončená současně přehrají jeden zvuk.",
     "Notifications only": "Pouze oznámení",
     "Notifications with sound": "Oznámení se zvukem",
-    "Sound only": "Pouze zvuk"
+    "Sound only": "Pouze zvuk",
+    "Math rendering": "Zobrazení vzorců",
+    "Messages": "Zprávy",
+    "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Sází vzorce LaTeX, například $x^2$ nebo \\[x^2\\], ve zprávách a náhledech Markdownu. V editoru zůstává zdroj TeX upravitelný.",
+    "Diagram": "Diagram"
   }
 }
