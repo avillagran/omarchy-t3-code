@@ -146,3 +146,78 @@ mod tests {
         assert_eq!(selection_target("/p", Some("/w"), &json!({"isDefault":false})), ("/w".into(), Some("/w".into()), false));
     }
 }
+
+/// Port of isTemporaryWorktreeBranch: t3-/t3/ + 8 hex, t3code-/t3code/ + 8 hex, t3code/ + uuid v4.
+pub fn temporary_branch(name: &str) -> bool {
+    let n = name.trim().to_lowercase();
+    let hex8 = |s: &str| s.len() == 8 && s.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase());
+    let uuid4 = |s: &str| {
+        let parts: Vec<&str> = s.split('-').collect();
+        parts.len() == 5
+            && [8, 4, 4, 4, 12].iter().zip(&parts).all(|(l, p)| p.len() == *l && p.bytes().all(|b| b.is_ascii_hexdigit()))
+            && parts[2].starts_with('4')
+            && matches!(parts[3].as_bytes()[0], b'8' | b'9' | b'a' | b'b')
+    };
+    if let Some(rest) = n.strip_prefix("t3code") {
+        return rest.strip_prefix('-').is_some_and(hex8) || rest.strip_prefix('/').is_some_and(|r| hex8(r) || uuid4(r));
+    }
+    n.strip_prefix("t3-").or_else(|| n.strip_prefix("t3/")).is_some_and(hex8)
+}
+/// Port of resolveCheckoutBranchMismatch for a started thread.
+pub fn mismatch(worktree: Option<&str>, thread_branch: Option<&str>, current: Option<&str>) -> Value {
+    let (Some(thread_branch), Some(current)) = (thread_branch, current) else { return Value::Null };
+    if thread_branch == current || (worktree.is_some() && !temporary_branch(thread_branch) && temporary_branch(current)) {
+        return Value::Null;
+    }
+    // Restoring a worktree checkout could switch the branch for sibling threads.
+    json!({"threadBranch":thread_branch,"currentBranch":current,"canRestore":worktree.is_none()})
+}
+pub fn check(e: &Environment, input: &Value) -> Result<Value> {
+    let thread = text(input, "thread");
+    if !crate::valid_id(thread) {
+        return Err("invalid_id".into());
+    }
+    let scope = thread_scope(e, thread)?;
+    let status = rpc(e, "vcs.refreshStatus", json!({"cwd":scope["cwd"]}))?;
+    if status["isRepo"] == false {
+        return Ok(json!({"mismatch":null}));
+    }
+    Ok(json!({"mismatch":mismatch(scope["worktreePath"].as_str(), scope["branch"].as_str(), status["refName"].as_str())}))
+}
+/// Restore the thread's branch (local checkout) or adopt the checkout's branch.
+pub fn resolve(e: &Environment, input: &Value) -> Result<Value> {
+    let thread = text(input, "thread");
+    if !crate::valid_id(thread) {
+        return Err("invalid_id".into());
+    }
+    let scope = thread_scope(e, thread)?;
+    let status = rpc(e, "vcs.refreshStatus", json!({"cwd":scope["cwd"]}))?;
+    let Some(found) = mismatch(scope["worktreePath"].as_str(), scope["branch"].as_str(), status["refName"].as_str()).as_object().cloned() else {
+        return Ok(json!({"mismatch":null}));
+    };
+    let branch = if input["restore"] == true {
+        if found["canRestore"] != true {
+            return Err("branch_restore_unavailable".into());
+        }
+        let switched = rpc(e, "vcs.switchRef", json!({"cwd":scope["cwd"],"refName":found["threadBranch"]}))?;
+        switched["refName"].as_str().unwrap_or(text(&Value::Object(found.clone()), "threadBranch")).to_string()
+    } else {
+        text(&Value::Object(found.clone()), "currentBranch").to_string()
+    };
+    rpc(e, "orchestration.dispatchCommand", json!({"type":"thread.metadata.update","commandId":format!("omarchy-branch-{}",uuid::Uuid::new_v4()),"threadId":thread,"branch":branch}))?;
+    Ok(json!({"mismatch":null,"branch":branch}))
+}
+#[cfg(test)]
+mod mismatch_tests {
+    use super::*;
+    #[test]
+    fn follows_native_mismatch_rules() {
+        assert!(temporary_branch("t3/1a2b3c4d") && temporary_branch("t3code-1a2b3c4d") && temporary_branch("t3code/1a2b3c4d-1111-4111-8111-111111111111"));
+        assert!(!temporary_branch("t3/feature") && !temporary_branch("feature/x"));
+        assert!(mismatch(None, Some("main"), Some("main")).is_null());
+        assert_eq!(mismatch(None, Some("main"), Some("dev"))["canRestore"], true);
+        assert_eq!(mismatch(Some("/w"), Some("t3code/fix"), Some("feature/checkout"))["canRestore"], false);
+        assert!(mismatch(Some("/w"), Some("t3code/fix-sidebar"), Some("t3code/1a2b3c4d")).is_null());
+        assert!(mismatch(None, None, Some("dev")).is_null());
+    }
+}

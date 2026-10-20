@@ -1115,6 +1115,11 @@
     "Time of day": "Time of day",
     "Every": "Every",
     "minutes": "minutes",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "This thread last ran on {thread}. Sending will continue on {current}.",
+    "Restoring...": "Restoring...",
+    "Restore branch": "Restore branch",
+    "Use {branch}": "Use {branch}",
+    "Dismiss branch change notice": "Dismiss branch change notice"
   }
 }

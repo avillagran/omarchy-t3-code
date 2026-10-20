@@ -195,6 +195,18 @@ Rectangle {
       Text{Layout.fillWidth:true;text:T3I18n.tr("Editing queued message");color:Color.accent;font.pixelSize:Style.font.caption}
       Controls.Button{objectName:"t3CancelQueueEdit";text:T3I18n.tr("Cancel edit");enabled:!root.draft.busy&&!root.draft.attempt;onClicked:root.bridge.cancelQueueEdit()}
     }
+    // The checkout moved off the thread's branch (T3's branch change notice).
+    RowLayout {
+      objectName:"t3BranchMismatch"
+      readonly property var mismatch:root.bridge.branchMismatch.key===root.bridge.selectedKey&&!root.bridge.branchMismatch.dismissed?root.bridge.branchMismatch.value:null
+      Layout.fillWidth:true;visible:!!mismatch;spacing:Style.space(6)
+      T3Icon{name:"git-branch";tint:Color.accent;implicitWidth:Style.space(14)}
+      Text{Layout.fillWidth:true;wrapMode:Text.Wrap;textFormat:Text.PlainText;color:Color.popups.text;font.pixelSize:Style.font.caption
+        text:parent.mismatch?T3I18n.tr("This thread last ran on {thread}. Sending will continue on {current}.",{thread:parent.mismatch.threadBranch,current:parent.mismatch.currentBranch}):""}
+      T3PickerButton{objectName:"t3BranchRestore";visible:!!parent.mismatch&&parent.mismatch.canRestore;primary:false;implicitHeight:Style.space(26);text:T3I18n.tr(root.bridge.branchMismatch.busy?"Restoring...":"Restore branch");enabled:!root.bridge.branchMismatch.busy&&!root.bridge.selectedInfo.working;onClicked:root.bridge.resolveBranchMismatch(true)}
+      T3PickerButton{objectName:"t3BranchAdopt";visible:!!parent.mismatch;primary:false;implicitHeight:Style.space(26);text:T3I18n.tr("Use {branch}",{branch:parent.mismatch?parent.mismatch.currentBranch:""});enabled:!root.bridge.branchMismatch.busy;onClicked:root.bridge.resolveBranchMismatch(false)}
+      T3IconButton{name:"x";tooltipText:T3I18n.tr("Dismiss branch change notice");onClicked:root.bridge.branchMismatch=Object.assign({},root.bridge.branchMismatch,{dismissed:true})}
+    }
     Flow {
       Layout.fillWidth: true
       visible: root.draft.attachments.length > 0

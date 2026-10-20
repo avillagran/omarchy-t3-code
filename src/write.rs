@@ -312,6 +312,8 @@ pub fn execute(input:&Value) -> Result<Value> {
         "usage-summary"=>crate::usage_summary::read(&e,input),
         "scheduled-tasks"=>crate::scheduled_tasks::run(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),
+        "branch-check"=>crate::branch_picker::check(&e,input),
+        "branch-resolve"=>crate::branch_picker::resolve(&e,input),
         "working-review"=>crate::working_review::execute(&e,input),
         "git-read"=>crate::git_operations::read(&e,input),
         "git-action"=>crate::git_operations::action(&e,input),

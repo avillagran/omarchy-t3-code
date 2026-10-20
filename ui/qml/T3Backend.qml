@@ -455,6 +455,14 @@ Singleton {
   function switchBranch(ref){if(!ref||!selectedThread||branchRefs.switching)return;var id=uuid();branchRefs=Object.assign({},branchRefs,{key:selectedKey,switching:true,pendingBranch:ref.isRemote?String(ref.name).replace(/^[^\/]+\//,""):ref.name,error:"",switchRequestId:id});send({op:"branch-switch",environment:selectedEnvironment,thread:selectedThread,ref:{name:ref.name,isRemote:!!ref.isRemote,isDefault:!!ref.isDefault,worktreePath:ref.worktreePath||null},requestId:id})}
   function createBranch(name){if(!name||!selectedThread||branchRefs.switching)return;var id=uuid();branchRefs=Object.assign({},branchRefs,{key:selectedKey,switching:true,pendingBranch:name,error:"",switchRequestId:id});send({op:"branch-switch",environment:selectedEnvironment,thread:selectedThread,create:true,refName:name,requestId:id})}
   signal branchSwitchFailed(string error)
+  // Checkout branch drift of the open thread; dismissing hides it for this thread until it changes.
+  property var branchMismatch:({})
+  function checkBranchMismatch(){if(!selectedThread||!worker.running)return;var id=uuid();branchMismatch=Object.assign({},branchMismatch.key===selectedKey?branchMismatch:{key:selectedKey},{requestId:id});send({op:"branch-check",environment:selectedEnvironment,thread:selectedThread,requestId:id})}
+  function resolveBranchMismatch(restore){if(!selectedThread||branchMismatch.busy)return;var id=uuid();branchMismatch=Object.assign({},branchMismatch,{busy:true,requestId:id});send({op:"branch-resolve",environment:selectedEnvironment,thread:selectedThread,restore:restore,requestId:id})}
+  Timer{id:branchCheckDelay;interval:1200;onTriggered:root.checkBranchMismatch()}
+  // A finished run may have moved the checkout.
+  readonly property bool selectedWorking:!!selectedInfo.working
+  onSelectedWorkingChanged:if(!selectedWorking)branchCheckDelay.restart()
   // Server-wide thread search (orchestration.searchThreads) for the command palette.
   property var threadSearch:({query:"",busy:false,matches:[],requestId:""})
   function searchThreads(query){var q=String(query||"").trim();if(q.length<2){threadSearch={query:q,busy:false,matches:[],requestId:""};return}var id=uuid();threadSearch={query:q,busy:worker.running,matches:threadSearch.query&&q.indexOf(threadSearch.query)===0?threadSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
@@ -1171,8 +1179,9 @@ Singleton {
     if(data.op==="usage-summary"){if(data.requestId!==usage.requestId)return;usage=Object.assign({},usage,{busy:false,error:data.error||"",data:data.error?usage.data:data.result});return}
     if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
     if(data.op==="thread-search"){if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
+    if(data.op==="branch-check"||data.op==="branch-resolve"){if(data.requestId!==branchMismatch.requestId)return;var m=data.error?null:(data.result||{}).mismatch||null;var same=!!m&&!!branchMismatch.value&&m.currentBranch===branchMismatch.value.currentBranch&&m.threadBranch===branchMismatch.value.threadBranch;branchMismatch=Object.assign({},branchMismatch,{busy:false,error:data.error||"",value:m,dismissed:same&&!!branchMismatch.dismissed});if(data.op==="branch-resolve")refresh();return}
     if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}
-    if(data.op==="branch-switch"){if(data.requestId!==branchRefs.switchRequestId)return;branchRefs=Object.assign({},branchRefs,{switching:false,pendingBranch:data.error?"":(data.result.branch||""),error:data.error||""});if(data.error)branchSwitchFailed(data.error);refresh();return}
+    if(data.op==="branch-switch"){if(data.requestId!==branchRefs.switchRequestId)return;branchRefs=Object.assign({},branchRefs,{switching:false,pendingBranch:data.error?"":(data.result.branch||""),error:data.error||""});if(data.error)branchSwitchFailed(data.error);refresh();branchCheckDelay.restart();return}
     if(data.op==="review-refs"){
       var kind=["local","remote"].find(function(k){return root.reviewRefs[k].scope.requestId===data.requestId}),v=kind&&reviewRefs[kind]
       if(!v||!v.busy||v.scope.environment!==data.environment||v.scope.thread!==data.thread||!workingReview.scope.requestId||workingReview.sourceKind!=="branch-range")return
@@ -1485,7 +1494,7 @@ Singleton {
   function selectThread(env, thread) {
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}
     if (selectedEnvironment === env && selectedThread === thread) { fetchMessages(); return }
-    clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;branchRefs=({});documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
+    clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;branchRefs=({});branchMismatch=({});branchCheckDelay.restart();documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
     selectedEnvironment = env; selectedThread = thread; selectedKey = env + "/" + thread
     var found = state.threads.find(function(t) { return t.key === root.selectedKey })
     selectedTitle = found ? (found.title || thread) : thread
