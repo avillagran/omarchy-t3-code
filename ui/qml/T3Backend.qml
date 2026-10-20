@@ -442,6 +442,19 @@ Singleton {
   function browseFolders(environment,path){var id=uuid();folderBrowse={busy:true,error:"",entries:[],parentPath:"",requestId:id,environment:environment};send({op:"browse-folders",environment:environment,path:path,requestId:id})}
   property bool managementBusy: false
   property string managementError: ""
+  // Branch picker for the open thread (T3 branch toolbar).
+  property var branchRefs:({})
+  function requestBranchRefs(query){if(!selectedThread)return;var id=uuid();branchRefs=Object.assign({},branchRefs,{key:selectedKey,busy:worker.running,error:worker.running?"":"disconnected",requestId:id,refs:branchRefs.key===selectedKey?branchRefs.refs:[]});send({op:"branch-refs",environment:selectedEnvironment,thread:selectedThread,query:String(query||"").trim(),requestId:id})}
+  function switchBranch(ref){if(!ref||!selectedThread||branchRefs.switching)return;var id=uuid();branchRefs=Object.assign({},branchRefs,{key:selectedKey,switching:true,pendingBranch:ref.isRemote?String(ref.name).replace(/^[^\/]+\//,""):ref.name,error:"",switchRequestId:id});send({op:"branch-switch",environment:selectedEnvironment,thread:selectedThread,ref:{name:ref.name,isRemote:!!ref.isRemote,isDefault:!!ref.isDefault,worktreePath:ref.worktreePath||null},requestId:id})}
+  function createBranch(name){if(!name||!selectedThread||branchRefs.switching)return;var id=uuid();branchRefs=Object.assign({},branchRefs,{key:selectedKey,switching:true,pendingBranch:name,error:"",switchRequestId:id});send({op:"branch-switch",environment:selectedEnvironment,thread:selectedThread,create:true,refName:name,requestId:id})}
+  signal branchSwitchFailed(string error)
+  // Fork state of the open thread: where it merges back and with which finished run.
+  property var selectedWorkflow:({})
+  readonly property string mergeBackTarget:selectedWorkflow.key===selectedKey?selectedWorkflow.target:""
+  readonly property string mergeBackRunId:selectedWorkflow.key===selectedKey?selectedWorkflow.runId:""
+  readonly property string mergeBackTitle:{var target=mergeBackTarget,env=selectedEnvironment;var t=target?state.threads.find(function(x){return x.id===target&&x.environmentId===env}):null;return t?String(t.title||""):""}
+  function forkFromRun(runId){if(!runId||managementBusy)return;manage({action:"fork",environment:selectedEnvironment,thread:selectedThread,runId:runId,title:String(selectedInfo.title||"")})}
+  function mergeBack(){if(!mergeBackTarget||!mergeBackRunId||managementBusy)return;manage({action:"merge-back",environment:selectedEnvironment,thread:selectedThread,targetThread:mergeBackTarget,runId:mergeBackRunId})}
   function manage(values) {
     if (managementBusy) return
     var command = managementRequest || Object.assign({op:"manage",requestId:uuid()},values)
@@ -1130,6 +1143,8 @@ Singleton {
       if(result&&result.state==="complete")refresh()
       return
     }
+    if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}
+    if(data.op==="branch-switch"){if(data.requestId!==branchRefs.switchRequestId)return;branchRefs=Object.assign({},branchRefs,{switching:false,pendingBranch:data.error?"":(data.result.branch||""),error:data.error||""});if(data.error)branchSwitchFailed(data.error);refresh();return}
     if(data.op==="review-refs"){
       var kind=["local","remote"].find(function(k){return root.reviewRefs[k].scope.requestId===data.requestId}),v=kind&&reviewRefs[kind]
       if(!v||!v.busy||v.scope.environment!==data.environment||v.scope.thread!==data.thread||!workingReview.scope.requestId||workingReview.sourceKind!=="branch-range")return
@@ -1362,7 +1377,8 @@ Singleton {
         if(data.result.action==="project-remove" && selectedInfo.projectKey===data.environment+"/"+data.result.projectId){var next=state.threads.find(function(t){return t.projectKey!==root.selectedInfo.projectKey});if(next)selectThread(next.environmentId,next.id);else clearSelection()}
         if(["archive","delete-thread"].indexOf(data.result.action)>=0 && selectedKey===data.environment+"/"+data.result.threadId){var nextThread=state.threads.find(function(t){return t.key!==root.selectedKey});if(nextThread)selectThread(nextThread.environmentId,nextThread.id);else clearSelection()}
         if(data.result.action==="settle")finishSettleNavigation(parked)
-        refresh(); if (data.result.action === "new-thread"&&creation.planFollowUp!==true&&(!moving||selectedKey===sourceKey)) selectThread(data.environment,data.result.threadId)
+        refresh(); if(data.result.action==="fork"||data.result.action==="merge-back")selectThread(data.environment,data.result.threadId)
+        if (data.result.action === "new-thread"&&creation.planFollowUp!==true&&(!moving||selectedKey===sourceKey)) selectThread(data.environment,data.result.threadId)
       }
       managementFinished(data)
       if(pendingProjectOpen&&pendingProjectOpen.requestId===data.requestId){var opened=pendingProjectOpen;if(data.error!=="rpc_outcome_unknown")pendingProjectOpen=null;projectOpened(opened.environment,opened.projectId,data.error || "")}
@@ -1562,6 +1578,7 @@ Singleton {
       else if (event.type === "quotas") { quotaSnapshot=data;presentQuotas();quotaError = "" }
       else if (event.type === "messages" && data.serial === requestedSerial && panelVisible) {
         loadingMessages = false; messageError = data.result.error || ""
+        if(data.result.threadState){var ts=data.result.threadState;selectedWorkflow={key:selectedKey,target:ts.mergeBackTargetThreadId||"",runId:ts.mergeBackRunId||""}}
         if(data.result.threadState){var currentKey=selectedKey,current=state.threads.find(function(t){return t.key===currentKey}),delta=data.result.threadState;if(current && Object.keys(delta).some(function(k){return current[k]!==delta[k]})){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===currentKey?Object.assign({},t,delta):t})});snapshotUpdated()}}
         messagesAboutToChange()
         recentTranscript = data.result.timeline || data.result.messages || []

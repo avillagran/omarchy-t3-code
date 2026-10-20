@@ -116,3 +116,5 @@ T3BarIndicator 1.0 T3BarIndicator.qml
 T3RenderPanel 1.0 T3RenderPanel.qml
 T3SidePanel 1.0 T3SidePanel.qml
 T3DevicePanel 1.0 T3DevicePanel.qml
+T3BranchPicker 1.0 T3BranchPicker.qml
+T3CommandPalette 1.0 T3CommandPalette.qml
