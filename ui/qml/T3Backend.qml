@@ -462,6 +462,9 @@ Singleton {
   // and never kept in QML state.
   property var secretAnswers:({})
   function answerSecret(request,answer){var key=request.turnItemId;if(!key||(secretAnswers[key]||{}).busy)return;var id=uuid(),all=Object.assign({},secretAnswers);all[key]={busy:true,error:"",requestId:id};secretAnswers=all;send({op:"secret-answer",environment:selectedEnvironment,thread:request.threadId||selectedThread,turnItemId:key,answer:answer,requestId:id})}
+  // Usage page (server.getUsageSummary) for the selected environment.
+  property var usage:({busy:false,error:"",data:null,requestId:""})
+  function requestUsage(period){var id=uuid();usage=Object.assign({},usage,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,period:period});send({op:"usage-summary",environment:selectedEnvironment||"local",period:period,requestId:id})}
   // Context window use of the open thread (T3 ContextWindowMeter).
   property var contextWindow:null
   // Fork state of the open thread: where it merges back and with which finished run.
@@ -1161,6 +1164,7 @@ Singleton {
     }
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
+    if(data.op==="usage-summary"){if(data.requestId!==usage.requestId)return;usage=Object.assign({},usage,{busy:false,error:data.error||"",data:data.error?usage.data:data.result});return}
     if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
     if(data.op==="thread-search"){if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
     if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}

@@ -1079,6 +1079,19 @@
     "Unlink from thread": "Unlink from thread",
     "Link to thread": "Link to thread",
     "Stop watching": "Stop watching",
-    "Watch checks": "Watch checks"
+    "Watch checks": "Watch checks",
+    "Day": "Day",
+    "Week": "Week",
+    "Month": "Month",
+    "Quarter": "Quarter",
+    "Sessions": "Sessions",
+    "Cache savings": "Cache savings",
+    "Cost per day": "Cost per day",
+    "Tokens per day": "Tokens per day",
+    "Models": "Models",
+    "tokens": "tokens",
+    "{count} records have no price.": "{count} records have no price.",
+    "Model prices are unavailable.": "Model prices are unavailable.",
+    "Open usage": "Open usage"
   }
 }

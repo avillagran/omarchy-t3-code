@@ -338,7 +338,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
-                if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
+                if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"suggest"|"copy"|"client-settings"|"settings"|"provider-instances"|"window-layout"|"connections-manage"|"terminal-open"|"git-action"|"git-resolve"|"git-terminal") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;
