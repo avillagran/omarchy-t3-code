@@ -332,6 +332,8 @@ Item {
   onManagedToplevelChanged:if(opened&&detached&&managedToplevel){applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})}
   readonly property bool shortcutActive:opened&&(!detached||!!(managedToplevel&&managedToplevel.activated))
   Connections{target:root.bridge;function onTerminalOpened(){if(!root.detached)root.close()}}
+  // A chat opened with a prompt to review (for example from OmaBridge) is shown at once.
+  Connections{target:root.bridge;function onPromptedChatStarted(){root.preferencesOpen=false;root.open()}}
   // The bar panel covers the screen, so step aside while a screenshot is taken.
   property bool screenshotHidden:false
   Connections{target:root.bridge;function onScreenshotCapture(active){if(active){if(root.opened&&!root.detached&&root.bridge.screenshotHidesPanel){root.screenshotHidden=true;root.close()}}else if(root.screenshotHidden){root.screenshotHidden=false;root.open();Qt.callLater(function(){composerPanel.inputField.forceActiveFocus()})}}}

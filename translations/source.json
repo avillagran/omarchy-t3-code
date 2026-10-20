@@ -1467,6 +1467,23 @@
     "OmaBridge is installed in a path a background service cannot use.": "OmaBridge is installed in a path a background service cannot use.",
     "The other device refused this invitation. Ask for a new one.": "The other device refused this invitation. Ask for a new one.",
     "The other device could not be reached. Check that it is published and try again.": "The other device could not be reached. Check that it is published and try again.",
-    "This request changed. Refresh and try again.": "This request changed. Refresh and try again."
+    "This request changed. Refresh and try again.": "This request changed. Refresh and try again.",
+    "Headless server": "Headless server",
+    "T3 Code as a background service and OmaBridge. For servers and VPSs without a desktop.": "T3 Code as a background service and OmaBridge. For servers and VPSs without a desktop.",
+    "Omarchy with ot3": "Omarchy with ot3",
+    "The full Omarchy T3 Code client, for coding on that device too.": "The full Omarchy T3 Code client, for coding on that device too.",
+    "T3 Code and OmaBridge": "T3 Code and OmaBridge",
+    "For a desktop without Omarchy where you code locally.": "For a desktop without Omarchy where you code locally.",
+    "Use an SSH host, alias or user@host.": "Use an SSH host, alias or user@host.",
+    "Install on another device with your AI": "Install on another device with your AI",
+    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.",
+    "SSH host": "SSH host",
+    "Let this device manage it": "Let this device manage it",
+    "Also let it reach this device's SSH": "Also let it reach this device's SSH",
+    "Chat in": "Chat in",
+    "No project": "No project",
+    "Open chat": "Open chat",
+    "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.",
+    "Install on another device with your AI…": "Install on another device with your AI…"
   }
 }
