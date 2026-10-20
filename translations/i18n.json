@@ -1131,7 +1131,12 @@
     "Large text": "Large text",
     "Extra large text": "Extra large text",
     "Shake": "Shake",
-    "Open URL on device": "Open URL on device"
+    "Open URL on device": "Open URL on device",
+    "Cleanup": "Cleanup",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.",
+    "No cleanup has run yet.": "No cleanup has run yet.",
+    "Cleaning up…": "Cleaning up…",
+    "Clean up now": "Clean up now"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2265,7 +2270,12 @@
     "Large text": "Texto grande",
     "Extra large text": "Texto muy grande",
     "Shake": "Agitar",
-    "Open URL on device": "Abrir URL en el dispositivo"
+    "Open URL on device": "Abrir URL en el dispositivo",
+    "Cleanup": "Limpieza",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Última limpieza: {removed} eliminados, {kept} conservados, {failed} con error, {freed} liberados.",
+    "No cleanup has run yet.": "Todavía no se ha hecho ninguna limpieza.",
+    "Cleaning up…": "Limpiando…",
+    "Clean up now": "Limpiar ahora"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3399,7 +3409,12 @@
     "Large text": "Texto grande",
     "Extra large text": "Texto extra grande",
     "Shake": "Agitar",
-    "Open URL on device": "Abrir URL no dispositivo"
+    "Open URL on device": "Abrir URL no dispositivo",
+    "Cleanup": "Limpeza",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Última limpeza: {removed} removidos, {kept} mantidos, {failed} com falha, {freed} liberados.",
+    "No cleanup has run yet.": "Nenhuma limpeza foi executada ainda.",
+    "Cleaning up…": "Limpando…",
+    "Clean up now": "Limpar agora"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4533,7 +4548,12 @@
     "Large text": "Grand texte",
     "Extra large text": "Très grand texte",
     "Shake": "Secouer",
-    "Open URL on device": "Ouvrir une URL sur l’appareil"
+    "Open URL on device": "Ouvrir une URL sur l’appareil",
+    "Cleanup": "Nettoyage",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Dernier nettoyage : {removed} supprimés, {kept} conservés, {failed} en échec, {freed} libérés.",
+    "No cleanup has run yet.": "Aucun nettoyage n’a encore eu lieu.",
+    "Cleaning up…": "Nettoyage…",
+    "Clean up now": "Nettoyer maintenant"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5667,7 +5687,12 @@
     "Large text": "Großer Text",
     "Extra large text": "Sehr großer Text",
     "Shake": "Schütteln",
-    "Open URL on device": "URL auf dem Gerät öffnen"
+    "Open URL on device": "URL auf dem Gerät öffnen",
+    "Cleanup": "Bereinigung",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Letzte Bereinigung: {removed} entfernt, {kept} behalten, {failed} fehlgeschlagen, {freed} freigegeben.",
+    "No cleanup has run yet.": "Es lief noch keine Bereinigung.",
+    "Cleaning up…": "Wird bereinigt…",
+    "Clean up now": "Jetzt bereinigen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6801,7 +6826,12 @@
     "Large text": "Testo grande",
     "Extra large text": "Testo molto grande",
     "Shake": "Scuoti",
-    "Open URL on device": "Apri URL sul dispositivo"
+    "Open URL on device": "Apri URL sul dispositivo",
+    "Cleanup": "Pulizia",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Ultima pulizia: {removed} rimossi, {kept} conservati, {failed} non riusciti, {freed} liberati.",
+    "No cleanup has run yet.": "Nessuna pulizia è ancora stata eseguita.",
+    "Cleaning up…": "Pulizia in corso…",
+    "Clean up now": "Pulisci ora"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7935,7 +7965,12 @@
     "Large text": "Grote tekst",
     "Extra large text": "Extra grote tekst",
     "Shake": "Schudden",
-    "Open URL on device": "URL openen op apparaat"
+    "Open URL on device": "URL openen op apparaat",
+    "Cleanup": "Opschonen",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Laatste opschoning: {removed} verwijderd, {kept} behouden, {failed} mislukt, {freed} vrijgemaakt.",
+    "No cleanup has run yet.": "Er is nog geen opschoning uitgevoerd.",
+    "Cleaning up…": "Bezig met opschonen…",
+    "Clean up now": "Nu opschonen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9069,7 +9104,12 @@
     "Large text": "Duży tekst",
     "Extra large text": "Bardzo duży tekst",
     "Shake": "Potrząśnij",
-    "Open URL on device": "Otwórz URL na urządzeniu"
+    "Open URL on device": "Otwórz URL na urządzeniu",
+    "Cleanup": "Czyszczenie",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Ostatnie czyszczenie: usunięto {removed}, zachowano {kept}, błędy {failed}, zwolniono {freed}.",
+    "No cleanup has run yet.": "Nie wykonano jeszcze czyszczenia.",
+    "Cleaning up…": "Czyszczenie…",
+    "Clean up now": "Wyczyść teraz"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10203,7 +10243,12 @@
     "Large text": "Крупный текст",
     "Extra large text": "Очень крупный текст",
     "Shake": "Встряхнуть",
-    "Open URL on device": "Открыть URL на устройстве"
+    "Open URL on device": "Открыть URL на устройстве",
+    "Cleanup": "Очистка",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Последняя очистка: удалено {removed}, сохранено {kept}, ошибок {failed}, освобождено {freed}.",
+    "No cleanup has run yet.": "Очистка ещё не выполнялась.",
+    "Cleaning up…": "Очистка…",
+    "Clean up now": "Очистить сейчас"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11337,7 +11382,12 @@
     "Large text": "Великий текст",
     "Extra large text": "Дуже великий текст",
     "Shake": "Струснути",
-    "Open URL on device": "Відкрити URL на пристрої"
+    "Open URL on device": "Відкрити URL на пристрої",
+    "Cleanup": "Очищення",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Останнє очищення: видалено {removed}, збережено {kept}, помилок {failed}, звільнено {freed}.",
+    "No cleanup has run yet.": "Очищення ще не виконувалося.",
+    "Cleaning up…": "Очищення…",
+    "Clean up now": "Очистити зараз"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12471,7 +12521,12 @@
     "Large text": "大きい文字",
     "Extra large text": "特大の文字",
     "Shake": "シェイク",
-    "Open URL on device": "デバイスで URL を開く"
+    "Open URL on device": "デバイスで URL を開く",
+    "Cleanup": "クリーンアップ",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "前回のクリーンアップ: 削除 {removed}、保持 {kept}、失敗 {failed}、解放 {freed}。",
+    "No cleanup has run yet.": "まだクリーンアップは実行されていません。",
+    "Cleaning up…": "クリーンアップ中…",
+    "Clean up now": "今すぐクリーンアップ"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13605,7 +13660,12 @@
     "Large text": "큰 텍스트",
     "Extra large text": "매우 큰 텍스트",
     "Shake": "흔들기",
-    "Open URL on device": "기기에서 URL 열기"
+    "Open URL on device": "기기에서 URL 열기",
+    "Cleanup": "정리",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "마지막 정리: 삭제 {removed}, 유지 {kept}, 실패 {failed}, 확보 {freed}.",
+    "No cleanup has run yet.": "아직 정리가 실행되지 않았습니다.",
+    "Cleaning up…": "정리 중…",
+    "Clean up now": "지금 정리"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14739,7 +14799,12 @@
     "Large text": "大号文字",
     "Extra large text": "特大号文字",
     "Shake": "摇动",
-    "Open URL on device": "在设备上打开 URL"
+    "Open URL on device": "在设备上打开 URL",
+    "Cleanup": "清理",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "上次清理：删除 {removed}，保留 {kept}，失败 {failed}，释放 {freed}。",
+    "No cleanup has run yet.": "尚未运行清理。",
+    "Cleaning up…": "正在清理…",
+    "Clean up now": "立即清理"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15873,7 +15938,12 @@
     "Large text": "نص كبير",
     "Extra large text": "نص كبير جدًا",
     "Shake": "هز",
-    "Open URL on device": "افتح عنوان URL على الجهاز"
+    "Open URL on device": "افتح عنوان URL على الجهاز",
+    "Cleanup": "التنظيف",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "آخر تنظيف: حُذف {removed}، وأُبقي {kept}، وفشل {failed}، وتحرر {freed}.",
+    "No cleanup has run yet.": "لم يُشغَّل أي تنظيف بعد.",
+    "Cleaning up…": "جارٍ التنظيف…",
+    "Clean up now": "نظّف الآن"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17007,7 +17077,12 @@
     "Large text": "Büyük metin",
     "Extra large text": "Çok büyük metin",
     "Shake": "Salla",
-    "Open URL on device": "Cihazda URL aç"
+    "Open URL on device": "Cihazda URL aç",
+    "Cleanup": "Temizlik",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Son temizlik: {removed} kaldırıldı, {kept} tutuldu, {failed} başarısız, {freed} boşaltıldı.",
+    "No cleanup has run yet.": "Henüz temizlik çalışmadı.",
+    "Cleaning up…": "Temizleniyor…",
+    "Clean up now": "Şimdi temizle"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18141,7 +18216,12 @@
     "Large text": "Stor text",
     "Extra large text": "Extra stor text",
     "Shake": "Skaka",
-    "Open URL on device": "Öppna URL på enheten"
+    "Open URL on device": "Öppna URL på enheten",
+    "Cleanup": "Rensning",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Senaste rensning: {removed} borttagna, {kept} kvar, {failed} misslyckade, {freed} frigjort.",
+    "No cleanup has run yet.": "Ingen rensning har körts ännu.",
+    "Cleaning up…": "Rensar…",
+    "Clean up now": "Rensa nu"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19275,7 +19355,12 @@
     "Large text": "Stor tekst",
     "Extra large text": "Ekstra stor tekst",
     "Shake": "Ryst",
-    "Open URL on device": "Åbn URL på enheden"
+    "Open URL on device": "Åbn URL på enheden",
+    "Cleanup": "Oprydning",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Seneste oprydning: {removed} fjernet, {kept} beholdt, {failed} mislykkedes, {freed} frigjort.",
+    "No cleanup has run yet.": "Der er ikke kørt nogen oprydning endnu.",
+    "Cleaning up…": "Rydder op…",
+    "Clean up now": "Ryd op nu"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20409,7 +20494,12 @@
     "Large text": "Stor tekst",
     "Extra large text": "Ekstra stor tekst",
     "Shake": "Rist",
-    "Open URL on device": "Åpne URL på enheten"
+    "Open URL on device": "Åpne URL på enheten",
+    "Cleanup": "Opprydding",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Siste opprydding: {removed} fjernet, {kept} beholdt, {failed} mislyktes, {freed} frigjort.",
+    "No cleanup has run yet.": "Ingen opprydding har kjørt ennå.",
+    "Cleaning up…": "Rydder opp…",
+    "Clean up now": "Rydd opp nå"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21543,7 +21633,12 @@
     "Large text": "Suuri teksti",
     "Extra large text": "Erittäin suuri teksti",
     "Shake": "Ravista",
-    "Open URL on device": "Avaa URL laitteessa"
+    "Open URL on device": "Avaa URL laitteessa",
+    "Cleanup": "Siivous",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Viimeisin siivous: poistettu {removed}, säilytetty {kept}, epäonnistui {failed}, vapautettu {freed}.",
+    "No cleanup has run yet.": "Siivousta ei ole vielä ajettu.",
+    "Cleaning up…": "Siivotaan…",
+    "Clean up now": "Siivoa nyt"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22677,6 +22772,11 @@
     "Large text": "Velký text",
     "Extra large text": "Extra velký text",
     "Shake": "Zatřást",
-    "Open URL on device": "Otevřít URL v zařízení"
+    "Open URL on device": "Otevřít URL v zařízení",
+    "Cleanup": "Úklid",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Poslední úklid: odstraněno {removed}, ponecháno {kept}, selhalo {failed}, uvolněno {freed}.",
+    "No cleanup has run yet.": "Úklid zatím neproběhl.",
+    "Cleaning up…": "Probíhá úklid…",
+    "Clean up now": "Uklidit nyní"
   }
 }

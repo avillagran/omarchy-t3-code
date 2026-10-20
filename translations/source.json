@@ -1131,6 +1131,11 @@
     "Large text": "Large text",
     "Extra large text": "Extra large text",
     "Shake": "Shake",
-    "Open URL on device": "Open URL on device"
+    "Open URL on device": "Open URL on device",
+    "Cleanup": "Cleanup",
+    "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.",
+    "No cleanup has run yet.": "No cleanup has run yet.",
+    "Cleaning up…": "Cleaning up…",
+    "Clean up now": "Clean up now"
   }
 }
