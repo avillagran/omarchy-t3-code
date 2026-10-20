@@ -23,5 +23,9 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         .map(|p| json!({"pid":p["pid"],"startTimeMs":p["startTimeMs"],"depth":p["depth"],"cpu":p["cpuPercent"],"rss":p["rssBytes"],"elapsed":p["elapsed"],"command":text(p,"command").chars().take(300).collect::<String>(),"status":p["status"]}))
         .collect();
     let error = d["error"]["value"]["message"].as_str().or_else(|| d["error"]["message"].as_str());
-    Ok(json!({"serverPid":d["serverPid"],"count":d["processCount"],"rss":d["totalRssBytes"],"cpu":d["totalCpuPercent"],"processes":processes,"error":error}))
+    // The last half hour per minute (server.getResourceTelemetryHistory), when the server keeps it.
+    let history: Vec<Value> = rpc(e, "server.getResourceTelemetryHistory", json!({"windowMs":1_800_000,"bucketMs":60_000}))
+        .map(|h| h["buckets"].as_array().into_iter().flatten().map(|b| json!({"cpu":b["avgCpuPercent"],"rss":b["maxRssBytes"]})).collect())
+        .unwrap_or_default();
+    Ok(json!({"history":history,"serverPid":d["serverPid"],"count":d["processCount"],"rss":d["totalRssBytes"],"cpu":d["totalCpuPercent"],"processes":processes,"error":error}))
 }
