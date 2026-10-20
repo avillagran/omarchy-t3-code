@@ -325,6 +325,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "agent-sessions"=>crate::agent_sessions::run(&e,input),
         "process-diagnostics"=>crate::process_diagnostics::run(&e,input),
         "local-servers"=>crate::local_servers::read(&e),
+        "acp-registry"=>crate::acp_registry::run(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),
         "branch-check"=>crate::branch_picker::check(&e,input),
         "branch-resolve"=>crate::branch_picker::resolve(&e,input),

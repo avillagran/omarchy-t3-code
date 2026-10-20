@@ -484,6 +484,10 @@ Singleton {
   // Process diagnostics (server.getProcessDiagnostics / server.signalProcess).
   property var processDiagnostics:({busy:false,error:"",report:null,requestId:""})
   function processDiagnosticsAction(values){if(processDiagnostics.busy)return;var id=uuid();processDiagnostics=Object.assign({},processDiagnostics,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id});send(Object.assign({op:"process-diagnostics",environment:selectedEnvironment||"local",requestId:id},values))}
+  // ACP registry search and install for adding agents as providers.
+  property var acpRegistry:({busy:false,error:"",agents:[],requestId:""})
+  signal acpAgentPrepared(var agent)
+  function acpRegistryAction(environment,values){var id=uuid();acpRegistry=Object.assign({},acpRegistry,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,action:values.action,agent:values.agent||null});send({op:"acp-registry",environment:environment,action:values.action,query:values.query||"",agentId:values.agent?values.agent.id:"",requestId:id})}
   // Discovered local dev servers for the browser's address bar.
   property var localServers:({servers:[],busy:false,requestId:"",at:0})
   function requestLocalServers(){if(localServers.busy||!worker.running||Date.now()-localServers.at<5000)return;var id=uuid();localServers=Object.assign({},localServers,{busy:true,requestId:id,at:Date.now()});send({op:"local-servers",environment:selectedEnvironment||"local",requestId:id})}
@@ -1233,6 +1237,7 @@ Singleton {
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
     if(data.op==="pin-reorder"){refresh();return}
+    if(data.op==="acp-registry"){if(data.requestId!==acpRegistry.requestId)return;var ar=data.result||{};var na=Object.assign({},acpRegistry,{busy:false,error:data.error||""});if(!data.error&&acpRegistry.action==="search")na.agents=ar.agents||[];acpRegistry=na;if(!data.error&&na.action==="prepare"&&na.agent)acpAgentPrepared(Object.assign({},na.agent,{version:ar.version||na.agent.version}));return}
     if(data.op==="local-servers"){if(data.requestId!==localServers.requestId)return;localServers=Object.assign({},localServers,{busy:false,servers:data.error?[]:((data.result||{}).servers||[])});return}
     if(data.op==="process-diagnostics"){if(data.requestId!==processDiagnostics.requestId)return;processDiagnostics=Object.assign({},processDiagnostics,{busy:false,error:data.error||"",report:data.error?processDiagnostics.report:data.result});return}
     if(data.op==="agent-sessions"){if(data.requestId!==agentSessions.requestId)return;var r=data.result||{};var next=Object.assign({},agentSessions,{busy:false,error:data.error||""});if(!data.error&&agentSessions.action==="scan")next.candidates=r.candidates||[];if(!data.error&&agentSessions.action==="import"){next.last=r;refresh()}agentSessions=next;if(!data.error&&agentSessions.action==="import")agentSessionsAction({action:"scan"});return}
