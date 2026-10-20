@@ -429,6 +429,8 @@ Singleton {
   // A Mermaid block to draw in the side panel's renders tab.
   signal diagramRequested(var attachment)
   function codeAction(message,link){
+    var table=String(link).match(/^ot3-table-copy:\/\/(\d+)\/(markdown|csv)$/)
+    if(table){var t=(message&&message.tables||[])[Number(table[1])];if(!t)return false;copyText(t[table[2]]||"");return true}
     var match=String(link).match(/^ot3-code-(run|copy|diagram):\/\/(\d+)$/)
     if(!match||!message||message.role!=="assistant"||!transcript.some(function(m){return m.id===message.id}))return false
     var block=(message.codeBlocks || [])[Number(match[2])];if(!block)return false

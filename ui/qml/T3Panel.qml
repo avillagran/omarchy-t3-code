@@ -642,6 +642,8 @@ Item {
     if(message.streaming||!root.bridge.canOpenTerminal)html=html.replace(new RegExp('<a href="ot3-code-run://[0-9]+">Run in terminal</a> · ',"g"),"")
     html=html.replace(new RegExp('(href="ot3-code-run://[0-9]+">)Run in terminal(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Run in terminal")+b})
     html=html.replace(new RegExp('(href="ot3-code-copy://[0-9]+">)Copy code(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy code")+b})
+    html=html.replace(new RegExp('(href="ot3-code-diagram://[0-9]+">)Show diagram(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Show diagram")+b})
+    html=html.replace(new RegExp('(href="ot3-table-copy://[0-9]+/markdown">)Copy as Markdown(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as Markdown")+b}).replace(new RegExp('(href="ot3-table-copy://[0-9]+/csv">)Copy as CSV(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as CSV")+b})
     html=MarkdownStyle.render(html,Style.font.body,Style.spaceReal(1),String(root.fg),String(root.dim),String(root.surface),String(root.divider))
     return MarkdownLinks.decorate(html).replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ")
   }
@@ -1500,7 +1502,7 @@ Item {
                       width: parent.width
                       text: message.userMessage ? modelData.text || "" : root.renderMessage(modelData,width)
                       textFormat: message.userMessage || !modelData.rendered ? TextEdit.PlainText : TextEdit.RichText; readOnly: true; selectByMouse: true
-                      onLinkActivated:function(link){if(String(link).indexOf("ot3-image-open://")===0){var a=(message.modelData.markdownImages || [])[Number(String(link).slice(17))];if(a){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}return}if(String(link).indexOf("ot3-code-")===0){root.bridge.codeAction(message.modelData,link);return}root.bridge.openReference(link)}
+                      onLinkActivated:function(link){if(String(link).indexOf("ot3-image-open://")===0){var a=(message.modelData.markdownImages || [])[Number(String(link).slice(17))];if(a){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}return}if(String(link).indexOf("ot3-code-")===0||String(link).indexOf("ot3-table-copy://")===0){root.bridge.codeAction(message.modelData,link);return}root.bridge.openReference(link)}
                       wrapMode: TextEdit.Wrap
                       color: root.fg; selectionColor: Color.accent; selectedTextColor: Color.popups.background
                       font.pixelSize: Style.font.body
