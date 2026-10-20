@@ -27,6 +27,16 @@ Controls.Popup {
    T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:root.close()}
   }
   Text{visible:!!root.report;Layout.fillWidth:true;color:root.muted;font.pixelSize:Style.font.caption;text:root.report?T3I18n.tr("{count} processes · {cpu}% CPU · {memory}",{count:root.report.count,cpu:Number(root.report.cpu||0).toFixed(1),memory:root.size(root.report.rss)}):""}
+  // CPU (line) and memory (bars) over the last half hour.
+  Canvas{
+   id:history;objectName:"processHistory";Layout.fillWidth:true;Layout.preferredHeight:Style.space(70);visible:!!root.report&&(root.report.history||[]).length>1
+   property var points:root.report?root.report.history||[]:[]
+   onPointsChanged:requestPaint()
+   onPaint:{var c=getContext("2d");c.reset();var n=points.length;if(n<2)return;var maxCpu=Math.max(10,Math.max.apply(null,points.map(function(p){return p.cpu||0}))),maxRss=Math.max(1,Math.max.apply(null,points.map(function(p){return p.rss||0}))),w=width/n
+    c.fillStyle=Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.18);for(var i=0;i<n;i++){var h=(height-4)*(points[i].rss||0)/maxRss;c.fillRect(i*w+1,height-h,Math.max(1,w-2),h)}
+    c.strokeStyle=Color.accent;c.lineWidth=1.5;c.beginPath();for(var j=0;j<n;j++){var x=j*w+w/2,y=height-2-(height-6)*(points[j].cpu||0)/maxCpu;if(j===0)c.moveTo(x,y);else c.lineTo(x,y)}c.stroke()}
+  }
+  Text{visible:history.visible;Layout.fillWidth:true;text:T3I18n.tr("Last 30 minutes: CPU (line) and memory (bars)");color:root.muted;font.pixelSize:Style.font.caption}
   Text{visible:!!root.view.error||!!(root.report&&root.report.error);Layout.fillWidth:true;wrapMode:Text.Wrap;color:Color.urgent;font.pixelSize:Style.font.caption;text:root.view.error?T3I18n.error(root.view.error):root.report&&root.report.error?root.report.error:""}
   ListView{
    id:list;objectName:"processList";Layout.fillWidth:true;Layout.fillHeight:true;clip:true;model:root.report?root.report.processes:[]

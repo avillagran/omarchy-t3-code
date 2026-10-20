@@ -1208,7 +1208,8 @@
     "Rejected with HTTP {status}": "Rejected with HTTP {status}",
     "Timed out": "Timed out",
     "Unreachable": "Unreachable",
-    "Check": "Check"
+    "Check": "Check",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Last 30 minutes: CPU (line) and memory (bars)"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2419,7 +2420,8 @@
     "Rejected with HTTP {status}": "Rechazado con HTTP {status}",
     "Timed out": "Tiempo agotado",
     "Unreachable": "Inalcanzable",
-    "Check": "Comprobar"
+    "Check": "Comprobar",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Últimos 30 minutos: CPU (línea) y memoria (barras)"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3630,7 +3632,8 @@
     "Rejected with HTTP {status}": "Rejeitado com HTTP {status}",
     "Timed out": "Tempo esgotado",
     "Unreachable": "Inacessível",
-    "Check": "Verificar"
+    "Check": "Verificar",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Últimos 30 minutos: CPU (linha) e memória (barras)"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4841,7 +4844,8 @@
     "Rejected with HTTP {status}": "Refusé avec HTTP {status}",
     "Timed out": "Délai dépassé",
     "Unreachable": "Injoignable",
-    "Check": "Vérifier"
+    "Check": "Vérifier",
+    "Last 30 minutes: CPU (line) and memory (bars)": "30 dernières minutes : CPU (ligne) et mémoire (barres)"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6052,7 +6056,8 @@
     "Rejected with HTTP {status}": "Mit HTTP {status} abgelehnt",
     "Timed out": "Zeitüberschreitung",
     "Unreachable": "Nicht erreichbar",
-    "Check": "Prüfen"
+    "Check": "Prüfen",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Letzte 30 Minuten: CPU (Linie) und Speicher (Balken)"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7263,7 +7268,8 @@
     "Rejected with HTTP {status}": "Rifiutato con HTTP {status}",
     "Timed out": "Tempo scaduto",
     "Unreachable": "Irraggiungibile",
-    "Check": "Verifica"
+    "Check": "Verifica",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Ultimi 30 minuti: CPU (linea) e memoria (barre)"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8474,7 +8480,8 @@
     "Rejected with HTTP {status}": "Geweigerd met HTTP {status}",
     "Timed out": "Time-out",
     "Unreachable": "Onbereikbaar",
-    "Check": "Controleren"
+    "Check": "Controleren",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Laatste 30 minuten: CPU (lijn) en geheugen (balken)"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9685,7 +9692,8 @@
     "Rejected with HTTP {status}": "Odrzucono z HTTP {status}",
     "Timed out": "Przekroczono limit czasu",
     "Unreachable": "Nieosiągalny",
-    "Check": "Sprawdź"
+    "Check": "Sprawdź",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Ostatnie 30 minut: CPU (linia) i pamięć (słupki)"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10896,7 +10904,8 @@
     "Rejected with HTTP {status}": "Отклонено с HTTP {status}",
     "Timed out": "Время истекло",
     "Unreachable": "Недоступно",
-    "Check": "Проверить"
+    "Check": "Проверить",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Последние 30 минут: CPU (линия) и память (столбцы)"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12107,7 +12116,8 @@
     "Rejected with HTTP {status}": "Відхилено з HTTP {status}",
     "Timed out": "Час вичерпано",
     "Unreachable": "Недоступно",
-    "Check": "Перевірити"
+    "Check": "Перевірити",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Останні 30 хвилин: CPU (лінія) і пам’ять (стовпці)"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13318,7 +13328,8 @@
     "Rejected with HTTP {status}": "HTTP {status} で拒否",
     "Timed out": "タイムアウト",
     "Unreachable": "到達できません",
-    "Check": "確認"
+    "Check": "確認",
+    "Last 30 minutes: CPU (line) and memory (bars)": "直近 30 分: CPU（線）とメモリ（棒）"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14529,7 +14540,8 @@
     "Rejected with HTTP {status}": "HTTP {status}로 거부됨",
     "Timed out": "시간 초과",
     "Unreachable": "연결할 수 없음",
-    "Check": "확인"
+    "Check": "확인",
+    "Last 30 minutes: CPU (line) and memory (bars)": "최근 30분: CPU(선)와 메모리(막대)"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15740,7 +15752,8 @@
     "Rejected with HTTP {status}": "被拒绝，HTTP {status}",
     "Timed out": "超时",
     "Unreachable": "无法访问",
-    "Check": "检查"
+    "Check": "检查",
+    "Last 30 minutes: CPU (line) and memory (bars)": "最近 30 分钟：CPU（折线）和内存（柱状）"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16951,7 +16964,8 @@
     "Rejected with HTTP {status}": "رُفض برمز HTTP {status}",
     "Timed out": "انتهت المهلة",
     "Unreachable": "يتعذر الوصول",
-    "Check": "افحص"
+    "Check": "افحص",
+    "Last 30 minutes: CPU (line) and memory (bars)": "آخر 30 دقيقة: CPU (خط) والذاكرة (أعمدة)"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18162,7 +18176,8 @@
     "Rejected with HTTP {status}": "HTTP {status} ile reddedildi",
     "Timed out": "Zaman aşımı",
     "Unreachable": "Ulaşılamıyor",
-    "Check": "Denetle"
+    "Check": "Denetle",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Son 30 dakika: CPU (çizgi) ve bellek (çubuklar)"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19373,7 +19388,8 @@
     "Rejected with HTTP {status}": "Avvisad med HTTP {status}",
     "Timed out": "Tidsgräns överskreds",
     "Unreachable": "Kan inte nås",
-    "Check": "Kontrollera"
+    "Check": "Kontrollera",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Senaste 30 minuterna: CPU (linje) och minne (staplar)"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20584,7 +20600,8 @@
     "Rejected with HTTP {status}": "Afvist med HTTP {status}",
     "Timed out": "Timeout",
     "Unreachable": "Kan ikke nås",
-    "Check": "Kontrollér"
+    "Check": "Kontrollér",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Seneste 30 minutter: CPU (linje) og hukommelse (søjler)"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21795,7 +21812,8 @@
     "Rejected with HTTP {status}": "Avvist med HTTP {status}",
     "Timed out": "Tidsavbrudd",
     "Unreachable": "Kan ikke nås",
-    "Check": "Kontroller"
+    "Check": "Kontroller",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Siste 30 minutter: CPU (linje) og minne (søyler)"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23006,7 +23024,8 @@
     "Rejected with HTTP {status}": "Hylätty, HTTP {status}",
     "Timed out": "Aikakatkaisu",
     "Unreachable": "Ei tavoitettavissa",
-    "Check": "Tarkista"
+    "Check": "Tarkista",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Viimeiset 30 minuuttia: CPU (viiva) ja muisti (palkit)"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24217,6 +24236,7 @@
     "Rejected with HTTP {status}": "Odmítnuto s HTTP {status}",
     "Timed out": "Vypršel časový limit",
     "Unreachable": "Nedostupné",
-    "Check": "Zkontrolovat"
+    "Check": "Zkontrolovat",
+    "Last 30 minutes: CPU (line) and memory (bars)": "Posledních 30 minut: CPU (čára) a paměť (sloupce)"
   }
 }
