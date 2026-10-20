@@ -1158,6 +1158,13 @@
     "Copy as Markdown": "Copy as Markdown",
     "Copy as CSV": "Copy as CSV",
     "Stop subagent": "Stop subagent",
-    "Open subagent thread": "Open subagent thread"
+    "Open subagent thread": "Open subagent thread",
+    "Import agent sessions": "Import agent sessions",
+    "Scan again": "Scan again",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.",
+    "Imported {imported} sessions, skipped {skipped}.": "Imported {imported} sessions, skipped {skipped}.",
+    "No agent sessions found.": "No agent sessions found.",
+    "{count} sessions": "{count} sessions",
+    "Import new": "Import new"
   }
 }
