@@ -1165,7 +1165,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "Imported {imported} sessions, skipped {skipped}.",
     "No agent sessions found.": "No agent sessions found.",
     "{count} sessions": "{count} sessions",
-    "Import new": "Import new"
+    "Import new": "Import new",
+    "Copy prompt link": "Copy prompt link",
+    "Copy prompt link with repo and model": "Copy prompt link with repo and model"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2333,7 +2335,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "Se importaron {imported} sesiones y se omitieron {skipped}.",
     "No agent sessions found.": "No se encontraron sesiones de agentes.",
     "{count} sessions": "{count} sesiones",
-    "Import new": "Importar nuevas"
+    "Import new": "Importar nuevas",
+    "Copy prompt link": "Copiar enlace del prompt",
+    "Copy prompt link with repo and model": "Copiar enlace del prompt con repositorio y modelo"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3501,7 +3505,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} sessões importadas, {skipped} ignoradas.",
     "No agent sessions found.": "Nenhuma sessão de agente encontrada.",
     "{count} sessions": "{count} sessões",
-    "Import new": "Importar novas"
+    "Import new": "Importar novas",
+    "Copy prompt link": "Copiar link do prompt",
+    "Copy prompt link with repo and model": "Copiar link do prompt com repositório e modelo"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4669,7 +4675,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} sessions importées, {skipped} ignorées.",
     "No agent sessions found.": "Aucune session d’agent trouvée.",
     "{count} sessions": "{count} sessions",
-    "Import new": "Importer les nouvelles"
+    "Import new": "Importer les nouvelles",
+    "Copy prompt link": "Copier le lien du prompt",
+    "Copy prompt link with repo and model": "Copier le lien du prompt avec dépôt et modèle"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5837,7 +5845,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} Sitzungen importiert, {skipped} übersprungen.",
     "No agent sessions found.": "Keine Agentensitzungen gefunden.",
     "{count} sessions": "{count} Sitzungen",
-    "Import new": "Neue importieren"
+    "Import new": "Neue importieren",
+    "Copy prompt link": "Prompt-Link kopieren",
+    "Copy prompt link with repo and model": "Prompt-Link mit Repository und Modell kopieren"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7005,7 +7015,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "Importate {imported} sessioni, saltate {skipped}.",
     "No agent sessions found.": "Nessuna sessione di agenti trovata.",
     "{count} sessions": "{count} sessioni",
-    "Import new": "Importa nuove"
+    "Import new": "Importa nuove",
+    "Copy prompt link": "Copia link del prompt",
+    "Copy prompt link with repo and model": "Copia link del prompt con repository e modello"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8173,7 +8185,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} sessies geïmporteerd, {skipped} overgeslagen.",
     "No agent sessions found.": "Geen agentsessies gevonden.",
     "{count} sessions": "{count} sessies",
-    "Import new": "Nieuwe importeren"
+    "Import new": "Nieuwe importeren",
+    "Copy prompt link": "Promptlink kopiëren",
+    "Copy prompt link with repo and model": "Promptlink kopiëren met repository en model"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9341,7 +9355,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "Zaimportowano sesje: {imported}, pominięto: {skipped}.",
     "No agent sessions found.": "Nie znaleziono sesji agentów.",
     "{count} sessions": "Sesje: {count}",
-    "Import new": "Importuj nowe"
+    "Import new": "Importuj nowe",
+    "Copy prompt link": "Kopiuj link do promptu",
+    "Copy prompt link with repo and model": "Kopiuj link do promptu z repozytorium i modelem"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10509,7 +10525,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "Импортировано сеансов: {imported}, пропущено: {skipped}.",
     "No agent sessions found.": "Сеансы агентов не найдены.",
     "{count} sessions": "Сеансов: {count}",
-    "Import new": "Импортировать новые"
+    "Import new": "Импортировать новые",
+    "Copy prompt link": "Копировать ссылку на промпт",
+    "Copy prompt link with repo and model": "Копировать ссылку на промпт с репозиторием и моделью"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11677,7 +11695,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "Імпортовано сеансів: {imported}, пропущено: {skipped}.",
     "No agent sessions found.": "Сеанси агентів не знайдено.",
     "{count} sessions": "Сеансів: {count}",
-    "Import new": "Імпортувати нові"
+    "Import new": "Імпортувати нові",
+    "Copy prompt link": "Копіювати посилання на промпт",
+    "Copy prompt link with repo and model": "Копіювати посилання на промпт із репозиторієм і моделлю"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12845,7 +12865,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} 件のセッションをインポートし、{skipped} 件をスキップしました。",
     "No agent sessions found.": "エージェントのセッションは見つかりませんでした。",
     "{count} sessions": "{count} セッション",
-    "Import new": "新しいものをインポート"
+    "Import new": "新しいものをインポート",
+    "Copy prompt link": "プロンプトのリンクをコピー",
+    "Copy prompt link with repo and model": "リポジトリとモデル付きでプロンプトのリンクをコピー"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14013,7 +14035,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "세션 {imported}개를 가져오고 {skipped}개를 건너뛰었습니다.",
     "No agent sessions found.": "에이전트 세션을 찾지 못했습니다.",
     "{count} sessions": "세션 {count}개",
-    "Import new": "새 항목 가져오기"
+    "Import new": "새 항목 가져오기",
+    "Copy prompt link": "프롬프트 링크 복사",
+    "Copy prompt link with repo and model": "저장소와 모델을 포함한 프롬프트 링크 복사"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15181,7 +15205,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "已导入 {imported} 个会话，跳过 {skipped} 个。",
     "No agent sessions found.": "未找到智能体会话。",
     "{count} sessions": "{count} 个会话",
-    "Import new": "导入新的"
+    "Import new": "导入新的",
+    "Copy prompt link": "复制提示链接",
+    "Copy prompt link with repo and model": "复制含仓库和模型的提示链接"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16349,7 +16375,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "استُورد {imported} جلسة وتُخطّي {skipped}.",
     "No agent sessions found.": "لم يُعثر على جلسات وكلاء.",
     "{count} sessions": "{count} جلسات",
-    "Import new": "استورد الجديد"
+    "Import new": "استورد الجديد",
+    "Copy prompt link": "انسخ رابط الموجّه",
+    "Copy prompt link with repo and model": "انسخ رابط الموجّه مع المستودع والنموذج"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17517,7 +17545,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} oturum içe aktarıldı, {skipped} atlandı.",
     "No agent sessions found.": "Ajan oturumu bulunamadı.",
     "{count} sessions": "{count} oturum",
-    "Import new": "Yenileri içe aktar"
+    "Import new": "Yenileri içe aktar",
+    "Copy prompt link": "İstem bağlantısını kopyala",
+    "Copy prompt link with repo and model": "Depo ve modelle istem bağlantısını kopyala"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18685,7 +18715,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} sessioner importerade, {skipped} hoppades över.",
     "No agent sessions found.": "Inga agentsessioner hittades.",
     "{count} sessions": "{count} sessioner",
-    "Import new": "Importera nya"
+    "Import new": "Importera nya",
+    "Copy prompt link": "Kopiera promptlänk",
+    "Copy prompt link with repo and model": "Kopiera promptlänk med repo och modell"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19853,7 +19885,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} sessioner importeret, {skipped} sprunget over.",
     "No agent sessions found.": "Ingen agentsessioner fundet.",
     "{count} sessions": "{count} sessioner",
-    "Import new": "Importér nye"
+    "Import new": "Importér nye",
+    "Copy prompt link": "Kopiér promptlink",
+    "Copy prompt link with repo and model": "Kopiér promptlink med repo og model"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21021,7 +21055,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "{imported} økter importert, {skipped} hoppet over.",
     "No agent sessions found.": "Fant ingen agentøkter.",
     "{count} sessions": "{count} økter",
-    "Import new": "Importer nye"
+    "Import new": "Importer nye",
+    "Copy prompt link": "Kopier prompt-lenke",
+    "Copy prompt link with repo and model": "Kopier prompt-lenke med repo og modell"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22189,7 +22225,9 @@
     "Imported {imported} sessions, skipped {skipped}.": "Tuotiin {imported} istuntoa, ohitettiin {skipped}.",
     "No agent sessions found.": "Agenttien istuntoja ei löytynyt.",
     "{count} sessions": "{count} istuntoa",
-    "Import new": "Tuo uudet"
+    "Import new": "Tuo uudet",
+    "Copy prompt link": "Kopioi kehotteen linkki",
+    "Copy prompt link with repo and model": "Kopioi kehotteen linkki repolla ja mallilla"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23357,6 +23395,8 @@
     "Imported {imported} sessions, skipped {skipped}.": "Importováno relací: {imported}, přeskočeno: {skipped}.",
     "No agent sessions found.": "Nenalezeny žádné relace agentů.",
     "{count} sessions": "Relace: {count}",
-    "Import new": "Importovat nové"
+    "Import new": "Importovat nové",
+    "Copy prompt link": "Kopírovat odkaz na prompt",
+    "Copy prompt link with repo and model": "Kopírovat odkaz na prompt s repozitářem a modelem"
   }
 }

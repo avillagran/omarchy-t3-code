@@ -1165,6 +1165,8 @@
     "Imported {imported} sessions, skipped {skipped}.": "Imported {imported} sessions, skipped {skipped}.",
     "No agent sessions found.": "No agent sessions found.",
     "{count} sessions": "{count} sessions",
-    "Import new": "Import new"
+    "Import new": "Import new",
+    "Copy prompt link": "Copy prompt link",
+    "Copy prompt link with repo and model": "Copy prompt link with repo and model"
   }
 }

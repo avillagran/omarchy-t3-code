@@ -44,6 +44,11 @@ Item {
     add("devices","Show devices","smartphone",thread,function(){openSide("devices")})
     add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Meta+B")
     add("copy-reference","Copy thread reference","copy",thread,function(){var badge=b.selectedInfo.pullRequestBadge || {};b.copyText((badge.current || {}).url || b.selectedThread)})
+    // Prompt links open a new thread with this draft on the hosted T3 app (T3 promptLinks).
+    var draftText=String(b.draft.text||"").trim()
+    function promptLink(withContext){var u="https://app.t3.codes/new?prompt="+encodeURIComponent(draftText);if(withContext){var p=(b.state.projects||[]).find(function(x){return x.key===b.selectedInfo.projectKey}),r=p&&p.repositoryIdentity||{},key=String((r.origin||{}).canonicalKey||r.canonicalKey||"");if(key.indexOf("github.com/")===0)u+="&repo="+encodeURIComponent(key.slice(11));var sel=b.draft.modelSelection||b.selectedInfo.modelSelection;var drv=sel&&(b.state.threads||[]).length?String(b.selectedInfo.provider||sel.instanceId||""):"";if(drv){u+="&provider="+encodeURIComponent(drv);if(sel&&sel.model)u+="&model="+encodeURIComponent(sel.model)}}return u}
+    add("prompt-link","Copy prompt link","link",draftText.length>0&&draftText.length<=8000,function(){b.copyText(promptLink(false))})
+    add("prompt-link-context","Copy prompt link with repo and model","link",draftText.length>0&&draftText.length<=8000&&!!b.selectedInfo.projectKey,function(){b.copyText(promptLink(true))})
     add("add-project","Add project","folder",true,function(){sidebarActions.addProject()})
     add("agent-sessions","Import agent sessions","folder-git-2",true,function(){agentSessionsPage.show()})
     add("scheduled-tasks","Scheduled tasks","clock",true,function(){scheduledTasksPage.show()})
