@@ -893,6 +893,7 @@ Item {
           operation:(root.bridge.gitView || {}).operation || {}
           onClosed:gitPopup.close()
           onRefreshRequested:root.bridge.requestGit()
+          onInitRequested:root.bridge.initializeRepository()
           onChangesRequested:function(path){gitPopup.close();root.bridge.requestWorkingReview("working-tree","",root.bridge.diffPreferences.ignoreWhitespace,path);workingPopup.open()}
           onActionRequested:function(intent){root.bridge.requestGitAction(intent)}
           onTerminalRequested:root.bridge.openGitTerminal()

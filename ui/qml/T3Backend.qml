@@ -1118,6 +1118,8 @@ Singleton {
     if(!(v.data.scripts || []).some(function(s){return s.id===pending.scriptId})){gitView=Object.assign({},v,{operationError:"git_script_unavailable"});return}
     requestGitAction({scope:v.scope,revision:v.data.revision,operation:"script",scriptId:pending.scriptId,confirmed:true})
   }
+  // vcs.init for a project folder that is not a repository yet.
+  function initializeRepository(){var s=(gitView||{}).scope||{};if(!s.cwd||!worker.running)return;send({op:"git-init",environment:selectedEnvironment,cwd:s.cwd,requestId:uuid()})}
   function requestGit(){
     scriptShortcutPending=null
     if(!canOpenGit)return
@@ -1237,6 +1239,7 @@ Singleton {
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
     if(data.op==="pin-reorder"){refresh();return}
+    if(data.op==="git-init"){if(!data.error)requestGit();else gitView=Object.assign({},gitView,{operationError:data.error});return}
     if(data.op==="acp-registry"){if(data.requestId!==acpRegistry.requestId)return;var ar=data.result||{};var na=Object.assign({},acpRegistry,{busy:false,error:data.error||""});if(!data.error&&acpRegistry.action==="search")na.agents=ar.agents||[];acpRegistry=na;if(!data.error&&na.action==="prepare"&&na.agent)acpAgentPrepared(Object.assign({},na.agent,{version:ar.version||na.agent.version}));return}
     if(data.op==="local-servers"){if(data.requestId!==localServers.requestId)return;localServers=Object.assign({},localServers,{busy:false,servers:data.error?[]:((data.result||{}).servers||[])});return}
     if(data.op==="process-diagnostics"){if(data.requestId!==processDiagnostics.requestId)return;processDiagnostics=Object.assign({},processDiagnostics,{busy:false,error:data.error||"",report:data.error?processDiagnostics.report:data.result});return}

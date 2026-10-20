@@ -19,6 +19,7 @@ Item {
  property bool reconciled:false
  property int tab:0
  signal terminalRequested()
+ signal initRequested()
  signal reconcileRequested()
  signal nativeRequested()
  property var pending: null
@@ -94,6 +95,7 @@ Item {
   T3PickerButton{primary:false;visible:!!root.view.error;text:T3I18n.tr("Retry");enabled:!root.locked;onClicked:root.refreshRequested()}
   Text{Layout.fillWidth:true;visible:!root.view.loading&&!root.view.error&&!root.matchesScope;text:T3I18n.tr("Refresh to load this checkout.");color:root.dim;wrapMode:Text.Wrap}
   Text{Layout.fillWidth:true;visible:root.ready&&!root.status.isRepo;text:T3I18n.tr("Not a Git repository.");color:root.dim}
+  T3PickerButton{objectName:"gitInitialize";visible:root.ready&&!root.status.isRepo&&root.canSourceControlWrite;primary:false;implicitHeight:Style.space(30);enabled:!root.busy;text:T3I18n.tr("Initialize repository");onClicked:root.initRequested()}
   RowLayout {
    visible:root.ready&&!!root.status.isRepo;Layout.fillWidth:true
    Text{objectName:"t3GitBranch";Layout.fillWidth:true;text:root.status?(root.status.refName || T3I18n.tr("Detached HEAD")):"";color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideMiddle;textFormat:Text.PlainText}
