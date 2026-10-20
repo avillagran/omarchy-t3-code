@@ -9,6 +9,44 @@ runtime or pixel-level parity. No live conversations or native settings were
 modified during this audit. The reference is the local nightly checkout, not a
 freshly downloaded upstream version.
 
+## T3 Code 0.1 sync (2026-10-20)
+
+Compared with the local nightly checkout at `fb990765` (`v0.1.1-nightly.20261020.3386`).
+The native generators, fixtures and drift tests now pin that revision.
+
+Added in this round, each with a live check against a T3 server where the
+method exists on the installed server, plus QML and Rust tests:
+
+- Protocol: archive confirmations read `/api/orchestration/shell` (the RPC
+  `orchestration.getShellSnapshot` never existed); a shell subscription per
+  environment refreshes the sidebar live; the thread mirror applies PR link,
+  detached session, background-work, context handoff/transfer events and keeps
+  MCP app references.
+- Composer: effort step shortcuts, branch picker (switch, create, adopt or
+  restore after drift), worktree setup progress, context window meter,
+  subagent bar with stop, quote a response selection, sender attribution
+  (automation, agent, T3 Code) and prompt recall that skips those messages.
+- Threads: command palette (Ctrl+K) with server-wide message search, fork from
+  a response, merge back, reorder pinned threads, thread links across
+  environments, notifications with T3's sounds.
+- Conversation: secret requests, MCP apps (host JSON-RPC bridge through
+  `mcpApps.*`), Mermaid diagrams (bundled mermaid.js), LaTeX math (Qt rich
+  text, behind T3's `mathRenderingEnabled`), copy tables as Markdown/CSV,
+  HEIC/AVIF attachments, live command output in the tool inspector.
+- Pull requests: merge/close/reopen/ready/draft, comment, approve, request
+  changes, reviewers, labels, link/unlink/watch on the thread, open in a
+  thread or worktree.
+- Pages: usage (cost, tokens, sessions, per day and model, price refresh),
+  scheduled tasks, agent session import, process diagnostics, storage cleanup
+  report and run, provider install/sign-in/update, ACP registry agents,
+  browser search engine, settled worktree retention, discovered dev servers,
+  device settings and actions, Initialize repository.
+
+Still different by design: the terminal opens in an Omarchy terminal instead
+of an embedded drawer, and the theme follows Omarchy instead of T3's theme
+editor. Not covered yet: workflow scripts, OTLP endpoint checks, the relay
+client installer, ChatGPT profile import and resource telemetry history.
+
 ## Recommended implementation order
 
 1. Approval requests, older history and in-conversation search: implemented in
