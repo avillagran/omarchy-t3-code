@@ -34,6 +34,8 @@ Item {
   if(e==="qml_preview_empty")return T3I18n.tr("This QML block is empty.")
   if(e==="qml_preview_too_large")return T3I18n.tr("This QML block is too large to preview (64 KB maximum).")
   if(e==="qml_preview_invalid")return T3I18n.tr("This QML block can't be previewed.")
+  if(e==="qml_preview_unresponsive")return T3I18n.tr("This preview stopped responding (an endless loop?) and was closed.")
+  if(e==="viewer_closed"&&doc.data&&doc.data.qmlPreview)return T3I18n.tr("This preview closed unexpectedly (it may have run out of memory).")
   return T3I18n.error(e)
  }
  function resize(){if(html&&!sourceMode)send({type:"resize",width:Math.round(surface.width),height:Math.round(surface.height)})}

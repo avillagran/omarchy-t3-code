@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <atomic>
+#include <QElapsedTimer>
 class DocumentHost: public QObject {
  Q_OBJECT
  QQuickWindow *window=nullptr;
@@ -31,6 +32,11 @@ class DocumentHost: public QObject {
  std::atomic<bool> grabbing{false};
  QByteArray input;
  QTemporaryFile reviewPage;
+ // Minimum time between captures; 0 serves every repaint (HTML pages).
+ int minimumInterval=0;
+ // PNG by default; QML previews write uncompressed BMP to a tmpfs directory.
+ QByteArray format="PNG";
+ QElapsedTimer lastCapture;
 public:
  DocumentHost(QString directory):directory(directory){
   reviewPage.setFileTemplate(QDir(directory).filePath("review-XXXXXX.html"));
@@ -39,10 +45,10 @@ public:
   // Coalesce pending requests; captures themselves never schedule idle work.
   capture.setSingleShot(true);capture.setInterval(0);
   connect(&capture,&QTimer::timeout,this,[this](){
-   if(!window)return;grabbing=true;auto image=window->grabWindow();grabbing=false;if(image.isNull())return;
-   QString name=QString("frame-%1.png").arg(++sequence%2),path=this->directory+"/"+name,tmp=path+".next";
+   if(!window)return;lastCapture.start();grabbing=true;auto image=window->grabWindow();grabbing=false;if(image.isNull())return;
+   QString name=QString("frame-%1.%2").arg(++sequence%2).arg(QString::fromLatin1(format).toLower()),path=this->directory+"/"+name,tmp=path+".next";
    // PNG remains lossless; favor fast local transport over smallest files.
-   if(!image.save(tmp,"PNG",80))return;QFile::setPermissions(tmp,QFileDevice::ReadOwner|QFileDevice::WriteOwner);if(::rename(QFile::encodeName(tmp).constData(),QFile::encodeName(path).constData())!=0)return;
+   if(!image.save(tmp,format.constData(),80))return;QFile::setPermissions(tmp,QFileDevice::ReadOwner|QFileDevice::WriteOwner);if(::rename(QFile::encodeName(tmp).constData(),QFile::encodeName(path).constData())!=0)return;
    auto out=QJsonDocument(QJsonObject{{"frame",name},{"revision",sequence},{"width",image.width()},{"height",image.height()}}).toJson(QJsonDocument::Compact);
    fprintf(stdout,"%s\n",out.constData());fflush(stdout);
   });
@@ -61,7 +67,10 @@ public:
  }
  // Registered for every URL scheme in QML previews: opening links does nothing.
  Q_INVOKABLE void blockedUrl(const QUrl &){}
- Q_INVOKABLE void requestFrame(){if(!capture.isActive())capture.start();}
+ // Continuous animations are captured at most every `ms` (PNG encoding dominates their cost).
+ void setMinimumInterval(int ms){minimumInterval=ms;}
+ void setFrameFormat(const QByteArray &f){format=f;}
+ Q_INVOKABLE void requestFrame(){if(capture.isActive())return;capture.start(minimumInterval&&lastCapture.isValid()?int(qMax<qint64>(0,minimumInterval-lastCapture.elapsed())):0);}
  Q_INVOKABLE void reviewState(const QString &error){auto out=QJsonDocument(QJsonObject{{"reviewReady",true},{"reviewError",error.left(256)}}).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",out.constData());fflush(stdout);}
  // A JSON-RPC request from an MCP app page, for the host to answer.
  Q_INVOKABLE void appRequest(const QString &json){

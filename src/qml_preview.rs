@@ -9,6 +9,8 @@ use std::ffi::CString;
 /// Modules a preview may import; everything else is refused before Qt starts.
 pub const ALLOWED_IMPORTS:[&str;6]=["QtQuick","QtQuick.Controls","QtQuick.Layouts","QtQuick.Shapes","QtQuick.Effects","QtQml"];
 const LIMIT:usize=64*1024;
+/// Data segment limit for the renderer (RLIMIT_DATA).
+pub const MEMORY_LIMIT:u64=512*1024*1024;
 
 /// Comments removed, string literals kept: imports inside strings (for
 /// Qt.createQmlObject) are checked too.
@@ -42,7 +44,7 @@ pub fn imports(source:&str)->Vec<String>{
     if b.get(j).is_some_and(|c|c.is_ascii_digit()){while b.get(j).is_some_and(|c|c.is_ascii_digit()||*c==b'.'){j+=1}while b.get(j).is_some_and(|c|*c==b' '||*c==b'\t'){j+=1}}
     // Only statement-shaped matches count, so prose such as "import data" in a label is left alone.
     let rest=&code[j..];
-    if rest.is_empty()||rest.starts_with(['\n','\r',';','\\'])||rest.starts_with("as ")||rest.starts_with("as\t"){found.push(module)}
+    if rest.is_empty()||rest.starts_with(['\n','\r',';'])||rest.starts_with("\\n")||rest.starts_with("\\r")||rest.starts_with("as ")||rest.starts_with("as\t"){found.push(module)}
    }
    _=>{}
   }
@@ -74,7 +76,8 @@ pub fn command(exe:&std::path::Path,frames:&std::path::Path)->std::process::Comm
  for key in ["HOME","LANG","LC_ALL","LC_CTYPE","XDG_CACHE_HOME"]{if let Some(v)=std::env::var_os(key){command.env(key,v);}}
  command.env("PATH","/nonexistent").env("QML_DISABLE_DISK_CACHE","1").env("QT_QUICK_CONTROLS_STYLE","Fusion").env("QT_QPA_PLATFORM","offscreen").env("QT_QUICK_BACKEND","software").env("QT_SCALE_FACTOR","1").env("QT_SCREEN_SCALE_FACTORS","1");
  let sandbox=Sandbox::renderer(exe,frames);
- unsafe{command.pre_exec(move||sandbox.enter());}
+ // Lower priority than the desktop and a bounded heap (normal previews use under 100 MB).
+ unsafe{command.pre_exec(move||{libc::setpriority(libc::PRIO_PROCESS,0,10);let limit=libc::rlimit{rlim_cur:MEMORY_LIMIT,rlim_max:MEMORY_LIMIT};libc::setrlimit(libc::RLIMIT_DATA,&limit);sandbox.enter()});}
  command
 }
 
