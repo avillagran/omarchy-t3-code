@@ -1115,7 +1115,12 @@
     "Time of day": "Time of day",
     "Every": "Every",
     "minutes": "minutes",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "This thread last ran on {thread}. Sending will continue on {current}.",
+    "Restoring...": "Restoring...",
+    "Restore branch": "Restore branch",
+    "Use {branch}": "Use {branch}",
+    "Dismiss branch change notice": "Dismiss branch change notice"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2233,7 +2238,12 @@
     "Time of day": "Hora del día",
     "Every": "Cada",
     "minutes": "minutos",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Se ejecuta con cada solicitud a la URL del webhook de la tarea, que aparece al guardar. El prompt puede usar marcadores {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Se ejecuta con cada solicitud a la URL del webhook de la tarea, que aparece al guardar. El prompt puede usar marcadores {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Este hilo se ejecutó por última vez en {thread}. Al enviar seguirá en {current}.",
+    "Restoring...": "Restaurando...",
+    "Restore branch": "Restaurar rama",
+    "Use {branch}": "Usar {branch}",
+    "Dismiss branch change notice": "Descartar aviso de cambio de rama"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3351,7 +3361,12 @@
     "Time of day": "Horário do dia",
     "Every": "A cada",
     "minutes": "minutos",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Executa a cada requisição para a URL do webhook da tarefa, exibida após salvar. O prompt pode usar marcadores {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Executa a cada requisição para a URL do webhook da tarefa, exibida após salvar. O prompt pode usar marcadores {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Esta conversa rodou por último em {thread}. Ao enviar, continuará em {current}.",
+    "Restoring...": "Restaurando...",
+    "Restore branch": "Restaurar branch",
+    "Use {branch}": "Usar {branch}",
+    "Dismiss branch change notice": "Dispensar aviso de troca de branch"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4469,7 +4484,12 @@
     "Time of day": "Heure de la journée",
     "Every": "Toutes les",
     "minutes": "minutes",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "S’exécute à chaque requête vers l’URL du webhook de la tâche, affichée après l’enregistrement. Le prompt peut utiliser des repères {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "S’exécute à chaque requête vers l’URL du webhook de la tâche, affichée après l’enregistrement. Le prompt peut utiliser des repères {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Ce fil a tourné pour la dernière fois sur {thread}. L’envoi continuera sur {current}.",
+    "Restoring...": "Restauration...",
+    "Restore branch": "Restaurer la branche",
+    "Use {branch}": "Utiliser {branch}",
+    "Dismiss branch change notice": "Ignorer l’avis de changement de branche"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5587,7 +5607,12 @@
     "Time of day": "Tageszeit",
     "Every": "Alle",
     "minutes": "Minuten",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Läuft bei jeder Anfrage an die Webhook-URL der Aufgabe, die nach dem Speichern angezeigt wird. Der Prompt kann {{body.path}}-Platzhalter nutzen."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Läuft bei jeder Anfrage an die Webhook-URL der Aufgabe, die nach dem Speichern angezeigt wird. Der Prompt kann {{body.path}}-Platzhalter nutzen.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Dieser Thread lief zuletzt auf {thread}. Beim Senden geht es auf {current} weiter.",
+    "Restoring...": "Wird wiederhergestellt...",
+    "Restore branch": "Branch wiederherstellen",
+    "Use {branch}": "{branch} verwenden",
+    "Dismiss branch change notice": "Hinweis zum Branchwechsel schließen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6705,7 +6730,12 @@
     "Time of day": "Ora del giorno",
     "Every": "Ogni",
     "minutes": "minuti",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Si esegue a ogni richiesta all’URL del webhook dell’attività, mostrato dopo il salvataggio. Il prompt può usare segnaposto {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Si esegue a ogni richiesta all’URL del webhook dell’attività, mostrato dopo il salvataggio. Il prompt può usare segnaposto {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Questo thread è stato eseguito l’ultima volta su {thread}. L’invio continuerà su {current}.",
+    "Restoring...": "Ripristino...",
+    "Restore branch": "Ripristina branch",
+    "Use {branch}": "Usa {branch}",
+    "Dismiss branch change notice": "Ignora avviso di cambio branch"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7823,7 +7853,12 @@
     "Time of day": "Tijdstip",
     "Every": "Elke",
     "minutes": "minuten",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Draait bij elk verzoek naar de webhook-URL van de taak, die na opslaan verschijnt. De prompt kan {{body.path}}-plaatsaanduidingen gebruiken."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Draait bij elk verzoek naar de webhook-URL van de taak, die na opslaan verschijnt. De prompt kan {{body.path}}-plaatsaanduidingen gebruiken.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Deze thread draaide het laatst op {thread}. Verzenden gaat verder op {current}.",
+    "Restoring...": "Herstellen...",
+    "Restore branch": "Branch herstellen",
+    "Use {branch}": "{branch} gebruiken",
+    "Dismiss branch change notice": "Melding over branchwissel sluiten"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8941,7 +8976,12 @@
     "Time of day": "Pora dnia",
     "Every": "Co",
     "minutes": "min",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Uruchamia się przy każdym żądaniu do adresu URL webhooka zadania, widocznego po zapisaniu. Prompt może używać symboli {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Uruchamia się przy każdym żądaniu do adresu URL webhooka zadania, widocznego po zapisaniu. Prompt może używać symboli {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Ten wątek ostatnio działał na {thread}. Wysłanie będzie kontynuowane na {current}.",
+    "Restoring...": "Przywracanie...",
+    "Restore branch": "Przywróć gałąź",
+    "Use {branch}": "Użyj {branch}",
+    "Dismiss branch change notice": "Odrzuć powiadomienie o zmianie gałęzi"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10059,7 +10099,12 @@
     "Time of day": "Время суток",
     "Every": "Каждые",
     "minutes": "мин",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Запускается при каждом запросе к URL вебхука задачи, который появится после сохранения. Промпт может использовать заполнители {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Запускается при каждом запросе к URL вебхука задачи, который появится после сохранения. Промпт может использовать заполнители {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Этот тред последний раз работал в {thread}. Отправка продолжится в {current}.",
+    "Restoring...": "Восстановление...",
+    "Restore branch": "Вернуть ветку",
+    "Use {branch}": "Использовать {branch}",
+    "Dismiss branch change notice": "Скрыть уведомление о смене ветки"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11177,7 +11222,12 @@
     "Time of day": "Час доби",
     "Every": "Кожні",
     "minutes": "хв",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Запускається з кожним запитом до URL вебхука завдання, який з’явиться після збереження. Промпт може використовувати заповнювачі {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Запускається з кожним запитом до URL вебхука завдання, який з’явиться після збереження. Промпт може використовувати заповнювачі {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Цей тред востаннє працював у {thread}. Надсилання продовжиться в {current}.",
+    "Restoring...": "Відновлення...",
+    "Restore branch": "Повернути гілку",
+    "Use {branch}": "Використати {branch}",
+    "Dismiss branch change notice": "Сховати сповіщення про зміну гілки"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12295,7 +12345,12 @@
     "Time of day": "時刻",
     "Every": "間隔",
     "minutes": "分",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "保存後に表示されるタスクの Webhook URL へのリクエストごとに実行されます。プロンプトでは {{body.path}} プレースホルダーを使えます。"
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "保存後に表示されるタスクの Webhook URL へのリクエストごとに実行されます。プロンプトでは {{body.path}} プレースホルダーを使えます。",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "このスレッドは前回 {thread} で実行されました。送信すると {current} で続行します。",
+    "Restoring...": "復元中...",
+    "Restore branch": "ブランチを戻す",
+    "Use {branch}": "{branch} を使用",
+    "Dismiss branch change notice": "ブランチ変更の通知を閉じる"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13413,7 +13468,12 @@
     "Time of day": "시각",
     "Every": "간격",
     "minutes": "분",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "저장 후 표시되는 작업의 웹훅 URL로 요청이 올 때마다 실행됩니다. 프롬프트에서 {{body.path}} 자리표시자를 쓸 수 있습니다."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "저장 후 표시되는 작업의 웹훅 URL로 요청이 올 때마다 실행됩니다. 프롬프트에서 {{body.path}} 자리표시자를 쓸 수 있습니다.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "이 스레드는 마지막으로 {thread}에서 실행되었습니다. 보내면 {current}에서 계속됩니다.",
+    "Restoring...": "복원 중...",
+    "Restore branch": "브랜치 복원",
+    "Use {branch}": "{branch} 사용",
+    "Dismiss branch change notice": "브랜치 변경 알림 닫기"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14531,7 +14591,12 @@
     "Time of day": "每天的时间",
     "Every": "每",
     "minutes": "分钟",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "每次请求任务的 webhook URL（保存后显示）时运行。提示中可以使用 {{body.path}} 占位符。"
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "每次请求任务的 webhook URL（保存后显示）时运行。提示中可以使用 {{body.path}} 占位符。",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "此线程上次在 {thread} 上运行。发送后将在 {current} 上继续。",
+    "Restoring...": "正在恢复...",
+    "Restore branch": "恢复分支",
+    "Use {branch}": "使用 {branch}",
+    "Dismiss branch change notice": "关闭分支变更提示"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15649,7 +15714,12 @@
     "Time of day": "وقت اليوم",
     "Every": "كل",
     "minutes": "دقائق",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "تعمل مع كل طلب إلى عنوان URL الخاص بـ webhook المهمة، والذي يظهر بعد الحفظ. يمكن أن يستخدم الموجّه عناصر {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "تعمل مع كل طلب إلى عنوان URL الخاص بـ webhook المهمة، والذي يظهر بعد الحفظ. يمكن أن يستخدم الموجّه عناصر {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "عملت هذه المحادثة آخر مرة على {thread}. سيستمر الإرسال على {current}.",
+    "Restoring...": "جارٍ الاستعادة...",
+    "Restore branch": "استعد الفرع",
+    "Use {branch}": "استخدم {branch}",
+    "Dismiss branch change notice": "تجاهل إشعار تغيير الفرع"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16767,7 +16837,12 @@
     "Time of day": "Günün saati",
     "Every": "Her",
     "minutes": "dakika",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Kaydettikten sonra gösterilen görev webhook URL'sine gelen her istekte çalışır. İstem {{body.path}} yer tutucularını kullanabilir."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Kaydettikten sonra gösterilen görev webhook URL'sine gelen her istekte çalışır. İstem {{body.path}} yer tutucularını kullanabilir.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Bu konu en son {thread} üzerinde çalıştı. Gönderim {current} üzerinde sürecek.",
+    "Restoring...": "Geri yükleniyor...",
+    "Restore branch": "Dalı geri yükle",
+    "Use {branch}": "{branch} kullan",
+    "Dismiss branch change notice": "Dal değişikliği bildirimini kapat"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17885,7 +17960,12 @@
     "Time of day": "Tid på dagen",
     "Every": "Var",
     "minutes": "minuter",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Körs vid varje begäran till uppgiftens webhook-URL, som visas efter att du sparat. Prompten kan använda {{body.path}}-platshållare."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Körs vid varje begäran till uppgiftens webhook-URL, som visas efter att du sparat. Prompten kan använda {{body.path}}-platshållare.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Tråden kördes senast på {thread}. Att skicka fortsätter på {current}.",
+    "Restoring...": "Återställer...",
+    "Restore branch": "Återställ gren",
+    "Use {branch}": "Använd {branch}",
+    "Dismiss branch change notice": "Stäng meddelandet om grenbyte"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19003,7 +19083,12 @@
     "Time of day": "Tidspunkt",
     "Every": "Hver",
     "minutes": "minutter",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Kører ved hver anmodning til opgavens webhook-URL, som vises efter gem. Prompten kan bruge {{body.path}}-pladsholdere."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Kører ved hver anmodning til opgavens webhook-URL, som vises efter gem. Prompten kan bruge {{body.path}}-pladsholdere.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Tråden kørte sidst på {thread}. Afsendelse fortsætter på {current}.",
+    "Restoring...": "Gendanner...",
+    "Restore branch": "Gendan branch",
+    "Use {branch}": "Brug {branch}",
+    "Dismiss branch change notice": "Afvis besked om branchskift"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20121,7 +20206,12 @@
     "Time of day": "Tidspunkt",
     "Every": "Hver",
     "minutes": "minutter",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Kjører ved hver forespørsel til oppgavens webhook-URL, som vises etter lagring. Prompten kan bruke {{body.path}}-plassholdere."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Kjører ved hver forespørsel til oppgavens webhook-URL, som vises etter lagring. Prompten kan bruke {{body.path}}-plassholdere.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Tråden kjørte sist på {thread}. Sending fortsetter på {current}.",
+    "Restoring...": "Gjenoppretter...",
+    "Restore branch": "Gjenopprett gren",
+    "Use {branch}": "Bruk {branch}",
+    "Dismiss branch change notice": "Lukk varselet om grenbytte"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21239,7 +21329,12 @@
     "Time of day": "Kellonaika",
     "Every": "Joka",
     "minutes": "minuuttia",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Suoritetaan jokaisesta pyynnöstä tehtävän webhook-URL-osoitteeseen, joka näkyy tallennuksen jälkeen. Kehote voi käyttää {{body.path}}-paikkamerkkejä."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Suoritetaan jokaisesta pyynnöstä tehtävän webhook-URL-osoitteeseen, joka näkyy tallennuksen jälkeen. Kehote voi käyttää {{body.path}}-paikkamerkkejä.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Ketju ajettiin viimeksi haarassa {thread}. Lähetys jatkuu haarassa {current}.",
+    "Restoring...": "Palautetaan...",
+    "Restore branch": "Palauta haara",
+    "Use {branch}": "Käytä haaraa {branch}",
+    "Dismiss branch change notice": "Sulje haaranvaihdon ilmoitus"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22357,6 +22452,11 @@
     "Time of day": "Denní čas",
     "Every": "Každých",
     "minutes": "minut",
-    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Spustí se při každém požadavku na URL webhooku úlohy, zobrazené po uložení. Prompt může používat zástupné symboly {{body.path}}."
+    "Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.": "Spustí se při každém požadavku na URL webhooku úlohy, zobrazené po uložení. Prompt může používat zástupné symboly {{body.path}}.",
+    "This thread last ran on {thread}. Sending will continue on {current}.": "Vlákno naposledy běželo na {thread}. Odeslání bude pokračovat na {current}.",
+    "Restoring...": "Obnovování...",
+    "Restore branch": "Obnovit větev",
+    "Use {branch}": "Použít {branch}",
+    "Dismiss branch change notice": "Zavřít oznámení o změně větve"
   }
 }
