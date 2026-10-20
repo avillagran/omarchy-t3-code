@@ -137,10 +137,18 @@ Singleton {
     var id=uuid();connectionNetwork=Object.assign({},connectionNetwork,{busy:true,error:"",requestId:id,action:action})
     send(Object.assign({op:"connection-network",action:action,revision:connectionNetwork.data?connectionNetwork.data.revision:"",requestId:id},values || {}))
   }
-  property var connectionOmaBridge:({busy:false,error:"",data:null,created:null,paired:null})
+  property var connectionOmaBridge:({busy:false,error:"",data:null,created:null,paired:null,gateways:null,gatewayChecks:({}),gatewaysBusy:false,gatewaysError:""})
   // A created invitation (path and QR) is a secret; drop it as soon as its dialog closes.
   function clearOmaBridgeInvite(){connectionOmaBridge=Object.assign({},connectionOmaBridge,{created:null,error:""})}
   signal connectionOmaBridgeFinished(string action,string error)
+  // Reading and checking public addresses asks other devices and can take a
+  // while, so it has its own channel and never blocks approvals or pairing.
+  function requestOmaBridgeGateways(action,values){
+    if(connectionOmaBridge.gatewaysBusy || (action!=="gateways-read"&&action!=="gateway-check"))return
+    if(!worker.running){connectionOmaBridge=Object.assign({},connectionOmaBridge,{gatewaysError:"disconnected"});return}
+    var id=uuid();connectionOmaBridge=Object.assign({},connectionOmaBridge,{gatewaysBusy:true,gatewaysError:"",gatewaysRequestId:id})
+    send(Object.assign({op:"connection-omabridge",action:action,requestId:id},values || {}))
+  }
   function requestConnectionOmaBridge(action,values){
     if(connectionOmaBridge.busy)return
     if(!worker.running){connectionOmaBridge=Object.assign({},connectionOmaBridge,{error:"disconnected"});return}
@@ -776,6 +784,7 @@ Singleton {
     if(connectionPreferences.busy)connectionPreferences=Object.assign({},connectionPreferences,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionNetwork.busy)connectionNetwork=Object.assign({},connectionNetwork,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionOmaBridge.busy)connectionOmaBridge=Object.assign({},connectionOmaBridge,{busy:false,error:"rpc_outcome_unknown",created:null})
+    if(connectionOmaBridge.gatewaysBusy)connectionOmaBridge=Object.assign({},connectionOmaBridge,{gatewaysBusy:false,gatewaysError:"rpc_outcome_unknown"})
     if(connectionAccess.busy)connectionAccess=Object.assign({},connectionAccess,{busy:false,error:"rpc_outcome_unknown",created:null})
     if(connectionSettings.busy)connectionSettings=Object.assign({},connectionSettings,{busy:false,error:"rpc_outcome_unknown"})
     clearInlineDocuments();historyOperation=Object.assign({},historyOperation,{busy:false,error:historyOperation.busy?"rpc_outcome_unknown":historyOperation.error});liveConnected=false;documentOpen=({busy:false,error:"",requestId:""});imageStates=({});favoritePending=({});scrollProbePending=false
@@ -1404,13 +1413,23 @@ Singleton {
       if(action==="apply"){refreshBackendStatus();recoverLocalBackend();refresh()}
       connectionNetworkFinished(action,data.error || "");return
     }
+    if(data.op==="connection-omabridge"&&data.requestId&&data.requestId===connectionOmaBridge.gatewaysRequestId){
+      var found=data.result || ({}),checked=connectionOmaBridge.gatewayChecks || ({})
+      if(found.gatewayCheck){checked=Object.assign({},checked);checked[found.gatewayCheck.url]=found.gatewayCheck}
+      connectionOmaBridge=Object.assign({},connectionOmaBridge,{gatewaysBusy:false,gatewaysError:data.error || "",gateways:found.gateways || connectionOmaBridge.gateways || null,gatewayChecks:checked});return
+    }
     if(data.op==="connection-omabridge"){
       if(data.requestId!==connectionOmaBridge.requestId)return
       var action=connectionOmaBridge.action
       var result=data.result?Object.assign({},data.result):null,created=action==="invite-discard"&&!data.error?null:connectionOmaBridge.created,paired=connectionOmaBridge.paired
       if(result&&result.created){created=result.created;delete result.created}
       if(result&&result.paired){paired=result.paired;delete result.paired}
-      connectionOmaBridge=Object.assign({},connectionOmaBridge,{busy:false,error:data.error || "",data:result || connectionOmaBridge.data,created:created,paired:paired})
+      // Public addresses are slow to read (each managed device is asked), so they
+      // outlive plain reads; checks are kept per address.
+      var gateways=connectionOmaBridge.gateways || null,checks=connectionOmaBridge.gatewayChecks || ({})
+      if(result&&result.gateways){gateways=result.gateways;delete result.gateways}
+      if(result&&result.gatewayCheck){checks=Object.assign({},checks);checks[result.gatewayCheck.url]=result.gatewayCheck;delete result.gatewayCheck}
+      connectionOmaBridge=Object.assign({},connectionOmaBridge,{busy:false,error:data.error || "",data:result || connectionOmaBridge.data,created:created,paired:paired,gateways:gateways,gatewayChecks:checks})
       if(action!=="read"&&!data.error)refresh()
       connectionOmaBridgeFinished(action,data.error || "");return
     }
