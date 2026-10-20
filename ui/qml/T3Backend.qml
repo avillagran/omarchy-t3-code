@@ -775,7 +775,8 @@ Singleton {
   function openReference(link,attachment){
     var path=String(link || "");
     if(/^https?:\/\//i.test(path)){Qt.openUrlExternally(path);return}
-    if(path.startsWith("t3-thread://v1/")){selectThread(selectedEnvironment,path.slice(15));return}
+    // A thread link may point at a thread on another connected environment.
+    if(path.startsWith("t3-thread://v1/")){var tid=decodeURIComponent(path.slice(15).split(/[?#\/]/)[0]),here=state.threads.find(function(t){return t.id===tid&&t.environmentId===selectedEnvironment}),any=here||state.threads.find(function(t){return t.id===tid});selectThread(any?any.environmentId:selectedEnvironment,tid);return}
     if(path.startsWith("#"))return
     if(/^[a-z][a-z0-9+.-]*:/i.test(path)&&!path.startsWith("file://"))return
     try{path=decodeURIComponent(path.replace(/^file:\/\//,""))}catch(e){return}
