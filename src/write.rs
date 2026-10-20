@@ -306,6 +306,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "archive-state"=>crate::archive_management::observe(&e,input),
         "review-refs"=>crate::working_review::refs(&e,input),
         "branch-refs"=>crate::branch_picker::refs(&e,input),
+        "secret-answer"=>secret_answer(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),
         "working-review"=>crate::working_review::execute(&e,input),
         "git-read"=>crate::git_operations::read(&e,input),
@@ -345,4 +346,16 @@ pub fn prepare_plan_follow_up(e:&Environment,input:&Value)->Result<Value>{
     result["projectId"]=projection["thread"]["projectId"].clone();result["branch"]=projection["thread"]["branch"].clone();result["worktreePath"]=projection["thread"]["worktreePath"].clone();
     result["title"]=json!(crate::plan_workflow::implementation_title(text(plan,"markdown")));
     result["modelSelection"]=selection;Ok(result)
+}
+/// secrets.answerRequest: the value goes to the server once and is not journaled.
+fn secret_answer(e:&Environment,input:&Value)->Result<Value>{
+    let thread=text(input,"thread");let item=text(input,"turnItemId");
+    if !valid_id(thread)||item.is_empty()||item.len()>512{return Err("invalid_id".into())}
+    let answer=match text(&input["answer"],"type"){
+        "decline"=>json!({"type":"decline"}),
+        "save"=>{let secret=text(&input["answer"],"secret").trim();if secret.is_empty()||secret.len()>64*1024{return Err("invalid_secret".into())}json!({"type":"save","secret":secret})},
+        _=>return Err("invalid_secret".into()),
+    };
+    rpc(e,"secrets.answerRequest",json!({"threadId":thread,"turnItemId":item,"answer":answer}))?;
+    Ok(json!({"turnItemId":item}))
 }

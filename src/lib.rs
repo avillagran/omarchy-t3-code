@@ -496,6 +496,13 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
    }
   }
 
+  if native["type"]=="secret_request"{
+   // An agent's request_secret: answered here, the value goes to the server only.
+   let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));
+   let local=native["threadId"].is_null()||native["threadId"]==projection["thread"]["id"];
+   if time>=first{rows.push(json!({"id":format!("secret/{}",text(native,"id")),"role":"secret","createdAt":time,"text":"","secret":{"turnItemId":native["id"],"threadId":native["threadId"],"label":native["label"],"reason":native["reason"],"placeholder":native["placeholder"],"status":native["secretStatus"],"local":local}}))}
+   continue
+  }
   if let Some(a)=protocol::documents::html_render(native){let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));if time>=first{rows.push(json!({"id":format!("html/{}",text(native,"id")),"role":"assistant","createdAt":time,"text":"","attachments":[a]}))}}
   if let Some(boundary)=protocol::lifecycle::describe(row,projection["runs"].as_array().map(Vec::as_slice).unwrap_or(&[])){
    let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));

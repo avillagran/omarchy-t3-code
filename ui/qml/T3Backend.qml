@@ -454,6 +454,10 @@ Singleton {
   // Server-wide thread search (orchestration.searchThreads) for the command palette.
   property var threadSearch:({query:"",busy:false,matches:[],requestId:""})
   function searchThreads(query){var q=String(query||"").trim();if(q.length<2){threadSearch={query:q,busy:false,matches:[],requestId:""};return}var id=uuid();threadSearch={query:q,busy:worker.running,matches:threadSearch.query&&q.indexOf(threadSearch.query)===0?threadSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
+  // Answers to agents' secret requests, keyed by turn item. The typed value is sent once
+  // and never kept in QML state.
+  property var secretAnswers:({})
+  function answerSecret(request,answer){var key=request.turnItemId;if(!key||(secretAnswers[key]||{}).busy)return;var id=uuid(),all=Object.assign({},secretAnswers);all[key]={busy:true,error:"",requestId:id};secretAnswers=all;send({op:"secret-answer",environment:selectedEnvironment,thread:request.threadId||selectedThread,turnItemId:key,answer:answer,requestId:id})}
   // Context window use of the open thread (T3 ContextWindowMeter).
   property var contextWindow:null
   // Fork state of the open thread: where it merges back and with which finished run.
@@ -1151,6 +1155,7 @@ Singleton {
       if(result&&result.state==="complete")refresh()
       return
     }
+    if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
     if(data.op==="thread-search"){if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
     if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}
     if(data.op==="branch-switch"){if(data.requestId!==branchRefs.switchRequestId)return;branchRefs=Object.assign({},branchRefs,{switching:false,pendingBranch:data.error?"":(data.result.branch||""),error:data.error||""});if(data.error)branchSwitchFailed(data.error);refresh();return}
