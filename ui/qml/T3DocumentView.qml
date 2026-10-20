@@ -7,6 +7,9 @@ Item {
  id:root;objectName:"t3DocumentView"
  required property var bridge
  signal closed()
+ // Inline generated previews offer a close button next to "open larger".
+ property bool dismissible:false
+ signal dismissed()
  property string sessionId:""
  property string fallbackTitle:""
  property bool inlineMode:false
@@ -24,6 +27,15 @@ Item {
  onPreviewableChanged:{sourceMode=!previewable;Qt.callLater(resize)}
  function openLink(link){var path=String(link);if(!/^(?:[a-z][a-z0-9+.-]*:|\/|#)/i.test(path)){var title=String(doc.data.title || "");path=title.slice(0,title.lastIndexOf("/")+1)+path}bridge.openReference(path)}
  function send(event){if(inlineMode&&!sessionId)return;if(sessionId)bridge.send({op:"document-input",requestId:sessionId,event:event});else bridge.documentInput(event)}
+ // QML previews refused before rendering explain why; other errors keep their codes.
+ function errorText(error){
+  var e=String(error || ""),blocked=e.match(/^qml_import_blocked:(.+)$/)
+  if(blocked)return T3I18n.tr("This preview can't import {module}. Allowed modules: {allowed}.",{module:blocked[1],allowed:"QtQuick, QtQuick.Controls, QtQuick.Layouts, QtQuick.Shapes, QtQuick.Effects, QtQml"})
+  if(e==="qml_preview_empty")return T3I18n.tr("This QML block is empty.")
+  if(e==="qml_preview_too_large")return T3I18n.tr("This QML block is too large to preview (64 KB maximum).")
+  if(e==="qml_preview_invalid")return T3I18n.tr("This QML block can't be previewed.")
+  return T3I18n.error(e)
+ }
  function resize(){if(html&&!sourceMode)send({type:"resize",width:Math.round(surface.width),height:Math.round(surface.height)})}
  ColumnLayout{
   anchors.fill:parent;spacing:Style.space(8)
@@ -36,9 +48,10 @@ Item {
    T3IconButton{name:"minus";tooltipText:"−";visible:root.html&&!root.sourceMode&&!root.inlineMode;enabled:root.zoom>0.5;onClicked:{root.zoom=Math.max(0.5,root.zoom-0.25);root.send({type:"zoom",value:root.zoom})}}
    Controls.Button{text:Math.round(root.zoom*100)+"%";visible:root.html&&!root.sourceMode&&!root.inlineMode;onClicked:{root.zoom=1;root.send({type:"zoom",value:1})} palette.button:Color.popups.background;palette.buttonText:Color.popups.text}
    T3IconButton{name:"plus";tooltipText:"+";visible:root.html&&!root.sourceMode&&!root.inlineMode;enabled:root.zoom<2;onClicked:{root.zoom=Math.min(2,root.zoom+0.25);root.send({type:"zoom",value:root.zoom})}}
+   T3IconButton{objectName:"t3DocumentDismiss";name:"x";visible:root.dismissible;tooltipText:T3I18n.tr("Close");onClicked:root.dismissed()}
    T3IconButton{objectName:"t3DocumentClose";name:root.inlineMode?"maximize-2":"x";tooltipText:T3I18n.tr(root.inlineMode?"Preview":"Close");onClicked:root.closed()}
   }
-  Text{Layout.fillWidth:true;visible:!!root.doc.error;text:T3I18n.error(root.doc.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+  Text{Layout.fillWidth:true;objectName:"t3DocumentError";visible:!!root.doc.error;text:root.errorText(root.doc.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:root.doc.busy || root.html&&!root.sourceMode&&!root.doc.error&&(!root.doc.frameUrl || root.doc.data.internalReview&&!root.doc.rendererReady);active:visible}
   Item{
    id:surface;Layout.fillWidth:true;Layout.fillHeight:true;clip:true

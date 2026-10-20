@@ -4,6 +4,7 @@ pub mod backend_service;
 pub mod images;
 pub mod markdown_images;
 pub mod documents;
+pub mod qml_preview;
 pub mod scroll;
 pub mod message_text;
 pub mod desktop_open;
@@ -154,7 +155,7 @@ pub fn markdown_render(input: &str, blocks:Option<&[Value]>, math:bool) -> Strin
     let events=events.flat_map(|event|{let mut batch=Vec::new();
         // Copy actions after each table, as in T3's table menu (Markdown or CSV).
         if blocks.is_some()&&matches!(&event,Event::End(TagEnd::Table)){batch.push(event);batch.push(Event::Html(format!("<p align=\"right\"><a href=\"ot3-table-copy://{table_index}/markdown\">Copy as Markdown</a> · <a href=\"ot3-table-copy://{table_index}/csv\">Copy as CSV</a></p>").into()));table_index+=1;return batch}
-        if matches!(&event,Event::Start(Tag::CodeBlock(_))){if let Some(block)=blocks.and_then(|b|b.get(index)){let run=if block["command"].is_string(){format!("<a href=\"ot3-code-run://{index}\">Run in terminal</a> · ")}else if text(block,"language").eq_ignore_ascii_case("mermaid"){format!("<a href=\"ot3-code-diagram://{index}\">Show diagram</a> · ")}else{String::new()};batch.push(Event::Html(format!("<table width=\"100%\"><tr><td>{}</td><td align=\"right\">{run}<a href=\"ot3-code-copy://{index}\">Copy code</a></td></tr></table>",text(block,"language").replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")).into()));}index+=1;}batch.push(event);batch});
+        if matches!(&event,Event::Start(Tag::CodeBlock(_))){if let Some(block)=blocks.and_then(|b|b.get(index)){let run=if block["command"].is_string(){format!("<a href=\"ot3-code-run://{index}\">Run in terminal</a> · ")}else if text(block,"language").eq_ignore_ascii_case("mermaid"){format!("<a href=\"ot3-code-diagram://{index}\">Show diagram</a> · ")}else if text(block,"language").eq_ignore_ascii_case("qml"){format!("<a href=\"ot3-code-preview://{index}\">Show preview</a> · ")}else{String::new()};batch.push(Event::Html(format!("<table width=\"100%\"><tr><td>{}</td><td align=\"right\">{run}<a href=\"ot3-code-copy://{index}\">Copy code</a></td></tr></table>",text(block,"language").replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")).into()));}index+=1;}batch.push(event);batch});
     html::push_html(&mut out, events);
     out
 }

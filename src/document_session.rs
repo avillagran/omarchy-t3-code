@@ -12,10 +12,12 @@ struct Session{child:Child,stdin:ChildStdin,dir:std::path::PathBuf,id:String}
 impl Drop for Session{fn drop(&mut self){let _=writeln!(self.stdin,"{{\"type\":\"close\"}}");let until=std::time::Instant::now()+std::time::Duration::from_millis(1500);while std::time::Instant::now()<until{if self.child.try_wait().ok().flatten().is_some(){break}thread::sleep(std::time::Duration::from_millis(10));}if self.child.try_wait().ok().flatten().is_none(){unsafe{libc::kill(-(self.child.id() as i32),libc::SIGKILL);}let _=self.child.kill();}let _=self.child.wait();let _=fs::remove_dir_all(&self.dir);}}
 fn launch(exe:&std::path::Path,doc:&Value,id:&str,generation:u64,current:Arc<AtomicU64>)->Result<Session>{
  let root=exe.parent().ok_or("viewer_unavailable")?;
- if !root.join("libt3-document.so").is_file(){return Err("viewer_unavailable".into())}
+ let qml=doc["qmlPreview"]==true;
+ if !root.join(if qml{"libt3-qml-preview.so"}else{"libt3-document.so"}).is_file(){return Err("viewer_unavailable".into())}
  let dir=xdg("XDG_CACHE_HOME",".cache").join("document-sessions").join(uuid::Uuid::new_v4().to_string());fs::create_dir_all(&dir).map_err(|_|"viewer_unavailable")?;fs::set_permissions(&dir,fs::Permissions::from_mode(0o700)).map_err(|_|"viewer_unavailable")?;
  let mut payload=doc.clone();payload["offscreen"]=json!(true);payload["frameDirectory"]=json!(dir);payload["width"]=json!(900);payload["height"]=json!(620);
- let mut child=Command::new(exe).arg("document-render").env("QT_QPA_PLATFORM","offscreen").process_group(0).env("QT_QUICK_BACKEND","software").env("QT_SCALE_FACTOR","1").env("QT_SCREEN_SCALE_FACTORS","1").env("QTWEBENGINE_CHROMIUM_FLAGS","--disable-gpu").env_remove("T3_DOCUMENT_VERIFY").env_remove("T3_DOCUMENT_GRAB").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"viewer_unavailable")?;
+ let mut command=if qml{qml_preview::command(exe,&dir)}else{let mut c=Command::new(exe);c.arg("document-render").process_group(0).env("QT_QPA_PLATFORM","offscreen").env("QT_QUICK_BACKEND","software").env("QT_SCALE_FACTOR","1").env("QT_SCREEN_SCALE_FACTORS","1").env("QTWEBENGINE_CHROMIUM_FLAGS","--disable-gpu").env_remove("T3_DOCUMENT_VERIFY").env_remove("T3_DOCUMENT_GRAB");c};
+ let mut child=command.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"viewer_unavailable")?;
  let stdin=child.stdin.take().ok_or("viewer_unavailable")?;let stdout=child.stdout.take().ok_or("viewer_unavailable")?;
  let mut session=Session{child,stdin,dir:dir.clone(),id:id.into()};let bytes=payload.to_string().into_bytes();session.stdin.write_all(&(bytes.len() as u64).to_be_bytes()).and_then(|_|session.stdin.write_all(&bytes)).map_err(|_|"viewer_unavailable")?;
  let internal=doc["internalReview"]==true;let id=id.to_string();thread::spawn(move||{

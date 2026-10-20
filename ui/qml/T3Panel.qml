@@ -89,6 +89,16 @@ Item {
   // Mermaid diagrams drawn on request join this thread's renders.
   property var diagrams:[]
   function showDiagram(attachment){var rest=diagrams.filter(function(d){return d.id!==attachment.id});diagrams=rest.concat([attachment]);followRenders();showRender(attachment)}
+  // QML previews follow the HTML renders preference: the side panel, or under
+  // their message (clicking the action again closes an inline preview).
+  property var inlinePreviews:({})
+  function showQmlPreview(attachment){
+    if(renderSide){showDiagram(attachment);return}
+    var all=Object.assign({},inlinePreviews),list=(all[attachment.messageId] || []).slice(),at=list.findIndex(function(a){return a.id===attachment.id})
+    if(at>=0)list.splice(at,1);else list.push(attachment)
+    all[attachment.messageId]=list;inlinePreviews=all
+  }
+  function closeQmlPreview(attachment){var all=Object.assign({},inlinePreviews);all[attachment.messageId]=(all[attachment.messageId] || []).filter(function(a){return a.id!==attachment.id});inlinePreviews=all}
   // Renders that arrive while a thread is open go straight to the panel;
   // those already in the history only open on request.
   function followRenders(){
@@ -103,7 +113,7 @@ Item {
     if(JSON.stringify(list)!==JSON.stringify(renderList))renderList=list
     if(!renderAttachment&&latest)renderAttachment=latest
   }
-  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[]}function onDiagramRequested(attachment){root.showDiagram(attachment)}}
+  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.inlinePreviews={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
   // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
   // every 8 ms through the normal wheel path) and record the intervals
   // between presented frames; profileResult reads them back.
@@ -655,6 +665,7 @@ Item {
     html=html.replace(new RegExp('(href="ot3-code-run://[0-9]+">)Run in terminal(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Run in terminal")+b})
     html=html.replace(new RegExp('(href="ot3-code-copy://[0-9]+">)Copy code(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy code")+b})
     html=html.replace(new RegExp('(href="ot3-code-diagram://[0-9]+">)Show diagram(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Show diagram")+b})
+    html=html.replace(new RegExp('(href="ot3-code-preview://[0-9]+">)Show preview(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Show preview")+b})
     html=html.replace(new RegExp('(href="ot3-table-copy://[0-9]+/markdown">)Copy as Markdown(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as Markdown")+b}).replace(new RegExp('(href="ot3-table-copy://[0-9]+/csv">)Copy as CSV(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as CSV")+b})
     html=MarkdownStyle.render(html,Style.font.body,Style.spaceReal(1),String(root.fg),String(root.dim),String(root.surface),String(root.divider))
     return MarkdownLinks.decorate(html).replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ")
@@ -1587,6 +1598,17 @@ Item {
                         readonly property real viewportY:message.y+body.y+y-conversation.contentY
                         width:body.width;bridge:root.bridge;attachment:modelData
                         active:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+height>0
+                      }
+                    }
+                    Repeater {
+                      model:root.renderSide?[]:(root.inlinePreviews[modelData.id] || [])
+                      T3InlineHtml {
+                        required property var modelData
+                        objectName:"t3InlineQmlPreview"
+                        readonly property real viewportY:message.y+body.y+y-conversation.contentY
+                        width:body.width;bridge:root.bridge;attachment:modelData;closable:true
+                        active:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+height>0
+                        onDismissed:root.closeQmlPreview(modelData)
                       }
                     }
                     Flow {
