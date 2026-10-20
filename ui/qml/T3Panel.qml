@@ -1607,7 +1607,7 @@ Item {
                 }
                 Row {
                   id:messageActions;objectName:"t3MessageActions"
-                  visible:(message.modelData.role==="user"||message.modelData.role==="assistant")&&!message.commentary&&(!!message.modelData.text||message.modelData.canRewindMessage)&&message.modelData.streaming!==true
+                  visible:(message.modelData.role==="user"||message.modelData.role==="assistant")&&!message.commentary&&(!!message.modelData.text||!!message.modelData.canRewindMessage)&&message.modelData.streaming!==true
                   anchors.top:bubble.bottom;anchors.topMargin:Style.space(6)
                   anchors.right:message.userMessage?bubble.right:undefined
                   anchors.left:message.userMessage?undefined:bubble.left

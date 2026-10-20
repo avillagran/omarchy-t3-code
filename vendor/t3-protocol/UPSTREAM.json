@@ -12,7 +12,7 @@
     "src/compaction.rs": "75d823d0f1b29d57b3b143eea55914ce34fb2c82dbf57f993b2e7f48abb211a6",
     "src/composer.rs": "66f42e264b69b82b2e84457046ec8f5dbdbb65a83c017c2e4a0fae7d8ff99c44",
     "src/connection_catalog.rs": "97f52dc7ed1357c31dc92a417489931dc0f315f312bd586aa0d5c756124ea1f9",
-    "src/documents.rs": "050138e23fba2437298760cfabebf0170c12fcd0b77df467eb41689dcbe0c11e",
+    "src/documents.rs": "9706765d423f1cb026fa7f111bb101ef63c27fd895fa2a6e9f2c8460419a10de",
     "src/ffi.rs": "8dab7f82595d7664b43183d03dd34d8da4177a35c1aa6fa38089f5216354184e",
     "src/ffi_attachments.rs": "49aacf0b3d137875c1709eaa507303fc405ca4eda1a4d39e3fc996817b753b4c",
     "src/ffi_stream.rs": "4f9a4772740721b46f7f20006eb8381f8183bacda164af083d36b633af5f9052",
@@ -21,7 +21,7 @@
     "src/lib.rs": "43181bb843147fc1786fd04b4cee0d6ef3f0aff13550234b5b8726b4c85f5d59",
     "src/lifecycle.rs": "52b1a2581e9d80880e603d48f82f36e4bcb43b4ed3ecd3fa06bafabffdca2563",
     "src/models.rs": "cdeb2da96de219219920db96cafa126dbf8811dd5d4777ea034c91b91d95cd89",
-    "src/projection.rs": "3bd5ce4f8530c6d9e44d113819b1d1db9c05c3d818f9c75eba529d3296ff49a2",
+    "src/projection.rs": "ca2af3f6cff408a5f444e1e7a71779cee4a528c9fb25a74ab8c070191437a7e8",
     "src/projects.rs": "ec4f71bcb5207969a8e2190bf0d8c51b341decf47d651a395991c04f069480f5",
     "src/pull_requests.rs": "81a8d5f45f348c06d033470c8d79bcb34a5f81434706e89bfd2a00d53662286b",
     "src/questions.rs": "47f6dfc72bfadfbb0b0f2e27cf144cbbc1e6f910506d92797df3db0e049bdee5",
@@ -40,6 +40,7 @@
     "src/projection.rs keeps the htmlRender reference (attachment id and title) of html_render turn items when the live mirror drops tool outputs, so renders that arrive while a chat is open still reach the timeline",
     "src/lib.rs declares pub mod device_hub; src/device_hub.rs builds only the native device hub proxy paths (MJPEG, screenshot, input sockets) with a session wsTicket and hostId, splits MJPEG/JPEG streams, parses Android SEMU packets and encodes panel input for serve-sim and serve-emu",
     "src/projection.rs applies the partial-payload events of upstream 0.1 (thread.pull-request-link-updated, provider-session.detached, run.background-work-cancelled, checkpoint.rollback-requested), mirrors context handoffs and transfers, and keeps a provider turn's token usage when an update omits it",
-    "src/lib.rs attachment_image also reads HEIC, HEIF and AVIF attachments (ISO-BMFF ftyp signature), which T3 renders since 0.1"
+    "src/lib.rs attachment_image also reads HEIC, HEIF and AVIF attachments (ISO-BMFF ftyp signature), which T3 renders since 0.1",
+    "src/documents.rs reads MCP app references (t3McpApp) of completed tool calls and src/projection.rs keeps them when the live mirror drops tool outputs"
   ]
 }

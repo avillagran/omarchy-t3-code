@@ -729,9 +729,23 @@ Singleton {
   }
   property var documentOpen:({busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0})
   property var inlineDocuments:({})
+  // MCP apps: answer what the host knows, forward server calls through mcpApps.*.
+  property var appCalls:({})
+  function appReply(session,id,result,error){send({op:"document-input",requestId:session,event:{type:"app-response",response:error?{jsonrpc:"2.0",id:id,error:{code:-32000,message:String(error)}}:{jsonrpc:"2.0",id:id,result:result||{}}}})}
+  function appRequest(session,request){
+    var doc=inlineDocuments[session];if(!doc||!doc.app||!request)return
+    var m=String(request.method||""),p=request.params||{}
+    if(m==="ui/initialize"){appReply(session,request.id,{protocolVersion:"2026-01-26",hostInfo:{name:"Omarchy T3",version:"1"},hostCapabilities:{openLinks:{},serverTools:{},serverResources:{},updateModelContext:{},message:{}},hostContext:{theme:Color.popups.background.hslLightness<0.5?"dark":"light",displayMode:"inline",availableDisplayModes:["inline"]}});return}
+    if(m==="ui/open-link"){var url=String(p.url||"");if(/^https?:\/\//i.test(url))Qt.openUrlExternally(url);appReply(session,request.id,{});return}
+    if(m==="ui/request-display-mode"){appReply(session,request.id,{mode:"inline"});return}
+    if(m==="ui/message"){var parts=(p.content||[]).filter(function(c){return c&&c.type==="text"}).map(function(c){return String(c.text||"")});var text=parts.join("\n").trim();if(!text||!selectedThread){appReply(session,request.id,null,"empty_message");return}send({op:"send",environment:selectedEnvironment,thread:selectedThread,requestId:uuid(),text:text,attachments:[],modelSelection:selectedInfo.modelSelection,delivery:selectedInfo.activeRunId?"queue":"auto"});appReply(session,request.id,{});return}
+    if(["tools/call","resources/read","ui/update-model-context"].indexOf(m)<0){appReply(session,request.id,null,"Method not supported");return}
+    var id=uuid(),calls=Object.assign({},appCalls);calls[id]={session:session,rpcId:request.id};appCalls=calls
+    send({op:"mcp-app",environment:selectedEnvironment,threadId:doc.app.threadId,itemId:doc.app.itemId,conversationThreadId:selectedThread,method:m,params:p,requestId:id})
+  }
   function openInlineDocument(attachment){
     var id=uuid(),all=Object.assign({},inlineDocuments)
-    all[id]={busy:true,error:"",requestId:id,data:null,frameUrl:"",frameRevision:0};inlineDocuments=all
+    all[id]={busy:true,error:"",requestId:id,data:null,frameUrl:"",frameRevision:0,app:attachment&&attachment.mcpApp?attachment.mcpApp:null};inlineDocuments=all
     send({op:"document-open",inline:true,environment:selectedEnvironment,thread:selectedThread,attachment:attachment,requestId:id,theme:DocumentTheme.theme(Color.popups.background,Color.popups.text,Color.accent,T3Palette.values)})
     return id
   }
@@ -1183,6 +1197,7 @@ Singleton {
     }
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
+    if(data.op==="mcp-app"){var call=appCalls[data.requestId];if(!call)return;var rest=Object.assign({},appCalls);delete rest[data.requestId];appCalls=rest;appReply(call.session,call.rpcId,data.result,data.error);return}
     if(data.op==="storage-cleanup"){if(data.requestId!==storageCleanup.requestId)return;storageCleanup=Object.assign({},storageCleanup,{busy:false,running:false,error:data.error||"",report:data.error?storageCleanup.report:(data.result||{}).report||null});return}
     if(data.op==="scheduled-tasks"){if(data.requestId!==scheduledTasks.requestId)return;scheduledTasks=Object.assign({},scheduledTasks,{busy:false,error:data.error||"",tasks:data.error?scheduledTasks.tasks:(data.result.tasks||[])});return}
     if(data.op==="usage-summary"){if(data.requestId!==usage.requestId)return;usage=Object.assign({},usage,{busy:false,error:data.error||"",data:data.error?usage.data:data.result});return}
@@ -1614,6 +1629,7 @@ Singleton {
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
+      else if(event.type==="document-app-request" && inlineDocuments[data.requestId]){appRequest(data.requestId,data.request)}
       else if(event.type==="document-size" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{contentHeight:data.height})}
       else if(event.type==="document-frame" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{frameUrl:data.url || inlineDocuments[data.requestId].frameUrl,frameRevision:data.revision,frameWidth:data.width,frameHeight:data.height,error:data.error || ""})}
       else if(event.type==="document-frame" && data.requestId===documentOpen.requestId){documentOpen=Object.assign({},documentOpen,{frameUrl:data.url || documentOpen.frameUrl,frameRevision:data.revision || documentOpen.frameRevision,frameWidth:data.width || documentOpen.frameWidth,frameHeight:data.height || documentOpen.frameHeight,error:data.error || ""})}
