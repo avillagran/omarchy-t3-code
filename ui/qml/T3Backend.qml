@@ -470,6 +470,12 @@ Singleton {
   // and never kept in QML state.
   property var secretAnswers:({})
   function answerSecret(request,answer){var key=request.turnItemId;if(!key||(secretAnswers[key]||{}).busy)return;var id=uuid(),all=Object.assign({},secretAnswers);all[key]={busy:true,error:"",requestId:id};secretAnswers=all;send({op:"secret-answer",environment:selectedEnvironment,thread:request.threadId||selectedThread,turnItemId:key,answer:answer,requestId:id})}
+  // Provider install and sign-in (provider.install.* / provider.auth.*), per instance.
+  property var providerSetup:({})
+  function providerSetupAction(environment,instanceId,values){var id=uuid(),all=Object.assign({},providerSetup);all[instanceId]=Object.assign({},all[instanceId]||{},{busy:true,error:"",requestId:id,environment:environment});providerSetup=all;send(Object.assign({op:"provider-setup",environment:environment,instanceId:instanceId,requestId:id},values))}
+  // While a flow runs, its state is re-read every second.
+  Timer{interval:1000;repeat:true;running:Object.keys(root.providerSetup).some(function(k){var s=root.providerSetup[k];var p=s.state&&s.state.phase;return !s.busy&&["starting","waiting","verifying","downloading","extracting"].indexOf(p)>=0})
+    onTriggered:Object.keys(root.providerSetup).forEach(function(k){var s=root.providerSetup[k];var p=s.state&&s.state.phase;if(!s.busy&&["starting","waiting","verifying","downloading","extracting"].indexOf(p)>=0)root.providerSetupAction(s.environment,k,{action:s.kind==="install"?"install-state":"auth-state"})})}
   // Storage cleanup: last report and a manual run, on the selected environment.
   property var storageCleanup:({busy:false,error:"",report:null,requestId:""})
   function storageCleanupAction(action){if(storageCleanup.busy&&action==="run")return;var id=uuid();storageCleanup=Object.assign({},storageCleanup,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,running:action==="run"});send({op:"storage-cleanup",environment:selectedEnvironment||"local",action:action,requestId:id})}
@@ -1197,6 +1203,7 @@ Singleton {
     }
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
+    if(data.op==="provider-setup"){var key=Object.keys(providerSetup).find(function(k){return providerSetup[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},providerSetup),r=data.result||{};all[key]=Object.assign({},all[key],{busy:false,error:data.error||"",kind:r.kind||all[key].kind,state:data.error?all[key].state:r.state});providerSetup=all;var phase=r.state&&r.state.phase;if(phase==="succeeded"&&all[key].environment)requestProviderInstances(all[key].environment,"read");return}
     if(data.op==="mcp-app"){var call=appCalls[data.requestId];if(!call)return;var rest=Object.assign({},appCalls);delete rest[data.requestId];appCalls=rest;appReply(call.session,call.rpcId,data.result,data.error);return}
     if(data.op==="storage-cleanup"){if(data.requestId!==storageCleanup.requestId)return;storageCleanup=Object.assign({},storageCleanup,{busy:false,running:false,error:data.error||"",report:data.error?storageCleanup.report:(data.result||{}).report||null});return}
     if(data.op==="scheduled-tasks"){if(data.requestId!==scheduledTasks.requestId)return;scheduledTasks=Object.assign({},scheduledTasks,{busy:false,error:data.error||"",tasks:data.error?scheduledTasks.tasks:(data.result.tasks||[])});return}
