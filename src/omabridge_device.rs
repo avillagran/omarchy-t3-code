@@ -15,6 +15,11 @@ fn candidates()->Vec<PathBuf>{
  if let Some(dir)=std::env::current_exe().ok().and_then(|e|e.parent().map(Path::to_path_buf)){out.push(dir.join("omabridge"))}
  out
 }
+/// The first OmaBridge binary in that order, for commands other than `manage`.
+pub fn binary()->Option<PathBuf>{
+ let mut seen=std::collections::HashSet::new();
+ candidates().into_iter().filter(|p|executable(p)).filter_map(|p|fs::canonicalize(&p).ok()).find(|p|seen.insert(p.clone()))
+}
 fn executable(p:&Path)->bool{fs::metadata(p).is_ok_and(|m|m.is_file()&&m.permissions().mode()&0o111!=0)}
 /// One request; the answer is OmaBridge's own JSON (the snapshot, or
 /// `{"error":code}`) and its exit status. Adds `omabridge_missing` (no binary)

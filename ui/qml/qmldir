@@ -127,5 +127,6 @@ T3ScheduledTasks 1.0 T3ScheduledTasks.qml
 T3AgentSessions 1.0 T3AgentSessions.qml
 T3ProcessDiagnostics 1.0 T3ProcessDiagnostics.qml
 T3OmaBridgeManage 1.0 T3OmaBridgeManage.qml
+T3OmaBridgeInstall 1.0 T3OmaBridgeInstall.qml
 T3OmaBridgeIndicator 1.0 T3OmaBridgeIndicator.qml
 T3OmaBridgeQuick 1.0 T3OmaBridgeQuick.qml

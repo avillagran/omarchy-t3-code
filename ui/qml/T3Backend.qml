@@ -150,6 +150,33 @@ Singleton {
     var id=uuid(),pending=Object.assign({},omabridgeManagePending);pending[id]=true;omabridgeManagePending=pending
     send({op:"omabridge-manage",request:request,requestId:id});return id
   }
+  // The prompt for setting up another device with an agent; built by the client
+  // from the pinned OmaBridge release, answered as omabridgeInstallPromptReady.
+  signal omabridgeInstallPromptReady(string requestId,string prompt,string error)
+  property string omabridgeInstallRequest:""
+  function requestOmaBridgeInstallPrompt(values){
+    if(!worker.running)return ""
+    var id=uuid();omabridgeInstallRequest=id
+    send(Object.assign({op:"omabridge-install-prompt",requestId:id},values || {}));return id
+  }
+  // A new chat with a prompt typed in but not sent, for the user to review.
+  signal promptedChatStarted()
+  property var promptPrefill:null
+  function startPromptedChat(environment,projectId,text){
+    if(managementBusy || managementRequest || !String(text || "").trim())return false
+    promptPrefill={environment:environment,projectId:projectId,text:String(text),key:""}
+    openProject(environment,projectId,true);promptedChatStarted();return true
+  }
+  function applyPromptPrefill(){
+    var p=promptPrefill;if(!p || !p.key || p.key!==selectedKey || draft.loading)return
+    promptPrefill=null;patchDraft(p.key,{text:p.text})
+  }
+  onProjectOpened:function(environment,projectId,error){
+    var p=promptPrefill;if(!p || p.key || p.environment!==environment || p.projectId!==projectId)return
+    if(error){promptPrefill=null;return}
+    promptPrefill=Object.assign({},p,{key:selectedKey});applyPromptPrefill()
+  }
+  onDraftChanged:applyPromptPrefill()
   // Reading and checking public addresses asks other devices and can take a
   // while, so it has its own channel and never blocks approvals or pairing.
   function requestOmaBridgeGateways(action,values){
@@ -1423,6 +1450,10 @@ Singleton {
       connectionNetwork=Object.assign({},connectionNetwork,{busy:false,error:data.error || "",data:data.result || connectionNetwork.data})
       if(action==="apply"){refreshBackendStatus();recoverLocalBackend();refresh()}
       connectionNetworkFinished(action,data.error || "");return
+    }
+    if(data.op==="omabridge-install-prompt"){
+      if(data.requestId!==omabridgeInstallRequest)return
+      omabridgeInstallRequest="";omabridgeInstallPromptReady(data.requestId,data.result?data.result.prompt || "":"",data.error || "");return
     }
     if(data.op==="omabridge-manage"){
       if(!omabridgeManagePending[data.requestId])return

@@ -15,12 +15,9 @@ pub(crate) fn default_state_dir()->PathBuf{
 pub fn bundled_version()->&'static str{
  include_str!("../integrations/omabridge/release").lines().find_map(|l|l.strip_prefix("version=")).unwrap_or("")
 }
-/// The bundled `bin/omabridge` next to this client; never resolved from PATH.
-/// `OT3_OMABRIDGE_BIN` is an explicit override for tests and development.
-pub fn binary()->Option<PathBuf>{
- if let Some(raw)=std::env::var_os("OT3_OMABRIDGE_BIN"){let p=PathBuf::from(raw);return (p.is_absolute()&&p.is_file()).then_some(p)}
- std::env::current_exe().ok()?.parent().map(|d|d.join("omabridge")).filter(|p|p.is_file())
-}
+/// The same OmaBridge binary that manages this device (see `omabridge_device`),
+/// so routes and management always agree on features and state.
+pub fn binary()->Option<PathBuf>{crate::omabridge_device::binary()}
 fn bytes(path:&Path)->Result<Option<Vec<u8>>>{match fs::read(path){Ok(v)=>Ok(Some(v)),Err(e) if e.kind()==std::io::ErrorKind::NotFound=>Ok(None),Err(_)=>Err("omabridge_routes_read_failed".into())}}
 fn revision_of(raw:&Option<Vec<u8>>)->String{format!("{:x}",Sha256::digest(raw.as_deref().unwrap_or_default()))}
 pub fn valid_peer(id:&str)->bool{id.len()==64&&id.bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b))}

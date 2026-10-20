@@ -93,6 +93,11 @@ ColumnLayout {
     }
     T3Switch{objectName:"omabridgeIndicatorPreference";checked:(root.bridge.viewState || {}).omabridgeIndicator===true;Accessible.name:T3I18n.tr("Show OmaBridge in the bar");onToggled:root.bridge.rememberView({omabridgeIndicator:checked})}
    }
+   RowLayout{Layout.fillWidth:true;Layout.leftMargin:Style.space(14);Layout.rightMargin:Style.space(14)
+    Text{Layout.fillWidth:true;text:T3I18n.tr("Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+    T3PickerButton{objectName:"omabridgeInstallOpen";primary:false;text:T3I18n.tr("Install on another device with your AI…");onClicked:installDialog.begin()}
+   }
+   T3OmaBridgeInstall{id:installDialog;bridge:root.bridge}
    // The same OmaBridge page as the Omarchy Control Panel, on the same device.
    T3OmaBridgeManage{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge}
   }}

@@ -34,12 +34,12 @@ The installer (and every update, which reruns it) downloads the OmaBridge releas
 **Preferences → Connections → OmaBridge** has a global *Use OmaBridge for every connection* switch and, per SSH or pairing-link connection, a selector: *Automatic*, *Saved route only*, or a paired peer that currently grants the matching service. Each row shows whether the connection is live through OmaBridge and which peer carries it. Every change asks for confirmation. Settings are stored in `$XDG_CONFIG_HOME/omarchy-t3-code/omabridge-routes.json` (mode 0600, compare-and-swap on its revision); a missing file means automatic routing:
 
 ```json
-{"version":1,"default":"auto","stateDir":"/home/user/.local/share/omabridge","routes":{
+{"version":1,"default":"auto","routes":{
   "<pinnedEnvironmentId>":{"peer":"<64-hex endpoint id>","service":"ssh","mode":"prefer","relayUrl":null},
   "<directEnvironmentId>":{"mode":"off"}}}
 ```
 
-`stateDir` defaults to OmaBridge's `$XDG_DATA_HOME/omabridge`. ot3 creates an identity there only when you ask it to (see below). `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. ot3 only runs the bundled `bin/omabridge` next to the client (see below), never one from `PATH`; `OT3_OMABRIDGE_BIN` overrides it for development.
+`stateDir` (optional) defaults to OmaBridge's own `$XDG_DATA_HOME/omabridge`, the device's identity. `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. ot3 runs the same OmaBridge binary as the Control Panel: `OT3_OMABRIDGE_BIN`, `omabridge` on `PATH`, `~/.local/bin/omabridge`, then the copy bundled next to the client.
 
 Diagnostics: `omarchy-t3-client omabridge-read` prints the public snapshot (peer ids, names, granted services, routes). `omarchy-t3-client omabridge-status` also connects every environment and reports which ones OmaBridge carries (`active`) and any connection error. `connections-view` prints the credential-free catalog view.
 
@@ -51,7 +51,13 @@ The page covers this device's identity and name, publishing T3 Code and SSH, the
 
 Public gateways let T3 Code's own apps, which cannot run OmaBridge, reach this device: a managed device with a public IP opens an HTTPS address that leads only to this device's T3 Code, guarded by T3's own pairing. Open, check and close it from that device's management dialog. In Access, the pairing dialog for this device offers the running public addresses as endpoints, so the link and its QR carry that address.
 
-Per-connection routes (above) still use the identity in the routes file's `stateDir`, because OmaBridge forwards cannot yet share a running server's identity.
+Per-connection routes use the same device and binary. While this device is published, an OmaBridge with the `forward-through-server` feature (listed in `omabridge manage`'s `features`) opens each route's forward inside its running server, so the device's identity never connects twice. An older OmaBridge needs a separate identity for routes, set with `stateDir` in the routes file.
+
+## Installing on another device with your AI
+
+*Install on another device with your AI…* (in the same section) sets up another host and pairs it with this one, guided by an agent in a new chat. Choose the SSH host, what it should run (a headless server with T3 Code as a background service and OmaBridge, Omarchy with ot3, or T3 Code and OmaBridge on another desktop), whether this device may manage it, whether it may also reach this device's SSH, and the project for the chat (this device's scratch project by default).
+
+*Open chat* is the confirmation: OmaBridge writes a one-use invitation that expires in an hour (asking to manage the new device when chosen), then a new chat opens with the setup prompt typed in and nothing sent. The prompt pins the OmaBridge release and its hashes, uses `omabridge manage` on the new device, names the invitation by its path only (the agent copies it with `scp`, so it never enters the chat), and asks before sudo, firewall or port changes. You still approve the new device here.
 
 ## Bar indicator
 
@@ -62,6 +68,7 @@ Per-connection routes (above) still use the identity in the routes file's `state
 Other front ends manage this device by calling `omabridge manage` themselves, as the Omarchy Control Panel does. ot3 adds:
 
 - `omarchy-t3-client omabridge-manage`: one `omabridge manage` request on stdin (at most 64 KiB), answered as `{"output":<OmaBridge's JSON>,"status":<exit code>}`, with the same binary lookup as Preferences.
+- `omabridge-install-prompt` (a backend operation): `{host, profile, manage, invitation, device}` to that prompt.
 - `omarchy-t3-client omabridge-read`: the routing snapshot (`available`, `version`, `identity`, `peers`, `default`, `routes`, `active`, `revision`, `error`).
 - `omarchy-t3-client omabridge-action`: one routing request on stdin. `set`, `clear` and `default` change routes (with `revision` and `"confirmed":true`). `gateways-read` and `gateway-check` read this device's public addresses from every device it manages, for the Access pairing dialog; `gateway-open` and `gateway-close` (confirmed) open or close one. On failure it prints `{"error":"<code>"}` and exits 1.
 
