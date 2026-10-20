@@ -487,6 +487,9 @@ Singleton {
   // Usage page (server.getUsageSummary) for the selected environment.
   property var usage:({busy:false,error:"",data:null,requestId:""})
   function requestUsage(period){var id=uuid();usage=Object.assign({},usage,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,period:period});send({op:"usage-summary",environment:selectedEnvironment||"local",period:period,requestId:id})}
+  // Subagents working for the open thread; each can be stopped.
+  property var activeSubagents:[]
+  function stopSubagent(sub){if(!sub||!sub.runId||managementBusy)return;manage({action:"stop-subagent",environment:selectedEnvironment,thread:selectedThread,runId:sub.runId,subagentId:sub.id})}
   // Context window use of the open thread (T3 ContextWindowMeter).
   property var contextWindow:null
   // Fork state of the open thread: where it merges back and with which finished run.
@@ -1527,7 +1530,7 @@ Singleton {
   function selectThread(env, thread) {
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}
     if (selectedEnvironment === env && selectedThread === thread) { fetchMessages(); return }
-    clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;branchRefs=({});branchMismatch=({});branchCheckDelay.restart();documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
+    clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;activeSubagents=[];branchRefs=({});branchMismatch=({});branchCheckDelay.restart();documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
     selectedEnvironment = env; selectedThread = thread; selectedKey = env + "/" + thread
     var found = state.threads.find(function(t) { return t.key === root.selectedKey })
     selectedTitle = found ? (found.title || thread) : thread
@@ -1652,8 +1655,9 @@ Singleton {
       else if (event.type === "quotas") { quotaSnapshot=data;presentQuotas();quotaError = "" }
       else if (event.type === "messages" && data.serial === requestedSerial && panelVisible) {
         loadingMessages = false; messageError = data.result.error || ""
+        if(data.result.threadState){var subs=data.result.threadState.subagents||[];if(JSON.stringify(subs)!==JSON.stringify(activeSubagents))activeSubagents=subs}
         if(data.result.threadState){var ts=data.result.threadState;if(ts.mergeBackTargetThreadId!==selectedWorkflow.target||ts.mergeBackRunId!==selectedWorkflow.runId||selectedWorkflow.key!==selectedKey)selectedWorkflow={key:selectedKey,target:ts.mergeBackTargetThreadId||"",runId:ts.mergeBackRunId||""};var cw=ts.contextWindow||null;if(JSON.stringify(cw)!==JSON.stringify(contextWindow))contextWindow=cw}
-        if(data.result.threadState){var currentKey=selectedKey,current=state.threads.find(function(t){return t.key===currentKey}),delta=Object.assign({},data.result.threadState);delete delta.contextWindow;if(current && Object.keys(delta).some(function(k){return current[k]!==delta[k]})){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===currentKey?Object.assign({},t,delta):t})});snapshotUpdated()}}
+        if(data.result.threadState){var currentKey=selectedKey,current=state.threads.find(function(t){return t.key===currentKey}),delta=Object.assign({},data.result.threadState);delete delta.contextWindow;delete delta.subagents;if(current && Object.keys(delta).some(function(k){return current[k]!==delta[k]})){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===currentKey?Object.assign({},t,delta):t})});snapshotUpdated()}}
         messagesAboutToChange()
         recentTranscript = data.result.timeline || data.result.messages || []
         if(!historyExpanded&&!historyOperation.busy){historyCursor=data.result.historyCursor || "";hasEarlier=!!data.result.hasMoreHistory&&!!historyCursor}

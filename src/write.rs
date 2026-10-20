@@ -223,6 +223,12 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             thread=target.to_string();
             ("orchestration.dispatchCommand",json!({"type":"thread.merge_back","createdBy":"user","creationSource":"web","sourceThreadId":source,"targetThreadId":target,"sourcePoint":{"type":"run","runId":run}}))
         },
+        // Stop one subagent of a run (subagent.stop).
+        "stop-subagent" => {
+            thread=text(input,"thread").to_string();let run=text(input,"runId");let node=text(input,"subagentId");
+            if !valid_id(&thread)||!valid_id(run)||node.is_empty()||node.len()>512{return Err("invalid_id".into())}
+            ("orchestration.dispatchCommand",json!({"type":"subagent.stop","threadId":thread,"runId":run,"subagentId":node}))
+        },
         "thread-rename"|"regenerate-title"|"pin"|"unpin"|"mark-unread"|"auto-settle"|"archive"|"delete-thread" => {thread=text(input,"thread").to_string();("orchestration.dispatchCommand",protocol::sidebar::thread_action(input)?)},
         "project-rename" | "project-settings" | "project-remove" => ("projects.mutate",protocol::projects::command(input)?),
         "settle" | "unsettle" | "snooze" | "unsnooze" => {
