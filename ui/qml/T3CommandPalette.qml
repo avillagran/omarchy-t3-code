@@ -8,6 +8,10 @@ import qs.Commons
 Controls.Popup {
  id:root;objectName:"t3CommandPalette"
  property var groups:[]
+ // Results that arrive after typing (server-wide message search).
+ property var liveGroups:[]
+ signal searched(string query)
+ Timer{id:searchDelay;interval:250;onTriggered:root.searched(root.query)}
  readonly property string query:search.text.trim().toLocaleLowerCase()
  // Every query word must appear in the title or detail; earlier and title matches rank first.
  function score(item){
@@ -18,8 +22,9 @@ Controls.Popup {
  }
  readonly property var rows:{
   var out=[]
-  for(var g=0;g<groups.length;g++){
-   var group=groups[g],items=(group.items||[]).map(function(item){return {item:item,score:root.score(item)}}).filter(function(x){return x.score>0})
+  var all=groups.concat(liveGroups)
+  for(var g=0;g<all.length;g++){
+   var group=all[g],items=(group.items||[]).map(function(item){return {item:item,score:group.live?1:root.score(item)}}).filter(function(x){return x.score>0})
    if(query)items.sort(function(a,b){return b.score-a.score})
    items=items.slice(0,group.limit||(query?12:8))
    if(!items.length)continue
@@ -30,7 +35,7 @@ Controls.Popup {
  }
  readonly property var runnable:rows.filter(function(r){return !r.header})
  property int current:0
- onQueryChanged:current=0
+ onQueryChanged:{current=0;searchDelay.restart()}
  function show(){search.text="";current=0;open();search.forceActiveFocus()}
  function run(item){if(!item||item.enabled===false)return;close();Qt.callLater(function(){item.run()})}
  function move(step){if(!runnable.length)return;current=(current+step+runnable.length)%runnable.length;var index=rows.indexOf(runnable[current]);list.positionViewAtIndex(index,ListView.Contain)}

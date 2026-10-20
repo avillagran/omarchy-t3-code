@@ -777,7 +777,8 @@ Item {
       Shortcut { sequence:"Ctrl+Alt+Up";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Up");onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
       Shortcut { sequence:"Ctrl+Alt+Down";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Down");onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
       Shortcut { sequence:"F1";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
-      T3CommandPalette{id:commandPalette}
+      T3CommandPalette{id:commandPalette;onSearched:function(q){root.bridge.searchThreads(q)};onClosed:root.bridge.searchThreads("")
+        liveGroups:{var b=root.bridge,s=b.threadSearch;if(!s.query||s.query!==commandPalette.query.trim()&&commandPalette.query.trim().indexOf(s.query)!==0)return [];var seen={};var items=(s.matches||[]).filter(function(m){var k=m.environmentId+"/"+m.threadId;if(seen[k])return false;seen[k]=true;return true}).map(function(m){var t=(b.state.threads||[]).find(function(x){return x.id===m.threadId&&x.environmentId===m.environmentId});return {id:"match:"+m.environmentId+"/"+m.threadId,title:t?String(t.title||T3I18n.tr("Untitled thread")):T3I18n.tr("Untitled thread"),detail:String(m.snippet||"").replace(/\s+/g," ").trim(),icon:"search",run:function(){b.selectThread(m.environmentId,m.threadId);composerPanel.inputField.forceActiveFocus()}}});return items.length?[{label:"Messages",items:items,limit:12,live:true}]:[]}}
       Controls.Popup {
         id:imagePopup
         objectName:"t3ImagePopup"
