@@ -1182,6 +1182,8 @@
     "Labels": "Labels",
     "Search the ACP agent registry": "Search the ACP agent registry",
     "Search": "Search",
-    "Install and add": "Install and add"
+    "Install and add": "Install and add",
+    "Update to {version}": "Update to {version}",
+    "Updating…": "Updating…"
   }
 }

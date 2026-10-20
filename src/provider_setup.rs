@@ -56,6 +56,10 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         "cancel-login" => ("auth", rpc(e, "provider.auth.cancel", json!({"instanceId":instance,"flowId":op_id(input,"flowId")?}))?),
         "respond" => ("auth", rpc(e, "provider.auth.respond", json!({"instanceId":instance,"flowId":op_id(input,"flowId")?,"interactionId":op_id(input,"interactionId")?,"response":response(&input["response"])?}))?),
         "auth-state" => ("auth", first(e, "provider.auth.subscribe", id)?),
+        "update" => {
+            let driver = input["driver"].as_str().filter(|d| !d.is_empty() && d.len() <= 64).ok_or("invalid_provider_setup")?;
+            ("update", rpc(e, "server.updateProvider", json!({"provider":driver,"instanceId":instance}))?)
+        }
         _ => return Err("invalid_command".into()),
     };
     Ok(json!({"instanceId":instance,"kind":kind,"state":state}))

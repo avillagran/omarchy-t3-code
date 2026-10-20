@@ -1182,7 +1182,9 @@
     "Labels": "Labels",
     "Search the ACP agent registry": "Search the ACP agent registry",
     "Search": "Search",
-    "Install and add": "Install and add"
+    "Install and add": "Install and add",
+    "Update to {version}": "Update to {version}",
+    "Updating…": "Updating…"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2367,7 +2369,9 @@
     "Labels": "Etiquetas",
     "Search the ACP agent registry": "Buscar en el registro de agentes ACP",
     "Search": "Buscar",
-    "Install and add": "Instalar y agregar"
+    "Install and add": "Instalar y agregar",
+    "Update to {version}": "Actualizar a {version}",
+    "Updating…": "Actualizando…"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3552,7 +3556,9 @@
     "Labels": "Rótulos",
     "Search the ACP agent registry": "Pesquisar no registro de agentes ACP",
     "Search": "Pesquisar",
-    "Install and add": "Instalar e adicionar"
+    "Install and add": "Instalar e adicionar",
+    "Update to {version}": "Atualizar para {version}",
+    "Updating…": "Atualizando…"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4737,7 +4743,9 @@
     "Labels": "Libellés",
     "Search the ACP agent registry": "Rechercher dans le registre d’agents ACP",
     "Search": "Rechercher",
-    "Install and add": "Installer et ajouter"
+    "Install and add": "Installer et ajouter",
+    "Update to {version}": "Mettre à jour vers {version}",
+    "Updating…": "Mise à jour…"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5922,7 +5930,9 @@
     "Labels": "Labels",
     "Search the ACP agent registry": "ACP-Agentenregister durchsuchen",
     "Search": "Suchen",
-    "Install and add": "Installieren und hinzufügen"
+    "Install and add": "Installieren und hinzufügen",
+    "Update to {version}": "Auf {version} aktualisieren",
+    "Updating…": "Wird aktualisiert…"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7107,7 +7117,9 @@
     "Labels": "Etichette",
     "Search the ACP agent registry": "Cerca nel registro degli agenti ACP",
     "Search": "Cerca",
-    "Install and add": "Installa e aggiungi"
+    "Install and add": "Installa e aggiungi",
+    "Update to {version}": "Aggiorna a {version}",
+    "Updating…": "Aggiornamento…"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8292,7 +8304,9 @@
     "Labels": "Labels",
     "Search the ACP agent registry": "Zoeken in het ACP-agentregister",
     "Search": "Zoeken",
-    "Install and add": "Installeren en toevoegen"
+    "Install and add": "Installeren en toevoegen",
+    "Update to {version}": "Bijwerken naar {version}",
+    "Updating…": "Bijwerken…"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9477,7 +9491,9 @@
     "Labels": "Etykiety",
     "Search the ACP agent registry": "Szukaj w rejestrze agentów ACP",
     "Search": "Szukaj",
-    "Install and add": "Zainstaluj i dodaj"
+    "Install and add": "Zainstaluj i dodaj",
+    "Update to {version}": "Zaktualizuj do {version}",
+    "Updating…": "Aktualizowanie…"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10662,7 +10678,9 @@
     "Labels": "Метки",
     "Search the ACP agent registry": "Искать в реестре агентов ACP",
     "Search": "Найти",
-    "Install and add": "Установить и добавить"
+    "Install and add": "Установить и добавить",
+    "Update to {version}": "Обновить до {version}",
+    "Updating…": "Обновление…"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11847,7 +11865,9 @@
     "Labels": "Мітки",
     "Search the ACP agent registry": "Шукати в реєстрі агентів ACP",
     "Search": "Шукати",
-    "Install and add": "Встановити й додати"
+    "Install and add": "Встановити й додати",
+    "Update to {version}": "Оновити до {version}",
+    "Updating…": "Оновлення…"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13032,7 +13052,9 @@
     "Labels": "ラベル",
     "Search the ACP agent registry": "ACP エージェントレジストリを検索",
     "Search": "検索",
-    "Install and add": "インストールして追加"
+    "Install and add": "インストールして追加",
+    "Update to {version}": "{version} に更新",
+    "Updating…": "更新中…"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14217,7 +14239,9 @@
     "Labels": "레이블",
     "Search the ACP agent registry": "ACP 에이전트 레지스트리 검색",
     "Search": "검색",
-    "Install and add": "설치 후 추가"
+    "Install and add": "설치 후 추가",
+    "Update to {version}": "{version}(으)로 업데이트",
+    "Updating…": "업데이트 중…"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15402,7 +15426,9 @@
     "Labels": "标签",
     "Search the ACP agent registry": "搜索 ACP 智能体注册表",
     "Search": "搜索",
-    "Install and add": "安装并添加"
+    "Install and add": "安装并添加",
+    "Update to {version}": "更新到 {version}",
+    "Updating…": "正在更新…"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16587,7 +16613,9 @@
     "Labels": "التسميات",
     "Search the ACP agent registry": "ابحث في سجل وكلاء ACP",
     "Search": "ابحث",
-    "Install and add": "ثبّت وأضف"
+    "Install and add": "ثبّت وأضف",
+    "Update to {version}": "حدّث إلى {version}",
+    "Updating…": "جارٍ التحديث…"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17772,7 +17800,9 @@
     "Labels": "Etiketler",
     "Search the ACP agent registry": "ACP ajan kayıt defterinde ara",
     "Search": "Ara",
-    "Install and add": "Yükle ve ekle"
+    "Install and add": "Yükle ve ekle",
+    "Update to {version}": "{version} sürümüne güncelle",
+    "Updating…": "Güncelleniyor…"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18957,7 +18987,9 @@
     "Labels": "Etiketter",
     "Search the ACP agent registry": "Sök i ACP-agentregistret",
     "Search": "Sök",
-    "Install and add": "Installera och lägg till"
+    "Install and add": "Installera och lägg till",
+    "Update to {version}": "Uppdatera till {version}",
+    "Updating…": "Uppdaterar…"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20142,7 +20174,9 @@
     "Labels": "Etiketter",
     "Search the ACP agent registry": "Søg i ACP-agentregistret",
     "Search": "Søg",
-    "Install and add": "Installér og tilføj"
+    "Install and add": "Installér og tilføj",
+    "Update to {version}": "Opdatér til {version}",
+    "Updating…": "Opdaterer…"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21327,7 +21361,9 @@
     "Labels": "Etiketter",
     "Search the ACP agent registry": "Søk i ACP-agentregisteret",
     "Search": "Søk",
-    "Install and add": "Installer og legg til"
+    "Install and add": "Installer og legg til",
+    "Update to {version}": "Oppdater til {version}",
+    "Updating…": "Oppdaterer…"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22512,7 +22548,9 @@
     "Labels": "Tunnisteet",
     "Search the ACP agent registry": "Hae ACP-agenttirekisteristä",
     "Search": "Hae",
-    "Install and add": "Asenna ja lisää"
+    "Install and add": "Asenna ja lisää",
+    "Update to {version}": "Päivitä versioon {version}",
+    "Updating…": "Päivitetään…"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23697,6 +23735,8 @@
     "Labels": "Štítky",
     "Search the ACP agent registry": "Hledat v registru agentů ACP",
     "Search": "Hledat",
-    "Install and add": "Nainstalovat a přidat"
+    "Install and add": "Nainstalovat a přidat",
+    "Update to {version}": "Aktualizovat na {version}",
+    "Updating…": "Aktualizace…"
   }
 }
