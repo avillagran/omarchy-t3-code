@@ -120,3 +120,4 @@ T3BranchPicker 1.0 T3BranchPicker.qml
 T3CommandPalette 1.0 T3CommandPalette.qml
 T3ContextMeter 1.0 T3ContextMeter.qml
 T3SecretRequestCard 1.0 T3SecretRequestCard.qml
+T3UsagePage 1.0 T3UsagePage.qml

@@ -45,6 +45,7 @@ Item {
     add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Meta+B")
     add("copy-reference","Copy thread reference","copy",thread,function(){var badge=b.selectedInfo.pullRequestBadge || {};b.copyText((badge.current || {}).url || b.selectedThread)})
     add("add-project","Add project","folder",true,function(){sidebarActions.addProject()})
+    add("usage","Open usage","chart-no-axes-column",true,function(){usagePage.show()},"Ctrl+U")
     add("settings","Open settings","settings",true,function(){preferencesOpen=true})
     add("shortcuts","Keyboard shortcuts","keyboard",true,function(){keyHelp.open()},"F1")
     var threads=(b.state.threads||[]).filter(function(t){return t.key!==b.selectedKey}).slice().sort(function(x,y){return (y.updatedAt||0)-(x.updatedAt||0)}).map(function(t){return {id:"thread:"+t.key,title:String(t.title||T3I18n.tr("Untitled thread")),detail:String(t.project||""),icon:t.working?"circle-dot":"message-square",run:function(){b.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}})
@@ -215,7 +216,7 @@ Item {
   readonly property var lastUserMessage:(bridge.transcript || []).filter(function(m){return m.role==="user"}).slice(-1)[0] || null
   readonly property var nativeFocusItem:panelLayout.Window.activeFocusItem
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
-  readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true})
+  readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
   readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
@@ -244,7 +245,8 @@ Item {
     if(command==="modelPicker.toggle")return composerPanel.modelPickerAvailable
     if(command==="composer.mode")return composerPanel.permissionPickerAvailable
     if(command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort")return !composerPanel.locked&&composerPanel.descriptors.some(function(d){return /effort|thinking|reasoning/i.test(d.id+" "+d.label)})
-    if(command==="commandPalette.toggle")return true
+    if(command==="commandPalette.toggle"||command==="usage.open")return true
+    if(/^usage\.(cost|tokens|period\.(day|week|month|quarter))$/.test(command))return usagePage.opened
     if(command==="composer.branch")return !!bridge.selectedThread&&!!bridge.selectedInfo.projectId&&bridge.selectedInfo.projectIsScratch!==true&&!bridge.selectedInfo.working&&!composerPanel.locked
     if(command==="thread.undo")return bridge.canRewind===true&&!bridge.rewindPending&&!((bridge.rewindPreview || {}).busy)&&!!lastUserMessage&&lastUserMessage.canRewindMessage===true
     if(command==="thread.stop")return !!bridge.selectedInfo.activeRunId&&!bridge.draft.stopping&&!bridge.providerSubagent
@@ -259,6 +261,9 @@ Item {
   function triggerNativeShortcut(command){
     if(!nativeKeysActive||!supportsNativeShortcut(command))return
     if(command==="commandPalette.toggle")toggleCommandPalette()
+    else if(command==="usage.open"){if(usagePage.opened)usagePage.close();else usagePage.show()}
+    else if(command==="usage.cost"||command==="usage.tokens")usagePage.metric=command.slice(6)
+    else if(command.indexOf("usage.period.")===0)usagePage.setPeriod(command.slice(13))
     else if(command==="sidebar.toggle")toggleSidebar()
     else if(command==="chat.find")openFind()
     else if(command==="chat.new"||command==="chat.newLocal")sidebarActions.newThread(command==="chat.newLocal"?{type:"root"}:null)
@@ -777,6 +782,7 @@ Item {
       Shortcut { sequence:"Ctrl+Alt+Up";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Up");onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
       Shortcut { sequence:"Ctrl+Alt+Down";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Down");onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
       Shortcut { sequence:"F1";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
+      T3UsagePage{id:usagePage;bridge:root.bridge}
       T3CommandPalette{id:commandPalette;onSearched:function(q){root.bridge.searchThreads(q)};onClosed:root.bridge.searchThreads("")
         liveGroups:{var b=root.bridge,s=b.threadSearch;if(!s.query||s.query!==commandPalette.query.trim()&&commandPalette.query.trim().indexOf(s.query)!==0)return [];var seen={};var items=(s.matches||[]).filter(function(m){var k=m.environmentId+"/"+m.threadId;if(seen[k])return false;seen[k]=true;return true}).map(function(m){var t=(b.state.threads||[]).find(function(x){return x.id===m.threadId&&x.environmentId===m.environmentId});return {id:"match:"+m.environmentId+"/"+m.threadId,title:t?String(t.title||T3I18n.tr("Untitled thread")):T3I18n.tr("Untitled thread"),detail:String(m.snippet||"").replace(/\s+/g," ").trim(),icon:"search",run:function(){b.selectThread(m.environmentId,m.threadId);composerPanel.inputField.forceActiveFocus()}}});return items.length?[{label:"Messages",items:items,limit:12,live:true}]:[]}}
       Controls.Popup {
