@@ -1,0 +1,84 @@
+import QtQuick
+import QtTest
+import Quickshell
+import "UnderTest/ui/qml" as Test
+// The OmaBridge page ported from the Omarchy Control Panel, against a fake
+// `omabridge manage` answered through ot3's backend transport.
+ShellRoot {
+ id:root;property int phase:0;property int wait:0
+ readonly property string me:"4b4980a5435d5c3714e458c7c416035070c027fbef47e426c2077c32f677952d"
+ readonly property string vps:"9f1e3c1a4b5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7"
+ readonly property string guest:"b21d3e5f5c3ee737761cbbc2bc2a427715b430ac3e7ec391e0a20a7c42d9e888"
+ property var forced:null
+ function check(ok,msg){if(!ok){console.error("OMABRIDGE_MANAGE_QML_FAIL "+msg);Qt.exit(1)}}
+ function snapshot(){return {available:true,version:"0.1.0",identity:true,device:{id:me,name:"alpha"},
+  peers:[{id:vps,name:"vps",services:["t3"],remoteServices:[],public:["t3"],admin:false,managed:true},{id:guest,name:"charlie",services:["ssh"],remoteServices:["t3"],public:[],admin:false,managed:false}],
+  pending:[{id:guest,name:"charlie",services:["t3"],expires:1792390449}],awaiting:[],
+  published:{enabled:true,active:true,external:false,stale:false,services:["t3","ssh"],sshAvailable:true,t3Available:true},
+  relay:{mode:"public",url:null},relayHost:{enabled:false,url:null,running:false,error:null,suggested:null},gateways:[],gatewayZones:[],error:""}}
+ function reply(req){
+  if(forced){var f=forced;forced=null;return f}
+  var doc=snapshot()
+  if(req.action==="invite")doc.created={path:"/tmp/omabridge-invite.json",expires:1792390449,services:["t3"],manage:false,qrImage:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxIDEnLz4="}
+  if(req.action==="remote"){var r=snapshot();r.device={id:vps,name:"vps"};r.peers=[{id:me,name:"alpha",services:[],remoteServices:["t3"],public:[],admin:true,managed:false}];r.pending=[];r.gateways=[{peer:me,name:"alpha",service:"t3",url:"https://gw.example.net:55944/",running:true,error:""}];doc.remote=r}
+  if(req.action==="gateway-check")doc.gatewayCheck={reachable:true,sameEnvironment:true}
+  return {doc:doc,code:0}
+ }
+ QtObject{id:b
+  property var sent:[];property int seq:0;property string copied:""
+  signal omabridgeManageFinished(string requestId,string text,int exitCode)
+  function requestOmaBridgeManage(request){seq++;var id="r"+seq;sent=sent.concat([JSON.parse(JSON.stringify(request))]);var answer=root.reply(request);Qt.callLater(function(){b.omabridgeManageFinished(id,JSON.stringify(answer.doc),answer.code)});return id}
+  function copyText(value){copied=value}
+  function last(){return sent[sent.length-1]}
+ }
+ FloatingWindow{visible:true;implicitWidth:900;implicitHeight:1000
+  Flickable{anchors.fill:parent;contentHeight:view.implicitHeight
+   Test.T3OmaBridgeManage{id:view;width:760;x:20;bridge:b}
+  }
+ }
+ TestCase{id:keys;when:false}
+ function find(name){return keys.findChild(view,name)}
+ Timer{interval:200;repeat:true;running:true;onTriggered:{
+  if(view.busy)return
+  if(phase===0){
+   check(b.sent.length>=1&&b.sent[0].action==="read"&&b.sent[0].confirmed===undefined,"reads on load, unconfirmed");
+   check(view.pageState==="ready"&&find("omabridgeDeviceName").text==="alpha","this device shown");
+   check(view.pendingCount===1,"pending requests counted for the bar badge");
+   find("omabridgeApprove_"+root.guest).clicked();check(b.last().action==="read","approval waits for confirmation");phase++
+  }else if(phase===1){
+   check(find("omabridgeConfirmDialog").opened,"confirmation shown");find("omabridgeConfirm").clicked();
+   var p=b.last();check(p.action==="approve"&&p.peer===root.guest&&p.confirmed===true,"confirmed approval: "+JSON.stringify(p));phase++
+  }else if(phase===2){
+   check(!find("omabridgeConfirmDialog").opened,"confirmation closes after success");
+   find("omabridgeManage_"+root.vps).clicked();phase++
+  }else if(phase===3){
+   var p=b.last();check(p.action==="remote"&&p.peer===root.vps&&p.command.action==="read"&&p.confirmed===undefined,"managing a device reads it first, unconfirmed");
+   check(find("omabridgeRemoteDialog").opened&&!!view.remoteSnapshot&&view.remoteSnapshot.device.id===root.vps,"remote device shown");
+   check(view.dialogHeight>0,"an open dialog reports its height to small hosts");
+   find("omabridgeGatewayRecheck").clicked();phase++
+  }else if(phase===4){
+   var p=b.last();check(p.action==="gateway-check"&&p.url==="https://gw.example.net:55944/","this device's public address checked");
+   check(view.gatewayCheck&&view.gatewayCheck.sameEnvironment===true,"check result kept");
+   find("omabridgeRemoteClose").clicked();phase++
+  }else if(phase===5){
+   find("omabridgeInviteButton").clicked();phase++
+  }else if(phase===6){
+   find("omabridgeInviteCreate").clicked();phase++
+  }else if(phase===7){
+   var invite=b.sent.filter(function(r){return r.action==="invite"})[0];check(invite&&invite.confirmed===true&&JSON.stringify(invite.services)==='["t3"]',"confirmed invitation sharing T3");
+   check(find("omabridgeInviteQrImage").visible&&find("omabridgeInvitePath").text==="/tmp/omabridge-invite.json","invitation shown once");
+   check(b.last().action==="read","the secret is replaced by a fresh read right away");
+   view.forget();check(view.created===null,"closing forgets the invitation");
+   root.forced={doc:{error:"omabridge_peer_unreachable"},code:1};find("omabridgeUnpublishButton").clicked();phase++
+  }else if(phase===8){
+   find("omabridgeConfirm").clicked();phase++
+  }else if(phase===9){
+   check(b.last().action==="unpublish"&&b.last().confirmed===true,"confirmed unpublish");
+   check(view.errorCode==="omabridge_peer_unreachable"&&view.errorText(view.errorCode,true).indexOf("omabridge")!==0,"readable error: "+view.errorText(view.errorCode,true));
+   find("omabridgeConfirmCancel").clicked();root.forced={doc:{error:"omabridge_outdated"},code:1};view.refresh();phase++
+  }else if(phase===10){
+   check(view.pageState==="outdated"&&find("omabridgeStateTitle").visible,"an OmaBridge without manage says so");
+   console.log("OMABRIDGE_MANAGE_QML_PASS: unconfirmed reads, confirmed approve/invite/unpublish, managed device and its public address check, shown-once invitation, readable errors, outdated OmaBridge");Qt.quit()
+  }
+ }}
+}

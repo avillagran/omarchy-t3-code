@@ -5,19 +5,13 @@
 //! is reported unsupported with an OmaBridge release that predates it.
 //! Only ids, names, addresses and states leave this module, never keys.
 use crate::*;
-use crate::omabridge_route::{binary,valid_peer};
-use std::{io::Write,process::{Command,Stdio}};
-fn state_dir()->PathBuf{crate::omabridge_route::config().map(|c|c.state_dir()).unwrap_or_else(|_|crate::omabridge_route::default_state_dir())}
-/// One `omabridge manage` request on stdin. Its failures are `{"error":code}`
-/// on stdout; a binary without `manage` exits with a usage error instead.
+use crate::omabridge_route::valid_peer;
+/// The device's own OmaBridge, as the Control Panel and the OmaBridge section use it.
 fn manage(request:&Value,seconds:u32)->Result<Value>{
- let bin=binary().ok_or("omabridge_unavailable")?;
- let mut child=Command::new("timeout").arg(format!("{seconds}s")).arg(bin).arg("--state-dir").arg(state_dir()).arg("manage").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"omabridge_unavailable")?;
- let body=serde_json::to_vec(request).map_err(|_|"local_error")?;
- if let Some(mut stdin)=child.stdin.take(){let _=stdin.write_all(&body);}
- let out=child.wait_with_output().map_err(|_|"omabridge_unavailable")?;
- let doc:Value=match serde_json::from_slice(&out.stdout){Ok(doc)=>doc,Err(_)=>return Err(if out.status.code()==Some(124){"omabridge_peer_unreachable"}else{"omabridge_manage_unsupported"}.into())};
- match doc["error"].as_str(){Some(code) if !out.status.success()&&valid_code(code)=>Err(code.into()),_ if !out.status.success()=>Err("omabridge_command_failed".into()),_=>Ok(doc)}
+ let (doc,status)=crate::omabridge_device::manage(request,seconds);
+ if status==0{return Ok(doc)}
+ let code=doc["error"].as_str().filter(|c|valid_code(c)).unwrap_or("omabridge_command_failed");
+ Err(match code{"omabridge_outdated"=>"omabridge_manage_unsupported","omabridge_missing"=>"omabridge_unavailable","timeout"=>"omabridge_peer_unreachable",c=>c}.into())
 }
 fn valid_code(code:&str)->bool{!code.is_empty()&&code.len()<=64&&code.bytes().all(|b|b.is_ascii_lowercase()||b==b'_')}
 fn valid_host(host:&str)->bool{
@@ -99,7 +93,6 @@ fn check(input:&Value)->Result<Value>{
 pub fn execute(action:&str,input:&Value)->Result<Option<Value>>{
  if !matches!(action,"gateways-read"|"gateway-open"|"gateway-close"|"gateway-check"){return Ok(None)}
  if matches!(action,"gateway-open"|"gateway-close")&&input["confirmed"]!=true{return Err("confirmation_required".into())}
- if binary().is_none(){return Err("omabridge_unavailable".into())}
  let outcome=match action{
   "gateways-read"=>match read(){Ok(g)=>json!({"gateways":g}),Err(e) if e=="omabridge_manage_unsupported"=>json!({"gateways":{"supported":false}}),Err(e)=>return Err(e)},
   "gateway-check"=>json!({"gatewayCheck":check(input)?}),
