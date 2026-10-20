@@ -158,6 +158,10 @@ Singleton {
   property var prOperations:({})
   function requestPullRequests(action,values){var id=uuid(),all=Object.assign({},prOperations);all[action]={busy:true,requestId:id,error:"",data:null};prOperations=all;send(Object.assign({op:"pull-requests",environment:selectedEnvironment,action:action,requestId:id},values || {}))}
   function resetPullRequests(){prOperations=({})}
+  // Pull request writes (comment, review, merge, close...). The page refreshes what changed.
+  signal pullRequestWritten(var data)
+  function threadPullRequest(link,reference){if((prOperations.link||{}).busy||!selectedThread)return;var id=uuid(),all=Object.assign({},prOperations);all.link={busy:true,requestId:id,error:""};prOperations=all;send({op:"thread-pull-request",environment:selectedEnvironment,thread:selectedThread,link:link,reference:reference,requestId:id})}
+  function pullRequestWrite(environment,values){if((prOperations.write||{}).busy)return;var id=uuid(),all=Object.assign({},prOperations);all.write={busy:true,requestId:id,error:"",data:null,kind:values.kind};prOperations=all;send(Object.assign({op:"pull-request-action",environment:environment,requestId:id},values))}
   property var scrollPolicy:({touchpadNative:false,mouseNative:false})
   property var favoritePending:({})
   property string favoriteError:""
@@ -1155,6 +1159,8 @@ Singleton {
       if(result&&result.state==="complete")refresh()
       return
     }
+    if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
+    if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
     if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
     if(data.op==="thread-search"){if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
     if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}

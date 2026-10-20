@@ -307,6 +307,8 @@ pub fn execute(input:&Value) -> Result<Value> {
         "review-refs"=>crate::working_review::refs(&e,input),
         "branch-refs"=>crate::branch_picker::refs(&e,input),
         "secret-answer"=>secret_answer(&e,input),
+        "pull-request-action"=>crate::pull_request_actions::run(&e,input),
+        "thread-pull-request"=>crate::pull_request_actions::thread_link(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),
         "working-review"=>crate::working_review::execute(&e,input),
         "git-read"=>crate::git_operations::read(&e,input),

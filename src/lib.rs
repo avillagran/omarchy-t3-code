@@ -30,6 +30,7 @@ pub mod git_controls;
 pub mod branch_picker;
 pub mod latex;
 pub mod thread_search;
+pub mod pull_request_actions;
 pub mod git_operations;
 pub mod diff_review;
 pub mod working_review;
