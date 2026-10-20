@@ -12,6 +12,7 @@ import "../js/DocumentTheme.js" as DocumentTheme
 import "../js/SidebarModel.js" as Sidebar
 import "../js/NativeKeybindings.js" as NativeKeys
 import "../js/UsageLimits.js" as Usage
+import "../js/PinOrder.js" as PinOrder
 
 Singleton {
   id: root
@@ -481,6 +482,16 @@ Singleton {
   // Process diagnostics (server.getProcessDiagnostics / server.signalProcess).
   property var processDiagnostics:({busy:false,error:"",report:null,requestId:""})
   function processDiagnosticsAction(values){if(processDiagnostics.busy)return;var id=uuid();processDiagnostics=Object.assign({},processDiagnostics,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id});send(Object.assign({op:"process-diagnostics",environment:selectedEnvironment||"local",requestId:id},values))}
+  // Move a pinned thread up or down the pinned block (T3 planPinnedReorder keys).
+  function movePinned(thread,step){
+    var pinned=state.threads.filter(function(t){return t.pinned}).slice().sort(function(a,b){return String(a.pinOrderKey||"").localeCompare(String(b.pinOrderKey||""))||(a.pinnedAt||0)-(b.pinnedAt||0)||String(a.key).localeCompare(String(b.key))})
+    var keys=pinned.map(function(t){return t.key}),i=keys.indexOf(thread.key),j=i+step;if(i<0||j<0||j>=keys.length)return
+    keys.splice(i,1);keys.splice(j,0,thread.key)
+    var current={};pinned.forEach(function(t){current[t.key]=t.pinOrderKey||null})
+    var plan=PinOrder.plan(keys,current,thread.key);if(!plan.length)return
+    var byKey={};pinned.forEach(function(t){byKey[t.key]=t})
+    send({op:"pin-reorder",requestId:uuid(),assignments:plan.map(function(p){var t=byKey[p.id];return {environment:t.environmentId,thread:t.id,orderKey:p.orderKey}})})
+  }
   // Agent session import (agentSessions.*) on the selected environment.
   property var agentSessions:({busy:false,error:"",candidates:[],requestId:""})
   function agentSessionsAction(values){if(agentSessions.busy)return;var id=uuid();agentSessions=Object.assign({},agentSessions,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,action:values.action});send(Object.assign({op:"agent-sessions",environment:selectedEnvironment||"local",requestId:id},values))}
@@ -1215,6 +1226,7 @@ Singleton {
     }
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
+    if(data.op==="pin-reorder"){refresh();return}
     if(data.op==="process-diagnostics"){if(data.requestId!==processDiagnostics.requestId)return;processDiagnostics=Object.assign({},processDiagnostics,{busy:false,error:data.error||"",report:data.error?processDiagnostics.report:data.result});return}
     if(data.op==="agent-sessions"){if(data.requestId!==agentSessions.requestId)return;var r=data.result||{};var next=Object.assign({},agentSessions,{busy:false,error:data.error||""});if(!data.error&&agentSessions.action==="scan")next.candidates=r.candidates||[];if(!data.error&&agentSessions.action==="import"){next.last=r;refresh()}agentSessions=next;if(!data.error&&agentSessions.action==="import")agentSessionsAction({action:"scan"});return}
     if(data.op==="provider-setup"){var key=Object.keys(providerSetup).find(function(k){return providerSetup[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},providerSetup),r=data.result||{};all[key]=Object.assign({},all[key],{busy:false,error:data.error||"",kind:r.kind||all[key].kind,state:data.error?all[key].state:r.state});providerSetup=all;var phase=r.state&&r.state.phase;if(phase==="succeeded"&&all[key].environment)requestProviderInstances(all[key].environment,"read");return}

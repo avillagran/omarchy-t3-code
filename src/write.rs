@@ -259,6 +259,7 @@ pub fn execute(input:&Value) -> Result<Value> {
     if matches!(text(input,"op"),"browser-profiles-read"|"browser-profiles-action"){return crate::browser_profiles::execute(input)}
     if input["op"]=="licenses-read"{return crate::third_party_licenses::read()}
     if input["op"]=="thread-search"{return crate::thread_search::search(input)}
+    if input["op"]=="pin-reorder"{return pin_reorder(input)}
     // Generated pages (Mermaid diagrams) need no environment.
     if input["op"]=="document-open"&&input["attachment"]["generated"]=="mermaid"{return crate::documents::mermaid_page(input)}
     if input["op"]=="licenses-notice"{return crate::third_party_licenses::notice(input)}
@@ -375,4 +376,16 @@ fn secret_answer(e:&Environment,input:&Value)->Result<Value>{
     };
     rpc(e,"secrets.answerRequest",json!({"threadId":thread,"turnItemId":item,"answer":answer}))?;
     Ok(json!({"turnItemId":item}))
+}
+/// New pin order keys for pinned threads (thread.pin.reorder), on each thread's environment.
+fn pin_reorder(input:&Value)->Result<Value>{
+    let rows=input["assignments"].as_array().filter(|a|!a.is_empty()&&a.len()<=200).ok_or("invalid_command")?;
+    let envs=environments()?;
+    for a in rows{
+        let thread=text(a,"thread");let key=text(a,"orderKey");
+        if !valid_id(thread)||key.is_empty()||key.len()>64||!key.bytes().all(|b|b.is_ascii_lowercase()){return Err("invalid_command".into())}
+        let e=envs.iter().find(|e|e.id==text(a,"environment")).ok_or("unknown_environment")?;
+        rpc(e,"orchestration.dispatchCommand",json!({"type":"thread.pin.reorder","commandId":format!("omarchy-pin-{}",uuid::Uuid::new_v4()),"threadId":thread,"orderKey":key}))?;
+    }
+    Ok(json!({"count":rows.len()}))
 }

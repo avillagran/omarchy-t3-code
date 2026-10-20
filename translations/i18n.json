@@ -1173,7 +1173,9 @@
     "Interrupt": "Interrupt",
     "Kill": "Kill",
     "Click again to kill": "Click again to kill",
-    "Quote": "Quote"
+    "Quote": "Quote",
+    "Move up": "Move up",
+    "Move down": "Move down"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2349,7 +2351,9 @@
     "Interrupt": "Interrumpir",
     "Kill": "Forzar cierre",
     "Click again to kill": "Haz clic de nuevo para forzar el cierre",
-    "Quote": "Citar"
+    "Quote": "Citar",
+    "Move up": "Subir",
+    "Move down": "Bajar"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3525,7 +3529,9 @@
     "Interrupt": "Interromper",
     "Kill": "Forçar encerramento",
     "Click again to kill": "Clique novamente para forçar o encerramento",
-    "Quote": "Citar"
+    "Quote": "Citar",
+    "Move up": "Mover para cima",
+    "Move down": "Mover para baixo"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4701,7 +4707,9 @@
     "Interrupt": "Interrompre",
     "Kill": "Tuer",
     "Click again to kill": "Cliquez à nouveau pour tuer",
-    "Quote": "Citer"
+    "Quote": "Citer",
+    "Move up": "Monter",
+    "Move down": "Descendre"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5877,7 +5885,9 @@
     "Interrupt": "Unterbrechen",
     "Kill": "Beenden erzwingen",
     "Click again to kill": "Zum Erzwingen erneut klicken",
-    "Quote": "Zitieren"
+    "Quote": "Zitieren",
+    "Move up": "Nach oben",
+    "Move down": "Nach unten"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7053,7 +7063,9 @@
     "Interrupt": "Interrompi",
     "Kill": "Termina forzatamente",
     "Click again to kill": "Fai di nuovo clic per terminare",
-    "Quote": "Cita"
+    "Quote": "Cita",
+    "Move up": "Sposta su",
+    "Move down": "Sposta giù"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8229,7 +8241,9 @@
     "Interrupt": "Onderbreken",
     "Kill": "Geforceerd stoppen",
     "Click again to kill": "Klik nogmaals om te stoppen",
-    "Quote": "Citeren"
+    "Quote": "Citeren",
+    "Move up": "Omhoog",
+    "Move down": "Omlaag"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9405,7 +9419,9 @@
     "Interrupt": "Przerwij",
     "Kill": "Zabij",
     "Click again to kill": "Kliknij ponownie, aby zabić",
-    "Quote": "Cytuj"
+    "Quote": "Cytuj",
+    "Move up": "Przenieś w górę",
+    "Move down": "Przenieś w dół"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10581,7 +10597,9 @@
     "Interrupt": "Прервать",
     "Kill": "Завершить принудительно",
     "Click again to kill": "Нажмите ещё раз для завершения",
-    "Quote": "Цитировать"
+    "Quote": "Цитировать",
+    "Move up": "Переместить вверх",
+    "Move down": "Переместить вниз"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11757,7 +11775,9 @@
     "Interrupt": "Перервати",
     "Kill": "Завершити примусово",
     "Click again to kill": "Натисніть ще раз для завершення",
-    "Quote": "Цитувати"
+    "Quote": "Цитувати",
+    "Move up": "Перемістити вгору",
+    "Move down": "Перемістити вниз"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12933,7 +12953,9 @@
     "Interrupt": "中断",
     "Kill": "強制終了",
     "Click again to kill": "もう一度クリックで強制終了",
-    "Quote": "引用"
+    "Quote": "引用",
+    "Move up": "上へ移動",
+    "Move down": "下へ移動"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14109,7 +14131,9 @@
     "Interrupt": "중단",
     "Kill": "강제 종료",
     "Click again to kill": "다시 클릭하면 강제 종료",
-    "Quote": "인용"
+    "Quote": "인용",
+    "Move up": "위로 이동",
+    "Move down": "아래로 이동"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15285,7 +15309,9 @@
     "Interrupt": "中断",
     "Kill": "强制结束",
     "Click again to kill": "再次点击以强制结束",
-    "Quote": "引用"
+    "Quote": "引用",
+    "Move up": "上移",
+    "Move down": "下移"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16461,7 +16487,9 @@
     "Interrupt": "قاطع",
     "Kill": "أنهِ قسرًا",
     "Click again to kill": "انقر مجددًا للإنهاء القسري",
-    "Quote": "اقتبس"
+    "Quote": "اقتبس",
+    "Move up": "انقل لأعلى",
+    "Move down": "انقل لأسفل"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17637,7 +17665,9 @@
     "Interrupt": "Kes",
     "Kill": "Zorla sonlandır",
     "Click again to kill": "Sonlandırmak için tekrar tıklayın",
-    "Quote": "Alıntıla"
+    "Quote": "Alıntıla",
+    "Move up": "Yukarı taşı",
+    "Move down": "Aşağı taşı"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18813,7 +18843,9 @@
     "Interrupt": "Avbryt",
     "Kill": "Tvinga avslut",
     "Click again to kill": "Klicka igen för att avsluta",
-    "Quote": "Citera"
+    "Quote": "Citera",
+    "Move up": "Flytta upp",
+    "Move down": "Flytta ned"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19989,7 +20021,9 @@
     "Interrupt": "Afbryd",
     "Kill": "Tving afslutning",
     "Click again to kill": "Klik igen for at afslutte",
-    "Quote": "Citér"
+    "Quote": "Citér",
+    "Move up": "Flyt op",
+    "Move down": "Flyt ned"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21165,7 +21199,9 @@
     "Interrupt": "Avbryt",
     "Kill": "Tving avslutning",
     "Click again to kill": "Klikk igjen for å avslutte",
-    "Quote": "Siter"
+    "Quote": "Siter",
+    "Move up": "Flytt opp",
+    "Move down": "Flytt ned"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22341,7 +22377,9 @@
     "Interrupt": "Keskeytä",
     "Kill": "Pakota lopetus",
     "Click again to kill": "Napsauta uudelleen lopettaaksesi",
-    "Quote": "Lainaa"
+    "Quote": "Lainaa",
+    "Move up": "Siirrä ylös",
+    "Move down": "Siirrä alas"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23517,6 +23555,8 @@
     "Interrupt": "Přerušit",
     "Kill": "Násilně ukončit",
     "Click again to kill": "Klikněte znovu pro ukončení",
-    "Quote": "Citovat"
+    "Quote": "Citovat",
+    "Move up": "Posunout nahoru",
+    "Move down": "Posunout dolů"
   }
 }
