@@ -274,6 +274,7 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="connection-network"{return crate::connection_network::execute(input)}
     if input["op"]=="connection-omabridge"{return crate::omabridge_route::execute(input)}
     if input["op"]=="omabridge-manage"{return Ok(crate::omabridge_device::execute(input))}
+    if input["op"]=="omabridge-install-prompt"{return Ok(json!({"prompt":crate::omabridge_install::prompt(input)?}))}
     if input["op"]=="connections-manage"{return crate::connections::manage_connections(input)}
     if input["op"]=="window-layout" {return crate::window_layout::apply(input)}
     if input["op"]=="backend-control" {return crate::backend_service::control(text(input,"action"))}
