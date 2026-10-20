@@ -1043,6 +1043,18 @@
     "Actions": "Actions",
     "Recent threads": "Recent threads",
     "Integrations": "Integrations",
-    "Storage": "Storage"
+    "Storage": "Storage",
+    "Context window": "Context window",
+    "{used} of {max} tokens · {percent}%": "{used} of {max} tokens · {percent}%",
+    "{used} tokens": "{used} tokens",
+    "Total processed: {count}": "Total processed: {count}",
+    "Cost: ${cost}": "Cost: ${cost}",
+    "Compacts automatically when full.": "Compacts automatically when full.",
+    "Notifications": "Notifications",
+    "Thread notifications": "Thread notifications",
+    "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.": "How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.",
+    "Notifications only": "Notifications only",
+    "Notifications with sound": "Notifications with sound",
+    "Sound only": "Sound only"
   }
 }

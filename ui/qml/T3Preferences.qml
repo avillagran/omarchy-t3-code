@@ -152,6 +152,11 @@ Rectangle {
         Text{width:parent.width;visible:!!(root.bridge.clientSettings || {}).error;text:T3I18n.error((root.bridge.clientSettings || {}).error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
        }}
       }
+      T3PreferenceSection{visible:root.page==="general"&&(!root.query.trim()||root.matches("Notifications")||root.matches("Thread notifications"));Layout.fillWidth:true;title:"Notifications";icon:"bell"
+       body:Component{Column{width:parent.width
+        T3PreferenceField{width:parent.width;controlName:"preferenceThreadNotifications";field:({key:"threadNotifications",label:"Thread notifications",description:"How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.",kind:"choice",value:root.bridge.viewState.threadNotifications || "notifications",choices:[{id:"notifications",name:"Notifications only"},{id:"notifications-and-sound",name:"Notifications with sound"},{id:"sound",name:"Sound only"},{id:"off",name:"Off"}]});writable:true;onChanged:function(value){root.bridge.rememberView({threadNotifications:value})}}
+       }}
+      }
       T3PreferenceSection{visible:root.page==="general"&&(!root.query.trim()||root.matches("Screenshots")||root.matches("Screenshot button")||root.matches("Screenshot command"));Layout.fillWidth:true;title:"Screenshots";icon:"camera"
        body:Component{Column{width:parent.width
         T3PreferenceField{width:parent.width;controlName:"preferenceScreenshotButton";field:({key:"screenshotButton",label:"Screenshot button",description:"Show a button next to Attach that captures the screen and attaches the image.",kind:"bool",value:root.bridge.viewState.screenshotButton!==false});writable:true;onChanged:function(value){root.bridge.rememberView({screenshotButton:value})}}

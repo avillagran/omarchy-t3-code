@@ -34,3 +34,9 @@ T3-style action marks. The Lucide ISC notice applies.
 
 Preferences navigation uses the Lucide keyboard SVG from lucide-icons/lucide
 (retrieved 2026-10-16), with the same 1.75 stroke and ISC notice.
+
+# Sounds
+
+`sounds/notification-completion.mp3` and `sounds/notification-input.mp3` are copied
+unchanged from `apps/web/src/assets/` of pingdotgg/t3code, commit
+`fb990765a49414a5bfbdc73365455fc8b5fbe691`. License: T3-LICENSE (MIT).
