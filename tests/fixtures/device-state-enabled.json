@@ -1,0 +1,48 @@
+{
+  "agentAccessEnabled": false,
+  "bootingDevices": null,
+  "devices": [],
+  "hostStatus": "idle",
+  "hostStatusDetail": null,
+  "hostStatuses": {},
+  "hosts": [
+    {
+      "agentDeviceInstalled": false,
+      "hubInstalled": false,
+      "id": "local",
+      "kind": "local",
+      "label": "This machine",
+      "platforms": [
+        {
+          "available": false,
+          "platform": "ios",
+          "reason": "iOS Simulators need macOS with Xcode."
+        },
+        {
+          "available": false,
+          "platform": "android",
+          "reason": "Android SDK was not found. Install it with Android Studio or set ANDROID_HOME to your SDK directory."
+        }
+      ],
+      "tools": {
+        "agent": {
+          "installedVersions": [],
+          "requiredVersion": "0.21.25",
+          "runningVersion": null
+        },
+        "hub": {
+          "installedVersions": [],
+          "requiredVersion": "0.15.3",
+          "runningVersion": null
+        }
+      }
+    }
+  ],
+  "hubBasePath": "/api/device-hub",
+  "onboardingCompleted": true,
+  "revision": 27,
+  "sessions": [],
+  "supportsHostRetry": true,
+  "supportsToolInspection": true,
+  "supportsToolUpdate": true
+}

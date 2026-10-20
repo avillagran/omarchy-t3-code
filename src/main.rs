@@ -3,6 +3,7 @@ mod document_session;
 mod live;
 mod keybinding_watch;
 mod device_watch;
+mod device_screen;
 mod preview_watch;
 mod preview_command;
 mod prompt_stash;
@@ -223,6 +224,7 @@ fn watch(client: Client) -> Result<()> {
         let mut input_visible=false;
         let mut keybinding_watches=keybinding_watch::Control::default();
         let mut device_watches=device_watch::Control::default();
+        let mut device_screens=device_screen::Manager::default();
         let browser_observer=browser_manager.clone();
         let preview_watches=preview_watch::Control::with_observer(move|data|browser_observer.observe(data));
         let browser_actions=browser_manager.clone();
@@ -254,15 +256,16 @@ fn watch(client: Client) -> Result<()> {
                     if v["op"]=="document-open"&&!input_visible{emit("action",json!({"op":"document-open","requestId":v["requestId"],"error":"panel_hidden"}));continue}
                     document_manager.send(v);continue
                 }
-                if v["op"]=="select" {let key=format!("{}/{}",text(&v,"environment"),text(&v,"thread"));if key!=document_thread_key{document_manager.send(json!({"op":"document-close"}));preview_watches.clear();browser_manager.hide();document_thread_key=key;}}
+                if v["op"]=="select" {let key=format!("{}/{}",text(&v,"environment"),text(&v,"thread"));if key!=document_thread_key{document_manager.send(json!({"op":"document-close"}));preview_watches.clear();browser_manager.hide();device_screens.stop();document_thread_key=key;}}
                 if v["op"]=="clear-select" || (v["op"]=="visible" && v["value"]==false){document_manager.send(json!({"op":"document-close"}));}
                 if v["op"]=="clear-select"{image_generation.fetch_add(1,std::sync::atomic::Ordering::Relaxed);input_live.select(None);}
-                if v["op"]=="visible"{input_visible=v["value"]==true;if !input_visible{keybinding_watches.clear();device_watches.clear();preview_watches.clear();browser_manager.hide();}}
+                if v["op"]=="visible"{input_visible=v["value"]==true;if !input_visible{keybinding_watches.clear();device_watches.clear();device_screens.stop();preview_watches.clear();browser_manager.hide();}}
                 if matches!(text(&v,"op"),"browser-show"|"browser-hide"|"browser-input"|"browser-control"){browser_manager.request(v,input_visible);continue}
                 if v["op"]=="preview-action"{preview_commands.send(v,input_visible);continue}
                 if v["op"]=="preview-watch"{preview_watches.select(&v,input_visible);continue}
-                if v["op"]=="clear-select"{preview_watches.clear();browser_manager.hide();}
+                if v["op"]=="clear-select"{preview_watches.clear();browser_manager.hide();device_screens.stop();}
                 if v["op"]=="devices-watch"{device_watches.select(&v,input_visible);continue}
+                if matches!(text(&v,"op"),"device-screen-open"|"device-screen-input"|"device-screen-close"){device_screens.request(&v,input_visible);continue}
                 if v["op"]=="keybindings-watch"{keybinding_watches.select(&v,input_visible);continue}
                 if v["op"]=="select" || (v["op"]=="visible"&&v["value"]==false){image_generation.fetch_add(1,std::sync::atomic::Ordering::Relaxed);}
                 if v["op"]=="select"&&input_visible{input_live.select(Some((text(&v,"environment").into(),text(&v,"thread").into(),v["serial"].as_i64().unwrap_or(0))));}

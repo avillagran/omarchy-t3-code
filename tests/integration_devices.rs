@@ -605,3 +605,17 @@ fn slow_native_install_does_not_block_draft_durability_or_device_reads() {
     reader.join().unwrap();
     std::fs::remove_dir_all(root).unwrap();
 }
+
+/// Native T3 sends optional fields as null once device support is on
+/// (captured from a real server after enabling the hub).
+#[test]
+fn enabled_state_with_null_optional_fields_is_accepted() {
+    let raw: Value = serde_json::from_str(&std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/device-state-enabled.json")).unwrap()).unwrap();
+    assert!(raw["hostStatusDetail"].is_null() && raw["bootingDevices"].is_null());
+    let state = devices::present_state(&raw).unwrap();
+    assert_eq!(state["hubBasePath"], "/api/device-hub");
+    assert!(state.get("hostStatusDetail").is_none() && state.get("bootingDevices").is_none());
+    let mut host = raw["hosts"][0].clone();
+    host["toolInspectionError"] = Value::Null;
+    assert!(devices::present_host(&host).unwrap().get("toolInspectionError").is_none());
+}

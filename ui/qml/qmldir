@@ -114,3 +114,5 @@ T3RowFlight 1.0 T3RowFlight.qml
 T3FpsMeter 1.0 T3FpsMeter.qml
 T3BarIndicator 1.0 T3BarIndicator.qml
 T3RenderPanel 1.0 T3RenderPanel.qml
+T3SidePanel 1.0 T3SidePanel.qml
+T3DevicePanel 1.0 T3DevicePanel.qml

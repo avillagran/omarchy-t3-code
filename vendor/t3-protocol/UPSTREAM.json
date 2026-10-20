@@ -18,10 +18,10 @@
     "src/ffi_stream.rs": "4f9a4772740721b46f7f20006eb8381f8183bacda164af083d36b633af5f9052",
     "src/history.rs": "1f3fcd68eea3f3b317053bedd36fec1458359da70225931285f3fd2b07196266",
     "src/i18n.rs": "0cbb5b216b8dd94f6fbf8001871808fbb2e696f2822f0d482c8c46664729c1cb",
-    "src/lib.rs": "6ae5652036b4b62451946707873fd2b78b88529315a9fb32920d632bcd7aa71d",
+    "src/lib.rs": "caa23308be63886f8fc114c9cade94c47376a4cbadd34800dfe047751e85fcbd",
     "src/lifecycle.rs": "52b1a2581e9d80880e603d48f82f36e4bcb43b4ed3ecd3fa06bafabffdca2563",
     "src/models.rs": "cdeb2da96de219219920db96cafa126dbf8811dd5d4777ea034c91b91d95cd89",
-    "src/projection.rs": "d3c746c263726ce2aed41f4e9b8a007a12f53e10aec12b65e28cc51b76e16996",
+    "src/projection.rs": "28c7667ae764c7e1cd54b1e5f3642dcb3ced93bf1993b53a2ba68a1a99efac6d",
     "src/projects.rs": "ec4f71bcb5207969a8e2190bf0d8c51b341decf47d651a395991c04f069480f5",
     "src/pull_requests.rs": "81a8d5f45f348c06d033470c8d79bcb34a5f81434706e89bfd2a00d53662286b",
     "src/questions.rs": "47f6dfc72bfadfbb0b0f2e27cf144cbbc1e6f910506d92797df3db0e049bdee5",
@@ -36,6 +36,8 @@
     "src/lib.rs declares mod long_rpc and applies a 64 MiB cap only to protocol GET thread bounded snapshots; generic HTTP/RPC stays at 8 MiB",
     "src/long_rpc.rs adds rpc_with_timeout over the existing private authenticated websocket factory",
     "src/stream.rs uses the 64 MiB websocket cap only for orchestration.subscribeThread with acceptBoundedSnapshot=true; authentication and other streams unchanged",
-    "src/lib.rs adds media_image using the same signed same-origin image grant reader as attachment_image, with exact thread/path scope and existing 10 MiB bound"
+    "src/lib.rs adds media_image using the same signed same-origin image grant reader as attachment_image, with exact thread/path scope and existing 10 MiB bound",
+    "src/projection.rs keeps the htmlRender reference (attachment id and title) of html_render turn items when the live mirror drops tool outputs, so renders that arrive while a chat is open still reach the timeline",
+    "src/lib.rs declares pub mod device_hub; src/device_hub.rs builds only the native device hub proxy paths (MJPEG, screenshot, input sockets) with a session wsTicket and hostId, splits MJPEG/JPEG streams, parses Android SEMU packets and encodes panel input for serve-sim and serve-emu"
   ]
 }
