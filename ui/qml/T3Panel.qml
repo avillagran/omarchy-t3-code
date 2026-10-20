@@ -1488,7 +1488,7 @@ Item {
                       id:messageText;objectName:"chatMessageText"
                       HoverHandler{objectName:"chatLinkCursor";cursorShape:messageText.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
                       LayoutMirroring.enabled:false
-                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context" && modelData.role !== "plan"
+                      visible: modelData.role !== "activity" && modelData.role !== "changes" && modelData.role !== "context" && modelData.role !== "plan" && modelData.role !== "secret"
                       width: parent.width
                       text: message.userMessage ? modelData.text || "" : root.renderMessage(modelData,width)
                       textFormat: message.userMessage || !modelData.rendered ? TextEdit.PlainText : TextEdit.RichText; readOnly: true; selectByMouse: true
@@ -1574,6 +1574,10 @@ Item {
                     // Each row builds only the card for its own role. Hidden cards
                     // in every message made each row ~3x slower to create, and
                     // their on-screen bindings re-ran on every scroll frame.
+                    Loader{
+                      width:Math.min(parent.width,Style.space(560));active:message.modelData.role==="secret";visible:active
+                      sourceComponent:T3SecretRequestCard{bridge:root.bridge;request:message.modelData.secret || ({})}
+                    }
                     Loader{
                       width:parent.width;active:message.modelData.role==="context";visible:active
                       sourceComponent:T3ContextDivider{width:parent.width;boundary:message.modelData.context || {};catalog:root.bridge.catalog;active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}

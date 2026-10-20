@@ -1059,7 +1059,13 @@
     "Math rendering": "Math rendering",
     "Messages": "Messages",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Waiting for an answer in the original thread",
+    "Saved securely and kept private": "Saved securely and kept private",
+    "Declined": "Declined",
+    "Request ended": "Request ended",
+    "Paste the secret": "Paste the secret",
+    "Stored securely, never shown to the agent": "Stored securely, never shown to the agent"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2121,7 +2127,13 @@
     "Math rendering": "Renderizado de fórmulas",
     "Messages": "Mensajes",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Muestra fórmulas LaTeX, como $x^2$ o \\[x^2\\], en los mensajes y las vistas previas de Markdown. El editor conserva el código TeX editable.",
-    "Diagram": "Diagrama"
+    "Diagram": "Diagrama",
+    "Waiting for an answer in the original thread": "Esperando respuesta en el hilo original",
+    "Saved securely and kept private": "Guardado de forma segura y privada",
+    "Declined": "Rechazado",
+    "Request ended": "Solicitud finalizada",
+    "Paste the secret": "Pega el secreto",
+    "Stored securely, never shown to the agent": "Se guarda de forma segura y nunca se muestra al agente"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3183,7 +3195,13 @@
     "Math rendering": "Renderização de fórmulas",
     "Messages": "Mensagens",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Exibe fórmulas LaTeX, como $x^2$ ou \\[x^2\\], nas mensagens e prévias de Markdown. O editor mantém o código TeX editável.",
-    "Diagram": "Diagrama"
+    "Diagram": "Diagrama",
+    "Waiting for an answer in the original thread": "Aguardando resposta na conversa original",
+    "Saved securely and kept private": "Salvo com segurança e mantido privado",
+    "Declined": "Recusado",
+    "Request ended": "Solicitação encerrada",
+    "Paste the secret": "Cole o segredo",
+    "Stored securely, never shown to the agent": "Armazenado com segurança, nunca mostrado ao agente"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4245,7 +4263,13 @@
     "Math rendering": "Rendu des formules",
     "Messages": "Messages",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Met en forme les formules LaTeX, comme $x^2$ ou \\[x^2\\], dans les messages et les aperçus Markdown. L’éditeur garde la source TeX modifiable.",
-    "Diagram": "Diagramme"
+    "Diagram": "Diagramme",
+    "Waiting for an answer in the original thread": "En attente d’une réponse dans le fil d’origine",
+    "Saved securely and kept private": "Enregistré en sécurité et gardé privé",
+    "Declined": "Refusé",
+    "Request ended": "Demande terminée",
+    "Paste the secret": "Collez le secret",
+    "Stored securely, never shown to the agent": "Stocké en sécurité, jamais montré à l’agent"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5307,7 +5331,13 @@
     "Math rendering": "Formeldarstellung",
     "Messages": "Nachrichten",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Setzt LaTeX-Formeln wie $x^2$ oder \\[x^2\\] in Nachrichten und Markdown-Vorschauen. Im Editor bleibt der TeX-Quelltext bearbeitbar.",
-    "Diagram": "Diagramm"
+    "Diagram": "Diagramm",
+    "Waiting for an answer in the original thread": "Wartet auf eine Antwort im ursprünglichen Thread",
+    "Saved securely and kept private": "Sicher gespeichert und privat gehalten",
+    "Declined": "Abgelehnt",
+    "Request ended": "Anfrage beendet",
+    "Paste the secret": "Geheimnis einfügen",
+    "Stored securely, never shown to the agent": "Sicher gespeichert, nie dem Agenten gezeigt"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6369,7 +6399,13 @@
     "Math rendering": "Rendering delle formule",
     "Messages": "Messaggi",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Impagina le formule LaTeX, come $x^2$ o \\[x^2\\], nei messaggi e nelle anteprime Markdown. L’editor mantiene modificabile il sorgente TeX.",
-    "Diagram": "Diagramma"
+    "Diagram": "Diagramma",
+    "Waiting for an answer in the original thread": "In attesa di risposta nel thread originale",
+    "Saved securely and kept private": "Salvato in modo sicuro e privato",
+    "Declined": "Rifiutato",
+    "Request ended": "Richiesta terminata",
+    "Paste the secret": "Incolla il segreto",
+    "Stored securely, never shown to the agent": "Conservato in modo sicuro, mai mostrato all’agente"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7431,7 +7467,13 @@
     "Math rendering": "Formuleweergave",
     "Messages": "Berichten",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Toont LaTeX-formules, zoals $x^2$ of \\[x^2\\], in berichten en Markdown-voorbeelden. De editor houdt de TeX-bron bewerkbaar.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Wacht op een antwoord in de oorspronkelijke thread",
+    "Saved securely and kept private": "Veilig opgeslagen en privé gehouden",
+    "Declined": "Geweigerd",
+    "Request ended": "Verzoek beëindigd",
+    "Paste the secret": "Plak het geheim",
+    "Stored securely, never shown to the agent": "Veilig opgeslagen, nooit aan de agent getoond"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8493,7 +8535,13 @@
     "Math rendering": "Renderowanie wzorów",
     "Messages": "Wiadomości",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Wyświetla wzory LaTeX, takie jak $x^2$ lub \\[x^2\\], w wiadomościach i podglądach Markdown. Edytor zachowuje edytowalny kod TeX.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Czeka na odpowiedź w pierwotnym wątku",
+    "Saved securely and kept private": "Zapisano bezpiecznie i prywatnie",
+    "Declined": "Odrzucono",
+    "Request ended": "Prośba zakończona",
+    "Paste the secret": "Wklej sekret",
+    "Stored securely, never shown to the agent": "Przechowywane bezpiecznie, nigdy nie pokazywane agentowi"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9555,7 +9603,13 @@
     "Math rendering": "Отображение формул",
     "Messages": "Сообщения",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Отображает формулы LaTeX, например $x^2$ или \\[x^2\\], в сообщениях и превью Markdown. В редакторе остаётся редактируемый исходный TeX.",
-    "Diagram": "Диаграмма"
+    "Diagram": "Диаграмма",
+    "Waiting for an answer in the original thread": "Ожидает ответа в исходном треде",
+    "Saved securely and kept private": "Сохранено надёжно и конфиденциально",
+    "Declined": "Отклонено",
+    "Request ended": "Запрос завершён",
+    "Paste the secret": "Вставьте секрет",
+    "Stored securely, never shown to the agent": "Хранится надёжно и никогда не показывается агенту"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10617,7 +10671,13 @@
     "Math rendering": "Відображення формул",
     "Messages": "Повідомлення",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Відображає формули LaTeX, наприклад $x^2$ або \\[x^2\\], у повідомленнях і переглядах Markdown. У редакторі лишається редагований код TeX.",
-    "Diagram": "Діаграма"
+    "Diagram": "Діаграма",
+    "Waiting for an answer in the original thread": "Очікує відповіді в початковому треді",
+    "Saved securely and kept private": "Збережено надійно й конфіденційно",
+    "Declined": "Відхилено",
+    "Request ended": "Запит завершено",
+    "Paste the secret": "Вставте секрет",
+    "Stored securely, never shown to the agent": "Зберігається надійно й ніколи не показується агенту"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11679,7 +11739,13 @@
     "Math rendering": "数式の表示",
     "Messages": "メッセージ",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "メッセージと Markdown プレビューで $x^2$ や \\[x^2\\] などの LaTeX 数式を表示します。エディターでは TeX ソースのまま編集できます。",
-    "Diagram": "図"
+    "Diagram": "図",
+    "Waiting for an answer in the original thread": "元のスレッドで回答を待っています",
+    "Saved securely and kept private": "安全に保存され、非公開です",
+    "Declined": "辞退しました",
+    "Request ended": "リクエストは終了しました",
+    "Paste the secret": "シークレットを貼り付け",
+    "Stored securely, never shown to the agent": "安全に保存され、エージェントには表示されません"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12741,7 +12807,13 @@
     "Math rendering": "수식 렌더링",
     "Messages": "메시지",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "메시지와 Markdown 미리보기에서 $x^2$ 또는 \\[x^2\\] 같은 LaTeX 수식을 표시합니다. 편집기에서는 TeX 소스를 계속 편집할 수 있습니다.",
-    "Diagram": "다이어그램"
+    "Diagram": "다이어그램",
+    "Waiting for an answer in the original thread": "원래 스레드에서 답변을 기다리는 중",
+    "Saved securely and kept private": "안전하게 저장되었으며 비공개입니다",
+    "Declined": "거절됨",
+    "Request ended": "요청 종료됨",
+    "Paste the secret": "비밀 값을 붙여 넣으세요",
+    "Stored securely, never shown to the agent": "안전하게 저장되며 에이전트에게 표시되지 않습니다"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13803,7 +13875,13 @@
     "Math rendering": "数学公式渲染",
     "Messages": "消息",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "在消息和 Markdown 预览中排版 LaTeX 公式，例如 $x^2$ 或 \\[x^2\\]。编辑器中仍保留可编辑的 TeX 源码。",
-    "Diagram": "图表"
+    "Diagram": "图表",
+    "Waiting for an answer in the original thread": "正在原线程中等待回复",
+    "Saved securely and kept private": "已安全保存并保持私密",
+    "Declined": "已拒绝",
+    "Request ended": "请求已结束",
+    "Paste the secret": "粘贴密钥",
+    "Stored securely, never shown to the agent": "安全存储，绝不会显示给智能体"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14865,7 +14943,13 @@
     "Math rendering": "عرض الصيغ الرياضية",
     "Messages": "الرسائل",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "يعرض صيغ LaTeX مثل $x^2$ أو \\[x^2\\] في الرسائل ومعاينات Markdown. يبقى مصدر TeX قابلًا للتحرير في المحرر.",
-    "Diagram": "مخطط"
+    "Diagram": "مخطط",
+    "Waiting for an answer in the original thread": "بانتظار رد في المحادثة الأصلية",
+    "Saved securely and kept private": "حُفظ بأمان ويبقى خاصًا",
+    "Declined": "مرفوض",
+    "Request ended": "انتهى الطلب",
+    "Paste the secret": "الصق السر",
+    "Stored securely, never shown to the agent": "يُخزَّن بأمان ولا يُعرض على الوكيل أبدًا"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15927,7 +16011,13 @@
     "Math rendering": "Formül görüntüleme",
     "Messages": "Mesajlar",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Mesajlarda ve Markdown önizlemelerinde $x^2$ veya \\[x^2\\] gibi LaTeX formüllerini dizer. Düzenleyicide TeX kaynağı düzenlenebilir kalır.",
-    "Diagram": "Diyagram"
+    "Diagram": "Diyagram",
+    "Waiting for an answer in the original thread": "Asıl konuda yanıt bekleniyor",
+    "Saved securely and kept private": "Güvenle kaydedildi ve gizli tutuluyor",
+    "Declined": "Reddedildi",
+    "Request ended": "İstek sona erdi",
+    "Paste the secret": "Gizli değeri yapıştırın",
+    "Stored securely, never shown to the agent": "Güvenle saklanır, ajana asla gösterilmez"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16989,7 +17079,13 @@
     "Math rendering": "Formelvisning",
     "Messages": "Meddelanden",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Visar LaTeX-formler som $x^2$ eller \\[x^2\\] i meddelanden och Markdown-förhandsvisningar. I redigeraren förblir TeX-källan redigerbar.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Väntar på svar i den ursprungliga tråden",
+    "Saved securely and kept private": "Sparat säkert och privat",
+    "Declined": "Avböjt",
+    "Request ended": "Begäran avslutad",
+    "Paste the secret": "Klistra in hemligheten",
+    "Stored securely, never shown to the agent": "Lagras säkert och visas aldrig för agenten"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18051,7 +18147,13 @@
     "Math rendering": "Formelvisning",
     "Messages": "Beskeder",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Viser LaTeX-formler som $x^2$ eller \\[x^2\\] i beskeder og Markdown-forhåndsvisninger. I editoren forbliver TeX-kilden redigerbar.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Venter på svar i den oprindelige tråd",
+    "Saved securely and kept private": "Gemt sikkert og privat",
+    "Declined": "Afvist",
+    "Request ended": "Anmodning afsluttet",
+    "Paste the secret": "Indsæt hemmeligheden",
+    "Stored securely, never shown to the agent": "Gemmes sikkert og vises aldrig for agenten"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19113,7 +19215,13 @@
     "Math rendering": "Formelvisning",
     "Messages": "Meldinger",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Viser LaTeX-formler som $x^2$ eller \\[x^2\\] i meldinger og Markdown-forhåndsvisninger. I redigeringsfeltet forblir TeX-kilden redigerbar.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Venter på svar i den opprinnelige tråden",
+    "Saved securely and kept private": "Lagret sikkert og privat",
+    "Declined": "Avslått",
+    "Request ended": "Forespørsel avsluttet",
+    "Paste the secret": "Lim inn hemmeligheten",
+    "Stored securely, never shown to the agent": "Lagres sikkert og vises aldri for agenten"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20175,7 +20283,13 @@
     "Math rendering": "Kaavojen näyttäminen",
     "Messages": "Viestit",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Näyttää LaTeX-kaavat, kuten $x^2$ tai \\[x^2\\], viesteissä ja Markdown-esikatseluissa. Editorissa TeX-lähde pysyy muokattavana.",
-    "Diagram": "Kaavio"
+    "Diagram": "Kaavio",
+    "Waiting for an answer in the original thread": "Odottaa vastausta alkuperäisessä ketjussa",
+    "Saved securely and kept private": "Tallennettu turvallisesti ja yksityisesti",
+    "Declined": "Hylätty",
+    "Request ended": "Pyyntö päättyi",
+    "Paste the secret": "Liitä salaisuus",
+    "Stored securely, never shown to the agent": "Tallennetaan turvallisesti, ei koskaan näytetä agentille"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21237,6 +21351,12 @@
     "Math rendering": "Zobrazení vzorců",
     "Messages": "Zprávy",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Sází vzorce LaTeX, například $x^2$ nebo \\[x^2\\], ve zprávách a náhledech Markdownu. V editoru zůstává zdroj TeX upravitelný.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Čeká na odpověď v původním vlákně",
+    "Saved securely and kept private": "Uloženo bezpečně a soukromě",
+    "Declined": "Odmítnuto",
+    "Request ended": "Žádost ukončena",
+    "Paste the secret": "Vložte tajný údaj",
+    "Stored securely, never shown to the agent": "Uloženo bezpečně, agentovi se nikdy nezobrazí"
   }
 }

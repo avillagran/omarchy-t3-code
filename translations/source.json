@@ -1059,6 +1059,12 @@
     "Math rendering": "Math rendering",
     "Messages": "Messages",
     "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.": "Typeset LaTeX math, such as $x^2$ or \\[x^2\\], in messages and Markdown previews. The composer keeps TeX source editable.",
-    "Diagram": "Diagram"
+    "Diagram": "Diagram",
+    "Waiting for an answer in the original thread": "Waiting for an answer in the original thread",
+    "Saved securely and kept private": "Saved securely and kept private",
+    "Declined": "Declined",
+    "Request ended": "Request ended",
+    "Paste the secret": "Paste the secret",
+    "Stored securely, never shown to the agent": "Stored securely, never shown to the agent"
   }
 }
