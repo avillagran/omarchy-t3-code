@@ -105,6 +105,8 @@ impl Server {
                         }
                         Value::Null
                     }
+                    // Background subscriptions the worker opens on its own.
+                    "orchestration.subscribeShell" | "subscribeServerConfig" => continue,
                     method => panic!("Unexpected RPC {method}"),
                 };
                 let _ = ws.send(tungstenite::Message::Text(

@@ -72,6 +72,10 @@ impl Server {
                 let mut ws = tungstenite::accept(stream).unwrap();
                 let request: Value =
                     serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
+                // Background subscriptions the worker opens on its own.
+                if matches!(request["tag"].as_str(), Some("orchestration.subscribeShell" | "subscribeServerConfig")) {
+                    continue;
+                }
                 assert_eq!(request["tag"], "server.getConfig");
                 let value = json!({"environment":{"capabilities":{"serverBrowser":false}},"settings":{"secret":"SERVER_PRIVATE"}});
                 let _ = ws.send(tungstenite::Message::Text(
