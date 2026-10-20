@@ -2,6 +2,7 @@ mod auto_compact;
 mod document_session;
 mod live;
 mod shell_watch;
+mod command_output;
 mod keybinding_watch;
 mod device_watch;
 mod device_screen;
@@ -260,6 +261,7 @@ fn watch(client: Client) -> Result<()> {
     let input_tx = tx.clone();
     let live=live::Control::new(client.clone());
     shell_watch::start(tx.clone());
+    let command_watch=command_output::Watch::default();
     let input_live=live.clone();
     let browser_manager=browser_sessions::Manager::start(browser_guest::Config::native()?,|id|environments()?.into_iter().find(|e|e.id==id).ok_or("unknown_environment".into()),connection_preferences::read_client_preferences,|data|emit("browser-surface",data));
     std::thread::spawn(move || {
@@ -307,6 +309,8 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="preview-watch"{preview_watches.select(&v,input_visible);continue}
                 if v["op"]=="clear-select"{preview_watches.clear();browser_manager.hide();device_screens.stop();}
                 if v["op"]=="devices-watch"{device_watches.select(&v,input_visible);continue}
+                if v["op"]=="command-output"{command_watch.start(text(&v,"environment").into(),text(&v,"thread").into(),text(&v,"itemId").into(),text(&v,"requestId").into());continue}
+                if v["op"]=="command-output-stop"||(v["op"]=="visible"&&v["value"]==false){command_watch.stop();if v["op"]=="command-output-stop"{continue}}
                 if matches!(text(&v,"op"),"device-screen-open"|"device-screen-input"|"device-screen-close"|"device-screen-action"|"device-screen-detail"){device_screens.request(&v,input_visible);continue}
                 if v["op"]=="keybindings-watch"{keybinding_watches.select(&v,input_visible);continue}
                 if v["op"]=="select" || (v["op"]=="visible"&&v["value"]==false){image_generation.fetch_add(1,std::sync::atomic::Ordering::Relaxed);}
