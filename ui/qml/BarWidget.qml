@@ -88,6 +88,9 @@ BarWidget {
     function showSettled(value: bool): void { root.open(); if (panelLoader.item) panelLoader.item.settledExpanded = value }
     function toggleSidebar(): void { root.open(); if (panelLoader.item) panelLoader.item.toggleSidebar() }
     function closePanel(): void { root.close() }
+    // Opens the side panel on a tab ("browser", "renders" or "devices");
+    // an empty tab closes it.
+    function sidePanel(tab: string): void { root.open(); var p=panelLoader.item;if(!p)return;if(["browser","renders","devices"].indexOf(tab)>=0)p.openSide(tab);else p.closeSide() }
     // Diagnostics: scroll the open conversation for a few seconds and report
     // the presented frame intervals (read the result with profileResult).
     function profileScroll(): void { if (panelLoader.item) panelLoader.item.profileScroll() }

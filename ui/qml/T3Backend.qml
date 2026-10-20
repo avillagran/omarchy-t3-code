@@ -869,6 +869,31 @@ Singleton {
   function deviceAction(action,input,environments){return Devices.dispatch(root,action,input,environments)}
   function acknowledgeDevice(environment){Devices.acknowledge(root,environment)}
   function refreshDevice(environment){Devices.read(root,environment)}
+  // Devices tab of the side panel: one device screen at a time. Frames are a
+  // separate property so 60 fps updates do not re-run session bindings.
+  property var deviceScreen:({requestId:"",stage:"idle",error:"",target:null,input:false,decoder:false,config:null})
+  property var deviceFrame:({url:"",revision:0,width:0,height:0})
+  function openDeviceScreen(environment,device,hubBasePath,open){
+    var id=uuid()
+    deviceScreen={requestId:id,stage:"starting",error:"",target:{environment:environment,hostId:device.hostId,deviceId:device.id,platform:device.platform,name:device.name || device.id},input:false,decoder:false,config:null}
+    deviceFrame={url:"",revision:0,width:0,height:0}
+    send({op:"device-screen-open",requestId:id,environment:environment,thread:selectedThread,hostId:device.hostId,deviceId:device.id,platform:device.platform,hubBasePath:hubBasePath || "",open:!!open})
+  }
+  function deviceScreenInput(event){if(deviceScreen.requestId&&["live","starting","connecting"].indexOf(deviceScreen.stage)>=0)send({op:"device-screen-input",requestId:deviceScreen.requestId,event:event})}
+  function closeDeviceScreen(endSession,shutdown){
+    if(!deviceScreen.requestId)return
+    send({op:"device-screen-close",requestId:deviceScreen.requestId,endSession:!!endSession,shutdown:!!shutdown})
+    if(endSession)deviceScreen=Object.assign({},deviceScreen,{stage:"closing"})
+    else{deviceScreen={requestId:"",stage:"idle",error:"",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0}}
+  }
+  function receiveDeviceSurface(d){
+    if(!d||d.requestId!==deviceScreen.requestId)return
+    if(d.kind==="frame"){deviceFrame={url:d.url,revision:d.revision,width:d.width,height:d.height};if(deviceScreen.stage!=="live")deviceScreen=Object.assign({},deviceScreen,{stage:"live"});return}
+    if(d.kind==="status")deviceScreen=Object.assign({},deviceScreen,{stage:d.stage,input:d.input===undefined?deviceScreen.input:!!d.input,decoder:d.decoder===undefined?deviceScreen.decoder:!!d.decoder})
+    else if(d.kind==="config")deviceScreen=Object.assign({},deviceScreen,{config:{width:d.width,height:d.height,orientation:d.orientation,inputUnavailable:!!d.inputUnavailable}})
+    else if(d.kind==="error")deviceScreen=Object.assign({},deviceScreen,{stage:"error",error:d.error || "device_stream_failed"})
+    else if(d.kind==="closed"||d.kind==="stopped"){deviceScreen={requestId:"",stage:"idle",error:d.error || "",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0}}
+  }
   property var licenseView:({busy:false,error:"",data:null,requestId:""})
   property var licenseNotice:({busy:false,error:"",manifestId:"",entryKey:"",noticeText:"",requestId:""})
   function requestLicenses(force){
@@ -1439,6 +1464,7 @@ Singleton {
       if(event.type==="browser-surface"){BrowserSurface.receive(root,data)}
       else if(event.type==="preview-state"){Previews.receive(root,data)}
       else if(event.type==="devices-state"){Devices.receiveState(root,data)}
+      else if(event.type==="device-surface"){receiveDeviceSurface(data)}
       else if(event.type==="keybindings-changed"){invalidateKeybindings(data)}
       else if(event.type==="connection-cloud"){
         if(data.requestId!==connectionCloud.requestId)return

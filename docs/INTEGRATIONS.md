@@ -8,6 +8,45 @@ T3 owns device discovery, SSH connections, server-side aliases/identity paths, t
 
 Explicit actions are `hub`, `agent`, `inspect`, `refresh`, `update-tool`, `retry-host`, `test-host`, `host-upsert` and `host-remove`. Hub enable sends exactly `{enabled:true,onboardingCompleted:true}`; disable additionally revokes agent access. Environment agent changes use `device.configure`; project overrides use the existing native scoped settings planner. Browser access also uses that planner. Direct environment patches for agent device access fail with `device_configuration_required`, avoiding lifecycle bypass.
 
+### Device screens in the side panel
+
+The side panel next to the chat is multi-purpose (browser, HTML renders and
+devices). Its Devices tab lists the simulators and emulators from the same
+`devices-watch` state and opens one for the current chat:
+
+- `device-screen-open {environment, thread, hostId, deviceId, platform,
+  hubBasePath, open}` calls native `device.open` when the chat has no session
+  for that device yet (300 s ceiling, boots it), then streams its screen.
+  `device-screen-input {event}` forwards input and `device-screen-close
+  {endSession}` stops viewing, or also calls `device.close`.
+- Screens and input go through native T3's device hub proxy at
+  `<origin><hubBasePath>/*`, authenticated with a session-bound `wsTicket` and
+  `hostId` on every request, exactly like the web client
+  (`packages/client-runtime/src/device/*`). Only the proxy's allow-listed
+  paths are built (`vendor/t3-protocol/src/device_hub.rs`).
+- iOS (serve-sim): frames from `helper/<udid>/stream.mjpeg`; touches, buttons
+  and HID keys as `[tag][json]` packets on `helper/ws`. Android (serve-emu):
+  one socket carries H.264 (16-byte `SEMU` header) down and JSON input up; the
+  client decodes it with ffmpeg when installed, otherwise it polls
+  `api/screenshot`.
+- Frames are written to a private directory under `$XDG_RUNTIME_DIR` and
+  shown like browser frames; hiding the panel or switching chats stops the
+  view without ending the session.
+
+Tests cover the URL allow-list, MJPEG splitting, `SEMU` parsing, both input
+wire formats, a mock hub over real HTTP and WebSocket, and H.264 decoding
+through ffmpeg. Verified against a live Android 14 emulator on a remote T3
+environment: `device.open` booted it in about 17 s, the first decoded frame
+(576×1280) arrived about 4 s later, a swipe opened the app drawer, Home
+returned to the launcher, and closing with `shutdown` powered it off. A booted
+emulator is addressed by its session id (`emulator-5554`), not its AVD name.
+
+Host note: expo-device-hub spawns the emulator with the T3 server's open-file
+limit. With a huge `RLIMIT_NOFILE` (about 10⁹, as an SSH-launched server can
+inherit) the emulator's CPU threads hang and it dies with SIGSEGV before
+coming online (`DeviceBootError: launch_failed`). Keep the server's soft limit
+modest (for example `ulimit -n 524288`) on device hosts.
+
 Version inspection requires the fresh native `supportsToolInspection` capability before `device.list {inspectOnly:true}`. Older servers may otherwise ignore the flag and start helpers. Tool updates/retries require native orchestration operate; configuration/host changes require settings write. Plain state needs orchestration read. Hub/agent/host changes are environment-only; native tool inspection/refresh/update remain available within a project selection. The UI must preserve the original mixed-environment agent grant semantics, not require every selected hub to be enabled.
 
 ## Concurrency and outcomes

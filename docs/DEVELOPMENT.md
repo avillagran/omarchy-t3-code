@@ -238,6 +238,7 @@ meter, or use the diagnostics IPC:
 omarchy-shell io.github.avillagran.omarchy-t3-code profileScroll  # 4 s of touchpad-style scrolling
 omarchy-shell io.github.avillagran.omarchy-t3-code profileResult  # fps and frame interval percentiles
 omarchy-shell io.github.avillagran.omarchy-t3-code skyState       # sky mode, meteor and clock pace
+omarchy-shell io.github.avillagran.omarchy-t3-code sidePanel devices  # side panel tab: browser, renders, devices ("" closes)
 ```
 
 Resource consumption depends on transcript size, attachments, the shell and

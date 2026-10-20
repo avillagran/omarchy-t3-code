@@ -21,24 +21,32 @@ Item {
   required property var bridge
   property var prTarget:null
   property bool pullRequestsOpen:false
-  property bool browserOpen:false
+  // Multi-purpose side panel next to the chat (T3SidePanel): browser,
+  // HTML renders and device screens share one resizable slot, one tab at a
+  // time; narrow windows show it as a sheet over the chat.
+  property bool sidePanelOpen:false
+  property string sideTab:"browser"
+  readonly property bool sideShown:sidePanelOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
+  readonly property bool browserOpen:sidePanelOpen&&sideTab==="browser"
+  function openSide(tab){sideTab=tab;sidePanelOpen=true;if(composerExpanded)expandComposer(false)}
+  function closeSide(){sidePanelOpen=false}
+  function toggleSide(){if(sidePanelOpen)closeSide();else openSide(sideTab)}
+  readonly property var sidePanelItem:browserInline?inlineSideLoader.item:overlaySideLoader.item
   property real browserPanelWidth:Math.max(360,Math.min(1600,bridge.viewState.browserPanelWidth || 540))
   readonly property real browserAvailableWidth:panelLayout.width-(sidebarReveal.visible?sidebarReveal.width+sidebarResizer.width:0)
   readonly property bool browserInline:browserAvailableWidth>=Style.space(760)
   readonly property bool browserShown:browserOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
   readonly property real browserMaxWidth:Math.max(360,Math.min(Math.floor(panelLayout.width/Style.space(1)*0.7),Math.floor(browserAvailableWidth/Style.space(1))-366))
-  readonly property var browserWorkspaceItem:browserInline?inlineBrowserLoader.item:overlayBrowserLoader.item
+  readonly property var browserWorkspaceItem:sidePanelItem?sidePanelItem.browserItem:null
   Binding{target:T3Ticker;property:"mode";value:["saver","max"].indexOf(root.bridge.viewState.animationRate)>=0?root.bridge.viewState.animationRate:"adaptive"}
   // HTML renders: inline in the conversation, or in a side panel when the
   // window is wide enough (Preferences > HTML renders).
   readonly property bool renderSide:bridge.viewState.htmlRenders==="side"&&browserInline
   property var renderAttachment:null
-  property bool renderOpen:false
-  property real renderPanelWidth:Math.max(360,Math.min(1600,bridge.viewState.renderPanelWidth || 520))
-  readonly property bool renderShown:renderSide&&renderOpen&&!!renderAttachment&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded&&!browserShown
+  property var renderList:[]
+  readonly property bool renderShown:sideShown&&sideTab==="renders"&&!!renderAttachment
   property var renderSeen:({})
-  function showRender(attachment){renderAttachment=attachment;renderOpen=true;browserOpen=false}
-  function resizeRenderPanel(width){renderPanelWidth=Math.max(360,Math.min(browserMaxWidth,width));bridge.rememberView({renderPanelWidth:renderPanelWidth})}
+  function showRender(attachment){renderAttachment=attachment;openSide("renders")}
   // Renders that arrive while a thread is open go straight to the panel;
   // those already in the history only open on request.
   function followRenders(){
@@ -48,8 +56,11 @@ Item {
     var seen=renderSeen[key],next=Object.assign({},renderSeen)
     if(seen&&renderSide&&latest&&seen.indexOf(latest.id)<0)showRender(latest)
     next[key]=ids;renderSeen=next
+    var list=[];bridge.transcript.forEach(function(r){(r.attachments || []).forEach(function(a){if(a.mimeType==="text/html")list.push(a)})})
+    if(JSON.stringify(list)!==JSON.stringify(renderList))renderList=list
+    if(!renderAttachment&&latest)renderAttachment=latest
   }
-  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){root.renderOpen=false;root.renderAttachment=null}}
+  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[]}}
   // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
   // every 8 ms through the normal wheel path) and record the intervals
   // between presented frames; profileResult reads them back.
@@ -72,7 +83,7 @@ Item {
     }
   }
   function resizeBrowser(width){browserPanelWidth=Math.max(360,Math.min(browserMaxWidth,width));bridge.rememberView({browserPanelWidth:browserPanelWidth})}
-  function toggleBrowser(){browserOpen=!browserOpen;if(browserOpen&&composerExpanded)expandComposer(false)}
+  function toggleBrowser(){if(browserOpen)closeSide();else openSide("browser")}
   function focusBrowserUrl(){if(browserWorkspaceItem)browserWorkspaceItem.focusUrl()}
   function browserKeyFocus(){var item=nativeFocusItem;while(item){if(item.objectName==="t3BrowserWorkspace")return true;item=item.parent}return false}
   readonly property bool browserFocused:browserShown&&browserKeyFocus()
@@ -672,7 +683,8 @@ Item {
     onHeightChanged:if(visible&&root.detached)saveWindowSize.restart()
   }
   Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.windowMode==="floating")root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
-  Component{id:browserWorkspaceComponent;T3BrowserWorkspace{bridge:root.bridge;onClosed:root.browserOpen=false;onPreferencesRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
+  Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
+  Component{id:browserWorkspaceComponent;T3BrowserWorkspace{bridge:root.bridge;onClosed:root.closeSide();onPreferencesRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   PinnedKeyboardPanel {
     id: popup
     open:root.panelOpen&&!root.detached
@@ -860,7 +872,7 @@ Item {
           Text{id:helpText;width:helpScroll.availableWidth;text:root.shortcutHelp();color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
         }
       }
-      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.browserShown){root.browserOpen=false}else if(root.renderShown){root.renderOpen=false}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
+      Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.sideShown){root.closeSide()}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
       T3WorkspaceConfirmation {popupHost:panelLayout;bridge:root.bridge}
       T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || []; preferredProjectKey:Array.isArray(root.projectScope)?root.projectScope.length===1?root.projectScope[0]:"":root.projectScope }
       Controls.Popup {
@@ -1233,7 +1245,7 @@ Item {
         id:mainChatArea;objectName:"t3MainChatArea"
         Layout.fillWidth: true; Layout.fillHeight: true
         color: "transparent"
-        Loader{id:overlayBrowserLoader;objectName:"t3BrowserSheet";anchors.fill:parent;z:20;active:root.browserShown&&!root.browserInline;sourceComponent:browserWorkspaceComponent}
+        Loader{id:overlaySideLoader;objectName:"t3BrowserSheet";anchors.fill:parent;z:20;active:root.sideShown&&!root.browserInline;sourceComponent:sidePanelComponent}
         Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
         Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         ColumnLayout {
@@ -1248,7 +1260,7 @@ Item {
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
             Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
-            T3IconButton {objectName:"t3OpenBrowser";name:"globe";enabled:!!root.bridge.selectedThread;tint:root.browserOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Browser");onClicked:root.toggleBrowser()}
+            T3IconButton {objectName:"t3OpenSidePanel";name:"panel-right";enabled:!!root.bridge.selectedThread;tint:root.sidePanelOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Side panel");onClicked:root.toggleSide()}
             T3IconButton {objectName:"t3OpenGit";name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
             T3IconButton {objectName:"t3OpenTerminal";name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
             T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
@@ -1687,23 +1699,14 @@ Item {
         }
       }
       Item {
-        visible:root.browserShown&&root.browserInline;Layout.fillHeight:true;Layout.preferredWidth:Style.space(6);activeFocusOnTab:true
-        Accessible.role:Accessible.Slider;Accessible.name:T3I18n.tr("Browser width")
+        visible:root.sideShown&&root.browserInline;Layout.fillHeight:true;Layout.preferredWidth:Style.space(6);activeFocusOnTab:true
+        Accessible.role:Accessible.Slider;Accessible.name:T3I18n.tr("Side panel width")
         Keys.onLeftPressed:root.resizeBrowser(root.browserPanelWidth+10)
         Keys.onRightPressed:root.resizeBrowser(root.browserPanelWidth-10)
         Rectangle{anchors.centerIn:parent;width:browserDrag.containsMouse||browserDrag.pressed?2:1;height:parent.height;color:browserDrag.containsMouse||browserDrag.pressed?Color.accent:root.divider}
-        MouseArea{id:browserDrag;objectName:"t3BrowserResizer";anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.SizeHorCursor;property real startX:0;property real startWidth:540;onPressed:function(m){startX=mapToGlobal(m.x,m.y).x;startWidth=Math.min(root.browserMaxWidth,root.browserPanelWidth)};onPositionChanged:function(m){if(pressed)root.resizeBrowser(startWidth-(T3I18n.rtl?-1:1)*(mapToGlobal(m.x,m.y).x-startX)/Style.space(1))};onDoubleClicked:root.resizeBrowser(540)}
+        MouseArea{id:browserDrag;objectName:"t3BrowserResizer";anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.SizeHorCursor;property real startX:0;property real startWidth:540;onPressed:function(m){startX=mapToGlobal(m.x,m.y).x;startWidth=Math.min(root.browserMaxWidth,root.browserPanelWidth)};onPositionChanged:function(m){if(pressed)root.resizeBrowser(startWidth-(T3I18n.rtl?-1:1)*(mapToGlobal(m.x,m.y).x-startX))}}
       }
-      Loader{id:inlineBrowserLoader;objectName:"t3BrowserInline";visible:root.browserShown&&root.browserInline;active:visible;Layout.fillHeight:true;Layout.preferredWidth:Style.space(Math.min(root.browserMaxWidth,root.browserPanelWidth));sourceComponent:browserWorkspaceComponent}
-      Item {
-        visible:root.renderShown;Layout.fillHeight:true;Layout.preferredWidth:Style.space(6);activeFocusOnTab:true
-        Accessible.role:Accessible.Slider;Accessible.name:T3I18n.tr("Render panel width")
-        Keys.onLeftPressed:root.resizeRenderPanel(root.renderPanelWidth+10)
-        Keys.onRightPressed:root.resizeRenderPanel(root.renderPanelWidth-10)
-        Rectangle{anchors.centerIn:parent;width:renderDrag.containsMouse||renderDrag.pressed?2:1;height:parent.height;color:renderDrag.containsMouse||renderDrag.pressed?Color.accent:root.divider}
-        MouseArea{id:renderDrag;objectName:"t3RenderResizer";anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.SizeHorCursor;property real startX:0;property real startWidth:520;onPressed:function(m){startX=mapToGlobal(m.x,m.y).x;startWidth=Math.min(root.browserMaxWidth,root.renderPanelWidth)};onPositionChanged:function(m){if(pressed)root.resizeRenderPanel(startWidth-(T3I18n.rtl?-1:1)*(mapToGlobal(m.x,m.y).x-startX))}}
-      }
-      Loader{objectName:"t3RenderPanelSlot";visible:root.renderShown;active:visible;Layout.fillHeight:true;Layout.preferredWidth:Style.space(Math.min(root.browserMaxWidth,root.renderPanelWidth));sourceComponent:Component{T3RenderPanel{bridge:root.bridge;attachment:root.renderAttachment;onClosed:root.renderOpen=false}}}
+      Loader{id:inlineSideLoader;objectName:"t3BrowserInline";visible:root.sideShown&&root.browserInline;active:visible;Layout.fillHeight:true;Layout.preferredWidth:Style.space(Math.min(root.browserMaxWidth,root.browserPanelWidth));sourceComponent:sidePanelComponent}
     }
   }
 }

@@ -15,7 +15,7 @@ static OPERATIONS: OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = OnceLock::
 fn views() -> &'static Mutex<HashMap<String, Value>> {
     VIEWS.get_or_init(Default::default)
 }
-fn connection(e: &Environment) -> Result<protocol::Connection> {
+pub fn connection(e: &Environment) -> Result<protocol::Connection> {
     if let Some(error) = &e.connection_error {
         return Err(error.clone());
     }
@@ -75,6 +75,10 @@ fn tool(v: &Value) -> Result<Value> {
         json!({"requiredVersion":required(v,"requiredVersion",256)?,"installedVersions":versions,"runningVersion":v["runningVersion"]}),
     )
 }
+/// Optional native fields arrive as `null` as well as absent; both mean unset.
+fn present<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
+    v.get(key).filter(|value| !value.is_null())
+}
 pub fn present_host(v: &Value) -> Result<Value> {
     if !matches!(text(v, "kind"), "local" | "ssh") {
         return Err("invalid_device_state".into());
@@ -86,17 +90,17 @@ pub fn present_host(v: &Value) -> Result<Value> {
                 return Err("invalid_device_state".into());
             }
             let mut out = json!({"platform":p["platform"],"available":boolean(&p["available"])?});
-            if let Some(reason) = p.get("reason") {
+            if let Some(reason) = present(p, "reason") {
                 out["reason"] = json!(string(reason, 4096)?);
             }
             Ok(out)
         })
         .collect::<Result<Vec<_>>>()?;
     let mut out = json!({"id":required(v,"id",128)?,"kind":v["kind"],"label":required(v,"label",4096)?,"platforms":platforms,"hubInstalled":boolean(&v["hubInstalled"])?,"agentDeviceInstalled":boolean(&v["agentDeviceInstalled"])?});
-    if let Some(tools) = v.get("tools") {
+    if let Some(tools) = present(v, "tools") {
         out["tools"] = json!({"hub":tool(&tools["hub"])?,"agent":tool(&tools["agent"])?});
     }
-    if let Some(error) = v.get("toolInspectionError") {
+    if let Some(error) = present(v, "toolInspectionError") {
         out["toolInspectionError"] = json!(string(error, 4096)?);
     }
     Ok(out)
@@ -142,7 +146,7 @@ pub fn present_state(v: &Value) -> Result<Value> {
             return Err("invalid_device_state".into());
         }
         let mut out = json!({"status":status(&s["status"])?});
-        if let Some(detail) = s.get("detail") {
+        if let Some(detail) = present(s, "detail") {
             out["detail"] = json!(string(detail, 4096)?);
         }
         by_host[id] = out;
@@ -156,10 +160,14 @@ pub fn present_state(v: &Value) -> Result<Value> {
     ] {
         out[flag] = json!(v[flag] == true);
     }
-    if let Some(detail) = v.get("hostStatusDetail") {
+    if let Some(detail) = present(v, "hostStatusDetail") {
         out["hostStatusDetail"] = json!(string(detail, 4096)?);
     }
-    if let Some(booting) = v.get("bootingDevices") {
+    // Prefix of the media proxy (screens and input); the panel cannot guess it.
+    if let Some(base) = present(v, "hubBasePath") {
+        out["hubBasePath"] = json!(string(base, 128)?);
+    }
+    if let Some(booting) = present(v, "bootingDevices") {
         out["bootingDevices"] = json!(list(booting, 2048)?
             .iter()
             .map(|v| device(v, true))
@@ -220,14 +228,14 @@ pub fn host(v: &Value) -> Result<Value> {
         return Err("invalid_device_host".into());
     }
     let mut out = json!({"id":id,"label":label,"target":target});
-    if let Some(identity) = v.get("identityFile") {
+    if let Some(identity) = present(v, "identityFile") {
         let s = string(identity, 4096)?;
         if s.is_empty() || s.trim() != s {
             return Err("invalid_device_host".into());
         }
         out["identityFile"] = json!(s);
     }
-    if let Some(port) = v.get("port") {
+    if let Some(port) = present(v, "port") {
         out["port"] = json!(port
             .as_u64()
             .filter(|p| *p >= 1 && *p <= 65535)
