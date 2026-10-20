@@ -59,6 +59,7 @@ Rectangle {
   {page:"general",title:"Behavior",icon:"settings",keys:["responseStreamingMode","enableProviderUpdateChecks","continueThreadsAfterServerUpdate","backgroundActivityProfile"]},
   {page:"general",title:"Projects & threads",icon:"folder-git-2",keys:["newWorktreesStartFromOrigin"]},
   {page:"general",title:"Text generation",icon:"star",keys:["textGenerationModelSelection"]},
+  {page:"general",title:"Telemetry export",icon:"server",keys:["observability.otlpTracesUrl","observability.otlpMetricsUrl","observability.otlpLogsUrl"]},
   {page:"source-control",title:"Repositories",icon:"folder-git-2",keys:["defaultAutoPull","removeAgentCreditsOnMerge","pullRequestMergeMethod"]},
   {page:"source-control",title:"Text generation",icon:"square-pen",keys:["branchNamingMode","branchNamePrefix","branchNameInstructions","sourceControlWritingStyle.mode","sourceControlWritingStyle.customInstructions","sourceControlWritingStyle.followChangeRequestTemplates","sourceControlWriterModelSelection"]},
   {page:"source-control",title:"Review guides",icon:"git-pull-request",keys:["reviewGuidesEnabled","reviewGuideModelSelection","reviewGuideInstructions"]}]
@@ -150,6 +151,19 @@ Rectangle {
        body:Component{Column{width:parent.width
         T3PreferenceField{width:parent.width;field:({key:"planModeEnabled",label:"Plan mode (legacy)",description:"Restore Build/Plan, /plan, /default, and Shift+Tab. Off uses build mode.",kind:"bool",value:!!((root.bridge.clientSettings || {}).data || {}).planModeEnabled});writable:!!((root.bridge.clientSettings || {}).data || {}).revision&&!((root.bridge.clientSettings || {}).busy);onChanged:function(value){root.bridge.requestClientSettings({planModeEnabled:value})}}
         Text{width:parent.width;visible:!!(root.bridge.clientSettings || {}).error;text:T3I18n.error((root.bridge.clientSettings || {}).error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+       }}
+      }
+      // Check the OTLP endpoints the server would export to (T3 telemetry export).
+      T3PreferenceSection{objectName:"otlpChecks";visible:root.page==="general"&&!root.query.trim()&&(root.result.fields||[]).some(function(f){return String(f.key).indexOf("observability.")===0&&!!f.value});Layout.fillWidth:true;title:"Check telemetry endpoints";icon:"server"
+       body:Component{Column{width:parent.width;spacing:Style.space(6)
+        Repeater{model:(root.result.fields||[]).filter(function(f){return String(f.key).indexOf("observability.")===0&&!!f.value})
+         RowLayout{required property var modelData;width:parent.width;spacing:Style.space(8)
+          readonly property string signal:modelData.key==="observability.otlpTracesUrl"?"traces":modelData.key==="observability.otlpMetricsUrl"?"metrics":"logs"
+          readonly property var check:(root.bridge.otlpChecks||{})[signal]||({})
+          Text{Layout.fillWidth:true;text:T3I18n.tr(modelData.label)+" · "+(check.busy?T3I18n.tr("Checking…"):check.error?T3I18n.error(check.error):check.result?(check.result._tag==="Accepted"?T3I18n.tr("Accepted in {ms} ms",{ms:Math.round(check.result.latencyMs)}):check.result._tag==="Rejected"?T3I18n.tr("Rejected with HTTP {status}",{status:check.result.status}):T3I18n.tr(check.result.timedOut?"Timed out":"Unreachable")):modelData.value);color:check.result&&check.result._tag!=="Accepted"?Color.urgent:Color.popups.text;font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
+          T3PickerButton{primary:false;implicitHeight:Style.space(26);text:T3I18n.tr("Check");enabled:!check.busy;onClicked:root.bridge.checkOtlp(root.environment,parent.signal,modelData.value)}
+         }
+        }
        }}
       }
       T3PreferenceSection{visible:root.page==="general"&&(!root.query.trim()||root.matches("Notifications")||root.matches("Thread notifications"));Layout.fillWidth:true;title:"Notifications";icon:"bell"

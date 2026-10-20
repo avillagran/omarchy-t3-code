@@ -1197,7 +1197,18 @@
     "Checking out": "Checking out",
     "Submodules": "Submodules",
     "Setup script": "Setup script",
-    "Starting agent": "Starting agent"
+    "Starting agent": "Starting agent",
+    "Telemetry export": "Telemetry export",
+    "Traces endpoint": "Traces endpoint",
+    "Metrics endpoint": "Metrics endpoint",
+    "Logs endpoint": "Logs endpoint",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.",
+    "Check telemetry endpoints": "Check telemetry endpoints",
+    "Accepted in {ms} ms": "Accepted in {ms} ms",
+    "Rejected with HTTP {status}": "Rejected with HTTP {status}",
+    "Timed out": "Timed out",
+    "Unreachable": "Unreachable",
+    "Check": "Check"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2397,7 +2408,18 @@
     "Checking out": "Cambiando de rama",
     "Submodules": "Submódulos",
     "Setup script": "Script de preparación",
-    "Starting agent": "Iniciando agente"
+    "Starting agent": "Iniciando agente",
+    "Telemetry export": "Exportación de telemetría",
+    "Traces endpoint": "Endpoint de trazas",
+    "Metrics endpoint": "Endpoint de métricas",
+    "Logs endpoint": "Endpoint de registros",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Envía trazas, métricas y registros a un receptor OTLP HTTP. Reinicia el servidor para aplicarlo.",
+    "Check telemetry endpoints": "Comprobar endpoints de telemetría",
+    "Accepted in {ms} ms": "Aceptado en {ms} ms",
+    "Rejected with HTTP {status}": "Rechazado con HTTP {status}",
+    "Timed out": "Tiempo agotado",
+    "Unreachable": "Inalcanzable",
+    "Check": "Comprobar"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3597,7 +3619,18 @@
     "Checking out": "Fazendo checkout",
     "Submodules": "Submódulos",
     "Setup script": "Script de preparação",
-    "Starting agent": "Iniciando agente"
+    "Starting agent": "Iniciando agente",
+    "Telemetry export": "Exportação de telemetria",
+    "Traces endpoint": "Endpoint de traces",
+    "Metrics endpoint": "Endpoint de métricas",
+    "Logs endpoint": "Endpoint de logs",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Envia traces, métricas e logs para um receptor OTLP HTTP. Reinicie o servidor para aplicar.",
+    "Check telemetry endpoints": "Verificar endpoints de telemetria",
+    "Accepted in {ms} ms": "Aceito em {ms} ms",
+    "Rejected with HTTP {status}": "Rejeitado com HTTP {status}",
+    "Timed out": "Tempo esgotado",
+    "Unreachable": "Inacessível",
+    "Check": "Verificar"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4797,7 +4830,18 @@
     "Checking out": "Extraction",
     "Submodules": "Sous-modules",
     "Setup script": "Script de préparation",
-    "Starting agent": "Démarrage de l’agent"
+    "Starting agent": "Démarrage de l’agent",
+    "Telemetry export": "Export de télémétrie",
+    "Traces endpoint": "Point de terminaison des traces",
+    "Metrics endpoint": "Point de terminaison des métriques",
+    "Logs endpoint": "Point de terminaison des journaux",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Envoie traces, métriques et journaux à un récepteur OTLP HTTP. Redémarrez le serveur pour appliquer.",
+    "Check telemetry endpoints": "Vérifier les points de terminaison de télémétrie",
+    "Accepted in {ms} ms": "Accepté en {ms} ms",
+    "Rejected with HTTP {status}": "Refusé avec HTTP {status}",
+    "Timed out": "Délai dépassé",
+    "Unreachable": "Injoignable",
+    "Check": "Vérifier"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5997,7 +6041,18 @@
     "Checking out": "Auschecken",
     "Submodules": "Submodule",
     "Setup script": "Einrichtungsskript",
-    "Starting agent": "Agent wird gestartet"
+    "Starting agent": "Agent wird gestartet",
+    "Telemetry export": "Telemetrie-Export",
+    "Traces endpoint": "Traces-Endpunkt",
+    "Metrics endpoint": "Metriken-Endpunkt",
+    "Logs endpoint": "Log-Endpunkt",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Sendet Traces, Metriken und Logs an einen OTLP-HTTP-Empfänger. Zum Übernehmen den Server neu starten.",
+    "Check telemetry endpoints": "Telemetrie-Endpunkte prüfen",
+    "Accepted in {ms} ms": "In {ms} ms angenommen",
+    "Rejected with HTTP {status}": "Mit HTTP {status} abgelehnt",
+    "Timed out": "Zeitüberschreitung",
+    "Unreachable": "Nicht erreichbar",
+    "Check": "Prüfen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7197,7 +7252,18 @@
     "Checking out": "Checkout",
     "Submodules": "Sottomoduli",
     "Setup script": "Script di preparazione",
-    "Starting agent": "Avvio dell’agente"
+    "Starting agent": "Avvio dell’agente",
+    "Telemetry export": "Esportazione della telemetria",
+    "Traces endpoint": "Endpoint delle tracce",
+    "Metrics endpoint": "Endpoint delle metriche",
+    "Logs endpoint": "Endpoint dei log",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Invia tracce, metriche e log a un ricevitore OTLP HTTP. Riavvia il server per applicare.",
+    "Check telemetry endpoints": "Verifica gli endpoint della telemetria",
+    "Accepted in {ms} ms": "Accettato in {ms} ms",
+    "Rejected with HTTP {status}": "Rifiutato con HTTP {status}",
+    "Timed out": "Tempo scaduto",
+    "Unreachable": "Irraggiungibile",
+    "Check": "Verifica"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8397,7 +8463,18 @@
     "Checking out": "Uitchecken",
     "Submodules": "Submodules",
     "Setup script": "Instelscript",
-    "Starting agent": "Agent starten"
+    "Starting agent": "Agent starten",
+    "Telemetry export": "Telemetrie-export",
+    "Traces endpoint": "Traces-endpoint",
+    "Metrics endpoint": "Metrics-endpoint",
+    "Logs endpoint": "Logs-endpoint",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Stuurt traces, metrics en logs naar een OTLP HTTP-ontvanger. Herstart de server om toe te passen.",
+    "Check telemetry endpoints": "Telemetrie-endpoints controleren",
+    "Accepted in {ms} ms": "Geaccepteerd in {ms} ms",
+    "Rejected with HTTP {status}": "Geweigerd met HTTP {status}",
+    "Timed out": "Time-out",
+    "Unreachable": "Onbereikbaar",
+    "Check": "Controleren"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9597,7 +9674,18 @@
     "Checking out": "Przełączanie",
     "Submodules": "Podmoduły",
     "Setup script": "Skrypt przygotowania",
-    "Starting agent": "Uruchamianie agenta"
+    "Starting agent": "Uruchamianie agenta",
+    "Telemetry export": "Eksport telemetrii",
+    "Traces endpoint": "Punkt końcowy śladów",
+    "Metrics endpoint": "Punkt końcowy metryk",
+    "Logs endpoint": "Punkt końcowy logów",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Wysyła ślady, metryki i logi do odbiornika OTLP HTTP. Uruchom ponownie serwer, aby zastosować.",
+    "Check telemetry endpoints": "Sprawdź punkty końcowe telemetrii",
+    "Accepted in {ms} ms": "Przyjęto w {ms} ms",
+    "Rejected with HTTP {status}": "Odrzucono z HTTP {status}",
+    "Timed out": "Przekroczono limit czasu",
+    "Unreachable": "Nieosiągalny",
+    "Check": "Sprawdź"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10797,7 +10885,18 @@
     "Checking out": "Переключение",
     "Submodules": "Подмодули",
     "Setup script": "Скрипт подготовки",
-    "Starting agent": "Запуск агента"
+    "Starting agent": "Запуск агента",
+    "Telemetry export": "Экспорт телеметрии",
+    "Traces endpoint": "Конечная точка трасс",
+    "Metrics endpoint": "Конечная точка метрик",
+    "Logs endpoint": "Конечная точка логов",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Отправляет трассы, метрики и логи в приёмник OTLP HTTP. Перезапустите сервер, чтобы применить.",
+    "Check telemetry endpoints": "Проверить конечные точки телеметрии",
+    "Accepted in {ms} ms": "Принято за {ms} мс",
+    "Rejected with HTTP {status}": "Отклонено с HTTP {status}",
+    "Timed out": "Время истекло",
+    "Unreachable": "Недоступно",
+    "Check": "Проверить"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11997,7 +12096,18 @@
     "Checking out": "Перемикання",
     "Submodules": "Підмодулі",
     "Setup script": "Скрипт підготовки",
-    "Starting agent": "Запуск агента"
+    "Starting agent": "Запуск агента",
+    "Telemetry export": "Експорт телеметрії",
+    "Traces endpoint": "Кінцева точка трас",
+    "Metrics endpoint": "Кінцева точка метрик",
+    "Logs endpoint": "Кінцева точка журналів",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Надсилає траси, метрики й журнали до приймача OTLP HTTP. Перезапустіть сервер, щоб застосувати.",
+    "Check telemetry endpoints": "Перевірити кінцеві точки телеметрії",
+    "Accepted in {ms} ms": "Прийнято за {ms} мс",
+    "Rejected with HTTP {status}": "Відхилено з HTTP {status}",
+    "Timed out": "Час вичерпано",
+    "Unreachable": "Недоступно",
+    "Check": "Перевірити"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13197,7 +13307,18 @@
     "Checking out": "チェックアウト中",
     "Submodules": "サブモジュール",
     "Setup script": "セットアップスクリプト",
-    "Starting agent": "エージェントを起動中"
+    "Starting agent": "エージェントを起動中",
+    "Telemetry export": "テレメトリのエクスポート",
+    "Traces endpoint": "トレースのエンドポイント",
+    "Metrics endpoint": "メトリクスのエンドポイント",
+    "Logs endpoint": "ログのエンドポイント",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "トレース、メトリクス、ログを OTLP HTTP レシーバーに送信します。適用するにはサーバーを再起動してください。",
+    "Check telemetry endpoints": "テレメトリのエンドポイントを確認",
+    "Accepted in {ms} ms": "{ms} ms で受理",
+    "Rejected with HTTP {status}": "HTTP {status} で拒否",
+    "Timed out": "タイムアウト",
+    "Unreachable": "到達できません",
+    "Check": "確認"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14397,7 +14518,18 @@
     "Checking out": "체크아웃 중",
     "Submodules": "서브모듈",
     "Setup script": "설정 스크립트",
-    "Starting agent": "에이전트 시작 중"
+    "Starting agent": "에이전트 시작 중",
+    "Telemetry export": "원격 측정 내보내기",
+    "Traces endpoint": "트레이스 엔드포인트",
+    "Metrics endpoint": "메트릭 엔드포인트",
+    "Logs endpoint": "로그 엔드포인트",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "트레이스, 메트릭, 로그를 OTLP HTTP 수신기로 보냅니다. 적용하려면 서버를 다시 시작하세요.",
+    "Check telemetry endpoints": "원격 측정 엔드포인트 확인",
+    "Accepted in {ms} ms": "{ms}ms 만에 수락됨",
+    "Rejected with HTTP {status}": "HTTP {status}로 거부됨",
+    "Timed out": "시간 초과",
+    "Unreachable": "연결할 수 없음",
+    "Check": "확인"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15597,7 +15729,18 @@
     "Checking out": "检出中",
     "Submodules": "子模块",
     "Setup script": "设置脚本",
-    "Starting agent": "正在启动智能体"
+    "Starting agent": "正在启动智能体",
+    "Telemetry export": "遥测导出",
+    "Traces endpoint": "追踪端点",
+    "Metrics endpoint": "指标端点",
+    "Logs endpoint": "日志端点",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "将追踪、指标和日志发送到 OTLP HTTP 接收器。重启服务器后生效。",
+    "Check telemetry endpoints": "检查遥测端点",
+    "Accepted in {ms} ms": "{ms} 毫秒内接受",
+    "Rejected with HTTP {status}": "被拒绝，HTTP {status}",
+    "Timed out": "超时",
+    "Unreachable": "无法访问",
+    "Check": "检查"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16797,7 +16940,18 @@
     "Checking out": "التبديل",
     "Submodules": "الوحدات الفرعية",
     "Setup script": "سكربت الإعداد",
-    "Starting agent": "بدء الوكيل"
+    "Starting agent": "بدء الوكيل",
+    "Telemetry export": "تصدير القياس عن بُعد",
+    "Traces endpoint": "نقطة نهاية التتبعات",
+    "Metrics endpoint": "نقطة نهاية المقاييس",
+    "Logs endpoint": "نقطة نهاية السجلات",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "يرسل التتبعات والمقاييس والسجلات إلى مستقبل OTLP HTTP. أعد تشغيل الخادم للتطبيق.",
+    "Check telemetry endpoints": "افحص نقاط نهاية القياس عن بُعد",
+    "Accepted in {ms} ms": "قُبل خلال {ms} مللي ثانية",
+    "Rejected with HTTP {status}": "رُفض برمز HTTP {status}",
+    "Timed out": "انتهت المهلة",
+    "Unreachable": "يتعذر الوصول",
+    "Check": "افحص"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17997,7 +18151,18 @@
     "Checking out": "Geçiş yapılıyor",
     "Submodules": "Alt modüller",
     "Setup script": "Kurulum betiği",
-    "Starting agent": "Ajan başlatılıyor"
+    "Starting agent": "Ajan başlatılıyor",
+    "Telemetry export": "Telemetri dışa aktarımı",
+    "Traces endpoint": "İzleme uç noktası",
+    "Metrics endpoint": "Metrik uç noktası",
+    "Logs endpoint": "Günlük uç noktası",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "İzlemeleri, metrikleri ve günlükleri bir OTLP HTTP alıcısına gönderir. Uygulamak için sunucuyu yeniden başlatın.",
+    "Check telemetry endpoints": "Telemetri uç noktalarını denetle",
+    "Accepted in {ms} ms": "{ms} ms içinde kabul edildi",
+    "Rejected with HTTP {status}": "HTTP {status} ile reddedildi",
+    "Timed out": "Zaman aşımı",
+    "Unreachable": "Ulaşılamıyor",
+    "Check": "Denetle"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19197,7 +19362,18 @@
     "Checking out": "Checkar ut",
     "Submodules": "Undermoduler",
     "Setup script": "Förberedelseskript",
-    "Starting agent": "Startar agent"
+    "Starting agent": "Startar agent",
+    "Telemetry export": "Telemetriexport",
+    "Traces endpoint": "Slutpunkt för spår",
+    "Metrics endpoint": "Slutpunkt för mätvärden",
+    "Logs endpoint": "Slutpunkt för loggar",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Skickar spår, mätvärden och loggar till en OTLP HTTP-mottagare. Starta om servern för att tillämpa.",
+    "Check telemetry endpoints": "Kontrollera telemetrislutpunkter",
+    "Accepted in {ms} ms": "Accepterad på {ms} ms",
+    "Rejected with HTTP {status}": "Avvisad med HTTP {status}",
+    "Timed out": "Tidsgräns överskreds",
+    "Unreachable": "Kan inte nås",
+    "Check": "Kontrollera"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20397,7 +20573,18 @@
     "Checking out": "Tjekker ud",
     "Submodules": "Undermoduler",
     "Setup script": "Opsætningsscript",
-    "Starting agent": "Starter agent"
+    "Starting agent": "Starter agent",
+    "Telemetry export": "Telemetrieksport",
+    "Traces endpoint": "Endepunkt for spor",
+    "Metrics endpoint": "Endepunkt for målinger",
+    "Logs endpoint": "Endepunkt for logfiler",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Sender spor, målinger og logfiler til en OTLP HTTP-modtager. Genstart serveren for at anvende.",
+    "Check telemetry endpoints": "Kontrollér telemetriendepunkter",
+    "Accepted in {ms} ms": "Accepteret på {ms} ms",
+    "Rejected with HTTP {status}": "Afvist med HTTP {status}",
+    "Timed out": "Timeout",
+    "Unreachable": "Kan ikke nås",
+    "Check": "Kontrollér"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21597,7 +21784,18 @@
     "Checking out": "Sjekker ut",
     "Submodules": "Undermoduler",
     "Setup script": "Oppsettskript",
-    "Starting agent": "Starter agent"
+    "Starting agent": "Starter agent",
+    "Telemetry export": "Telemetrieksport",
+    "Traces endpoint": "Endepunkt for spor",
+    "Metrics endpoint": "Endepunkt for måledata",
+    "Logs endpoint": "Endepunkt for logger",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Sender spor, måledata og logger til en OTLP HTTP-mottaker. Start serveren på nytt for å bruke.",
+    "Check telemetry endpoints": "Kontroller telemetriendepunkter",
+    "Accepted in {ms} ms": "Akseptert på {ms} ms",
+    "Rejected with HTTP {status}": "Avvist med HTTP {status}",
+    "Timed out": "Tidsavbrudd",
+    "Unreachable": "Kan ikke nås",
+    "Check": "Kontroller"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22797,7 +22995,18 @@
     "Checking out": "Haetaan haaraa",
     "Submodules": "Alimoduulit",
     "Setup script": "Valmisteluskripti",
-    "Starting agent": "Käynnistetään agenttia"
+    "Starting agent": "Käynnistetään agenttia",
+    "Telemetry export": "Telemetrian vienti",
+    "Traces endpoint": "Jäljitysten päätepiste",
+    "Metrics endpoint": "Mittareiden päätepiste",
+    "Logs endpoint": "Lokien päätepiste",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Lähettää jäljitykset, mittarit ja lokit vastaanottimeen, joka käyttää OTLP HTTP:tä. Käynnistä palvelin uudelleen, jotta muutos tulee voimaan.",
+    "Check telemetry endpoints": "Tarkista telemetrian päätepisteet",
+    "Accepted in {ms} ms": "Hyväksytty {ms} ms:ssa",
+    "Rejected with HTTP {status}": "Hylätty, HTTP {status}",
+    "Timed out": "Aikakatkaisu",
+    "Unreachable": "Ei tavoitettavissa",
+    "Check": "Tarkista"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23997,6 +24206,17 @@
     "Checking out": "Přepínání",
     "Submodules": "Submoduly",
     "Setup script": "Přípravný skript",
-    "Starting agent": "Spouštění agenta"
+    "Starting agent": "Spouštění agenta",
+    "Telemetry export": "Export telemetrie",
+    "Traces endpoint": "Koncový bod trasování",
+    "Metrics endpoint": "Koncový bod metrik",
+    "Logs endpoint": "Koncový bod protokolů",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Odesílá trasování, metriky a protokoly do přijímače OTLP HTTP. Pro použití restartujte server.",
+    "Check telemetry endpoints": "Zkontrolovat koncové body telemetrie",
+    "Accepted in {ms} ms": "Přijato za {ms} ms",
+    "Rejected with HTTP {status}": "Odmítnuto s HTTP {status}",
+    "Timed out": "Vypršel časový limit",
+    "Unreachable": "Nedostupné",
+    "Check": "Zkontrolovat"
   }
 }

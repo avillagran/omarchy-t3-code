@@ -518,6 +518,9 @@ Singleton {
   // Scheduled tasks (scheduledTasks.*) of the selected environment.
   property var scheduledTasks:({busy:false,error:"",tasks:[],requestId:""})
   function scheduledTasksAction(values){var id=uuid();scheduledTasks=Object.assign({},scheduledTasks,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,lastAction:values.action});send(Object.assign({op:"scheduled-tasks",environment:selectedEnvironment||"local",requestId:id},values))}
+  // OTLP endpoint checks (server.checkOtlpEndpoint), keyed by signal.
+  property var otlpChecks:({})
+  function checkOtlp(environment,signal,url){var all=Object.assign({},otlpChecks);all[signal]={busy:true};otlpChecks=all;send({op:"otlp-check",environment:environment,signal:signal,url:url,requestId:uuid()})}
   // Usage page (server.getUsageSummary) for the selected environment.
   property var usage:({busy:false,error:"",data:null,requestId:""})
   function requestUsage(period,refreshRates){var id=uuid();usage=Object.assign({},usage,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,period:period});send({op:"usage-summary",environment:selectedEnvironment||"local",period:period,refreshRates:!!refreshRates,requestId:id})}
@@ -1247,6 +1250,7 @@ Singleton {
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
     if(data.op==="pin-reorder"){refresh();return}
+    if(data.op==="otlp-check"){var oc=Object.assign({},otlpChecks),sig=data.result?data.result.signal:Object.keys(otlpChecks).find(function(k){return otlpChecks[k].busy});if(sig){oc[sig]={busy:false,error:data.error||"",result:data.result?data.result.result:null};otlpChecks=oc}return}
     if(data.op==="git-init"){if(!data.error)requestGit();else gitView=Object.assign({},gitView,{operationError:data.error});return}
     if(data.op==="acp-registry"){if(data.requestId!==acpRegistry.requestId)return;var ar=data.result||{};var na=Object.assign({},acpRegistry,{busy:false,error:data.error||""});if(!data.error&&acpRegistry.action==="search")na.agents=ar.agents||[];acpRegistry=na;if(!data.error&&na.action==="prepare"&&na.agent)acpAgentPrepared(Object.assign({},na.agent,{version:ar.version||na.agent.version}));return}
     if(data.op==="local-servers"){if(data.requestId!==localServers.requestId)return;localServers=Object.assign({},localServers,{busy:false,servers:data.error?[]:((data.result||{}).servers||[])});return}

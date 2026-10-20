@@ -1197,6 +1197,17 @@
     "Checking out": "Checking out",
     "Submodules": "Submodules",
     "Setup script": "Setup script",
-    "Starting agent": "Starting agent"
+    "Starting agent": "Starting agent",
+    "Telemetry export": "Telemetry export",
+    "Traces endpoint": "Traces endpoint",
+    "Metrics endpoint": "Metrics endpoint",
+    "Logs endpoint": "Logs endpoint",
+    "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.": "Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.",
+    "Check telemetry endpoints": "Check telemetry endpoints",
+    "Accepted in {ms} ms": "Accepted in {ms} ms",
+    "Rejected with HTTP {status}": "Rejected with HTTP {status}",
+    "Timed out": "Timed out",
+    "Unreachable": "Unreachable",
+    "Check": "Check"
   }
 }

@@ -31,6 +31,7 @@ pub fn model_selection(value: &Value) -> Result<Value> {
 pub fn description(key: &str) -> &'static str {
     match key {
         "defaultModelSelection"=>"Default model for new threads. Projects can override it.",
+        "observability.otlpTracesUrl"=>"Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.",
         "defaultRuntimeMode"=>"Default permissions for new threads. Projects can override them.",
         "defaultThreadEnvMode"=>"Where new threads start. Projects and their t3.json can override it.",
         "worktreeSubmodules"=>"How new worktrees populate git submodules. Projects can override it.",
@@ -83,6 +84,12 @@ pub fn snapshot(raw: &Value) -> Value {
         fields.push(json!({"key":"defaultThreadEnvMode","label":"Workspace","kind":"choice","section":"general","value":raw["defaultThreadEnvMode"],"resetValue":null,"choices":[{"id":null,"name":"Automatic"},{"id":"local","name":"Current checkout"},{"id":"worktree","name":"New worktree"}]}));
     }
     fields.extend(crate::storage_settings::fields(raw));
+    // OTLP export endpoints (T3 telemetry export); applied when the server restarts.
+    if raw["observability"].is_object() {
+        for (member,label) in [("otlpTracesUrl","Traces endpoint"),("otlpMetricsUrl","Metrics endpoint"),("otlpLogsUrl","Logs endpoint")] {
+            fields.push(json!({"key":format!("observability.{member}"),"label":label,"section":"general","kind":"text","commitOnBlur":true,"placeholder":"https://collector.example.com/v1/","value":raw["observability"][member].as_str().unwrap_or(""),"resetValue":""}));
+        }
+    }
     for field in fields {
         let detail=description(text(field,"key"));if !detail.is_empty(){field["description"]=json!(detail);}
     }
@@ -99,6 +106,12 @@ pub fn patch(input:&Value,config:Option<&Value>)->Result<Value> {
         }
         let patch=crate::storage_settings::patch(input)?;
         return crate::storage_settings::environment_patch(&config["settings"],key,&patch);
+    }
+    if let Some(member)=key.strip_prefix("observability.") {
+        if !matches!(member,"otlpTracesUrl"|"otlpMetricsUrl"|"otlpLogsUrl"){return Err("invalid_settings".into())}
+        let url=value.as_str().map(str::trim).ok_or("invalid_settings")?;
+        if !url.is_empty()&&(url.len()>2048||!(url.starts_with("http://")||url.starts_with("https://"))||url.chars().any(char::is_control)){return Err("invalid_settings".into())}
+        return Ok(json!({"patch":{"observability":{member:url}}}))
     }
     if MODEL_KEYS.iter().any(|(k,_)|*k==key) {
         if value.is_null() {
