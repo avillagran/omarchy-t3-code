@@ -41,12 +41,14 @@ Controls.Button {
  contentItem:RowLayout {
   spacing:Style.space(6)
   T3ProviderIcon{provider:root.selectedModel.instanceId?root.selectedModel:root.selection;implicitWidth:Style.space(16);opacity:root.enabled?1:0.45}
-  Text{Layout.fillWidth:true;text:root.selectedModel.shortName || root.selectedModel.displayName || root.selectedModel.name || root.selection.model || root.emptyText;color:root.fg;elide:Text.ElideRight;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;opacity:root.enabled?1:0.45}
+  // The provider icon already says whose model it is; drop its name from the label.
+  Text{Layout.fillWidth:true;text:root.withoutProvider(root.selectedModel.shortName || root.selectedModel.displayName || root.selectedModel.name || root.selection.model || root.emptyText);color:root.fg;elide:Text.ElideRight;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;opacity:root.enabled?1:0.45}
   T3Icon{name:"chevron-down";implicitWidth:Style.space(12);opacity:root.enabled?1:0.45}
  }
  background:Rectangle{radius:Style.space(7);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,root.hovered?0.09:0.035);border.width:root.activeFocus?1:0;border.color:Color.accent}
  Controls.ToolTip.visible:hovered
  Controls.ToolTip.delay:400
+ function withoutProvider(label){var text=String(label||""),names=[selectedModel.providerName,"Claude"].filter(function(n){return !!n});for(var i=0;i<names.length;i++){var prefix=String(names[i])+" ";if(text.indexOf(prefix)===0&&text.length>prefix.length)return text.slice(prefix.length)}return text}
  Controls.ToolTip.text:(selectedModel.displayName || selection.model || "")+(selectedModel.providerName?" · "+selectedModel.providerName:"")
  onClicked:menu.open()
  Controls.Popup {

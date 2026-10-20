@@ -18,7 +18,7 @@ ShellRoot{
    fixture=b.state;b.selectedEnvironment="fixture";b.selectedThread="busy";b.selectedKey="fixture/busy";b.patchDraft(b.selectedKey,{loading:false,text:"Safe draft"});panel.open();phase=1
   }else if(phase===1){
    root.check(panel.activeRows.length===4&&!panel.workingRows.length,"original list before toggle")
-   var footer=keys.findChild(panel,"t3SidebarFooter"),language=keys.findChild(panel,"t3LanguagePicker"),group=keys.findChild(panel,"sidebarCompactToggle");root.check(Math.abs(group.y-language.y)<4,"footer controls stay on one line");root.check(language.width<135&&language.width>40,"language selector fits Spanish label")
+   var footer=keys.findChild(panel,"t3SidebarFooter"),group=keys.findChild(panel,"sidebarCompactToggle");root.check(!keys.findChild(panel,"t3LanguagePicker"),"language lives in Preferences, not the sidebar footer");root.check(!!group&&group.visible,"footer keeps its controls")
    var button=keys.findChild(panel,"sidebarCompactToggle");keys.mouseClick(button,button.width/2,button.height/2);phase=2
   }else if(phase===2){
    root.check(panel.sidebarCompact&&b.viewState.sidebarCompact,"button persists compact mode")
