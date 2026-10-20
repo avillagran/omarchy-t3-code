@@ -138,6 +138,20 @@ fn notify(snapshot: &Value) -> Result<()> {
     }
     save_json(&p, &previous)
 }
+/// Tell the open thread's server that this client is watching (server.reportClientActivity),
+/// so it keeps that thread's background work fresh while the panel is visible.
+fn report_activity(env: String, thread: Option<String>, visible: bool) {
+    static CLIENT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    let client = CLIENT.get_or_init(|| format!("omarchy-{}", uuid::Uuid::new_v4())).clone();
+    std::thread::spawn(move || {
+        let Ok(e) = env_by_id(&env) else { return };
+        let mut scopes = vec![json!({"type":"server-config"})];
+        if let Some(t) = thread.filter(|t| valid_id(t)) {
+            scopes.push(json!({"type":"thread","threadId":t}));
+        }
+        let _ = write::rpc(&e, "server.reportClientActivity", json!({"clientId":client,"clientKind":"desktop-renderer","visible":visible,"focused":visible,"recentlyInteracted":visible,"appState":if visible{"active"}else{"background"},"scopes":scopes,"ttlMs":120000}));
+    });
+}
 fn play_sound(name: &str) {
     let Ok(exe) = std::env::current_exe() else { return };
     // bin/omarchy-t3-client sits next to ui/ in the plugin directory.
@@ -368,6 +382,7 @@ fn watch(client: Client) -> Result<()> {
     let mut query = String::new();
     let mut next_poll = Instant::now();
     let mut last_snapshot = Instant::now();
+    let mut last_activity = Instant::now() - Duration::from_secs(3600);
     let mut quotas = quotas::Control::default();
     let mut next_quota = Instant::now();
     let mut quota_running = false;
@@ -411,6 +426,12 @@ fn watch(client: Client) -> Result<()> {
             let active =
                 visible || (state["stale"] == false && state["working"].as_u64().unwrap_or(0) > 0);
             next_poll = Instant::now() + Duration::from_secs(if active { 10 } else { 60 });
+            if visible && last_activity.elapsed() >= Duration::from_secs(60) {
+                if let Some((env, id, _)) = &selected {
+                    last_activity = Instant::now();
+                    report_activity(env.clone(), Some(id.clone()), true);
+                }
+            }
             if visible {
                 if let Some((env, id, serial)) = &selected {
                     if live.ready(){continue}
@@ -484,6 +505,8 @@ fn watch(client: Client) -> Result<()> {
                     continue;
                 }
                 selected = Some((env.clone(), id.clone(), serial));
+                last_activity = Instant::now();
+                report_activity(env.clone(), Some(id.clone()), true);
 
             }
             "open" => {
