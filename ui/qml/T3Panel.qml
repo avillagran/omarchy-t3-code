@@ -1526,7 +1526,7 @@ Item {
                       width:parent.width;spacing:Style.space(8)
                       visible:(modelData.attachments || []).length>0
                       Repeater {
-                        model:(modelData.attachments || []).filter(function(a){return a.type==="image"&&["image/png","image/jpeg","image/gif","image/webp"].indexOf(a.mimeType)>=0})
+                        model:(modelData.attachments || []).filter(function(a){return a.type==="image"&&["image/png","image/jpeg","image/gif","image/webp","image/heic","image/heif","image/avif"].indexOf(a.mimeType)>=0})
                         T3MessageImage {
                           required property var modelData
                           readonly property real viewportY:message.y+body.y+attachmentFlow.y+y-conversation.contentY
@@ -1745,7 +1745,7 @@ Item {
             bridge: root.bridge
             expanded: root.composerExpanded
             onToggleExpanded: root.expandComposer()
-            onPreviewAttachment:function(a){if(a.type==="image"&&["image/png","image/jpeg","image/gif","image/webp"].indexOf(a.mimeType)>=0){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}else root.bridge.openReference("",a)}
+            onPreviewAttachment:function(a){if(a.type==="image"&&["image/png","image/jpeg","image/gif","image/webp","image/heic","image/heif","image/avif"].indexOf(a.mimeType)>=0){imagePopup.attachment=a;imagePopup.assetKey=root.bridge.imageKey(a);root.bridge.requestImage(a);imagePopup.open()}else root.bridge.openReference("",a)}
           }
           }
           }

@@ -662,7 +662,7 @@ impl RelayClient {
 impl Connection {
  /// Read an image through a signed same-origin asset grant. No auth on the signed GET.
  pub fn attachment_image(&self,id:&str,name:&str,mime:&str)->Result<Vec<u8>>{
-  if id.is_empty()||id.len()>256||!matches!(mime,"image/png"|"image/jpeg"|"image/gif"|"image/webp"){return Err("invalid_image".into())}
+  if id.is_empty()||id.len()>256||!matches!(mime,"image/png"|"image/jpeg"|"image/gif"|"image/webp"|"image/heic"|"image/heif"|"image/avif"){return Err("invalid_image".into())}
   self.image_resource(json!({"_tag":"attachment","attachmentId":id,"fileName":name,"mimeType":mime,"disposition":"inline"}),Some(mime)).map(|(bytes,_)|bytes)
  }
  /// Host-local media is authorized by the server for this exact thread/path.
@@ -678,7 +678,7 @@ impl Connection {
   if expected.is_some_and(|m|m!=mime){return Err("invalid_image".into())}
   let mut bytes=vec![];response.take(10*1024*1024+1).read_to_end(&mut bytes).map_err(|_|"image_unavailable")?;
   if bytes.len()>10*1024*1024{return Err("image_limit_10MiB".into())}
-  let valid=match mime.as_str(){"image/png"=>bytes.starts_with(b"\x89PNG\r\n\x1a\n"),"image/jpeg"=>bytes.starts_with(b"\xff\xd8\xff"),"image/gif"=>bytes.starts_with(b"GIF87a")||bytes.starts_with(b"GIF89a"),"image/webp"=>bytes.starts_with(b"RIFF")&&bytes.get(8..12)==Some(b"WEBP"),_=>false};
+  let valid=match mime.as_str(){"image/png"=>bytes.starts_with(b"\x89PNG\r\n\x1a\n"),"image/jpeg"=>bytes.starts_with(b"\xff\xd8\xff"),"image/gif"=>bytes.starts_with(b"GIF87a")||bytes.starts_with(b"GIF89a"),"image/webp"=>bytes.starts_with(b"RIFF")&&bytes.get(8..12)==Some(b"WEBP"),"image/heic"|"image/heif"|"image/avif"=>bytes.get(4..8)==Some(b"ftyp"),_=>false};
   if !valid{return Err("invalid_image".into())}Ok((bytes,mime))
  }
 }

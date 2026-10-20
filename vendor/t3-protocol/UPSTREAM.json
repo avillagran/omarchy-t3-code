@@ -18,7 +18,7 @@
     "src/ffi_stream.rs": "4f9a4772740721b46f7f20006eb8381f8183bacda164af083d36b633af5f9052",
     "src/history.rs": "1f3fcd68eea3f3b317053bedd36fec1458359da70225931285f3fd2b07196266",
     "src/i18n.rs": "0cbb5b216b8dd94f6fbf8001871808fbb2e696f2822f0d482c8c46664729c1cb",
-    "src/lib.rs": "caa23308be63886f8fc114c9cade94c47376a4cbadd34800dfe047751e85fcbd",
+    "src/lib.rs": "43181bb843147fc1786fd04b4cee0d6ef3f0aff13550234b5b8726b4c85f5d59",
     "src/lifecycle.rs": "52b1a2581e9d80880e603d48f82f36e4bcb43b4ed3ecd3fa06bafabffdca2563",
     "src/models.rs": "cdeb2da96de219219920db96cafa126dbf8811dd5d4777ea034c91b91d95cd89",
     "src/projection.rs": "3bd5ce4f8530c6d9e44d113819b1d1db9c05c3d818f9c75eba529d3296ff49a2",
@@ -39,6 +39,7 @@
     "src/lib.rs adds media_image using the same signed same-origin image grant reader as attachment_image, with exact thread/path scope and existing 10 MiB bound",
     "src/projection.rs keeps the htmlRender reference (attachment id and title) of html_render turn items when the live mirror drops tool outputs, so renders that arrive while a chat is open still reach the timeline",
     "src/lib.rs declares pub mod device_hub; src/device_hub.rs builds only the native device hub proxy paths (MJPEG, screenshot, input sockets) with a session wsTicket and hostId, splits MJPEG/JPEG streams, parses Android SEMU packets and encodes panel input for serve-sim and serve-emu",
-    "src/projection.rs applies the partial-payload events of upstream 0.1 (thread.pull-request-link-updated, provider-session.detached, run.background-work-cancelled, checkpoint.rollback-requested), mirrors context handoffs and transfers, and keeps a provider turn's token usage when an update omits it"
+    "src/projection.rs applies the partial-payload events of upstream 0.1 (thread.pull-request-link-updated, provider-session.detached, run.background-work-cancelled, checkpoint.rollback-requested), mirrors context handoffs and transfers, and keeps a provider turn's token usage when an update omits it",
+    "src/lib.rs attachment_image also reads HEIC, HEIF and AVIF attachments (ISO-BMFF ftyp signature), which T3 renders since 0.1"
   ]
 }
