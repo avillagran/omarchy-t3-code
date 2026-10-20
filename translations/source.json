@@ -1173,6 +1173,8 @@
     "Interrupt": "Interrupt",
     "Kill": "Kill",
     "Click again to kill": "Click again to kill",
-    "Quote": "Quote"
+    "Quote": "Quote",
+    "Move up": "Move up",
+    "Move down": "Move down"
   }
 }
