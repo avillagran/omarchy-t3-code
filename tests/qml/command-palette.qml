@@ -17,6 +17,8 @@ ShellRoot{
   }else if(phase===4){check(b.selectedKey==="fixture/two","choosing a thread opens it");check(!keys.findChild(panel,"t3CommandPalette").opened,"palette closes after running");panel.toggleCommandPalette();phase=5
   }else if(phase===5){var p=keys.findChild(panel,"t3CommandPalette");keys.findChild(p,"t3CommandPaletteSearch").text="storage";phase=6
   }else if(phase===6){var p=keys.findChild(panel,"t3CommandPalette");check(p.runnable.length>=1&&p.runnable[0].item.id==="settings:storage","settings pages are searchable");p.run(p.runnable[0].item);phase=7
-  }else if(phase===7){check(panel.preferencesOpen,"settings page opens");panel.close();console.log("COMMAND_PALETTE_QML_PASS: actions, recent threads, multi-word search, run and close, settings pages");Qt.quit()}
+  }else if(phase===7){check(panel.preferencesOpen,"settings page opens");panel.preferencesOpen=false;panel.toggleCommandPalette();keys.findChild(panel,"t3CommandPaletteSearch").text="tokenizer bug";phase=8
+  }else if(phase===8){if(b.threadSearch.query!=="tokenizer bug")return;b.action({op:"thread-search",requestId:b.threadSearch.requestId,result:{query:"tokenizer bug",matches:[{threadId:"two",projectId:"q",environmentId:"fixture",source:"assistant",snippet:"…the tokenizer bug was in…",messageCreatedAt:null}]}});phase=9
+  }else if(phase===9){var p=keys.findChild(panel,"t3CommandPalette");check(p.runnable.length===1&&p.runnable[0].item.id==="match:fixture/two"&&p.runnable[0].item.title==="Refactor parser","server message matches list their thread: "+JSON.stringify(p.runnable.map(function(r){return r.item.id})));p.close();check(b.threadSearch.query==="","closing clears the search");panel.close();console.log("COMMAND_PALETTE_QML_PASS: actions, recent threads, multi-word search, run and close, settings pages, server message search");Qt.quit()}
  }}
 }
