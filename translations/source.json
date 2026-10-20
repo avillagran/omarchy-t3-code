@@ -1136,6 +1136,23 @@
     "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.": "Last cleanup: {removed} removed, {kept} kept, {failed} failed, {freed} freed.",
     "No cleanup has run yet.": "No cleanup has run yet.",
     "Cleaning up…": "Cleaning up…",
-    "Clean up now": "Clean up now"
+    "Clean up now": "Clean up now",
+    "Install": "Install",
+    "Downloading… {percent}%": "Downloading… {percent}%",
+    "Not installed": "Not installed",
+    "Downloading…": "Downloading…",
+    "Installing…": "Installing…",
+    "Verifying…": "Verifying…",
+    "Installed": "Installed",
+    "Install failed": "Install failed",
+    "Install cancelled": "Install cancelled",
+    "Starting sign-in…": "Starting sign-in…",
+    "Waiting for you to sign in": "Waiting for you to sign in",
+    "Signed in": "Signed in",
+    "Sign-in failed": "Sign-in failed",
+    "Sign-in cancelled": "Sign-in cancelled",
+    "Code: {code}": "Code: {code}",
+    "Open sign-in page": "Open sign-in page",
+    "Continue": "Continue"
   }
 }

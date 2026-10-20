@@ -35,6 +35,7 @@ pub mod usage_summary;
 pub mod scheduled_tasks;
 pub mod storage_cleanup;
 pub mod mcp_apps;
+pub mod provider_setup;
 pub mod git_operations;
 pub mod diff_review;
 pub mod working_review;
