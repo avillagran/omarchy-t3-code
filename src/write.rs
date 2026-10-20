@@ -321,6 +321,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "mcp-app"=>crate::mcp_apps::run(&e,input),
         "provider-setup"=>crate::provider_setup::run(&e,input),
         "agent-sessions"=>crate::agent_sessions::run(&e,input),
+        "process-diagnostics"=>crate::process_diagnostics::run(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),
         "branch-check"=>crate::branch_picker::check(&e,input),
         "branch-resolve"=>crate::branch_picker::resolve(&e,input),

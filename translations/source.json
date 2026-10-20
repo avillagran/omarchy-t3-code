@@ -1167,6 +1167,11 @@
     "{count} sessions": "{count} sessions",
     "Import new": "Import new",
     "Copy prompt link": "Copy prompt link",
-    "Copy prompt link with repo and model": "Copy prompt link with repo and model"
+    "Copy prompt link with repo and model": "Copy prompt link with repo and model",
+    "Processes": "Processes",
+    "{count} processes · {cpu}% CPU · {memory}": "{count} processes · {cpu}% CPU · {memory}",
+    "Interrupt": "Interrupt",
+    "Kill": "Kill",
+    "Click again to kill": "Click again to kill"
   }
 }
