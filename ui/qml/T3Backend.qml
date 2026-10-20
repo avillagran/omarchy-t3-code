@@ -512,7 +512,7 @@ Singleton {
   function scheduledTasksAction(values){var id=uuid();scheduledTasks=Object.assign({},scheduledTasks,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,lastAction:values.action});send(Object.assign({op:"scheduled-tasks",environment:selectedEnvironment||"local",requestId:id},values))}
   // Usage page (server.getUsageSummary) for the selected environment.
   property var usage:({busy:false,error:"",data:null,requestId:""})
-  function requestUsage(period){var id=uuid();usage=Object.assign({},usage,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,period:period});send({op:"usage-summary",environment:selectedEnvironment||"local",period:period,requestId:id})}
+  function requestUsage(period,refreshRates){var id=uuid();usage=Object.assign({},usage,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,period:period});send({op:"usage-summary",environment:selectedEnvironment||"local",period:period,refreshRates:!!refreshRates,requestId:id})}
   // Subagents working for the open thread; each can be stopped.
   property var activeSubagents:[]
   function stopSubagent(sub){if(!sub||!sub.runId||managementBusy)return;manage({action:"stop-subagent",environment:selectedEnvironment,thread:selectedThread,runId:sub.runId,subagentId:sub.id})}

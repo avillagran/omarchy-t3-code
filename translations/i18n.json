@@ -1185,7 +1185,8 @@
     "Install and add": "Install and add",
     "Update to {version}": "Update to {version}",
     "Updating…": "Updating…",
-    "Initialize repository": "Initialize repository"
+    "Initialize repository": "Initialize repository",
+    "Refresh prices": "Refresh prices"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2373,7 +2374,8 @@
     "Install and add": "Instalar y agregar",
     "Update to {version}": "Actualizar a {version}",
     "Updating…": "Actualizando…",
-    "Initialize repository": "Inicializar repositorio"
+    "Initialize repository": "Inicializar repositorio",
+    "Refresh prices": "Actualizar precios"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3561,7 +3563,8 @@
     "Install and add": "Instalar e adicionar",
     "Update to {version}": "Atualizar para {version}",
     "Updating…": "Atualizando…",
-    "Initialize repository": "Inicializar repositório"
+    "Initialize repository": "Inicializar repositório",
+    "Refresh prices": "Atualizar preços"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4749,7 +4752,8 @@
     "Install and add": "Installer et ajouter",
     "Update to {version}": "Mettre à jour vers {version}",
     "Updating…": "Mise à jour…",
-    "Initialize repository": "Initialiser le dépôt"
+    "Initialize repository": "Initialiser le dépôt",
+    "Refresh prices": "Actualiser les prix"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5937,7 +5941,8 @@
     "Install and add": "Installieren und hinzufügen",
     "Update to {version}": "Auf {version} aktualisieren",
     "Updating…": "Wird aktualisiert…",
-    "Initialize repository": "Repository initialisieren"
+    "Initialize repository": "Repository initialisieren",
+    "Refresh prices": "Preise aktualisieren"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7125,7 +7130,8 @@
     "Install and add": "Installa e aggiungi",
     "Update to {version}": "Aggiorna a {version}",
     "Updating…": "Aggiornamento…",
-    "Initialize repository": "Inizializza repository"
+    "Initialize repository": "Inizializza repository",
+    "Refresh prices": "Aggiorna prezzi"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8313,7 +8319,8 @@
     "Install and add": "Installeren en toevoegen",
     "Update to {version}": "Bijwerken naar {version}",
     "Updating…": "Bijwerken…",
-    "Initialize repository": "Repository initialiseren"
+    "Initialize repository": "Repository initialiseren",
+    "Refresh prices": "Prijzen vernieuwen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9501,7 +9508,8 @@
     "Install and add": "Zainstaluj i dodaj",
     "Update to {version}": "Zaktualizuj do {version}",
     "Updating…": "Aktualizowanie…",
-    "Initialize repository": "Zainicjuj repozytorium"
+    "Initialize repository": "Zainicjuj repozytorium",
+    "Refresh prices": "Odśwież ceny"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10689,7 +10697,8 @@
     "Install and add": "Установить и добавить",
     "Update to {version}": "Обновить до {version}",
     "Updating…": "Обновление…",
-    "Initialize repository": "Инициализировать репозиторий"
+    "Initialize repository": "Инициализировать репозиторий",
+    "Refresh prices": "Обновить цены"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11877,7 +11886,8 @@
     "Install and add": "Встановити й додати",
     "Update to {version}": "Оновити до {version}",
     "Updating…": "Оновлення…",
-    "Initialize repository": "Ініціалізувати репозиторій"
+    "Initialize repository": "Ініціалізувати репозиторій",
+    "Refresh prices": "Оновити ціни"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13065,7 +13075,8 @@
     "Install and add": "インストールして追加",
     "Update to {version}": "{version} に更新",
     "Updating…": "更新中…",
-    "Initialize repository": "リポジトリを初期化"
+    "Initialize repository": "リポジトリを初期化",
+    "Refresh prices": "価格を更新"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14253,7 +14264,8 @@
     "Install and add": "설치 후 추가",
     "Update to {version}": "{version}(으)로 업데이트",
     "Updating…": "업데이트 중…",
-    "Initialize repository": "저장소 초기화"
+    "Initialize repository": "저장소 초기화",
+    "Refresh prices": "가격 새로 고침"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15441,7 +15453,8 @@
     "Install and add": "安装并添加",
     "Update to {version}": "更新到 {version}",
     "Updating…": "正在更新…",
-    "Initialize repository": "初始化仓库"
+    "Initialize repository": "初始化仓库",
+    "Refresh prices": "刷新价格"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16629,7 +16642,8 @@
     "Install and add": "ثبّت وأضف",
     "Update to {version}": "حدّث إلى {version}",
     "Updating…": "جارٍ التحديث…",
-    "Initialize repository": "هيّئ المستودع"
+    "Initialize repository": "هيّئ المستودع",
+    "Refresh prices": "حدّث الأسعار"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17817,7 +17831,8 @@
     "Install and add": "Yükle ve ekle",
     "Update to {version}": "{version} sürümüne güncelle",
     "Updating…": "Güncelleniyor…",
-    "Initialize repository": "Depoyu başlat"
+    "Initialize repository": "Depoyu başlat",
+    "Refresh prices": "Fiyatları yenile"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19005,7 +19020,8 @@
     "Install and add": "Installera och lägg till",
     "Update to {version}": "Uppdatera till {version}",
     "Updating…": "Uppdaterar…",
-    "Initialize repository": "Initiera arkiv"
+    "Initialize repository": "Initiera arkiv",
+    "Refresh prices": "Uppdatera priser"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20193,7 +20209,8 @@
     "Install and add": "Installér og tilføj",
     "Update to {version}": "Opdatér til {version}",
     "Updating…": "Opdaterer…",
-    "Initialize repository": "Initialisér repository"
+    "Initialize repository": "Initialisér repository",
+    "Refresh prices": "Opdatér priser"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21381,7 +21398,8 @@
     "Install and add": "Installer og legg til",
     "Update to {version}": "Oppdater til {version}",
     "Updating…": "Oppdaterer…",
-    "Initialize repository": "Initialiser repository"
+    "Initialize repository": "Initialiser repository",
+    "Refresh prices": "Oppdater priser"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22569,7 +22587,8 @@
     "Install and add": "Asenna ja lisää",
     "Update to {version}": "Päivitä versioon {version}",
     "Updating…": "Päivitetään…",
-    "Initialize repository": "Alusta repositorio"
+    "Initialize repository": "Alusta repositorio",
+    "Refresh prices": "Päivitä hinnat"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23757,6 +23776,7 @@
     "Install and add": "Nainstalovat a přidat",
     "Update to {version}": "Aktualizovat na {version}",
     "Updating…": "Aktualizace…",
-    "Initialize repository": "Inicializovat repozitář"
+    "Initialize repository": "Inicializovat repozitář",
+    "Refresh prices": "Obnovit ceny"
   }
 }

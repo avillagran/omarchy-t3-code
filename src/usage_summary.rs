@@ -92,6 +92,10 @@ pub fn aggregate(summary: &Value, since: NaiveDate, until: NaiveDate) -> Value {
     })
 }
 pub fn read(e: &Environment, input: &Value) -> Result<Value> {
+    // Model prices come from a public table the server caches; refresh it on request.
+    if input["refreshRates"] == true {
+        rpc(e, "server.refreshUsageRates", json!({}))?;
+    }
     let (since, until) = window(text(input, "period"), Local::now().date_naive())?;
     let summary = rpc(
         e,

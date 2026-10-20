@@ -72,6 +72,7 @@ Controls.Popup {
     Text{Layout.preferredWidth:Style.space(80);horizontalAlignment:Text.AlignRight;text:root.metric==="cost"?root.money(modelData.cost):root.count(modelData.tokens);color:root.fg;font.pixelSize:Style.font.caption}
    }
   }
+  T3PickerButton{objectName:"usageRefreshPrices";visible:!!root.summary&&(root.summary.unpricedRecords>0||root.summary.pricing!=="fresh");primary:false;implicitHeight:Style.space(26);enabled:!root.view.busy;text:T3I18n.tr("Refresh prices");onClicked:root.bridge.requestUsage(root.period,true)}
   Text{Layout.fillWidth:true;visible:!!root.summary&&(root.summary.unpricedRecords>0||root.summary.pricing!=="fresh");text:(root.summary&&root.summary.unpricedRecords>0?T3I18n.tr("{count} records have no price.",{count:root.summary.unpricedRecords})+" ":"")+(root.summary&&root.summary.pricing==="unavailable"?T3I18n.tr("Model prices are unavailable."):"");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
  }
 }
