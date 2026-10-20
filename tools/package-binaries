@@ -9,12 +9,12 @@ commit=$(git rev-parse HEAD)
 version="v$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')"
 [[ $(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1) == "${version#v}" ]] || { echo 'Version mismatch.' >&2; exit 1; }
 bin/build-client
-for file in omarchy-t3-client libt3-document.so libt3-browser.so t3-browser-secret; do [[ -s bin/$file ]]; done
+for file in omarchy-t3-client libt3-document.so libt3-qml-preview.so libt3-browser.so t3-browser-secret; do [[ -s bin/$file ]]; done
 mkdir -p dist
 stage=$(mktemp -d)
 trap 'rm -rf -- "$stage"' EXIT
 mkdir "$stage/bin"
-install -m755 bin/omarchy-t3-client bin/libt3-document.so bin/libt3-browser.so bin/t3-browser-secret "$stage/bin/"
+install -m755 bin/omarchy-t3-client bin/libt3-document.so bin/libt3-qml-preview.so bin/libt3-browser.so bin/t3-browser-secret "$stage/bin/"
 printf '%s\n' "$commit" > "$stage/COMMIT"
 printf 'version=%s\narchitecture=%s\nqt=%s\nglibc=%s\nrust=%s\n' "$version" "$arch" "$(pkg-config --modversion Qt6Core)" "$(getconf GNU_LIBC_VERSION)" "$(rustc --version)" > "$stage/BUILD-INFO"
 asset="omarchy-t3-code-$version-linux-$arch.tar.gz"

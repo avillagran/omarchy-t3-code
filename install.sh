@@ -79,8 +79,8 @@ else
   (cd "$downloads" && sha256sum -c "$asset.sha256") || fail 'Binary checksum failed.'
   [[ $(tar -xOf "$downloads/$asset" COMMIT) == "$expected_commit" ]] || fail 'Binary and source revisions differ.'
   mkdir "$downloads/unpacked"
-  tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so bin/libt3-browser.so bin/t3-browser-secret
-  ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" "$downloads/unpacked/bin/libt3-browser.so" "$downloads/unpacked/bin/t3-browser-secret" > "$downloads/libraries"
+  tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so bin/libt3-qml-preview.so bin/libt3-browser.so bin/t3-browser-secret
+  ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" "$downloads/unpacked/bin/libt3-qml-preview.so" "$downloads/unpacked/bin/libt3-browser.so" "$downloads/unpacked/bin/t3-browser-secret" > "$downloads/libraries"
   if rg -q 'not found' "$downloads/libraries"; then
     cat "$downloads/libraries" >&2
     fail 'Runtime libraries do not match this package; update Omarchy or use OT3_BUILD_FROM_SOURCE=1.'
@@ -91,7 +91,7 @@ else
   fi
   install -m755 "$downloads/unpacked/bin/omarchy-t3-client" "$build_dir/bin/omarchy-t3-client.new"
   mv -f "$build_dir/bin/omarchy-t3-client.new" "$build_dir/bin/omarchy-t3-client"
-  for file in libt3-document.so libt3-browser.so t3-browser-secret; do
+  for file in libt3-document.so libt3-qml-preview.so libt3-browser.so t3-browser-secret; do
     install -m755 "$downloads/unpacked/bin/$file" "$build_dir/bin/$file"
   done
 fi
