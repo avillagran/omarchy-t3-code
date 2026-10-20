@@ -22,7 +22,7 @@ ColumnLayout {
  property bool showBarToggle:true
  // Hosts in small windows (the bar popup) grow to fit an open dialog and keep
  // their window while the file chooser is up.
- readonly property real dialogHeight:Math.max(inviteDialog.visible?inviteDialog.implicitHeight:0,publishDialog.visible?publishDialog.implicitHeight:0,confirmation.visible?confirmation.implicitHeight:0)
+ readonly property real dialogHeight:Math.max(inviteDialog.visible?inviteDialog.implicitHeight:0,publishDialog.visible?publishDialog.implicitHeight:0,gatewayDialog.visible?gatewayDialog.implicitHeight:0,confirmation.visible?confirmation.implicitHeight:0)
  property bool choosingFile:false
  function request(action,values){bridge.requestConnectionOmaBridge(action,values || {})}
  function shortId(id){return (id || "").slice(0,8)}
@@ -38,6 +38,11 @@ ColumnLayout {
   if(code==="omabridge_ssh_unavailable")return T3I18n.tr("No SSH server is listening on this device.")
   if(code==="omabridge_unit_foreign")return T3I18n.tr("Another omarchy-t3-omabridge service exists. Remove it to publish from here.")
   if(code==="omabridge_peer_not_found")return T3I18n.tr("That device is no longer paired or waiting.")
+  if(code==="omabridge_not_managed")return T3I18n.tr("This device does not manage that device.")
+  if(code==="omabridge_peer_unreachable")return T3I18n.tr("That device could not be reached. Check that it is published and online.")
+  if(code==="omabridge_remote_forbidden" || code==="omabridge_remote_unsupported" || code==="omabridge_remote_failed")return T3I18n.tr("That device does not allow this change.")
+  if(code==="omabridge_name_invalid")return T3I18n.tr("That name is not valid there. Use a name under one of its wildcard zones.")
+  if(code==="omabridge_manage_unsupported")return T3I18n.tr("Public addresses need a newer OmaBridge.")
   return T3I18n.error(code)
  }
  function publishStatus(){
@@ -46,7 +51,19 @@ ColumnLayout {
   if(!published.active)return T3I18n.tr("Published, but not running.")
   return T3I18n.tr("Published")+" · "+servicesText(published.services)
  }
- function closeDialogs(){inviteDialog.close();publishDialog.close();confirmation.close()}
+ readonly property var gateways:store.gateways || null
+ readonly property var gatewayHosts:gateways&&gateways.hosts || []
+ function gatewayState(g){
+  var c=(root.store.gatewayChecks || {})[g.url]
+  if(c)return !c.reachable?T3I18n.tr("Not reachable from here"):c.sameEnvironment===false?T3I18n.tr("Answers with another T3 Code"):T3I18n.tr("Answers with this T3 Code")
+  if(g.error)return root.errorText(g.error)
+  return g.running?T3I18n.tr("Address open"):T3I18n.tr("Not running")
+ }
+ property bool gatewaysAsked:false
+ // Read public addresses once, as soon as the store is free.
+ function readGateways(action,values){if(bridge.requestOmaBridgeGateways)bridge.requestOmaBridgeGateways(action,values || {})}
+ Timer{interval:400;running:root.visible&&!!root.device&&!root.gateways&&!root.gatewaysAsked;onTriggered:{root.gatewaysAsked=true;root.readGateways("gateways-read")}}
+ function closeDialogs(){inviteDialog.close();publishDialog.close();gatewayDialog.close();confirmation.close()}
  function restorePublish(){publishSwitch.checked=Qt.binding(function(){return !!root.published.enabled})}
  function pairFile(url){var path=String(url).replace(/^file:\/\//,"");ask("pair",{path:decodeURIComponent(path)},T3I18n.tr("Pair with the device in this invitation?"),T3I18n.tr("The other device must approve this one before it can be reached."))}
  spacing:Style.space(10)
@@ -121,6 +138,51 @@ ColumnLayout {
     onClicked:root.ask("revoke",{peer:modelData.id},T3I18n.tr("Revoke {name}?",{name:modelData.name}),T3I18n.tr("Both directions stop working until the devices are paired again."))}
   }
  }
+ // Public addresses: T3 Code apps that cannot run OmaBridge reach this device
+ // through a paired device with a public IP. T3's own pairing still guards it.
+ RowLayout{Layout.fillWidth:true;visible:!!root.value.available&&!!root.device
+  Text{Layout.fillWidth:true;text:T3I18n.tr("Public addresses");color:root.fg;font.pixelSize:Style.font.caption;font.bold:true}
+  T3IconButton{objectName:"omabridgeGatewaysRefresh";name:"refresh-cw";tooltipText:T3I18n.tr("Check again");enabled:!root.store.gatewaysBusy;onClicked:root.readGateways("gateways-read")}
+ }
+ Text{Layout.fillWidth:true;visible:!!root.value.available&&!!root.device;color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap
+  text:root.gateways&&root.gateways.supported===false?T3I18n.tr("Public addresses need a newer OmaBridge."):!root.gateways?T3I18n.tr("T3 Code apps that cannot run OmaBridge can reach this device through a paired device with a public IP that you manage. T3 still asks for its own pairing."):root.gatewayHosts.length?T3I18n.tr("Anyone with an address reaches T3 Code's sign-in, as with T3's own remote access."):T3I18n.tr("No paired device you manage can open a public address yet.")}
+ Repeater{model:root.gatewayHosts
+  delegate:ColumnLayout{id:hostRow;required property var modelData;Layout.fillWidth:true;spacing:Style.space(4)
+   RowLayout{Layout.fillWidth:true
+    T3Icon{name:"globe";tint:hostRow.modelData.gateways.length?Color.accent:root.muted}
+    ColumnLayout{Layout.fillWidth:true
+     Text{Layout.fillWidth:true;text:hostRow.modelData.name+" · "+root.shortId(hostRow.modelData.id);color:root.fg;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+     Text{objectName:"omabridgeGatewayHostState_"+hostRow.modelData.id;Layout.fillWidth:true;color:hostRow.modelData.error&&hostRow.modelData.managed?Color.urgent:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText
+      text:!hostRow.modelData.managed?T3I18n.tr("Allowed to expose T3 Code publicly. Its addresses are managed from another device."):hostRow.modelData.error?root.errorText(hostRow.modelData.error):hostRow.modelData.gateways.length?T3I18n.tr("Exposes T3 Code from this device"):T3I18n.tr("No public address for this device")}
+    }
+    T3PickerButton{objectName:"omabridgeGatewayOpen_"+hostRow.modelData.id;visible:hostRow.modelData.managed&&!hostRow.modelData.error&&!hostRow.modelData.gateways.length;primary:false;text:T3I18n.tr("Open address…");enabled:!root.store.busy
+     onClicked:{gatewayDialog.host=hostRow.modelData;gatewayName.text="";gatewayDialog.open()}}
+    T3PickerButton{objectName:"omabridgeGatewayClose_"+hostRow.modelData.id;visible:hostRow.modelData.public;primary:false;text:T3I18n.tr("Close…");enabled:!root.store.busy
+     onClicked:root.ask("gateway-close",{peer:hostRow.modelData.id},T3I18n.tr("Close this device's public addresses on {name}?",{name:hostRow.modelData.name}),T3I18n.tr("T3 Code apps paired through them stop reaching this device. OmaBridge pairing is kept."))}
+   }
+   Repeater{model:hostRow.modelData.gateways
+    delegate:RowLayout{required property var modelData;Layout.fillWidth:true;Layout.leftMargin:Style.space(26)
+     ColumnLayout{Layout.fillWidth:true
+      Text{objectName:"omabridgeGatewayUrl";Layout.fillWidth:true;text:modelData.url;color:root.fg;font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
+      Text{Layout.fillWidth:true;text:root.gatewayState(modelData);color:modelData.error?Color.urgent:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+     }
+     T3IconButton{name:"copy";tooltipText:T3I18n.tr("Copy address");onClicked:root.bridge.copyText(modelData.url)}
+     T3PickerButton{objectName:"omabridgeGatewayCheck";primary:false;text:T3I18n.tr("Check");enabled:!root.store.gatewaysBusy;onClicked:root.readGateways("gateway-check",{url:modelData.url})}
+    }
+   }
+  }
+ }
+ Text{Layout.fillWidth:true;visible:!!root.gateways&&root.gatewayHosts.some(function(h){return h.gateways.length>0});text:T3I18n.tr("To pair a T3 Code app, create a pairing link for this device in Access and choose a public address.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+ // Addresses this device opens for paired devices' services.
+ Repeater{model:root.gateways&&root.gateways.hosted || []
+  delegate:RowLayout{required property var modelData;Layout.fillWidth:true
+   T3Icon{name:"globe";tint:root.muted}
+   ColumnLayout{Layout.fillWidth:true
+    Text{Layout.fillWidth:true;text:T3I18n.tr("Opened here for {name}",{name:modelData.name || root.shortId(modelData.peer)})+" · "+root.serviceLabel(modelData.service);color:root.fg;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+    Text{Layout.fillWidth:true;text:modelData.url+" · "+root.gatewayState(modelData);color:root.muted;font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
+   }
+  }
+ }
  Text{Layout.fillWidth:true;visible:!!root.store.paired&&root.store.paired.status==="approved";text:T3I18n.tr("Paired with {name}.",{name:root.store.paired?root.store.paired.name || "":""});color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
  FileDialog{id:inviteFile;title:T3I18n.tr("Choose an OmaBridge invitation");fileMode:FileDialog.OpenFile;nameFilters:[T3I18n.tr("OmaBridge invitation")+" (*.json)","* (*)"];onRejected:root.choosingFile=false;onAccepted:{root.choosingFile=false;root.pairFile(selectedFile)}}
  Controls.Popup{id:inviteDialog;objectName:"omabridgeInviteDialog";parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(480),parent?parent.width-Style.space(32):Style.space(480));padding:Style.space(20);modal:true
@@ -161,6 +223,24 @@ ColumnLayout {
    RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}T3PickerButton{primary:false;text:T3I18n.tr("Cancel");enabled:!root.store.busy;onClicked:publishDialog.close()}T3PickerButton{objectName:"omabridgePublishConfirm";text:T3I18n.tr("Publish");enabled:!root.store.busy;onClicked:root.request("publish",{ssh:publishSsh.checked&&publishSsh.enabled,confirmed:true})}}
   }
  }
+ Controls.Popup{id:gatewayDialog;objectName:"omabridgeGatewayDialog";property var host:null;parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(480),parent?parent.width-Style.space(32):Style.space(480));padding:Style.space(20);modal:true
+  closePolicy:root.store.busy?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
+  background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.muted}
+  contentItem:ColumnLayout{spacing:Style.space(12)
+   Text{Layout.fillWidth:true;text:T3I18n.tr("Open a public address on {name}?",{name:gatewayDialog.host?gatewayDialog.host.name:""});color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+   Text{Layout.fillWidth:true;text:T3I18n.tr("That device gets an HTTPS address that leads only to T3 Code on this device. Anyone who finds it reaches T3's sign-in; T3 Code apps still need a pairing link from Access. Close it here at any time.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+   Text{Layout.fillWidth:true;text:T3I18n.tr("Name (optional)");color:root.fg;font.pixelSize:Style.font.caption}
+   T3PickerField{id:gatewayName;objectName:"omabridgeGatewayName";Layout.fillWidth:true;placeholderText:gatewayDialog.host&&gatewayDialog.host.zones.length?"laptop."+gatewayDialog.host.zones[0]:T3I18n.tr("Its own name and a free port");selectByMouse:true;enabled:!root.store.busy}
+   Text{Layout.fillWidth:true;color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap
+    text:gatewayDialog.host&&gatewayDialog.host.zones.length?T3I18n.tr("A name under {zones} shares one port with other devices. Leave it empty to use a port of its own.",{zones:gatewayDialog.host.zones.join(", ")}):T3I18n.tr("Without a wildcard certificate on that device, it uses its own name and a free port.")}
+   Text{Layout.fillWidth:true;visible:!!root.store.error;text:root.errorText(root.store.error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+   RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}
+    T3PickerButton{primary:false;text:T3I18n.tr("Cancel");enabled:!root.store.busy;onClicked:gatewayDialog.close()}
+    T3PickerButton{objectName:"omabridgeGatewayConfirm";text:T3I18n.tr("Open address");enabled:!root.store.busy&&!!gatewayDialog.host
+     onClicked:root.request("gateway-open",{peer:gatewayDialog.host.id,host:gatewayName.text.trim(),confirmed:true})}
+   }
+  }
+ }
  Controls.Popup{id:confirmation;parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(480),parent?parent.width-Style.space(32):Style.space(480));padding:Style.space(20);modal:true;closePolicy:root.store.busy?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
   onClosed:{root.pending=null;root.restorePublish()}
   background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.muted}
@@ -171,5 +251,5 @@ ColumnLayout {
    RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}T3PickerButton{objectName:"omabridgeDeviceCancel";primary:false;text:T3I18n.tr("Cancel");enabled:!root.store.busy;onClicked:confirmation.close()}T3PickerButton{objectName:"omabridgeDeviceConfirm";text:T3I18n.tr("Confirm");enabled:!root.store.busy;onClicked:root.request(root.pending.action,root.pending.values)}}
   }
  }
- Connections{target:root.bridge;function onConnectionOmaBridgeFinished(action,error){if(!error&&root.pending&&root.pending.action===action)confirmation.close();if(!error&&action==="publish")publishDialog.close()}}
+ Connections{target:root.bridge;function onConnectionOmaBridgeFinished(action,error){if(!error&&root.pending&&root.pending.action===action)confirmation.close();if(!error&&action==="publish")publishDialog.close();if(!error&&action==="gateway-open")gatewayDialog.close()}}
 }
