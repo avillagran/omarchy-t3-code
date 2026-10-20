@@ -1158,7 +1158,14 @@
     "Copy as Markdown": "Copy as Markdown",
     "Copy as CSV": "Copy as CSV",
     "Stop subagent": "Stop subagent",
-    "Open subagent thread": "Open subagent thread"
+    "Open subagent thread": "Open subagent thread",
+    "Import agent sessions": "Import agent sessions",
+    "Scan again": "Scan again",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.",
+    "Imported {imported} sessions, skipped {skipped}.": "Imported {imported} sessions, skipped {skipped}.",
+    "No agent sessions found.": "No agent sessions found.",
+    "{count} sessions": "{count} sessions",
+    "Import new": "Import new"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2319,7 +2326,14 @@
     "Copy as Markdown": "Copiar como Markdown",
     "Copy as CSV": "Copiar como CSV",
     "Stop subagent": "Detener subagente",
-    "Open subagent thread": "Abrir hilo del subagente"
+    "Open subagent thread": "Abrir hilo del subagente",
+    "Import agent sessions": "Importar sesiones de agentes",
+    "Scan again": "Volver a buscar",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Carpetas donde se ejecutó Claude o Codex en este entorno. Al importar, sus sesiones pasan al proyecto de la carpeta, que se crea si hace falta.",
+    "Imported {imported} sessions, skipped {skipped}.": "Se importaron {imported} sesiones y se omitieron {skipped}.",
+    "No agent sessions found.": "No se encontraron sesiones de agentes.",
+    "{count} sessions": "{count} sesiones",
+    "Import new": "Importar nuevas"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3480,7 +3494,14 @@
     "Copy as Markdown": "Copiar como Markdown",
     "Copy as CSV": "Copiar como CSV",
     "Stop subagent": "Parar subagente",
-    "Open subagent thread": "Abrir conversa do subagente"
+    "Open subagent thread": "Abrir conversa do subagente",
+    "Import agent sessions": "Importar sessões de agentes",
+    "Scan again": "Procurar novamente",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Pastas onde o Claude ou o Codex rodaram neste ambiente. Importar traz as sessões para o projeto da pasta, criando-o se necessário.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} sessões importadas, {skipped} ignoradas.",
+    "No agent sessions found.": "Nenhuma sessão de agente encontrada.",
+    "{count} sessions": "{count} sessões",
+    "Import new": "Importar novas"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4641,7 +4662,14 @@
     "Copy as Markdown": "Copier en Markdown",
     "Copy as CSV": "Copier en CSV",
     "Stop subagent": "Arrêter le sous-agent",
-    "Open subagent thread": "Ouvrir le fil du sous-agent"
+    "Open subagent thread": "Ouvrir le fil du sous-agent",
+    "Import agent sessions": "Importer des sessions d’agents",
+    "Scan again": "Rechercher à nouveau",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Dossiers où Claude ou Codex ont tourné dans cet environnement. L’import amène leurs sessions dans le projet du dossier, créé si besoin.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} sessions importées, {skipped} ignorées.",
+    "No agent sessions found.": "Aucune session d’agent trouvée.",
+    "{count} sessions": "{count} sessions",
+    "Import new": "Importer les nouvelles"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5802,7 +5830,14 @@
     "Copy as Markdown": "Als Markdown kopieren",
     "Copy as CSV": "Als CSV kopieren",
     "Stop subagent": "Subagent stoppen",
-    "Open subagent thread": "Thread des Subagenten öffnen"
+    "Open subagent thread": "Thread des Subagenten öffnen",
+    "Import agent sessions": "Agentensitzungen importieren",
+    "Scan again": "Erneut suchen",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Ordner, in denen Claude oder Codex in dieser Umgebung lief. Der Import holt die Sitzungen in das Projekt des Ordners und legt es bei Bedarf an.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} Sitzungen importiert, {skipped} übersprungen.",
+    "No agent sessions found.": "Keine Agentensitzungen gefunden.",
+    "{count} sessions": "{count} Sitzungen",
+    "Import new": "Neue importieren"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6963,7 +6998,14 @@
     "Copy as Markdown": "Copia come Markdown",
     "Copy as CSV": "Copia come CSV",
     "Stop subagent": "Arresta sottoagente",
-    "Open subagent thread": "Apri il thread del sottoagente"
+    "Open subagent thread": "Apri il thread del sottoagente",
+    "Import agent sessions": "Importa sessioni degli agenti",
+    "Scan again": "Cerca di nuovo",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Cartelle in cui Claude o Codex sono stati eseguiti in questo ambiente. L’importazione porta le sessioni nel progetto della cartella, creandolo se serve.",
+    "Imported {imported} sessions, skipped {skipped}.": "Importate {imported} sessioni, saltate {skipped}.",
+    "No agent sessions found.": "Nessuna sessione di agenti trovata.",
+    "{count} sessions": "{count} sessioni",
+    "Import new": "Importa nuove"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8124,7 +8166,14 @@
     "Copy as Markdown": "Kopiëren als Markdown",
     "Copy as CSV": "Kopiëren als CSV",
     "Stop subagent": "Subagent stoppen",
-    "Open subagent thread": "Thread van subagent openen"
+    "Open subagent thread": "Thread van subagent openen",
+    "Import agent sessions": "Agentsessies importeren",
+    "Scan again": "Opnieuw zoeken",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Mappen waar Claude of Codex in deze omgeving draaide. Importeren zet hun sessies in het project van de map en maakt dat zo nodig aan.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} sessies geïmporteerd, {skipped} overgeslagen.",
+    "No agent sessions found.": "Geen agentsessies gevonden.",
+    "{count} sessions": "{count} sessies",
+    "Import new": "Nieuwe importeren"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9285,7 +9334,14 @@
     "Copy as Markdown": "Kopiuj jako Markdown",
     "Copy as CSV": "Kopiuj jako CSV",
     "Stop subagent": "Zatrzymaj subagenta",
-    "Open subagent thread": "Otwórz wątek subagenta"
+    "Open subagent thread": "Otwórz wątek subagenta",
+    "Import agent sessions": "Importuj sesje agentów",
+    "Scan again": "Skanuj ponownie",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Foldery, w których działał Claude lub Codex w tym środowisku. Import przenosi ich sesje do projektu folderu, tworząc go w razie potrzeby.",
+    "Imported {imported} sessions, skipped {skipped}.": "Zaimportowano sesje: {imported}, pominięto: {skipped}.",
+    "No agent sessions found.": "Nie znaleziono sesji agentów.",
+    "{count} sessions": "Sesje: {count}",
+    "Import new": "Importuj nowe"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10446,7 +10502,14 @@
     "Copy as Markdown": "Копировать как Markdown",
     "Copy as CSV": "Копировать как CSV",
     "Stop subagent": "Остановить субагента",
-    "Open subagent thread": "Открыть тред субагента"
+    "Open subagent thread": "Открыть тред субагента",
+    "Import agent sessions": "Импортировать сеансы агентов",
+    "Scan again": "Повторить поиск",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Папки, где в этой среде работали Claude или Codex. Импорт переносит их сеансы в проект папки и при необходимости создаёт его.",
+    "Imported {imported} sessions, skipped {skipped}.": "Импортировано сеансов: {imported}, пропущено: {skipped}.",
+    "No agent sessions found.": "Сеансы агентов не найдены.",
+    "{count} sessions": "Сеансов: {count}",
+    "Import new": "Импортировать новые"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11607,7 +11670,14 @@
     "Copy as Markdown": "Копіювати як Markdown",
     "Copy as CSV": "Копіювати як CSV",
     "Stop subagent": "Зупинити субагента",
-    "Open subagent thread": "Відкрити тред субагента"
+    "Open subagent thread": "Відкрити тред субагента",
+    "Import agent sessions": "Імпортувати сеанси агентів",
+    "Scan again": "Шукати знову",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Теки, де в цьому середовищі працювали Claude або Codex. Імпорт переносить їхні сеанси в проєкт теки й за потреби створює його.",
+    "Imported {imported} sessions, skipped {skipped}.": "Імпортовано сеансів: {imported}, пропущено: {skipped}.",
+    "No agent sessions found.": "Сеанси агентів не знайдено.",
+    "{count} sessions": "Сеансів: {count}",
+    "Import new": "Імпортувати нові"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12768,7 +12838,14 @@
     "Copy as Markdown": "Markdown としてコピー",
     "Copy as CSV": "CSV としてコピー",
     "Stop subagent": "サブエージェントを停止",
-    "Open subagent thread": "サブエージェントのスレッドを開く"
+    "Open subagent thread": "サブエージェントのスレッドを開く",
+    "Import agent sessions": "エージェントのセッションをインポート",
+    "Scan again": "もう一度スキャン",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "この環境で Claude または Codex が実行されたフォルダーです。インポートすると、そのセッションをフォルダーのプロジェクトに取り込みます（必要なら作成します）。",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} 件のセッションをインポートし、{skipped} 件をスキップしました。",
+    "No agent sessions found.": "エージェントのセッションは見つかりませんでした。",
+    "{count} sessions": "{count} セッション",
+    "Import new": "新しいものをインポート"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13929,7 +14006,14 @@
     "Copy as Markdown": "Markdown으로 복사",
     "Copy as CSV": "CSV로 복사",
     "Stop subagent": "하위 에이전트 중지",
-    "Open subagent thread": "하위 에이전트 스레드 열기"
+    "Open subagent thread": "하위 에이전트 스레드 열기",
+    "Import agent sessions": "에이전트 세션 가져오기",
+    "Scan again": "다시 검색",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "이 환경에서 Claude 또는 Codex가 실행된 폴더입니다. 가져오면 세션이 폴더의 프로젝트로 들어오며, 필요하면 프로젝트를 만듭니다.",
+    "Imported {imported} sessions, skipped {skipped}.": "세션 {imported}개를 가져오고 {skipped}개를 건너뛰었습니다.",
+    "No agent sessions found.": "에이전트 세션을 찾지 못했습니다.",
+    "{count} sessions": "세션 {count}개",
+    "Import new": "새 항목 가져오기"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15090,7 +15174,14 @@
     "Copy as Markdown": "复制为 Markdown",
     "Copy as CSV": "复制为 CSV",
     "Stop subagent": "停止子智能体",
-    "Open subagent thread": "打开子智能体线程"
+    "Open subagent thread": "打开子智能体线程",
+    "Import agent sessions": "导入智能体会话",
+    "Scan again": "重新扫描",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "此环境中运行过 Claude 或 Codex 的文件夹。导入会把会话放入该文件夹的项目，必要时创建项目。",
+    "Imported {imported} sessions, skipped {skipped}.": "已导入 {imported} 个会话，跳过 {skipped} 个。",
+    "No agent sessions found.": "未找到智能体会话。",
+    "{count} sessions": "{count} 个会话",
+    "Import new": "导入新的"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16251,7 +16342,14 @@
     "Copy as Markdown": "انسخ بصيغة Markdown",
     "Copy as CSV": "انسخ بصيغة CSV",
     "Stop subagent": "أوقف الوكيل الفرعي",
-    "Open subagent thread": "افتح محادثة الوكيل الفرعي"
+    "Open subagent thread": "افتح محادثة الوكيل الفرعي",
+    "Import agent sessions": "استيراد جلسات الوكلاء",
+    "Scan again": "افحص مجددًا",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "مجلدات شُغّل فيها Claude أو Codex في هذه البيئة. يجلب الاستيراد جلساتها إلى مشروع المجلد، وينشئه عند الحاجة.",
+    "Imported {imported} sessions, skipped {skipped}.": "استُورد {imported} جلسة وتُخطّي {skipped}.",
+    "No agent sessions found.": "لم يُعثر على جلسات وكلاء.",
+    "{count} sessions": "{count} جلسات",
+    "Import new": "استورد الجديد"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17412,7 +17510,14 @@
     "Copy as Markdown": "Markdown olarak kopyala",
     "Copy as CSV": "CSV olarak kopyala",
     "Stop subagent": "Alt ajanı durdur",
-    "Open subagent thread": "Alt ajan konusunu aç"
+    "Open subagent thread": "Alt ajan konusunu aç",
+    "Import agent sessions": "Ajan oturumlarını içe aktar",
+    "Scan again": "Yeniden tara",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Bu ortamda Claude veya Codex'in çalıştığı klasörler. İçe aktarma, oturumlarını klasörün projesine getirir, gerekirse projeyi oluşturur.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} oturum içe aktarıldı, {skipped} atlandı.",
+    "No agent sessions found.": "Ajan oturumu bulunamadı.",
+    "{count} sessions": "{count} oturum",
+    "Import new": "Yenileri içe aktar"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18573,7 +18678,14 @@
     "Copy as Markdown": "Kopiera som Markdown",
     "Copy as CSV": "Kopiera som CSV",
     "Stop subagent": "Stoppa underagent",
-    "Open subagent thread": "Öppna underagentens tråd"
+    "Open subagent thread": "Öppna underagentens tråd",
+    "Import agent sessions": "Importera agentsessioner",
+    "Scan again": "Sök igen",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Mappar där Claude eller Codex har körts i den här miljön. Import för in deras sessioner i mappens projekt och skapar det vid behov.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} sessioner importerade, {skipped} hoppades över.",
+    "No agent sessions found.": "Inga agentsessioner hittades.",
+    "{count} sessions": "{count} sessioner",
+    "Import new": "Importera nya"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19734,7 +19846,14 @@
     "Copy as Markdown": "Kopiér som Markdown",
     "Copy as CSV": "Kopiér som CSV",
     "Stop subagent": "Stop underagent",
-    "Open subagent thread": "Åbn underagentens tråd"
+    "Open subagent thread": "Åbn underagentens tråd",
+    "Import agent sessions": "Importér agentsessioner",
+    "Scan again": "Søg igen",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Mapper, hvor Claude eller Codex har kørt i dette miljø. Import henter deres sessioner ind i mappens projekt og opretter det om nødvendigt.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} sessioner importeret, {skipped} sprunget over.",
+    "No agent sessions found.": "Ingen agentsessioner fundet.",
+    "{count} sessions": "{count} sessioner",
+    "Import new": "Importér nye"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20895,7 +21014,14 @@
     "Copy as Markdown": "Kopier som Markdown",
     "Copy as CSV": "Kopier som CSV",
     "Stop subagent": "Stopp underagent",
-    "Open subagent thread": "Åpne underagentens tråd"
+    "Open subagent thread": "Åpne underagentens tråd",
+    "Import agent sessions": "Importer agentøkter",
+    "Scan again": "Søk på nytt",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Mapper der Claude eller Codex har kjørt i dette miljøet. Import henter øktene inn i mappens prosjekt og oppretter det ved behov.",
+    "Imported {imported} sessions, skipped {skipped}.": "{imported} økter importert, {skipped} hoppet over.",
+    "No agent sessions found.": "Fant ingen agentøkter.",
+    "{count} sessions": "{count} økter",
+    "Import new": "Importer nye"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22056,7 +22182,14 @@
     "Copy as Markdown": "Kopioi Markdownina",
     "Copy as CSV": "Kopioi CSV:nä",
     "Stop subagent": "Pysäytä aliagentti",
-    "Open subagent thread": "Avaa aliagentin ketju"
+    "Open subagent thread": "Avaa aliagentin ketju",
+    "Import agent sessions": "Tuo agenttien istunnot",
+    "Scan again": "Etsi uudelleen",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Kansiot, joissa Claude tai Codex on ajettu tässä ympäristössä. Tuonti tuo istunnot kansion projektiin ja luo sen tarvittaessa.",
+    "Imported {imported} sessions, skipped {skipped}.": "Tuotiin {imported} istuntoa, ohitettiin {skipped}.",
+    "No agent sessions found.": "Agenttien istuntoja ei löytynyt.",
+    "{count} sessions": "{count} istuntoa",
+    "Import new": "Tuo uudet"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23217,6 +23350,13 @@
     "Copy as Markdown": "Kopírovat jako Markdown",
     "Copy as CSV": "Kopírovat jako CSV",
     "Stop subagent": "Zastavit podagenta",
-    "Open subagent thread": "Otevřít vlákno podagenta"
+    "Open subagent thread": "Otevřít vlákno podagenta",
+    "Import agent sessions": "Importovat relace agentů",
+    "Scan again": "Prohledat znovu",
+    "Folders where Claude or Codex ran on this environment. Importing brings their sessions into the folder's project, creating it if needed.": "Složky, kde v tomto prostředí běžel Claude nebo Codex. Import přenese jejich relace do projektu složky a v případě potřeby ho vytvoří.",
+    "Imported {imported} sessions, skipped {skipped}.": "Importováno relací: {imported}, přeskočeno: {skipped}.",
+    "No agent sessions found.": "Nenalezeny žádné relace agentů.",
+    "{count} sessions": "Relace: {count}",
+    "Import new": "Importovat nové"
   }
 }

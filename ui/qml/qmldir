@@ -122,3 +122,4 @@ T3ContextMeter 1.0 T3ContextMeter.qml
 T3SecretRequestCard 1.0 T3SecretRequestCard.qml
 T3UsagePage 1.0 T3UsagePage.qml
 T3ScheduledTasks 1.0 T3ScheduledTasks.qml
+T3AgentSessions 1.0 T3AgentSessions.qml
