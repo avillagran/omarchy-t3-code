@@ -1175,6 +1175,8 @@
     "Click again to kill": "Click again to kill",
     "Quote": "Quote",
     "Move up": "Move up",
-    "Move down": "Move down"
+    "Move down": "Move down",
+    "Open in a thread": "Open in a thread",
+    "Open in a worktree": "Open in a worktree"
   }
 }

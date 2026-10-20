@@ -134,3 +134,24 @@ mod link_tests {
         assert!(thread_command(&json!({"thread":"t","link":"link","reference":{"host":"github.com","repository":"o/r","number":5,"url":"javascript:x"}})).is_err());
     }
 }
+
+/// Check a pull request out (git.preparePullRequestThread) and start a thread on it,
+/// locally or in its own worktree, as T3's "Open in a thread".
+pub fn open_thread(e: &Environment, input: &Value) -> Result<Value> {
+    let cwd = input["cwd"].as_str().filter(|c| c.starts_with('/') && c.len() <= 4096).ok_or("invalid_folder")?;
+    let project = text(input, "projectId");
+    let url = input["url"].as_str().filter(|u| u.starts_with("https://") && u.len() <= 2048).ok_or("invalid_pull_request")?;
+    let mode = if input["mode"] == "worktree" { "worktree" } else { "local" };
+    if !crate::valid_id(project) || !input["modelSelection"].is_object() {
+        return Err("invalid_project".into());
+    }
+    let thread = format!("omarchy-thread-{}", uuid::Uuid::new_v4());
+    let mut payload = json!({"cwd":cwd,"reference":url,"mode":mode});
+    if mode == "worktree" {
+        payload["threadId"] = json!(thread);
+    }
+    let prepared = rpc(e, "git.preparePullRequestThread", payload)?;
+    let title = format!("#{} {}", prepared["pullRequest"]["number"], text(&prepared["pullRequest"], "title")).chars().take(200).collect::<String>();
+    rpc(e, "orchestration.dispatchCommand", json!({"type":"thread.create","commandId":format!("omarchy-{}",uuid::Uuid::new_v4()),"threadId":thread,"projectId":project,"title":title.trim(),"modelSelection":input["modelSelection"],"runtimeMode":"approval-required","interactionMode":"default","branch":prepared["branch"],"worktreePath":prepared["worktreePath"],"createdBy":"user","creationSource":"web"}))?;
+    Ok(json!({"threadId":thread,"branch":prepared["branch"],"worktreePath":prepared["worktreePath"],"onHead":prepared["isOnPullRequestHead"]!=false}))
+}

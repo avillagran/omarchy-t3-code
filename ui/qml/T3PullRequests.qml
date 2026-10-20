@@ -29,6 +29,7 @@ Rectangle{
  property string mergeMethod:""
  property string confirming:""
  function write(values){bridge.pullRequestWrite(environment,Object.assign({reference:reference()},values))}
+ Connections{target:root.bridge;ignoreUnknownSignals:true;function onPullRequestThreadOpened(){root.closed()}}
  Connections{target:root.bridge;function onPullRequestWritten(data){if(data.error||!root.selected)return;if(data.result&&data.result.kind!=="action")reply.text="";root.confirming="";root.bridge.requestPullRequests("detail",{environment:root.environment,reference:root.reference()});if(root.tab>0)root.loadTab(root.tab)}}
  // This thread's links to pull requests, for link/unlink/watch.
  readonly property var threadLinks:((bridge.selectedInfo.pullRequestBadge || {}).links) || []
@@ -110,6 +111,8 @@ Rectangle{
      T3Select{objectName:"pullRequestMergeMethod";visible:root.allowed.indexOf("merge")>=0&&root.mergeMethods.length>1;implicitWidth:Style.space(130);model:root.mergeMethods.map(function(m){return T3I18n.tr(({squash:"Squash and merge",merge:"Merge commit",rebase:"Rebase and merge"})[m])});currentIndex:Math.max(0,root.mergeMethods.indexOf(root.mergeMethod));onActivated:function(i){root.mergeMethod=root.mergeMethods[i]}}
      T3PickerButton{objectName:"pullRequestLink";visible:!!root.bridge.selectedThread&&!!root.detail.url;implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.link||{}).busy;text:T3I18n.tr(root.currentLink?"Unlink from thread":"Link to thread");onClicked:root.bridge.threadPullRequest(root.currentLink?"unlink":"link",root.linkRef())}
      T3PickerButton{objectName:"pullRequestWatch";visible:!!root.currentLink&&root.detail.state==="open";implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.link||{}).busy;text:T3I18n.tr(root.currentLink&&root.currentLink.watch?"Stop watching":"Watch checks");onClicked:root.bridge.threadPullRequest(root.currentLink.watch?"unwatch":"watch",root.linkRef())}
+     T3PickerButton{objectName:"pullRequestOpenThread";visible:!!root.detail.workspaceRoot&&!!root.detail.url;implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.prThread||{}).busy;text:T3I18n.tr("Open in a thread");onClicked:root.bridge.openPullRequestThread(root.environment,root.detail,"local")}
+     T3PickerButton{objectName:"pullRequestOpenWorktree";visible:!!root.detail.workspaceRoot&&!!root.detail.url;implicitHeight:Style.space(30);primary:false;enabled:!(root.bridge.prOperations.prThread||{}).busy;text:T3I18n.tr("Open in a worktree");onClicked:root.bridge.openPullRequestThread(root.environment,root.detail,"worktree")}
      Text{visible:root.detail.mergeability==="conflicting";text:T3I18n.tr("This branch has conflicts that must be resolved.");color:Color.urgent;font.pixelSize:Style.font.caption}
     }
     Text{Layout.fillWidth:true;visible:!!root.writeResult.error;text:T3I18n.error(root.writeResult.error || "");color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText}

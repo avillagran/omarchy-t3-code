@@ -316,6 +316,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "secret-answer"=>secret_answer(&e,input),
         "pull-request-action"=>crate::pull_request_actions::run(&e,input),
         "thread-pull-request"=>crate::pull_request_actions::thread_link(&e,input),
+        "pull-request-thread"=>crate::pull_request_actions::open_thread(&e,input),
         "usage-summary"=>crate::usage_summary::read(&e,input),
         "scheduled-tasks"=>crate::scheduled_tasks::run(&e,input),
         "storage-cleanup"=>crate::storage_cleanup::run(&e,input),
