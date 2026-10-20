@@ -526,6 +526,10 @@ Singleton {
   function requestUsage(period,refreshRates){var id=uuid();usage=Object.assign({},usage,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,period:period});send({op:"usage-summary",environment:selectedEnvironment||"local",period:period,refreshRates:!!refreshRates,requestId:id})}
   // Subagents working for the open thread; each can be stopped.
   property var activeSubagents:[]
+  property var workflowScript:({busy:false,error:"",contents:"",path:"",requestId:""})
+  signal workflowScriptRequested()
+  function openWorkflowScript(sub){if(!sub||!sub.scriptPath)return;var id=uuid();workflowScript={busy:true,error:"",contents:"",path:sub.scriptPath,title:sub.title,requestId:id};workflowScriptRequested();send({op:"workflow-script",environment:selectedEnvironment,thread:selectedThread,scriptPath:sub.scriptPath,requestId:id})}
+  function stopWorkflow(sub){if(!sub)return;send({op:"workflow-stop",environment:selectedEnvironment,thread:selectedThread,subagentId:sub.id,requestId:uuid()})}
   function stopSubagent(sub){if(!sub||!sub.runId||managementBusy)return;manage({action:"stop-subagent",environment:selectedEnvironment,thread:selectedThread,runId:sub.runId,subagentId:sub.id})}
   // Context window use of the open thread (T3 ContextWindowMeter).
   property var contextWindow:null
@@ -1250,6 +1254,8 @@ Singleton {
     if(data.op==="thread-pull-request"){var l=prOperations.link||{};if(l.requestId!==data.requestId)return;var a=Object.assign({},prOperations);a.link={busy:false,error:data.error||""};prOperations=a;refresh();return}
     if(data.op==="pull-request-action"){var w=prOperations.write||{};if(w.requestId!==data.requestId)return;var all=Object.assign({},prOperations);all.write=Object.assign({},w,{busy:false,error:data.error||"",data:data.result||null});prOperations=all;pullRequestWritten(data);return}
     if(data.op==="pin-reorder"){refresh();return}
+    if(data.op==="workflow-script"){if(data.requestId!==workflowScript.requestId)return;var wr=data.result||{};workflowScript=Object.assign({},workflowScript,{busy:false,error:data.error||"",contents:wr.contents||"",truncated:!!wr.truncated});return}
+    if(data.op==="workflow-stop"){if(data.error)managementError=data.error;return}
     if(data.op==="otlp-check"){var oc=Object.assign({},otlpChecks),sig=data.result?data.result.signal:Object.keys(otlpChecks).find(function(k){return otlpChecks[k].busy});if(sig){oc[sig]={busy:false,error:data.error||"",result:data.result?data.result.result:null};otlpChecks=oc}return}
     if(data.op==="git-init"){if(!data.error)requestGit();else gitView=Object.assign({},gitView,{operationError:data.error});return}
     if(data.op==="acp-registry"){if(data.requestId!==acpRegistry.requestId)return;var ar=data.result||{};var na=Object.assign({},acpRegistry,{busy:false,error:data.error||""});if(!data.error&&acpRegistry.action==="search")na.agents=ar.agents||[];acpRegistry=na;if(!data.error&&na.action==="prepare"&&na.agent)acpAgentPrepared(Object.assign({},na.agent,{version:ar.version||na.agent.version}));return}

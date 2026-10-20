@@ -1209,7 +1209,11 @@
     "Timed out": "Timed out",
     "Unreachable": "Unreachable",
     "Check": "Check",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Last 30 minutes: CPU (line) and memory (bars)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Last 30 minutes: CPU (line) and memory (bars)",
+    "Show workflow script": "Show workflow script",
+    "Stop workflow": "Stop workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "The script is longer than shown."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2421,7 +2425,11 @@
     "Timed out": "Tiempo agotado",
     "Unreachable": "Inalcanzable",
     "Check": "Comprobar",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Últimos 30 minutos: CPU (línea) y memoria (barras)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Últimos 30 minutos: CPU (línea) y memoria (barras)",
+    "Show workflow script": "Ver script del workflow",
+    "Stop workflow": "Detener workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "El script es más largo de lo que se muestra."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3633,7 +3641,11 @@
     "Timed out": "Tempo esgotado",
     "Unreachable": "Inacessível",
     "Check": "Verificar",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Últimos 30 minutos: CPU (linha) e memória (barras)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Últimos 30 minutos: CPU (linha) e memória (barras)",
+    "Show workflow script": "Ver script do workflow",
+    "Stop workflow": "Parar workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "O script é maior do que o exibido."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4845,7 +4857,11 @@
     "Timed out": "Délai dépassé",
     "Unreachable": "Injoignable",
     "Check": "Vérifier",
-    "Last 30 minutes: CPU (line) and memory (bars)": "30 dernières minutes : CPU (ligne) et mémoire (barres)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "30 dernières minutes : CPU (ligne) et mémoire (barres)",
+    "Show workflow script": "Afficher le script du workflow",
+    "Stop workflow": "Arrêter le workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Le script est plus long que ce qui est affiché."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6057,7 +6073,11 @@
     "Timed out": "Zeitüberschreitung",
     "Unreachable": "Nicht erreichbar",
     "Check": "Prüfen",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Letzte 30 Minuten: CPU (Linie) und Speicher (Balken)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Letzte 30 Minuten: CPU (Linie) und Speicher (Balken)",
+    "Show workflow script": "Workflow-Skript anzeigen",
+    "Stop workflow": "Workflow stoppen",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Das Skript ist länger als angezeigt."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7269,7 +7289,11 @@
     "Timed out": "Tempo scaduto",
     "Unreachable": "Irraggiungibile",
     "Check": "Verifica",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Ultimi 30 minuti: CPU (linea) e memoria (barre)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Ultimi 30 minuti: CPU (linea) e memoria (barre)",
+    "Show workflow script": "Mostra lo script del workflow",
+    "Stop workflow": "Arresta workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Lo script è più lungo di quanto mostrato."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8481,7 +8505,11 @@
     "Timed out": "Time-out",
     "Unreachable": "Onbereikbaar",
     "Check": "Controleren",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Laatste 30 minuten: CPU (lijn) en geheugen (balken)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Laatste 30 minuten: CPU (lijn) en geheugen (balken)",
+    "Show workflow script": "Workflowscript tonen",
+    "Stop workflow": "Workflow stoppen",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Het script is langer dan getoond."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9693,7 +9721,11 @@
     "Timed out": "Przekroczono limit czasu",
     "Unreachable": "Nieosiągalny",
     "Check": "Sprawdź",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Ostatnie 30 minut: CPU (linia) i pamięć (słupki)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Ostatnie 30 minut: CPU (linia) i pamięć (słupki)",
+    "Show workflow script": "Pokaż skrypt workflow",
+    "Stop workflow": "Zatrzymaj workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Skrypt jest dłuższy niż pokazano."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10905,7 +10937,11 @@
     "Timed out": "Время истекло",
     "Unreachable": "Недоступно",
     "Check": "Проверить",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Последние 30 минут: CPU (линия) и память (столбцы)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Последние 30 минут: CPU (линия) и память (столбцы)",
+    "Show workflow script": "Показать скрипт workflow",
+    "Stop workflow": "Остановить workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Скрипт длиннее, чем показано."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12117,7 +12153,11 @@
     "Timed out": "Час вичерпано",
     "Unreachable": "Недоступно",
     "Check": "Перевірити",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Останні 30 хвилин: CPU (лінія) і пам’ять (стовпці)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Останні 30 хвилин: CPU (лінія) і пам’ять (стовпці)",
+    "Show workflow script": "Показати скрипт workflow",
+    "Stop workflow": "Зупинити workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Скрипт довший, ніж показано."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13329,7 +13369,11 @@
     "Timed out": "タイムアウト",
     "Unreachable": "到達できません",
     "Check": "確認",
-    "Last 30 minutes: CPU (line) and memory (bars)": "直近 30 分: CPU（線）とメモリ（棒）"
+    "Last 30 minutes: CPU (line) and memory (bars)": "直近 30 分: CPU（線）とメモリ（棒）",
+    "Show workflow script": "ワークフローのスクリプトを表示",
+    "Stop workflow": "ワークフローを停止",
+    "Workflow": "ワークフロー",
+    "The script is longer than shown.": "スクリプトは表示されている部分より長いです。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14541,7 +14585,11 @@
     "Timed out": "시간 초과",
     "Unreachable": "연결할 수 없음",
     "Check": "확인",
-    "Last 30 minutes: CPU (line) and memory (bars)": "최근 30분: CPU(선)와 메모리(막대)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "최근 30분: CPU(선)와 메모리(막대)",
+    "Show workflow script": "워크플로 스크립트 보기",
+    "Stop workflow": "워크플로 중지",
+    "Workflow": "워크플로",
+    "The script is longer than shown.": "스크립트가 표시된 것보다 깁니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15753,7 +15801,11 @@
     "Timed out": "超时",
     "Unreachable": "无法访问",
     "Check": "检查",
-    "Last 30 minutes: CPU (line) and memory (bars)": "最近 30 分钟：CPU（折线）和内存（柱状）"
+    "Last 30 minutes: CPU (line) and memory (bars)": "最近 30 分钟：CPU（折线）和内存（柱状）",
+    "Show workflow script": "显示工作流脚本",
+    "Stop workflow": "停止工作流",
+    "Workflow": "工作流",
+    "The script is longer than shown.": "脚本比显示的更长。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16965,7 +17017,11 @@
     "Timed out": "انتهت المهلة",
     "Unreachable": "يتعذر الوصول",
     "Check": "افحص",
-    "Last 30 minutes: CPU (line) and memory (bars)": "آخر 30 دقيقة: CPU (خط) والذاكرة (أعمدة)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "آخر 30 دقيقة: CPU (خط) والذاكرة (أعمدة)",
+    "Show workflow script": "اعرض سكربت سير العمل",
+    "Stop workflow": "أوقف سير العمل",
+    "Workflow": "سير العمل",
+    "The script is longer than shown.": "السكربت أطول مما يظهر."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18177,7 +18233,11 @@
     "Timed out": "Zaman aşımı",
     "Unreachable": "Ulaşılamıyor",
     "Check": "Denetle",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Son 30 dakika: CPU (çizgi) ve bellek (çubuklar)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Son 30 dakika: CPU (çizgi) ve bellek (çubuklar)",
+    "Show workflow script": "İş akışı betiğini göster",
+    "Stop workflow": "İş akışını durdur",
+    "Workflow": "İş akışı",
+    "The script is longer than shown.": "Betik gösterilenden daha uzun."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19389,7 +19449,11 @@
     "Timed out": "Tidsgräns överskreds",
     "Unreachable": "Kan inte nås",
     "Check": "Kontrollera",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Senaste 30 minuterna: CPU (linje) och minne (staplar)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Senaste 30 minuterna: CPU (linje) och minne (staplar)",
+    "Show workflow script": "Visa arbetsflödets skript",
+    "Stop workflow": "Stoppa arbetsflöde",
+    "Workflow": "Arbetsflöde",
+    "The script is longer than shown.": "Skriptet är längre än det som visas."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20601,7 +20665,11 @@
     "Timed out": "Timeout",
     "Unreachable": "Kan ikke nås",
     "Check": "Kontrollér",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Seneste 30 minutter: CPU (linje) og hukommelse (søjler)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Seneste 30 minutter: CPU (linje) og hukommelse (søjler)",
+    "Show workflow script": "Vis workflow-script",
+    "Stop workflow": "Stop workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Scriptet er længere end vist."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21813,7 +21881,11 @@
     "Timed out": "Tidsavbrudd",
     "Unreachable": "Kan ikke nås",
     "Check": "Kontroller",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Siste 30 minutter: CPU (linje) og minne (søyler)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Siste 30 minutter: CPU (linje) og minne (søyler)",
+    "Show workflow script": "Vis arbeidsflytskript",
+    "Stop workflow": "Stopp arbeidsflyt",
+    "Workflow": "Arbeidsflyt",
+    "The script is longer than shown.": "Skriptet er lengre enn det som vises."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23025,7 +23097,11 @@
     "Timed out": "Aikakatkaisu",
     "Unreachable": "Ei tavoitettavissa",
     "Check": "Tarkista",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Viimeiset 30 minuuttia: CPU (viiva) ja muisti (palkit)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Viimeiset 30 minuuttia: CPU (viiva) ja muisti (palkit)",
+    "Show workflow script": "Näytä työnkulun skripti",
+    "Stop workflow": "Pysäytä työnkulku",
+    "Workflow": "Työnkulku",
+    "The script is longer than shown.": "Skripti on pidempi kuin näytetään."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24237,6 +24313,10 @@
     "Timed out": "Vypršel časový limit",
     "Unreachable": "Nedostupné",
     "Check": "Zkontrolovat",
-    "Last 30 minutes: CPU (line) and memory (bars)": "Posledních 30 minut: CPU (čára) a paměť (sloupce)"
+    "Last 30 minutes: CPU (line) and memory (bars)": "Posledních 30 minut: CPU (čára) a paměť (sloupce)",
+    "Show workflow script": "Zobrazit skript workflow",
+    "Stop workflow": "Zastavit workflow",
+    "Workflow": "Workflow",
+    "The script is longer than shown.": "Skript je delší, než je zobrazeno."
   }
 }

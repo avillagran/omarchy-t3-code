@@ -213,13 +213,14 @@ Rectangle {
     }
     // Subagents still working for this thread (T3's subagent bar).
     Flow {
-      objectName:"t3SubagentBar";Layout.fillWidth:true;spacing:Style.space(6);visible:(root.bridge.activeSubagents||[]).length>0
-      Repeater{model:root.bridge.activeSubagents||[]
+      objectName:"t3SubagentBar";Layout.fillWidth:true;spacing:Style.space(6);visible:(root.bridge.activeSubagents||[]).some(function(s){return ["pending","running","waiting"].indexOf(s.status)>=0||s.workflow})
+      Repeater{model:(root.bridge.activeSubagents||[]).filter(function(s){return ["pending","running","waiting"].indexOf(s.status)>=0||s.workflow})
         Rectangle{required property var modelData;height:Style.space(26);width:subRow.implicitWidth+Style.space(14);radius:height/2;color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.1)
           Row{id:subRow;anchors.centerIn:parent;spacing:Style.space(6)
             WorkIndicator{active:modelData.status==="running";visible:active;implicitWidth:Style.space(10);implicitHeight:implicitWidth;anchors.verticalCenter:parent.verticalCenter}
             Text{text:modelData.title;color:Color.popups.text;font.pixelSize:Style.font.caption;elide:Text.ElideRight;width:Math.min(implicitWidth,Style.space(220));textFormat:Text.PlainText;anchors.verticalCenter:parent.verticalCenter}
-            T3IconButton{name:"square";implicitWidth:Style.space(18);implicitHeight:implicitWidth;visible:!!modelData.runId;tooltipText:T3I18n.tr("Stop subagent");enabled:!root.bridge.managementBusy;onClicked:root.bridge.stopSubagent(modelData);anchors.verticalCenter:parent.verticalCenter}
+            T3IconButton{objectName:"t3WorkflowScript";name:"code";implicitWidth:Style.space(18);implicitHeight:implicitWidth;visible:!!modelData.scriptPath;tooltipText:T3I18n.tr("Show workflow script");onClicked:root.bridge.openWorkflowScript(modelData);anchors.verticalCenter:parent.verticalCenter}
+            T3IconButton{name:"square";implicitWidth:Style.space(18);implicitHeight:implicitWidth;visible:["pending","running","waiting"].indexOf(modelData.status)>=0&&(modelData.workflow||!!modelData.runId);tooltipText:T3I18n.tr(modelData.workflow?"Stop workflow":"Stop subagent");enabled:!root.bridge.managementBusy;onClicked:modelData.workflow?root.bridge.stopWorkflow(modelData):root.bridge.stopSubagent(modelData);anchors.verticalCenter:parent.verticalCenter}
             T3IconButton{name:"arrow-right";implicitWidth:Style.space(18);implicitHeight:implicitWidth;visible:!!modelData.childThreadId;tooltipText:T3I18n.tr("Open subagent thread");onClicked:root.bridge.selectThread(root.bridge.selectedEnvironment,modelData.childThreadId);anchors.verticalCenter:parent.verticalCenter}
           }
         }

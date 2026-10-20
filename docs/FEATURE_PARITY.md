@@ -51,7 +51,8 @@ of an embedded drawer; the theme follows Omarchy instead of T3's theme editor;
 T3 Connect's relay client is installed through the `t3 connect` CLI flow ot3
 already drives; and ChatGPT profile import (moving Codex credentials between
 environments) is left to the T3 desktop app, since ot3 never handles provider
-tokens. T3's web app has no workflow script viewer either, only the RPC.
+tokens. Workflows show their script (orchestration.getWorkflowScript) and can be
+stopped (orchestration.stopWorkflow) from the subagent bar.
 
 ## Recommended implementation order
 
