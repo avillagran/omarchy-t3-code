@@ -49,19 +49,13 @@ fn viewer_mode(offscreen:bool)->Result<()>{
  let qml_preview=offscreen&&serde_json::from_str::<Value>(&payload).is_ok_and(|v|v["qmlPreview"]==true);
  let payload=std::ffi::CString::new(payload).map_err(|_|"invalid_file")?;
  if qml_preview{return run_library(&root.join("libt3-qml-preview.so"),c"t3_qml_preview_main",&payload,&root.join("../ui/document/T3QmlPreview.qml"))}
- let lib=std::ffi::CString::new(root.join("libt3-document.so").to_string_lossy().as_bytes()).unwrap();
- let qml=std::ffi::CString::new(root.join(if offscreen{"../ui/document/T3DocumentSurface.qml"}else{"../ui/document/T3DocumentWindow.qml"}).to_string_lossy().as_bytes()).unwrap();
- unsafe{let handle=libc::dlopen(lib.as_ptr(),libc::RTLD_NOW|libc::RTLD_LOCAL);if handle.is_null(){eprintln!("Qt frontend: {}",std::ffi::CStr::from_ptr(libc::dlerror()).to_string_lossy());return Err("viewer_unavailable".into())}
- let symbol=libc::dlsym(handle,c"t3_document_main".as_ptr());if symbol.is_null(){eprintln!("Qt symbol: {}",std::ffi::CStr::from_ptr(libc::dlerror()).to_string_lossy());return Err("viewer_unavailable".into())}
- let run:unsafe extern "C" fn(*const libc::c_char,*const libc::c_char)->libc::c_int=std::mem::transmute(symbol);
- if run(payload.as_ptr(),qml.as_ptr())!=0{return Err("viewer_unavailable".into())}}
- Ok(())
+ run_library(&root.join("libt3-document.so"),c"t3_document_main",&payload,&root.join(if offscreen{"../ui/document/T3DocumentSurface.qml"}else{"../ui/document/T3DocumentWindow.qml"}))
 }
 fn run_library(lib:&std::path::Path,symbol:&std::ffi::CStr,payload:&std::ffi::CStr,qml:&std::path::Path)->Result<()>{
  let lib=std::ffi::CString::new(lib.to_string_lossy().as_bytes()).map_err(|_|"viewer_unavailable")?;
  let qml=std::ffi::CString::new(qml.to_string_lossy().as_bytes()).map_err(|_|"viewer_unavailable")?;
  unsafe{let handle=libc::dlopen(lib.as_ptr(),libc::RTLD_NOW|libc::RTLD_LOCAL);if handle.is_null(){eprintln!("Qt frontend: {}",std::ffi::CStr::from_ptr(libc::dlerror()).to_string_lossy());return Err("viewer_unavailable".into())}
- let symbol=libc::dlsym(handle,symbol.as_ptr());if symbol.is_null(){return Err("viewer_unavailable".into())}
+ let symbol=libc::dlsym(handle,symbol.as_ptr());if symbol.is_null(){eprintln!("Qt symbol: {}",std::ffi::CStr::from_ptr(libc::dlerror()).to_string_lossy());return Err("viewer_unavailable".into())}
  let run:unsafe extern "C" fn(*const libc::c_char,*const libc::c_char)->libc::c_int=std::mem::transmute(symbol);
  if run(payload.as_ptr(),qml.as_ptr())!=0{return Err("viewer_unavailable".into())}}
  Ok(())
