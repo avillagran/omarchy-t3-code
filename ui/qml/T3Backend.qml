@@ -488,6 +488,10 @@ Singleton {
   property var acpRegistry:({busy:false,error:"",agents:[],requestId:""})
   signal acpAgentPrepared(var agent)
   function acpRegistryAction(environment,values){var id=uuid();acpRegistry=Object.assign({},acpRegistry,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,action:values.action,agent:values.agent||null});send({op:"acp-registry",environment:environment,action:values.action,query:values.query||"",agentId:values.agent?values.agent.id:"",requestId:id})}
+  // Live output of a command row while the tool inspector follows it.
+  property var commandOutput:({requestId:"",text:"",running:false,error:""})
+  function followCommandOutput(environment,threadId,itemId){var id=uuid();commandOutput={requestId:id,text:"",running:true,error:"",itemId:itemId};send({op:"command-output",environment:environment,thread:threadId,itemId:itemId,requestId:id})}
+  function stopCommandOutput(){if(commandOutput.requestId)send({op:"command-output-stop"});commandOutput={requestId:"",text:"",running:false,error:""}}
   // Discovered local dev servers for the browser's address bar.
   property var localServers:({servers:[],busy:false,requestId:"",at:0})
   function requestLocalServers(){if(localServers.busy||!worker.running||Date.now()-localServers.at<5000)return;var id=uuid();localServers=Object.assign({},localServers,{busy:true,requestId:id,at:Date.now()});send({op:"local-servers",environment:selectedEnvironment||"local",requestId:id})}
@@ -1677,6 +1681,7 @@ Singleton {
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
+      else if(event.type==="command-output"){if(data.requestId===commandOutput.requestId)commandOutput=Object.assign({},commandOutput,{text:data.text!==undefined?data.text:commandOutput.text,running:!!data.running,error:data.error||"",truncated:!!data.truncated})}
       else if(event.type==="document-app-request" && inlineDocuments[data.requestId]){appRequest(data.requestId,data.request)}
       else if(event.type==="document-size" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{contentHeight:data.height})}
       else if(event.type==="document-frame" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{frameUrl:data.url || inlineDocuments[data.requestId].frameUrl,frameRevision:data.revision,frameWidth:data.width,frameHeight:data.height,error:data.error || ""})}

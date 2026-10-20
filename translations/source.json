@@ -1186,6 +1186,10 @@
     "Update to {version}": "Update to {version}",
     "Updating…": "Updating…",
     "Initialize repository": "Initialize repository",
-    "Refresh prices": "Refresh prices"
+    "Refresh prices": "Refresh prices",
+    "Follow live output": "Follow live output",
+    "Stop following": "Stop following",
+    "Running…": "Running…",
+    "Finished": "Finished"
   }
 }

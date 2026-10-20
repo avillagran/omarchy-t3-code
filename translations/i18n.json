@@ -1186,7 +1186,11 @@
     "Update to {version}": "Update to {version}",
     "Updating…": "Updating…",
     "Initialize repository": "Initialize repository",
-    "Refresh prices": "Refresh prices"
+    "Refresh prices": "Refresh prices",
+    "Follow live output": "Follow live output",
+    "Stop following": "Stop following",
+    "Running…": "Running…",
+    "Finished": "Finished"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2375,7 +2379,11 @@
     "Update to {version}": "Actualizar a {version}",
     "Updating…": "Actualizando…",
     "Initialize repository": "Inicializar repositorio",
-    "Refresh prices": "Actualizar precios"
+    "Refresh prices": "Actualizar precios",
+    "Follow live output": "Seguir salida en vivo",
+    "Stop following": "Dejar de seguir",
+    "Running…": "Ejecutando…",
+    "Finished": "Terminado"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3564,7 +3572,11 @@
     "Update to {version}": "Atualizar para {version}",
     "Updating…": "Atualizando…",
     "Initialize repository": "Inicializar repositório",
-    "Refresh prices": "Atualizar preços"
+    "Refresh prices": "Atualizar preços",
+    "Follow live output": "Acompanhar saída ao vivo",
+    "Stop following": "Parar de acompanhar",
+    "Running…": "Executando…",
+    "Finished": "Concluído"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4753,7 +4765,11 @@
     "Update to {version}": "Mettre à jour vers {version}",
     "Updating…": "Mise à jour…",
     "Initialize repository": "Initialiser le dépôt",
-    "Refresh prices": "Actualiser les prix"
+    "Refresh prices": "Actualiser les prix",
+    "Follow live output": "Suivre la sortie en direct",
+    "Stop following": "Arrêter de suivre",
+    "Running…": "En cours…",
+    "Finished": "Terminé"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5942,7 +5958,11 @@
     "Update to {version}": "Auf {version} aktualisieren",
     "Updating…": "Wird aktualisiert…",
     "Initialize repository": "Repository initialisieren",
-    "Refresh prices": "Preise aktualisieren"
+    "Refresh prices": "Preise aktualisieren",
+    "Follow live output": "Live-Ausgabe verfolgen",
+    "Stop following": "Nicht mehr verfolgen",
+    "Running…": "Läuft…",
+    "Finished": "Beendet"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7131,7 +7151,11 @@
     "Update to {version}": "Aggiorna a {version}",
     "Updating…": "Aggiornamento…",
     "Initialize repository": "Inizializza repository",
-    "Refresh prices": "Aggiorna prezzi"
+    "Refresh prices": "Aggiorna prezzi",
+    "Follow live output": "Segui l’output dal vivo",
+    "Stop following": "Smetti di seguire",
+    "Running…": "In esecuzione…",
+    "Finished": "Terminato"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8320,7 +8344,11 @@
     "Update to {version}": "Bijwerken naar {version}",
     "Updating…": "Bijwerken…",
     "Initialize repository": "Repository initialiseren",
-    "Refresh prices": "Prijzen vernieuwen"
+    "Refresh prices": "Prijzen vernieuwen",
+    "Follow live output": "Live-uitvoer volgen",
+    "Stop following": "Stoppen met volgen",
+    "Running…": "Bezig…",
+    "Finished": "Klaar"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9509,7 +9537,11 @@
     "Update to {version}": "Zaktualizuj do {version}",
     "Updating…": "Aktualizowanie…",
     "Initialize repository": "Zainicjuj repozytorium",
-    "Refresh prices": "Odśwież ceny"
+    "Refresh prices": "Odśwież ceny",
+    "Follow live output": "Śledź wynik na żywo",
+    "Stop following": "Przestań śledzić",
+    "Running…": "Działa…",
+    "Finished": "Zakończono"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10698,7 +10730,11 @@
     "Update to {version}": "Обновить до {version}",
     "Updating…": "Обновление…",
     "Initialize repository": "Инициализировать репозиторий",
-    "Refresh prices": "Обновить цены"
+    "Refresh prices": "Обновить цены",
+    "Follow live output": "Следить за выводом",
+    "Stop following": "Перестать следить",
+    "Running…": "Выполняется…",
+    "Finished": "Завершено"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11887,7 +11923,11 @@
     "Update to {version}": "Оновити до {version}",
     "Updating…": "Оновлення…",
     "Initialize repository": "Ініціалізувати репозиторій",
-    "Refresh prices": "Оновити ціни"
+    "Refresh prices": "Оновити ціни",
+    "Follow live output": "Стежити за виводом",
+    "Stop following": "Припинити стежити",
+    "Running…": "Виконується…",
+    "Finished": "Завершено"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13076,7 +13116,11 @@
     "Update to {version}": "{version} に更新",
     "Updating…": "更新中…",
     "Initialize repository": "リポジトリを初期化",
-    "Refresh prices": "価格を更新"
+    "Refresh prices": "価格を更新",
+    "Follow live output": "ライブ出力を追跡",
+    "Stop following": "追跡を停止",
+    "Running…": "実行中…",
+    "Finished": "完了"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14265,7 +14309,11 @@
     "Update to {version}": "{version}(으)로 업데이트",
     "Updating…": "업데이트 중…",
     "Initialize repository": "저장소 초기화",
-    "Refresh prices": "가격 새로 고침"
+    "Refresh prices": "가격 새로 고침",
+    "Follow live output": "실시간 출력 따라가기",
+    "Stop following": "따라가기 중지",
+    "Running…": "실행 중…",
+    "Finished": "완료"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15454,7 +15502,11 @@
     "Update to {version}": "更新到 {version}",
     "Updating…": "正在更新…",
     "Initialize repository": "初始化仓库",
-    "Refresh prices": "刷新价格"
+    "Refresh prices": "刷新价格",
+    "Follow live output": "跟踪实时输出",
+    "Stop following": "停止跟踪",
+    "Running…": "运行中…",
+    "Finished": "已完成"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16643,7 +16695,11 @@
     "Update to {version}": "حدّث إلى {version}",
     "Updating…": "جارٍ التحديث…",
     "Initialize repository": "هيّئ المستودع",
-    "Refresh prices": "حدّث الأسعار"
+    "Refresh prices": "حدّث الأسعار",
+    "Follow live output": "تابع المخرجات المباشرة",
+    "Stop following": "أوقف المتابعة",
+    "Running…": "قيد التشغيل…",
+    "Finished": "انتهى"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17832,7 +17888,11 @@
     "Update to {version}": "{version} sürümüne güncelle",
     "Updating…": "Güncelleniyor…",
     "Initialize repository": "Depoyu başlat",
-    "Refresh prices": "Fiyatları yenile"
+    "Refresh prices": "Fiyatları yenile",
+    "Follow live output": "Canlı çıktıyı izle",
+    "Stop following": "İzlemeyi durdur",
+    "Running…": "Çalışıyor…",
+    "Finished": "Bitti"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19021,7 +19081,11 @@
     "Update to {version}": "Uppdatera till {version}",
     "Updating…": "Uppdaterar…",
     "Initialize repository": "Initiera arkiv",
-    "Refresh prices": "Uppdatera priser"
+    "Refresh prices": "Uppdatera priser",
+    "Follow live output": "Följ utdata live",
+    "Stop following": "Sluta följa",
+    "Running…": "Körs…",
+    "Finished": "Klar"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20210,7 +20274,11 @@
     "Update to {version}": "Opdatér til {version}",
     "Updating…": "Opdaterer…",
     "Initialize repository": "Initialisér repository",
-    "Refresh prices": "Opdatér priser"
+    "Refresh prices": "Opdatér priser",
+    "Follow live output": "Følg output live",
+    "Stop following": "Stop med at følge",
+    "Running…": "Kører…",
+    "Finished": "Færdig"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21399,7 +21467,11 @@
     "Update to {version}": "Oppdater til {version}",
     "Updating…": "Oppdaterer…",
     "Initialize repository": "Initialiser repository",
-    "Refresh prices": "Oppdater priser"
+    "Refresh prices": "Oppdater priser",
+    "Follow live output": "Følg utdata live",
+    "Stop following": "Slutt å følge",
+    "Running…": "Kjører…",
+    "Finished": "Ferdig"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22588,7 +22660,11 @@
     "Update to {version}": "Päivitä versioon {version}",
     "Updating…": "Päivitetään…",
     "Initialize repository": "Alusta repositorio",
-    "Refresh prices": "Päivitä hinnat"
+    "Refresh prices": "Päivitä hinnat",
+    "Follow live output": "Seuraa tulostetta",
+    "Stop following": "Lopeta seuraaminen",
+    "Running…": "Käynnissä…",
+    "Finished": "Valmis"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23777,6 +23853,10 @@
     "Update to {version}": "Aktualizovat na {version}",
     "Updating…": "Aktualizace…",
     "Initialize repository": "Inicializovat repozitář",
-    "Refresh prices": "Obnovit ceny"
+    "Refresh prices": "Obnovit ceny",
+    "Follow live output": "Sledovat živý výstup",
+    "Stop following": "Přestat sledovat",
+    "Running…": "Běží…",
+    "Finished": "Dokončeno"
   }
 }

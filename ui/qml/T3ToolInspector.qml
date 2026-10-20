@@ -10,6 +10,8 @@ Item {
  required property var bridge
  property string environment:""
  property string threadId:""
+ // Live output of a running command (orchestration.subscribeCommandOutput).
+ readonly property bool following:!!bridge.commandOutput&&!!bridge.commandOutput.requestId&&bridge.commandOutput.itemId===reference.sourceItemId
  property bool opened:false
  property bool busy:false
  property string error:""
@@ -65,6 +67,7 @@ Item {
   return true
  }
  function dismiss(notify){
+  if(following&&typeof bridge.stopCommandOutput==="function")bridge.stopCommandOutput()
   generation++;requestId="";pendingScope={};reference={};busy=false;detail={};error="";opened=false;mode="details"
   if(notify)closed()
  }
@@ -103,6 +106,15 @@ Item {
   RowLayout{visible:root.busy;Layout.fillWidth:true;WorkIndicator{active:root.busy}Text{text:T3I18n.tr("Loading output…");color:root.muted;font.pixelSize:Style.font.caption}}
   Text{objectName:"t3ToolInspectorError";Layout.fillWidth:true;visible:!!root.error;text:root.errorText(root.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
   Text{Layout.fillWidth:true;visible:!root.busy&&!root.error&&root.detail.available===false;text:T3I18n.tr("Output is no longer available.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+  RowLayout{Layout.fillWidth:true;visible:root.opened&&root.reference.type==="command_execution";spacing:Style.space(6)
+   T3PickerButton{objectName:"t3FollowCommandOutput";primary:root.following;implicitHeight:Style.space(26);text:T3I18n.tr(root.following?"Stop following":"Follow live output");onClicked:if(root.following)root.bridge.stopCommandOutput();else root.bridge.followCommandOutput(root.environment,root.reference.sourceThreadId,root.reference.sourceItemId)}
+   Text{visible:root.following;text:T3I18n.tr((root.bridge.commandOutput||{}).running?"Running…":"Finished");color:root.muted;font.pixelSize:Style.font.caption}
+  }
+  Controls.ScrollView{
+   objectName:"t3LiveCommandOutput";Layout.fillWidth:true;Layout.preferredHeight:Style.space(220);visible:root.following;clip:true;contentWidth:availableWidth
+   Controls.TextArea{readOnly:true;selectByMouse:true;wrapMode:TextEdit.WrapAnywhere;textFormat:TextEdit.PlainText;font.family:"monospace";font.pixelSize:Style.font.caption;color:Color.popups.text;text:(root.bridge.commandOutput||{}).error?T3I18n.error(root.bridge.commandOutput.error):((root.bridge.commandOutput||{}).text||"");background:Rectangle{color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.04);radius:Style.space(6)}
+    onTextChanged:Qt.callLater(function(){cursorPosition=length})}
+  }
   Text{Layout.fillWidth:true;visible:root.mode==="details"&&root.detail.emptyOutput===true;text:T3I18n.tr("No output.");color:root.muted;font.pixelSize:Style.font.caption}
   Text{Layout.fillWidth:true;visible:root.detail.outputOmitted===true;text:T3I18n.tr("Output was withheld by the server. Retry to refresh.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   Controls.ScrollView {
