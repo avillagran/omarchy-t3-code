@@ -1,16 +1,16 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "files": {
-    "packages/contracts/src/preview.ts": "d7f176a0e34104fa1b5dd3a0eb22332e2637cad13b674df2092d68714a2b055c",
-    "packages/contracts/src/settings.ts": "576b0bfeb86b8bbd8f7976185e0284735e8349cef6d4eb0334d72230555576d6",
-    "packages/contracts/src/browserProfile.ts": "8a7641b2103183e8d1ae09b1213562e9706c9a2c482ead92465e5fe70fd67126",
+    "packages/contracts/src/preview.ts": "081b4ce2923dfc6c6852e74109191cf12e5aee08c1847dca7fd5e09f63c4cd26",
+    "packages/contracts/src/settings.ts": "667c67995165e116b811d56ac220aaa436ae6041779a434c77b5eae52dafd1d1",
+    "packages/contracts/src/browserProfile.ts": "aca2ff87d0ca1ad8d6c008e478b5281080dd2ec4ee19e9cd8ff8452bb28a6de5",
     "packages/shared/src/previewViewport.ts": "2c79b4eae4a1bf0fe7526c2d4134988ddfe13ee71d175ea29742efc9c959183d",
-    "apps/web/src/components/settings/IntegrationsSettings.tsx": "f4145c7a99ad801f5e78ff80549c60db814af37bf1939b6e7d106973e1c80a23"
+    "apps/web/src/components/settings/IntegrationsSettings.tsx": "d51d9bdbab48cecb2ef72ba8fd7329871aef6de4ccdbd3c7b78fdc087ec7035f"
   },
   "adaptations": [
     "Original helper/constant excerpts, TypeScript erasure and export removal",
     "Qt object spreads become Object.assign; algorithm unchanged"
   ],
-  "outputSha256": "3dfe8f8b05440cff4abc885d923768a26f563c62aaea7007b89f4bfc35a9ef11",
-  "contractSha256": "d5cfe03a00d1fb367eb3ea24aede4d8c0d6f978f215705536e33ef6fdf93f877"
+  "outputSha256": "e38bcec294bedc575485b0fcd7fdaee326e9c38f6d6960ad39f69f42061e02ec",
+  "contractSha256": "0d8cf2d21f95e0498593622b4100a852c0255393d065764b5f70135711f1fce5"
 }

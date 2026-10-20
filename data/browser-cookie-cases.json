@@ -1,7 +1,7 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "source": "apps/desktop/src/preview/BrowserImport/ChromiumCookies.ts",
-  "sourceSha256": "db5bc4f0373723bb47ff453a899e56c0cc8e76e7324638b4ef6336a951da4a22",
+  "sourceSha256": "022691e5f1a7463bbde8af1e0544741c373b1113aea0c34c4cf8db62e1692444",
   "cases": [
     {
       "id": "empty",

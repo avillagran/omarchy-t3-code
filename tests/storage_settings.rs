@@ -129,7 +129,7 @@ fn environment_rule_edits_complete_a_root_policy_and_project_mixed_rules_stay_di
     .unwrap();
     assert_eq!(
         result["patch"]["worktreeCleanup"],
-        json!({"mode":"custom","rules":{"worktreeKeepWhen":"uncommitted-changes","worktreeAfterDays":null,"worktreeOnMerge":false,"worktreeOnDelete":true,"worktreeUnchanged":false}})
+        json!({"mode":"custom","rules":{"worktreeKeepWhen":"uncommitted-changes","worktreeAfterDays":null,"worktreeSettledAfterDays":null,"worktreeOnMerge":false,"worktreeOnDelete":true,"worktreeUnchanged":false}})
     );
     let first = json!({"fields":[{"key":"worktreeCleanup","kind":"worktree-policy","value":null,"rules":{"worktreeAfterDays":8}}]});
     let mut second = first.clone();

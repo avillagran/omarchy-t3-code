@@ -1,8 +1,8 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "files": {
-    "apps/web/src/previewStateStore.ts": "677e1259aa718abbc3b48d38098a74967b8a206bd4b2a35f53f96419488b4fd0",
-    "apps/web/src/components/preview/previewConstants.ts": "c66c3cd443c2b660ad0beca0edb0cad90fc53571955cb4c4b05e8bcfd21569ee"
+    "apps/web/src/previewStateStore.ts": "4c8619cd57321c6eca986e46d396bb986467895507b5ffe3c44d53fc0b0e1d9a",
+    "apps/web/src/components/preview/previewConstants.ts": "87ee86b5c8be79cc137f5125c50335f2f0385aaf37ef3165bfb18194721fda02"
   },
   "adaptations": [
     "Original preview state/reducers extracted verbatim with TypeScript erasure and export removal",
@@ -10,5 +10,5 @@
     "Qt object spread/rest becomes own-key Object.assign copies; toSorted/at become copying sort/slice; Object.fromEntries becomes own-property entries construction",
     "React hooks, active-thread aggregate and timer-based whenPreviewTabKnown excluded; no transport or runtime-support claims"
   ],
-  "outputSha256": "0c55db3ebb321749c9786efd71e5755bad47754ea98e6101f9d836845954dc35"
+  "outputSha256": "160dc9c9f3b275028b47ec2d3cc9c9956b4a6a4effe525844f7632d80a428c5a"
 }

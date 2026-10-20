@@ -1,7 +1,7 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "source": "apps/desktop/src/preview/BrowserImport/Sources.ts",
-  "sourceSha256": "ea6fad0e6e526a662f8403f83703cd0fe2a0745dd9631f8f544eb8bc881cbd6f",
+  "sourceSha256": "2388b14480621e6eddcb76bc47629eb8f334398c38f57dc4fd061bfe3c8361c6",
   "cases": [
     {
       "input": "",

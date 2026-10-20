@@ -1,5 +1,5 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "files": {
     "packages/shared/src/thirdPartyLicenses.ts": "20f4d43ff72ee1d7ba6e5dc7bc0f33e38a025f5631cba9db738d2a9963a74b08"
   },
@@ -7,5 +7,5 @@
     "TypeScript erasure/export removal; optional catch binding becomes catch (_error) for Qt JS; native manifest decoder exercised at build-time with standard URL",
     "QML uses original filter/key/bundle helpers; Rust validates the compiled manifest at runtime"
   ],
-  "outputSha256": "53d4dcb9bb8f9700623640d4b06b508a2e0e481d0c0a124a51036908e6edbd07"
+  "outputSha256": "1d9e49bea5c4fa11adb003413024fa14d70a13e8f1bb3934361228e31d5a1548"
 }

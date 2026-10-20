@@ -40,6 +40,10 @@ fn preferences(value: &Value, rev: String) -> Value {
     out
 }
 /// Read safe client defaults and a revision of the canonical client-settings file.
+/// Raw client settings fields, for runtime choices such as the search engine.
+pub fn client_settings() -> Result<Value> {
+    Ok(fields(&document(&bytes(&settings_path())?)?).clone())
+}
 pub fn read_client_preferences() -> Result<Value> {
     read_client_preferences_at(&settings_path())
 }

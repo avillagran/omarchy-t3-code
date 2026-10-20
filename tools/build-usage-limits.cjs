@@ -2,7 +2,7 @@
 // Build-only reuse of original T3 subscription account identity, pooling and pace.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),crypto=require('node:crypto'),vm=require('node:vm');
 const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly'));
-const pin='5a4e9980533705774dc3f45b35cacf76c3d78dbc',file='packages/shared/src/usageLimits.ts';
+const pin='fb990765a49414a5bfbdc73365455fc8b5fbe691',file='packages/shared/src/usageLimits.ts';
 const original=fs.readFileSync(path.join(source,file),'utf8');
 if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin||cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==original)throw Error('Native input must match pinned clean source');
 let extracted=require('node:module').stripTypeScriptTypes(original.slice(original.indexOf('const MINUTE =')),{mode:'strip'}).replace(/^export /gm,'').replace(/\.toSorted\(/g,'.slice().sort(');

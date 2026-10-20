@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Original T3 helper/constants extraction; regeneration is build-time only.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),vm=require('node:vm'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||'../t3code-nightly'),pin='5a4e9980533705774dc3f45b35cacf76c3d78dbc',inputs={};
+const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||'../t3code-nightly'),pin='fb990765a49414a5bfbdc73365455fc8b5fbe691',inputs={};
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin)throw Error('Wrong native reference pin');
 function read(file){const text=fs.readFileSync(path.join(source,file),'utf8');if(cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==text)throw Error('Dirty native input: '+file);inputs[file]=hash(text);return text;}

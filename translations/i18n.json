@@ -1004,7 +1004,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "No screenshot tool found. Choose a command in Preferences.",
     "The screenshot could not be taken.": "The screenshot could not be taken.",
     "File not found.": "File not found.",
-    "This file is binary and can't be previewed.": "This file is binary and can't be previewed."
+    "This file is binary and can't be previewed.": "This file is binary and can't be previewed.",
+    "Delete settled worktrees": "Delete settled worktrees",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.",
+    "Search engine": "Search engine",
+    "What the address bar searches when you type something that isn't a URL.": "What the address bar searches when you type something that isn't a URL.",
+    "Custom search URL": "Custom search URL",
+    "Use %s where the search terms go.": "Use %s where the search terms go.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.",
+    "Sent by automation": "Sent by automation",
+    "Sent by T3 Code": "Sent by T3 Code",
+    "Sent by another agent": "Sent by another agent"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2011,7 +2021,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "No se encontró una herramienta de capturas. Elige un comando en Preferencias.",
     "The screenshot could not be taken.": "No se pudo hacer la captura de pantalla.",
     "File not found.": "No se encontró el archivo.",
-    "This file is binary and can't be previewed.": "Este archivo es binario y no se puede previsualizar."
+    "This file is binary and can't be previewed.": "Este archivo es binario y no se puede previsualizar.",
+    "Delete settled worktrees": "Eliminar worktrees de hilos archivados",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Elimina los worktrees esta cantidad de días después de que su hilo se archive. Con 0 días se eliminan en la próxima limpieza. Se conservan las ramas y el historial del hilo.",
+    "Search engine": "Buscador",
+    "What the address bar searches when you type something that isn't a URL.": "Lo que busca la barra de direcciones cuando escribes algo que no es una URL.",
+    "Custom search URL": "URL de búsqueda personalizada",
+    "Use %s where the search terms go.": "Usa %s donde van los términos de búsqueda.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Escribe una URL http o https que contenga %s. Mientras tanto se busca con DuckDuckGo.",
+    "Sent by automation": "Enviado por una automatización",
+    "Sent by T3 Code": "Enviado por T3 Code",
+    "Sent by another agent": "Enviado por otro agente"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3018,7 +3038,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Nenhuma ferramenta de captura encontrada. Escolha um comando em Preferências.",
     "The screenshot could not be taken.": "Não foi possível fazer a captura de tela.",
     "File not found.": "Arquivo não encontrado.",
-    "This file is binary and can't be previewed.": "Este arquivo é binário e não pode ser visualizado."
+    "This file is binary and can't be previewed.": "Este arquivo é binário e não pode ser visualizado.",
+    "Delete settled worktrees": "Excluir worktrees de conversas arquivadas",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Remove worktrees este número de dias depois que a conversa é arquivada. Com 0 dias, são removidos na próxima limpeza. Branches e histórico da conversa são mantidos.",
+    "Search engine": "Mecanismo de busca",
+    "What the address bar searches when you type something that isn't a URL.": "O que a barra de endereços pesquisa quando você digita algo que não é uma URL.",
+    "Custom search URL": "URL de busca personalizada",
+    "Use %s where the search terms go.": "Use %s onde ficam os termos de busca.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Digite uma URL http ou https contendo %s. Até lá, as buscas usam o DuckDuckGo.",
+    "Sent by automation": "Enviado por uma automação",
+    "Sent by T3 Code": "Enviado pelo T3 Code",
+    "Sent by another agent": "Enviado por outro agente"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4025,7 +4055,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Aucun outil de capture trouvé. Choisissez une commande dans les Préférences.",
     "The screenshot could not be taken.": "La capture d’écran n’a pas pu être prise.",
     "File not found.": "Fichier introuvable.",
-    "This file is binary and can't be previewed.": "Ce fichier est binaire et ne peut pas être prévisualisé."
+    "This file is binary and can't be previewed.": "Ce fichier est binaire et ne peut pas être prévisualisé.",
+    "Delete settled worktrees": "Supprimer les worktrees des fils classés",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Supprime les worktrees ce nombre de jours après le classement de leur fil. Avec 0 jour, ils sont supprimés au prochain nettoyage. Les branches et l’historique du fil sont conservés.",
+    "Search engine": "Moteur de recherche",
+    "What the address bar searches when you type something that isn't a URL.": "Ce que la barre d’adresse recherche quand vous saisissez autre chose qu’une URL.",
+    "Custom search URL": "URL de recherche personnalisée",
+    "Use %s where the search terms go.": "Utilisez %s à l’emplacement des termes recherchés.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Saisissez une URL http ou https contenant %s. D’ici là, les recherches utilisent DuckDuckGo.",
+    "Sent by automation": "Envoyé par une automatisation",
+    "Sent by T3 Code": "Envoyé par T3 Code",
+    "Sent by another agent": "Envoyé par un autre agent"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5032,7 +5072,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Kein Bildschirmfoto-Werkzeug gefunden. Wähle einen Befehl in den Einstellungen.",
     "The screenshot could not be taken.": "Das Bildschirmfoto konnte nicht aufgenommen werden.",
     "File not found.": "Datei nicht gefunden.",
-    "This file is binary and can't be previewed.": "Diese Datei ist binär und kann nicht angezeigt werden."
+    "This file is binary and can't be previewed.": "Diese Datei ist binär und kann nicht angezeigt werden.",
+    "Delete settled worktrees": "Worktrees erledigter Threads löschen",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Entfernt Worktrees so viele Tage, nachdem ihr Thread erledigt wurde. Bei 0 Tagen werden sie bei der nächsten Bereinigung entfernt. Branches und Verlauf bleiben erhalten.",
+    "Search engine": "Suchmaschine",
+    "What the address bar searches when you type something that isn't a URL.": "Womit die Adressleiste sucht, wenn Sie etwas eingeben, das keine URL ist.",
+    "Custom search URL": "Eigene Such-URL",
+    "Use %s where the search terms go.": "Verwenden Sie %s an der Stelle der Suchbegriffe.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Geben Sie eine http- oder https-URL mit %s ein. Bis dahin wird mit DuckDuckGo gesucht.",
+    "Sent by automation": "Von einer Automatisierung gesendet",
+    "Sent by T3 Code": "Von T3 Code gesendet",
+    "Sent by another agent": "Von einem anderen Agenten gesendet"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6039,7 +6089,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Nessuno strumento di screenshot trovato. Scegli un comando nelle Preferenze.",
     "The screenshot could not be taken.": "Impossibile fare lo screenshot.",
     "File not found.": "File non trovato.",
-    "This file is binary and can't be previewed.": "Questo file è binario e non può essere visualizzato."
+    "This file is binary and can't be previewed.": "Questo file è binario e non può essere visualizzato.",
+    "Delete settled worktrees": "Elimina i worktree dei thread archiviati",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Rimuove i worktree dopo questo numero di giorni dall’archiviazione del thread. Con 0 giorni vengono rimossi alla prossima pulizia. Branch e cronologia vengono conservati.",
+    "Search engine": "Motore di ricerca",
+    "What the address bar searches when you type something that isn't a URL.": "Cosa cerca la barra degli indirizzi quando scrivi qualcosa che non è un URL.",
+    "Custom search URL": "URL di ricerca personalizzato",
+    "Use %s where the search terms go.": "Usa %s dove vanno i termini di ricerca.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Inserisci un URL http o https che contenga %s. Fino ad allora le ricerche usano DuckDuckGo.",
+    "Sent by automation": "Inviato da un’automazione",
+    "Sent by T3 Code": "Inviato da T3 Code",
+    "Sent by another agent": "Inviato da un altro agente"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7046,7 +7106,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Geen schermafbeeldingstool gevonden. Kies een opdracht in Voorkeuren.",
     "The screenshot could not be taken.": "De schermafbeelding kon niet worden gemaakt.",
     "File not found.": "Bestand niet gevonden.",
-    "This file is binary and can't be previewed.": "Dit bestand is binair en kan niet worden bekeken."
+    "This file is binary and can't be previewed.": "Dit bestand is binair en kan niet worden bekeken.",
+    "Delete settled worktrees": "Worktrees van afgehandelde threads verwijderen",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Verwijdert worktrees dit aantal dagen nadat hun thread is afgehandeld. Met 0 dagen worden ze bij de volgende opschoning verwijderd. Branches en threadgeschiedenis blijven behouden.",
+    "Search engine": "Zoekmachine",
+    "What the address bar searches when you type something that isn't a URL.": "Waarmee de adresbalk zoekt als je iets typt dat geen URL is.",
+    "Custom search URL": "Aangepaste zoek-URL",
+    "Use %s where the search terms go.": "Gebruik %s op de plek van de zoektermen.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Voer een http- of https-URL met %s in. Tot die tijd wordt met DuckDuckGo gezocht.",
+    "Sent by automation": "Verzonden door een automatisering",
+    "Sent by T3 Code": "Verzonden door T3 Code",
+    "Sent by another agent": "Verzonden door een andere agent"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8053,7 +8123,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Nie znaleziono narzędzia zrzutów ekranu. Wybierz polecenie w Preferencjach.",
     "The screenshot could not be taken.": "Nie udało się zrobić zrzutu ekranu.",
     "File not found.": "Nie znaleziono pliku.",
-    "This file is binary and can't be previewed.": "Ten plik jest binarny i nie można go wyświetlić."
+    "This file is binary and can't be previewed.": "Ten plik jest binarny i nie można go wyświetlić.",
+    "Delete settled worktrees": "Usuń worktree zakończonych wątków",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Usuwa worktree po tylu dniach od zakończenia wątku. Przy 0 dniach zostaną usunięte przy następnym czyszczeniu. Gałęzie i historia wątku są zachowywane.",
+    "Search engine": "Wyszukiwarka",
+    "What the address bar searches when you type something that isn't a URL.": "Czym pasek adresu wyszukuje, gdy wpiszesz coś, co nie jest adresem URL.",
+    "Custom search URL": "Własny adres URL wyszukiwania",
+    "Use %s where the search terms go.": "Użyj %s w miejscu wyszukiwanych słów.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Wpisz adres URL http lub https zawierający %s. Do tego czasu wyszukiwanie używa DuckDuckGo.",
+    "Sent by automation": "Wysłane przez automatyzację",
+    "Sent by T3 Code": "Wysłane przez T3 Code",
+    "Sent by another agent": "Wysłane przez innego agenta"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9060,7 +9140,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Инструмент снимков экрана не найден. Выберите команду в настройках.",
     "The screenshot could not be taken.": "Не удалось сделать снимок экрана.",
     "File not found.": "Файл не найден.",
-    "This file is binary and can't be previewed.": "Это двоичный файл, его нельзя просмотреть."
+    "This file is binary and can't be previewed.": "Это двоичный файл, его нельзя просмотреть.",
+    "Delete settled worktrees": "Удалять worktree завершённых тредов",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Удаляет worktree через указанное число дней после завершения треда. При 0 днях они удаляются при следующей очистке. Ветки и история треда сохраняются.",
+    "Search engine": "Поисковая система",
+    "What the address bar searches when you type something that isn't a URL.": "Чем ищет адресная строка, если ввести не URL.",
+    "Custom search URL": "Свой URL поиска",
+    "Use %s where the search terms go.": "Укажите %s на месте поискового запроса.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Введите URL http или https с %s. До этого поиск идёт через DuckDuckGo.",
+    "Sent by automation": "Отправлено автоматизацией",
+    "Sent by T3 Code": "Отправлено T3 Code",
+    "Sent by another agent": "Отправлено другим агентом"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10067,7 +10157,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Інструмент знімків екрана не знайдено. Виберіть команду в налаштуваннях.",
     "The screenshot could not be taken.": "Не вдалося зробити знімок екрана.",
     "File not found.": "Файл не знайдено.",
-    "This file is binary and can't be previewed.": "Це двійковий файл, його не можна переглянути."
+    "This file is binary and can't be previewed.": "Це двійковий файл, його не можна переглянути.",
+    "Delete settled worktrees": "Видаляти worktree завершених тредів",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Видаляє worktree через вказану кількість днів після завершення треду. За 0 днів вони видаляються під час наступного очищення. Гілки та історія треду зберігаються.",
+    "Search engine": "Пошукова система",
+    "What the address bar searches when you type something that isn't a URL.": "Чим шукає адресний рядок, якщо ввести не URL.",
+    "Custom search URL": "Власний URL пошуку",
+    "Use %s where the search terms go.": "Вкажіть %s на місці пошукового запиту.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Введіть URL http або https із %s. До того пошук іде через DuckDuckGo.",
+    "Sent by automation": "Надіслано автоматизацією",
+    "Sent by T3 Code": "Надіслано T3 Code",
+    "Sent by another agent": "Надіслано іншим агентом"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11074,7 +11174,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "スクリーンショットツールが見つかりません。設定でコマンドを選んでください。",
     "The screenshot could not be taken.": "スクリーンショットを撮れませんでした。",
     "File not found.": "ファイルが見つかりません。",
-    "This file is binary and can't be previewed.": "このファイルはバイナリのためプレビューできません。"
+    "This file is binary and can't be previewed.": "このファイルはバイナリのためプレビューできません。",
+    "Delete settled worktrees": "完了したスレッドの worktree を削除",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "スレッドの完了からこの日数が経過した worktree を削除します。0 日にすると次回のクリーンアップで削除されます。ブランチとスレッド履歴は残ります。",
+    "Search engine": "検索エンジン",
+    "What the address bar searches when you type something that isn't a URL.": "URL 以外を入力したときにアドレスバーが使う検索先です。",
+    "Custom search URL": "カスタム検索 URL",
+    "Use %s where the search terms go.": "検索語が入る位置に %s を使います。",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "%s を含む http または https の URL を入力してください。それまでは DuckDuckGo で検索します。",
+    "Sent by automation": "自動化から送信",
+    "Sent by T3 Code": "T3 Code から送信",
+    "Sent by another agent": "別のエージェントから送信"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12081,7 +12191,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "스크린샷 도구를 찾을 수 없습니다. 환경설정에서 명령을 선택하세요.",
     "The screenshot could not be taken.": "스크린샷을 찍지 못했습니다.",
     "File not found.": "파일을 찾을 수 없습니다.",
-    "This file is binary and can't be previewed.": "이 파일은 바이너리라 미리 볼 수 없습니다."
+    "This file is binary and can't be previewed.": "이 파일은 바이너리라 미리 볼 수 없습니다.",
+    "Delete settled worktrees": "정리된 스레드의 worktree 삭제",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "스레드가 정리된 후 이 일수가 지나면 worktree를 삭제합니다. 0일로 설정하면 다음 정리 때 삭제됩니다. 브랜치와 스레드 기록은 유지됩니다.",
+    "Search engine": "검색 엔진",
+    "What the address bar searches when you type something that isn't a URL.": "URL이 아닌 내용을 입력했을 때 주소 표시줄이 검색하는 곳입니다.",
+    "Custom search URL": "사용자 지정 검색 URL",
+    "Use %s where the search terms go.": "검색어가 들어갈 위치에 %s를 사용하세요.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "%s가 포함된 http 또는 https URL을 입력하세요. 그전까지는 DuckDuckGo로 검색합니다.",
+    "Sent by automation": "자동화가 보냄",
+    "Sent by T3 Code": "T3 Code가 보냄",
+    "Sent by another agent": "다른 에이전트가 보냄"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13088,7 +13208,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "未找到截图工具。请在偏好设置中选择命令。",
     "The screenshot could not be taken.": "无法截图。",
     "File not found.": "未找到文件。",
-    "This file is binary and can't be previewed.": "此文件是二进制文件，无法预览。"
+    "This file is binary and can't be previewed.": "此文件是二进制文件，无法预览。",
+    "Delete settled worktrees": "删除已归档线程的 worktree",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "线程归档后经过这么多天即删除其 worktree。设为 0 天则在下次清理时删除。分支和线程历史会保留。",
+    "Search engine": "搜索引擎",
+    "What the address bar searches when you type something that isn't a URL.": "在地址栏输入非 URL 内容时使用的搜索方式。",
+    "Custom search URL": "自定义搜索 URL",
+    "Use %s where the search terms go.": "在搜索词所在位置使用 %s。",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "请输入包含 %s 的 http 或 https URL。在此之前使用 DuckDuckGo 搜索。",
+    "Sent by automation": "由自动化发送",
+    "Sent by T3 Code": "由 T3 Code 发送",
+    "Sent by another agent": "由另一个智能体发送"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14095,7 +14225,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "لم يتم العثور على أداة لقطات الشاشة. اختر أمرًا في التفضيلات.",
     "The screenshot could not be taken.": "تعذر التقاط لقطة الشاشة.",
     "File not found.": "لم يتم العثور على الملف.",
-    "This file is binary and can't be previewed.": "هذا الملف ثنائي ولا يمكن معاينته."
+    "This file is binary and can't be previewed.": "هذا الملف ثنائي ولا يمكن معاينته.",
+    "Delete settled worktrees": "حذف worktree للمحادثات المؤرشفة",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "يحذف worktree بعد هذا العدد من الأيام من أرشفة المحادثة. اضبطه على 0 لحذفها في التنظيف التالي. تُحفظ الفروع وسجل المحادثة.",
+    "Search engine": "محرك البحث",
+    "What the address bar searches when you type something that isn't a URL.": "ما يبحث به شريط العنوان عند كتابة شيء ليس عنوان URL.",
+    "Custom search URL": "عنوان URL مخصص للبحث",
+    "Use %s where the search terms go.": "استخدم %s في موضع كلمات البحث.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "أدخل عنوان URL يبدأ بـ http أو https ويحتوي على %s. حتى ذلك الحين يُستخدم DuckDuckGo للبحث.",
+    "Sent by automation": "أرسلته أتمتة",
+    "Sent by T3 Code": "أرسله T3 Code",
+    "Sent by another agent": "أرسله وكيل آخر"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15102,7 +15242,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Ekran görüntüsü aracı bulunamadı. Tercihler’den bir komut seçin.",
     "The screenshot could not be taken.": "Ekran görüntüsü alınamadı.",
     "File not found.": "Dosya bulunamadı.",
-    "This file is binary and can't be previewed.": "Bu dosya ikili olduğu için önizlenemez."
+    "This file is binary and can't be previewed.": "Bu dosya ikili olduğu için önizlenemez.",
+    "Delete settled worktrees": "Kapatılan konuların worktree'lerini sil",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Konu kapatıldıktan bu kadar gün sonra worktree'leri kaldırır. 0 gün seçilirse bir sonraki temizlikte kaldırılır. Dallar ve konu geçmişi korunur.",
+    "Search engine": "Arama motoru",
+    "What the address bar searches when you type something that isn't a URL.": "URL olmayan bir şey yazdığınızda adres çubuğunun neyle arama yapacağı.",
+    "Custom search URL": "Özel arama URL'si",
+    "Use %s where the search terms go.": "Arama terimlerinin geleceği yere %s yazın.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "%s içeren bir http veya https URL'si girin. O zamana kadar aramalar DuckDuckGo ile yapılır.",
+    "Sent by automation": "Bir otomasyon gönderdi",
+    "Sent by T3 Code": "T3 Code gönderdi",
+    "Sent by another agent": "Başka bir ajan gönderdi"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16109,7 +16259,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Inget skärmbildsverktyg hittades. Välj ett kommando i Inställningar.",
     "The screenshot could not be taken.": "Skärmbilden kunde inte tas.",
     "File not found.": "Filen hittades inte.",
-    "This file is binary and can't be previewed.": "Filen är binär och kan inte förhandsgranskas."
+    "This file is binary and can't be previewed.": "Filen är binär och kan inte förhandsgranskas.",
+    "Delete settled worktrees": "Ta bort worktrees för avslutade trådar",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Tar bort worktrees så här många dagar efter att tråden avslutats. Med 0 dagar tas de bort vid nästa rensning. Grenar och trådhistorik behålls.",
+    "Search engine": "Sökmotor",
+    "What the address bar searches when you type something that isn't a URL.": "Vad adressfältet söker med när du skriver något som inte är en URL.",
+    "Custom search URL": "Anpassad sök-URL",
+    "Use %s where the search terms go.": "Använd %s där sökorden ska stå.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Ange en http- eller https-URL som innehåller %s. Tills dess används DuckDuckGo.",
+    "Sent by automation": "Skickat av en automatisering",
+    "Sent by T3 Code": "Skickat av T3 Code",
+    "Sent by another agent": "Skickat av en annan agent"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17116,7 +17276,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Intet skærmbilledværktøj fundet. Vælg en kommando i Indstillinger.",
     "The screenshot could not be taken.": "Skærmbilledet kunne ikke tages.",
     "File not found.": "Filen blev ikke fundet.",
-    "This file is binary and can't be previewed.": "Filen er binær og kan ikke forhåndsvises."
+    "This file is binary and can't be previewed.": "Filen er binær og kan ikke forhåndsvises.",
+    "Delete settled worktrees": "Slet worktrees for afsluttede tråde",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Fjerner worktrees så mange dage efter, at tråden er afsluttet. Med 0 dage fjernes de ved næste oprydning. Branches og trådhistorik bevares.",
+    "Search engine": "Søgemaskine",
+    "What the address bar searches when you type something that isn't a URL.": "Hvad adresselinjen søger med, når du skriver noget, der ikke er en URL.",
+    "Custom search URL": "Tilpasset søge-URL",
+    "Use %s where the search terms go.": "Brug %s, hvor søgeordene skal stå.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Angiv en http- eller https-URL, der indeholder %s. Indtil da bruges DuckDuckGo.",
+    "Sent by automation": "Sendt af en automatisering",
+    "Sent by T3 Code": "Sendt af T3 Code",
+    "Sent by another agent": "Sendt af en anden agent"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18123,7 +18293,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Fant ikke noe skjermbildeverktøy. Velg en kommando i Innstillinger.",
     "The screenshot could not be taken.": "Skjermbildet kunne ikke tas.",
     "File not found.": "Fant ikke filen.",
-    "This file is binary and can't be previewed.": "Filen er binær og kan ikke forhåndsvises."
+    "This file is binary and can't be previewed.": "Filen er binær og kan ikke forhåndsvises.",
+    "Delete settled worktrees": "Slett worktrees for avsluttede tråder",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Fjerner worktrees så mange dager etter at tråden er avsluttet. Med 0 dager fjernes de ved neste opprydding. Grener og trådhistorikk beholdes.",
+    "Search engine": "Søkemotor",
+    "What the address bar searches when you type something that isn't a URL.": "Hva adressefeltet søker med når du skriver noe som ikke er en URL.",
+    "Custom search URL": "Egendefinert søke-URL",
+    "Use %s where the search terms go.": "Bruk %s der søkeordene skal stå.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Skriv inn en http- eller https-URL som inneholder %s. Inntil da brukes DuckDuckGo.",
+    "Sent by automation": "Sendt av en automatisering",
+    "Sent by T3 Code": "Sendt av T3 Code",
+    "Sent by another agent": "Sendt av en annen agent"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19130,7 +19310,17 @@
     "No screenshot tool found. Choose a command in Preferences.": "Kuvakaappaustyökalua ei löytynyt. Valitse komento asetuksista.",
     "The screenshot could not be taken.": "Kuvakaappausta ei voitu ottaa.",
     "File not found.": "Tiedostoa ei löytynyt.",
-    "This file is binary and can't be previewed.": "Tiedosto on binäärinen, eikä sitä voi esikatsella."
+    "This file is binary and can't be previewed.": "Tiedosto on binäärinen, eikä sitä voi esikatsella.",
+    "Delete settled worktrees": "Poista valmiiden ketjujen worktreet",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Poistaa worktreet näin monen päivän kuluttua ketjun valmistumisesta. 0 päivää poistaa ne seuraavassa siivouksessa. Haarat ja ketjun historia säilyvät.",
+    "Search engine": "Hakukone",
+    "What the address bar searches when you type something that isn't a URL.": "Millä osoiterivi hakee, kun kirjoitat jotain muuta kuin URL-osoitteen.",
+    "Custom search URL": "Mukautettu haku-URL",
+    "Use %s where the search terms go.": "Käytä %s hakusanojen kohdalla.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Anna http- tai https-URL, jossa on %s. Siihen asti haut tehdään DuckDuckGolla.",
+    "Sent by automation": "Automaation lähettämä",
+    "Sent by T3 Code": "T3 Coden lähettämä",
+    "Sent by another agent": "Toisen agentin lähettämä"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20137,6 +20327,16 @@
     "No screenshot tool found. Choose a command in Preferences.": "Nástroj pro snímky obrazovky nebyl nalezen. Vyberte příkaz v Předvolbách.",
     "The screenshot could not be taken.": "Snímek obrazovky se nepodařilo pořídit.",
     "File not found.": "Soubor nebyl nalezen.",
-    "This file is binary and can't be previewed.": "Tento soubor je binární a nelze jej zobrazit."
+    "This file is binary and can't be previewed.": "Tento soubor je binární a nelze jej zobrazit.",
+    "Delete settled worktrees": "Mazat worktree uzavřených vláken",
+    "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept.": "Odstraní worktree po tomto počtu dní od uzavření vlákna. Při 0 dnech se odstraní při příštím úklidu. Větve a historie vlákna zůstanou zachovány.",
+    "Search engine": "Vyhledávač",
+    "What the address bar searches when you type something that isn't a URL.": "Čím adresní řádek vyhledává, když zadáte něco, co není URL.",
+    "Custom search URL": "Vlastní URL vyhledávání",
+    "Use %s where the search terms go.": "Použijte %s v místě hledaných výrazů.",
+    "Enter an http or https URL containing %s. Searches use DuckDuckGo until then.": "Zadejte URL http nebo https obsahující %s. Do té doby se vyhledává přes DuckDuckGo.",
+    "Sent by automation": "Odesláno automatizací",
+    "Sent by T3 Code": "Odesláno z T3 Code",
+    "Sent by another agent": "Odesláno jiným agentem"
   }
 }

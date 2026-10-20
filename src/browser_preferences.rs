@@ -15,6 +15,8 @@ pub const KEYS: &[&str] = &[
     "browserAutoShowFloatingPreview",
     "browserProfiles",
     "browserDefaultProfileId",
+    "browserSearchEngine",
+    "browserCustomSearchUrl",
 ];
 static CONTRACT: OnceLock<Value> = OnceLock::new();
 pub fn contract() -> &'static Value {
@@ -121,6 +123,23 @@ pub fn validate(key: &str, value: &Value) -> Result<Value> {
         | "browserRecordingShowMousePresses"
         | "browserAutoShowFloatingPreview" => json!(value.as_bool().ok_or_else(bad)?),
         "browserDefaultProfileId" => json!(profile_id(value)?),
+        "browserSearchEngine" => {
+            if !value
+                .as_str()
+                .is_some_and(|s| crate::browser_address::SEARCH_ENGINES.contains(&s))
+            {
+                return Err(bad());
+            }
+            value.clone()
+        }
+        // Kept while another engine is chosen, so switching back restores it.
+        "browserCustomSearchUrl" => {
+            let url = value
+                .as_str()
+                .filter(|s| s.encode_utf16().count() <= 2048)
+                .ok_or_else(bad)?;
+            json!(url.trim())
+        }
         "browserProfiles" => {
             // The native client schema accepts arrays beyond the UI create limit24;
             // preserve existing identities, while bounding IPC resource use.
@@ -146,7 +165,7 @@ pub fn validate(key: &str, value: &Value) -> Result<Value> {
     })
 }
 pub fn projection(raw: &Value) -> Value {
-    let defaults = json!({"browserDefaultViewport":{"_tag":"fill"},"browserDefaultZoomFactor":1.0,"browserDefaultAppearance":"system","browserRecordingFrameRate":30,"browserRecordingShowKeyPresses":false,"browserRecordingShowMousePresses":false,"browserLinkTarget":"system","browserAutoShowFloatingPreview":true,"browserProfiles":[],"browserDefaultProfileId":"default"});
+    let defaults = json!({"browserDefaultViewport":{"_tag":"fill"},"browserDefaultZoomFactor":1.0,"browserDefaultAppearance":"system","browserRecordingFrameRate":30,"browserRecordingShowKeyPresses":false,"browserRecordingShowMousePresses":false,"browserLinkTarget":"system","browserAutoShowFloatingPreview":true,"browserProfiles":[],"browserDefaultProfileId":"default","browserSearchEngine":"duckduckgo","browserCustomSearchUrl":""});
     let mut out = json!({});
     for key in KEYS {
         out[*key] = validate(key, &raw[*key]).unwrap_or_else(|_| defaults[*key].clone())

@@ -18,11 +18,12 @@ ColumnLayout {
  readonly property bool supported:scopes.length>0&&scopes.every(function(s){return s.capabilities.storageCleanup&&(!root.projectScope||s.capabilities.projectWorktreeCleanup)})
  readonly property bool directorySupported:scopes.length>0&&scopes.every(function(s){return s.capabilities.worktreesDirectory})
  readonly property bool keepWhenSupported:scopes.length>0&&scopes.every(function(s){return s.capabilities.storageCleanupRun})
- readonly property var ruleKeys:["worktreeOnDelete","worktreeAfterDays","worktreeOnMerge","worktreeUnchanged","worktreeKeepWhen"]
- readonly property var labels:({worktreeOnDelete:"Delete worktrees with deleted threads",worktreeAfterDays:"Delete inactive worktrees",worktreeOnMerge:"Delete merged worktrees",worktreeUnchanged:"Delete unchanged worktrees",worktreeKeepWhen:"Keep worktrees with local changes",browserArtifactsAfterDays:"Delete old browser artifacts",logsAfterDays:"Delete old rotated logs"})
+ readonly property var ruleKeys:["worktreeOnDelete","worktreeAfterDays","worktreeSettledAfterDays","worktreeOnMerge","worktreeUnchanged","worktreeKeepWhen"]
+ readonly property var labels:({worktreeOnDelete:"Delete worktrees with deleted threads",worktreeAfterDays:"Delete inactive worktrees",worktreeSettledAfterDays:"Delete settled worktrees",worktreeOnMerge:"Delete merged worktrees",worktreeUnchanged:"Delete unchanged worktrees",worktreeKeepWhen:"Keep worktrees with local changes",browserArtifactsAfterDays:"Delete old browser artifacts",logsAfterDays:"Delete old rotated logs"})
  function description(key,value){
   if(key==="worktreeOnDelete")return "Remove unused worktrees when active or archived threads are deleted. Worktrees with local changes are kept."
   if(key==="worktreeAfterDays")return "Remove worktrees after their threads have been inactive for this many days. Branches and thread history are kept."
+  if(key==="worktreeSettledAfterDays")return "Remove worktrees this many days after their thread settles. Set 0 days to remove them at the next cleanup. Branches and thread history are kept."
   if(key==="worktreeOnMerge")return "Remove worktrees whose pull request is merged and whose commits are included in the default branch."
   if(key==="worktreeUnchanged")return "Remove worktrees with no commits beyond the default branch."
   if(key==="worktreeKeepWhen")return value==="any-local-files"?"Includes ignored files, except node_modules.":value==="tracked-changes"?"Deletes untracked and ignored files, including .env.":"Keeps edits and untracked files. Deletes ignored files, including .env."
@@ -34,9 +35,11 @@ ColumnLayout {
  function field(key){
   var original=fields.find(function(f){return f.key==="storageCleanup."+key})
   if(!original&&!projectScope)return null
+  // Servers without settled cleanup do not report it.
+  if(key==="worktreeSettledAfterDays"&&!fields.some(function(f){return f.key==="storageCleanup.worktreeSettledAfterDays"}))return null
   var value=projectScope?(policy.rules||{})[key]:original.value
   if(typeof value==="undefined")return null
-  return Object.assign({},original||{},{key:"storageCleanup."+key,label:labels[key],description:description(key,value),value:value,kind:key.endsWith("Days")?"days":key==="worktreeKeepWhen"?"choice":"bool",minimum:1,maximum:3650,enabledValue:8,retention:true,mixed:projectScope?!!(policy.rulesMixed||{})[key]:original.mixed,projectScoped:false})
+  return Object.assign({},original||{},{key:"storageCleanup."+key,label:labels[key],description:description(key,value),value:value,kind:key.endsWith("Days")?"days":key==="worktreeKeepWhen"?"choice":"bool",minimum:key==="worktreeSettledAfterDays"?0:1,maximum:3650,enabledValue:8,retention:true,mixed:projectScope?!!(policy.rulesMixed||{})[key]:original.mixed,projectScoped:false})
  }
  function updateRule(key,value){if(!writable)return;if(projectScope){var patch={};patch[key]=value;settingChanged("worktreeCleanup",{mode:"custom",rules:patch})}else settingChanged("storageCleanup."+key,value)}
  readonly property var rules:supported&&(!projectScope||!policy.modeMixed&&mode==="custom")?ruleKeys.filter(function(k){return k!=="worktreeKeepWhen"||root.keepWhenSupported}).map(field).filter(function(f){return f&&root.matches(f)}):[]

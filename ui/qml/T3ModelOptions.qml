@@ -10,6 +10,9 @@ ColumnLayout {
  property string namePrefix:"t3Option_"
  readonly property color dim:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.55)
  function optionValue(descriptor){var option=(selection.options || []).find(function(o){return o.id===descriptor.id});return option?option.value:descriptor.currentValue}
+ function effortDescriptor(){return descriptors.find(function(d){return d.type==="select"&&/effort|reasoning|thinking/i.test(d.id+" "+d.label)})}
+ // Steps the reasoning effort one option up or down, staying at the ends.
+ function stepEffort(direction){var d=effortDescriptor();if(locked||!d)return false;var options=d.options||[];var current=options.findIndex(function(o){return o.id===optionValue(d)});var next=Math.max(0,Math.min(options.length-1,(current<0?0:current)+direction));if(next===current||!options[next])return false;bridge.chooseOption(d.id,options[next].id);return true}
  function focusEffort(){for(var i=0;i<rows.count;i++){var row=rows.itemAt(i);if(row&&/effort|reasoning|thinking/i.test(row.modelData.id+" "+row.modelData.label)){row.focusControl();return true}}return false}
  spacing:Style.space(6)
  Repeater{id:rows;model:root.descriptors

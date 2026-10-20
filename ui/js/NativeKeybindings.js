@@ -1,5 +1,5 @@
 .pragma library
-// Generated from pinned T3 Code 5a4e9980533705774dc3f45b35cacf76c3d78dbc. MIT, see licenses/T3-Code-MIT.txt.
+// Generated from pinned T3 Code fb990765a49414a5bfbdc73365455fc8b5fbe691. MIT, see licenses/T3-Code-MIT.txt.
 // Regenerate: node tools/build-keybindings.cjs <native-checkout>
 var nativeKeys=(function(){
 "use strict";
@@ -89,6 +89,8 @@ const STATIC_KEYBINDING_COMMANDS = [
   "composer.host",
   "composer.cycleHost",
   "composer.effort",
+  "composer.increaseEffort",
+  "composer.decreaseEffort",
   "composer.mode",
   "composer.workspace",
   "composer.previousWorktree",
@@ -132,6 +134,30 @@ const EVENT_CODE_SHORTCUT_KEYS                                   = {
   Semicolon: ";",
   Slash: "/",
 };
+
+const US_SHIFTED_TO_UNSHIFTED_KEYS                              = new Map([
+  ["!", "1"],
+  ["@", "2"],
+  ["#", "3"],
+  ["$", "4"],
+  ["%", "5"],
+  ["^", "6"],
+  ["&", "7"],
+  ["*", "8"],
+  ["(", "9"],
+  [")", "0"],
+  ["~", "`"],
+  ["_", "-"],
+  ["+", "="],
+  ["{", "["],
+  ["}", "]"],
+  ["|", "\\"],
+  [":", ";"],
+  ['"', "'"],
+  ["<", ","],
+  [">", "."],
+  ["?", "/"],
+]);
 
 function isMacPlatform(platform        )          {
   return /mac|iphone|ipad|ipod/i.test(platform);
@@ -565,7 +591,26 @@ const WINDOW_OPTIONS = [
   { days: 90, label: "90 days", command: "usage.period.quarter" },
 ]         ;
 
+function resolveUsageShortcut(
+  event                                                    ,
+  keybindings                           ,
+) {
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
+      target.isContentEditable ||
+      target.closest('[role="dialog"], [aria-modal="true"], [data-slot$="popup"]'))
+  ) {
+    return null;
+  }
 
+  return resolveShortcutCommand(event, keybindings, {
+    context: { usagePageOpen: true },
+  });
+}
 
 
 
@@ -583,11 +628,6 @@ const usageCommandOrder = new Map                           (
 
 const firstUsageCommand = METRIC_OPTIONS[0].command;
 
-/**
- * Orders commands by `key`, except Usage page commands, which sort as one
- * block in page order where the first of them would sort. A total order, so
- * adding a binding elsewhere cannot reshuffle the Usage rows.
- */
 function compareCommands(
   left                   ,
   right                   ,
@@ -763,7 +803,6 @@ function keybindingConflictLabels(
                                               
  
 
-/** Page sections in display order; a command joins the first group listing its prefix. */
 const KEYBINDING_GROUPS = [
   {
     id: "navigation",
@@ -787,7 +826,6 @@ function keybindingGroupFor(command                   )                         
   );
 }
 
-/** Splits sorted rows into the page's sections, dropping sections with no rows. */
 function groupKeybindingRows(
   rows                              ,
 )                                 {
@@ -806,15 +844,15 @@ function groupKeybindingRows(
 
 function buildKeybindingRows(
   keybindings                           ,
-  query        ,
 )                               {
-  const normalizedQuery = query.trim().toLowerCase();
-  const rows = keybindings.map((binding, index) => {
+  const rowsById = new Map                       ();
+  for (const binding of keybindings) {
     const defaultBinding = defaultBindingForBinding(binding);
     const key = shortcutToKeybindingInput(binding.shortcut);
     const when = whenAstToExpression(binding.whenAst);
-    return {
-      id: `${keybindingRowId(binding.command, key, when)}\u0000${index}`,
+    const id = keybindingRowId(binding.command, key, when);
+    rowsById.set(id, {
+      id,
       command: binding.command,
       key,
       when,
@@ -823,8 +861,9 @@ function buildKeybindingRows(
       defaultWhen: whenAstToExpression(defaultBinding?.whenAst),
       binding,
       conflicts: [],
-    }                        ;
-  });
+    });
+  }
+  const rows = [...rowsById.values()];
 
   const rowsWithConflicts = rows.map((row) => {
     const conflicts = keybindingConflictLabels(rows, {
@@ -843,11 +882,18 @@ function buildKeybindingRows(
     return left.key.localeCompare(right.key);
   });
 
-  if (normalizedQuery.length === 0) {
-    return rowsWithConflicts;
-  }
+  return rowsWithConflicts;
+}
 
-  return rowsWithConflicts.filter((row) => {
+// Filtering keeps the row objects so rows that stay visible while the query
+// changes receive the same props and skip rendering.
+function filterKeybindingRows(
+  rows                              ,
+  query        ,
+)                               {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.length === 0) return rows;
+  return rows.filter((row) => {
     return (
       row.command.toLowerCase().includes(normalizedQuery) ||
       commandLabel(row.command).toLowerCase().includes(normalizedQuery) ||
@@ -944,6 +990,18 @@ function titleCaseCommandSegment(segment        )         {
   return words.join(" ");
 }
 
+function recordedLayoutShortcutKey(
+  event                                                             ,
+)         {
+  const physicalKey = shortcutKeyFromEvent(event);
+  const layoutKey = event.key.toLowerCase();
+  if (event.altKey || layoutKey.length !== 1) return physicalKey;
+  // Normalize only US shifted glyphs at their US position. Other layouts can
+  // produce the same glyph without Shift or at a different position.
+  const unshiftedKey = event.shiftKey ? US_SHIFTED_TO_UNSHIFTED_KEYS.get(layoutKey) : undefined;
+  return unshiftedKey === physicalKey ? physicalKey : layoutKey;
+}
+
 function normalizeShortcutKeyToken(key        )                {
   const normalized = key.toLowerCase();
   if (
@@ -974,12 +1032,16 @@ function normalizeShortcutKeyToken(key        )                {
   return null;
 }
 
-/** Turns a keydown into a binding such as `mod+shift+k` or `tab`. Null for modifier-only presses. */
 function keybindingFromKeyboardEvent(
   event                                                                                     ,
   platform        ,
+  options    
+                                       
+   ,
 )                {
-  const keyToken = normalizeShortcutKeyToken(shortcutKeyFromEvent(event));
+  const keyToken = normalizeShortcutKeyToken(
+    options?.layoutCharacter ? recordedLayoutShortcutKey(event) : shortcutKeyFromEvent(event),
+  );
   if (!keyToken) return null;
 
   const parts           = [];
@@ -1285,6 +1347,25 @@ function shortcutConflictKey(
   ].join("|");
 }
 
+function shortcutForContext(binding                        , context                      ) {
+  const shortcut = binding.shortcut;
+  // Existing installs persist Mod+Enter. Resolve its alternate chord against
+  // the send preference without rewriting saved or remapped shortcuts.
+  if (
+    context.composerRequiresModifier &&
+    binding.command === "composer.sendAlternate" &&
+    shortcut.key === "enter" &&
+    shortcut.modKey &&
+    !shortcut.metaKey &&
+    !shortcut.ctrlKey &&
+    !shortcut.altKey &&
+    !shortcut.shiftKey
+  ) {
+    return Object.assign({}, shortcut, { shiftKey: true });
+  }
+  return shortcut;
+}
+
 function effectiveShortcutsForCommand(
   keybindings                           ,
   command                   ,
@@ -1300,14 +1381,15 @@ function effectiveShortcutsForCommand(
     if (!binding) continue;
     if (!matchesWhenClause(binding.whenAst, context)) continue;
 
-    const conflictKey = shortcutConflictKey(binding.shortcut, platform);
+    const shortcut = shortcutForContext(binding, context);
+    const conflictKey = shortcutConflictKey(shortcut, platform);
     if (claimedShortcuts.has(conflictKey)) {
       continue;
     }
 
     claimedShortcuts.add(conflictKey);
     if (binding.command === command) {
-      effective.push(binding.shortcut);
+      effective.push(shortcut);
     }
   }
 
@@ -1343,13 +1425,12 @@ function resolveShortcutCommand(
     const binding = keybindings[index];
     if (!binding) continue;
     if (!matchesWhenClause(binding.whenAst, context)) continue;
-    if (!matchesKeybindingShortcut(event, binding.shortcut, platform)) continue;
+    if (!matchesKeybindingShortcut(event, shortcutForContext(binding, context), platform)) continue;
     return binding.command;
   }
   return null;
 }
 
-/** App shortcuts use the primary environment; script shortcuts belong to the active project. */
 function resolveChatShortcutCommand(
   event                   ,
   primaryKeybindings                           ,
@@ -1378,5 +1459,5 @@ function projectScriptIdFromCommand(command        )                {
 }
 
 
-return {EVENT_CODE_SHORTCUT_KEYS,isMacPlatform,normalizeEventKey,shortcutKeyFromEvent,resolveEventKeys,matchesKeybindingShortcutModifiers,matchesKeybindingShortcut,DEFAULT_KEYBINDINGS,parseKeybindingShortcut,parseKeybindingWhenExpression,compileResolvedKeybindingRule,compileResolvedKeybindingsConfig,DEFAULT_RESOLVED_KEYBINDINGS,mergeWithDefaultKeybindings,DEFAULT_WHEN_VARIABLE,shortcutToKeybindingInput,whenAstToExpression,whenNodeRemoveLabel,parseWhenExpressionDraft,keybindingConflictLabels,groupKeybindingRows,buildKeybindingRows,isKnownWhenVariable,unknownWhenVariables,buildWhenVariableOptions,buildKeybindingCommandOptions,commandLabel,keybindingFromKeyboardEvent,STATIC_KEYBINDING_COMMANDS,flattenWhenChildren,buildWhenExpressionGroup,conditionParts,setConditionIdentifier,setConditionNegated,defaultWhenCondition,defaultWhenGroup,formatShortcutKeyLabel,formatShortcutLabel,EDITORS,evaluateWhenNode,matchesWhenClause,shortcutConflictKey,effectiveShortcutsForCommand,resolveShortcutCommand,resolveChatShortcutCommand,projectScriptIdFromCommand};
+return {EVENT_CODE_SHORTCUT_KEYS,US_SHIFTED_TO_UNSHIFTED_KEYS,isMacPlatform,normalizeEventKey,shortcutKeyFromEvent,resolveEventKeys,matchesKeybindingShortcutModifiers,matchesKeybindingShortcut,DEFAULT_KEYBINDINGS,parseKeybindingShortcut,parseKeybindingWhenExpression,compileResolvedKeybindingRule,compileResolvedKeybindingsConfig,DEFAULT_RESOLVED_KEYBINDINGS,mergeWithDefaultKeybindings,DEFAULT_WHEN_VARIABLE,shortcutToKeybindingInput,whenAstToExpression,whenNodeRemoveLabel,parseWhenExpressionDraft,keybindingConflictLabels,groupKeybindingRows,buildKeybindingRows,filterKeybindingRows,isKnownWhenVariable,unknownWhenVariables,buildWhenVariableOptions,buildKeybindingCommandOptions,commandLabel,keybindingFromKeyboardEvent,STATIC_KEYBINDING_COMMANDS,flattenWhenChildren,buildWhenExpressionGroup,conditionParts,setConditionIdentifier,setConditionNegated,defaultWhenCondition,defaultWhenGroup,formatShortcutKeyLabel,formatShortcutLabel,EDITORS,evaluateWhenNode,matchesWhenClause,shortcutConflictKey,effectiveShortcutsForCommand,resolveShortcutCommand,resolveChatShortcutCommand,projectScriptIdFromCommand};
 })();

@@ -1,14 +1,14 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "files": {
-    "packages/contracts/src/keybindings.ts": "fcef8dd4fa5c4b80d0ebf3e436354333cb3057b7b5a755f9fafac31cc6bc28af",
-    "packages/shared/src/keybindings.ts": "61eb77bc01d8ce52eeadeebadb4d38816744efd958e62580976b7f82118334f5",
-    "apps/web/src/components/usage/usageShortcuts.ts": "9c2f9495469783fb2ee03d73afde97237ecbf43e94b383c4f730ec339883e35e",
-    "apps/web/src/components/settings/KeybindingsSettings.logic.ts": "01dd88c7877b85b56adac1a5a91b4dca63738190d18aeb483e5372991845cd93",
-    "apps/web/src/components/settings/KeybindingsSettings.tsx": "1344eec0ee62e729a787b155e89865db3298d2087096216b2d032807b7412a54",
-    "apps/web/src/keybindings.ts": "5b54026f2de75a9fd8db849fd6403b1c037644a65b8564f7e6729be540668bf0",
-    "packages/contracts/src/editor.ts": "486a81edead6245c84a00e070191b138b0a2031429560f8a5c82c0d512014cc3",
-    "apps/web/src/projectScripts.ts": "ad3ba91fbb41b88ea5d27fc3e08547cbc6df6bc7baccf3f550fdea794bfe1f7f"
+    "packages/contracts/src/keybindings.ts": "0c5f5f9f0e60279d0c69403a8c1270796be44d28a7525ec1accfd2a340818312",
+    "packages/shared/src/keybindings.ts": "d63028a6ca0d62b330dffef2239e03fb5be191262f597d17bcd2830282a2b849",
+    "apps/web/src/components/usage/usageShortcuts.ts": "81213edf6c6fc7c3bc16cfc382a532c3261a5c87805f64b964bdc81e5425d888",
+    "apps/web/src/components/settings/KeybindingsSettings.logic.ts": "104074933bb1c0fa17bd50b12f604fa2eb2f6d74f2bccffcdf02eec429441fbb",
+    "apps/web/src/components/settings/KeybindingsSettings.tsx": "d809ce3759816f534694f5557c2f762fb0dedb3b42976ff6f2ca88fcff845f5c",
+    "apps/web/src/keybindings.ts": "91551e4bb4860093756d41c67bb7ac7d6c46a2cc545f6ff3c2c8f1752f463a6b",
+    "packages/contracts/src/editor.ts": "d247859a5c1770c3299ee347307572ca1cd74cc1c81fa7f1552266e8426a4e6a",
+    "apps/web/src/projectScripts.ts": "51bb356d9fd61c9db2db0f6577f555660b299cf4ae576cf0a213dc024103566b"
   },
   "adaptations": [
     "TypeScript type erasure and import removal; identical native constants and dependency order",
@@ -17,5 +17,5 @@
     "Native context object spread becomes Object.assign for Qt JS compatibility",
     "Qt desktop supplies the native desktop context default; script command schema predicate uses the pinned literal/id constraint without the Effect runtime"
   ],
-  "outputSha256": "0922455005c292dbe8812983473286feb0dad1620d9540c8859d28785642e1e3"
+  "outputSha256": "0ace9d03d0dcdce150bd06c36a23a13a60287f574368d87492b3afa266679bed"
 }

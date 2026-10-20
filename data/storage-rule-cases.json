@@ -1,7 +1,7 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "source": "packages/shared/src/projectSettings.ts",
-  "sourceSha256": "a92a4cff7c5e26d130788780cf99170e3c570602c513d2be3d57f9326907eb48",
+  "sourceSha256": "7f67e210d91a6511d7ee490db9e400cb6a122eb5bf239525f01fb1dc61e7de08",
   "adaptation": "Dependency adapter receives already-folded settings; original resolveWorktreeCleanup body unchanged after TypeScript erasure.",
   "cases": [
     {
@@ -39,6 +39,7 @@
       "expected": {
         "worktreeKeepWhen": "any-local-files",
         "worktreeAfterDays": null,
+        "worktreeSettledAfterDays": null,
         "worktreeOnMerge": false,
         "worktreeOnDelete": false,
         "worktreeUnchanged": false
@@ -107,6 +108,7 @@
       "expected": {
         "worktreeKeepWhen": "uncommitted-changes",
         "worktreeAfterDays": null,
+        "worktreeSettledAfterDays": null,
         "worktreeOnMerge": false,
         "worktreeOnDelete": false,
         "worktreeUnchanged": false
@@ -175,6 +177,7 @@
       "expected": {
         "worktreeKeepWhen": "tracked-changes",
         "worktreeAfterDays": null,
+        "worktreeSettledAfterDays": null,
         "worktreeOnMerge": false,
         "worktreeOnDelete": false,
         "worktreeUnchanged": false

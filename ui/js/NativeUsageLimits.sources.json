@@ -1,7 +1,7 @@
 {
-  "commit": "5a4e9980533705774dc3f45b35cacf76c3d78dbc",
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
   "files": {
-    "packages/shared/src/usageLimits.ts": "51b3cf4a9246882d0e0227166e4ad34854cf8c0a4b4fbc5067df23eccfa0e903"
+    "packages/shared/src/usageLimits.ts": "a6af4d024d503e712519f1d60aefbbbd409e7fd0a7a3d729b2ec485eb99a8d21"
   },
   "adaptations": [
     "Original helpers retained after TypeScript erasure and import/export removal",
@@ -9,5 +9,5 @@
     "Dense contract arrays use map/reduce for Qt flatMap compatibility",
     "Original availability predicate inlined; DateTime ISO formatting uses native Date; no runtime dependencies"
   ],
-  "outputSha256": "4659c3cacbe7e2114540de7e4c4148a30995457d9721fd375949a85312d87c42"
+  "outputSha256": "3a4d08d2663778f090107f5ab7dc50f5c3d9ddbeb55c168b444705c3351bec9d"
 }
