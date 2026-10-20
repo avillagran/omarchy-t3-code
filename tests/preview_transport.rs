@@ -145,7 +145,7 @@ impl Server {
             "subscribePreviewEvents"=>{
               assert_eq!(request["payload"],json!({}));if !events.is_empty(){ws.send(tungstenite::Message::Text(json!({"_tag":"Chunk","requestId":"1","values":events}).to_string().into())).unwrap();}
               ws.get_mut().set_read_timeout(Some(Duration::from_millis(30))).unwrap();while !ss.load(Ordering::Relaxed){match ws.read(){Ok(tungstenite::Message::Text(t))=>{let v:Value=serde_json::from_str(&t).unwrap();if v["_tag"]=="Interrupt"{ii.fetch_add(1,Ordering::Relaxed);return}},Err(tungstenite::Error::Io(e)) if matches!(e.kind(),std::io::ErrorKind::WouldBlock|std::io::ErrorKind::TimedOut)=>{},Err(_)|Ok(tungstenite::Message::Close(_))=>return,_=>{}}}return;
-            },other=>panic!("unexpected native RPC: {other}")};
+            },"orchestration.subscribeShell"|"subscribeServerConfig"=>return,other=>panic!("unexpected native RPC: {other}")};
           ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":value}}).to_string().into())).unwrap();
         }));
             }
@@ -1002,7 +1002,7 @@ fn actual_worker_observes_read_only_serializes_lifecycle_and_interrupts_when_hid
     );
     assert!(server.calls.lock().unwrap().iter().all(|r| matches!(
         r["tag"].as_str(),
-        Some("server.getConfig" | "preview.list" | "subscribePreviewEvents" | "preview.open")
+        Some("server.getConfig" | "preview.list" | "subscribePreviewEvents" | "preview.open" | "orchestration.subscribeShell" | "subscribeServerConfig")
     )));
     drop(stdin);
     let _ = child.0.kill();

@@ -95,7 +95,7 @@ fn unavailable_storage_keeps_both_prompts_and_retry_is_exact(){
  let stash_dir=root.join("state/omarchy-t3-code/prompt-stash");let path=std::fs::read_dir(stash_dir).unwrap().map(|e|e.unwrap().path()).find(|p|p.extension().is_some_and(|s|s=="lock")).unwrap().with_extension("json");
  std::fs::create_dir(&path).unwrap();
  assert_eq!(result(&root,&restore)["error"],"draft_read_failed");
- let raw=std::fs::read_dir(&dir).unwrap().map(|e|serde_json::from_slice::<Value>(&std::fs::read(e.unwrap().path()).unwrap()).unwrap()).collect::<Vec<_>>();
+ let raw=std::fs::read_dir(&dir).unwrap().map(|e|e.unwrap().path()).filter(|p|p.extension().is_some_and(|x|x=="json")).map(|p|serde_json::from_slice::<Value>(&std::fs::read(p).unwrap()).unwrap()).collect::<Vec<_>>();
  assert_eq!(raw.iter().find(|d|d["key"]=="fixture/a").unwrap()["draft"],a);assert_eq!(raw.iter().find(|d|d["key"]=="fixture/b").unwrap()["draft"],b);
  std::fs::remove_dir(&path).unwrap();
  assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/a")["text"],"Current\n\nSource");assert_eq!(loaded(&root,"fixture/b")["text"],"");

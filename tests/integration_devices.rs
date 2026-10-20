@@ -195,6 +195,8 @@ impl Server {
       "device.list"=>{if payload.get("updateTool").is_some()||payload.get("retryHostId").is_some(){assert!(oo.load(Ordering::Relaxed));}dd.lock().unwrap().clone()},
       "device.testHost"=>{assert!(ww.load(Ordering::Relaxed));let mut h=summary();h["id"]=payload["id"].clone();h["kind"]=json!("ssh");h},
       "server.updateSettings"=>{assert!(ww.load(Ordering::Relaxed));let mut s=cc.lock().unwrap();s["deviceHosts"]=payload["patch"]["deviceHosts"].clone();s.clone()},
+      // Background subscriptions the worker opens on its own; this fixture does not model them.
+      "orchestration.subscribeShell"|"subscribeServerConfig"=>return,
       method=>panic!("unexpected native method {method}")
      };
      let _=ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":result}}).to_string().into()));
