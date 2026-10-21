@@ -72,8 +72,8 @@ ColumnLayout {
         readonly property string fontUi: Qt.application.font.family
         readonly property int body: Style.font.body
         readonly property int caption: Style.font.caption
-        readonly property real padding: Style.space(10)
-        readonly property real gap: Style.space(8)
+        readonly property real padding: Style.space(8)
+        readonly property real gap: Style.space(4)
         readonly property real radius: Style.space(8)
     }
 
@@ -467,24 +467,49 @@ ColumnLayout {
         Layout.fillWidth: true
         color: theme.text
         font.family: theme.fontUi
-        font.pixelSize: theme.body
+        font.pixelSize: theme.caption
         font.bold: true
         textFormat: Text.PlainText
         wrapMode: Text.Wrap
     }
-    // The Control Panel's buttons, drawn as ot3's own.
-    component Action: T3PickerButton {
-        primary: false
+    // The Control Panel's buttons, drawn as ot3's own, compact.
+    component Action: Controls.Button {
+        id: action
+        property bool primary: false
         Layout.fillWidth: false
+        Layout.alignment: Qt.AlignVCenter
         enabled: !root.busy
+        hoverEnabled: true
+        implicitHeight: Style.space(28)
+        leftPadding: Style.space(10)
+        rightPadding: leftPadding
+        opacity: enabled ? 1 : 0.4
         Accessible.name: text
+        contentItem: Text {
+            text: action.text
+            color: action.primary ? Color.popups.background : theme.text
+            font.family: theme.fontUi
+            font.pixelSize: theme.caption
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        background: Rectangle {
+            radius: Style.space(6)
+            color: action.primary ? (action.hovered ? Qt.lighter(theme.accent, 1.12) : theme.accent) : (action.hovered ? theme.panelAlt : "transparent")
+            border.width: action.primary ? 0 : 1
+            border.color: action.activeFocus ? theme.text : theme.border
+        }
+        HoverHandler {
+            cursorShape: action.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+        }
     }
     component Check: Controls.CheckBox {
         enabled: !root.busy
         palette.highlight: theme.accent
         palette.windowText: theme.text
         font.family: theme.fontUi
-        font.pixelSize: theme.body
+        font.pixelSize: theme.caption
     }
     component Card: Rectangle {
         default property alias content: cardContent.data
@@ -519,34 +544,25 @@ ColumnLayout {
         }
     }
 
+    // The section around this page already names OmaBridge: intro and refresh share a row.
     RowLayout {
         Layout.fillWidth: true
-        Text {
-            text: "󰌘"
-            color: theme.text
-            font.family: theme.fontUi
-            font.pixelSize: theme.body + 4
-        }
-        Text {
+        spacing: theme.gap
+        Copy {
             Layout.fillWidth: true
-            text: root.t("omabridgeTitle")
-            color: theme.text
-            font.family: theme.fontUi
-            font.pixelSize: theme.body
-            font.bold: true
+            text: root.t("omabridgeIntro")
         }
         Controls.BusyIndicator {
             visible: root.busy
             running: root.busy
+            implicitWidth: Style.space(20)
+            implicitHeight: Style.space(20)
         }
         Action {
             objectName: "omabridgeRefresh"
             text: root.t("omabridgeRefresh")
             onClicked: root.sync()
         }
-    }
-    Copy {
-        text: root.t("omabridgeIntro")
     }
 
     // OmaBridge missing or too old for `omabridge manage`.
@@ -617,16 +633,22 @@ ColumnLayout {
 
         // Publishing runs OmaBridge as a user service; off by default.
         Card {
-            Heading {
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: theme.padding
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 0
+              Heading {
                 text: root.t("omabridgePublish")
-            }
-            Copy {
+              }
+              Copy {
                 objectName: "omabridgePublishStatus"
                 text: root.t(OmaBridgeModel.publishStatusKey(root.published)) + ((root.published.enabled || root.published.external) && root.published.active && !root.published.stale ? " · " + OmaBridgeModel.servicesText(root.published.services) : "")
                 color: root.published.stale ? theme.urgent : theme.textMuted
+              }
             }
-            Flow {
-                Layout.fillWidth: true
+            Row {
                 spacing: theme.gap
                 Action {
                     objectName: "omabridgePublishButton"
@@ -648,23 +670,32 @@ ColumnLayout {
                     onClicked: root.ask("unpublish", {}, root.t("omabridgeUnpublishConfirm"), root.t("omabridgeUnpublishDetail"))
                 }
             }
+          }
         }
 
         // How this device reaches peers it cannot dial directly (NAT, private IPs).
         Card {
-            Heading {
-                text: root.t("omabridgeRelay")
-            }
-            Copy {
-                objectName: "omabridgeRelayStatus"
-                text: root.t(OmaBridgeModel.relayStatusKey(root.relay)) + (root.relay.mode === "custom" ? " · " + root.relay.url : "")
-                wrapMode: Text.WrapAnywhere
-            }
-            Action {
-                objectName: "omabridgeRelayButton"
-                enabled: !root.busy
-                text: root.t("omabridgeRelayChange")
-                onClicked: root.openRelay()
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: theme.padding
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Heading {
+                        text: root.t("omabridgeRelay")
+                    }
+                    Copy {
+                        objectName: "omabridgeRelayStatus"
+                        text: root.t(OmaBridgeModel.relayStatusKey(root.relay)) + (root.relay.mode === "custom" ? " · " + root.relay.url : "")
+                        wrapMode: Text.WrapAnywhere
+                    }
+                }
+                Action {
+                    objectName: "omabridgeRelayButton"
+                    enabled: !root.busy
+                    text: root.t("omabridgeRelayChange")
+                    onClicked: root.openRelay()
+                }
             }
         }
 
@@ -776,20 +807,27 @@ ColumnLayout {
                     Layout.fillWidth: true
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Heading {
-                            text: peerCard.modelData.name + " · " + OmaBridgeModel.shortId(peerCard.modelData.id)
+                        spacing: 0
+                        // Name and who manages whom on one line.
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: theme.padding
+                            Heading {
+                                Layout.fillWidth: false
+                                text: peerCard.modelData.name + " · " + OmaBridgeModel.shortId(peerCard.modelData.id)
+                            }
+                            Copy {
+                                objectName: "omabridgePeerManage_" + peerCard.modelData.id
+                                visible: text !== ""
+                                text: OmaBridgeModel.manageText(peerCard.modelData, root.t)
+                                color: theme.accent
+                            }
                         }
                         Copy {
                             objectName: "omabridgePeerServices_" + peerCard.modelData.id
                             text: [peerCard.modelData.remoteServices.length ? root.t("omabridgeYouReach") + " " + OmaBridgeModel.servicesText(peerCard.modelData.remoteServices) : "", peerCard.modelData.services.length ? root.t("omabridgeItReaches") + " " + OmaBridgeModel.servicesText(peerCard.modelData.services) : ""].filter(function (s) {
                                 return s !== "";
                             }).join(" · ")
-                        }
-                        Copy {
-                            objectName: "omabridgePeerManage_" + peerCard.modelData.id
-                            visible: text !== ""
-                            text: OmaBridgeModel.manageText(peerCard.modelData, root.t)
-                            color: theme.accent
                         }
                     }
                     Action {
