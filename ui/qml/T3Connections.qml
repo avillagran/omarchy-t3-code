@@ -99,9 +99,9 @@ ColumnLayout {
      Text{Layout.fillWidth:true;text:T3I18n.tr("Set up a new host with your AI");color:root.fg;font.pixelSize:Style.font.caption;font.bold:true;wrapMode:Text.Wrap}
      Text{Layout.fillWidth:true;text:T3I18n.tr("Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
     }
-    Text{text:T3I18n.tr("Chat in");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption}
-    Controls.ComboBox{id:installProject;objectName:"omabridgeInstallWhere";Layout.preferredWidth:Style.space(180);model:installDialog.projects.map(installDialog.projectName);currentIndex:installDialog.defaultProject;Accessible.name:T3I18n.tr("Chat in")}
-    T3PickerButton{objectName:"omabridgeInstallOpen";text:T3I18n.tr("Set up a new host…");enabled:installDialog.projects.length>0;onClicked:installDialog.begin(installProject.currentIndex)}
+    Text{text:T3I18n.tr("Run on");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption}
+    Controls.ComboBox{id:installWhere;objectName:"omabridgeInstallWhere";Layout.preferredWidth:Style.space(170);model:installDialog.environments.map(function(e){return e.name});currentIndex:installDialog.defaultEnvironment;Accessible.name:T3I18n.tr("Run on")}
+    T3PickerButton{objectName:"omabridgeInstallOpen";text:T3I18n.tr("Set up a new host…");enabled:installDialog.environments.length>0;onClicked:installDialog.begin(installWhere.currentIndex)}
    }
    T3OmaBridgeInstall{id:installDialog;bridge:root.bridge}
    // The same OmaBridge page as the Omarchy Control Panel, on the same device.
