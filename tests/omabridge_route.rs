@@ -30,8 +30,8 @@ fn route_documents_and_forward_output_are_strictly_validated(){
  assert_eq!(bridge::forwarding_url(&line,PEER,"t3").unwrap(),"http://127.0.0.1:4100");
  assert!(bridge::forwarding_url(&line.replace("127.0.0.1","0.0.0.0"),PEER,"t3").is_err());
  assert!(bridge::forwarding_url(&line,PEER,"egress").is_err());
- let peers=bridge::project_peers(&json!({"peers":[{"id":PEER,"name":"node","services":[],"remote_services":["t3"],"address":{"addrs":["192.0.2.1:1"]}},{"id":"bad","name":"x"}]}));
- assert_eq!(peers,vec![json!({"id":PEER,"name":"node","services":[],"remoteServices":["t3"]})]);
+ let peers=bridge::project_peers(&json!({"peers":[{"id":PEER,"name":"devbox","services":[],"remote_services":["t3"],"address":{"addrs":["192.0.2.1:1"]}},{"id":"bad","name":"x"}]}));
+ assert_eq!(peers,vec![json!({"id":PEER,"name":"devbox","services":[],"remoteServices":["t3"]})]);
 }
 #[test]
 fn bearer_connections_prefer_verified_peers_and_fall_back_only_when_allowed(){
@@ -50,7 +50,7 @@ fn bearer_connections_prefer_verified_peers_and_fall_back_only_when_allowed(){
  });}
  write_catalog(&data.join("connection-catalog.json"),"http://127.0.0.1:9");
  let fake=root.join("omabridge");
- fs::write(&fake,format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{calls}'\ncase \"$*\" in\n *' peers'*) printf '%s\\n' '{{\"peers\":[{{\"id\":\"{PEER}\",\"name\":\"node\",\"services\":[],\"remote_services\":[\"t3\"]}}]}}' ;;\n *forward*) [ \"$OT3_FAKE_FORWARD\" = ok ] || exit 3; printf '%s\\n' '{{\"event\":\"forwarding\",\"listen\":\"{bridged}\",\"peer\":\"{PEER}\",\"service\":\"t3\"}}'; exec sleep 30 ;;\nesac\n",calls=root.join("calls").display())).unwrap();
+ fs::write(&fake,format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{calls}'\ncase \"$*\" in\n *' peers'*) printf '%s\\n' '{{\"peers\":[{{\"id\":\"{PEER}\",\"name\":\"devbox\",\"services\":[],\"remote_services\":[\"t3\"]}}]}}' ;;\n *forward*) [ \"$OT3_FAKE_FORWARD\" = ok ] || exit 3; printf '%s\\n' '{{\"event\":\"forwarding\",\"listen\":\"{bridged}\",\"peer\":\"{PEER}\",\"service\":\"t3\"}}'; exec sleep 30 ;;\nesac\n",calls=root.join("calls").display())).unwrap();
  fs::set_permissions(&fake,fs::Permissions::from_mode(0o700)).unwrap();std::env::set_var("OT3_OMABRIDGE_BIN",&fake);std::env::set_var("OT3_FAKE_FORWARD","ok");
  // Without a route file every granting peer is tried automatically and verified.
  let auto=environments().unwrap();assert_eq!(auto.len(),1);assert_eq!(auto[0].base_url,format!("http://{bridged}"));

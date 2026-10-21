@@ -324,7 +324,7 @@ function relayEverywhereRequests(url, peers) {
     return requests
 }
 
-// A DNS label from a device name: "MBP M2" becomes "mbp-m2".
+// A DNS label from a device name: "Work Laptop" becomes "work-laptop".
 function hostLabel(name) {
     return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63)
 }
