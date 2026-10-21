@@ -6,9 +6,10 @@ ShellRoot {
  id:root;property int phase:0;property int settings:0
  readonly property string guest:"b21d3e5f5c3ee737761cbbc2bc2a427715b430ac3e7ec391e0a20a7c42d9e888"
  property var pending:[]
+ property bool offline:false
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_INDICATOR_QML_FAIL "+msg);Qt.exit(1)}}
- function snapshot(){return {available:true,version:"0.1.0",device:{id:"a".repeat(64),name:"alpha"},peers:[{id:"c".repeat(64),name:"node",services:[],remoteServices:["t3"],public:[],admin:false,managed:false}],
-  pending:root.pending,awaiting:[],published:{enabled:true,active:true,services:["t3"],sshAvailable:false,t3Available:true},relay:{mode:"public"},relayHost:{},gateways:[],gatewayZones:[],error:""}}
+ function snapshot(){return {available:true,version:"0.1.0",device:{id:"a".repeat(64),name:"alpha"},peers:root.offline?[]:[{id:"c".repeat(64),name:"node",services:[],remoteServices:["t3"],public:[],admin:false,managed:false}],
+  pending:root.pending,awaiting:[],published:{enabled:!root.offline,active:!root.offline,services:["t3"],sshAvailable:false,t3Available:true},relay:{mode:"public"},relayHost:{},gateways:[],gatewayZones:[],error:""}}
  QtObject{id:b
   property var sent:[];property int seq:0
   property var viewState:({omabridgeIndicator:true})
@@ -28,6 +29,7 @@ ShellRoot {
   if(phase===0){
    check(b.sent.length>=1&&b.sent[0].action==="read","reads this device's OmaBridge on load");
    check(indicator.pendingCount===0,"no badge without pending requests");
+   check(indicator.linked,"publishing and paired: the links are drawn joined");
    var status=view.statusText();check(status.indexOf("T3")>=0&&status.indexOf("1")>=0,"status names published services and peers: "+status);
    check(!!keys.findChild(view,"omabridgeInviteButton")&&!!keys.findChild(view,"omabridgePairButton")&&!!keys.findChild(view,"omabridgeRelayButton"),"the full OmaBridge page is in the bar popup");
    root.pending=[{id:root.guest,name:"charlie",services:["t3"],expires:1792390449}];indicator.refresh();phase++
@@ -42,7 +44,10 @@ ShellRoot {
   }else if(phase===3){
    check(!indicator.popupOpen&&view.manage.dialogHeight===0,"closing the popup closes its dialogs");
    keys.findChild(view,"omabridgeIndicatorSettings").clicked();check(root.settings===1,"settings hand-off");
-   console.log("OMABRIDGE_INDICATOR_QML_PASS: device read, status, pending badge, the full page from the bar, dialog sizing and closing, settings hand-off");Qt.quit()
+   root.offline=true;indicator.refresh();phase++
+  }else if(phase===4){
+   check(!indicator.linked,"nothing published and no peers: the links are drawn cut");
+   console.log("OMABRIDGE_INDICATOR_QML_PASS: device read, status, pending badge, the full page from the bar, dialog sizing and closing, settings hand-off, joined and cut icon");Qt.quit()
   }
  }}
 }
