@@ -33,7 +33,7 @@ Item {
   slotSize:Style.bar.statusSlot
   tooltipText:"OmaBridge · "+quick.statusText()+(root.pendingCount?" · "+T3I18n.tr("Waiting for your approval"):"")
   iconComponent:Component{Item{implicitWidth:Style.space(16);implicitHeight:implicitWidth
-   T3Icon{anchors.fill:parent;name:"plug";tint:root.published.active || (root.value.peers || []).length?Color.popups.text:root.muted}
+   T3Icon{anchors.fill:parent;name:"omabridge";tint:root.published.active || (root.value.peers || []).length?Color.popups.text:root.muted}
    Rectangle{objectName:"omabridgeIndicatorBadge";visible:root.pendingCount>0;width:Style.space(8);height:width;radius:width/2;color:Color.urgent;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:-Style.space(2)}
   }}
   onPressed:function(mouseButton){
