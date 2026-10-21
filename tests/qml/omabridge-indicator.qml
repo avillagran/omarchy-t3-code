@@ -8,7 +8,7 @@ ShellRoot {
  property var pending:[]
  property bool offline:false
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_INDICATOR_QML_FAIL "+msg);Qt.exit(1)}}
- function snapshot(){return {available:true,version:"0.1.0",device:{id:"a".repeat(64),name:"alpha"},peers:root.offline?[]:[{id:"c".repeat(64),name:"node",services:[],remoteServices:["t3"],public:[],admin:false,managed:false}],
+ function snapshot(){return {available:true,version:"0.1.0",device:{id:"a".repeat(64),name:"alpha"},peers:root.offline?[]:[{id:"c".repeat(64),name:"devbox",services:[],remoteServices:["t3"],public:[],admin:false,managed:false}],
   pending:root.pending,awaiting:[],published:{enabled:!root.offline,active:!root.offline,services:["t3"],sshAvailable:false,t3Available:true},relay:{mode:"public"},relayHost:{},gateways:[],gatewayZones:[],error:""}}
  QtObject{id:b
   property var sent:[];property int seq:0

@@ -336,12 +336,12 @@ mod tests {
         let full=format!("{}.synthetic-signature",base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json!({"scopes":["filesystem:read","settings:write"]}).to_string()));assert!(has_scope(&full,"settings:write"));assert!(!fresh_token("invalid"));
         assert!(validate_catalog(json!({"schemaVersion":2})).is_err());
         assert!(ssh_args(&json!({"alias":"-oProxyCommand=bad"})).is_err());
-        assert!(ssh_args(&json!({"alias":"node","username":"node","port":22})).is_ok());
+        assert!(ssh_args(&json!({"alias":"node","username":"dev","port":22})).is_ok());
         // Bridged SSH keeps the user/destination, drops the profile port and pins host-key verification.
-        let bridged=bridged_ssh_args(&json!({"alias":"devbox.example","username":"node","port":2222}),"[devbox.example]:2222",41000).unwrap();
+        let bridged=bridged_ssh_args(&json!({"alias":"devbox.example","username":"dev","port":2222}),"[devbox.example]:2222",41000).unwrap();
         let tail=bridged.iter().position(|a|a=="--").unwrap();
         assert_eq!(&bridged[tail..],["--","devbox.example"]);assert!(!bridged.contains(&"-p".to_string()));
         for option in ["HostName=127.0.0.1","Port=41000","HostKeyAlias=[devbox.example]:2222","CheckHostIP=no","ProxyJump=none","ProxyCommand=none"]{assert!(bridged[..tail].contains(&option.to_string()),"{option}");}
-        assert!(bridged.windows(2).any(|w|w[0]=="-l"&&w[1]=="node"));assert!(bridged.windows(2).any(|w|w[0]=="-o"&&w[1]=="BatchMode=yes"));
+        assert!(bridged.windows(2).any(|w|w[0]=="-l"&&w[1]=="dev"));assert!(bridged.windows(2).any(|w|w[0]=="-o"&&w[1]=="BatchMode=yes"));
     }
 }
