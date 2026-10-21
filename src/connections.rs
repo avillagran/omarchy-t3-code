@@ -107,6 +107,13 @@ fn ssh_args(target:&Value)->Result<Vec<String>> {
     if let Some(user)=target["username"].as_str(){if user.is_empty()||!user.bytes().all(|b|b.is_ascii_alphanumeric()||b"._-".contains(&b)){return Err("invalid_t3_ssh_profile".into())}args.extend(["-l".into(),user.into()]);}
     args.extend(["--".into(),destination.into()]);Ok(args)
 }
+/// SSH arguments (ending in `-- <destination>`) for an inherited SSH environment.
+pub fn ssh_args_for(environment:&str)->Result<Vec<String>>{
+    let catalog=read_catalog()?;
+    let target=catalog["targets"].as_array().into_iter().flatten().find(|t|t["environmentId"]==environment&&t["_tag"]=="SshConnectionTarget").ok_or("ssh_environment_required")?;
+    let profile=catalog["profiles"].as_array().into_iter().flatten().find(|p|p["connectionId"]==target["connectionId"]).ok_or("invalid_t3_ssh_profile")?;
+    ssh_args(&profile["target"])
+}
 const REMOTE_DISCOVERY:&str=include_str!("remote-bootstrap.sh");
 /// Stable, non-identifying id for this device and user: the session subject's suffix.
 fn client_id()->String{

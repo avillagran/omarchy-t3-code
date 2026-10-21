@@ -1476,14 +1476,16 @@
     "For a desktop without Omarchy where you code locally.": "For a desktop without Omarchy where you code locally.",
     "Use an SSH host, alias or user@host.": "Use an SSH host, alias or user@host.",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.",
-    "SSH host": "SSH host",
     "Let this device manage it": "Let this device manage it",
     "Also let it reach this device's SSH": "Also let it reach this device's SSH",
-    "Chat in": "Chat in",
-    "No project": "No project",
     "Open chat": "Open chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.",
     "Set up a new host with your AI": "Set up a new host with your AI",
-    "Set up a new host…": "Set up a new host…"
+    "Set up a new host…": "Set up a new host…",
+    "Run on": "Run on",
+    "New host (SSH)": "New host (SSH)",
+    "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "The agent runs on that host and reaches the new one from there, for example when only it has direct access.",
+    "The invitation is copied to that host over SSH; choose a host connected by SSH.": "The invitation is copied to that host over SSH; choose a host connected by SSH.",
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "That host has no project for chats without a folder yet. Open T3 Code there once."
   }
 }
