@@ -24,7 +24,10 @@ Controls.Popup {
   {id:"t3code",title:T3I18n.tr("T3 Code and OmaBridge"),detail:T3I18n.tr("For a desktop without Omarchy where you code locally.")}]
  // The chat opens in this device's scratch project when there is one.
  readonly property var projects:((bridge.state || {}).projects || []).filter(function(p){return p.environmentId==="local"})
- readonly property int defaultProject:Math.max(0,projects.findIndex(function(p){return p.isScratch===true}))
+ // T3 marks it isScratch; servers that do not are recognized by its folder.
+ function scratch(p){return !!p&&(p.isScratch===true || /\/\.t3\/scratch\/?$/.test(String(p.workspaceRoot || "")))}
+ function projectName(p){return scratch(p)?T3I18n.tr("No project"):p.title}
+ readonly property int defaultProject:Math.max(0,projects.findIndex(scratch))
  readonly property var services:(published.services || []).filter(function(s){return s==="t3" || s==="ssh"})
  readonly property bool ready:!!device&&!!published.active&&services.length>0
  parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(560),parent?parent.width-Style.space(32):Style.space(560));padding:Style.space(20);modal:true
@@ -89,7 +92,7 @@ Controls.Popup {
   T3Switch{id:shareSsh;objectName:"omabridgeInstallSsh";visible:root.services.indexOf("ssh")>=0;text:T3I18n.tr("Also let it reach this device's SSH");checked:false;enabled:!root.busy}
   RowLayout{Layout.fillWidth:true
    Text{text:T3I18n.tr("Chat in");color:root.fg;font.pixelSize:Style.font.caption}
-   Controls.ComboBox{id:project;objectName:"omabridgeInstallProject";Layout.fillWidth:true;model:root.projects.map(function(p){return p.isScratch?T3I18n.tr("No project"):p.title});enabled:!root.busy}
+   Controls.ComboBox{id:project;objectName:"omabridgeInstallProject";Layout.fillWidth:true;model:root.projects.map(root.projectName);enabled:!root.busy}
   }
   Text{Layout.fillWidth:true;visible:!root.busy&&!root.ready&&!root.error;text:root.device?T3I18n.tr("Publish this device before inviting another one."):T3I18n.tr("This device has no OmaBridge identity yet.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   Text{objectName:"omabridgeInstallError";Layout.fillWidth:true;visible:!!root.error;text:root.errorText(root.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
