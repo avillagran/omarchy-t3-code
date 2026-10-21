@@ -10,7 +10,7 @@ ShellRoot {
  property string promptError:""
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_INSTALL_QML_FAIL "+msg);Qt.exit(1)}}
  QtObject{id:b
-  property var state:({projects:[{id:"repo",environmentId:"local",title:"Repo",isScratch:false},{id:"scratch",environmentId:"local",title:"Scratch",isScratch:true},{id:"far",environmentId:"remote",title:"Far",isScratch:true}]})
+  property var state:({projects:[{id:"repo",environmentId:"local",title:"Repo",isScratch:false},{id:"scratch",environmentId:"local",title:"No project",workspaceRoot:"/home/u/.t3/scratch"},{id:"far",environmentId:"remote",title:"Far",isScratch:true}]})
   property var sent:[];property var promptRequest:null;property var chat:null;property int seq:0
   signal omabridgeManageFinished(string requestId,string text,int exitCode)
   signal omabridgeInstallPromptReady(string requestId,string prompt,string error)
