@@ -43,7 +43,7 @@ Controls.Popup {
  readonly property var scratch:scratchFor(environment)
  readonly property var services:(published.services || []).filter(function(s){return s==="t3" || s==="ssh"})
  readonly property bool ready:!!device&&!!published.active&&services.length>0&&!!scratch
- parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(560),parent?parent.width-Style.space(32):Style.space(560));padding:Style.space(20);modal:true
+ parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(620),parent?parent.width-Style.space(32):Style.space(620));padding:Style.space(16);modal:true
  closePolicy:busy?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
  background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.muted}
  function errorText(code){
@@ -92,26 +92,43 @@ Controls.Popup {
    root.close()
   }
  }
- contentItem:ColumnLayout{spacing:Style.space(12)
+ contentItem:ColumnLayout{spacing:Style.space(8)
   Text{Layout.fillWidth:true;text:T3I18n.tr("Set up a new host with your AI");color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap}
   Text{Layout.fillWidth:true;text:T3I18n.tr("A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   RowLayout{Layout.fillWidth:true;spacing:Style.space(8)
-   Text{text:T3I18n.tr("Run on");color:root.fg;font.pixelSize:Style.font.caption}
-   Text{objectName:"omabridgeInstallRunsOn";Layout.fillWidth:true;text:root.runsOn?root.runsOn.name:"";color:root.fg;font.pixelSize:Style.font.caption;font.bold:true;elide:Text.ElideRight;textFormat:Text.PlainText}
+   Text{text:T3I18n.tr("Run on");color:root.fg;font.pixelSize:Style.font.caption;Layout.alignment:Qt.AlignTop}
+   Text{objectName:"omabridgeInstallRunsOn";text:root.runsOn?root.runsOn.name:"";color:root.fg;font.pixelSize:Style.font.caption;font.bold:true;textFormat:Text.PlainText;Layout.alignment:Qt.AlignTop}
+   Text{Layout.fillWidth:true;visible:root.environment!=="local";text:T3I18n.tr("The agent runs on that host and reaches the new one from there, for example when only it has direct access.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+   Item{Layout.fillWidth:true;visible:root.environment==="local"}
   }
-  Text{Layout.fillWidth:true;visible:root.environment!=="local";text:T3I18n.tr("The agent runs on that host and reaches the new one from there, for example when only it has direct access.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-  Text{Layout.fillWidth:true;text:T3I18n.tr("New host (SSH)");color:root.fg;font.pixelSize:Style.font.caption}
-  T3PickerField{id:host;objectName:"omabridgeInstallHost";Layout.fillWidth:true;placeholderText:"server, user@host";selectByMouse:true;enabled:!root.busy}
-  Repeater{model:root.profiles
-   delegate:Controls.RadioButton{required property var modelData;objectName:"omabridgeInstallProfile_"+modelData.id;Layout.fillWidth:true;checked:root.profile===modelData.id;enabled:!root.busy;onClicked:root.profile=modelData.id
-    contentItem:Column{leftPadding:Style.space(28);spacing:Style.space(2)
-     Text{width:parent.width-parent.leftPadding;text:modelData.title;color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-     Text{width:parent.width-parent.leftPadding;text:modelData.detail;color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+  RowLayout{Layout.fillWidth:true;spacing:Style.space(8)
+   Text{text:T3I18n.tr("New host (SSH)");color:root.fg;font.pixelSize:Style.font.caption}
+   T3PickerField{id:host;objectName:"omabridgeInstallHost";Layout.fillWidth:true;implicitHeight:Style.space(32);font.pixelSize:Style.font.caption;placeholderText:"server, user@host";selectByMouse:true;enabled:!root.busy}
+  }
+  // Profiles as selectable cards, two per row.
+  GridLayout{Layout.fillWidth:true;columns:2;columnSpacing:Style.space(8);rowSpacing:Style.space(8)
+   Repeater{model:root.profiles
+    delegate:Controls.AbstractButton{id:card;required property var modelData
+     objectName:"omabridgeInstallProfile_"+modelData.id;Layout.fillWidth:true;Layout.fillHeight:true;Layout.preferredWidth:1
+     checkable:false;enabled:!root.busy;hoverEnabled:true;padding:Style.space(10)
+     readonly property bool selected:root.profile===modelData.id
+     onClicked:root.profile=modelData.id
+     Accessible.role:Accessible.RadioButton;Accessible.name:modelData.title;Accessible.checked:selected
+     background:Rectangle{radius:Style.space(8);color:card.selected?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.12):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,card.hovered?0.06:0.03);border.width:1;border.color:card.selected?Color.accent:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12)}
+     contentItem:ColumnLayout{spacing:Style.space(2)
+      RowLayout{Layout.fillWidth:true;spacing:Style.space(6)
+       Rectangle{width:Style.space(12);height:width;radius:width/2;color:"transparent";border.width:1;border.color:card.selected?Color.accent:root.muted
+        Rectangle{anchors.centerIn:parent;width:Style.space(6);height:width;radius:width/2;color:Color.accent;visible:card.selected}}
+       Text{Layout.fillWidth:true;text:card.modelData.title;color:root.fg;font.pixelSize:Style.font.caption;font.bold:card.selected;elide:Text.ElideRight}
+      }
+      Text{Layout.fillWidth:true;Layout.fillHeight:true;verticalAlignment:Text.AlignTop;text:card.modelData.detail;color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+     }
+     HoverHandler{cursorShape:card.enabled?Qt.PointingHandCursor:Qt.ArrowCursor}
     }
    }
   }
-  T3Switch{id:manage;objectName:"omabridgeInstallManage";text:T3I18n.tr("Let this device manage it");checked:true;enabled:!root.busy}
-  T3Switch{id:shareSsh;objectName:"omabridgeInstallSsh";visible:root.services.indexOf("ssh")>=0;text:T3I18n.tr("Also let it reach this device's SSH");checked:false;enabled:!root.busy}
+  T3Switch{id:manage;objectName:"omabridgeInstallManage";Layout.fillWidth:true;text:T3I18n.tr("Let this device manage it");checked:true;enabled:!root.busy}
+  T3Switch{id:shareSsh;objectName:"omabridgeInstallSsh";Layout.fillWidth:true;visible:root.services.indexOf("ssh")>=0;text:T3I18n.tr("Also let it reach this device's SSH");checked:false;enabled:!root.busy}
   Text{Layout.fillWidth:true;visible:!root.busy&&!root.ready&&!root.error;color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap
    text:!root.device?T3I18n.tr("This device has no OmaBridge identity yet."):!root.published.active?T3I18n.tr("Publish this device before inviting another one."):T3I18n.tr("That host has no project for chats without a folder yet. Open T3 Code there once.")}
   Text{objectName:"omabridgeInstallError";Layout.fillWidth:true;visible:!!root.error;text:root.errorText(root.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
