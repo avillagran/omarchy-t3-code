@@ -10,9 +10,10 @@ ShellRoot {
  readonly property string vps:"9f1e3c1a4b5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7"
  readonly property string guest:"b21d3e5f5c3ee737761cbbc2bc2a427715b430ac3e7ec391e0a20a7c42d9e888"
  property var forced:null
+ property var features:["control-socket","forward-through-server"]
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_MANAGE_QML_FAIL "+msg);Qt.exit(1)}}
  function snapshot(){return {available:true,version:"0.1.0",identity:true,device:{id:me,name:"alpha"},
-  peers:[{id:vps,name:"vps",services:["t3"],remoteServices:[],public:["t3"],admin:false,managed:true},{id:guest,name:"charlie",services:["ssh"],remoteServices:["t3"],public:[],admin:false,managed:false}],
+  peers:[{id:vps,name:"vps",services:["t3"],remoteServices:[],public:["t3"],admin:false,managed:true},{id:guest,name:"charlie",services:["ssh"],remoteServices:["t3","ssh"],public:[],admin:false,managed:false}],features:root.features,
   pending:[{id:guest,name:"charlie",services:["t3"],expires:1792390449}],awaiting:[],
   published:{enabled:true,active:true,external:false,stale:false,services:["t3","ssh"],sshAvailable:true,t3Available:true},
   relay:{mode:"public",url:null},relayHost:{enabled:false,url:null,running:false,error:null,suggested:null},gateways:[],gatewayZones:[],error:""}}
@@ -44,13 +45,19 @@ ShellRoot {
    check(b.sent.length>=1&&b.sent[0].action==="read"&&b.sent[0].confirmed===undefined,"reads on load, unconfirmed");
    check(view.pageState==="ready"&&find("omabridgeDeviceName").text==="alpha","this device shown");
    check(view.pendingCount===1,"pending requests counted for the bar badge");
+   check(!find("omabridgeCopySsh_"+root.guest).visible,"no SSH command without connect-stdio");
    find("omabridgeApprove_"+root.guest).clicked();check(b.last().action==="read","approval waits for confirmation");phase++
   }else if(phase===1){
    check(find("omabridgeConfirmDialog").opened,"confirmation shown");find("omabridgeConfirm").clicked();
    var p=b.last();check(p.action==="approve"&&p.peer===root.guest&&p.confirmed===true,"confirmed approval: "+JSON.stringify(p));phase++
   }else if(phase===2){
    check(!find("omabridgeConfirmDialog").opened,"confirmation closes after success");
-   find("omabridgeManage_"+root.vps).clicked();phase++
+   root.features=["connect-stdio"];view.refresh();phase=20
+  }else if(phase===20){
+   check(!find("omabridgeCopySsh_"+root.vps).visible,"no SSH command for a device that does not grant SSH");
+   var copy=find("omabridgeCopySsh_"+root.guest);check(copy.visible,"SSH command for a device that grants SSH");copy.clicked();
+   check(b.copied==="ssh -o ProxyCommand='omabridge connect --peer charlie --service ssh' charlie","copies the ProxyCommand: "+b.copied);
+   find("omabridgeManage_"+root.vps).clicked();phase=3
   }else if(phase===3){
    var p=b.last();check(p.action==="remote"&&p.peer===root.vps&&p.command.action==="read"&&p.confirmed===undefined,"managing a device reads it first, unconfirmed");
    check(find("omabridgeRemoteDialog").opened&&!!view.remoteSnapshot&&view.remoteSnapshot.device.id===root.vps,"remote device shown");
