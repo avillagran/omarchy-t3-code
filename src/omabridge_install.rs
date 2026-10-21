@@ -112,8 +112,8 @@ mod tests{
  }
  #[test]
  fn names_where_it_runs_and_who_invites(){
-  let mut v=base();v["runsOn"]=json!("node");let p=prompt(&v).unwrap();
-  assert!(p.contains("You run on `node`")&&p.contains("with `laptop`")&&p.contains("approve the request in OmaBridge on `laptop`"));
+  let mut v=base();v["runsOn"]=json!("devbox");let p=prompt(&v).unwrap();
+  assert!(p.contains("You run on `devbox`")&&p.contains("with `laptop`")&&p.contains("approve the request in OmaBridge on `laptop`"));
  }
  #[test]
  fn names_the_invitation_by_path_only_and_asks_consent_for_management(){
