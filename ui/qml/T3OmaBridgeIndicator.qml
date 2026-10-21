@@ -13,6 +13,8 @@ Item {
  signal settingsRequested()
  readonly property var value:quick.manage.snapshot || ({})
  readonly property var published:value.published || ({})
+ // Publishing something or paired with a device: drawn with the links joined.
+ readonly property bool linked:!!root.published.active || (root.value.peers || []).length>0
  readonly property int pendingCount:quick.manage.pendingCount
  readonly property bool busy:quick.manage.busy
  readonly property color muted:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.58)
@@ -33,7 +35,7 @@ Item {
   slotSize:Style.bar.statusSlot
   tooltipText:"OmaBridge · "+quick.statusText()+(root.pendingCount?" · "+T3I18n.tr("Waiting for your approval"):"")
   iconComponent:Component{Item{implicitWidth:Style.space(16);implicitHeight:implicitWidth
-   T3Icon{anchors.fill:parent;name:"omabridge";tint:root.published.active || (root.value.peers || []).length?Color.popups.text:root.muted}
+   T3Icon{objectName:"omabridgeIndicatorIcon";anchors.fill:parent;name:root.linked?"omabridge":"omabridge-off";tint:root.linked?Color.popups.text:root.muted}
    Rectangle{objectName:"omabridgeIndicatorBadge";visible:root.pendingCount>0;width:Style.space(8);height:width;radius:width/2;color:Color.urgent;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:-Style.space(2)}
   }}
   onPressed:function(mouseButton){
