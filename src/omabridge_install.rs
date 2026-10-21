@@ -85,7 +85,7 @@ pub fn prompt(input:&Value)->Result<String>{
  p.push_str(&format!("{}. Tell me to approve the request in OmaBridge on {inviter} (Preferences → Connections → OmaBridge, or the bar indicator). Wait until I say it is approved, then run `{{\"action\":\"pair-retry\",\"id\":\"<its id under awaiting>\",\"confirmed\":true}}` there if it still shows as waiting.\n",n+4));
  p.push_str(&format!("{}. On that device, let {inviter} reach the services it published in step {}: `{{\"action\":\"grant-set\",\"peer\":\"<the inviting device's id from invite-inspect>\",\"services\":{granted},\"public\":[],\"confirmed\":true}}`.\n",n+5,n+1));
  p.push_str(&format!("{}. Verify: `read` on that device lists {inviter} as a peer; then I check on {inviter} that it appears under Paired devices{}.\n",n+6,if manage{" with \"You manage it\""}else{""}));
- if bridge{p.push_str(&format!("\nFrom then on, {inviter} reaches that device's SSH through OmaBridge, with no port open and no SSH configuration on the way. Tell me which user name logs in; never copy private keys.\n"));}
+ if bridge{p.push_str(&format!("\nFrom then on, {inviter} reaches that device's SSH through OmaBridge, with no port open and no SSH configuration on the way. Tell me which user name logs in; never copy private keys. With an OmaBridge that lists `connect-stdio` in its `features`, it is reached as `ssh -o ProxyCommand='omabridge connect --peer <its OmaBridge name> --service ssh' <user>@<its OmaBridge name>`; test that once from {inviter} if you run there, or tell me to.\n"));}
  p.push_str("\nAt the end, summarize what was installed and where, the device's OmaBridge name and ID, and anything I still need to do.");
  Ok(p)
 }
@@ -107,7 +107,7 @@ mod tests{
  #[test]
  fn bridge_only_installs_no_t3_and_shares_ssh(){
   let mut v=base();v["profile"]=json!("bridge");let p=prompt(&v).unwrap();
-  assert!(p.contains("Do not install T3 Code")&&p.contains("\"t3\":false,\"ssh\":true")&&p.contains("\"services\":[\"ssh\"]"));
+  assert!(p.contains("omabridge connect --peer")&&p.contains("Do not install T3 Code")&&p.contains("\"t3\":false,\"ssh\":true")&&p.contains("\"services\":[\"ssh\"]"));
   assert!(!p.contains("t3 service install")&&!p.contains("install.sh"));
  }
  #[test]

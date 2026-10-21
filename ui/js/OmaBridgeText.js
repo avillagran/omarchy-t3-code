@@ -20,6 +20,7 @@ var EN = {
  "omabridgeChooseInvite": "Choose an OmaBridge invitation",
  "omabridgeConfirm": "Confirm",
  "omabridgeCopyId": "Copy ID",
+ "omabridgeCopySsh": "Copy SSH command",
  "omabridgeCreateIdentity": "Create identity…",
  "omabridgeCreateIdentityConfirm": "Create an OmaBridge identity for this device?",
  "omabridgeCreateIdentityDetail": "A private key is created on this device and never leaves it.",
