@@ -41,7 +41,7 @@ pub fn handoff(input:&Value)->Result<Value>{
 /// `{host, profile: headless|ot3|t3code, manage, invitation, device, runsOn}` to the prompt text.
 pub fn prompt(input:&Value)->Result<String>{
  let host=text(input,"host").trim();if !valid_host(host){return Err("invalid_host".into())}
- let profile=text(input,"profile");if !matches!(profile,"headless"|"ot3"|"t3code"){return Err("invalid_command".into())}
+ let profile=text(input,"profile");if !matches!(profile,"headless"|"ot3"|"t3code"|"bridge"){return Err("invalid_command".into())}
  let invitation=text(input,"invitation");if !valid_invitation(invitation){return Err("invalid_command".into())}
  let manage=input["manage"]==true;
  let device=text(input,"device").chars().filter(|c|!c.is_control()).take(80).collect::<String>();
@@ -52,6 +52,7 @@ pub fn prompt(input:&Value)->Result<String>{
  let mut p=String::new();
  let what=match profile{
   "headless"=>"a headless server: T3 Code running as a background service, reachable only through OmaBridge",
+  "bridge"=>"a device reached only through OmaBridge: OmaBridge alone, publishing its SSH server. Do not install T3 Code or any AI tool there; agents keep running elsewhere and work on it over SSH carried by OmaBridge",
   "ot3"=>"an Omarchy desktop with Omarchy T3 Code (ot3), the full client, for coding on that device too",
   _=>"a desktop with T3 Code and OmaBridge, for coding locally on that device",
  };
@@ -61,6 +62,10 @@ pub fn prompt(input:&Value)->Result<String>{
  p.push_str("1. Check the device: `uname -m`, the glibc version (`ldd --version`; OmaBridge needs 2.39 or newer), the OS, and whether T3 Code (`t3`) and OmaBridge (`omabridge`) are already installed. Report what you find before changing anything.\n");
  match profile{
   "ot3"=>p.push_str("2. Install Omarchy T3 Code with its official installer, run as the desktop user: `curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/install.sh | bash`. It needs Omarchy and T3 Code opened at least once, and it installs the pinned OmaBridge as `~/.config/omarchy/plugins/omarchy-t3-code/bin/omabridge`; link it as `~/.local/bin/omabridge`.\n"),
+  "bridge"=>{
+   p.push_str("2. Do not install T3 Code. Check that an SSH server listens on 127.0.0.1:22 (`ss -ltn`); if none does, ask me before installing or enabling one.\n");
+   p.push_str(&format!("3. Install OmaBridge {version} as `~/.local/bin/omabridge`: download `omabridge-{version}-<arch>-linux.tar.gz` and `SHA256SUMS` from https://github.com/avillagran/omabridge/releases/download/{version}/ and accept the archive only if its SHA256 matches both `SHA256SUMS` and this pinned hash: aarch64 `{aarch64}`, x86_64 `{x86_64}`. Extract only `omabridge-{version}-<arch>-linux/omabridge`, check `omabridge --version`, and install it with mode 755.\n"));
+  }
   _=>{
    p.push_str("2. Install T3 Code from its official distribution (https://github.com/pingdotgg/t3code; follow its Linux instructions, do not guess)");
    if profile=="headless"{p.push_str(", then run it as a background service with `t3 service install` and check `t3 service status`. Keep it bound to loopback; OmaBridge carries it");}
@@ -69,14 +74,18 @@ pub fn prompt(input:&Value)->Result<String>{
   }
  }
  let n=if profile=="ot3"{3}else{4};
+ let bridge=profile=="bridge";
+ let granted=if bridge{"[\"ssh\"]"}else{"[\"t3\"<, \"ssh\" if published>]"};
+ let publish=if bridge{"\"t3\":false,\"ssh\":true"}else{"\"t3\":true,\"ssh\":<true if an SSH server listens on 127.0.0.1:22>"};
  p.push_str(&format!("{n}. Check that OmaBridge can be managed: `echo '{{\"action\":\"read\"}}' | omabridge manage` must print a JSON snapshot. If it says the command is unknown, this OmaBridge is too old for the next steps: stop and tell me.\n"));
- p.push_str(&format!("{}. On that device, create its identity and publish it, using `omabridge manage` with one JSON request on stdin each time:\n   - `{{\"action\":\"identity-create\",\"confirmed\":true}}`\n   - `{{\"action\":\"publish\",\"t3\":true,\"ssh\":<true if an SSH server listens on 127.0.0.1:22>,\"confirmed\":true}}`, then `read` and check `published.active`.\n",n+1));
+ p.push_str(&format!("{}. On that device, create its identity and publish it, using `omabridge manage` with one JSON request on stdin each time:\n   - `{{\"action\":\"identity-create\",\"confirmed\":true}}`\n   - `{{\"action\":\"publish\",{publish},\"confirmed\":true}}`, then `read` and check `published.active`.\n",n+1));
  p.push_str(&format!("{}. Copy the one-use invitation from {inviter} (already here, at `{invitation}`) to it without printing it: `scp {invitation} {host}:~/omabridge-invite.json` and `ssh {host} chmod 600 ~/omabridge-invite.json`. Then delete `{invitation}` here. It expires within an hour.\n",n+2));
  p.push_str(&format!("{}. Pair from it on that device: `{{\"action\":\"invite-inspect\",\"path\":\"<absolute path of the copy>\"}}` first, to see the inviting device's `id`, then `{{\"action\":\"pair\",\"path\":\"<absolute path of the copy>\",\"expect\":\"<that id>\"{}{},\"confirmed\":true}}`. Delete the copy afterwards.\n",n+3,if manage{",\"allowManage\":true"}else{""},""));
  if manage{p.push_str(&format!("   I chose to let {inviter} manage that one: `allowManage` is my explicit consent, and the invitation asks for it.\n"));}
  p.push_str(&format!("{}. Tell me to approve the request in OmaBridge on {inviter} (Preferences → Connections → OmaBridge, or the bar indicator). Wait until I say it is approved, then run `{{\"action\":\"pair-retry\",\"id\":\"<its id under awaiting>\",\"confirmed\":true}}` there if it still shows as waiting.\n",n+4));
- p.push_str(&format!("{}. On that device, let {inviter} reach the services it published in step {}: `{{\"action\":\"grant-set\",\"peer\":\"<the inviting device's id from invite-inspect>\",\"services\":[\"t3\"<, \"ssh\" if published>],\"public\":[],\"confirmed\":true}}`.\n",n+5,n+1));
+ p.push_str(&format!("{}. On that device, let {inviter} reach the services it published in step {}: `{{\"action\":\"grant-set\",\"peer\":\"<the inviting device's id from invite-inspect>\",\"services\":{granted},\"public\":[],\"confirmed\":true}}`.\n",n+5,n+1));
  p.push_str(&format!("{}. Verify: `read` on that device lists {inviter} as a peer; then I check on {inviter} that it appears under Paired devices{}.\n",n+6,if manage{" with \"You manage it\""}else{""}));
+ if bridge{p.push_str(&format!("\nFrom then on, {inviter} reaches that device's SSH through OmaBridge, with no port open and no SSH configuration on the way. Tell me which user name logs in; never copy private keys.\n"));}
  p.push_str("\nAt the end, summarize what was installed and where, the device's OmaBridge name and ID, and anything I still need to do.");
  Ok(p)
 }
@@ -94,6 +103,12 @@ mod tests{
  fn hands_off_locally_without_copying(){
   assert_eq!(handoff(&json!({"environment":"local","invitation":"/home/u/Downloads/omabridge-invite-1.json"})).unwrap()["path"],"/home/u/Downloads/omabridge-invite-1.json");
   assert!(handoff(&json!({"environment":"local","invitation":"/etc/passwd"})).is_err());
+ }
+ #[test]
+ fn bridge_only_installs_no_t3_and_shares_ssh(){
+  let mut v=base();v["profile"]=json!("bridge");let p=prompt(&v).unwrap();
+  assert!(p.contains("Do not install T3 Code")&&p.contains("\"t3\":false,\"ssh\":true")&&p.contains("\"services\":[\"ssh\"]"));
+  assert!(!p.contains("t3 service install")&&!p.contains("install.sh"));
  }
  #[test]
  fn names_where_it_runs_and_who_invites(){

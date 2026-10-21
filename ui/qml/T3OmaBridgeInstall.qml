@@ -19,9 +19,10 @@ Controls.Popup {
  property string requestId:""
  property string step:""
  property string invitation:""
- property string profile:"headless"
+ property string profile:"bridge"
  property string environment:"local"
  readonly property var profiles:[
+  {id:"bridge",title:T3I18n.tr("OmaBridge only (SSH)"),detail:T3I18n.tr("Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.")},
   {id:"headless",title:T3I18n.tr("Headless server"),detail:T3I18n.tr("T3 Code as a background service and OmaBridge. For servers and VPSs without a desktop.")},
   {id:"ot3",title:T3I18n.tr("Omarchy with ot3"),detail:T3I18n.tr("The full Omarchy T3 Code client, for coding on that device too.")},
   {id:"t3code",title:T3I18n.tr("T3 Code and OmaBridge"),detail:T3I18n.tr("For a desktop without Omarchy where you code locally.")}]
@@ -52,7 +53,7 @@ Controls.Popup {
   return T3I18n.error(code)
  }
  function begin(index){
-  device=null;published={};error="";invitation="";step="";busy=true;host.text="";profile="headless";manage.checked=true;shareSsh.checked=false
+  device=null;published={};error="";invitation="";step="";busy=true;host.text="";profile="bridge";manage.checked=true;shareSsh.checked=false
   var e=environments[index>=0&&index<environments.length?index:defaultEnvironment];environment=e?e.id:"local"
   if(environment!=="local"&&bridge.ensureCatalog)bridge.ensureCatalog(environment)
   step="read";requestId=bridge.requestOmaBridgeManage({action:"read"});if(!requestId){busy=false;error="disconnected"}

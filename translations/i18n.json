@@ -1486,7 +1486,9 @@
     "New host (SSH)": "New host (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "The agent runs on that host and reaches the new one from there, for example when only it has direct access.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "The invitation is copied to that host over SSH; choose a host connected by SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "That host has no project for chats without a folder yet. Open T3 Code there once."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "That host has no project for chats without a folder yet. Open T3 Code there once.",
+    "OmaBridge only (SSH)": "OmaBridge only (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2975,7 +2977,9 @@
     "New host (SSH)": "Host nuevo (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "El agente se ejecuta en ese host y llega al nuevo desde ahí, por ejemplo cuando solo él tiene acceso directo.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "La invitación se copia a ese host por SSH; elige un host conectado por SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Ese host aún no tiene un proyecto para chats sin carpeta. Abre T3 Code ahí una vez."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Ese host aún no tiene un proyecto para chats sin carpeta. Abre T3 Code ahí una vez.",
+    "OmaBridge only (SSH)": "Solo OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Solo OmaBridge, publicando su SSH. Ahí no corre T3 Code ni ninguna IA; los agentes trabajan en él desde aquí a través de OmaBridge, sin abrir puertos."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4464,7 +4468,9 @@
     "New host (SSH)": "Novo host (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "O agente é executado nesse host e alcança o novo a partir dele, por exemplo quando só ele tem acesso direto.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "O convite é copiado para esse host por SSH; escolha um host conectado por SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Esse host ainda não tem um projeto para chats sem pasta. Abra o T3 Code nele uma vez."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Esse host ainda não tem um projeto para chats sem pasta. Abra o T3 Code nele uma vez.",
+    "OmaBridge only (SSH)": "Somente OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Somente o OmaBridge, publicando o SSH dele. Nem o T3 Code nem IA alguma rodam lá; os agentes trabalham nele daqui, através do OmaBridge, sem abrir portas."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5953,7 +5959,9 @@
     "New host (SSH)": "Nouvel hôte (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "L'agent s'exécute sur cet hôte et atteint le nouveau depuis celui-ci, par exemple quand lui seul y a un accès direct.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "L'invitation est copiée sur cet hôte par SSH ; choisissez un hôte connecté par SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Cet hôte n'a pas encore de projet pour les discussions sans dossier. Ouvrez T3 Code une fois dessus."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Cet hôte n'a pas encore de projet pour les discussions sans dossier. Ouvrez T3 Code une fois dessus.",
+    "OmaBridge only (SSH)": "OmaBridge seul (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Uniquement OmaBridge, qui publie son SSH. Ni T3 Code ni aucune IA n'y tournent ; les agents y travaillent d'ici via OmaBridge, sans ouvrir de port."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7442,7 +7450,9 @@
     "New host (SSH)": "Neuer Host (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Der Agent läuft auf diesem Host und erreicht den neuen von dort aus, etwa wenn nur dieser direkten Zugriff hat.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Die Einladung wird per SSH auf diesen Host kopiert; wählen Sie einen per SSH verbundenen Host.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Dieser Host hat noch kein Projekt für Chats ohne Ordner. Öffnen Sie T3 Code dort einmal."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Dieser Host hat noch kein Projekt für Chats ohne Ordner. Öffnen Sie T3 Code dort einmal.",
+    "OmaBridge only (SSH)": "Nur OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Nur OmaBridge, das seinen SSH-Zugang veröffentlicht. Dort laufen weder T3 Code noch eine KI; Agenten arbeiten von hier aus über OmaBridge daran, ohne offenen Port."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8931,7 +8941,9 @@
     "New host (SSH)": "Nuovo host (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "L'agente viene eseguito su quell'host e raggiunge il nuovo da lì, ad esempio quando solo quello ha accesso diretto.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "L'invito viene copiato su quell'host via SSH; scegli un host connesso via SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Quell'host non ha ancora un progetto per le chat senza cartella. Apri T3 Code lì una volta."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Quell'host non ha ancora un progetto per le chat senza cartella. Apri T3 Code lì una volta.",
+    "OmaBridge only (SSH)": "Solo OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Solo OmaBridge, che pubblica il suo SSH. Lì non girano né T3 Code né alcuna IA; gli agenti ci lavorano da qui tramite OmaBridge, senza porte aperte."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10420,7 +10432,9 @@
     "New host (SSH)": "Nieuwe host (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "De agent draait op die host en bereikt de nieuwe vanaf daar, bijvoorbeeld als alleen die er direct bij kan.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "De uitnodiging wordt via SSH naar die host gekopieerd; kies een host die via SSH verbonden is.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Die host heeft nog geen project voor chats zonder map. Open T3 Code daar één keer."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Die host heeft nog geen project voor chats zonder map. Open T3 Code daar één keer.",
+    "OmaBridge only (SSH)": "Alleen OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Alleen OmaBridge, dat zijn SSH publiceert. Daar draaien geen T3 Code en geen AI; agents werken er vanaf hier aan via OmaBridge, zonder open poort."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11909,7 +11923,9 @@
     "New host (SSH)": "Nowy host (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Agent działa na tym hoście i stamtąd łączy się z nowym, na przykład gdy tylko on ma bezpośredni dostęp.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Zaproszenie jest kopiowane na ten host przez SSH; wybierz host połączony przez SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Ten host nie ma jeszcze projektu dla czatów bez folderu. Otwórz tam raz T3 Code."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Ten host nie ma jeszcze projektu dla czatów bez folderu. Otwórz tam raz T3 Code.",
+    "OmaBridge only (SSH)": "Tylko OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Tylko OmaBridge, udostępniający swój SSH. Nie działa tam T3 Code ani żadne AI; agenci pracują na nim stąd przez OmaBridge, bez otwierania portów."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13398,7 +13414,9 @@
     "New host (SSH)": "Новый хост (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Агент работает на этом хосте и подключается к новому оттуда, например когда только у него есть прямой доступ.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Приглашение копируется на этот хост по SSH; выберите хост, подключённый по SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "На этом хосте ещё нет проекта для чатов без папки. Откройте там T3 Code один раз."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "На этом хосте ещё нет проекта для чатов без папки. Откройте там T3 Code один раз.",
+    "OmaBridge only (SSH)": "Только OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Только OmaBridge, публикующий свой SSH. Там не работают ни T3 Code, ни ИИ; агенты работают с ним отсюда через OmaBridge, без открытых портов."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14887,7 +14905,9 @@
     "New host (SSH)": "Новий хост (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Агент працює на цьому хості й під'єднується до нового звідти, наприклад коли лише він має прямий доступ.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Запрошення копіюється на цей хост через SSH; виберіть хост, під'єднаний через SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "На цьому хості ще немає проєкту для чатів без теки. Відкрийте там T3 Code один раз."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "На цьому хості ще немає проєкту для чатів без теки. Відкрийте там T3 Code один раз.",
+    "OmaBridge only (SSH)": "Лише OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Лише OmaBridge, що публікує свій SSH. Там не працюють ні T3 Code, ні ШІ; агенти працюють із ним звідси через OmaBridge, без відкритих портів."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16376,7 +16396,9 @@
     "New host (SSH)": "新しいホスト (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "エージェントはそのホストで実行され、そこから新しいホストに接続します。たとえば、そのホストだけが直接アクセスできる場合です。",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "招待は SSH でそのホストにコピーされます。SSH で接続されたホストを選んでください。",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "そのホストにはフォルダーなしのチャット用プロジェクトがまだありません。そこで T3 Code を一度開いてください。"
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "そのホストにはフォルダーなしのチャット用プロジェクトがまだありません。そこで T3 Code を一度開いてください。",
+    "OmaBridge only (SSH)": "OmaBridge のみ (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "OmaBridge だけで SSH を公開します。そこでは T3 Code も AI も動かず、エージェントはここから OmaBridge 経由で作業します。ポートは開きません。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17865,7 +17887,9 @@
     "New host (SSH)": "새 호스트 (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "에이전트는 해당 호스트에서 실행되고 거기에서 새 호스트에 연결합니다. 예를 들어 그 호스트만 직접 접근할 수 있을 때입니다.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "초대는 SSH로 해당 호스트에 복사됩니다. SSH로 연결된 호스트를 선택하세요.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "해당 호스트에는 아직 폴더 없는 채팅용 프로젝트가 없습니다. 그곳에서 T3 Code를 한 번 여세요."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "해당 호스트에는 아직 폴더 없는 채팅용 프로젝트가 없습니다. 그곳에서 T3 Code를 한 번 여세요.",
+    "OmaBridge only (SSH)": "OmaBridge만 (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "OmaBridge만 설치해 SSH를 공개합니다. 그곳에서는 T3 Code나 AI가 실행되지 않으며, 에이전트는 포트를 열지 않고 여기에서 OmaBridge를 통해 작업합니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19354,7 +19378,9 @@
     "New host (SSH)": "新主机 (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "代理在该主机上运行，并从那里访问新主机，例如只有它能直接访问时。",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "邀请会通过 SSH 复制到该主机；请选择通过 SSH 连接的主机。",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "该主机还没有用于无文件夹聊天的项目。请在那里打开一次 T3 Code。"
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "该主机还没有用于无文件夹聊天的项目。请在那里打开一次 T3 Code。",
+    "OmaBridge only (SSH)": "仅 OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "仅安装 OmaBridge 并发布其 SSH。那里不运行 T3 Code，也不运行任何 AI；代理从这里通过 OmaBridge 操作它，无需开放端口。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20843,7 +20869,9 @@
     "New host (SSH)": "مضيف جديد (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "يعمل الوكيل على ذلك المضيف ويصل إلى المضيف الجديد من هناك، مثلًا عندما يكون هو وحده من لديه وصول مباشر.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "تُنسخ الدعوة إلى ذلك المضيف عبر SSH؛ اختر مضيفًا متصلًا عبر SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "لا يحتوي ذلك المضيف بعد على مشروع للمحادثات بلا مجلد. افتح T3 Code هناك مرة واحدة."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "لا يحتوي ذلك المضيف بعد على مشروع للمحادثات بلا مجلد. افتح T3 Code هناك مرة واحدة.",
+    "OmaBridge only (SSH)": "OmaBridge فقط (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "OmaBridge فقط، ينشر SSH الخاص به. لا يعمل هناك T3 Code ولا أي ذكاء اصطناعي؛ يعمل الوكلاء عليه من هنا عبر OmaBridge دون فتح أي منفذ."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22332,7 +22360,9 @@
     "New host (SSH)": "Yeni ana bilgisayar (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Ajan o ana bilgisayarda çalışır ve yenisine oradan ulaşır; örneğin doğrudan erişim yalnızca ondaysa.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Davet o ana bilgisayara SSH ile kopyalanır; SSH ile bağlı bir ana bilgisayar seçin.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "O ana bilgisayarda henüz klasörsüz sohbetler için bir proje yok. T3 Code'u orada bir kez açın."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "O ana bilgisayarda henüz klasörsüz sohbetler için bir proje yok. T3 Code'u orada bir kez açın.",
+    "OmaBridge only (SSH)": "Yalnızca OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Yalnızca SSH'sini yayımlayan OmaBridge. Orada ne T3 Code ne de herhangi bir yapay zekâ çalışır; ajanlar ona buradan OmaBridge üzerinden, port açmadan çalışır."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23821,7 +23851,9 @@
     "New host (SSH)": "Ny värd (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Agenten körs på den värden och når den nya därifrån, till exempel när bara den har direkt åtkomst.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Inbjudan kopieras till den värden via SSH; välj en värd som är ansluten via SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Den värden har ännu inget projekt för chattar utan mapp. Öppna T3 Code där en gång."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Den värden har ännu inget projekt för chattar utan mapp. Öppna T3 Code där en gång.",
+    "OmaBridge only (SSH)": "Endast OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Endast OmaBridge, som publicerar dess SSH. Där körs varken T3 Code eller någon AI; agenter arbetar med den härifrån via OmaBridge, utan öppna portar."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25310,7 +25342,9 @@
     "New host (SSH)": "Ny vært (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Agenten kører på den vært og når den nye derfra, for eksempel når kun den har direkte adgang.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Invitationen kopieres til den vært via SSH; vælg en vært, der er forbundet via SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Den vært har endnu intet projekt til chats uden mappe. Åbn T3 Code der én gang."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Den vært har endnu intet projekt til chats uden mappe. Åbn T3 Code der én gang.",
+    "OmaBridge only (SSH)": "Kun OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Kun OmaBridge, der udgiver dens SSH. Der kører hverken T3 Code eller nogen AI; agenter arbejder på den herfra via OmaBridge, uden åbne porte."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26799,7 +26833,9 @@
     "New host (SSH)": "Ny vert (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Agenten kjører på den verten og når den nye derfra, for eksempel når bare den har direkte tilgang.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Invitasjonen kopieres til den verten over SSH; velg en vert som er koblet til via SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Den verten har ennå ikke noe prosjekt for chatter uten mappe. Åpne T3 Code der én gang."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Den verten har ennå ikke noe prosjekt for chatter uten mappe. Åpne T3 Code der én gang.",
+    "OmaBridge only (SSH)": "Bare OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Bare OmaBridge, som publiserer SSH-en. Der kjører verken T3 Code eller noen AI; agenter jobber med den herfra via OmaBridge, uten åpne porter."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28288,7 +28324,9 @@
     "New host (SSH)": "Uusi isäntä (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Agentti toimii tällä isännällä ja tavoittaa uuden sieltä käsin, esimerkiksi kun vain sillä on suora pääsy.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Kutsu kopioidaan tälle isännälle SSH:n kautta; valitse SSH:lla yhdistetty isäntä.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Tällä isännällä ei ole vielä projektia kansiottomille keskusteluille. Avaa T3 Code siellä kerran."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Tällä isännällä ei ole vielä projektia kansiottomille keskusteluille. Avaa T3 Code siellä kerran.",
+    "OmaBridge only (SSH)": "Vain OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Vain OmaBridge, joka julkaisee laitteen SSH:n. Siellä ei ajeta T3 Codea eikä tekoälyä; agentit työskentelevät sen parissa täältä OmaBridgen kautta ilman avoimia portteja."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29777,6 +29815,8 @@
     "New host (SSH)": "Nový hostitel (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "Agent běží na tomto hostiteli a k novému se dostane odtud, například když přímý přístup má jen on.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "Pozvánka se na tohoto hostitele kopíruje přes SSH; vyberte hostitele připojeného přes SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Tento hostitel zatím nemá projekt pro chaty bez složky. Otevřete tam jednou T3 Code."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "Tento hostitel zatím nemá projekt pro chaty bez složky. Otevřete tam jednou T3 Code.",
+    "OmaBridge only (SSH)": "Pouze OmaBridge (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Pouze OmaBridge, který zveřejňuje jeho SSH. Neběží tam T3 Code ani žádná AI; agenti s ním pracují odsud přes OmaBridge, bez otevřených portů."
   }
 }
