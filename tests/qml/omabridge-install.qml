@@ -10,10 +10,10 @@ ShellRoot {
  property string promptError:""
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_INSTALL_QML_FAIL "+msg);Qt.exit(1)}}
  QtObject{id:b
-  property var state:({environments:[{id:"local",name:"T3 Code",state:"ready"},{id:"node",name:"node",state:"ready"},{id:"down",name:"down",state:"connecting"}],
+  property var state:({environments:[{id:"local",name:"T3 Code",state:"ready"},{id:"devbox",name:"devbox",state:"ready"},{id:"down",name:"down",state:"connecting"}],
    projects:[{id:"repo",environmentId:"local",title:"Repo",workspaceRoot:"/home/u/repo"},{id:"scratch",environmentId:"local",title:"No project",workspaceRoot:"/home/u/.t3/scratch"},
-    {id:"node-repo",environmentId:"node",title:"Repo",workspaceRoot:"/srv/repo"},{id:"node-scratch",environmentId:"node",title:"No project",workspaceRoot:"/srv/chats/",isScratch:false}]})
-  property var catalogs:({node:{scratchWorkspaceRoot:"/srv/chats"}})
+    {id:"devbox-repo",environmentId:"devbox",title:"Repo",workspaceRoot:"/srv/repo"},{id:"devbox-scratch",environmentId:"devbox",title:"No project",workspaceRoot:"/srv/chats/",isScratch:false}]})
+  property var catalogs:({devbox:{scratchWorkspaceRoot:"/srv/chats"}})
   property var sent:[];property var installs:[];property var chat:null;property int seq:0;property var asked:[]
   signal omabridgeManageFinished(string requestId,string text,int exitCode)
   signal omabridgeInstallAnswer(string requestId,var result,string error)
@@ -38,19 +38,19 @@ ShellRoot {
    check(dialog.environments.length===2&&dialog.environments[dialog.defaultEnvironment].id==="local","connected hosts, this device first");
    dialog.begin(1);phase++
   }else if(phase===1){
-   check(dialog.opened&&b.sent[0].action==="read"&&b.asked.indexOf("node")>=0,"reads this device and that host's settings");
-   check(dialog.environment==="node"&&find("omabridgeInstallRunsOn").text==="node","runs on the chosen host");
-   check(dialog.scratch&&dialog.scratch.id==="node-scratch","that host's scratch project, from its settings");
+   check(dialog.opened&&b.sent[0].action==="read"&&b.asked.indexOf("devbox")>=0,"reads this device and that host's settings");
+   check(dialog.environment==="devbox"&&find("omabridgeInstallRunsOn").text==="devbox","runs on the chosen host");
+   check(dialog.scratch&&dialog.scratch.id==="devbox-scratch","that host's scratch project, from its settings");
    check(!find("omabridgeInstallStart").enabled,"needs the new host");
    check(dialog.profile==="bridge","OmaBridge only by default");find("omabridgeInstallProfile_headless").clicked();find("omabridgeInstallHost").text="vps";root.promptError="invalid_host";find("omabridgeInstallStart").clicked();phase++
   }else if(phase===2){
    var invite=b.sent[b.sent.length-1];check(invite.action==="invite"&&invite.confirmed===true&&invite.manage===true&&invite.ttl===3600&&JSON.stringify(invite.services)==='["t3"]',"one-use invitation that asks to manage: "+JSON.stringify(invite));
-   var hand=last("omabridge-invite-handoff");check(hand&&hand.environment==="node"&&hand.invitation==="/home/u/Downloads/omabridge-invite-20261020-120000.json","the invitation moves to that host");
-   var p=last("omabridge-install-prompt");check(p.host==="vps"&&p.runsOn==="node"&&p.invitation==="/srv/home/.cache/omabridge/omabridge-invite-20261020-120000.json"&&p.device==="alpha","prompt names its path there: "+JSON.stringify(p));
+   var hand=last("omabridge-invite-handoff");check(hand&&hand.environment==="devbox"&&hand.invitation==="/home/u/Downloads/omabridge-invite-20261020-120000.json","the invitation moves to that host");
+   var p=last("omabridge-install-prompt");check(p.host==="vps"&&p.runsOn==="devbox"&&p.invitation==="/srv/home/.cache/omabridge/omabridge-invite-20261020-120000.json"&&p.device==="alpha","prompt names its path there: "+JSON.stringify(p));
    check(find("omabridgeInstallError").visible&&b.chat===null&&dialog.opened,"a refused prompt opens no chat");
    root.promptError="";find("omabridgeInstallStart").clicked();phase++
   }else if(phase===3){
-   check(b.chat&&b.chat.environment==="node"&&b.chat.projectId==="node-scratch"&&b.chat.text==="PROMPT","clean chat on that host with the prompt");
+   check(b.chat&&b.chat.environment==="devbox"&&b.chat.projectId==="devbox-scratch"&&b.chat.text==="PROMPT","clean chat on that host with the prompt");
    check(!dialog.opened&&dialog.invitation==="","dialog closes and forgets the invitation path");
    dialog.begin(0);phase++
   }else if(phase===4){
