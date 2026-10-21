@@ -1486,6 +1486,8 @@
     "New host (SSH)": "New host (SSH)",
     "The agent runs on that host and reaches the new one from there, for example when only it has direct access.": "The agent runs on that host and reaches the new one from there, for example when only it has direct access.",
     "The invitation is copied to that host over SSH; choose a host connected by SSH.": "The invitation is copied to that host over SSH; choose a host connected by SSH.",
-    "That host has no project for chats without a folder yet. Open T3 Code there once.": "That host has no project for chats without a folder yet. Open T3 Code there once."
+    "That host has no project for chats without a folder yet. Open T3 Code there once.": "That host has no project for chats without a folder yet. Open T3 Code there once.",
+    "OmaBridge only (SSH)": "OmaBridge only (SSH)",
+    "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.": "Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open."
   }
 }

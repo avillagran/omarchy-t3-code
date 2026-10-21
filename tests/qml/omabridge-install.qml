@@ -42,7 +42,7 @@ ShellRoot {
    check(dialog.environment==="node"&&find("omabridgeInstallRunsOn").text==="node","runs on the chosen host");
    check(dialog.scratch&&dialog.scratch.id==="node-scratch","that host's scratch project, from its settings");
    check(!find("omabridgeInstallStart").enabled,"needs the new host");
-   find("omabridgeInstallHost").text="vps";root.promptError="invalid_host";find("omabridgeInstallStart").clicked();phase++
+   check(dialog.profile==="bridge","OmaBridge only by default");find("omabridgeInstallProfile_headless").clicked();find("omabridgeInstallHost").text="vps";root.promptError="invalid_host";find("omabridgeInstallStart").clicked();phase++
   }else if(phase===2){
    var invite=b.sent[b.sent.length-1];check(invite.action==="invite"&&invite.confirmed===true&&invite.manage===true&&invite.ttl===3600&&JSON.stringify(invite.services)==='["t3"]',"one-use invitation that asks to manage: "+JSON.stringify(invite));
    var hand=last("omabridge-invite-handoff");check(hand&&hand.environment==="node"&&hand.invitation==="/home/u/Downloads/omabridge-invite-20261020-120000.json","the invitation moves to that host");
