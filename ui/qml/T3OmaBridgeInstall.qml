@@ -35,9 +35,9 @@ Controls.Popup {
   if(code==="omabridge_not_published" || code==="omabridge_service_not_published")return T3I18n.tr("Publish this device before inviting another one.")
   return T3I18n.error(code)
  }
- function begin(){
+ function begin(index){
   device=null;published={};error="";invitation="";busy=true;host.text="";profile="headless";manage.checked=true;shareSsh.checked=false
-  project.currentIndex=defaultProject
+  project.currentIndex=index>=0&&index<projects.length?index:defaultProject
   requestId=bridge.requestOmaBridgeManage({action:"read"});if(!requestId){busy=false;error="disconnected"}
   open()
  }
@@ -73,7 +73,7 @@ Controls.Popup {
   }
  }
  contentItem:ColumnLayout{spacing:Style.space(12)
-  Text{Layout.fillWidth:true;text:T3I18n.tr("Install on another device with your AI");color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap}
+  Text{Layout.fillWidth:true;text:T3I18n.tr("Set up a new host with your AI");color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap}
   Text{Layout.fillWidth:true;text:T3I18n.tr("A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   Text{Layout.fillWidth:true;text:T3I18n.tr("SSH host");color:root.fg;font.pixelSize:Style.font.caption}
   T3PickerField{id:host;objectName:"omabridgeInstallHost";Layout.fillWidth:true;placeholderText:"server, user@host";selectByMouse:true;enabled:!root.busy}

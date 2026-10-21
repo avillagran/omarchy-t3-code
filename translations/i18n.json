@@ -1475,7 +1475,6 @@
     "T3 Code and OmaBridge": "T3 Code and OmaBridge",
     "For a desktop without Omarchy where you code locally.": "For a desktop without Omarchy where you code locally.",
     "Use an SSH host, alias or user@host.": "Use an SSH host, alias or user@host.",
-    "Install on another device with your AI": "Install on another device with your AI",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.",
     "SSH host": "SSH host",
     "Let this device manage it": "Let this device manage it",
@@ -1484,7 +1483,8 @@
     "No project": "No project",
     "Open chat": "Open chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.",
-    "Install on another device with your AI…": "Install on another device with your AI…"
+    "Set up a new host with your AI": "Set up a new host with your AI",
+    "Set up a new host…": "Set up a new host…"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -2962,7 +2962,6 @@
     "T3 Code and OmaBridge": "T3 Code y OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Para un escritorio sin Omarchy donde programas en local.",
     "Use an SSH host, alias or user@host.": "Usa un host SSH, un alias o user@host.",
-    "Install on another device with your AI": "Instalar en otro dispositivo con tu IA",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Se abre un chat nuevo con las instrucciones de configuración ya escritas. Revísalas y envíalas cuando quieras. El agente trabaja por SSH y empareja el dispositivo con este mediante una invitación de un solo uso que nunca aparece en el chat.",
     "SSH host": "Host SSH",
     "Let this device manage it": "Permitir que este dispositivo lo gestione",
@@ -2971,7 +2970,8 @@
     "No project": "Sin proyecto",
     "Open chat": "Abrir chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configura otro dispositivo (un servidor, otro escritorio) y emparéjalo con este, guiado por tu IA en un chat nuevo.",
-    "Install on another device with your AI…": "Instalar en otro dispositivo con tu IA…"
+    "Set up a new host with your AI": "Configura un host nuevo con tu IA",
+    "Set up a new host…": "Configurar host nuevo…"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4449,7 +4449,6 @@
     "T3 Code and OmaBridge": "T3 Code e OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Para um desktop sem Omarchy onde você programa localmente.",
     "Use an SSH host, alias or user@host.": "Use um host SSH, um alias ou user@host.",
-    "Install on another device with your AI": "Instalar em outro dispositivo com sua IA",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Um novo chat é aberto com as instruções de configuração já digitadas. Revise-as e envie quando estiver pronto. O agente trabalha via SSH e pareia o dispositivo com este por meio de um convite de uso único que nunca aparece no chat.",
     "SSH host": "Host SSH",
     "Let this device manage it": "Permitir que este dispositivo o gerencie",
@@ -4458,7 +4457,8 @@
     "No project": "Sem projeto",
     "Open chat": "Abrir chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configure outro dispositivo (um servidor, outro desktop) e pareie-o com este, com a ajuda da sua IA em um novo chat.",
-    "Install on another device with your AI…": "Instalar em outro dispositivo com sua IA…"
+    "Set up a new host with your AI": "Configure um novo host com sua IA",
+    "Set up a new host…": "Configurar novo host…"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5936,7 +5936,6 @@
     "T3 Code and OmaBridge": "T3 Code et OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Pour un poste de travail sans Omarchy où vous codez en local.",
     "Use an SSH host, alias or user@host.": "Utilisez un hôte SSH, un alias ou user@host.",
-    "Install on another device with your AI": "Installer sur un autre appareil avec votre IA",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Une nouvelle discussion s'ouvre avec les instructions de configuration déjà saisies. Relisez-les et envoyez-les quand vous êtes prêt. L'agent travaille via SSH et associe l'appareil à celui-ci grâce à une invitation à usage unique qui n'apparaît jamais dans la discussion.",
     "SSH host": "Hôte SSH",
     "Let this device manage it": "Laisser cet appareil le gérer",
@@ -5945,7 +5944,8 @@
     "No project": "Aucun projet",
     "Open chat": "Ouvrir la discussion",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configurez un autre appareil (un serveur, un autre poste) et associez-le à celui-ci, guidé par votre IA dans une nouvelle discussion.",
-    "Install on another device with your AI…": "Installer sur un autre appareil avec votre IA…"
+    "Set up a new host with your AI": "Configurer un nouvel hôte avec votre IA",
+    "Set up a new host…": "Configurer un nouvel hôte…"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7423,7 +7423,6 @@
     "T3 Code and OmaBridge": "T3 Code und OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Für einen Desktop ohne Omarchy, auf dem Sie lokal programmieren.",
     "Use an SSH host, alias or user@host.": "Verwenden Sie einen SSH-Host, einen Alias oder user@host.",
-    "Install on another device with your AI": "Mit Ihrer KI auf einem anderen Gerät installieren",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Ein neuer Chat öffnet sich mit bereits eingetragenen Einrichtungsanweisungen. Prüfen Sie sie und senden Sie sie ab, wenn Sie bereit sind. Der Agent arbeitet über SSH und koppelt das Gerät mit diesem über eine Einmal-Einladung, die nie im Chat erscheint.",
     "SSH host": "SSH-Host",
     "Let this device manage it": "Von diesem Gerät verwalten lassen",
@@ -7432,7 +7431,8 @@
     "No project": "Kein Projekt",
     "Open chat": "Chat öffnen",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Richten Sie ein weiteres Gerät (einen Server, einen anderen Desktop) ein und koppeln Sie es mit diesem – angeleitet von Ihrer KI in einem neuen Chat.",
-    "Install on another device with your AI…": "Mit Ihrer KI auf einem anderen Gerät installieren…"
+    "Set up a new host with your AI": "Neuen Host mit Ihrer KI einrichten",
+    "Set up a new host…": "Neuen Host einrichten…"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8910,7 +8910,6 @@
     "T3 Code and OmaBridge": "T3 Code e OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Per un desktop senza Omarchy su cui programmi in locale.",
     "Use an SSH host, alias or user@host.": "Usa un host SSH, un alias o user@host.",
-    "Install on another device with your AI": "Installa su un altro dispositivo con la tua IA",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Si apre una nuova chat con le istruzioni di configurazione già scritte. Controllale e inviale quando sei pronto. L'agente lavora tramite SSH e associa il dispositivo a questo con un invito monouso che non compare mai nella chat.",
     "SSH host": "Host SSH",
     "Let this device manage it": "Consenti a questo dispositivo di gestirlo",
@@ -8919,7 +8918,8 @@
     "No project": "Nessun progetto",
     "Open chat": "Apri chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configura un altro dispositivo (un server, un altro desktop) e associalo a questo, guidato dalla tua IA in una nuova chat.",
-    "Install on another device with your AI…": "Installa su un altro dispositivo con la tua IA…"
+    "Set up a new host with your AI": "Configura un nuovo host con la tua IA",
+    "Set up a new host…": "Configura nuovo host…"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10397,7 +10397,6 @@
     "T3 Code and OmaBridge": "T3 Code en OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Voor een desktop zonder Omarchy waarop je lokaal programmeert.",
     "Use an SSH host, alias or user@host.": "Gebruik een SSH-host, alias of user@host.",
-    "Install on another device with your AI": "Installeren op een ander apparaat met je AI",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Er opent een nieuwe chat met de installatie-instructies al ingevuld. Controleer ze en verstuur ze wanneer je klaar bent. De agent werkt via SSH en koppelt het apparaat aan dit apparaat met een eenmalige uitnodiging die nooit in de chat verschijnt.",
     "SSH host": "SSH-host",
     "Let this device manage it": "Laat dit apparaat het beheren",
@@ -10406,7 +10405,8 @@
     "No project": "Geen project",
     "Open chat": "Chat openen",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Stel een ander apparaat in (een server, een andere desktop) en koppel het aan dit apparaat, begeleid door je AI in een nieuwe chat.",
-    "Install on another device with your AI…": "Installeren op een ander apparaat met je AI…"
+    "Set up a new host with your AI": "Een nieuwe host instellen met je AI",
+    "Set up a new host…": "Nieuwe host instellen…"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11884,7 +11884,6 @@
     "T3 Code and OmaBridge": "T3 Code i OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Dla komputera bez Omarchy, na którym programujesz lokalnie.",
     "Use an SSH host, alias or user@host.": "Użyj hosta SSH, aliasu lub user@host.",
-    "Install on another device with your AI": "Zainstaluj na innym urządzeniu z pomocą AI",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Otworzy się nowy czat z wpisanymi instrukcjami konfiguracji. Przejrzyj je i wyślij, gdy będziesz gotowy. Agent działa przez SSH i paruje urządzenie z tym za pomocą jednorazowego zaproszenia, które nigdy nie pojawia się w czacie.",
     "SSH host": "Host SSH",
     "Let this device manage it": "Pozwól temu urządzeniu nim zarządzać",
@@ -11893,7 +11892,8 @@
     "No project": "Brak projektu",
     "Open chat": "Otwórz czat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Skonfiguruj inne urządzenie (serwer, inny komputer) i sparuj je z tym, z pomocą AI w nowym czacie.",
-    "Install on another device with your AI…": "Zainstaluj na innym urządzeniu z pomocą AI…"
+    "Set up a new host with your AI": "Skonfiguruj nowy host z pomocą AI",
+    "Set up a new host…": "Skonfiguruj nowy host…"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13371,7 +13371,6 @@
     "T3 Code and OmaBridge": "T3 Code и OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Для компьютера без Omarchy, на котором вы программируете локально.",
     "Use an SSH host, alias or user@host.": "Укажите SSH-хост, псевдоним или user@host.",
-    "Install on another device with your AI": "Установить на другое устройство с помощью ИИ",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Откроется новый чат с уже введёнными инструкциями по настройке. Проверьте их и отправьте, когда будете готовы. Агент работает через SSH и связывает устройство с этим с помощью одноразового приглашения, которое никогда не появляется в чате.",
     "SSH host": "SSH-хост",
     "Let this device manage it": "Разрешить этому устройству управлять им",
@@ -13380,7 +13379,8 @@
     "No project": "Без проекта",
     "Open chat": "Открыть чат",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Настройте другое устройство (сервер, другой компьютер) и свяжите его с этим под руководством ИИ в новом чате.",
-    "Install on another device with your AI…": "Установить на другое устройство с помощью ИИ…"
+    "Set up a new host with your AI": "Настроить новый хост с помощью ИИ",
+    "Set up a new host…": "Настроить новый хост…"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14858,7 +14858,6 @@
     "T3 Code and OmaBridge": "T3 Code і OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Для комп'ютера без Omarchy, на якому ви програмуєте локально.",
     "Use an SSH host, alias or user@host.": "Вкажіть SSH-хост, псевдонім або user@host.",
-    "Install on another device with your AI": "Встановити на інший пристрій за допомогою ШІ",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Відкриється новий чат із уже введеними інструкціями з налаштування. Перегляньте їх і надішліть, коли будете готові. Агент працює через SSH і з'єднує пристрій із цим за допомогою одноразового запрошення, яке ніколи не з'являється в чаті.",
     "SSH host": "SSH-хост",
     "Let this device manage it": "Дозволити цьому пристрою керувати ним",
@@ -14867,7 +14866,8 @@
     "No project": "Без проєкту",
     "Open chat": "Відкрити чат",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Налаштуйте інший пристрій (сервер, інший комп'ютер) і з'єднайте його з цим під керівництвом ШІ в новому чаті.",
-    "Install on another device with your AI…": "Встановити на інший пристрій за допомогою ШІ…"
+    "Set up a new host with your AI": "Налаштувати новий хост за допомогою ШІ",
+    "Set up a new host…": "Налаштувати новий хост…"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16345,7 +16345,6 @@
     "T3 Code and OmaBridge": "T3 Code と OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Omarchy のないデスクトップでローカルにコーディングする場合。",
     "Use an SSH host, alias or user@host.": "SSH ホスト、エイリアス、または user@host を指定します。",
-    "Install on another device with your AI": "AI を使って別のデバイスにインストール",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "セットアップ手順が入力された状態で新しいチャットが開きます。内容を確認し、準備ができたら送信してください。エージェントは SSH 経由で作業し、チャットに表示されることのない一回限りの招待を使ってそのデバイスをこのデバイスとペアリングします。",
     "SSH host": "SSH ホスト",
     "Let this device manage it": "このデバイスで管理する",
@@ -16354,7 +16353,8 @@
     "No project": "プロジェクトなし",
     "Open chat": "チャットを開く",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "別のデバイス（サーバーや別のデスクトップ）をセットアップし、このデバイスとペアリングします。新しいチャットで AI がガイドします。",
-    "Install on another device with your AI…": "AI を使って別のデバイスにインストール…"
+    "Set up a new host with your AI": "AI で新しいホストをセットアップ",
+    "Set up a new host…": "新しいホストをセットアップ…"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17832,7 +17832,6 @@
     "T3 Code and OmaBridge": "T3 Code 및 OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Omarchy 없이 로컬에서 코딩하는 데스크톱용.",
     "Use an SSH host, alias or user@host.": "SSH 호스트, 별칭 또는 user@host를 사용하세요.",
-    "Install on another device with your AI": "AI로 다른 기기에 설치",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "설정 안내가 입력된 새 채팅이 열립니다. 내용을 검토한 후 준비되면 보내세요. 에이전트는 SSH로 작업하며, 채팅에 절대 표시되지 않는 일회용 초대를 통해 해당 기기를 이 기기와 페어링합니다.",
     "SSH host": "SSH 호스트",
     "Let this device manage it": "이 기기에서 관리하도록 허용",
@@ -17841,7 +17840,8 @@
     "No project": "프로젝트 없음",
     "Open chat": "채팅 열기",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "다른 기기(서버, 다른 데스크톱)를 설정하고 이 기기와 페어링하세요. 새 채팅에서 AI가 안내합니다.",
-    "Install on another device with your AI…": "AI로 다른 기기에 설치…"
+    "Set up a new host with your AI": "AI로 새 호스트 설정",
+    "Set up a new host…": "새 호스트 설정…"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19319,7 +19319,6 @@
     "T3 Code and OmaBridge": "T3 Code 和 OmaBridge",
     "For a desktop without Omarchy where you code locally.": "适用于未安装 Omarchy、在本地编程的桌面电脑。",
     "Use an SSH host, alias or user@host.": "使用 SSH 主机、别名或 user@host。",
-    "Install on another device with your AI": "借助 AI 安装到另一台设备",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "将打开一个新聊天，并已填入设置说明。检查后准备好即可发送。代理通过 SSH 工作，并使用一次性邀请将该设备与本设备配对，该邀请绝不会出现在聊天中。",
     "SSH host": "SSH 主机",
     "Let this device manage it": "允许本设备管理它",
@@ -19328,7 +19327,8 @@
     "No project": "无项目",
     "Open chat": "打开聊天",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "设置另一台设备（服务器或另一台桌面电脑）并将其与本设备配对，由 AI 在新聊天中引导完成。",
-    "Install on another device with your AI…": "借助 AI 安装到另一台设备…"
+    "Set up a new host with your AI": "用 AI 设置新主机",
+    "Set up a new host…": "设置新主机…"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20806,7 +20806,6 @@
     "T3 Code and OmaBridge": "T3 Code وOmaBridge",
     "For a desktop without Omarchy where you code locally.": "لجهاز سطح مكتب بدون Omarchy تبرمج عليه محليًا.",
     "Use an SSH host, alias or user@host.": "استخدم مضيف SSH أو اسمًا مستعارًا أو user@host.",
-    "Install on another device with your AI": "التثبيت على جهاز آخر بمساعدة الذكاء الاصطناعي",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "تُفتح دردشة جديدة وقد كُتبت فيها تعليمات الإعداد. راجعها وأرسلها عندما تكون جاهزًا. يعمل الوكيل عبر SSH ويقرن الجهاز بهذا الجهاز من خلال دعوة لمرة واحدة لا تظهر أبدًا في الدردشة.",
     "SSH host": "مضيف SSH",
     "Let this device manage it": "السماح لهذا الجهاز بإدارته",
@@ -20815,7 +20814,8 @@
     "No project": "بلا مشروع",
     "Open chat": "فتح الدردشة",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "أعدّ جهازًا آخر (خادمًا أو جهاز سطح مكتب آخر) واقرنه بهذا الجهاز، بإرشاد الذكاء الاصطناعي في دردشة جديدة.",
-    "Install on another device with your AI…": "التثبيت على جهاز آخر بمساعدة الذكاء الاصطناعي…"
+    "Set up a new host with your AI": "إعداد مضيف جديد بمساعدة الذكاء الاصطناعي",
+    "Set up a new host…": "إعداد مضيف جديد…"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22293,7 +22293,6 @@
     "T3 Code and OmaBridge": "T3 Code ve OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Yerel olarak kod yazdığınız, Omarchy olmayan bir masaüstü için.",
     "Use an SSH host, alias or user@host.": "Bir SSH ana bilgisayarı, takma ad veya user@host kullanın.",
-    "Install on another device with your AI": "Yapay zekânızla başka bir cihaza kur",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Kurulum talimatları yazılmış olarak yeni bir sohbet açılır. Talimatları gözden geçirin ve hazır olduğunuzda gönderin. Aracı SSH üzerinden çalışır ve cihazı, sohbette asla görünmeyen tek kullanımlık bir davetle bu cihazla eşleştirir.",
     "SSH host": "SSH ana bilgisayarı",
     "Let this device manage it": "Bu cihazın onu yönetmesine izin ver",
@@ -22302,7 +22301,8 @@
     "No project": "Proje yok",
     "Open chat": "Sohbeti aç",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Başka bir cihazı (bir sunucu, başka bir masaüstü) kurun ve yeni bir sohbette yapay zekânızın rehberliğinde bu cihazla eşleştirin.",
-    "Install on another device with your AI…": "Yapay zekânızla başka bir cihaza kur…"
+    "Set up a new host with your AI": "Yapay zekânla yeni bir ana bilgisayar kur",
+    "Set up a new host…": "Yeni ana bilgisayar kur…"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23780,7 +23780,6 @@
     "T3 Code and OmaBridge": "T3 Code och OmaBridge",
     "For a desktop without Omarchy where you code locally.": "För en dator utan Omarchy där du kodar lokalt.",
     "Use an SSH host, alias or user@host.": "Ange en SSH-värd, ett alias eller user@host.",
-    "Install on another device with your AI": "Installera på en annan enhet med din AI",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "En ny chatt öppnas med installationsinstruktionerna redan inskrivna. Granska dem och skicka när du är redo. Agenten arbetar via SSH och parkopplar enheten med den här via en engångsinbjudan som aldrig visas i chatten.",
     "SSH host": "SSH-värd",
     "Let this device manage it": "Låt den här enheten hantera den",
@@ -23789,7 +23788,8 @@
     "No project": "Inget projekt",
     "Open chat": "Öppna chatt",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Konfigurera en annan enhet (en server, en annan dator) och parkoppla den med den här, med hjälp av din AI i en ny chatt.",
-    "Install on another device with your AI…": "Installera på en annan enhet med din AI…"
+    "Set up a new host with your AI": "Konfigurera en ny värd med din AI",
+    "Set up a new host…": "Konfigurera ny värd…"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25267,7 +25267,6 @@
     "T3 Code and OmaBridge": "T3 Code og OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Til en computer uden Omarchy, hvor du koder lokalt.",
     "Use an SSH host, alias or user@host.": "Brug en SSH-vært, et alias eller user@host.",
-    "Install on another device with your AI": "Installer på en anden enhed med din AI",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "En ny chat åbnes med opsætningsinstruktionerne allerede skrevet ind. Gennemse dem, og send, når du er klar. Agenten arbejder over SSH og parrer enheden med denne via en engangsinvitation, der aldrig vises i chatten.",
     "SSH host": "SSH-vært",
     "Let this device manage it": "Lad denne enhed administrere den",
@@ -25276,7 +25275,8 @@
     "No project": "Intet projekt",
     "Open chat": "Åbn chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Konfigurer en anden enhed (en server, en anden computer), og par den med denne, guidet af din AI i en ny chat.",
-    "Install on another device with your AI…": "Installer på en anden enhed med din AI…"
+    "Set up a new host with your AI": "Opsæt en ny vært med din AI",
+    "Set up a new host…": "Opsæt ny vært…"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26754,7 +26754,6 @@
     "T3 Code and OmaBridge": "T3 Code og OmaBridge",
     "For a desktop without Omarchy where you code locally.": "For en datamaskin uten Omarchy der du koder lokalt.",
     "Use an SSH host, alias or user@host.": "Bruk en SSH-vert, et alias eller user@host.",
-    "Install on another device with your AI": "Installer på en annen enhet med din AI",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "En ny chat åpnes med oppsettinstruksjonene allerede skrevet inn. Se gjennom dem og send når du er klar. Agenten jobber over SSH og parer enheten med denne via en engangsinvitasjon som aldri vises i chatten.",
     "SSH host": "SSH-vert",
     "Let this device manage it": "La denne enheten administrere den",
@@ -26763,7 +26762,8 @@
     "No project": "Ingen prosjekt",
     "Open chat": "Åpne chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Sett opp en annen enhet (en server, en annen datamaskin) og par den med denne, veiledet av din AI i en ny chat.",
-    "Install on another device with your AI…": "Installer på en annen enhet med din AI…"
+    "Set up a new host with your AI": "Sett opp en ny vert med din AI",
+    "Set up a new host…": "Sett opp ny vert…"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28241,7 +28241,6 @@
     "T3 Code and OmaBridge": "T3 Code ja OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Tietokoneelle, jolla koodaat paikallisesti ja jossa Omarchy ei ole käytössä.",
     "Use an SSH host, alias or user@host.": "Anna SSH:n isäntänimi, alias tai user@host.",
-    "Install on another device with your AI": "Asenna toiselle laitteelle tekoälyn avulla",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Uusi keskustelu avautuu, ja asennusohjeet on jo kirjoitettu valmiiksi. Tarkista ne ja lähetä, kun olet valmis. Agentti toimii SSH:n kautta ja muodostaa laiteparin tämän laitteen kanssa kertakäyttöisellä kutsulla, joka ei koskaan näy keskustelussa.",
     "SSH host": "Isäntä (SSH)",
     "Let this device manage it": "Anna tämän laitteen hallita sitä",
@@ -28250,7 +28249,8 @@
     "No project": "Ei projektia",
     "Open chat": "Avaa keskustelu",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Määritä toinen laite (palvelin tai toinen tietokone) ja muodosta laitepari tämän kanssa tekoälyn opastamana uudessa keskustelussa.",
-    "Install on another device with your AI…": "Asenna toiselle laitteelle tekoälyn avulla…"
+    "Set up a new host with your AI": "Määritä uusi isäntä tekoälysi avulla",
+    "Set up a new host…": "Määritä uusi isäntä…"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29728,7 +29728,6 @@
     "T3 Code and OmaBridge": "T3 Code a OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Pro počítač bez Omarchy, na kterém programujete lokálně.",
     "Use an SSH host, alias or user@host.": "Použijte hostitele SSH, alias nebo user@host.",
-    "Install on another device with your AI": "Nainstalovat na jiné zařízení pomocí AI",
     "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Otevře se nový chat s již zadanými pokyny k nastavení. Zkontrolujte je a odešlete, až budete připraveni. Agent pracuje přes SSH a spáruje zařízení s tímto pomocí jednorázové pozvánky, která se v chatu nikdy nezobrazí.",
     "SSH host": "Hostitel SSH",
     "Let this device manage it": "Povolit tomuto zařízení jej spravovat",
@@ -29737,6 +29736,7 @@
     "No project": "Žádný projekt",
     "Open chat": "Otevřít chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Nastavte jiné zařízení (server, jiný počítač) a spárujte ho s tímto za pomoci AI v novém chatu.",
-    "Install on another device with your AI…": "Nainstalovat na jiné zařízení pomocí AI…"
+    "Set up a new host with your AI": "Nastavit nového hostitele pomocí AI",
+    "Set up a new host…": "Nastavit nového hostitele…"
   }
 }
