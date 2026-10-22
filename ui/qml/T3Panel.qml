@@ -355,6 +355,9 @@ Item {
   Connections{target:root.bridge;function onScreenshotCapture(active){if(active){if(root.opened&&!root.detached&&root.bridge.screenshotHidesPanel){root.screenshotHidden=true;root.close()}}else if(root.screenshotHidden){root.screenshotHidden=false;root.open();Qt.callLater(function(){composerPanel.inputField.forceActiveFocus()})}}}
   readonly property var normalWindow:desktop
   readonly property var panelPopup:popup
+  readonly property var hostsPopup:hostsPopup
+  readonly property var preferencesView:preferencesLoader.item
+  function hostsAnchor(){return localBackendGuiIndicator.visible?localBackendGuiIndicator:localBackendControl}
   function setDetached(value){setWindowMode(value?"floating":"panel")}
   function cycleWindowMode(){setWindowMode(windowMode==="panel"?"floating":windowMode==="floating"?"tiled":panelAvailable?"panel":"floating")}
   function setWindowMode(value){

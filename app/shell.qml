@@ -146,6 +146,30 @@ ShellRoot {
     function setAnchor(json: string): void { app.setAnchor(json) }
     // Diagnostics: where the panel popup and its anchor are.
     function panelGeometry(): string { var p = panel.panelPopup; var c = p.contentItem; return JSON.stringify({ open: p.open, visible: p.visible, screen: p.screen ? p.screen.name : null, origin: p.cardOrigin, contentWidth: p.contentWidth, contentHeight: p.contentHeight, barW: p.barW, barH: p.barH, anchor: app.anchor, ghosts: ghosts.instances.map(function(g) { return g.modelData }), surface: { w: p.surfaceItem.width, h: p.surfaceItem.height, children: p.surfaceItem.children.length, opacity: p.surfaceItem.opacity, visible: p.surfaceItem.visible } }) }
+    // Diagnostics and demos: drive the panel by action name.
+    function drive(action: string, value: string): string {
+      var p = panel, b = app.backend
+      switch (action) {
+        case "sidebar": p.toggleSidebar(false); break
+        case "details": p.toggleThreadDetails(); break
+        case "working": p.workingExpanded = value === "true"; break
+        case "settled": p.settledExpanded = value === "true"; break
+        case "hosts": p.openHosts(p.hostsAnchor()); break
+        case "closeHosts": p.hostsPopup.close(); break
+        case "usage": p.usageCollapsed = value === "true"; break
+        case "thread": var k = value.split("/"); b.selectThread(k[0], k.slice(1).join("/")); break
+        case "preferences": p.openPreferencesPage(value || "general"); break
+        case "prefSearch": if (p.preferencesView) p.preferencesView.query = value; break
+        case "closePreferences": p.preferencesOpen = false; break
+        case "mode": p.setWindowMode(value); break
+        case "side": if (value) p.openSide(value); else p.closeSide(); break
+        case "type": b.edit(value, true); break
+        case "paste": var t = b.draft.text || ""; b.pasteClipboard(t.length, t.length); break
+        case "focus": p.composerView.inputField.forceActiveFocus(); break
+        default: return "unknown"
+      }
+      return "ok"
+    }
     // "panel" (under the bar's T3 button), "floating" or "tiled".
     function setWindowMode(mode: string): void { if (["floating", "tiled"].indexOf(mode) >= 0 || (mode === "panel" && panel.panelAvailable)) panel.setWindowMode(mode) }
     function quit(): void { app.quit() }

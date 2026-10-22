@@ -63,6 +63,8 @@ Rectangle {
   {page:"source-control",title:"Repositories",icon:"folder-git-2",keys:["defaultAutoPull","removeAgentCreditsOnMerge","pullRequestMergeMethod"]},
   {page:"source-control",title:"Text generation",icon:"square-pen",keys:["branchNamingMode","branchNamePrefix","branchNameInstructions","sourceControlWritingStyle.mode","sourceControlWritingStyle.customInstructions","sourceControlWritingStyle.followChangeRequestTemplates","sourceControlWriterModelSelection"]},
   {page:"source-control",title:"Review guides",icon:"git-pull-request",keys:["reviewGuidesEnabled","reviewGuideModelSelection","reviewGuideInstructions"]}]
+ // Sections that filter themselves (not in `groups`) still count as search results.
+ readonly property bool sectionSearchMatch:["T3 Code compatibility","Follow-up behavior","Steer","Plan mode (legacy)","Legacy features","Notifications","Thread notifications","HTML renders","Language"].some(function(t){return root.matches(t)})
  function matches(text){return !query.trim() || (T3I18n.tr(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0 || String(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0)}
  readonly property var groups:sections.filter(function(s){return root.query.trim() || s.page===root.page || root.page==="projects"&&root.projectScope}).map(function(s){return Object.assign({},s,{fields:s.keys.map(function(key){return (root.result.fields || []).find(function(f){return f.key===key})}).filter(function(f){return f&&(root.matches(s.title)||root.matches(f.label)||root.matches(f.description || ""))})})}).filter(function(s){return s.fields.length>0})
  onQueryChanged:if(settingsScroll.contentItem)settingsScroll.contentItem.contentY=0
@@ -137,7 +139,7 @@ Rectangle {
         }}}
        }
       }
-      Text{visible:!!root.query.trim()&&!root.groups.length&&!root.licenseSearchMatch;text:T3I18n.tr("No settings found");color:root.dim;font.pixelSize:Style.font.body;Layout.fillWidth:true;horizontalAlignment:Text.AlignHCenter;Layout.topMargin:Style.space(32)}
+      Text{visible:!!root.query.trim()&&!root.groups.length&&!root.licenseSearchMatch&&!root.sectionSearchMatch;text:T3I18n.tr("No settings found");color:root.dim;font.pixelSize:Style.font.body;Layout.fillWidth:true;horizontalAlignment:Text.AlignHCenter;Layout.topMargin:Style.space(32)}
       T3PreferenceSection{visible:root.query.trim()?root.licenseSearchMatch:root.page==="general";Layout.fillWidth:true;title:"Diagnostics";icon:"info"
        body:Component{RowLayout{width:parent.width;spacing:Style.space(14)
         ColumnLayout{Layout.fillWidth:true;Layout.margins:Style.space(14);spacing:Style.space(5)
