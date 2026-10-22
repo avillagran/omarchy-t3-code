@@ -60,6 +60,27 @@ pub mod suggestions;
 pub mod thread_details;
 pub mod provider_updates;
 pub mod failure_context;
+pub mod videos;
+/// Any attachment's bytes through its signed asset URL (assets.createUrl), at
+/// most `limit` bytes. The grant authorizes the GET itself, as for images,
+/// so no credential header is needed.
+pub fn attachment_bytes(e:&Environment,id:&str,name:&str,mime:&str,limit:u64)->Result<Vec<u8>>{
+ use std::io::Read;
+ if id.is_empty()||id.len()>256||name.len()>512||mime.len()>128{return Err("invalid_attachment".into())}
+ let grant=write::rpc(e,"assets.createUrl",json!({"resource":{"_tag":"attachment","attachmentId":id,"fileName":name,"mimeType":mime,"disposition":"inline"}}))?;
+ let relative=grant["relativeUrl"].as_str().ok_or("invalid_asset_url")?;
+ let base=reqwest::Url::parse(e.base_url.trim_end_matches('/')).map_err(|_|"invalid_endpoint")?;
+ let url=base.join(relative).map_err(|_|"invalid_asset_url")?;
+ if url.origin()!=base.origin()||!url.path().starts_with("/api/assets/"){return Err("invalid_asset_url".into())}
+ let http=reqwest::blocking::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(120)).build().map_err(|_|"attachment_unreachable")?;
+ let response=http.get(url).send().map_err(|_|"attachment_unreachable")?;
+ if !response.status().is_success(){return Err("attachment_unavailable".into())}
+ let mut bytes=vec![];response.take(limit+1).read_to_end(&mut bytes).map_err(|_|"attachment_unavailable")?;
+ if bytes.len() as u64>limit{return Err("attachment_too_large".into())}
+ Ok(bytes)
+}
+
+
 pub use t3_protocol as protocol;
 pub use connections::{read_catalog, t3_home, refresh_connections, stale_ot3_sessions};
 pub use desktop_cloud::{check_native_session,check_native_environment};
@@ -481,7 +502,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
             let (attribution,raw)=prompt_recall::attribution(m);let id=text(m,"id").to_string();
             let cache_raw=if math{format!("\u{1}{raw}")}else{raw.to_string()};if !cache.get(&id).is_some_and(|c|c.0==cache_raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);let images=markdown_images::descriptors(&display);cache.insert(id.clone(),(cache_raw,display,rendered,search,blocks,images));}
             let (_,display,rendered,search,blocks,images)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"tables":if m["role"]=="assistant"&&display.contains('|'){json!(markdown_tables(display))}else{json!([])},"createdAt":epoch(&m["createdAt"])}));
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"inputIntent":if m["role"]=="user"{checkpoint_revert::message_item(&d["projection"],m).and_then(|i|i["inputIntent"].as_str()).map(String::from)}else{None},"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"tables":if m["role"]=="assistant"&&display.contains('|'){json!(markdown_tables(display))}else{json!([])},"createdAt":epoch(&m["createdAt"])}));
         }
         // One fork action per run: on its last response.
         let mut seen_runs=HashSet::new();for m in messages.iter_mut().rev(){if let Some(run)=m["forkRunId"].as_str().map(str::to_string){if !seen_runs.insert(run){m["forkRunId"]=Value::Null;}}}

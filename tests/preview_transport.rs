@@ -137,11 +137,19 @@ impl Server {
           let fixture_mode=mode.lock().unwrap().clone();
           let value=match request["tag"].as_str().unwrap(){
             "server.getConfig"=>json!({"environment":{"capabilities":{"serverBrowser":fixture_mode!="no-server"}},"settings":{"private":"PRIVATE"}}),
-            "preview.list"=>{assert_eq!(request["payload"],json!({"threadId":"thread"}));let n=lists.fetch_add(1,Ordering::Relaxed);let mut s=snapshot("a");if fixture_mode.starts_with("http:"){s["navStatus"]["url"]=json!(fixture_mode);}if fixture_mode=="server-tab"{s["runtime"]=json!("server");}if fixture_mode=="profile-less"{s.as_object_mut().unwrap().remove("profileId");}let native=s;json!({"serverEpoch":if n==0||!fixture_mode.is_empty(){"one"}else{"two"},"revision":if n==0{4}else{0},"sessions":[native],"private":"PRIVATE"})},
+            "preview.list"=>{assert_eq!(request["payload"],json!({"threadId":"thread"}));let n=lists.fetch_add(1,Ordering::Relaxed);let mut s=snapshot("a");if fixture_mode.starts_with("http:"){s["navStatus"]["url"]=json!(fixture_mode);}if fixture_mode=="server-tab"{s["runtime"]=json!("server");}if fixture_mode=="profile-less"{s.as_object_mut().unwrap().remove("profileId");}let native=s;if fixture_mode=="revoke-before-report"{oo.store(false,Ordering::Relaxed);}json!({"serverEpoch":if n==0||!fixture_mode.is_empty(){"one"}else{"two"},"revision":if n==0{4}else{0},"sessions":[native],"private":"PRIVATE"})},
             "preview.open"|"preview.navigate"|"preview.resize"|"preview.adjust"|"preview.refresh"|"preview.close"=>{
               assert!(oo.load(Ordering::Relaxed));if fixture_mode=="blocked"{while *mode.lock().unwrap()=="blocked"&&!ss.load(Ordering::Relaxed){thread::sleep(Duration::from_millis(5));}}if fixture_mode=="lost"{return;}if matches!(request["tag"].as_str(),Some("preview.refresh"|"preview.close")){Value::Null}else{let mut s=snapshot(if request["tag"]=="preview.open"{"created"}else{"a"});if request["tag"]=="preview.navigate"{s["navStatus"]["url"]=request["payload"]["url"].clone();}if fixture_mode=="malformed"{s["threadId"]=json!("other");}s}
             },
-            "preview.reportStatus"=>{assert!(oo.load(Ordering::Relaxed));Value::Null},
+            "preview.reportStatus"=>{
+              // A status admitted by the HTTP preflight can arrive after revocation.
+              // The native server rejects that in-flight RPC instead of panicking.
+              if !oo.load(Ordering::Relaxed){
+                ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":{"_tag":"AuthScopeError"}}}).to_string().into())).unwrap();
+                return;
+              }
+              Value::Null
+            },
             "subscribePreviewEvents"=>{
               assert_eq!(request["payload"],json!({}));if !events.is_empty(){ws.send(tungstenite::Message::Text(json!({"_tag":"Chunk","requestId":"1","values":events}).to_string().into())).unwrap();}
               ws.get_mut().set_read_timeout(Some(Duration::from_millis(30))).unwrap();while !ss.load(Ordering::Relaxed){match ws.read(){Ok(tungstenite::Message::Text(t))=>{let v:Value=serde_json::from_str(&t).unwrap();if v["_tag"]=="Interrupt"{ii.fetch_add(1,Ordering::Relaxed);return}},Err(tungstenite::Error::Io(e)) if matches!(e.kind(),std::io::ErrorKind::WouldBlock|std::io::ErrorKind::TimedOut)=>{},Err(_)|Ok(tungstenite::Message::Close(_))=>return,_=>{}}}return;
@@ -469,6 +477,35 @@ fn local_surface_and_status_use_current_native_identity_and_exact_operate_scope(
             .filter(|r| r["tag"] == "preview.reportStatus")
             .count(),
         2
+    );
+}
+
+#[test]
+fn status_rejected_after_permission_revocation_is_not_retried() {
+    let server = Server::new(vec![]);
+    server.operate.store(true, Ordering::Relaxed);
+    *server.mode.lock().unwrap() = "stable".into();
+    let scope = preview::surface(&server.env, &action_input(&server, "open")).unwrap();
+    *server.mode.lock().unwrap() = "revoke-before-report".into();
+    // The authorization preflight succeeds; the fixture revokes during the list
+    // reconciliation, before the already-admitted status reaches the server.
+    assert_eq!(
+        preview::report_status(&server.env, &scope, &snapshot("a")).unwrap_err(),
+        "write_not_authorized: AuthScopeError"
+    );
+    assert_eq!(
+        preview::report_status(&server.env, &scope, &snapshot("a")).unwrap_err(),
+        "permission_denied"
+    );
+    assert_eq!(
+        server
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|r| r["tag"] == "preview.reportStatus")
+            .count(),
+        1
     );
 }
 
@@ -1002,7 +1039,14 @@ fn actual_worker_observes_read_only_serializes_lifecycle_and_interrupts_when_hid
     );
     assert!(server.calls.lock().unwrap().iter().all(|r| matches!(
         r["tag"].as_str(),
-        Some("server.getConfig" | "preview.list" | "subscribePreviewEvents" | "preview.open" | "orchestration.subscribeShell" | "subscribeServerConfig")
+        Some(
+            "server.getConfig"
+                | "preview.list"
+                | "subscribePreviewEvents"
+                | "preview.open"
+                | "orchestration.subscribeShell"
+                | "subscribeServerConfig"
+        )
     )));
     drop(stdin);
     let _ = child.0.kill();

@@ -235,7 +235,7 @@ fn watch(client: Client) -> Result<()> {
     let (image_tx,image_rx)=mpsc::channel::<Value>();
     let image_generation=std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
     let image_worker_generation=image_generation.clone();
-    std::thread::spawn(move||{for input in image_rx{let generation=input["generation"].as_u64().unwrap_or(0);if image_worker_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}let result=images::load(&input);if image_worker_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}emit("action",json!({"op":"image","requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
+    std::thread::spawn(move||{for input in image_rx{let generation=input["generation"].as_u64().unwrap_or(0);if image_worker_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}let result=if input["op"]=="video"{videos::load(&input)}else{images::load(&input)};if image_worker_generation.load(std::sync::atomic::Ordering::Relaxed)!=generation{continue}emit("action",json!({"op":input["op"],"requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
     // Bounded read worker: detail requests never wait behind sends or settings mutations.
     let (detail_tx,detail_rx)=mpsc::sync_channel::<Value>(2);
     let detail_generation=image_generation.clone();
@@ -320,7 +320,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="select" || (v["op"]=="visible"&&v["value"]==false){image_generation.fetch_add(1,std::sync::atomic::Ordering::Relaxed);}
                 if v["op"]=="select"&&input_visible{input_live.select(Some((text(&v,"environment").into(),text(&v,"thread").into(),v["serial"].as_i64().unwrap_or(0))));}
                 if v["op"]=="visible"&&v["value"]==false{input_live.select(None);}
-                if v["op"]=="image"{if !input_visible{continue}v["generation"]=json!(image_generation.load(std::sync::atomic::Ordering::Relaxed));let _=image_tx.send(v);continue}
+                if v["op"]=="image"||v["op"]=="video"{if !input_visible{continue}v["generation"]=json!(image_generation.load(std::sync::atomic::Ordering::Relaxed));let _=image_tx.send(v);continue}
                 if matches!(text(&v,"op"),"diff"|"tool-inspector"|"plan-followup"|"git-read"|"working-review"|"review-refs"|"rewind-preview"){
                     v["generation"]=json!(image_generation.load(std::sync::atomic::Ordering::Relaxed));
                     let error=if !input_visible{Some("panel_hidden")}else if detail_tx.try_send(v.clone()).is_err(){Some("detail_read_busy")}else{None};

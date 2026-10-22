@@ -888,6 +888,16 @@ Singleton {
   property bool liveConnected:false
   property var imageStates: ({})
   function imageKey(a){return selectedEnvironment+"/"+(a.source?selectedThread+"/":"")+a.id}
+  // T3 videoMimeType: video/* or a generic type with a video extension.
+  function videoMime(a){var m=String((a||{}).mimeType||"").split(";")[0].trim().toLowerCase();if(m.indexOf("video/")===0)return m;if(m&&m!=="application/octet-stream"&&m!=="binary/octet-stream")return "";var n=String((a||{}).name||""),ext=n.slice(n.lastIndexOf(".")+1).toLowerCase();return ({mp4:"video/mp4",m4v:"video/mp4",webm:"video/webm",mov:"video/quicktime",mkv:"video/x-matroska",ogv:"video/ogg",avi:"video/x-msvideo"})[ext]||""}
+  function isVideo(a){return !!a&&a.type==="file"&&!!videoMime(a)}
+  property var videoStates:({})
+  function videoKey(a){return selectedEnvironment+"/"+a.id}
+  function requestVideo(a){
+    var key=videoKey(a);if(videoStates[key]&&(videoStates[key].loading||videoStates[key].url))return
+    var all=Object.assign({},videoStates),id=uuid();all[key]={loading:true,url:"",error:"",requestId:id};videoStates=all
+    send({op:"video",environment:selectedEnvironment,thread:selectedThread,requestId:id,attachment:a})
+  }
   function requestImage(a){
     var key=imageKey(a);if(imageStates[key])return
     var all=Object.assign({},imageStates),id=uuid();all[key]={loading:true,url:"",error:"",requestId:id};imageStates=all
@@ -1593,6 +1603,7 @@ Singleton {
       var all=Object.assign({},favoritePending),key=Object.keys(all).find(function(k){return all[k].requestId===data.requestId});if(!key)return;var env=all[key].environment;delete all[key];favoritePending=all;if(env===selectedEnvironment)favoriteError=data.error || ""
       if(data.result){var cache=Object.assign({},catalogs);cache[env]=Object.assign({},cache[env] || {},data.result);catalogs=cache}return
     }
+    if(data.op==="video"){var vkey=Object.keys(videoStates).find(function(k){return root.videoStates[k].requestId===data.requestId});if(!vkey)return;var vall=Object.assign({},videoStates);vall[vkey]={loading:false,url:data.result?data.result.url || "":"",mimeType:data.result?data.result.mimeType || "":"",error:data.error || "",requestId:data.requestId};videoStates=vall;return}
     if(data.op==="image"){var key=Object.keys(imageStates).find(function(k){return root.imageStates[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},imageStates);all[key]={loading:false,url:data.result?data.result.url || "":"",width:data.result?data.result.width || 0:0,height:data.result?data.result.height || 0:0,error:data.error || "",requestId:data.requestId};imageStates=all;return}
 
     if(data.op==="tool-inspector"){toolInspectorFinished(data.requestId,data.result || null,data.error || "");return}
@@ -1719,7 +1730,7 @@ Singleton {
   function activityLabel(){return activity.length?activity.map(function(a){return root.activityText(a)}).join(" · "):T3I18n.tr("Thinking")}
   function activityText(a){
     var category=a.category || ({reasoning:"think",command_execution:"execute",file_change:"edit",file_search:"search",web_search:"web",subagent:"agent"})[a.type] || "tool";var live=a.active!==false
-    var labels={compact:live?"Compacting context":"Context compacted",think:"Thinking",execute:live?"Running commands":"Ran commands",read:live?"Reading files":"Read files",edit:live?"Editing files":"Edited files",search:live?"Searching files":"File search",web:live?"Searching the web":"Web search",agent:"Delegated work",tool:live?"Calling tool":"Tool finished"}
+    var labels={compact:live?"Compacting context":"Context compacted",think:"Thinking",execute:live?"Running commands":"Ran commands",read:live?"Reading files":"Read files",edit:live?"Editing files":"Edited files",search:live?"Searching files":"File search",web:live?"Searching the web":"Web search",agent:"Delegated work",tool:live?"Calling tool":"Tool"}
     var failedEntries=(a.entries || []).filter(function(e){return e.failed}).length
     if(a.failed&&!live&&!(a.count>1)){var failedLabels={execute:"Command failed",read:"Read failed",edit:"Edit failed",search:"Search failed",web:"Web search failed",agent:"Delegated work failed",tool:"Tool failed"}
       var what=a.command || a.title;var head=T3I18n.tr(failedLabels[category] || "Tool failed");return what?T3I18n.tr("{activity} · {title}",{activity:head,title:what}):head}
