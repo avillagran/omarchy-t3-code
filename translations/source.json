@@ -129,7 +129,6 @@
     "Thread permissions": "Thread permissions",
     "Thread title": "Thread title",
     "Toggle usage": "Toggle usage",
-    "Tool finished": "Tool finished",
     "Waiting": "Waiting",
     "Web search": "Web search",
     "Week {percent}%": "Week {percent}%",
@@ -1598,6 +1597,8 @@
     "T3 Code compatibility": "T3 Code compatibility",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 is validated with T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "newer: features added since then may be missing or behave differently.",
-    "validated": "validated"
+    "validated": "validated",
+    "Steered the active turn": "Steered the active turn",
+    "Originally queued, then promoted to steer the active turn": "Originally queued, then promoted to steer the active turn"
   }
 }

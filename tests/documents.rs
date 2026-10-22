@@ -56,3 +56,17 @@ fn markdown_uses_native_text_rpc_for_absolute_paths_and_renders_safely(){
  assert_eq!(d["markdown"],true);assert!(d["rendered"].as_str().unwrap().contains("<h1>Report</h1>"));assert!(!d["rendered"].as_str().unwrap().contains("<script>"));assert!(d["contents"].as_str().unwrap().contains("**Bold**"));
  assert_eq!(omarchy_t3_client::documents::read(&e,&input).unwrap_err(),"document_limit_4MiB");server.join().unwrap();
 }
+
+#[test]
+fn user_messages_carry_their_turn_item_input_intent() {
+    // T3 shows a "Steer" marker on messages that steered the active run; the
+    // intent lives on the user_message turn item, keyed by messageId.
+    let p = serde_json::json!({"messages":[],"turnItems":[
+        {"item":{"type":"user_message","messageId":"m1","inputIntent":"steer","runId":"r1"}},
+        {"item":{"type":"user_message","messageId":"m2","inputIntent":"turn_start","runId":"r2"}}
+    ]});
+    let find = |id: &str| omarchy_t3_client::checkpoint_revert::message_item(&p, &serde_json::json!({"id":id})).and_then(|i| i["inputIntent"].as_str().map(String::from));
+    assert_eq!(find("m1").as_deref(), Some("steer"));
+    assert_eq!(find("m2").as_deref(), Some("turn_start"));
+    assert_eq!(find("m3"), None);
+}

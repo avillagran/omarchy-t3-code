@@ -166,6 +166,10 @@ ShellRoot {
         case "type": b.edit(value, true); break
         case "paste": var t = b.draft.text || ""; b.pasteClipboard(t.length, t.length); break
         case "focus": p.composerView.inputField.forceActiveFocus(); break
+        case "openVideo": var vid=b.transcript.reduce(function(acc,m){return acc.concat(m.attachments||[])},[]).find(function(a){return b.isVideo(a)&&(!value||a.id===value)}); if(!vid)return "no-video"; p.openVideo(vid); break
+        case "scrollEnd": p.conversationView.positionViewAtEnd(); break
+        case "closeViewer": p.imageViewer.close(); break
+        case "scrollTo": var ix=b.transcript.findIndex(function(m){return m.id===value}); if(ix<0)return "not-found"; if(typeof p.detachConversation==="function")p.detachConversation(); p.conversationView.positionViewAtIndex(ix,ListView.Center); return "ok:"+ix+"/"+b.transcript.length+" y="+Math.round(p.conversationView.contentY)
         default: return "unknown"
       }
       return "ok"
