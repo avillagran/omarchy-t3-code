@@ -18,10 +18,11 @@ class ProtocolTest(unittest.TestCase):
                 self.assertEqual(normalize_shell(v['shell'],'fixture',v['nowMs']),v['expected'])
         by_name={v['name']:v['expected'][0] for v in vectors}
         self.assertTrue(by_name['working']['working'])
-        for key in ['request','waiting','failed','plan','review']:
+        for key in ['request','failed','plan','review']:
             self.assertTrue(by_name[key]['pending'])
-        for key in ['seen','settled','snoozed']: self.assertFalse(by_name[key]['pending'])
-        self.assertTrue(by_name['background']['working'])
+        for key in ['waiting','seen','settled','snoozed']: self.assertFalse(by_name[key]['pending'])
+        self.assertFalse(by_name['background']['working'])
+        self.assertTrue(by_name['background']['backgroundWaiting'])
         self.assertEqual(by_name['unknown-date']['updatedAt'],0)
 
     def test_time_units(self):

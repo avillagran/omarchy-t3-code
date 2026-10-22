@@ -10,6 +10,8 @@ ShellRoot{
  QtObject{
   id:fixture
   property string selectedEnvironment:"fixture"
+  property var selectedInfo:({pullRequestBadge:{links:[]}})
+  signal pullRequestWritten(var data)
   property var state:({environments:[{id:"fixture",name:"Local",state:"ready"}]})
   property var prOperations:({})
   property var calls:[]

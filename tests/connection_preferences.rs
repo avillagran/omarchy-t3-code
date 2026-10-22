@@ -108,6 +108,7 @@ fn selector_matches_native_capacity_freshness_and_manual_exclusion() {
 
 #[test]
 fn standalone_module_exports_bridge_functions_without_touching_live_native_storage() {
+    let _: fn() -> Result<Value> = client_settings;
     let _: fn() -> Result<Value> = read_client_preferences;
     let _: fn(&str, &Value) -> Result<Value> = update_client_preferences;
     let _: fn(Option<&Value>, &[String]) -> Result<Value> = read_github_preferences;

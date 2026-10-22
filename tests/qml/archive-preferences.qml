@@ -15,6 +15,7 @@ ShellRoot {
   property var archiveView:({signature:"",sessions:{},error:""})
   property var archiveActions:({});property var archiveCommands:({});property var sent:[]
   property int reads:0
+  function serverVersion(environment){return ""}
   function requestSettings(){reads++}
   function refreshCatalogIn(){}
   function dismissArchive(){archiveView={signature:"",sessions:{},error:""}}

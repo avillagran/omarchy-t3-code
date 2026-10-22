@@ -25,6 +25,7 @@ ShellRoot {
    {key:"defaultAutoPull",label:"Pull changes automatically",section:"source-control",kind:"bool",value:false},
    {key:"newWorktreesStartFromOrigin",label:"Start new worktrees from origin",section:"source-control",kind:"bool",value:true}
   ]})
+  function serverVersion(environment){return ""}
   function requestSettings(environment,key,value){}
   function rememberView(value){viewState=Object.assign({},viewState,value)}
   function toggleModelFavoriteIn(environment,provider,model){}
