@@ -1,6 +1,6 @@
 # Omarchy T3 Code
 
-**T3 Code from your Omarchy bar. A lightweight QML interface with a Rust backend.**
+**T3 Code as an Omarchy desktop app, with a status widget in your bar. A lightweight QML interface with a Rust backend.**
 
 ![Omarchy T3 Code — desktop overview](docs/images/preview.png)
 
@@ -24,7 +24,7 @@ your Omarchy theme and inherits T3's connections, models and favorites.
   Omarchy colours as `omarchy.background`, `.foreground`, `.accent`…).
 - Thread actions, branch/PR badges, conversation minimap and a PR browser.
 - Subscription usage bars and work/ready/input badges on your desktop bar.
-- Switch between the bar panel and a normal Hyprland window from the header.
+- A desktop app in its own process: a stuck bar never blocks it; minimize it to the bar widget.
 - Resizable layout, keyboard navigation, smooth scrolling and **20 languages**.
 - Native headless server controls and automatic startup for inherited SSH connections.
 - Preferences for native general/Git settings, Omarchy appearance, connections and model favorites.
@@ -39,19 +39,30 @@ curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/ins
 ```
 
 The [installer](install.sh) installs runtime dependencies through
-Pacman, downloads verified **aarch64 / x86_64** binaries, enables its bar widget and makes **Super+Shift+A** open Omarchy T3 Code
-as your default agent on Omarchy's Lua configuration. It reuses an existing T3 server or starts the native
+Pacman, downloads verified **aarch64 / x86_64** binaries and installs Omarchy T3 Code as a **desktop
+app**: an "Omarchy T3 Code" entry in the app launcher, `ot3` on your PATH, a hidden start at login and
+**Super+Shift+A** as your default agent on Omarchy's Lua configuration. It also enables the optional
+**bar widget**, which shows work/ready/input badges and minimizes the window to the bar
+(`OT3_BAR_WIDGET=0` installs the app alone). It reuses an existing T3 server or starts the native
 headless service when stopped. It also installs the pinned, checksum-verified
 [OmaBridge](docs/CONNECTION_OMABRIDGE.md) CLI next to the client. Your T3 connections and data stay in place.
 The same command updates a clean Git installation. It may request your sudo
 password and restarts the Omarchy shell when finished.
 
+The app runs in **its own process**, not inside the Omarchy shell: if the bar gets stuck, Super+Shift+A
+and the launcher keep working, and restarting the shell does not close your chats. Installed from the
+Omarchy plugin marketplace instead, the same folder works as a plugin: its bar widget starts the app
+hidden and shows or hides it on click; run `~/.config/omarchy/plugins/omarchy-t3-code/bin/ot3 install-desktop`
+to add the launcher entry and `ot3` command as well.
+
 ## Use
 
-Press **Super+Shift+A** or click **T3** in the status bar to open the agent.
-**Enter** sends; **Shift+Enter** inserts a new line. **Ctrl+Enter** also sends. **Super+Enter** keeps Omarchy’s
-terminal shortcut. The header’s window button cycles **panel → floating → tiled
-→ panel**, keeping the same chat and draft. Add projects through the embedded
+Press **Super+Shift+A**, open **Omarchy T3 Code** from the app launcher or click **T3** in the status bar
+to show the agent; the same shortcut or click hides it again (the header's **–** button and closing the
+window minimize it to the bar, the app keeps running). `ot3 quit` stops it and `ot3 restart` applies an
+update. **Enter** sends; **Shift+Enter** inserts a new line. **Ctrl+Enter** also sends. **Super+Enter** keeps Omarchy’s
+terminal shortcut. The header’s window button cycles **panel** (under the bar’s T3 button, with the bar widget)
+**→ floating → tiled**, keeping the same chat and draft. Add projects through the embedded
 environment and folder picker, including remote folders.
 Use the header buttons for subscription usage and pull requests, and right-click
 a thread for its actions. **F1** opens keyboard help.

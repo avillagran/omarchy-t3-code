@@ -3,112 +3,64 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
-import "../js/SidebarModel.js" as Sidebar
 
+// The bar side of Omarchy T3 Code. The app itself runs in its own process
+// (bin/ot3, app/shell.qml); this widget only shows the status the app
+// publishes and asks bin/ot3 to show or hide ("minimize to the bar") its
+// window. Nothing here talks to T3, so a stuck bar never blocks the app and a
+// busy app never slows the bar.
 BarWidget {
   id: root
   moduleName: "io.github.avillagran.omarchy-t3-code"
-  readonly property var counts:Sidebar.counts(t3Backend.state.threads)
-  // The optional OmaBridge indicator sits after the T3 status, off by default.
-  readonly property bool bridgeIndicator: t3Backend.viewState.omabridgeIndicator === true
-  readonly property real statusWidth: root.vertical ? Style.bar.statusSlot : status.implicitWidth+Style.space(6)
+  readonly property string launcher: Qt.resolvedUrl("../../bin/ot3").toString().replace(/^file:\/\//, "")
+  readonly property string statusPath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/omarchy-t3-code/status.json"
+  property var status: ({})
+  property real now: Date.now()
+  // A status older than 90 s means the app stopped without saying so.
+  readonly property bool running: status.running === true && now - (status.updatedAt || 0) < 90000
+  readonly property var counts: running && status.counts ? status.counts : ({ working: 0, done: 0, waiting: 0, failed: 0 })
+  readonly property bool opened: running && status.opened === true
+  readonly property var bridge: running ? status.omabridge : null
+  readonly property bool bridgeIndicator: !!root.bridge
+  readonly property real statusWidth: root.vertical ? Style.bar.statusSlot : badges.implicitWidth + Style.space(6)
   implicitWidth: root.statusWidth + (root.bridgeIndicator && !root.vertical ? Style.bar.statusSlot : 0)
   implicitHeight: Style.bar.statusSlot * (root.bridgeIndicator && root.vertical ? 2 : 1)
-  readonly property bool working: t3Backend.state.working > 0
-  property bool panelRequested: false
-  readonly property bool opened: panelLoader.item ? panelLoader.item.opened : false
-  function open() {
-    unloadPanel.stop()
-    if (panelLoader.item) panelLoader.item.open()
-    else panelRequested = true
+
+  function read() {
+    try { root.status = JSON.parse(statusFile.text() || "{}") || ({}) } catch (e) { root.status = ({}) }
+    root.now = Date.now()
   }
-  function close() { if (panelLoader.item) panelLoader.item.close() }
-  function togglePanel() { opened ? close() : open() }
-  readonly property var t3Backend: T3Backend
-  onOpenedChanged: t3Backend.setPanelVisible(opened)
-  Loader {
-    id: panelLoader
-    active: root.panelRequested
-    sourceComponent: Component {
-      T3Panel { anchorItem: button; bar: root.bar; bridge: t3Backend }
-    }
-    onLoaded: item.open()
+  FileView { id: statusFile; path: root.statusPath; watchChanges: true; printErrors: false; onLoaded: root.read(); onFileChanged: reload(); onLoadFailed: root.status = ({}) }
+  Timer { interval: 30000; repeat: true; running: true; onTriggered: { root.now = Date.now(); if (!root.running) statusFile.reload() } }
+
+  // Launcher calls run one at a time, in order; a newer anchor replaces a waiting one.
+  property var queued: []
+  function run(args) {
+    if (launch.running) { root.queued = root.queued.filter(function(q) { return !(args[0] === "anchor" && q[0] === "anchor") }).concat([args]); return }
+    launch.command = [root.launcher].concat(args); launch.running = true
   }
-  Connections {
-    target: panelLoader.item
-    function onOpenedChanged() { if (!root.opened) unloadPanel.restart() }
+  Process { id: launch; onExited: if (root.queued.length) { var next = root.queued[0]; root.queued = root.queued.slice(1); root.run(next) } }
+  // Where the T3 button sits, so the app can show its panel under it, as the
+  // in-shell popup did (app/shell.qml draws a transparent twin of this bar).
+  function anchor() {
+    var w = button.QsWindow.window
+    if (!w || !w.contentItem) return ""
+    var p = button.mapToItem(w.contentItem, 0, 0)
+    return JSON.stringify({ screen: w.screen ? w.screen.name : "", position: root.bar && root.bar.position ? root.bar.position : "top",
+      barSize: root.barSize || Style.bar.statusSlot, windowWidth: w.width, windowHeight: w.height, x: p.x, y: p.y, width: button.width, height: button.height })
   }
-  Timer {
-    id: unloadPanel
-    interval: 250
-    onTriggered: if (!root.opened) root.panelRequested = false
-  }
-  IpcHandler {
-    target: "io.github.avillagran.omarchy-t3-code"
-    function state(): string {
-      return JSON.stringify({ opened: root.opened, panelLoaded: panelLoader.item !== null,detached:panelLoader.item?panelLoader.item.detached:!!t3Backend.viewState.detached,
-        localBackend:t3Backend.localBackend,
-        compaction:t3Backend.compactionStates,
-        nativeScroll:t3Backend.scrollPolicy,modelFavorites:(t3Backend.catalog.favorites || []).length,modelCount:(t3Backend.catalog.models || []).length,
-        inlineHtml:{visible:Object.keys(t3Backend.inlineDocuments).length,loaded:Object.keys(t3Backend.inlineDocuments).filter(function(k){return !!t3Backend.inlineDocuments[k].frameUrl}).length,errors:Object.keys(t3Backend.inlineDocuments).map(function(k){return t3Backend.inlineDocuments[k].error}).filter(function(e){return !!e})},
-        liveConnected:t3Backend.liveConnected,loadedImages:Object.keys(t3Backend.imageStates).filter(function(k){return !!t3Backend.imageStates[k].url}).length,
-        pollInterval: t3Backend.pollInterval, working: t3Backend.state.working,
-        language:T3I18n.locale, languageChoice:T3I18n.choice, statusCounts:root.counts,pending: t3Backend.state.pending, stale: t3Backend.stale,
-        threads: t3Backend.state.threads.length, messages: t3Backend.transcript.length,
-        messageError: t3Backend.messageError, loadingMessages: t3Backend.loadingMessages,
-        pendingApprovals:t3Backend.approvals.length,
-        history:{hasEarlier:t3Backend.hasEarlier,loadedRows:t3Backend.olderTranscript.length,busy:!!t3Backend.historyOperation.busy,error:t3Backend.historyOperation.error || ""},
-        settled: t3Backend.state.threads.filter(function(t) { return !!t.settled }).length,
-        filter: panelLoader.item ? panelLoader.item.statusFilter : "all",
-        sidebarGrouping:panelLoader.item?({enabled:panelLoader.item.sidebarCompact,inbox:panelLoader.item.activeRows.length,working:panelLoader.item.workingRows.length,snoozed:panelLoader.item.snoozedRows.length,settled:panelLoader.item.settledRows.length}):({enabled:!!t3Backend.viewState.sidebarCompact}),
-        visibleThreads: panelLoader.item ? panelLoader.item.sidebarRows.filter(function(t) { return !t.sectionHeader }).length : 0,
-        taskCount:t3Backend.tasks ? t3Backend.tasks.total : 0,completedTasks:t3Backend.tasks ? t3Backend.tasks.completed : 0,
-        queuedMessages:t3Backend.queuedItems.length,queueHeld:!!t3Backend.queue.held,editingQueuedMessage:!!t3Backend.draft.queueEdit,
-        changedFileCards:t3Backend.transcript.filter(function(m){return m.role==="changes"}).length,
-        activityRows: t3Backend.transcript.filter(function(m){return m.role === "activity"}).length,
-        draftState: t3Backend.draft.saveState || "",
-        usageCollapsed: panelLoader.item ? panelLoader.item.usageCollapsed : t3Backend.viewState.usageExpanded !== true,
-        sidebarWidth: panelLoader.item ? panelLoader.item.sidebarWidth : t3Backend.viewState.sidebarWidth || 300,
-        composerExpanded: panelLoader.item ? panelLoader.item.composerExpanded : !!t3Backend.viewState.composerExpanded,
-        activityItems: t3Backend.activity.length, sidebarCollapsed: t3Backend.sidebarCollapsed,
-        selectedKey: t3Backend.selectedKey, viewState: t3Backend.viewState,
-        filtersOpen: panelLoader.item ? panelLoader.item.filtersOpen : false,
-        environments: t3Backend.state.environments,
-        quotaWindows: t3Backend.providers.map(function(p) { return {provider:p.provider, weekly:!!p.weekly, shortWindow:!!p.shortWindow} }) })
-    }
-    function submitMessage(): bool {
-      if(!root.opened || (panelLoader.item&&!panelLoader.item.shortcutActive))return false
-      if(panelLoader.item)panelLoader.item.submitCurrent();return true
-    }
-    function readThread(environment: string, threadId: string): void {
-      root.open()
-      t3Backend.selectThread(environment, threadId)
-    }
-    function filterState(value: string): void {
-      if (["all","working","done","failed","pending","settled"].indexOf(value) < 0) return
-      root.open(); if (panelLoader.item) panelLoader.item.statusFilter = value
-    }
-    function showSettled(value: bool): void { root.open(); if (panelLoader.item) panelLoader.item.settledExpanded = value }
-    function toggleSidebar(): void { root.open(); if (panelLoader.item) panelLoader.item.toggleSidebar() }
-    function closePanel(): void { root.close() }
-    // Opens the side panel on a tab ("browser", "renders" or "devices");
-    // an empty tab closes it.
-    function sidePanel(tab: string): void { root.open(); var p=panelLoader.item;if(!p)return;if(["browser","renders","devices"].indexOf(tab)>=0)p.openSide(tab);else p.closeSide() }
-    // Diagnostics: scroll the open conversation for a few seconds and report
-    // the presented frame intervals (read the result with profileResult).
-    function profileScroll(): void { if (panelLoader.item) panelLoader.item.profileScroll() }
-    function profileResult(): string { return panelLoader.item ? JSON.stringify(panelLoader.item.profile) : "{}" }
-    function skyState(): string { var p=panelLoader.item;if(!p)return "{}";var s=p.starfield;return JSON.stringify({mode:s.effectiveMode,busy:s.busy,energy:s.energy,reach:s.meteorReach,meteorNow:s.meteorNow,clock:s.clock,ticker:T3Ticker.interval,sidebar:p.sidebarCollapsed,degraded:s.degraded,paused:s.paused,visible:s.visible}) }
-    function usageCollapsed(value: bool): void { root.open(); if (panelLoader.item) panelLoader.item.usageCollapsed = value }
-    function filters(value: bool): void { root.open(); if (panelLoader.item) { if (value) panelLoader.item.showFilters(); else panelLoader.item.hideFilters() } }
-    function refresh(): void { t3Backend.refresh() }
-    function preferences(page: string): void { root.open(); Qt.callLater(function() { if (panelLoader.item) panelLoader.item.openPreferencesPage(page || "general") }) }
-    function openProject(environment: string, projectId: string): void {root.open();t3Backend.openProject(environment,projectId)}
-  }
-  function openBridgeSettings() {
-    root.open()
-    Qt.callLater(function() { if (panelLoader.item) panelLoader.item.openPreferencesPage("connections") })
-  }
+  function anchored(command) { var a = anchor(); return a ? [command, a] : [command] }
+  // Omarchy's summon (Super+Shift+A through the shell) and other plugins use these.
+  function open() { run(anchored("show")) }
+  function close() { run(["hide"]) }
+  function togglePanel() { run(anchored("toggle")) }
+  // The app starts hidden with the bar, so thread notifications keep arriving
+  // as they did when it lived inside the shell; then it learns where this button is.
+  Component.onCompleted: { run(["start"]); publishAnchor.restart() }
+  Timer { id: publishAnchor; interval: 2500; onTriggered: { var a = root.anchor(); if (a) root.run(["anchor", a]) } }
+  onXChanged: publishAnchor.restart()
+  onYChanged: publishAnchor.restart()
+
   Loader {
     active: root.bridgeIndicator
     x: root.vertical ? 0 : root.statusWidth
@@ -116,7 +68,17 @@ BarWidget {
     width: Style.bar.statusSlot
     height: Style.bar.statusSlot
     sourceComponent: Component {
-      T3OmaBridgeIndicator { bridge: t3Backend; bar: root.bar; vertical: root.vertical; onSettingsRequested: root.openBridgeSettings() }
+      BarIconButton {
+        objectName: "omabridgeIndicator"
+        bar: root.bar
+        slotSize: Style.bar.statusSlot
+        tooltipText: "OmaBridge · " + (root.bridge.text || "")
+        iconComponent: Component { Item { implicitWidth: Style.space(16); implicitHeight: implicitWidth
+          T3Icon { objectName: "omabridgeIndicatorIcon"; anchors.fill: parent; name: root.bridge.linked ? "omabridge" : "omabridge-off"; tint: root.bridge.linked ? Color.popups.text : Qt.rgba(Color.popups.text.r, Color.popups.text.g, Color.popups.text.b, 0.58) }
+          Rectangle { objectName: "omabridgeIndicatorBadge"; visible: root.bridge.pending > 0; width: Style.space(8); height: width; radius: width / 2; color: Color.urgent; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: -Style.space(2) }
+        } }
+        onPressed: function(mouseButton) { root.run(mouseButton === Qt.MiddleButton ? ["call", "refresh"] : ["call", "preferences", "connections"]) }
+      }
     }
   }
   BarIconButton {
@@ -128,12 +90,13 @@ BarWidget {
     bar: root.bar
     active: root.opened
     slotSize: root.vertical ? Style.bar.statusSlot : root.statusWidth
-    tooltipText:T3I18n.tr("Working: {working} · Ready: {ready} · Waiting for input: {waiting}",{working:root.counts.working,ready:root.counts.done,waiting:root.counts.waiting})+(t3Backend.stale?" · "+T3I18n.tr("Offline"):"")
+    // The app writes its tooltip already translated; the bar loads no translations.
+    tooltipText: root.running ? (root.status.tooltip || "T3 Code") : "T3 Code"
     iconComponent: Component { Item {} }
-    T3StatusBadges{id:status;anchors.centerIn:parent;counts:root.counts;stale:t3Backend.stale;indicatorStyle:t3Backend.viewState.barIndicator || "orbit";width:implicitWidth;height:Style.bar.statusSlot;scale:root.vertical?Math.min(1,(root.barSize-Style.space(4))/implicitWidth):1}
+    T3StatusBadges { id: badges; anchors.centerIn: parent; counts: root.counts; stale: !root.running || root.status.stale === true; indicatorStyle: root.status.indicatorStyle || "orbit"; width: implicitWidth; height: Style.bar.statusSlot; scale: root.vertical ? Math.min(1, (root.barSize - Style.space(4)) / implicitWidth) : 1 }
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton) root.togglePanel()
-      else if (mouseButton === Qt.MiddleButton) t3Backend.refresh()
+      else if (mouseButton === Qt.MiddleButton) root.run(["call", "refresh"])
     }
   }
 }

@@ -360,7 +360,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-omabridge"|"omabridge-manage"|"omabridge-install-prompt"|"omabridge-invite-handoff"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
-                if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"|"worktree-setup-cancel"|"otlp-check"|"workflow-script"|"workflow-stop"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
+                if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"|"worktree-setup-cancel"|"otlp-check"|"workflow-script"|"workflow-stop"|"thread-details-read"|"thread-details-open-editor"|"provider-update"|"failure-context"|"tool-failure"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"suggest"|"copy"|"client-settings"|"settings"|"provider-instances"|"window-layout"|"connections-manage"|"terminal-open"|"git-action"|"git-resolve"|"git-terminal") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
                     return;
@@ -481,10 +481,10 @@ fn watch(client: Client) -> Result<()> {
         };
         match text(&cmd, "op") {
             "ui-state-set" => { if let Err(error)=ui_state::save(&cmd["state"]) {emit("ui-state-error",json!({"error":error}));} }
-            "window-layout" | "project-sources" | "browse-folders" | "history" | "pull-requests" | "approval" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" => { let _ = action_tx.send(cmd); }
+            "window-layout" | "project-sources" | "browse-folders" | "history" | "pull-requests" | "approval" | "question" | "scroll-config" | "model-favorite" | "diff" | "clipboard" | "queue" | "suggest" | "catalog" | "upload" | "send" | "stop" | "delete-upload" | "manage" | "thread-visit" => { let _ = action_tx.send(cmd); }
             "action_result" => {
                 emit("action",json!({"op":cmd["input"]["op"],"environment":cmd["input"]["environment"],"thread":cmd["input"]["thread"],"requestId":cmd["input"]["requestId"],"result":cmd["result"],"error":cmd["error"]}));
-                if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"|"approval"|"question"|"queue"|"send"|"stop"|"manage") { message_cache=None; next_poll=Instant::now(); }
+                if matches!(text(&cmd["input"],"op"),"backend-start"|"backend-control"|"approval"|"question"|"queue"|"send"|"stop"|"manage"|"thread-visit") { message_cache=None; next_poll=Instant::now(); }
             }
             "quit" => return Ok(()),
             "refresh" => { refresh_connections(); next_poll = Instant::now(); },

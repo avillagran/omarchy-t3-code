@@ -223,8 +223,8 @@ pub fn apply_with_at(
                 Duration::from_secs(60),
             ) {
                 Ok(_) => ("complete", ""),
-                Err(e) if e == "write_not_authorized" => ("failed", "permission_denied"),
-                Err(e) if e == "rpc_rejected" => ("failed", "browser_profile_clear_failed"),
+                Err(e) if protocol::error_code(&e) == "write_not_authorized" => ("failed", "permission_denied"),
+                Err(e) if protocol::error_code(&e) == "rpc_rejected" => ("failed", "browser_profile_clear_failed"),
                 Err(_) => ("uncertain", "browser_profile_outcome_unknown"),
             }
         };

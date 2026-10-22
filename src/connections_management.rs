@@ -295,6 +295,15 @@ pub fn execute(i: &Value) -> Result<Value> {
         persist(&next,expected)?;return preferences_snapshot(&next)
     }
 
+    if i["action"] == "restart-server" {
+        let id = text(i, "environmentId");
+        if i["confirmed"] != true { return Err("confirmation_required".into()); }
+        if !c["targets"].as_array().into_iter().flatten().any(|t| t["environmentId"] == id && t["_tag"] == "SshConnectionTarget") {
+            return Err("ssh_environment_required".into());
+        }
+        restart_remote(id)?;
+        return snapshot(&c);
+    }
     if i["action"] == "reconnect" {
         let id = text(i, "environmentId");
         if !c["targets"]
@@ -305,16 +314,8 @@ pub fn execute(i: &Value) -> Result<Value> {
         {
             return Err("unknown_environment".into());
         }
-        if let Some(cache) = CACHE.get() {
-            if let Ok(mut guard) = cache.lock() {
-                if let Some(cache) = guard.as_mut() {
-                    cache.tunnels.remove(id);
-                    cache.environments.retain(|e| e.id != id);
-                    cache.routes.remove(id);
-                    cache.until = Instant::now();
-                }
-            }
-        }
+        // Applied when the next rebuild starts, so this never waits for one in progress.
+        request_reconnect(id);
         return snapshot(&c);
     }
     let revision = text(i, "revision");

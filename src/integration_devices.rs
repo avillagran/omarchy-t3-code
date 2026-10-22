@@ -344,11 +344,18 @@ pub fn update_hosts(
 /// Same native Effect non-stream RPC framing, heartbeats, no retry/replay.
 fn lifecycle_rpc(c: &protocol::Connection, tag: &str, payload: Value) -> Result<Value> {
     c.rpc_with_timeout(tag, payload, Duration::from_secs(300))
-        .map_err(|error| match error.as_str() {
-            "rpc_outcome_unknown" => "device_outcome_unknown".into(),
-            "write_not_authorized" => "permission_denied".into(),
-            "rpc_rejected" => "device_action_rejected".into(),
-            _ => error,
+        .map_err(|error| {
+            let code = match protocol::error_code(&error) {
+                "rpc_outcome_unknown" => "device_outcome_unknown",
+                "write_not_authorized" => "permission_denied",
+                "rpc_rejected" => "device_action_rejected",
+                _ => return error,
+            };
+            // Keep the server's reason after the device code.
+            match error.split_once(": ") {
+                Some((_, reason)) if protocol::error_code(&error) != error => format!("{code}: {reason}"),
+                _ => code.into(),
+            }
         })
 }
 

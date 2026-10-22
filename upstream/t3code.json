@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/pingdotgg/t3code",
+  "revision": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
+  "tag": "v0.1.1-nightly.20261020.3386",
+  "date": "2026-10-19",
+  "note": "The T3 Code revision ot3 is validated against. Generators read it from here; tools/upstream-drift compares it with a newer checkout."
+}

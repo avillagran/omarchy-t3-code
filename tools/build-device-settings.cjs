@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||'../t3code-nightly'),pin='fb990765a49414a5bfbdc73365455fc8b5fbe691';
+const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||'../t3code-nightly'),pin=require('./upstream-pin.cjs').revision;
 const file='apps/web/src/components/device/DeviceSetup.tsx';
 if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin)throw Error('Wrong reference pin');
 const input=fs.readFileSync(path.join(source,file),'utf8');if(cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==input)throw Error('Dirty reference');

@@ -37,18 +37,7 @@ impl Connection {
                         let _ = ws.close(None);
                         return match value["exit"]["_tag"].as_str() {
                             Some("Success") => Ok(value["exit"]["value"].clone()),
-                            Some("Failure") => {
-                                let cause = value["exit"]["cause"].to_string();
-                                Err(if cause.contains("Auth")
-                                    || cause.contains("Forbidden")
-                                    || cause.contains("scope")
-                                {
-                                    "write_not_authorized"
-                                } else {
-                                    "rpc_rejected"
-                                }
-                                .into())
-                            }
+                            Some("Failure") => Err(rejection(&value["exit"]["cause"])),
                             _ => Err("rpc_outcome_unknown".into()),
                         };
                     }

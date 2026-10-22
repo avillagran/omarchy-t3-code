@@ -45,9 +45,26 @@ pub fn apply(input: &Value) -> Result<Value> {
         if !result.status.success() || String::from_utf8_lossy(&result.stdout).trim() != "ok" {
             return Err("window_mode_failed".into());
         }
+        // A window that just started floating keeps its tiled size (often the
+        // whole monitor): give it its own floating size, centred. Best effort.
+        if mode == "floating" {
+            if let Some((w, h)) = floating_size(input) {
+                let batch = format!(
+                    "dispatch hl.dsp.window.resize({{ x = {w}, y = {h}, window = \"address:{address}\" }}) ; dispatch hl.dsp.window.center({{ window = \"address:{address}\" }})"
+                );
+                let _ = Command::new("timeout").args(["2", "hyprctl", "--batch", &batch]).output();
+            }
+        }
     }
     restore_decorations(address);
     Ok(json!({"mode":mode}))
+}
+
+/// The floating size the panel remembered, in logical pixels, when sane.
+fn floating_size(input: &Value) -> Option<(u32, u32)> {
+    let w = input["width"].as_f64().filter(|w| (360.0..=10000.0).contains(w))?;
+    let h = input["height"].as_f64().filter(|h| (240.0..=10000.0).contains(h))?;
+    Some((w.round() as u32, h.round() as u32))
 }
 
 /// Broad `org.quickshell` rules (e.g. overlay veils) strip borders, shadows,
@@ -81,4 +98,16 @@ fn restore_decorations(address: &str) {
     let _ = Command::new("timeout")
         .args(["2", "hyprctl", "--batch", &batch])
         .output();
+}
+
+#[cfg(test)]
+mod floating_size_tests {
+    use super::*;
+    #[test]
+    fn floating_size_accepts_only_sane_sizes() {
+        assert_eq!(floating_size(&json!({"width":1358.4,"height":722.0})), Some((1358, 722)));
+        assert_eq!(floating_size(&json!({"width":100,"height":722})), None);
+        assert_eq!(floating_size(&json!({"width":1358})), None);
+        assert_eq!(floating_size(&json!({"width":"1358","height":722})), None);
+    }
 }

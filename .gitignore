@@ -24,3 +24,6 @@ __pycache__/
 
 /bin/omabridge
 /bin/omabridge.new
+
+# Daily T3 Code drift report (tools/upstream-watch); regenerated locally.
+/upstream/DRIFT.md

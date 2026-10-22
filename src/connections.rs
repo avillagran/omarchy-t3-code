@@ -54,8 +54,24 @@ impl Tunnel{fn alive(&mut self)->bool{self.0.try_wait().ok()==Some(None)&&self.1
 struct ChildGuard(Option<Child>);
 impl Drop for ChildGuard {fn drop(&mut self){if let Some(c)=self.0.as_mut(){let _=c.kill();let _=c.wait();}}}
 impl Drop for Tunnel {fn drop(&mut self){let _=self.0.kill();let _=self.0.wait();if let Some(c)=self.1.as_mut(){let _=c.kill();let _=c.wait();}}}
-struct Cache { signature:String, remote_signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, routes:HashMap<String,String>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value> }
+/// `retry`: failed environments, with the next attempt, the failures in a row
+/// and the route that failed.
+struct Cache { signature:String, remote_signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, routes:HashMap<String,String>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value>, retry:HashMap<String,(Instant,u32,String)> }
 static CACHE:OnceLock<Mutex<Option<Cache>>>=OnceLock::new();
+// One rebuild at a time. A rebuild can take a while (an unreachable SSH host
+// waits for its timeout), so other callers meanwhile get the last list
+// (`LAST`) instead of waiting: a broken remote never stalls the local server.
+static REBUILD:Mutex<()>=Mutex::new(());
+static LAST:Mutex<Option<Vec<Environment>>>=Mutex::new(None);
+// Invalidation never waits for a rebuild either: a flag, and the environments
+// whose requests failed, read when the next rebuild starts.
+static INVALIDATED:std::sync::atomic::AtomicBool=std::sync::atomic::AtomicBool::new(false);
+static FAILED:Mutex<Vec<String>>=Mutex::new(Vec::new());
+// Environments to drop and connect again from scratch (Reconnect).
+static RECONNECT:Mutex<Vec<String>>=Mutex::new(Vec::new());
+pub(crate) fn request_reconnect(id:&str){if let Ok(mut r)=RECONNECT.lock(){if !r.iter().any(|x|x==id){r.push(id.to_string());}}}
+/// Wait before retrying an environment that failed `count` times in a row: 5 s, doubling, at most 2 min.
+fn retry_delay(count:u32)->Duration{Duration::from_secs((5u64<<count.saturating_sub(1).min(5)).min(120))}
 fn token_expiry_ms(token:&str)->Option<i64> {
     // T3 SessionStore uses payload.signature (not JWT) and millisecond exp.
     let parts=token.split('.').collect::<Vec<_>>();
@@ -115,6 +131,21 @@ pub fn ssh_args_for(environment:&str)->Result<Vec<String>>{
     ssh_args(&profile["target"])
 }
 const REMOTE_DISCOVERY:&str=include_str!("remote-bootstrap.sh");
+const REMOTE_RESTART:&str=include_str!("remote-restart.sh");
+/// Kill an SSH environment's T3 server on its host and start it again
+/// (remote-restart.sh), then reconnect. Only after the user confirmed it: any
+/// run on that server stops.
+pub fn restart_remote(environment:&str)->Result<String>{
+    uuid::Uuid::parse_str(environment).map_err(|_|"invalid_t3_environment_id")?;
+    let args=ssh_args_for(environment)?;
+    let mut child=Command::new("timeout").args(["120s","ssh"]).args(&args).arg(format!("sh -s -- '{environment}'"))
+        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"ssh_unavailable")?;
+    child.stdin.take().ok_or("ssh_unavailable")?.write_all(REMOTE_RESTART.as_bytes()).map_err(|_|"ssh_unavailable")?;
+    let output=child.wait_with_output().map_err(|_|"ssh_unavailable")?;
+    request_reconnect(environment);
+    if !output.status.success(){return Err(match output.status.code(){Some(7)=>"t3_environment_mismatch",Some(8)=>"service_profile_mismatch",Some(9)=>"t3_remote_start_failed",Some(124)=>"ssh_timeout",Some(255)=>"ssh_unavailable",Some(127)=>"t3_cli_unavailable",_=>"t3_remote_unavailable"}.into())}
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
 /// Stable, non-identifying id for this device and user: the session subject's suffix.
 fn client_id()->String{
     let mut seed=fs::read("/etc/machine-id").unwrap_or_default();seed.extend(unsafe{libc::geteuid()}.to_le_bytes());
@@ -205,7 +236,31 @@ fn connect_ssh_via(profile:&Value, env:&mut Environment, bridge:Option<&crate::o
     Err("ssh_unavailable".into())
 }
 pub fn inherited_environments()->Result<Vec<Environment>> {
+    let _rebuild=match REBUILD.try_lock(){
+        Ok(guard)=>guard,
+        Err(std::sync::TryLockError::WouldBlock)=>{
+            if let Some(last)=LAST.lock().ok().and_then(|l|l.clone()){return Ok(last)}
+            REBUILD.lock().map_err(|_|"local_error")?
+        }
+        Err(std::sync::TryLockError::Poisoned(p))=>p.into_inner(),
+    };
+    let result=build_environments();
+    if let Ok(list)=&result{if let Ok(mut last)=LAST.lock(){*last=Some(list.clone());}}
+    result
+}
+fn build_environments()->Result<Vec<Environment>> {
     let mut cache=CACHE.get_or_init(||Mutex::new(None)).lock().map_err(|_|"local_error")?;
+    // A refresh asked for by the user retries failed environments at once.
+    let forced=INVALIDATED.swap(false,std::sync::atomic::Ordering::SeqCst);
+    let failed:Vec<String>=FAILED.lock().map(|mut f|std::mem::take(&mut *f)).unwrap_or_default();
+    if let Some(c)=cache.as_mut(){
+        if forced||!failed.is_empty(){c.until=Instant::now();}
+        for e in c.environments.iter_mut().filter(|e|failed.contains(&e.id)){e.connection_error=Some("retry".into());}
+        if forced{c.retry.clear();}
+        for id in RECONNECT.lock().map(|mut r|std::mem::take(&mut *r)).unwrap_or_default(){
+            c.tunnels.remove(&id);c.environments.retain(|e|e.id!=id);c.routes.remove(&id);c.retry.remove(&id);c.until=Instant::now();
+        }
+    }
     let bridge_config=crate::omabridge_route::config_bytes();
     let signature=["userdata/server-runtime.json","userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).flatten().chain(bridge_config.iter().copied()).collect::<Vec<_>>();
     let signature=format!("{:x}",Sha256::digest(&signature));
@@ -213,7 +268,7 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
     if let Some(c)=cache.as_mut(){if c.signature==signature && c.cloud_signature==cloud_signature && Instant::now()<c.until && c.tunnels.values_mut().all(Tunnel::alive){return Ok(c.environments.clone())}}
     let remote_signature=format!("{:x}",Sha256::digest(["userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().flat_map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).collect::<Vec<_>>()));
     let mut previous=cache.take();
-    let mut result=vec![];let mut tunnels=HashMap::new();let mut routes=HashMap::new();
+    let mut result=vec![];let mut tunnels=HashMap::new();let mut routes=HashMap::new();let mut retry=HashMap::new();
     let catalog=previous.as_ref().filter(|c|c.remote_signature==remote_signature).and_then(|c|c.catalog.as_ref().ok()).cloned().map(Ok).unwrap_or_else(read_catalog);
     let primary_id=fs::read_to_string(t3_home().join("userdata/environment-id")).unwrap_or_default();
     // A malformed route file disables OmaBridge routing; inherited T3 routes still work.
@@ -246,6 +301,15 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
                         let alive=prior.tunnels.get_mut(&e.id).is_none_or(Tunnel::alive);
                         if alive && (known.connection.is_none() || prior.cloud_signature==cloud_signature) && known.connection.as_ref().is_none_or(|c|c.expires_at().is_none_or(|t|t>Utc::now().timestamp()+300)) && known.bearer.as_ref().is_none_or(|t|fresh_token(t)) {
                             let mut known=known.clone();known.name=e.name.clone();routes.insert(e.id.clone(),route_id.clone());result.push(known);if let Some(t)=prior.tunnels.remove(&e.id){tunnels.insert(e.id.clone(),t);}continue
+                        }
+                    }
+                }
+                // Failed recently over the same route: keep the error until its retry time.
+                if let Some(prior)=previous.as_ref().filter(|p|p.remote_signature==remote_signature){
+                    if let (Some(&(at,count,ref failed_route)),Some(known))=(prior.retry.get(&e.id),prior.environments.iter().find(|k|k.id==e.id&&k.connection_error.is_some())){
+                        if Instant::now()<at&&*failed_route==route_id{
+                            let mut known=known.clone();known.name=e.name.clone();retry.insert(e.id.clone(),(at,count,route_id.clone()));
+                            result.retain(|r:&Environment|r.id!=known.id);result.push(known);continue
                         }
                     }
                 }
@@ -291,7 +355,11 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
                     _=>Err("invalid_t3_catalog".into())
                 };
                 crate::omabridge_route::set_active(&e.id,carried.as_ref().map(|(r,auto)|(r,*auto)));
-                if let Err(error)=status{e.connection_error=Some(error);}else{routes.insert(e.id.clone(),route_id);}
+                if let Err(error)=status{
+                    let count=previous.as_ref().and_then(|p|p.retry.get(&e.id)).map_or(0,|r|r.1)+1;
+                    retry.insert(e.id.clone(),(Instant::now()+retry_delay(count),count,route_id));
+                    e.connection_error=Some(error);
+                }else{routes.insert(e.id.clone(),route_id);}
                 result.retain(|prior| prior.id!=e.id);
                 result.push(e);
             }
@@ -300,24 +368,33 @@ pub fn inherited_environments()->Result<Vec<Environment>> {
     }
     let has_error=result.iter().any(|e|e.connection_error.is_some());
     let lifetime=result.iter().filter_map(|e|e.bearer.clone().or_else(||private_token(&e.token_file).ok())).filter_map(|t|token_expiry_ms(&t)).chain(result.iter().filter_map(|e|e.connection.as_ref().and_then(|c|c.expires_at()).map(|s|s*1000))).map(|exp|((exp-Utc::now().timestamp_millis()-300_000)/1000).max(30) as u64).min().unwrap_or(3600*20).min(3600*20);
-    *cache=Some(Cache{signature,remote_signature,cloud_signature,until:Instant::now()+Duration::from_secs(if has_error{3}else{lifetime}),environments:result.clone(),routes,tunnels,catalog});
+    // Errors outside the retry schedule (the local server, the catalog) are checked again in 3 s.
+    let until=if !has_error{Instant::now()+Duration::from_secs(lifetime)}
+        else if result.iter().any(|e|e.connection_error.is_some()&&!retry.contains_key(&e.id)){Instant::now()+Duration::from_secs(3)}
+        else{retry.values().map(|r|r.0).min().unwrap_or_else(Instant::now).max(Instant::now()+Duration::from_secs(3))};
+    *cache=Some(Cache{signature,remote_signature,cloud_signature,until,environments:result.clone(),routes,tunnels,catalog,retry});
     Ok(result)
 }
 
 pub fn refresh_connections() {
-    if let Some(lock)=CACHE.get(){if let Ok(mut c)=lock.lock(){if let Some(c)=c.as_mut(){c.until=Instant::now();}}}
+    INVALIDATED.store(true,std::sync::atomic::Ordering::SeqCst);
 }
 
 pub fn connection_failed(id:&str) {
-    if let Some(lock)=CACHE.get(){if let Ok(mut cache)=lock.lock(){if let Some(c)=cache.as_mut(){
-        if let Some(e)=c.environments.iter_mut().find(|e|e.id==id){e.connection_error=Some("retry".into());}
-        c.until=Instant::now();
-    }}}
+    if let Ok(mut failed)=FAILED.lock(){if !failed.iter().any(|f|f==id){failed.push(id.to_string());}}
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn failed_environments_back_off_without_blocking_refreshes() {
+        let secs:Vec<u64>=(1..=8).map(|n|retry_delay(n).as_secs()).collect();
+        assert_eq!(secs,[5,10,20,40,80,120,120,120]);
+        refresh_connections();connection_failed("a");connection_failed("a");
+        assert!(INVALIDATED.load(std::sync::atomic::Ordering::SeqCst));
+        assert_eq!(*FAILED.lock().unwrap(),["a"]);
+    }
     use aes::cipher::BlockEncryptMut;
     #[test]
     fn electron_catalog_compatibility_and_session_expiry() {

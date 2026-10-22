@@ -296,8 +296,9 @@ fn native_pinned_source_contracts_have_not_drifted() {
     }
     assert!(schema.contains("dispatchCommand: \"orchestration.dispatchCommand\""));
     let logic = std::fs::read_to_string(native.join("apps/web/src/session-logic.ts")).unwrap();
-    assert!(logic.contains("Math.max(0, checkpoint.checkpointTurnCount - 1)"));
-    assert!(logic.contains("entry.message.inputIntent !== \"turn_start\" && entry.message.inputIntent !== \"queued_turn\""));
+    // #18982: the target is the previous visible run's checkpoint turn count.
+    assert!(logic.contains("readyTurnCountByRunId.get(previousRunId)"));
+    assert!(logic.contains("message.inputIntent !== \"turn_start\" && message.inputIntent !== \"queued_turn\""));
     let commands =
         std::fs::read_to_string(native.join("packages/client-runtime/src/operations/commands.ts"))
             .unwrap();

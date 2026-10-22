@@ -57,6 +57,19 @@ environments) is left to the T3 desktop app, since ot3 never handles provider
 tokens. Workflows show their script (orchestration.getWorkflowScript) and can be
 stopped (orchestration.stopWorkflow) from the subagent bar.
 
+Subagents follow T3's presentation, with one deliberate addition. Delegated work
+shows in the conversation as its own cards: status, model, progress or result,
+elapsed time, and a click into the child thread. Several from one run are
+grouped. The side panel's Agents tab lists the thread's lineage: its parent, its
+siblings, running agents, a folded "Previous agents" list and workflow members.
+A sub-thread opens with a "Subagent of …" bar that has previous/next navigation
+between siblings. The addition: unlike T3's web sidebar, sub-threads nest under
+their parent thread in the sidebar. A parent opens on its own while a child works
+or is selected, and the user's collapse/expand choice is remembered.
+Provider failures (`error` turn items) appear in the conversation in the
+provider's own words. A server rejection keeps its reason after the code
+(`rpc_rejected: <reason>`).
+
 ## Recommended implementation order
 
 1. Approval requests, older history and in-conversation search: implemented in
@@ -117,7 +130,7 @@ Native paths below are relative to `apps/web/src/` in the reference checkout.
 | Adapted | Project drafts/stash | Multi-entry project-scoped save/restore/delete and attachments are now implemented, shared between fullscreen and Edit right-click. Native floating stash badge/banner presentation differs. | `components/chat/ComposerStashMenu.tsx`, `ComposerStashBadge.tsx`; `ui/qml/T3ProjectDrafts.qml`, `T3Composer.qml`, `T3Backend.qml`; see current audit row 41. |
 | Medium | Workspace controls | Missing full branch/worktree picker, Git action controls, project-script runner/editor and editor picker inside the chat details UI. “New thread on this branch” already exists and should be preserved. | `components/chat/ThreadDetailsPanel.tsx`, `components/BranchToolbar.tsx`, `GitActionsControl.tsx`, `ProjectScriptsControl.tsx`; `ui/qml/T3SidebarActions.qml`, `T3Panel.qml`. |
 | Medium | Terminal | Native Omarchy terminal now attaches to the chat’s T3 shell (local or remote), with history, input and resize support. Embedded terminal drawer and terminal-selection context in the prompt remain unported. | `components/ThreadTerminalDrawer.tsx`, `components/chat/ComposerPendingTerminalContexts.tsx`; `src/terminal.rs`, `lib-t3-rust/src/terminal.rs`, `docs/NATIVE_TERMINAL.md`. |
-| Medium | Relationships and automations | Lineage metadata exists in the normalized sidebar data, but no full parent/fork/subagent relationship panel or thread automation editor. | `components/chat/ThreadRelationshipsControl.tsx`, `ThreadAutomationsPanel.tsx`; `src/lib.rs` preserves lineage, `ui/qml/T3Panel.qml` has no corresponding panel. |
+| Medium | Relationships and automations | Parent and subagent lineage has an Agents side-panel tab and nested sidebar sub-threads; forks, context transfers and the thread automation editor are not in that panel yet. | `components/chat/ThreadRelationshipsControl.tsx`, `ThreadAutomationsPanel.tsx`; `ui/qml/T3AgentsPanel.qml`, `ui/js/SidebarModel.js`. |
 
 The Markdown/media/message-action gaps below remain valid. Sidebar hover actions,
 thread/project context menus, working elapsed time, shelves, minimap, queues,

@@ -146,3 +146,14 @@ fn native_thread_delete_confirmation_defaults_and_explicit_false_are_read_only()
     assert_eq!(fs::read(&path).unwrap(),before);
     fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn follow_up_behavior_reads_queue_by_default_and_writes_only_queue_or_steer(){
+ let dir=temp_dir();let path=dir.join("settings.json");let raw=b"{\"settings\":{\"fontSizeInterface\":14}}";fs::write(&path,raw).unwrap();
+ assert_eq!(read_client_preferences_at(&path).unwrap()["followUpBehavior"],"queue");
+ let rev=format!("{:x}",Sha256::digest(raw));
+ assert_eq!(update_client_preferences_at(&path,&rev,&json!({"followUpBehavior":"restart"})).unwrap_err(),"invalid_client_preference");
+ let view=update_client_preferences_at(&path,&rev,&json!({"followUpBehavior":"steer"})).unwrap();assert_eq!(view["followUpBehavior"],"steer");
+ let saved:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(saved["settings"]["followUpBehavior"],"steer");assert_eq!(saved["settings"]["fontSizeInterface"],14);
+ fs::remove_dir_all(dir).unwrap();
+}

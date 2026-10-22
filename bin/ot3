@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Omarchy T3 Code as its own desktop app: a Quickshell instance separate from
+# the Omarchy shell, so a stuck bar never takes the app down with it.
+#
+#   ot3 [toggle]       show the window, or hide it when it is focused and shown
+#   ot3 anchor JSON    where the bar's T3 button is (the bar widget sends it), for panel mode
+#   ot3 show | hide    show / hide (minimize to the bar) the window
+#   ot3 start          start hidden (autostart); does nothing when running
+#   ot3 quit           stop the app
+#   ot3 restart        stop and start again, keeping the window shown or hidden
+#   ot3 install-desktop  add the app launcher entry, autostart and ~/.local/bin/ot3
+#   ot3 remove-desktop   remove them again
+#   ot3 status         print the app's state as JSON ({"running":false} when stopped)
+#   ot3 call FN [ARG]  any function of the app's IPC target (see app/shell.qml)
+set -euo pipefail
+here=$(dirname -- "$(readlink -f -- "$0")")
+root=$(cd -- "$here/.." && pwd)
+shell_dir=${OMARCHY_PATH:-/usr/share/omarchy}/shell
+state=${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-t3-code
+run=$state/app
+target=io.github.avillagran.omarchy-t3-code
+
+# Quickshell resolves `qs.Commons`/`qs.Ui` inside the config folder, so the app
+# runs from a small folder of links: Omarchy's Commons and Ui, and this
+# installation's ui, bin, translations, licenses, data and upstream. Rebuilt on every launch so it follows updates.
+prepare() {
+  [[ -d $shell_dir/Commons && -d $shell_dir/Ui ]] || { printf 'ot3: Omarchy shell not found at %s\n' "$shell_dir" >&2; exit 1; }
+  mkdir -p -- "$run" "${XDG_RUNTIME_DIR:-/tmp}/omarchy-t3-code"
+  for link in Commons:"$shell_dir/Commons" Ui:"$shell_dir/Ui" ui:"$root/ui" bin:"$root/bin" app:"$root/app" translations:"$root/translations" licenses:"$root/licenses" data:"$root/data" upstream:"$root/upstream"; do
+    ln -sfn -- "${link#*:}" "$run/${link%%:*}"
+  done
+  ln -sfn -- "$root/app/shell.qml" "$run/shell.qml"
+}
+ipc() { quickshell ipc -p "$run" call "$target" "$@" 2>/dev/null; }
+running() { [[ -e $run/shell.qml ]] && ipc ping >/dev/null; }
+unit=omarchy-t3-code
+# Its own user service when systemd is there: a shell restart, or a stuck bar
+# that launched it, never takes the app down with it.
+launch() {
+  # Every bar (one per monitor) starts the app at once: one launch at a time.
+  mkdir -p -- "$state"
+  exec 9>"$state/launch.lock"
+  flock -w 15 9 || true
+  if running; then return 0; fi
+  prepare
+  if command -v systemd-run >/dev/null && systemctl --user show-environment >/dev/null 2>&1; then
+    systemctl --user stop "$unit.service" >/dev/null 2>&1 || true
+    systemctl --user reset-failed "$unit.service" >/dev/null 2>&1 || true
+    systemd-run --user --quiet --collect --unit="$unit" --description='Omarchy T3 Code' -- quickshell -n -p "$run" >/dev/null 2>&1 \
+      || setsid -f quickshell -n -d -p "$run" >/dev/null 2>&1 || true
+  else
+    setsid -f quickshell -n -d -p "$run" >/dev/null 2>&1 || true
+  fi
+  for _ in $(seq 1 100); do running && return 0; sleep 0.1; done
+  printf 'ot3: the app did not start; see quickshell log -p %s\n' "$run" >&2
+  return 1
+}
+
+# The launcher entry (Omarchy's app menu), a hidden start at login so
+# notifications keep arriving, and `ot3` on the PATH. Paths point at this
+# installation; rerun after moving it.
+desktop_entries() {
+  local apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications autostart=${XDG_CONFIG_HOME:-$HOME/.config}/autostart
+  local entry=$apps/$target.desktop start=$autostart/$target.desktop bin=$HOME/.local/bin/ot3
+  if [[ $1 == remove ]]; then
+    rm -f -- "$entry" "$start"
+    [[ ! -L $bin || $(readlink -f -- "$bin") != "$here/ot3" ]] || rm -f -- "$bin"
+    return 0
+  fi
+  mkdir -p -- "$apps" "$autostart" "$HOME/.local/bin"
+  local exec icon
+  exec=$(printf '%s' "$here/ot3" | sed 's/[\\" `$]/\\&/g')
+  icon=$root/ui/assets/notification-t3.png
+  printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Omarchy T3 Code' 'GenericName=AI coding agent' \
+    'Comment=T3 Code chats, writing and activity' "Exec=\"$exec\" toggle" "Icon=$icon" 'Terminal=false' \
+    'Categories=Development;' "StartupWMClass=$target" 'Keywords=t3;ot3;agent;codex;claude;' > "$entry.tmp" && mv -f -- "$entry.tmp" "$entry"
+  printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Omarchy T3 Code' "Exec=\"$exec\" start" "Icon=$icon" \
+    'Terminal=false' 'NoDisplay=true' 'X-GNOME-Autostart-enabled=true' > "$start.tmp" && mv -f -- "$start.tmp" "$start"
+  [[ -e $bin && ! -L $bin ]] || ln -sfn -- "$here/ot3" "$bin"
+}
+
+cmd=${1:-toggle}
+case "$cmd" in
+  toggle|show)
+    # From the bar: the button's place (JSON), so the panel opens under it.
+    if [[ -n ${2:-} ]]; then running || launch; ipc setAnchor "$2" >/dev/null || true; fi
+    if running; then ipc "${cmd/show/open}Window" >/dev/null; else launch && ipc openWindow >/dev/null; fi ;;
+  anchor) ! running || ipc setAnchor "${2:-}" >/dev/null ;;
+  start) running || launch ;;
+  hide) ! running || ipc hideWindow >/dev/null ;;
+  quit) ! running || ipc quit >/dev/null || true ;;
+  status) if running; then ipc state; else printf '%s\n' '{"running":false}'; fi ;;
+  call) shift; running || launch; ipc "$@" ;;
+  restart)
+    shown=false
+    if running; then shown=$(ipc state | jq -r '.opened' 2>/dev/null || echo false); ipc quit >/dev/null || true
+      for _ in $(seq 1 50); do running || break; sleep 0.1; done; fi
+    launch && if [[ $shown == true ]]; then ipc openWindow >/dev/null; fi ;;
+  install-desktop) desktop_entries install ;;
+  remove-desktop) desktop_entries remove ;;
+  -h|--help|help) sed -n '2,14s/^# \{0,1\}//p' "$0" ;;
+  *) printf 'ot3: unknown command %s (try ot3 help)\n' "$cmd" >&2; exit 2 ;;
+esac

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Build-time only: native T3 manifest contract over the dependencies ot3 ships.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),crypto=require('node:crypto'),vm=require('node:vm');
-const root=path.resolve(__dirname,'..'),pinned='fb990765a49414a5bfbdc73365455fc8b5fbe691';
+const root=path.resolve(__dirname,'..'),pinned=require('./upstream-pin.cjs').revision;
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 function writeChanged(file,text){if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==text)fs.writeFileSync(file,text);}
 const source=process.argv[2]?path.resolve(process.argv[2]):null;

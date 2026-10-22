@@ -19,8 +19,13 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     let config = rpc(e,"server.getConfig",json!({}))?;
     let mut result=protocol::models::catalog(&config);
     for provider in result["providers"].as_array_mut().unwrap(){
-        if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);}
+        if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);provider["update"]=crate::provider_updates::advisory(native);}
     }
+    // T3 resolveEnvironmentMachineKind: the user's icon choice, else what the server detected.
+    const MACHINES:[&str;7]=["server","cloud","linux","desktop","laptop","mac-mini","mac-studio"];
+    result["machine"]=json!([&config["settings"]["environmentIcon"],&config["environment"]["platform"]["machine"]].into_iter().filter_map(Value::as_str).find(|k|MACHINES.contains(k)).unwrap_or("server"));
+    // The server's own version (environment.serverVersion), shown against the T3 revision ot3 is validated with.
+    result["serverVersion"]=json!(config["environment"]["serverVersion"].as_str().filter(|v|v.len()<=80&&v.chars().all(|c|c.is_ascii_alphanumeric()||".-+_".contains(c))));
     let permission=Client::new()?.get(e,"/api/auth/session",false);
     result["canWrite"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="orchestration:operate"))));
     if let Err(error)=permission{result["permissionError"]=json!(error);}
@@ -142,7 +147,8 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
         validate_message(input)?;
         let mut c=json!({"type":"message.dispatch","threadId":thread,"messageId":format!("omarchy-{id}"),"text":protocol::composer::legacy_attachment_text(content,attachments),"attachments":attachments,"createdBy":"user","creationSource":"web","dispatchMode":{"type":if input["delivery"]=="queue" {"queue_after_active"} else {"start_immediately"}}});
-        if input["delivery"]!="queue" {c["deliveryIntent"]=json!("auto");}
+        // T3's server-resolved dispatch: steer redirects the active run, auto starts or queues as the provider allows.
+        if input["delivery"]!="queue" {c["deliveryIntent"]=json!(if input["delivery"]=="steer" {"steer"} else {"auto"});}
         if input["modelSelection"].is_object() {c["modelSelection"]=input["modelSelection"].clone();}
         c
     };
@@ -311,6 +317,11 @@ pub fn execute(input:&Value) -> Result<Value> {
         "rewind-observe"=>crate::checkpoint_operations::observe(&e,input),
         "rewind-resolve"=>crate::checkpoint_operations::resolve(&e,input),
         "keybindings-open"=>crate::keybinding_settings::open(&e,input),
+        "provider-update"=>crate::provider_updates::update(&e,input),
+        "failure-context"=>crate::failure_context::run(&e,input),
+        "tool-failure"=>crate::failure_context::tool(&e,input),
+        "thread-details-read"=>crate::thread_details::read(&e,input),
+        "thread-details-open-editor"=>crate::thread_details::open(&e,input),
         "keybindings-read"=>crate::keybinding_settings::read(&e),
         "keybindings-write"=>crate::keybinding_settings::apply(&e,input),
         "archive-read"=>crate::archive_management::read(&e,input),
@@ -348,6 +359,8 @@ pub fn execute(input:&Value) -> Result<Value> {
         "tool-inspector"=>crate::tool_inspector::execute(&e,input),
         "diff"=>crate::diff_review::execute(&e,input),
         "manage"=>manage(&e,input),
+        // T3 ThreadVisitWatermark: the open thread is seen up to its updatedAt; Woke is cleared at wokeAt.
+        "thread-visit"=>{let thread=text(input,"thread");let at=text(input,"visitedAt");if !valid_id(thread)||chrono::DateTime::parse_from_rfc3339(at).is_err(){return Err("invalid_command".into())}rpc(&e,"orchestration.dispatchCommand",json!({"type":"thread.visit","commandId":format!("omarchy-visit-{}",uuid::Uuid::new_v4()),"threadId":thread,"visitedAt":at}))},
         "upload"=>upload(&e,text(input,"url")),
         "delete-upload"=>rpc(&e,"attachments.delete",json!({"attachmentId":input["attachmentId"]})),
         "approval"|"question"|"send"|"stop"|"queue"=>dispatch(&e,input),

@@ -14,7 +14,7 @@ ShellRoot {
       b.catalogs={fixture:{models:[{instanceId:"codex",model:"first",name:"First",descriptors:[{id:"reasoningEffort",label:"Reasoning",type:"select",currentValue:"low",options:[{id:"low",label:"Low"},{id:"medium",label:"Medium"}]}]},{instanceId:"codex",model:"second",name:"Second",descriptors:[]}]}}
       b.selectThread("fixture","one"); b.receive(JSON.stringify({type:"draft-loaded",data:{key:"fixture/one",draft:{},error:null}})); b.edit("draft one\nline two")
       Qt.callLater(function() {
-        root.check(root.named(composer,"t3ComposerEditor").text === "draft one\nline two", "editor draft binding")
+        root.check(root.named(composer,"t3ComposerEditor").plainText === "draft one\nline two", "editor draft binding")
         root.check(composer.modelIndex===0,"current model")
         root.check(root.named(composer,"t3Option_reasoningEffort").currentIndex===1,"current reasoning option")
         b.chooseOption("reasoningEffort","low")
@@ -25,7 +25,7 @@ ShellRoot {
         b.selectThread("fixture","one")
         root.check(b.draft.text === "draft one\nline two", "per-thread draft restoration")
         b.submit(); var attempt=b.draft.attempt
-        root.check(!!attempt && b.draft.busy,"submission locks draft");root.check(attempt.delivery==="queue","active execution dispatches to queue")
+        root.check(!!attempt && b.draft.busy,"submission locks draft");root.check(attempt.delivery==="queue","active execution dispatches to queue");root.check(b.dispatchMode(true)==="steer","Ctrl does the opposite: steer");var savedClient=b.clientSettings;b.clientSettings=Object.assign({},savedClient,{data:Object.assign({},savedClient.data,{followUpBehavior:"steer"})});root.check(b.dispatchMode(false)==="steer"&&b.dispatchMode(true)==="queue","follow-up preference steer, Ctrl queues");b.clientSettings=savedClient
         b.action({op:"send",environment:"fixture",thread:"one",requestId:attempt.requestId,error:"rpc_outcome_unknown"})
         root.check(!b.draft.busy && b.draft.attempt.requestId===attempt.requestId,"uncertain preserves retry identity")
         b.edit("changed"); root.check(b.draft.text === attempt.text,"uncertain draft immutable")

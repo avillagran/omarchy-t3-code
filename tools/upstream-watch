@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Daily check of T3 Code nightly against the revision ot3 is validated with.
+# Fetches tags only (never moves the checkout or its branches), compares the
+# newest nightly tag with tools/upstream-drift.cjs and writes upstream/DRIFT.md.
+# Prints a short summary; exit 0 also when there is drift (it is information).
+#
+#   tools/upstream-watch [T3_CHECKOUT]   (default ../t3code-nightly)
+set -euo pipefail
+root=$(cd -- "$(dirname -- "$0")/.." && pwd)
+source=${1:-$root/../t3code-nightly}
+[[ -d $source/.git ]] || { printf 'upstream-watch: no T3 Code checkout at %s\n' "$source" >&2; exit 2; }
+git -C "$source" fetch --quiet --tags origin || printf 'upstream-watch: fetch failed; comparing with the tags already here\n' >&2
+tags=$(git -C "$source" tag -l 'v*-nightly.*' --sort=-creatordate)
+latest=${tags%%$'\n'*}
+[[ -n $latest ]] || { printf 'upstream-watch: no nightly tags in %s\n' "$source" >&2; exit 2; }
+node "$root/tools/upstream-drift.cjs" --source "$source" --rev "$latest" --write >/dev/null
+pinned=$(jq -r .tag "$root/upstream/t3code.json")
+commits=$(git -C "$source" rev-list --count "$(jq -r .revision "$root/upstream/t3code.json")..$latest")
+printf 'T3 Code %s vs validated %s: %s commits\n' "$latest" "$pinned" "$commits"
+# The surface table and every new/removed item, from the report just written.
+sed -n '/^| Surface/,/^$/p' "$root/upstream/DRIFT.md"
+grep -E '^- \*\*(new|removed)\*\*' "$root/upstream/DRIFT.md" || printf 'No new or removed RPC methods, events, endpoints, settings or keybindings.\n'
+printf 'Full report: %s\n' "$root/upstream/DRIFT.md"

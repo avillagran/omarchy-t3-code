@@ -130,3 +130,13 @@ T3OmaBridgeManage 1.0 T3OmaBridgeManage.qml
 T3OmaBridgeInstall 1.0 T3OmaBridgeInstall.qml
 T3OmaBridgeIndicator 1.0 T3OmaBridgeIndicator.qml
 T3OmaBridgeQuick 1.0 T3OmaBridgeQuick.qml
+T3RunError 1.0 T3RunError.qml
+T3SubagentRow 1.0 T3SubagentRow.qml
+T3SubagentCards 1.0 T3SubagentCards.qml
+T3AgentsPanel 1.0 T3AgentsPanel.qml
+T3SubthreadBar 1.0 T3SubthreadBar.qml
+T3EnvironmentIcon 1.0 T3EnvironmentIcon.qml
+T3ThreadDetails 1.0 T3ThreadDetails.qml
+T3ProviderUpdateNotice 1.0 T3ProviderUpdateNotice.qml
+T3ThreadErrorBanner 1.0 T3ThreadErrorBanner.qml
+T3HostsPopup 1.0 T3HostsPopup.qml

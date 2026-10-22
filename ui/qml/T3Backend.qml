@@ -10,6 +10,7 @@ import Quickshell.Io
 import qs.Commons
 import "../js/DocumentTheme.js" as DocumentTheme
 import "../js/SidebarModel.js" as Sidebar
+import "../js/ProviderUpdates.js" as Updates
 import "../js/NativeKeybindings.js" as NativeKeys
 import "../js/UsageLimits.js" as Usage
 import "../js/PinOrder.js" as PinOrder
@@ -419,6 +420,14 @@ Singleton {
   property var compactionStates: ({})
   function configureCompaction(patch){rememberView(patch);persistViewNow();refresh()}
   property var catalogs: ({})
+  // The T3 Code revision ot3 is validated against (upstream/t3code.json, see
+  // tools/upstream-drift.cjs) and the connected servers newer than it.
+  property var validatedT3:({})
+  FileView{path:Qt.resolvedUrl("../../upstream/t3code.json").toString().replace(/^file:\/\//,"");printErrors:false;onLoaded:{try{root.validatedT3=JSON.parse(text()) || ({})}catch(e){}}}
+  function t3VersionKey(v){var m=/(\d+)\.(\d+)\.(\d+)(?:-[a-z]+\.(\d{8})\.(\d+))?/.exec(String(v || ""));return m?[+m[1],+m[2],+m[3],+(m[4] || 0),+(m[5] || 0)]:null}
+  function t3VersionNewer(v){var a=t3VersionKey(v),b=t3VersionKey(validatedT3.tag);if(!a||!b)return false;for(var i=0;i<a.length;i++)if(a[i]!==b[i])return a[i]>b[i];return false}
+  function serverVersion(environment){return (catalogs[environment] || {}).serverVersion || ""}
+  readonly property var newerServers:(state.environments || []).filter(function(e){return e.state==="ready"&&root.t3VersionNewer(root.serverVersion(e.id))}).map(function(e){return {id:e.id,name:e.name || e.id,version:root.serverVersion(e.id)}})
   property var catalogLoading: ({})
   function ensureSidebarCatalogs(){if(panelVisible)(state.environments || []).filter(function(e){return e.state==="ready"}).forEach(function(e){root.ensureCatalog(e.id)})}
   function ensureCatalog(env){if(!env || catalogs[env] || catalogLoading[env])return;var pending=Object.assign({},catalogLoading);pending[env]=true;catalogLoading=pending;send({op:"catalog",environment:env})}
@@ -515,7 +524,8 @@ Singleton {
   property string windowLayoutError:""
   property var windowLayoutOperation:({busy:false})
   signal windowLayoutFinished(string error)
-  function applyWindowLayout(mode,pid){var id=uuid();windowLayoutOperation={busy:true,requestId:id,mode:mode};send({op:"window-layout",mode:mode,pid:pid,requestId:id})}
+  // size: the remembered floating size in pixels, used when the window starts floating.
+  function applyWindowLayout(mode,pid,size){var id=uuid();windowLayoutOperation={busy:true,requestId:id,mode:mode};send(Object.assign({op:"window-layout",mode:mode,pid:pid,requestId:id},size || {}))}
   function browseFolders(environment,path){var id=uuid();folderBrowse={busy:true,error:"",entries:[],parentPath:"",requestId:id,environment:environment};send({op:"browse-folders",environment:environment,path:path,requestId:id})}
   property bool managementBusy: false
   property string managementError: ""
@@ -542,7 +552,7 @@ Singleton {
   function answerSecret(request,answer){var key=request.turnItemId;if(!key||(secretAnswers[key]||{}).busy)return;var id=uuid(),all=Object.assign({},secretAnswers);all[key]={busy:true,error:"",requestId:id};secretAnswers=all;send({op:"secret-answer",environment:selectedEnvironment,thread:request.threadId||selectedThread,turnItemId:key,answer:answer,requestId:id})}
   // Provider install and sign-in (provider.install.* / provider.auth.*), per instance.
   property var providerSetup:({})
-  function providerSetupAction(environment,instanceId,values){var id=uuid(),all=Object.assign({},providerSetup);all[instanceId]=Object.assign({},all[instanceId]||{},{busy:true,error:"",requestId:id,environment:environment});providerSetup=all;send(Object.assign({op:"provider-setup",environment:environment,instanceId:instanceId,requestId:id},values))}
+  function providerSetupAction(environment,instanceId,values){var id=uuid(),all=Object.assign({},providerSetup);all[instanceId]=Object.assign({},all[instanceId]||{},{busy:true,error:"",requestId:id,environment:environment,action:values.action || ""});providerSetup=all;send(Object.assign({op:"provider-setup",environment:environment,instanceId:instanceId,requestId:id},values))}
   // While a flow runs, its state is re-read every second.
   Timer{interval:1000;repeat:true;running:Object.keys(root.providerSetup).some(function(k){var s=root.providerSetup[k];var p=s.state&&s.state.phase;return !s.busy&&["starting","waiting","verifying","downloading","extracting"].indexOf(p)>=0})
     onTriggered:Object.keys(root.providerSetup).forEach(function(k){var s=root.providerSetup[k];var p=s.state&&s.state.phase;if(!s.busy&&["starting","waiting","verifying","downloading","extracting"].indexOf(p)>=0)root.providerSetupAction(s.environment,k,{action:s.kind==="install"?"install-state":"auth-state"})})}
@@ -589,8 +599,33 @@ Singleton {
   // Usage page (server.getUsageSummary) for the selected environment.
   property var usage:({busy:false,error:"",data:null,requestId:""})
   function requestUsage(period,refreshRates){var id=uuid();usage=Object.assign({},usage,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,period:period});send({op:"usage-summary",environment:selectedEnvironment||"local",period:period,refreshRates:!!refreshRates,requestId:id})}
-  // Subagents working for the open thread; each can be stopped.
-  property var activeSubagents:[]
+  // The open thread's subagents, newest first (T3 projection subagents).
+  property var threadSubagents:[]
+  function subagentLive(s){return !!s&&["pending","running","waiting"].indexOf(s.status)>=0}
+  // Live ones, and workflows whose script can still be read; each can be stopped.
+  readonly property var activeSubagents:threadSubagents.filter(function(s){return root.subagentLive(s)||!!s.scriptPath})
+  // Subagents of a thread are its sub-threads in the sidebar; these give the
+  // open thread's place among them (parent, siblings, own children).
+  readonly property bool subthread:selectedInfo.relationshipToParent==="subagent"&&!!selectedInfo.parentThreadId
+  readonly property var parentThread:subthread?(state.threads || []).find(function(t){return t.key===root.selectedEnvironment+"/"+root.selectedInfo.parentThreadId}) || null:null
+  readonly property var siblingThreads:subthread?Sidebar.siblings(state.threads || [],selectedInfo):[]
+  readonly property int siblingIndex:siblingThreads.findIndex(function(t){return t.key===root.selectedKey})
+  readonly property var childThreads:selectedThread?(Sidebar.childrenByParent(state.threads || [])[selectedKey] || []):[]
+  function openSibling(step){var list=siblingThreads;if(list.length<2||siblingIndex<0)return;var t=list[(siblingIndex+step+list.length)%list.length];selectThread(t.environmentId,t.id)}
+  function openSubagent(sub){if(sub&&sub.childThreadId)selectThread(selectedEnvironment,sub.childThreadId)}
+  // T3 ThreadVisitWatermark: the open thread is seen up to its updatedAt, which
+  // clears Done and Woke. Unseen completions go at once, the rest every 10 s.
+  property var visitState:({key:"",at:0,sent:0})
+  function visitThread(env,thread,ms){if(!env||!thread||!(ms>0)||!worker.running)return;send({op:"thread-visit",environment:env,thread:thread,visitedAt:new Date(ms).toISOString(),requestId:uuid()})}
+  function watermarkVisit(){
+    var t=selectedInfo;if(!panelVisible||!t.key||!(t.updatedAt>0)||(catalogs[t.environmentId] || {}).canWrite===false||(t.lastVisitedAt || 0)>=t.updatedAt)return
+    if(visitState.key===t.key&&visitState.at===t.updatedAt)return
+    var unseen=(t.latestRunCompletedAt || 0)>(t.lastVisitedAt || 0),now=Date.now()
+    if(!unseen&&visitState.key===t.key&&now-visitState.sent<10000)return
+    visitState={key:t.key,at:t.updatedAt,sent:now};visitThread(t.environmentId,t.id,t.updatedAt)
+  }
+  onSelectedInfoChanged:Qt.callLater(watermarkVisit)
+  Timer{interval:3000;repeat:true;running:root.panelVisible&&!!root.selectedKey;onTriggered:root.watermarkVisit()}
   property var workflowScript:({busy:false,error:"",contents:"",path:"",requestId:""})
   signal workflowScriptRequested()
   function openWorkflowScript(sub){if(!sub||!sub.scriptPath)return;var id=uuid();workflowScript={busy:true,error:"",contents:"",path:sub.scriptPath,title:sub.title,requestId:id};workflowScriptRequested();send({op:"workflow-script",environment:selectedEnvironment,thread:selectedThread,scriptPath:sub.scriptPath,requestId:id})}
@@ -613,7 +648,7 @@ Singleton {
   }
   readonly property var selectedInfo: state.threads.find(function(t) { return t.key === root.selectedKey }) || ({})
   readonly property bool providerSubagent: selectedInfo.providerSubagent===true
-  function openParentThread(){if(providerSubagent&&selectedInfo.parentThreadId)selectThread(selectedEnvironment,selectedInfo.parentThreadId)}
+  function openParentThread(){if(selectedInfo.parentThreadId)selectThread(selectedEnvironment,selectedInfo.parentThreadId)}
   readonly property var draft: drafts[selectedKey] || ({text: "", attachments: [], modelSelection: selectedInfo.modelSelection || null, delivery: "auto", busy: false, error: "", attempt: null})
   readonly property var catalog: catalogs[selectedEnvironment] || ({models: [], canWrite: false})
   function uuid() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) { var r = Math.floor(Math.random()*16); return (c === "x" ? r : (r&3)|8).toString(16) }) }
@@ -763,7 +798,16 @@ Singleton {
     if(request.sourceKey)submit(true,strategy)
     else manage(Object.assign({},command,{workspaceStrategy:strategy}))
   }
-  function submit(startNewThread,workspaceStrategy) {
+  // T3 followUpBehavior (client settings): a message sent during a run is queued
+  // or steers the run; the alternate (Ctrl) does the other. Pending approvals
+  // shown here make it steer, as in T3.
+  readonly property string followUpBehavior:(clientSettings.data || {}).followUpBehavior==="steer"?"steer":"queue"
+  function dispatchMode(alternate){
+    if(!selectedInfo.activeRunId)return "auto"
+    var preferred=approvals.length>0?"steer":followUpBehavior
+    return alternate===true?(preferred==="queue"?"steer":"queue"):preferred
+  }
+  function submit(startNewThread,workspaceStrategy,alternate) {
     if(rewindPending)return
     if(planOperation.busy&&!draft.attempt)return
     if(providerSubagent&&startNewThread!==true)return
@@ -775,7 +819,7 @@ Singleton {
     if (!draft.attempt && !draft.text.trim() && draft.attachments.length === 0) return
     var attempt = draft.attempt || {op: "send", environment: selectedEnvironment, thread: selectedThread,
       requestId: uuid(), text: draft.text, attachments: draft.attachments.map(function(f) { return f.attachment }),
-      modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: selectedInfo.activeRunId ? "queue" : draft.delivery}
+      modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: dispatchMode(alternate)}
     if(!draft.attempt&&draft.runtimeMode&&draft.runtimeMode!==selectedInfo.runtimeMode)attempt.runtimeMode=draft.runtimeMode
     if(!draft.attempt&&(interactionModeEnabled||selectedInfo.interactionMode==="plan"))attempt.interactionMode=interactionMode
     if(!draft.attempt&&draft.sourcePlanRef)attempt.sourcePlanRef=draft.sourcePlanRef
@@ -1238,6 +1282,8 @@ Singleton {
     send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:captured.fromTurnCount,toTurnCount:captured.toTurnCount,summary:captured,ignoreWhitespace:ws})
   }
   function action(data) {
+    if(data.op==="provider-update"||data.op==="thread-details-read"||data.op==="thread-details-open-editor"){detailsAction(data);return}
+    if(data.op==="failure-context"||data.op==="tool-failure"){failureAction(data);return}
     if(data.op==="browser-import-sources"||data.op==="browser-import-read"||data.op==="browser-import-action"){ImportFlow.receipt(root,data);return}
     if(data.op==="preview-action"){Previews.receipt(root,data);return}
     if(data.op==="browser-profiles-read"||data.op==="browser-profiles-action"){Profiles.receipt(root,data);return}
@@ -1673,9 +1719,13 @@ Singleton {
   function activityText(a){
     var category=a.category || ({reasoning:"think",command_execution:"execute",file_change:"edit",file_search:"search",web_search:"web",subagent:"agent"})[a.type] || "tool";var live=a.active!==false
     var labels={compact:live?"Compacting context":"Context compacted",think:"Thinking",execute:live?"Running commands":"Ran commands",read:live?"Reading files":"Read files",edit:live?"Editing files":"Edited files",search:live?"Searching files":"File search",web:live?"Searching the web":"Web search",agent:"Delegated work",tool:live?"Calling tool":"Tool finished"}
+    var failedEntries=(a.entries || []).filter(function(e){return e.failed}).length
+    if(a.failed&&!live&&!(a.count>1)){var failedLabels={execute:"Command failed",read:"Read failed",edit:"Edit failed",search:"Search failed",web:"Web search failed",agent:"Delegated work failed",tool:"Tool failed"}
+      var what=a.command || a.title;var head=T3I18n.tr(failedLabels[category] || "Tool failed");return what?T3I18n.tr("{activity} · {title}",{activity:head,title:what}):head}
     if(a.command && (live || !(a.count>1)))return T3I18n.tr(live?"Running {command}":"Ran {command}",{command:a.command})
     var label=T3I18n.tr(labels[category]);if(a.title)label=T3I18n.tr("{activity} · {title}",{activity:label,title:a.title});else if(live)label+="…"
-    return a.count>1?T3I18n.tr("{activity} ({count})",{activity:label,count:a.count}):label
+    if(a.count>1)label=T3I18n.tr("{activity} ({count})",{activity:label,count:a.count})
+    return failedEntries&&a.count>1?T3I18n.tr("{activity} · {count} failed",{activity:label,count:failedEntries}):label
   }
   function refresh() { send({op: "refresh"}) }
   function search(value) { query = value }
@@ -1683,7 +1733,7 @@ Singleton {
   function selectThread(env, thread) {
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}
     if (selectedEnvironment === env && selectedThread === thread) { fetchMessages(); return }
-    clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;activeSubagents=[];branchRefs=({});branchMismatch=({});branchCheckDelay.restart();documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
+    clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;threadSubagents=[];branchRefs=({});branchMismatch=({});branchCheckDelay.restart();documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
     selectedEnvironment = env; selectedThread = thread; selectedKey = env + "/" + thread
     var found = state.threads.find(function(t) { return t.key === root.selectedKey })
     selectedTitle = found ? (found.title || thread) : thread
@@ -1810,7 +1860,7 @@ Singleton {
       else if (event.type === "quotas") { quotaSnapshot=data;presentQuotas();quotaError = "" }
       else if (event.type === "messages" && data.serial === requestedSerial && panelVisible) {
         loadingMessages = false; messageError = data.result.error || ""
-        if(data.result.threadState){var subs=data.result.threadState.subagents||[];if(JSON.stringify(subs)!==JSON.stringify(activeSubagents))activeSubagents=subs}
+        if(data.result.threadState){var subs=data.result.threadState.subagents||[];if(JSON.stringify(subs)!==JSON.stringify(threadSubagents))threadSubagents=subs}
         if(data.result.threadState){var ts=data.result.threadState;if(ts.mergeBackTargetThreadId!==selectedWorkflow.target||ts.mergeBackRunId!==selectedWorkflow.runId||selectedWorkflow.key!==selectedKey)selectedWorkflow={key:selectedKey,target:ts.mergeBackTargetThreadId||"",runId:ts.mergeBackRunId||""};var cw=ts.contextWindow||null;if(JSON.stringify(cw)!==JSON.stringify(contextWindow))contextWindow=cw}
         if(data.result.threadState){var currentKey=selectedKey,current=state.threads.find(function(t){return t.key===currentKey}),delta=Object.assign({},data.result.threadState);delete delta.contextWindow;delete delta.subagents;if(current && Object.keys(delta).some(function(k){return current[k]!==delta[k]})){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===currentKey?Object.assign({},t,delta):t})});snapshotUpdated()}}
         messagesAboutToChange()
@@ -1850,4 +1900,102 @@ Singleton {
     onExited: { ImportFlow.lost(root);root.browserCleanups=({}); BrowserSurface.dismiss(root);Previews.lost(root); root.connectionLost(); root.stale = true; root.error = "disconnected"; reconnect.restart() }
   }
   Timer { id: reconnect; interval: 5000; onTriggered: worker.running = true }
+
+  // Provider (harness) updates the connected environments report, after T3's
+  // ProviderUpdateLaunchNotification. A dismissed set of versions stays hidden.
+  readonly property var providerUpdates:Updates.candidates(catalogs,(state.environments || []).filter(function(e){return e.state==="ready"}))
+  property var providerUpdateClosed:({})
+  property var providerUpdateRequests:({})
+  readonly property var providerUpdateNotice:Updates.notice(providerUpdates,viewState.providerUpdateDismissals,providerUpdateClosed)
+  function closeProviderUpdates(key,remember){if(!key)return;var closed=Object.assign({},providerUpdateClosed);closed[key]=true;providerUpdateClosed=closed;if(remember)rememberView({providerUpdateDismissals:Updates.dismiss(viewState.providerUpdateDismissals,key)})}
+  function providerUpdateRequest(u){return u?providerUpdateRequests[u.environment+"/"+u.instanceId] || null:null}
+  function setProviderUpdateRequest(k,values){var all=Object.assign({},providerUpdateRequests);all[k]=Object.assign({},all[k] || {},values);providerUpdateRequests=all}
+  function updateProvider(u){
+    if(!u||!u.oneClick||!worker.running)return
+    var k=u.environment+"/"+u.instanceId,current=providerUpdateRequests[k]
+    if(current&&["pending","running"].indexOf(current.state)>=0)return
+    if(!worker.running){setProviderUpdateRequest(k,{state:"failed",error:"disconnected"});return}
+    var id=uuid();setProviderUpdateRequest(k,{state:"pending",error:"",requestId:id,environment:u.environment,instanceId:u.instanceId,name:u.name,latestVersion:u.latestVersion})
+    send({op:"provider-update",environment:u.environment,instanceId:u.instanceId,requestId:id});providerUpdatePoll.start()
+  }
+  // Update all: every one-click update in every environment, started together
+  // but run one at a time (each update can take minutes and shares the machine).
+  property var providerUpdateQueue:[]
+  function updateAllProviders(list){
+    var queue=providerUpdateQueue.slice()
+    ;(list || providerUpdates).filter(function(u){var r=providerUpdateRequest(u);return u.oneClick&&!(r&&["pending","running","queued"].indexOf(r.state)>=0)}).forEach(function(u){
+      queue.push(u);setProviderUpdateRequest(u.environment+"/"+u.instanceId,{state:"queued",error:"",environment:u.environment,instanceId:u.instanceId,name:u.name,latestVersion:u.latestVersion})
+    })
+    providerUpdateQueue=queue;advanceProviderUpdates()
+  }
+  function advanceProviderUpdates(){
+    if(Object.keys(providerUpdateRequests).some(function(k){return ["pending","running"].indexOf(providerUpdateRequests[k].state)>=0}))return
+    var queue=providerUpdateQueue.slice(),next=queue.shift();providerUpdateQueue=queue
+    if(next)updateProvider(next)
+  }
+  onProviderUpdateRequestsChanged:if(providerUpdateQueue.length)Qt.callLater(advanceProviderUpdates)
+  function refreshProviderCatalogs(){(state.environments || []).forEach(function(e){if(e.state!=="ready")return;if(catalogs[e.id])refreshCatalogIn(e.id);else ensureCatalog(e.id)})}
+  Timer{interval:1800000;repeat:true;triggeredOnStart:true;running:root.panelVisible;onTriggered:root.refreshProviderCatalogs()}
+  // While an update runs, follow its state in the environment's catalog.
+  Timer{
+    id:providerUpdatePoll;interval:5000;repeat:true
+    onTriggered:{
+      var busy=false,envs={}
+      Object.keys(root.providerUpdateRequests).forEach(function(k){
+        var r=root.providerUpdateRequests[k];if(["pending","running"].indexOf(r.state)<0)return
+        var u=root.providerUpdates.find(function(c){return c.environment===r.environment&&c.instanceId===r.instanceId})
+        if(r.state==="running"&&!u){root.setProviderUpdateRequest(k,{state:"succeeded"});return}
+        if(u&&u.state==="failed"){root.setProviderUpdateRequest(k,{state:"failed",error:u.stateMessage || "provider_update_failed"});return}
+        if(u&&u.state==="unchanged"){root.setProviderUpdateRequest(k,{state:"unchanged"});return}
+        busy=true;envs[r.environment]=true
+      })
+      Object.keys(envs).forEach(function(e){root.refreshCatalogIn(e)})
+      if(!busy)stop()
+    }
+  }
+  // Why a run failed: its failed tools, with what each reported (failure_context.rs).
+  property var failureContexts:({})
+  property var toolFailures:({})
+  // Keys are pure, for bindings; requests write state, so callers make them outside bindings.
+  function failureContextKey(runId){return runId&&selectedThread?selectedEnvironment+"/"+selectedThread+"/"+runId:""}
+  function toolFailureKey(reference){return reference&&reference.sourceItemId?selectedEnvironment+"/"+reference.sourceItemId+"/"+reference.revision:""}
+  function requestFailureContext(runId){
+    var k=failureContextKey(runId);if(!k||failureContexts[k]||!worker.running)return
+    var all=Object.assign({},failureContexts);all[k]={busy:true,tools:[],error:""};failureContexts=all
+    send({op:"failure-context",environment:selectedEnvironment,thread:selectedThread,runId:runId,requestId:k})
+  }
+  function requestToolFailure(reference){
+    var k=toolFailureKey(reference);if(!k||toolFailures[k]||!worker.running)return
+    var all=Object.assign({},toolFailures);all[k]={busy:true};toolFailures=all
+    send(Object.assign({op:"tool-failure",environment:selectedEnvironment,thread:selectedThread,threadId:selectedThread,requestId:k},reference))
+  }
+  function failureAction(data){
+    if(data.op==="failure-context"){if(!failureContexts[data.requestId])return;var all=Object.assign({},failureContexts);all[data.requestId]=data.error?{busy:false,tools:[],error:data.error}:{busy:false,tools:data.result.tools || [],error:""};failureContexts=all;return}
+    if(!toolFailures[data.requestId])return
+    var tools=Object.assign({},toolFailures);tools[data.requestId]=data.error?{busy:false,error:data.error}:Object.assign({busy:false,error:""},data.result);toolFailures=tools
+  }
+  // Thread details (T3 ThreadDetailsPanel): editors for the open thread's workspace.
+  property var threadDetails:({key:"",editors:[],cwd:"",busy:false,error:"",requestId:""})
+  property var editorOpen:({busy:false,error:"",requestId:""})
+  function requestThreadDetails(){
+    if(!selectedThread)return
+    if(!worker.running){threadDetails=Object.assign({},threadDetails,{busy:false,error:"disconnected"});return}
+    var id=uuid(),same=threadDetails.key===selectedKey
+    threadDetails={key:selectedKey,editors:same?threadDetails.editors:[],cwd:same?threadDetails.cwd:"",busy:true,error:"",requestId:id}
+    send({op:"thread-details-read",environment:selectedEnvironment,thread:selectedThread,requestId:id})
+  }
+  function openThreadInEditor(editor){
+    if(!selectedThread||editorOpen.busy||!worker.running)return
+    if(editor&&editor!==viewState.preferredEditor)rememberView({preferredEditor:editor})
+    var id=uuid();editorOpen={busy:true,error:"",requestId:id}
+    send({op:"thread-details-open-editor",environment:selectedEnvironment,thread:selectedThread,editor:editor || viewState.preferredEditor || "",requestId:id})
+  }
+  function detailsAction(data){
+    if(data.op==="provider-update"){
+      var k=Object.keys(providerUpdateRequests).find(function(key){return providerUpdateRequests[key].requestId===data.requestId});if(!k)return
+      setProviderUpdateRequest(k,data.error?{state:"failed",error:data.error}:{state:"running"});refreshCatalogIn(providerUpdateRequests[k].environment);return
+    }
+    if(data.op==="thread-details-read"){if(data.requestId!==threadDetails.requestId)return;threadDetails=Object.assign({},threadDetails,{busy:false,error:data.error || "",editors:data.error?threadDetails.editors:(data.result.editors || []),cwd:data.error?threadDetails.cwd:(data.result.cwd || "")});return}
+    if(data.op==="thread-details-open-editor"){if(data.requestId!==editorOpen.requestId)return;editorOpen={busy:false,error:data.error || "",requestId:""};return}
+  }
 }

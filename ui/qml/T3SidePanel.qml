@@ -3,7 +3,8 @@ import QtQuick.Layouts
 import qs.Commons
 
 // Multi-purpose side panel next to the chat. Each tab is its own tool:
-// the preview browser, HTML renders made in this chat and device screens.
+// the preview browser, HTML renders made in this chat, the chat's agents
+// and device screens.
 // Only the visible tab is loaded.
 Rectangle {
   id: root
@@ -24,6 +25,7 @@ Rectangle {
   readonly property var tabs: [
     {id: "browser", icon: "globe", label: "Browser"},
     {id: "renders", icon: "code", label: "Renders"},
+    {id: "agents", icon: "bot", label: "Agents"},
     {id: "devices", icon: "smartphone", label: "Devices"}
   ]
   ColumnLayout {
@@ -59,7 +61,7 @@ Rectangle {
       id: content
       objectName: "t3SidePanelContent"
       Layout.fillWidth: true; Layout.fillHeight: true
-      sourceComponent: root.tab === "browser" ? root.browserComponent : root.tab === "renders" ? rendersTab : devicesTab
+      sourceComponent: root.tab === "browser" ? root.browserComponent : root.tab === "renders" ? rendersTab : root.tab === "agents" ? agentsTab : devicesTab
     }
   }
   Component {
@@ -93,6 +95,10 @@ Rectangle {
         onClosed: root.closed()
       }
     }
+  }
+  Component {
+    id: agentsTab
+    T3AgentsPanel { bridge: root.bridge }
   }
   Component {
     id: devicesTab

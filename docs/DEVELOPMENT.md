@@ -76,7 +76,7 @@ omarchy plugin enable io.github.avillagran.omarchy-t3-code
 omarchy restart shell
 ```
 
-Click the T3 icon in the status bar to open the panel. Configure local and remote
+Press Super+Shift+A, run `bin/ot3` or click the T3 icon in the status bar to show the app. Configure local and remote
 connections in the official T3 client; this plugin inherits them. It does not
 maintain a separate server list or ask you to paste provider tokens.
 
@@ -186,15 +186,65 @@ before estimated cache expiry. Review its settings: provider cache lifetimes
 vary, estimates can be wrong, and compaction consumes quota even if you do not
 return to the thread. It requires the plugin and T3 server to remain running.
 
-## Native window mode
+## Desktop app and bar widget
 
-The header toggles the same workspace item between a layer-shell panel and a
-Quickshell FloatingWindow (a normal Wayland toplevel managed by Hyprland). It
-does not create a second backend or rebuild the composer. Logical visibility
-stays stable across the switch, so subscriptions and pending drafts continue.
-The desktop host stores the mode and window size in its private UI state.
-Closing through the compositor hides the client; opening it again restores the
-selected mode. Global send is consumed by a detached window only when focused.
+Omarchy T3 Code runs as its own Quickshell instance, not inside the Omarchy
+shell. `bin/ot3` builds a small config folder in
+`$XDG_STATE_HOME/omarchy-t3-code/app` (links to Omarchy's `Commons` and `Ui`
+and to this installation's `ui`, `bin`, `translations`, `licenses`, `data` and `upstream`,
+plus `app/shell.qml`) and starts it as the transient user service
+`omarchy-t3-code`, so neither a stuck bar nor a shell restart takes it down.
+The window has the app id `io.github.avillagran.omarchy-t3-code`.
+
+```bash
+bin/ot3            # toggle: show, focus, or hide when focused
+bin/ot3 start      # start hidden (login autostart and the bar widget)
+bin/ot3 hide|quit|restart|status
+bin/ot3 install-desktop   # launcher entry, autostart, ~/.local/bin/ot3
+```
+
+The app writes its status (counts, shown, offline, OmaBridge, a translated
+tooltip) to `$XDG_RUNTIME_DIR/omarchy-t3-code/status.json`. The bar widget
+(`ui/qml/BarWidget.qml`, the plugin entry point) only reads that file and runs
+`bin/ot3`; it loads no backend or translations. A status older than 90 s reads
+as a stopped app.
+
+The header cycles panel → floating → tiled. Panel mode shows the app under the
+bar's T3 button as the in-shell popup did: the bar widget sends the button's
+place (`ot3 anchor JSON`, kept per screen in `$XDG_RUNTIME_DIR/omarchy-t3-code/anchors.json`)
+and the app draws a transparent, click-through twin of that bar to anchor the
+popup. Without the bar widget there is no panel mode, only windows. Closing through the
+compositor or the header's – button hides the window; the backend keeps
+running, so subscriptions, notifications and drafts continue.
+
+## Keeping up with T3 Code nightly
+
+ot3 is validated against one T3 Code revision, recorded in `upstream/t3code.json`;
+every generator in `tools/` reads it from there. `tools/upstream-drift.cjs`
+compares that revision with a newer checkout (default `../t3code-nightly`) and
+reports what ot3 does not cover: RPC methods, orchestration command/event types,
+HTTP endpoints, client/server settings and keybinding commands added or removed,
+removed items ot3 still uses (breaking), stale generated tables, and the commits
+grouped by the part of ot3 they touch.
+
+```bash
+git -C ../t3code-nightly pull --ff-only
+node tools/upstream-drift.cjs --write          # upstream/DRIFT.md
+node tools/upstream-drift.cjs --list rpc        # one surface with ot3's coverage
+node tools/upstream-drift.cjs --check           # inventory covers the pin; supported items still referenced
+node tools/upstream-drift.cjs --sync            # add the new items to upstream/parity.json, unreviewed
+node tools/upstream-drift.cjs --pin             # move the pin once every item is in the inventory
+```
+
+`upstream/parity.json` records each item as `supported`, `partial`, `missing` or
+`ignored` (with a note); new items enter with `reviewed: false` until someone
+decides. Moving the pin requires regenerating the tables (`tools/build-*.cjs`)
+with the nightly checkout at the new revision. `node tools/test-upstream-drift.cjs`
+tests the tool against a fixture repository. `tools/upstream-watch` fetches the nightly
+tags (without moving the checkout), compares the newest one and prints a
+summary; a T3 scheduled task runs it daily and leaves the summary in a thread.
+Preferences → General → T3 Code compatibility and the sidebar's environment list
+show each server's T3 version and mark the ones newer than the pin.
 
 ## Architecture and resource use
 
@@ -251,10 +301,10 @@ To measure on a running panel, enable Preferences › Animations › Frame rate
 meter, or use the diagnostics IPC:
 
 ```bash
-omarchy-shell io.github.avillagran.omarchy-t3-code profileScroll  # 4 s of touchpad-style scrolling
-omarchy-shell io.github.avillagran.omarchy-t3-code profileResult  # fps and frame interval percentiles
-omarchy-shell io.github.avillagran.omarchy-t3-code skyState       # sky mode, meteor and clock pace
-omarchy-shell io.github.avillagran.omarchy-t3-code sidePanel devices  # side panel tab: browser, renders, devices ("" closes)
+bin/ot3 call profileScroll  # 4 s of touchpad-style scrolling
+bin/ot3 call profileResult  # fps and frame interval percentiles
+bin/ot3 call skyState       # sky mode, meteor and clock pace
+bin/ot3 call sidePanel devices  # side panel tab: browser, renders, devices ("" closes)
 ```
 
 Resource consumption depends on transcript size, attachments, the shell and
@@ -298,7 +348,8 @@ re-imports the latest QtQuick, so it is pinned to 6.11 as well.
 └── bin/                     # CLI launcher, build entry point and local binaries
 ```
 
-`manifest.json` points directly to `ui/qml/BarWidget.qml`. Rust follows the
+`manifest.json` points directly to `ui/qml/BarWidget.qml` (the bar widget);
+the app's entry point is `app/shell.qml`, started by `bin/ot3`. Rust follows the
 standard Cargo layout; the portable crate is a pinned Git dependency on
 lib-t3-rust, shared with Omi. Update its full revision in Cargo.toml and commit
 Cargo.lock after validating both repositories. To develop locally without changing

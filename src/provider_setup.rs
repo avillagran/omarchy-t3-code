@@ -58,7 +58,7 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         "auth-state" => ("auth", first(e, "provider.auth.subscribe", id)?),
         "update" => {
             let driver = input["driver"].as_str().filter(|d| !d.is_empty() && d.len() <= 64).ok_or("invalid_provider_setup")?;
-            ("update", rpc(e, "server.updateProvider", json!({"provider":driver,"instanceId":instance}))?)
+            ("update", crate::provider_updates::run_update(e, driver, &instance)?)
         }
         _ => return Err("invalid_command".into()),
     };

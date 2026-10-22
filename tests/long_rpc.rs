@@ -198,9 +198,21 @@ fn lifecycle_uses_existing_dpop_ticket_admission_without_exporting_bound_credent
             Duration::from_secs(2)
         )
         .unwrap_err(),
-        "write_not_authorized"
+        "write_not_authorized: AuthScopeError"
     );
     server.join().unwrap();
+}
+#[test]
+fn rejections_keep_the_servers_reason_but_no_other_cause_data() {
+    // Effect 4 encodes a cause as its list of reasons.
+    let cause = json!([{"_tag":"Fail","error":{"_tag":"ProjectNotFound","message":"Project p-1 was not found.\nstack","request":"PRIVATE"}}]);
+    let error = protocol::rejection_for_test(&cause);
+    assert_eq!(error, "rpc_rejected: Project p-1 was not found.");
+    assert_eq!(protocol::error_code(&error), "rpc_rejected");
+    assert_eq!(protocol::rejection_for_test(&json!({"private":"PRIVATE"})), "rpc_rejected");
+    assert_eq!(protocol::rejection_for_test(&json!({"_tag":"Die","defect":"boom"})), "rpc_rejected: boom");
+    assert_eq!(protocol::error_code("Not a code: text"), "Not a code: text");
+    assert_eq!(protocol::error_code("invalid_id"), "invalid_id");
 }
 #[test]
 fn vendored_protocol_base_matches_the_existing_pinned_dependency_exactly() {

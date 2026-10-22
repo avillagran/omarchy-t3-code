@@ -31,6 +31,8 @@ fn preferences(value: &Value, rev: String) -> Value {
     let settings = fields(value);
     let mut out=json!({"revision":rev,"loadBalancingEnabled":settings["loadBalancingEnabled"] == true,
         "planModeEnabled":settings["planModeEnabled"]==true,
+        // T3 followUpBehavior: what a message sent during a run does (queue by default).
+        "followUpBehavior":if settings["followUpBehavior"]=="steer"{"steer"}else{"queue"},
         "mathRenderingEnabled":settings["mathRenderingEnabled"]==true,
         "confirmThreadDelete":settings["confirmThreadDelete"]!=false,
         "diffLayout":if settings["diffLayout"]=="split"{"split"}else{"stacked"},
@@ -67,7 +69,7 @@ pub fn update_client_preferences_at(path: &Path, expected: &str, patch: &Value) 
     let raw = bytes(&destination)?;
     if revision(&raw) != expected { return Err("client_settings_changed_reload".into()); }
     let mut value = document(&raw)?;
-    if !patch.is_object() || patch.as_object().is_some_and(|o| o.is_empty() || o.keys().any(|k| !crate::browser_preferences::KEYS.contains(&k.as_str()) && k != "diffLayout" && k != "planModeEnabled" && k != "mathRenderingEnabled" && k != "loadBalancingEnabled" && k != "environmentId" && k != "weight")) {
+    if !patch.is_object() || patch.as_object().is_some_and(|o| o.is_empty() || o.keys().any(|k| !crate::browser_preferences::KEYS.contains(&k.as_str()) && k != "diffLayout" && k != "planModeEnabled" && k != "followUpBehavior" && k != "mathRenderingEnabled" && k != "loadBalancingEnabled" && k != "environmentId" && k != "weight")) {
         return Err("invalid_client_preference".into());
     }
     let target = fields_mut(&mut value);
@@ -78,6 +80,10 @@ pub fn update_client_preferences_at(path: &Path, expected: &str, patch: &Value) 
     }
     if let Some(enabled)=patch.get("mathRenderingEnabled"){
         target["mathRenderingEnabled"]=json!(enabled.as_bool().ok_or("invalid_client_preference")?);
+    }
+    if let Some(behavior)=patch.get("followUpBehavior"){
+        if !matches!(behavior.as_str(),Some("queue"|"steer")){return Err("invalid_client_preference".into());}
+        target["followUpBehavior"]=behavior.clone();
     }
     if let Some(enabled)=patch.get("planModeEnabled"){
         target["planModeEnabled"]=json!(enabled.as_bool().ok_or("invalid_client_preference")?);

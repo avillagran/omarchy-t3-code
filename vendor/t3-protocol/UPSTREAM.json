@@ -5,7 +5,7 @@
     "Cargo.toml": "7ffdbbfc3439ad4f1add2bdd3f1523a80cb3ddb88afcb5d311b0ca3cbc4a5641",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
     "README.md": "d688c0f03691a5a1eb4e0291f00695cd07cdda52176eceffc316f24c4e84f436",
-    "src/activity.rs": "e8181f7b0e8fb01a153ad105ec31f465016161b0a56fbe4ca9daa028c453eb8e",
+    "src/activity.rs": "4e681206d8271e8876810a9a6c34435e31bbfacbb55d746ae0900b82fde15712",
     "src/approvals.rs": "0207ed73e3046a11bb3e7a9ce306e56c2f3289e63db5e34a33617c7cc4f1be57",
     "src/changes.rs": "999f442928b7fe47b05c75e01d3830fc20b5088ca686ca552536268ca60d2132",
     "src/code_blocks.rs": "5b670c8d05501338e3c95f34f7dec1e9c3277be11e979627a1a2b9b3272f308b",
@@ -18,7 +18,7 @@
     "src/ffi_stream.rs": "4f9a4772740721b46f7f20006eb8381f8183bacda164af083d36b633af5f9052",
     "src/history.rs": "1f3fcd68eea3f3b317053bedd36fec1458359da70225931285f3fd2b07196266",
     "src/i18n.rs": "0cbb5b216b8dd94f6fbf8001871808fbb2e696f2822f0d482c8c46664729c1cb",
-    "src/lib.rs": "4904fe5ff7398d983864e22fe7d795eacccec63753cd1d361053b028593c56f4",
+    "src/lib.rs": "960bf8c430519181938db5f8328192a7c65ac8f85103ff933dc3450389901151",
     "src/lifecycle.rs": "52b1a2581e9d80880e603d48f82f36e4bcb43b4ed3ecd3fa06bafabffdca2563",
     "src/models.rs": "cdeb2da96de219219920db96cafa126dbf8811dd5d4777ea034c91b91d95cd89",
     "src/projection.rs": "ca2af3f6cff408a5f444e1e7a71779cee4a528c9fb25a74ab8c070191437a7e8",
@@ -27,7 +27,7 @@
     "src/questions.rs": "47f6dfc72bfadfbb0b0f2e27cf144cbbc1e6f910506d92797df3db0e049bdee5",
     "src/queue.rs": "26bc7d98335917b6271a14ebcdc381992918fb7903e2fad7746c348ae1109cdd",
     "src/settings.rs": "cc3d358be178433037d5c8644d06f9833fd85e1d72f5c20b074cc876b9d3515b",
-    "src/sidebar.rs": "00c364ed2146fcee641e1df657a7caee42329b6eccf5e14fc7d30f3f7da6a0f3",
+    "src/sidebar.rs": "3a5d107f1ae4751006ec1105c645c92651b674b6cd70b16c17a1ddf02158abec",
     "src/stream.rs": "825f16c4d9be724a88f526ccb576fa8a7751bbfce33755ec176ad9929a29e3ef",
     "src/tasks.rs": "27eed96aa7b145d3d5a035a7b131d6aeaed5f31441051514cf274ce945817585",
     "src/terminal.rs": "21e1a93820363ce3c19881b1213547ce4a54e49b4e888001834c98b0fe8553e9"
@@ -43,6 +43,9 @@
     "src/lib.rs attachment_image also reads HEIC, HEIF and AVIF attachments (ISO-BMFF ftyp signature), which T3 renders since 0.1",
     "src/documents.rs reads MCP app references (t3McpApp) of completed tool calls and src/projection.rs keeps them when the live mirror drops tool outputs",
     "src/compaction.rs keeps settled threads asleep: automatic compaction skips a thread whose settledOverride or settledAt marks it settled, unless it was explicitly made active",
-    "src/queue.rs hides a queued or cancelled run's message only while that run still owns it, so a message promoted to steer stays visible on the active run"
+    "src/queue.rs hides a queued or cancelled run's message only while that run still owns it, so a message promoted to steer stays visible on the active run",
+    "src/lib.rs and src/long_rpc.rs keep a failed RPC's reason after its code (\"rpc_rejected: <message>\"): only the cause's first error message or error tag is read, bounded to one line; error_code() strips it for callers that compare codes; rpc_connection_failed keeps the websocket handshake error",
+    "src/activity.rs marks failed tool rows (`failed`: status failed or output indicating failure) so the timeline can show what failed",
+    "src/sidebar.rs follows T3 0.1.2 snooze and status rules: sidebar_status() ports resolveSidebarThreadStatus over presentThreadShell's runtime (approval, input, waiting, working, goal, limited, failed, ready; background work parks at idle, commands hold nothing); metadata() reads V2 thread-level status/lastError, wakes a snooze only on a request or a fresh failure (never on a completed run) and exports wokeAt/woke (threadWokeAt)"
   ]
 }
