@@ -2,6 +2,7 @@
 import json, os, queue, subprocess, tempfile, threading, unittest
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlsplit, parse_qs
 
 class WatchTest(unittest.TestCase):
     def test_visible_reads_search_and_cache(self):
@@ -39,7 +40,7 @@ class WatchTest(unittest.TestCase):
                 send({'op':'select','environment':'fixture','thread':'thread-0001','serial':1})
                 send({'op':'search','query':'missing'})
                 self.assertEqual(event('snapshot')['threads'],[])
-                self.assertFalse(any(path.endswith('/bounded') for path in calls))
+                self.assertFalse(any(urlsplit(path).path.endswith('/bounded') for path in calls))
                 send({'op':'visible','value':True})
                 send({'op':'select','environment':'fixture','thread':'thread-0001','serial':42})
                 result=event('messages')
@@ -48,10 +49,16 @@ class WatchTest(unittest.TestCase):
                 self.assertTrue(result['result']['hasMoreHistory'])
                 polled.clear();send({'op':'refresh'})
                 self.assertTrue(polled.wait(4))
-                # Metadata did not change: reuse the cached transcript.
+                # A visit acknowledgement may invalidate the first read once;
+                # unchanged subsequent refreshes must keep the cached transcript.
                 send({'op':'search','query':'Fixture'})
                 self.assertEqual(len(event('snapshot')['threads']),1)
-                self.assertEqual(sum(path.endswith('/bounded') for path in calls),1)
+                bounded=[path for path in calls if urlsplit(path).path.endswith('/bounded')]
+                self.assertGreaterEqual(len(bounded),1)
+                self.assertLessEqual(len(bounded),2,calls)
+                self.assertTrue(all(parse_qs(urlsplit(path).query).get('compactTurnItems')==['1'] for path in bounded))
+                polled.clear();send({'op':'refresh'});self.assertTrue(polled.wait(4))
+                self.assertEqual(sum(urlsplit(path).path.endswith('/bounded') for path in calls),len(bounded))
             finally:
                 send({'op':'quit'});p.wait(timeout=5);p.stdin.close();reader.join(timeout=2);p.stdout.close()
         server.shutdown();server.server_close();thread.join()

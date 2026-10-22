@@ -499,7 +499,9 @@ Item {
       if (index < 0) { if(tail)view.positionViewAtEnd();else view.positionViewAtBeginning(); done(); return }
       view.positionViewAtIndex(index,ListView.Beginning)
       Qt.callLater(function() {
-        if (!view) return
+        // The view can be destroyed while this restore is queued (e.g. the
+        // panel closes after a plan handoff). Do not call into a dead QML item.
+        if (!view || typeof view.itemAtIndex !== "function") { done(); return }
         var item = view.itemAtIndex(index)
         if (item) view.contentY = Math.max(view.originY,Math.min(view.originY+Math.max(0,view.contentHeight-view.height),item.y+p.offset))
         done()

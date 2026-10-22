@@ -15,7 +15,7 @@ ShellRoot {
       panel.toggleSidebar(); root.check(!panel.sidebarCollapsed,"sidebar reopens")
       quota.providers=[{provider:"codex",label:"Codex",weekly:{availablePercent:0,windowSeconds:604800},shortWindow:null,onPace:true},{provider:"empty",label:"Empty",weekly:null,shortWindow:null}]
       root.check(quota.visibleProviders.length===1,"providers without data are hidden, zero remains valid")
-      root.check(!quota.hasWindow(quota.visibleProviders[0].shortWindow),"no phantom 5h window")
+      root.check(quota.windows(quota.visibleProviders[0]).length===1,"no phantom 5h window")
       quota.providers=[]; root.check(!quota.visible,"empty quota section is hidden")
       var projects=[{id:"p1",key:"fixture/p1",title:"One"},{id:"p2",key:"fixture/p2",title:"Two"},{id:"p3",key:"fixture/p3",title:"Three"}]
       var threads=[{id:"a",key:"fixture/a",projectKey:"fixture/p1",title:"Active",status:"running",working:true},

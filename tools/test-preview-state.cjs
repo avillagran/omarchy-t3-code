@@ -5,9 +5,9 @@ const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||pat
 const provenance=JSON.parse(fs.readFileSync(path.join(root,'ui/js/NativePreviewState.sources.json'),'utf8'));
 const generated=fs.readFileSync(path.join(root,'ui/js/NativePreviewState.js'),'utf8');
 assert.equal(crypto.createHash('sha256').update(generated).digest('hex'),provenance.outputSha256);
-const testFile='apps/web/src/previewStateStore.test.ts',original=fs.readFileSync(path.join(source,testFile),'utf8');
-assert.equal(original,cp.execFileSync('git',['-C',source,'show',provenance.commit+':'+testFile],{encoding:'utf8'}));
-for(const [file,digest] of Object.entries(provenance.files))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(source,file))).digest('hex'),digest);
+const pinned=file=>cp.execFileSync('git',['-C',source,'show',provenance.commit+':'+file],{encoding:'utf8'});
+const testFile='apps/web/src/previewStateStore.test.ts',original=pinned(testFile);
+for(const [file,digest] of Object.entries(provenance.files))assert.equal(crypto.createHash('sha256').update(pinned(file)).digest('hex'),digest);
 let before=()=>{},passed=0;
 // Only framework assertions are adapted; each original test body is unchanged.
 const setup=`

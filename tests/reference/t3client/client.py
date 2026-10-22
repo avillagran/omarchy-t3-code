@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MAX_BYTES = 8 * 1024 * 1024
-ACTIVE = {'preparing', 'queued', 'starting', 'running'}
+ACTIVE = {'preparing', 'queued', 'starting', 'running', 'waiting'}
 
 class T3Error(Exception):
     def __init__(self, code):
@@ -66,6 +66,24 @@ def epoch_ms(value):
         pass
     return 0
 
+def sort_stamp(value):
+    # Native sidebar sort timestamps are already milliseconds when numeric.
+    return max(0, value) if type(value) is int else epoch_ms(value)
+
+def sort_timestamps(t):
+    run = t.get('latestRun') or {}
+    requested = max(sort_stamp(t.get('latestRunRequestedAt')), sort_stamp(run.get('requestedAt')))
+    completed = max(sort_stamp(t.get('latestRunCompletedAt')), sort_stamp(run.get('completedAt')))
+    created = sort_stamp(t.get('createdAt'))
+    anchor = max(created, sort_stamp(t.get('unsettledAt')))
+    authored = sort_stamp(t['latestUserAuthoredMessageAt']) if 'latestUserAuthoredMessageAt' in t else requested
+    settled = sort_stamp(t.get('settledAt'))
+    history = max(sort_stamp(t.get('latestUserMessageAt')), requested, completed,
+                  sort_stamp(t.get('latestRunStartedAt')), sort_stamp(run.get('startedAt')))
+    return {'inboxAt': max(anchor, requested, completed), 'activeAnchorAt': anchor,
+            'lastSentAt': max(created, authored),
+            'settledSortAt': settled or history or sort_stamp(t.get('updatedAt'))}
+
 def normalize_shell(document, environment_id, now_ms=None):
     if not isinstance(document, dict) or not isinstance(document.get('threads'), list):
         raise T3Error('malformed')
@@ -77,34 +95,50 @@ def normalize_shell(document, environment_id, now_ms=None):
             raise T3Error('malformed')
         ids.add(t['id'])
         if t.get('deletedAt') or t.get('archivedAt'): continue
-        status = t.get('status', 'unknown')
+        status = t.get('status') or 'unknown'
         if not isinstance(status, str) or not isinstance(t.get('title'), str): raise T3Error('malformed')
-        # Activity fields can report background work after the root run completes.
-        working = status in ACTIVE or t.get('activityRunStatus') in ACTIVE or bool(t.get('pendingBackgroundTasks'))
-        reason = ('request' if t.get('pendingRuntimeRequest') is not None else
+        run_active = status in ACTIVE or t.get('activityRunStatus') in ACTIVE
+        blocked_on_wait = t.get('blockedOnThreadWait') is True
+        working = run_active and not blocked_on_wait
+        background = status != 'failed' and isinstance(t.get('pendingBackgroundTasks'), list) and any(
+            task.get('kind') != 'command' for task in t['pendingBackgroundTasks'])
+        request = t.get('pendingRuntimeRequest') is not None and not (
+            isinstance(t['pendingRuntimeRequest'], dict) and
+            t['pendingRuntimeRequest'].get('blocking') is False and run_active)
+        reason = ('request' if request else
                   'plan' if t.get('hasActionableProposedPlan') else
-                  'waiting' if status == 'waiting' else
                   'failed' if status == 'failed' else None)
         visited = epoch_ms(t.get('lastVisitedAt'))
         completed = epoch_ms(t.get('latestRunCompletedAt'))
-        # A completed turn awaits review; never inspect the prose to infer urgency.
-        if reason is None and not working and status == 'completed' and completed > visited:
+        if (reason is None and not working and status == 'completed' and
+                t.get('latestRunStopRequested') is not True and
+                ('lastVisitedAt' not in t or visited > 0) and completed > visited):
             reason = 'review'
         if t.get('settledOverride') in (True, 'settled') or (t.get('settledAt') and t.get('settledOverride') != 'active'):
             reason = None
         snoozed = epoch_ms(t.get('snoozedUntil')) > now_ms
         pending = reason is not None and not snoozed
-        request = t.get('pendingRuntimeRequest') or {}
-        request_id = (request.get('id') or request.get('requestId') or 'pending') if isinstance(request, dict) else 'pending'
-        revision_data = [reason or '', t.get('latestRunId') or '', request_id if request else '', str(completed or ('' if t.get('latestRunId') else t.get('updatedAt', '')))]
+        request_value = t.get('pendingRuntimeRequest') or {}
+        request_id = (request_value.get('id') or request_value.get('requestId') or 'pending') if isinstance(request_value, dict) else 'pending'
+        stamp = str(completed) if completed else ('' if t.get('latestRunId') else
+                t.get('updatedAt') if isinstance(t.get('updatedAt'), str) else json.dumps(t.get('updatedAt')))
+        revision_data = [reason or '', t.get('latestRunId') or '', request_id if request_value else '', stamp]
         revision = hashlib.sha256('\0'.join(revision_data).encode()).hexdigest()
-        result.append({'id': t['id'], 'environmentId': environment_id,
-                       'key': environment_id + '/' + t['id'], 'title': t['title'],
-                       'project': projects.get(t.get('projectId'), t.get('projectId', '')),
-                       'status': status, 'working': working, 'pending': pending,
-                       'reason': reason, 'snoozed': snoozed,
-                       'updatedAt': epoch_ms(t.get('updatedAt')), 'revision': revision,
-                       'parentThreadId': (t.get('lineage') or {}).get('parentThreadId')})
+        row = {'id': t['id'], 'environmentId': environment_id,
+               'key': environment_id + '/' + t['id'], 'title': t['title'],
+               'project': projects.get(t.get('projectId'), t.get('projectId', '')),
+               'status': status, 'working': working, 'pending': pending,
+               'reason': reason, 'snoozed': snoozed,
+               'updatedAt': epoch_ms(t.get('updatedAt')), 'lastVisitedAt': visited,
+               'usageLimitResetAt': epoch_ms(t.get('usageLimitResetAt')),
+               'latestRunCompletedAt': completed, 'revision': revision,
+               'parentThreadId': (t.get('lineage') or {}).get('parentThreadId'),
+               **sort_timestamps(t)}
+        if not working and (background or blocked_on_wait): row['backgroundWaiting'] = True
+        relationship = (t.get('lineage') or {}).get('relationshipToParent')
+        if isinstance(relationship, str): row['relationshipToParent'] = relationship
+        if relationship == 'subagent' and t.get('creationSource') == 'provider': row['providerSubagent'] = True
+        result.append(row)
     return sorted(result, key=lambda t: (-t['updatedAt'], t['key']))
 
 class Client:

@@ -18,6 +18,7 @@ ShellRoot{
   property var catalogs:({local:{favorites:[],favoritesReady:true,providers:[{instanceId:"work",name:"Work",ready:true}],models:[{instanceId:"work",model:"one",displayName:"One",available:true},{instanceId:"work",model:"two",displayName:"Two",available:true,descriptors:[{id:"effort",label:"Reasoning",type:"select",options:[{id:"high",label:"High"}]}]}]}})
   property var settingsResult:({busy:false,error:"",environment:"local",fields:root.fields})
   property var sent:({});property int serial:0
+  function serverVersion(environment){return ""}
   function requestSettings(environment,key,value){sent={environment:environment,key:key,value:value};settingsResult={environment:environment,requestId:String(++serial),busy:true,error:"",fields:settingsResult.environment===environment?settingsResult.fields:[]}}
   function reply(){var cmd=sent;root.fields=root.fields.map(function(f){return f.key===cmd.key?Object.assign({},f,{value:cmd.value}):f});settingsResult={environment:cmd.environment,requestId:settingsResult.requestId,busy:false,error:"",fields:root.fields}}
   function refreshCatalogIn(environment){}

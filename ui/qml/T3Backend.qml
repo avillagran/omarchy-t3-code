@@ -178,7 +178,8 @@ Singleton {
     if(error){promptPrefill=null;return}
     promptPrefill=Object.assign({},p,{key:selectedKey});applyPromptPrefill()
   }
-  onDraftChanged:applyPromptPrefill()
+  // Writing drafts inside draftChanged re-enters the draft binding itself.
+  onDraftChanged:Qt.callLater(applyPromptPrefill)
   // Reading and checking public addresses asks other devices and can take a
   // while, so it has its own channel and never blocks approvals or pairing.
   function requestOmaBridgeGateways(action,values){

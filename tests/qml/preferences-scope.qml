@@ -13,6 +13,7 @@ ShellRoot {
   property var catalogs:({})
   property var settingsResult:({environment:"local",busy:false,error:"",fields:[]})
   property var sent:({});property int serial:0
+  function serverVersion(environment){return ""}
   function refreshCatalogIn(environment){}
   function requestSettings(environment,key,value,scope,clear){sent={environment:environment,key:key || "",value:value,scope:JSON.parse(JSON.stringify(scope)),clear:!!clear};settingsResult={environment:environment,busy:true,requestId:String(++serial),fields:[],error:""}}
   function reply(){settingsResult={environment:sent.environment,scope:sent.scope,requestId:settingsResult.requestId,busy:false,error:"",fields:root.fixtureFields,writable:true}}
