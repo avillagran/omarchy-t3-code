@@ -196,7 +196,7 @@ fn nullable_id(v: &Value, key: &str) -> Result<()> {
 
 /// ConversationMessage deliberately has no inputIntent. Native timeline obtains
 /// it from the projected user_message turn item (session-logic.ts:651-683).
-fn message_item<'a>(p: &'a Value, message: &Value) -> Option<&'a Value> {
+pub fn message_item<'a>(p: &'a Value, message: &Value) -> Option<&'a Value> {
     rows(p, "turnItems")
         .iter()
         .rev()

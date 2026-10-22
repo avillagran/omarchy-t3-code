@@ -1,5 +1,6 @@
 import QtQuick 6.11
 import QtQuick.Window 6.11
+import QtMultimedia
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import Quickshell
@@ -356,6 +357,9 @@ Item {
   readonly property var normalWindow:desktop
   readonly property var panelPopup:popup
   readonly property var hostsPopup:hostsPopup
+  readonly property var imageViewer:imagePopup
+  // A video attachment plays in the image viewer, as T3's onExpandVideo.
+  function openVideo(a){imagePopup.attachment=a;imagePopup.assetKey="";imagePopup.videoKey=bridge.videoKey(a);bridge.requestVideo(a);imagePopup.open()}
   readonly property var preferencesView:preferencesLoader.item
   function hostsAnchor(){return localBackendGuiIndicator.visible?localBackendGuiIndicator:localBackendControl}
   function setDetached(value){setWindowMode(value?"floating":"panel")}
@@ -913,16 +917,33 @@ Item {
         objectName:"t3ImagePopup"
         property var attachment:({})
         property string assetKey:""
-        readonly property var imageState:root.bridge.imageStates[assetKey] || ({})
+        property string videoKey:""
+        readonly property var imageState:assetKey?root.bridge.imageStates[assetKey] || ({}):root.bridge.videoStates[videoKey] || ({})
+        readonly property bool video:!!videoKey
         x:Style.space(20);y:Style.space(20);width:Math.max(100,parent.width-Style.space(40));height:Math.max(100,parent.height-Style.space(40));padding:Style.space(14)
         modal:true;focus:true
-        onClosed:{assetKey="";attachment=({})}
+        onClosed:{assetKey="";videoKey="";attachment=({});videoPlayer.stop()}
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
         ColumnLayout {
           objectName:"t3ImageContents"
           anchors.fill:parent
           RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:imagePopup.attachment.name || "";color:root.fg;elide:Text.ElideMiddle;font.pixelSize:Style.font.body;textFormat:Text.PlainText}T3CopyButton{objectName:"copyFullImage";bridge:root.bridge;attachment:imagePopup.attachment}T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:imagePopup.close()}}
-          Image{objectName:"t3FullImage";Layout.fillWidth:true;Layout.fillHeight:true;source:imagePopup.visible?imagePopup.imageState.url || "":"";asynchronous:true;cache:false;sourceSize:Qt.size(1920,1080);fillMode:Image.PreserveAspectFit}
+          Image{objectName:"t3FullImage";visible:!imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true;source:imagePopup.visible&&!imagePopup.video?imagePopup.imageState.url || "":"";asynchronous:true;cache:false;sourceSize:Qt.size(1920,1080);fillMode:Image.PreserveAspectFit}
+          Item{visible:imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true
+            VideoOutput{id:videoOutput;objectName:"t3VideoOutput";anchors.fill:parent;fillMode:VideoOutput.PreserveAspectFit}
+            MediaPlayer{
+              id:videoPlayer;videoOutput:videoOutput
+              audioOutput:AudioOutput{}
+              source:imagePopup.visible&&imagePopup.video?imagePopup.imageState.url || "":""
+              onSourceChanged:if(source!="")play()
+            }
+            MouseArea{anchors.fill:parent;onClicked:videoPlayer.playbackState===MediaPlayer.PlayingState?videoPlayer.pause():videoPlayer.play()}
+            RowLayout{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);spacing:Style.space(8);visible:videoPlayer.duration>0
+              T3IconButton{name:videoPlayer.playbackState===MediaPlayer.PlayingState?"pause":"play";implicitWidth:Style.space(22);implicitHeight:implicitWidth;onClicked:videoPlayer.playbackState===MediaPlayer.PlayingState?videoPlayer.pause():videoPlayer.play()}
+              Controls.Slider{Layout.fillWidth:true;from:0;to:Math.max(1,videoPlayer.duration);value:videoPlayer.position;onMoved:videoPlayer.position=value}
+              Text{text:Math.floor(videoPlayer.position/60000)+":"+("0"+Math.floor(videoPlayer.position/1000%60)).slice(-2)+" / "+Math.floor(videoPlayer.duration/60000)+":"+("0"+Math.floor(videoPlayer.duration/1000%60)).slice(-2);color:root.dim;font.pixelSize:Style.font.caption}
+            }
+          }
           WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:!!imagePopup.imageState.loading;active:visible&&imagePopup.visible}
           Text{Layout.fillWidth:true;visible:!!imagePopup.imageState.error;text:T3I18n.error(imagePopup.imageState.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
         }
@@ -1647,6 +1668,13 @@ Item {
                 Item {
                 id:messageLane;objectName:"t3MessageLane"
                 width:Math.min(message.width,root.chatContentMaxWidth);height:message.height;anchors.horizontalCenter:parent.horizontalCenter
+                Row{objectName:"t3MessageIntent";visible:message.modelData.inputIntent==="steer"||message.modelData.inputIntent==="promoted_queued_to_steer";anchors.right:parent.right;anchors.rightMargin:Style.space(4);anchors.top:parent.top;anchors.topMargin:message.attribution?Style.space(16):0;spacing:Style.space(3)
+                  T3Icon{name:"corner-up-right";implicitWidth:Style.space(11);tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.55);anchors.verticalCenter:parent.verticalCenter}
+                  Text{text:T3I18n.tr("Steer");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.55);font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
+                  HoverHandler{id:intentHover}
+                  Controls.ToolTip.visible:intentHover.hovered;Controls.ToolTip.delay:400
+                  Controls.ToolTip.text:T3I18n.tr(message.modelData.inputIntent==="promoted_queued_to_steer"?"Originally queued, then promoted to steer the active turn":"Steered the active turn")
+                }
                 Text{objectName:"t3MessageAttribution";visible:!!message.attribution;anchors.right:parent.right;anchors.rightMargin:Style.space(4);text:T3I18n.tr(message.attribution==="automation"?"Sent by automation":message.attribution==="t3code"?"Sent by T3 Code":"Sent by another agent");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.55);font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
                 Rectangle {
                   id: bubble
@@ -1787,7 +1815,8 @@ Item {
                         T3FileReference {
                           required property var modelData
                           fileName:modelData.name || "HTML"
-                          onClicked:root.bridge.openReference("",modelData)
+                          iconName:root.bridge.isVideo(modelData)?"play":"file"
+                          onClicked:{if(root.bridge.isVideo(modelData))root.openVideo(modelData);else root.bridge.openReference("",modelData)}
                         }
                       }
                     }

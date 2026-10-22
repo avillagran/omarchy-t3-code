@@ -129,7 +129,6 @@
     "Thread permissions": "Thread permissions",
     "Thread title": "Thread title",
     "Toggle usage": "Toggle usage",
-    "Tool finished": "Tool finished",
     "Waiting": "Waiting",
     "Web search": "Web search",
     "Week {percent}%": "Week {percent}%",
@@ -1598,7 +1597,9 @@
     "T3 Code compatibility": "T3 Code compatibility",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 is validated with T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "newer: features added since then may be missing or behave differently.",
-    "validated": "validated"
+    "validated": "validated",
+    "Steered the active turn": "Steered the active turn",
+    "Originally queued, then promoted to steer the active turn": "Originally queued, then promoted to steer the active turn"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -1730,7 +1731,6 @@
     "Thread permissions": "Permisos del chat",
     "Thread title": "Título del chat",
     "Toggle usage": "Mostrar/ocultar uso",
-    "Tool finished": "Herramienta ejecutada",
     "Waiting": "Esperando",
     "Web search": "Búsqueda web",
     "Week {percent}%": "Semana {percent}%",
@@ -3199,7 +3199,9 @@
     "T3 Code compatibility": "Compatibilidad con T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 está validado con T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "más nuevo: las funciones agregadas desde entonces pueden faltar o comportarse distinto.",
-    "validated": "validado"
+    "validated": "validado",
+    "Steered the active turn": "Redirigió la ejecución activa",
+    "Originally queued, then promoted to steer the active turn": "Encolado al inicio, luego pasó a redirigir la ejecución activa"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3331,7 +3333,6 @@
     "Thread permissions": "Permissões da conversa",
     "Thread title": "Título da conversa",
     "Toggle usage": "Mostrar/ocultar uso",
-    "Tool finished": "Ferramenta concluída",
     "Waiting": "Aguardando",
     "Web search": "Busca na web",
     "Week {percent}%": "Semana {percent}%",
@@ -4800,7 +4801,9 @@
     "T3 Code compatibility": "Compatibilidade com o T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "O ot3 foi validado com o T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "mais recente: funções adicionadas desde então podem faltar ou comportar-se de outra forma.",
-    "validated": "validado"
+    "validated": "validado",
+    "Steered the active turn": "Redirecionou a execução ativa",
+    "Originally queued, then promoted to steer the active turn": "Inicialmente na fila, depois passou a redirecionar a execução ativa"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4932,7 +4935,6 @@
     "Thread permissions": "Autorisations du chat",
     "Thread title": "Titre du fil",
     "Toggle usage": "Afficher/masquer l’utilisation",
-    "Tool finished": "Outil terminé",
     "Waiting": "En attente",
     "Web search": "Recherche Web",
     "Week {percent}%": "Semaine {percent}%",
@@ -6401,7 +6403,9 @@
     "T3 Code compatibility": "Compatibilité avec T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 est validé avec T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "plus récent : les fonctions ajoutées depuis peuvent manquer ou se comporter différemment.",
-    "validated": "validé"
+    "validated": "validé",
+    "Steered the active turn": "A réorienté l’exécution en cours",
+    "Originally queued, then promoted to steer the active turn": "D’abord en file, puis promu pour réorienter l’exécution en cours"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6533,7 +6537,6 @@
     "Thread permissions": "Chatberechtigungen",
     "Thread title": "Threadtitel",
     "Toggle usage": "Nutzung ein- und ausblenden",
-    "Tool finished": "Werkzeug abgeschlossen",
     "Waiting": "Wartet",
     "Web search": "Websuche",
     "Week {percent}%": "Woche {percent}%",
@@ -8002,7 +8005,9 @@
     "T3 Code compatibility": "Kompatibilität mit T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 ist mit T3 Code {version} geprüft ({date}).",
     "newer: features added since then may be missing or behave differently.": "neuer: Seitdem hinzugefügte Funktionen können fehlen oder sich anders verhalten.",
-    "validated": "geprüft"
+    "validated": "geprüft",
+    "Steered the active turn": "Hat den laufenden Lauf umgelenkt",
+    "Originally queued, then promoted to steer the active turn": "Zuerst eingereiht, dann zum Umlenken des laufenden Laufs befördert"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8134,7 +8139,6 @@
     "Thread permissions": "Permessi della chat",
     "Thread title": "Titolo del thread",
     "Toggle usage": "Mostra/nascondi utilizzo",
-    "Tool finished": "Strumento completato",
     "Waiting": "In attesa",
     "Web search": "Ricerca web",
     "Week {percent}%": "Settimana {percent}%",
@@ -9603,7 +9607,9 @@
     "T3 Code compatibility": "Compatibilità con T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 è convalidato con T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "più recente: le funzioni aggiunte da allora potrebbero mancare o comportarsi diversamente.",
-    "validated": "convalidato"
+    "validated": "convalidato",
+    "Steered the active turn": "Ha reindirizzato l’esecuzione attiva",
+    "Originally queued, then promoted to steer the active turn": "Inizialmente in coda, poi promosso a reindirizzare l’esecuzione attiva"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9735,7 +9741,6 @@
     "Thread permissions": "Chatmachtigingen",
     "Thread title": "Titel van gesprek",
     "Toggle usage": "Gebruik tonen/verbergen",
-    "Tool finished": "Hulpmiddel voltooid",
     "Waiting": "Wachten",
     "Web search": "Zoeken op het web",
     "Week {percent}%": "Week {percent}%",
@@ -11204,7 +11209,9 @@
     "T3 Code compatibility": "Compatibiliteit met T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 is gevalideerd met T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "nieuwer: functies die sindsdien zijn toegevoegd, kunnen ontbreken of anders werken.",
-    "validated": "gevalideerd"
+    "validated": "gevalideerd",
+    "Steered the active turn": "Heeft de actieve uitvoering bijgestuurd",
+    "Originally queued, then promoted to steer the active turn": "Eerst in de wachtrij, daarna gepromoveerd om de actieve uitvoering bij te sturen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11336,7 +11343,6 @@
     "Thread permissions": "Uprawnienia czatu",
     "Thread title": "Tytuł wątku",
     "Toggle usage": "Pokaż lub ukryj użycie",
-    "Tool finished": "Narzędzie zakończone",
     "Waiting": "Oczekiwanie",
     "Web search": "Wyszukiwanie w sieci",
     "Week {percent}%": "Tydzień {percent}%",
@@ -12805,7 +12811,9 @@
     "T3 Code compatibility": "Zgodność z T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 jest zweryfikowany z T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "nowszy: funkcje dodane od tego czasu mogą nie działać lub działać inaczej.",
-    "validated": "zweryfikowany"
+    "validated": "zweryfikowany",
+    "Steered the active turn": "Przekierowano bieżące wykonanie",
+    "Originally queued, then promoted to steer the active turn": "Początkowo w kolejce, potem przeniesione do przekierowania bieżącego wykonania"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12937,7 +12945,6 @@
     "Thread permissions": "Разрешения чата",
     "Thread title": "Название ветки",
     "Toggle usage": "Показать/скрыть использование",
-    "Tool finished": "Инструмент завершён",
     "Waiting": "Ожидание",
     "Web search": "Поиск в интернете",
     "Week {percent}%": "Неделя {percent}%",
@@ -14406,7 +14413,9 @@
     "T3 Code compatibility": "Совместимость с T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 проверен с T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "новее: функции, добавленные позже, могут отсутствовать или работать иначе.",
-    "validated": "проверено"
+    "validated": "проверено",
+    "Steered the active turn": "Направило текущий запуск",
+    "Originally queued, then promoted to steer the active turn": "Сначала в очереди, затем переведено на направление текущего запуска"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14538,7 +14547,6 @@
     "Thread permissions": "Дозволи чату",
     "Thread title": "Назва гілки",
     "Toggle usage": "Показати/приховати використання",
-    "Tool finished": "Інструмент завершено",
     "Waiting": "Очікування",
     "Web search": "Пошук в інтернеті",
     "Week {percent}%": "Тиждень {percent}%",
@@ -16007,7 +16015,9 @@
     "T3 Code compatibility": "Сумісність із T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 перевірено з T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "новіший: функції, додані пізніше, можуть бути відсутні або працювати інакше.",
-    "validated": "перевірено"
+    "validated": "перевірено",
+    "Steered the active turn": "Спрямувало поточний запуск",
+    "Originally queued, then promoted to steer the active turn": "Спочатку в черзі, потім переведено на спрямування поточного запуску"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16139,7 +16149,6 @@
     "Thread permissions": "チャットの権限",
     "Thread title": "スレッドのタイトル",
     "Toggle usage": "使用量の表示切り替え",
-    "Tool finished": "ツールの実行完了",
     "Waiting": "待機中",
     "Web search": "ウェブ検索",
     "Week {percent}%": "週 {percent}%",
@@ -17608,7 +17617,9 @@
     "T3 Code compatibility": "T3 Code との互換性",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 は T3 Code {version}（{date}）で検証されています。",
     "newer: features added since then may be missing or behave differently.": "より新しい：それ以降に追加された機能はないか、動作が異なる場合があります。",
-    "validated": "検証済み"
+    "validated": "検証済み",
+    "Steered the active turn": "実行中の処理を方向修正しました",
+    "Originally queued, then promoted to steer the active turn": "最初はキューに入り、その後実行中の処理の方向修正に昇格しました"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17740,7 +17751,6 @@
     "Thread permissions": "채팅 권한",
     "Thread title": "스레드 제목",
     "Toggle usage": "사용량 표시/숨기기",
-    "Tool finished": "도구 실행 완료",
     "Waiting": "대기 중",
     "Web search": "웹 검색",
     "Week {percent}%": "주간 {percent}%",
@@ -19209,7 +19219,9 @@
     "T3 Code compatibility": "T3 Code 호환성",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3는 T3 Code {version}({date})로 검증되었습니다.",
     "newer: features added since then may be missing or behave differently.": "최신: 이후 추가된 기능은 없거나 다르게 동작할 수 있습니다.",
-    "validated": "검증됨"
+    "validated": "검증됨",
+    "Steered the active turn": "실행 중인 작업의 방향을 전환했습니다",
+    "Originally queued, then promoted to steer the active turn": "처음엔 대기열에 있다가 실행 중인 작업의 방향 전환으로 승격됨"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19341,7 +19353,6 @@
     "Thread permissions": "聊天权限",
     "Thread title": "会话标题",
     "Toggle usage": "显示/隐藏用量",
-    "Tool finished": "工具执行完毕",
     "Waiting": "等待中",
     "Web search": "网页搜索",
     "Week {percent}%": "每周 {percent}%",
@@ -20810,7 +20821,9 @@
     "T3 Code compatibility": "T3 Code 兼容性",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 已针对 T3 Code {version}（{date}）验证。",
     "newer: features added since then may be missing or behave differently.": "更新：此后新增的功能可能缺失或表现不同。",
-    "validated": "已验证"
+    "validated": "已验证",
+    "Steered the active turn": "引导了当前运行",
+    "Originally queued, then promoted to steer the active turn": "最初加入队列，随后提升为引导当前运行"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20942,7 +20955,6 @@
     "Thread permissions": "أذونات المحادثة",
     "Thread title": "عنوان الموضوع",
     "Toggle usage": "عرض/إخفاء الاستخدام",
-    "Tool finished": "اكتملت الأداة",
     "Waiting": "بانتظار الإدخال",
     "Web search": "بحث الويب",
     "Week {percent}%": "الأسبوع {percent}%",
@@ -22411,7 +22423,9 @@
     "T3 Code compatibility": "التوافق مع T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "تم التحقق من ot3 مع T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "أحدث: قد تكون الميزات المضافة منذ ذلك الحين مفقودة أو تعمل بشكل مختلف.",
-    "validated": "تم التحقق"
+    "validated": "تم التحقق",
+    "Steered the active turn": "وجّه التشغيل النشط",
+    "Originally queued, then promoted to steer the active turn": "في البداية في قائمة الانتظار، ثم رُقّي لتوجيه التشغيل النشط"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22543,7 +22557,6 @@
     "Thread permissions": "Sohbet izinleri",
     "Thread title": "İleti dizisi başlığı",
     "Toggle usage": "Kullanımı göster/gizle",
-    "Tool finished": "Araç tamamlandı",
     "Waiting": "Bekleniyor",
     "Web search": "Web araması",
     "Week {percent}%": "Hafta {percent}%",
@@ -24012,7 +24025,9 @@
     "T3 Code compatibility": "T3 Code uyumluluğu",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3, T3 Code {version} ({date}) ile doğrulandı.",
     "newer: features added since then may be missing or behave differently.": "daha yeni: o zamandan beri eklenen özellikler eksik olabilir veya farklı davranabilir.",
-    "validated": "doğrulandı"
+    "validated": "doğrulandı",
+    "Steered the active turn": "Etkin çalışmayı yönlendirdi",
+    "Originally queued, then promoted to steer the active turn": "Önce kuyruğa alındı, sonra etkin çalışmayı yönlendirmeye yükseltildi"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24144,7 +24159,6 @@
     "Thread permissions": "Chattbehörigheter",
     "Thread title": "Trådtitel",
     "Toggle usage": "Visa/dölj användning",
-    "Tool finished": "Verktyg klart",
     "Waiting": "Väntar",
     "Web search": "Webbsökning",
     "Week {percent}%": "Vecka {percent}%",
@@ -25613,7 +25627,9 @@
     "T3 Code compatibility": "Kompatibilitet med T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 är validerat mot T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "nyare: funktioner som lagts till sedan dess kan saknas eller bete sig annorlunda.",
-    "validated": "validerad"
+    "validated": "validerad",
+    "Steered the active turn": "Styrde om den pågående körningen",
+    "Originally queued, then promoted to steer the active turn": "Först köad, sedan upphöjd till att styra om den pågående körningen"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25745,7 +25761,6 @@
     "Thread permissions": "Chattilladelser",
     "Thread title": "Trådtitel",
     "Toggle usage": "Vis/skjul forbrug",
-    "Tool finished": "Værktøj afsluttet",
     "Waiting": "Venter",
     "Web search": "Websøgning",
     "Week {percent}%": "Uge {percent}%",
@@ -27214,7 +27229,9 @@
     "T3 Code compatibility": "Kompatibilitet med T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 er valideret med T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "nyere: funktioner tilføjet siden kan mangle eller opføre sig anderledes.",
-    "validated": "valideret"
+    "validated": "valideret",
+    "Steered the active turn": "Styrede den aktuelle kørsel om",
+    "Originally queued, then promoted to steer the active turn": "Først i kø, derefter forfremmet til at styre den aktuelle kørsel om"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27346,7 +27363,6 @@
     "Thread permissions": "Chattillatelser",
     "Thread title": "Trådtittel",
     "Toggle usage": "Vis/skjul bruk",
-    "Tool finished": "Verktøy fullført",
     "Waiting": "Venter",
     "Web search": "Nettsøk",
     "Week {percent}%": "Uke {percent}%",
@@ -28815,7 +28831,9 @@
     "T3 Code compatibility": "Kompatibilitet med T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 er validert med T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "nyere: funksjoner lagt til siden kan mangle eller oppføre seg annerledes.",
-    "validated": "validert"
+    "validated": "validert",
+    "Steered the active turn": "Styrte om den pågående kjøringen",
+    "Originally queued, then promoted to steer the active turn": "Først i kø, deretter oppgradert til å styre om den pågående kjøringen"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28947,7 +28965,6 @@
     "Thread permissions": "Keskustelun oikeudet",
     "Thread title": "Ketjun otsikko",
     "Toggle usage": "Näytä tai piilota käyttö",
-    "Tool finished": "Työkalu suoritettu",
     "Waiting": "Odottaa",
     "Web search": "Verkkohaku",
     "Week {percent}%": "Viikko {percent}%",
@@ -30416,7 +30433,9 @@
     "T3 Code compatibility": "Yhteensopivuus T3 Coden kanssa",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 on vahvistettu versiota T3 Code {version} vasten ({date}).",
     "newer: features added since then may be missing or behave differently.": "uudempi: sen jälkeen lisätyt toiminnot voivat puuttua tai toimia eri tavalla.",
-    "validated": "vahvistettu"
+    "validated": "vahvistettu",
+    "Steered the active turn": "Ohjasi aktiivista ajoa",
+    "Originally queued, then promoted to steer the active turn": "Alun perin jonossa, sitten ylennetty ohjaamaan aktiivista ajoa"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30548,7 +30567,6 @@
     "Thread permissions": "Oprávnění chatu",
     "Thread title": "Název vlákna",
     "Toggle usage": "Zobrazit/skrýt využití",
-    "Tool finished": "Nástroj dokončen",
     "Waiting": "Čekání",
     "Web search": "Hledání na webu",
     "Week {percent}%": "Týden {percent}%",
@@ -32017,6 +32035,8 @@
     "T3 Code compatibility": "Kompatibilita s T3 Code",
     "ot3 is validated with T3 Code {version} ({date}).": "ot3 je ověřen s T3 Code {version} ({date}).",
     "newer: features added since then may be missing or behave differently.": "novější: funkce přidané od té doby mohou chybět nebo se chovat jinak.",
-    "validated": "ověřeno"
+    "validated": "ověřeno",
+    "Steered the active turn": "Přesměrovalo aktivní běh",
+    "Originally queued, then promoted to steer the active turn": "Původně ve frontě, poté povýšeno na přesměrování aktivního běhu"
   }
 }
