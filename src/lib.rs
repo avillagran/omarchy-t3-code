@@ -57,6 +57,9 @@ pub mod integration_devices;
 pub mod tool_inspector;
 pub mod write;
 pub mod suggestions;
+pub mod thread_details;
+pub mod provider_updates;
+pub mod failure_context;
 pub use t3_protocol as protocol;
 pub use connections::{read_catalog, t3_home, refresh_connections, stale_ot3_sessions};
 pub use desktop_cloud::{check_native_session,check_native_environment};
@@ -151,6 +154,11 @@ pub fn markdown_render(input: &str, blocks:Option<&[Value]>, math:bool) -> Strin
             Some(Event::Start(Tag::Link {link_type,dest_url:if safe {dest_url}else{"#".into()},title,id}))
         },
         Event::Html(value) | Event::InlineHtml(value) => Some(Event::Text(value)),
+        // Paths in inline code are links in the text itself, as T3's file link chips.
+        Event::Code(code) => Some(match inline_code_path(&code) {
+            Some(path) => Event::Html(format!("<a href=\"file://{}\"><code>{}</code></a>",path_href(&path),html_text(&code)).into()),
+            None => Event::Code(code),
+        }),
         other => Some(other),
     });
     let mut out = String::new();
@@ -200,10 +208,32 @@ pub fn markdown_search_text(input:&str)->String{
     }
     out
 }
+fn html_text(s:&str)->String{s.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;").replace('"',"&quot;")}
+fn path_href(path:&str)->String{path.bytes().map(|b|if b.is_ascii_alphanumeric()||b"/._-~:".contains(&b){(b as char).to_string()}else{format!("%{b:02X}")}).collect()}
+/// T3 inlineCodeFilePathCandidate: inline code that names a file or folder.
+pub fn inline_code_path(code:&str)->Option<String>{
+ let t=code.trim();
+ if t.is_empty()||t.len()>4096||t.chars().any(|c|c.is_whitespace()||c=='`'||c.is_control())||t.contains("://"){return None}
+ let c=t.replace('\\',"/");
+ let (body,position)=match c.rsplit_once(':'){Some((b,n)) if !b.is_empty()&&!n.is_empty()&&n.chars().all(|d|d.is_ascii_digit())=>{let b=b.rsplit_once(':').filter(|(x,n)|!x.is_empty()&&n.chars().all(|d|d.is_ascii_digit())).map(|(x,_)|x).unwrap_or(b);(b.to_string(),true)},_=>(c.clone(),false)};
+ if !position&&!body.contains('/'){return None}
+ if body.starts_with('/')||body.starts_with("~/")||body.starts_with("./")||body.starts_with("../"){return Some(c)}
+ if body.contains(':'){return None}
+ let first=body.split('/').next().unwrap_or("");
+ let host=first.contains('.')&&!first.starts_with('.')&&body.contains('/')&&first.rsplit('.').next().is_some_and(|tld|tld.len()>=2&&tld.chars().all(|ch|ch.is_ascii_alphabetic()));
+ if host{return None}
+ let base=body.trim_end_matches('/').rsplit('/').next().unwrap_or("");
+ let ext=base.rsplit_once('.').is_some_and(|(n,e)|!n.is_empty()&&!e.is_empty()&&e.chars().all(|ch|ch.is_ascii_alphanumeric()||ch=='_'||ch=='-'));
+ let version=base.as_bytes().windows(3).any(|w|w[0].is_ascii_digit()&&w[1]==b'.'&&w[2].is_ascii_digit());
+ if version&&!position{return None}
+ if !position&&!ext{return None}
+ Some(c)
+}
 pub fn file_references(input:&str)->Vec<Value>{
  use pulldown_cmark::{Event,Parser,Tag};
  let mut paths=HashSet::new();
- Parser::new(input).filter_map(|e|match e{Event::Start(Tag::Link{dest_url,..})=>Some(dest_url.to_string()),Event::Code(path) if path.starts_with('/')||path.starts_with("./")=>Some(path.to_string()),_=>None})
+ // Paths in inline code are already links in the text (inline_code_path).
+ Parser::new(input).filter_map(|e|match e{Event::Start(Tag::Link{dest_url,..})=>Some(dest_url.to_string()),_=>None})
  .filter(|p|!p.starts_with('#')&&(!p.contains(':')||p.starts_with("file://")))
  .filter(|p|paths.insert(p.clone())).take(30).map(|p|json!({"name":p.rsplit('/').next().unwrap_or(&p),"path":p})).collect()
 }
@@ -465,12 +495,35 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
         for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
         thread_state["contextWindow"]=context_window(p);
-        // Subagents still working for this thread (T3's subagent bar).
-        // Workflows stay listed after they finish so their script can still be read.
-        thread_state["subagents"]=json!(p["subagents"].as_array().into_iter().flatten().filter(|s|matches!(text(s,"status"),"pending"|"running"|"waiting")||s["workflow"]["runHandles"]["scriptPath"].is_string()).rev().take(16).map(|s|json!({"id":s["id"],"runId":s["runId"],"title":s["workflow"]["name"].as_str().or(s["title"].as_str()).filter(|t|!t.trim().is_empty()).unwrap_or_else(||text(s,"prompt")).chars().take(120).collect::<String>(),"status":s["status"],"childThreadId":s["childThreadId"],"origin":s["origin"],"workflow":s["workflow"].is_object(),"scriptPath":s["workflow"]["runHandles"]["scriptPath"],"phases":s["workflow"]["phases"].as_array().map(|a|a.len()),"agents":s["workflow"]["agents"].as_array().map(|a|a.len())})).collect::<Vec<_>>());
+        // This thread's subagents, newest first: the composer bar shows the live
+        // ones, the conversation cards and the Agents panel all of them.
+        thread_state["subagents"]=json!(p["subagents"].as_array().into_iter().flatten().rev().take(48).map(subagent_summary).collect::<Vec<_>>());
         Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 
+/// One line of a subagent's free text (progress or result), whitespace collapsed.
+fn subagent_line(value:&Value,max:usize)->Value{
+    let raw=value.as_str().unwrap_or("");
+    if raw.trim_start().starts_with("Child task ended with status"){return Value::Null}
+    let line=raw.split_whitespace().collect::<Vec<_>>().join(" ").replace("**","").replace('`',"");
+    if line.is_empty(){return Value::Null}
+    let mut out=line.chars().take(max).collect::<String>();if line.chars().count()>max{out.push('…');}json!(out)
+}
+/// T3 formatSubagentDisplayTitle: no "Subagent:" prefix; an agent path shows its last name.
+pub fn subagent_title(s:&Value)->String{
+    let raw=s["workflow"]["name"].as_str().or(s["title"].as_str()).filter(|t|!t.trim().is_empty()).unwrap_or_else(||text(s,"prompt"));
+    let mut title=raw.trim();
+    if let Some(rest)=title.strip_prefix("Subagent:"){title=rest.trim();}
+    if title.starts_with('/')&&!title.contains(char::is_whitespace){title=title.rsplit('/').find(|p|!p.is_empty()).unwrap_or(title);}
+    let title=title.split_whitespace().collect::<Vec<_>>().join(" ");
+    if title.is_empty(){"Subagent".into()}else{title.chars().take(120).collect()}
+}
+/// What the panel shows of one projected subagent (T3 OrchestrationV2Subagent).
+pub fn subagent_summary(s:&Value)->Value{
+    let w=&s["workflow"];
+    let agents=w["agents"].as_array().map(|a|a.iter().take(32).map(|m|json!({"index":m["index"],"label":m["label"].as_str().map(|l|l.chars().take(120).collect::<String>()),"state":m["state"],"childThreadId":m["childThreadId"],"phaseTitle":m["phaseTitle"],"model":m["model"],"startedAt":m["startedAt"],"durationMs":m["durationMs"]})).collect::<Vec<_>>());
+    json!({"id":s["id"],"runId":s["runId"],"title":subagent_title(s),"prompt":subagent_line(&s["prompt"],200),"status":s["status"],"childThreadId":s["childThreadId"],"origin":s["origin"],"model":s["model"],"providerInstanceId":s["providerInstanceId"],"progress":subagent_line(&s["progress"],240),"result":subagent_line(&s["result"],600),"startedAt":epoch(&s["startedAt"]),"completedAt":epoch(&s["completedAt"]),"updatedAt":epoch(&s["updatedAt"]),"workflow":w.is_object(),"scriptPath":w["runHandles"]["scriptPath"],"phases":w["phases"].as_array().map(|a|a.len()),"agents":w["agents"].as_array().map(|a|a.len()),"workflowAgents":agents})
+}
 /// Port of T3 contextWindow.ts: the newest provider turn usage, else the active provider
 /// thread's context usage, else the last compaction's token count.
 pub fn context_window(p:&Value)->Value{
@@ -557,6 +610,25 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
    if time>=first{rows.push(json!({"id":format!("app/{}",text(native,"id")),"role":"assistant","createdAt":time,"text":"","attachments":[a]}))}
   }
   if let Some(a)=protocol::documents::html_render(native){let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));if time>=first{rows.push(json!({"id":format!("html/{}",text(native,"id")),"role":"assistant","createdAt":time,"text":"","attachments":[a]}))}}
+  if native["type"]=="error"{
+   // A provider failure: show its own words, not only the run's "failed" status.
+   let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));let f=&native["failure"];
+   let message=f["message"].as_str().map(str::trim).filter(|m|!m.is_empty()).map(|m|m.chars().take(2000).collect::<String>());
+   // Nested errors belong to the item that owns them (T3 shows root failures only).
+   if time>=first&&message.is_some()&&native["parentItemId"].is_null(){rows.push(json!({"id":format!("error/{}",text(native,"id")),"role":"error","createdAt":time,"text":"","error":{"message":message,"title":native["title"],"status":native["status"],"class":f["class"],"code":f["code"],"retryable":f["retryable"],"retry":native["retry"],"resetAt":f["resetAt"],"runId":native["runId"],"providerInstanceId":projection["runs"].as_array().into_iter().flatten().find(|r|r["id"]==native["runId"]).map(|r|r["providerInstanceId"].clone()).unwrap_or(Value::Null)}}))}
+   continue
+  }
+  if native["type"]=="subagent"{
+   // Delegated work gets its own card, not a line in the run's tool log.
+   let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));
+   if time>=first{
+    let live=projection["subagents"].as_array().into_iter().flatten().find(|s|!native["subagentId"].is_null()&&s["id"]==native["subagentId"]).cloned().unwrap_or_else(||json!({"id":native["subagentId"],"title":native["title"],"prompt":native["prompt"],"status":native["status"],"childThreadId":native["childThreadId"],"origin":native["origin"],"progress":native["progress"],"result":native["result"],"startedAt":native["startedAt"],"completedAt":native["completedAt"],"providerInstanceId":native["providerInstanceId"]}));
+    let mut card=subagent_summary(&live);card["itemId"]=native["id"].clone();
+    if let Ok(reference)=tool_inspector::compact_reference(row){card["inspector"]=reference;}
+    rows.push(json!({"id":format!("agents/{}",text(native,"id")),"role":"subagents","createdAt":time,"text":"","runId":native["runId"],"subagents":[card]}));
+   }
+   continue
+  }
   if let Some(boundary)=protocol::lifecycle::describe(row,projection["runs"].as_array().map(Vec::as_slice).unwrap_or(&[])){
    let time=epoch(&native["startedAt"]).max(epoch(&row["createdAt"]));
    if time>=first{rows.push(json!({"id":format!("context/{}",text(native,"id")),"role":"context","createdAt":time,"context":boundary,"text":""}))}continue
@@ -572,6 +644,11 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
  let mut grouped:Vec<Value>=vec![];
  for row in rows{
   if let Some(last)=grouped.last_mut(){
+   if row["role"]=="subagents"&&last["role"]=="subagents"&&row["runId"]==last["runId"]{
+    let mut all=last["subagents"].as_array().cloned().unwrap_or_default();
+    for s in row["subagents"].as_array().into_iter().flatten(){if all.len()<64&&!all.iter().any(|a|a["id"]==s["id"]&&!s["id"].is_null()){all.push(s.clone())}}
+    last["subagents"]=json!(all);continue
+   }
    if row["role"]=="activity"&&last["role"]=="activity"&&row["activity"]["runId"]==last["activity"]["runId"]{
     let count=last["activity"]["count"].as_u64().unwrap_or(1)+1;
     let mut entries=last["activity"]["entries"].as_array().cloned().unwrap_or_else(||vec![last["activity"].clone()]);if entries.len()<600{entries.push(row["activity"].clone())}
@@ -593,7 +670,8 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         .flatten()
         .map(|p| (text(p, "id"), text(p, "title")))
         .collect();
-    let active = |s: &str| ["preparing", "queued", "starting", "running"].contains(&s);
+    // A "waiting" run has ended its provider turn and only drains effects: still working in T3.
+    let active = |s: &str| ["preparing", "queued", "starting", "running", "waiting"].contains(&s);
     let mut result = vec![];
     let mut ids = HashSet::new();
     for t in rows {
@@ -612,15 +690,21 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         if !t["status"].is_null() && !t["status"].is_string() {
             return Err("malformed".into());
         }
-        let working = active(status)
-            || active(text(t, "activityRunStatus"))
-            || truth(&t["pendingBackgroundTasks"]);
-        let mut reason = if !t["pendingRuntimeRequest"].is_null() {
+        // T3 shellRuntime: a run waiting only on t3_thread_wait/delegate_task(wait)
+        // reads as Waiting; background work keeps a thread waiting, not working,
+        // and a command left running (a dev server) holds nothing.
+        let run_active = active(status) || active(text(t, "activityRunStatus"));
+        let blocked_on_wait = t["blockedOnThreadWait"] == true;
+        let working = run_active && !blocked_on_wait;
+        let background = status != "failed"
+            && t["pendingBackgroundTasks"].as_array().is_some_and(|tasks| tasks.iter().any(|task| task["kind"] != "command"));
+        // An async question (blocking:false) does not stop a working run.
+        let request = !t["pendingRuntimeRequest"].is_null()
+            && !(t["pendingRuntimeRequest"]["blocking"] == false && run_active);
+        let mut reason = if request {
             "request"
         } else if truth(&t["hasActionableProposedPlan"]) {
             "plan"
-        } else if status == "waiting" {
-            "waiting"
         } else if status == "failed" {
             "failed"
         } else {
@@ -630,6 +714,9 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         if reason.is_empty()
             && !working
             && status == "completed"
+            && t["latestRunStopRequested"] != true
+            // T3 hasUnseenCompletion: on shells that track visits, a thread never visited is not "Done".
+            && (t.get("lastVisitedAt").is_none() || epoch(&t["lastVisitedAt"]) > 0)
             && completed > epoch(&t["lastVisitedAt"])
         {
             reason = "review";
@@ -667,7 +754,9 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
             )
         );
         let project = text(t, "projectId");
-        let mut row=json!({"id":id,"environmentId":env,"key":format!("{env}/{id}"),"title":t["title"],"project":projects.get(project).copied().unwrap_or(project),"status":status,"working":working,"pending":!reason.is_empty()&&!snoozed,"reason":if reason.is_empty(){Value::Null}else{json!(reason)},"snoozed":snoozed,"updatedAt":epoch(&t["updatedAt"]),"revision":revision,"parentThreadId":t["lineage"]["parentThreadId"]});
+        let mut row=json!({"id":id,"environmentId":env,"key":format!("{env}/{id}"),"title":t["title"],"project":projects.get(project).copied().unwrap_or(project),"status":status,"working":working,"pending":!reason.is_empty()&&!snoozed,"reason":if reason.is_empty(){Value::Null}else{json!(reason)},"snoozed":snoozed,"updatedAt":epoch(&t["updatedAt"]),"lastVisitedAt":epoch(&t["lastVisitedAt"]),"usageLimitResetAt":epoch(&t["usageLimitResetAt"]),"latestRunCompletedAt":completed,"revision":revision,"parentThreadId":t["lineage"]["parentThreadId"]});
+        // Waiting on its own agents or background work, not on the user.
+        if !working && (background || blocked_on_wait) {row["backgroundWaiting"]=json!(true);}
         if let Some(relationship)=t["lineage"]["relationshipToParent"].as_str(){row["relationshipToParent"]=json!(relationship);}
         // Match native isProviderNativeSubagentThread; MCP children remain writable.
         if t["lineage"]["relationshipToParent"]=="subagent" && t["creationSource"]=="provider" {row["providerSubagent"]=json!(true);}
@@ -731,6 +820,11 @@ pub fn snapshot(client: &Client) -> Result<Value> {
                     if let Some(t) = raw.get(text(item, "id")) {
                         for (key,value) in protocol::sidebar::metadata(t,Utc::now().timestamp_millis()).as_object().unwrap(){item[key]=value.clone();}
                         if item["snoozed"]==false && !text(item,"reason").is_empty(){item["pending"]=json!(true);}
+                        let runtime=if t["runtime"].is_object(){&t["runtime"]}else{&t["session"]};
+                        // Newer servers keep the failure on the thread itself (lastError/lastErrorClass).
+                        let last_error=runtime["lastError"].as_str().or(t["lastError"].as_str()).map(str::trim).filter(|s|!s.is_empty());
+                        item["runtimeError"]=json!(last_error.map(|s|s.chars().take(600).collect::<String>()));
+                        if last_error.is_some(){item["hasRuntimeError"]=json!(true);if item["runtimeErrorClass"].is_null(){item["runtimeErrorClass"]=t["lastErrorClass"].clone();}}
                         item["compactActivityAt"]=json!(epoch(&t["latestUserAuthoredMessageAt"]).max(epoch(&t["latestRunCompletedAt"])));
                         item["compactRunId"]=t["latestRunId"].clone();
                         item["lastSentAt"]=json!(epoch(t.get("latestUserAuthoredMessageAt").unwrap_or(&t["latestRunRequestedAt"])).max(epoch(&t["createdAt"])));
@@ -775,6 +869,18 @@ pub fn snapshot(client: &Client) -> Result<Value> {
 }
 
 #[cfg(test)]
+mod inline_path_tests {
+    use super::*;
+    #[test]
+    fn inline_code_paths_follow_t3_rules() {
+        for p in ["/home","/home/node/report.html","./src/main.rs","~/notes.md","src/lib.rs","src/lib.rs:12:3","Cargo.toml:4"] { assert!(inline_code_path(p).is_some(),"{p}"); }
+        for p in ["rpc_outcome_unknown","server.updateProvider","cargo build","github.com/x/y","v1.2/3","https://a.b/c","a/b","x: y"] { assert!(inline_code_path(p).is_none(),"{p}"); }
+        let html=markdown_render("see `/home/a b` and `/home` and `x`",None,false);
+        assert!(html.contains(r#"<a href="file:///home"><code>/home</code></a>"#),"{html}");
+        assert!(html.contains("<code>x</code>")&&html.contains("<code>/home/a b</code>"),"{html}");
+    }
+}
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
@@ -796,6 +902,31 @@ mod tests {
         let id="thread:delegated-task:command%3Amcp%3Aabc%3Adelegate-task%3Aupload-1.2";
         assert!(valid_id(id));
         assert_eq!(normalize(&json!({"threads":[{"id":id,"title":"Upload"}]}),"fixture",0).unwrap().len(),1);
+    }
+    #[test]
+    fn subagents_get_their_own_cards_and_failures_their_own_words() {
+        let projection=json!({"thread":{"id":"root"},"runs":[{"id":"r1","status":"failed"}],
+            "subagents":[{"id":"n1","runId":"r1","title":"Subagent: Review tests","prompt":"Check the\n tests","status":"running","childThreadId":"c1","origin":"app_owned","model":"m","progress":"Reading **files**","startedAt":"2026-10-21T10:00:00Z"}],
+            "turnItems":[
+                {"item":{"id":"i1","type":"subagent","runId":"r1","subagentId":"n1","status":"running","startedAt":"2026-10-21T10:00:00Z","childThreadId":"c1"}},
+                {"item":{"id":"i2","type":"subagent","runId":"r1","subagentId":"n2","title":"/root/agents/fix-lint","status":"completed","result":"Child task ended with status completed","startedAt":"2026-10-21T10:00:01Z","childThreadId":"c2"}},
+                {"item":{"id":"i3","type":"error","runId":"r1","failure":{"class":"provider_error","message":"  The model refused: context too long.  ","code":"context_length","retryable":false},"startedAt":"2026-10-21T10:00:02Z"}},
+                {"item":{"id":"i4","type":"error","runId":"r1","failure":{"class":"provider_error","message":"   "},"startedAt":"2026-10-21T10:00:03Z"}}]});
+        let rows=conversation_timeline(&projection,&[]);
+        let cards=rows.iter().find(|r|r["role"]=="subagents").unwrap();
+        let agents=cards["subagents"].as_array().unwrap();
+        assert_eq!(agents.len(),2,"one card group for the run");
+        assert_eq!(agents[0]["title"],"Review tests");
+        assert_eq!(agents[0]["childThreadId"],"c1");
+        assert_eq!(agents[0]["progress"],"Reading files");
+        assert_eq!(agents[0]["prompt"],"Check the tests");
+        assert_eq!(agents[1]["title"],"fix-lint");
+        assert!(agents[1]["result"].is_null(),"T3's automatic end notice is not a result");
+        let errors=rows.iter().filter(|r|r["role"]=="error").collect::<Vec<_>>();
+        assert_eq!(errors.len(),1,"blank failures add no row");
+        assert_eq!(errors[0]["error"]["message"],"The model refused: context too long.");
+        assert_eq!(errors[0]["error"]["code"],"context_length");
+        assert!(rows.iter().all(|r|r["role"]!="activity"),"subagents are not folded into the tool log");
     }
     #[test]
     fn lineage_remains_available_without_conflating_forks_and_subagents() {

@@ -18,7 +18,7 @@ ShellRoot {
   else if(phase===2){keys.keyClick(Qt.Key_Return);check(submissions===1&&b.draft.attempt.text==="- Send this bullet","plain Enter sends even a list line without adding a newline");write("line one");phase=3}
   else if(phase===3){keys.keyClick(Qt.Key_Return,Qt.ShiftModifier);phase=4}
   else if(phase===4){check(b.draft.text==="line one\n"&&submissions===1,"Shift+Enter inserts newline without sending");write("replace this");phase=5}
-  else if(phase===5){e.select(0,e.text.length);keys.keyClick(Qt.Key_Enter,Qt.ShiftModifier);phase=6}
+  else if(phase===5){e.select(0,e.length);keys.keyClick(Qt.Key_Enter,Qt.ShiftModifier);phase=6}
   else if(phase===6){check(b.draft.text==="\n"&&submissions===1,"keypad Shift+Enter replaces selected text with a newline");write("keypad send");phase=7}
   else if(phase===7){keys.keyClick(Qt.Key_Enter);check(submissions===2,"keypad Enter sends");write("expanded line");panel.expandComposer();phase=8}
   else if(phase===8){e.forceActiveFocus();keys.keyClick(Qt.Key_Return);phase=9}

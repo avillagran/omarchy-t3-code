@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.avillagran.omarchy-t3-code",
   "name": "Omarchy T3 Code",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "author": "Andr\u00e9s Villagr\u00e1n",
   "license": "MIT",
   "description": "Native Rust T3 chats, writing, attachments, activity and subscription quotas.",
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "T3 Code",
-    "description": "Manage T3 chats and monitor work and subscription quotas.",
+    "description": "Work, ready and input badges for the Omarchy T3 Code app; click to show or minimize it.",
     "category": "System",
     "defaultSection": "right"
   }

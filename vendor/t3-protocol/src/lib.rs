@@ -445,7 +445,7 @@ impl Connection {
             .max_message_size(Some(max_bytes as usize))
             .max_frame_size(Some(max_bytes as usize));
         let (ws, _) = tungstenite::client_tls_with_config(req, stream, Some(config), None)
-            .map_err(|_| "rpc_connection_failed")?;
+            .map_err(|e| with_reason("rpc_connection_failed", &e.to_string()))?;
         Ok(ws)
     }
     pub fn rpc(&self, tag: &str, payload: Value) -> Result<Value> {
@@ -469,16 +469,7 @@ impl Connection {
                         if v["exit"]["_tag"] != "Failure" {
                             return Err("rpc_outcome_unknown".into());
                         }
-                        let summary = v["exit"]["cause"].to_string();
-                        return Err(if summary.contains("Auth")
-                            || summary.contains("Forbidden")
-                            || summary.contains("scope")
-                        {
-                            "write_not_authorized"
-                        } else {
-                            "rpc_rejected"
-                        }
-                        .into());
+                        return Err(rejection(&v["exit"]["cause"]));
                     }
                 }
                 Message::Ping(p) => ws
@@ -490,6 +481,66 @@ impl Connection {
         }
         Err("rpc_outcome_unknown".into())
     }
+}
+
+/// Error code of a failure, without the reason `rejection` may append ("code: reason").
+pub fn error_code(error: &str) -> &str {
+    match error.split_once(": ") {
+        Some((code, _)) if !code.is_empty() && code.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_') => code,
+        _ => error,
+    }
+}
+fn with_reason(code: &str, reason: &str) -> String {
+    let reason = reason.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("");
+    if reason.is_empty() {
+        return code.into();
+    }
+    let mut reason = reason.chars().take(300).collect::<String>();
+    if reason.chars().count() == 300 {
+        reason.push('…');
+    }
+    format!("{code}: {reason}")
+}
+/// The reason a failed Effect exit gives: its first error message, else the error's tag.
+/// Only those two fields are read; the rest of a cause may carry request data.
+fn failure_reason(cause: &Value, depth: usize) -> Option<String> {
+    if depth > 8 {
+        return None;
+    }
+    match cause {
+        Value::String(s) if depth > 0 => Some(s.clone()).filter(|s| !s.trim().is_empty()),
+        Value::Array(items) => items.iter().find_map(|i| failure_reason(i, depth + 1)),
+        Value::Object(o) => {
+            if let Some(m) = o.get("message").and_then(Value::as_str).filter(|m| !m.trim().is_empty()) {
+                return Some(m.into());
+            }
+            let nested = ["error", "defect", "cause", "failures", "reasons", "left", "right"]
+                .iter()
+                .filter_map(|k| o.get(*k))
+                .find_map(|v| failure_reason(v, depth + 1));
+            nested.or_else(|| {
+                o.get("_tag")
+                    .and_then(Value::as_str)
+                    .filter(|t| !matches!(*t, "Fail" | "Die" | "Interrupt" | "Empty" | "Sequential" | "Parallel" | "Cause" | "Failure"))
+                    .map(str::to_string)
+            })
+        }
+        _ => None,
+    }
+}
+#[doc(hidden)]
+pub fn rejection_for_test(cause: &Value) -> String {
+    rejection(cause)
+}
+/// Error for a failed RPC exit: an authorization or rejection code, with the server's reason.
+pub(crate) fn rejection(cause: &Value) -> String {
+    let summary = cause.to_string();
+    let code = if summary.contains("Auth") || summary.contains("Forbidden") || summary.contains("scope") {
+        "write_not_authorized"
+    } else {
+        "rpc_rejected"
+    };
+    with_reason(code, &failure_reason(cause, 0).unwrap_or_default())
 }
 
 /// Complete native T3 Connect flow. The host supplies its existing cloud JWT.

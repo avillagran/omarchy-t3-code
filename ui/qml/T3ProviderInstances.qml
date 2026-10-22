@@ -11,6 +11,13 @@ ColumnLayout {
  readonly property bool writable:current&&state.writable&&!state.busy
  readonly property var drivers:current?state.drivers || []:[]
  readonly property var instances:current?state.instances || []:[]
+ // Providers T3 can update in one step right now (T3 "Update all").
+ function updating(i){return ["queued","running"].indexOf(String(i.updateStatus))>=0||(setupOf(i.id).busy&&setupOf(i.id).action==="update")}
+ readonly property var updatable:instances.filter(function(i){return i.versionStatus==="behind_latest"&&i.canUpdate===true&&!root.updating(i)})
+ // Every environment's one-click updates, one at a time (T3Backend.updateAllProviders).
+ readonly property var allUpdates:(root.bridge.providerUpdates || []).filter(function(u){var r=root.bridge.providerUpdateRequest(u);return u.oneClick&&!(r&&["pending","running","queued"].indexOf(r.state)>=0)})
+ function updateAll(){root.bridge.updateAllProviders(allUpdates)}
+ readonly property string environmentName:{var e=((bridge.state || {}).environments || []).find(function(x){return x.id===root.environment});return e&&e.name?e.name:environment}
  readonly property color fg:Color.popups.text
  readonly property color muted:Qt.rgba(fg.r,fg.g,fg.b,0.58)
  readonly property var selected:instances.find(function(v){return v.id===root.selectedId}) || null
@@ -74,8 +81,9 @@ ColumnLayout {
  T3PreferenceSection{Layout.fillWidth:true;title:"Providers";icon:"acp"
   body:Component{ColumnLayout{width:parent.width;spacing:Style.space(8)
    RowLayout{Layout.fillWidth:true;Layout.margins:Style.space(12);spacing:Style.space(8)
-    Text{Layout.fillWidth:true;text:T3I18n.tr("Provider instances and accounts on {environment}",{environment:root.environment});color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+    Text{Layout.fillWidth:true;text:T3I18n.tr("Provider instances and accounts on {environment}",{environment:root.environmentName});color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
     T3IconButton{name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");enabled:!root.state.busy;onClicked:root.load()}
+    T3PickerButton{objectName:"providerUpdateAll";visible:root.allUpdates.length>1||(root.allUpdates.length===1&&root.updatable.length===0);primary:false;enabled:root.writable;text:T3I18n.tr("Update all ({count})",{count:root.allUpdates.length});Controls.ToolTip.visible:hovered;Controls.ToolTip.delay:500;Controls.ToolTip.text:T3I18n.tr("Every environment, one after another");onClicked:root.updateAll()}
     T3PickerButton{objectName:"providerAdd";text:T3I18n.tr("Add provider");enabled:root.writable;onClicked:root.add()}
    }
    Text{Layout.fillWidth:true;Layout.margins:Style.space(12);visible:!!root.state.error;text:T3I18n.error(root.state.error || "");color:Color.urgent;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
@@ -105,9 +113,9 @@ ColumnLayout {
      T3ProviderIcon{provider:({driverKind:modelData.driver});tint:root.fg;implicitWidth:Style.space(20)}
      ColumnLayout{Layout.fillWidth:true;spacing:Style.space(2)
       Text{Layout.fillWidth:true;text:modelData.label+" · "+modelData.id;color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
-      Text{Layout.fillWidth:true;text:(modelData.authStatus==="authenticated"?T3I18n.tr("Signed in"):modelData.installed===false?T3I18n.tr("Not installed"):T3I18n.tr("Sign in on this environment"))+(modelData.currentVersion?" · "+modelData.currentVersion:"")+(["queued","running"].indexOf(String(modelData.updateStatus))>=0?" · "+T3I18n.tr("Updating…"):"");color:root.muted;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
+      Text{Layout.fillWidth:true;text:(modelData.authStatus==="authenticated"?T3I18n.tr("Signed in"):modelData.installed===false?T3I18n.tr("Not installed"):T3I18n.tr("Sign in on this environment"))+(modelData.currentVersion?" · "+modelData.currentVersion:"")+(root.updating(modelData)?" · "+T3I18n.tr("Updating…"):"");color:root.muted;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
      }
-     T3PickerButton{objectName:"providerUpdate_"+modelData.id;visible:modelData.versionStatus==="behind_latest"&&modelData.canUpdate===true&&["queued","running"].indexOf(String(modelData.updateStatus))<0;primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Update to {version}",{version:modelData.latestVersion||""});onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"update",driver:modelData.driver})}
+     T3PickerButton{objectName:"providerUpdate_"+modelData.id;visible:modelData.versionStatus==="behind_latest"&&modelData.canUpdate===true&&!root.updating(modelData);primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Update to {version}",{version:modelData.latestVersion||""});onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"update",driver:modelData.driver})}
      T3PickerButton{objectName:"providerInstall_"+modelData.id;visible:modelData.installed===false&&modelData.canInstall===true;primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Install");onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"install"})}
      T3PickerButton{objectName:"providerSignIn_"+modelData.id;visible:modelData.canAuthenticate===true&&modelData.authStatus!=="authenticated"&&modelData.installed!==false;primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Sign in");onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"login"})}
      T3PickerButton{objectName:"providerSignOut_"+modelData.id;visible:modelData.canLogout===true&&modelData.authStatus==="authenticated";primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Sign out");onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"logout"})}

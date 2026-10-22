@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install/update the Omarchy plugin; reuse T3's existing profile and connections.
+# Install/update Omarchy T3 Code: the desktop app (bin/ot3, its own process) and
+# its optional bar widget; reuse T3's existing profile and connections.
 set -euo pipefail
 fail() { printf 'omarchy-t3-code: %s\n' "$*" >&2; exit 1; }
 [[ $EUID -ne 0 ]] || fail 'Run as your desktop user, not root.'
@@ -65,6 +66,7 @@ else
 fi
 if [[ $source_build == 1 ]]; then
   if [[ -z "$stage" ]]; then
+    quickshell ipc -p "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-t3-code/app" call "$plugin_id" quit >/dev/null 2>&1 || true
     omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
     git -C "$plugin_dir" merge --ff-only "$expected_commit"
   fi
@@ -86,6 +88,7 @@ else
     fail 'Runtime libraries do not match this package; update Omarchy or use OT3_BUILD_FROM_SOURCE=1.'
   fi
   if [[ -z "$stage" ]]; then
+    quickshell ipc -p "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-t3-code/app" call "$plugin_id" quit >/dev/null 2>&1 || true
     omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
     git -C "$plugin_dir" merge --ff-only "$expected_commit"
   fi
@@ -129,7 +132,13 @@ if [[ $(jq -r '.owner' <<< "$status") == stopped ]]; then
   result=$("$plugin_dir/bin/omarchy-t3-client" backend-control start)
   [[ $(jq -r '.error // empty' <<< "$result") == '' ]] || fail "Could not start T3's local backend: $(jq -r '.error' <<< "$result")"
 fi
-omarchy-shell shell rescanPlugins >/dev/null
-omarchy plugin enable "$plugin_id"
-omarchy restart shell
-printf '%s\n' 'Installed. Open T3 Code from the status bar. Local/remotes and model favorites are inherited from T3.'
+# The app: launcher entry, hidden start at login and `ot3` on the PATH.
+"$plugin_dir/bin/ot3" install-desktop
+"$plugin_dir/bin/ot3" restart >/dev/null
+# The bar widget is optional: OT3_BAR_WIDGET=0 installs only the desktop app.
+if [[ ${OT3_BAR_WIDGET:-1} != 0 ]]; then
+  omarchy-shell shell rescanPlugins >/dev/null
+  omarchy plugin enable "$plugin_id"
+  omarchy restart shell
+fi
+printf '%s\n' 'Installed. Press Super+Shift+A, open "Omarchy T3 Code" from the app launcher or click T3 in the bar. Local/remotes and model favorites are inherited from T3.'

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Original pure wizard flow and failure copy; Node is build/test-only.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),crypto=require('node:crypto'),vm=require('node:vm');
-const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin='fb990765a49414a5bfbdc73365455fc8b5fbe691',files={};
+const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin=require('./upstream-pin.cjs').revision,files={};
 function hash(t){return crypto.createHash('sha256').update(t).digest('hex')}
 function read(file){const text=fs.readFileSync(path.join(source,file),'utf8');if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin||cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==text)throw Error('Pinned original input changed');files[file]=hash(text);return text}
 const logic=read('apps/web/src/components/settings/browserImportWizard.logic.ts'),contracts=read('packages/contracts/src/browserImport.ts'),toolbar=read('apps/web/src/components/BranchToolbar.logic.ts');const erase=s=>require('node:module').stripTypeScriptTypes(s,{mode:'strip'}).replace(/^export /gm,'').replace(/[ \t]+$/gm,'');

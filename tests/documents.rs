@@ -27,7 +27,7 @@ fn html_artifacts_use_native_structured_output_and_skip_errors(){
 #[test]
 fn file_chips_preserve_host_paths_and_leave_web_links_as_links(){
  let refs=omarchy_t3_client::file_references("[Informe](/home/node/report.html) [site](https://example.test/) `/home/node/report.html` `./src/main.rs`");
- assert_eq!(refs.len(),2);assert_eq!(refs[0]["name"],"report.html");assert_eq!(refs[0]["path"],"/home/node/report.html");assert_eq!(refs[1]["path"],"./src/main.rs");
+ assert_eq!(refs.len(),1);assert_eq!(refs[0]["name"],"report.html");assert_eq!(refs[0]["path"],"/home/node/report.html");
 }
 #[test]
 fn document_grant_uses_thread_scope_and_signed_get_without_bearer(){

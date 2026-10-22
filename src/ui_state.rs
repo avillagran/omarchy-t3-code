@@ -17,6 +17,7 @@ pub fn sanitize(input: &Value) -> Value {
         "screenshotButton","screenshotHidePanel",
         "fpsMeter",
         "omabridgeIndicator",
+        "threadDetailsOpen",
     ] {
         if let Some(v) = input[key].as_bool() {
             out[key] = json!(v)
@@ -25,6 +26,12 @@ pub fn sanitize(input: &Value) -> Value {
     for (key,min,max) in [("autoCompactFallbackMinutes",1,1440),("autoCompactMinTokens",1000,1000000)] {if let Some(n)=input[key].as_u64().filter(|n|*n>=min&&*n<=max){out[key]=json!(n)}}
     if let Some(map)=input["autoCompactProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if valid_id(key)||key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if let Some(n)=value.as_u64().filter(|n|*n>=1&&*n<=1440){clean.insert(key.clone(),json!(n));}}}out["autoCompactProviderMinutes"]=Value::Object(clean);}
     if let Some(list)=input["autoCompactExcludedThreads"].as_array(){out["autoCompactExcludedThreads"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|s.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)))).take(1024).collect::<Vec<_>>());}
+    // Provider update notices the user closed: "env=driver:version|…" keys.
+    if let Some(list)=input["providerUpdateDismissals"].as_array(){out["providerUpdateDismissals"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|!s.is_empty()&&s.len()<=2048&&!s.chars().any(char::is_control))).take(32).collect::<Vec<_>>());}
+    for k in ["threadDetailsWidth","threadDetailsHeight"]{if let Some(n)=input[k].as_f64().filter(|n|n.is_finite()&&*n>=0.0&&*n<=4000.0){out[k]=json!(n.round() as i64);}}
+    if let Some(v)=input["preferredEditor"].as_str().filter(|v|!v.is_empty()&&v.len()<=64&&v.chars().all(|c|c.is_ascii_alphanumeric()||c=='-'||c=='_')){out["preferredEditor"]=json!(v);}
+    // Sub-threads the user expanded or collapsed under a parent thread ("env/thread").
+    if let Some(map)=input["subthreadsExpanded"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){if let Some(b)=v.as_bool(){clean.insert(k.clone(),json!(b));}}}out["subthreadsExpanded"]=Value::Object(clean);}
     if let Some(map)=input["sidebarProjectGroupingOverrides"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.len()<=2200&&!k.chars().any(char::is_control)&&matches!(v.as_str(),Some("inherit"|"repository"|"repository_path"|"separate")){clean.insert(k.clone(),v.clone());}}out["sidebarProjectGroupingOverrides"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
     if matches!(input["starfieldMode"].as_str(),Some("auto"|"full"|"light"|"off")){out["starfieldMode"]=input["starfieldMode"].clone();}
@@ -133,6 +140,19 @@ mod tests {
         assert!(clean.get("threadMoveSpeed").is_none());
         assert_eq!(clean["settledShelfHeight"], 480.0);
         assert!(clean.get("workingShelfHeight").is_none());
+    }
+    #[test]
+    fn subthread_expansion_keeps_thread_keys_and_booleans_only() {
+        let clean = sanitize(&json!({"subthreadsExpanded":{"local/root":true,"local/other":false,"bad":true,"local/x":"yes"}}));
+        assert_eq!(clean["subthreadsExpanded"], json!({"local/root":true,"local/other":false}));
+    }
+    #[test]
+    fn details_and_update_preferences_are_bounded() {
+        let clean = sanitize(&json!({"threadDetailsOpen":true,"preferredEditor":"vscode","providerUpdateDismissals":["local=claudeAgent:2.1.307","",3]}));
+        assert_eq!(clean["threadDetailsOpen"], true);
+        assert_eq!(clean["preferredEditor"], "vscode");
+        assert_eq!(clean["providerUpdateDismissals"], json!(["local=claudeAgent:2.1.307"]));
+        assert!(sanitize(&json!({"preferredEditor":"rm -rf"})).get("preferredEditor").is_none());
     }
     #[test]
     fn omabridge_indicator_is_an_opt_in_boolean() {

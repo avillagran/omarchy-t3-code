@@ -1,0 +1,2355 @@
+{
+ "schemaVersion": 1,
+ "items": {
+  "client-setting:appearanceContrast": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserAutoShowFloatingPreview": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserCustomSearchUrl": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserDefaultAppearance": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserDefaultProfileId": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserDefaultViewport": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserDefaultZoomFactor": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserLinkTarget": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserProfiles": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserRecordingFrameRate": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserRecordingShowKeyPresses": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserRecordingShowMousePresses": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:browserSearchEngine": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:chatWidth": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:composerCollapseOnScroll": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:composerRichTextEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:confirmQuit": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:confirmThreadArchive": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:confirmThreadDelete": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:confirmThreadUnpin": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:contextWindowMeterEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:diffColorScheme": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:diffFilesCollapsed": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:diffIgnoreWhitespace": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:diffLayout": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:dismissedProviderUpdateNotificationKeys": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:environmentIdentificationMode": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:favorites": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:followUpBehavior": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontFamilyCode": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontFamilyComposer": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontFamilySans": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontFamilyTerminal": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontSizeCode": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontSizeInterface": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontSizePrompt": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontSizeTerminal": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:fontSmoothing": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:glassOpacity": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:inAppNotificationsEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:legacySidebarEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:loadBalancingEnabled": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:loadBalancingWeights": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:mathRenderingEnabled": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:notificationMode": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:onboardingCompletedAt": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:panelAnimationDurationMs": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:persistComposerContextStrip": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:planModeEnabled": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:proactivePanelsEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:providerModelPreferences": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:pullRequestLinksOpenInApp": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:pullRequestMergeMethodOverrides": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:sendShortcut": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:showSkillsInSlashMenu": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:sidebarProjectGroupingMode": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:sidebarProjectGroupingOverrides": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:sidebarProjectSortOrder": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:sidebarThreadPreviewCount": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:sidebarThreadSortOrder": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:sidebarWorkingShelfEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:snapShotAnimations": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:snapShotEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:snapShotFlash": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:snapShotIncludeAccessibility": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:snapShotPlaySound": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:snapShotShortcut": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:snapShotSound": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:timestampFormat": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:wordWrap": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/browser-session": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/clients": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/clients/revoke": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/clients/revoke-others": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/pairing-links": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/pairing-links/revoke": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/pairing-token": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/session": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/auth/websocket-ticket": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/connect/link-proof": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/connect/link-state": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/connect/mint-credential": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/connect/preferences": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/connect/relay-config": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/connect/unlink": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/orchestration/shell": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/orchestration/threads/*": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/orchestration/threads/*/bounded": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/orchestration/threads/*/history": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/orchestration/threads/*/transcript": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/projects": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/projects/mutate": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/pull-requests/diff": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/t3-connect/health": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/t3-connect/mint-credential": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:appearance.cycle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:chat.find": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:chat.new": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:chat.newLocal": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:chat.newWithoutProject": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:commandPalette.toggle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.branch": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.cycleHost": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.decreaseEffort": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.effort": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.host": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.increaseEffort": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.mode": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.previousWorktree": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.sendAlternate": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.sendAndNewThread": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.sendBackground": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.stash": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.workspace": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:diff.toggle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:editor.openFavorite": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:filePicker.toggle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.1": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.2": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.3": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.4": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.5": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.6": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.7": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.8": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.jump.9": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.nextProvider": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.previousProvider": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:modelPicker.toggle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:navigation.back": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:navigation.forward": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:preview.focusUrl": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:preview.refresh": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:preview.resetZoom": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:preview.toggle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:preview.zoomIn": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:preview.zoomOut": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:projectSearch.toggle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:pullRequest.copyNumber": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:rightPanel.close": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:rightPanel.new": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:rightPanel.toggle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:rightPanel.toggleMaximized": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:sidebar.toggle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:terminal.close": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:terminal.new": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:terminal.split": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:terminal.splitVertical": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:terminal.toggle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:theme.select": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:themeEditor.toggle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.copyReference": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.editQueuedMessage": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.1": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.2": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.3": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.4": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.5": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.6": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.7": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.8": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.jump.9": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.next": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.pin": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.previous": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.settle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.steerQueuedMessage": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.stop": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:thread.undo": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:threadPanel.toggle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.cost": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.limits": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.open": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.period.day": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.period.month": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.period.quarter": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.period.week": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:usage.tokens": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:view.reopenClosed": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:checkpoint.captured": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:checkpoint.rollback": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:checkpoint.rollback-requested": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:checkpoint.rollback.fail": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:message.dispatch": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:message.updated": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:node.updated": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:notification.delivery.accept": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:plan.updated": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:provider.switch": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:queue.resume": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:run.background-work-cancelled": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:run.created": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:run.interrupt": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:run.updated": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:subagent.stop": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:subagent.updated": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.active.reorder": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.archive": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.auto-settle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.auto-settle.set": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.background-work.settle": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.create": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.created": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.created.record": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.delete": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.fork": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.interaction-mode.set": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.mark-unread": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.merge_back": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.metadata.update": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.model-selection.set": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pin": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pin.reorder": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pull-request-link-updated": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pull-request-link.sync": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pull-request-watch.sync": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pull-request.link": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pull-request.sync": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pull-request.unlink": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.pull-request.watch": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.runtime-mode.set": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.settle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.snooze": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.stop": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.title.regeneration.complete": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.unarchive": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.unpin": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.unsettle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.unsnooze": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.user-input.dismiss": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.visit": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:agentSessions.import": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:agentSessions.scan": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:assets.createUrl": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:assets.persistChatAttachments": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:attachments.createUploadUrl": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:attachments.delete": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:cloud.getRelayClientStatus": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:cloud.installRelayClient": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.action": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.close": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.configure": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.detail": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.list": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.open": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.shutdown": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:device.testHost": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:filesystem.browse": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:filesystem.getMetadata": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:git.preparePullRequestThread": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:git.resolvePullRequest": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:git.runStackedAction": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:mcpApps.callTool": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:mcpApps.readResource": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:mcpApps.toolInfo": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:mcpApps.updateModelContext": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.dispatchCommand": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getArchivedShellSnapshot": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getFullThreadDiff": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getThreadProjection": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getTurnDiff": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getTurnItem": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getWorkflowScript": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.launchThread": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.searchThread": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.searchThreads": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.searchThreadStream": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.stopWorkflow": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.subscribeArchivedShell": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.subscribeCommandOutput": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.subscribeShell": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.subscribeThread": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.adjust": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.clearProfile": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.close": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.list": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.navigate": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.open": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.refresh": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.reportProfiles": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.reportStatus": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:preview.resize": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projectClone.cancel": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projectClone.retry": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projectClone.start": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.add": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.createNew": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.ensureScratch": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.list": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.listEntries": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.mutate": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.readFile": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.remove": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.searchContents": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.searchEntries": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.writeFile": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.auth.cancel": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.auth.complete": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.auth.logout": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.auth.respond": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.auth.start": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.auth.subscribe": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.chatgpt.handoff.subscribe": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.consumeResetCredit": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.install.cancel": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.install.remove": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.install.start": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.install.subscribe": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:provider.uploadFeedback": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.activity": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.checks": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.comment": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.detail": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.diffFileContents": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.filesViewed": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.generateReviewGuide": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.invalidate": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.labelCandidates": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.linkedThreads": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.list": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.listStats": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.preview": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.replyToThread": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.reportState": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.requestReviewers": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.reviewerCandidates": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.reviewGuide": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.routing": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.routingIdentity": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.runAction": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.setFilesViewed": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.setLabels": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.setReaction": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.setThreadResolution": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.stack": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.submitReview": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.subscribeRefreshes": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.summary": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.threadComments": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.update": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.updateComment": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:review.getDiffFileContents": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:review.getDiffPreview": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.delete": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.getWebhookDelivery": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.list": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.listWebhookDeliveries": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.rotateWebhookToken": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.runNow": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.setEnabled": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.subscribe": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:scheduledTasks.upsert": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:secrets.answerRequest": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.acceptAcpRegistryUrlAuth": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.checkOtlpEndpoint": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.commitDesktopUpdate": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.deleteAcpRegistrySession": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.disableAcpRegistryProvider": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.discoverSourceControl": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getBackgroundPolicy": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getConfig": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getDatabaseStorage": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getHostResources": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getProcessDiagnostics": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getProcessResourceHistory": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getResourceTelemetryHistory": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getSettings": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getStorageCleanupReport": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getTraceDiagnostics": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.getUsageSummary": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.importAcpRegistrySession": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.listAcpRegistryProviders": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.listAcpRegistrySessions": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.logoutAcpRegistry": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.prepareAcpRegistryAgent": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.probe": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.refreshProviders": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.refreshUsageRates": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.removeKeybinding": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.reportClientActivity": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.reportHostPowerState": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.retryResourceTelemetry": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.runStorageCleanup": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.searchAcpRegistry": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.setAcpRegistryProvider": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.signalProcess": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.uninstallAcpRegistryManagedBinary": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.updateProvider": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.updateServer": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.updateServerWithProgress": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.updateSettings": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.upsertKeybinding": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:shell.openInEditor": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:sourceControl.cloneRepository": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:sourceControl.lookupRepository": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:sourceControl.publishRepository": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.attach": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.clear": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.close": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.observe": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.open": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.resize": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.restart": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:terminal.write": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.createRef": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.createWorktree": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.init": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.listRefs": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.pull": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.refreshStatus": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.removeWorktree": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:vcs.switchRef": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:worktreeSetup.cancel": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:addProjectBaseDirectory": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:automaticGitFetchInterval": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:autoResumeLimitedThreads": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:backgroundActivity": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:backgroundActivityProfile": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:branchNameInstructions": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:branchNamePrefix": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:branchNamingMode": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:continueThreadsAfterServerUpdate": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:cursorKeychainUsageEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:defaultAutoPull": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:defaultModelSelection": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:defaultProjectScripts": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:defaultRuntimeMode": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:defaultTheme": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:defaultThemeSetAt": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:defaultThreadEnvMode": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:deviceHosts": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:deviceOnboardingCompleted": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:enableAgentBrowserAccess": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:enableAgentDeviceAccess": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:enableDeviceSupport": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:enableProviderUpdateChecks": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:environmentIcon": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:favorites": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:newWorktreesStartFromOrigin": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:observability": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:previousWorktreesDirectories": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:projectAgentBrowserAccessOverrides": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:projectAutoPullOverrides": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:projectScriptOverrides": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:projectSettingsFolded": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:projectSettingsOverrides": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:providerHealthRefreshInterval": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:providerInstances": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:providerModelPreferences": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:pullRequestMergeMethod": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:removeAgentCreditsOnMerge": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:responseStreamingMode": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:reviewGuideInstructions": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:reviewGuideModelSelection": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:reviewGuidesEnabled": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:sidebarAutoSettleAfterDays": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:sidebarAutoSettleKeepPullRequests": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:sidebarAutoSettleOnMerge": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:snoozeLimitedThreads": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:sourceControlHosts": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:sourceControlWriterModelSelection": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:sourceControlWritingStyle": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:storageCleanup": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:textGenerationModelSelection": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:usageLimitSources": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:usageModelAliases": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:usagePriceOverrides": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:worktreeCleanup": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:worktreesDirectory": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:worktreeSubmodules": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.1-nightly.20261020.3386"
+  }
+ }
+}

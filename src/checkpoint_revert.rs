@@ -221,6 +221,27 @@ pub fn can_preview(p: &Value, message: &Value) -> bool {
                 )
         })
 }
+/// The checkpoint turn count just before `run`: the ready checkpoint of the previous
+/// visible run (rolled-back and inherited history excluded), or 0 at the thread start.
+fn previous_visible_turn_count(p: &Value, run: &str) -> Option<u64> {
+    let mut seen: Vec<&str> = vec![];
+    for row in rows(p, "turnItems") {
+        let item = row.get("item").unwrap_or(row);
+        if item["visibility"] == "inherited" { continue }
+        let Some(id) = item["runId"].as_str() else { continue };
+        if rows(p, "runs").iter().any(|r| r["id"] == id && r["status"] == "rolled_back") { continue }
+        if !seen.contains(&id) { seen.push(id) }
+    }
+    let at = seen.iter().position(|r| *r == run)?;
+    if at == 0 {
+        let start = rows(p, "checkpoints").iter().any(|c| c["ordinalWithinScope"] == 0 && c["appRunOrdinal"].is_null() && c["status"] == "ready");
+        return start.then_some(0);
+    }
+    let previous = seen[at - 1];
+    rows(p, "checkpoints").iter().rev()
+        .find(|c| c["runId"] == previous && c["status"] == "ready" && c["appRunOrdinal"].as_u64().is_some_and(|n| n > 0))
+        .and_then(|c| c["appRunOrdinal"].as_u64())
+}
 /// Resolve BEFORE the clicked user message, mirroring session-logic.ts and commands.ts.
 /// Call on the raw native projection before compacting; never count visible messages.
 /// Missing bounded-history entities fail closed (fetch native checkpoint context first).
@@ -251,7 +272,9 @@ pub fn reference(p: &Value, message_id: &str) -> Result<Value> {
         })
         .ok_or("revert_checkpoint_unavailable")?;
     let ordinal = message_checkpoint["appRunOrdinal"].as_u64().unwrap();
-    let turn_count = ordinal - 1;
+    // T3 deriveRevertTurnCountByUserMessageId (#18982): run ordinals keep growing after a
+    // rewind, so the target is the previous *visible* run's ready checkpoint, not ordinal-1.
+    let turn_count = previous_visible_turn_count(p, run).ok_or("revert_checkpoint_unavailable")?;
     // Match native findLast first, THEN readiness. Never silently skip a stale target.
     let target = rows(p, "checkpoints")
         .iter()

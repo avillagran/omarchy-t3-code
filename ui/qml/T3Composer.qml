@@ -1,5 +1,6 @@
 import QtQuick 6.11
 import QtQuick.Layouts
+import QtQuick.Window 6.11
 import QtQuick.Controls as Controls
 import QtQuick.Dialogs
 import qs.Commons
@@ -34,17 +35,80 @@ Rectangle {
   onDraftReadyChanged:if(draftReady&&projectDraftsVisible)bridge.requestProjectDrafts("list")
   Connections{target:root.bridge;ignoreUnknownSignals:true
     function onSelectedKeyChanged(){if(root.projectDraftsVisible)Qt.callLater(function(){root.bridge.requestProjectDrafts("list")})}
-    function onProjectDraftRestored(key){if(key===root.bridge.selectedKey){if(!root.expanded)root.draftsOpen=false;Qt.callLater(function(){editor.cursorPosition=editor.text.length;editor.forceActiveFocus()})}}
+    function onProjectDraftRestored(key){if(key===root.bridge.selectedKey){if(!root.expanded)root.draftsOpen=false;Qt.callLater(function(){editor.cursorPosition=editor.length;editor.forceActiveFocus()})}}
+  }
+  // Attachment references (`![name](t3-context://v1/image/…)`) show as chips,
+  // as in T3's composer. The draft keeps its text; the editor shows each
+  // reference as one inline image (one character, U+FFFC) and every edit is
+  // turned back into the draft's text, so positions are converted at the edges.
+  property var viewRefs:[]
+  property string viewText:""
+  property bool syncingEditor:false
+  readonly property string referenceSource:"!?\\[[^\\]\\n]*\\]\\(t3-context://v1/[a-z]+/[^)\\s]+\\)"
+  function splitReferences(source){var refs=[];var text=String(source || "").replace(new RegExp(referenceSource,"g"),function(m){refs.push(m);return "\ufffc"});return {text:text,refs:refs}}
+  function joinReferences(view,refs){var i=0;return String(view).replace(/\ufffc/g,function(){return i<refs.length?refs[i++]:""})}
+  function sourceText(){return joinReferences(viewText,viewRefs)}
+  // Editor position -> draft position, and back.
+  function sourcePosition(position){var extra=0,n=0;for(var k=0;k<position&&k<viewText.length;k++)if(viewText.charCodeAt(k)===0xfffc){extra+=(viewRefs[n] || "x").length-1;n++}return position+extra}
+  function viewPosition(position){var s=0,n=0;for(var k=0;k<viewText.length;k++){var len=viewText.charCodeAt(k)===0xfffc?(viewRefs[n++] || "x").length:1;if(s+len>position)return k+(position>s?1:0);s+=len}return viewText.length}
+  function commitView(view,typed){bridge.edit(joinReferences(view,viewRefs),typed)}
+  function editorPlain(){return editor.getText(0,editor.length).replace(/[\u2028\u2029]/g,"\n")}
+  function escapeHtml(t){return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+  function sizeText(bytes){return !(bytes>0)?"":bytes<1024?bytes+" B":bytes<1048576?Math.round(bytes/1024)+" KB":(bytes/1048576).toFixed(1)+" MB"}
+  // Qt SVG (Tiny 1.2) has no rgba(): colours are hex, opacity a separate attribute.
+  function svgColor(col){var hex=function(v){var h=Math.round(v*255).toString(16);return h.length<2?"0"+h:h};return "#"+hex(col.r)+hex(col.g)+hex(col.b)}
+  function chipImage(ref){
+    var m=/^(!?)\[([^\]]*)\]\(t3-context:\/\/v1\/([a-z]+)\/([^)]+)\)$/.exec(ref) || ["","","",""," "]
+    var attachment=(draft.attachments || []).map(function(a){return a.attachment || {}}).find(function(a){return a.id===m[4]}) || {}
+    var name=m[2] || attachment.name || m[3],size=sizeText(attachment.sizeBytes)
+    chipName.text=name;chipSize.text=size
+    var h=Math.round(Style.space(22)),pad=Math.round(Style.space(7)),icon=Math.round(Style.space(13)),gap=Math.round(Style.space(5))
+    var nameW=Math.ceil(Math.min(chipName.advanceWidth,Style.space(200))),sizeW=size?Math.ceil(chipSize.advanceWidth)+gap:0
+    var w=pad+icon+gap+nameW+sizeW+pad,f=chipName.font.pixelSize,ink=svgColor(fg),accent=svgColor(Color.accent),family=escapeHtml(chipName.font.family),baseline=(h/2+f*0.35).toFixed(1)
+    var glyph=m[1]==="!"?'<rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="'+accent+'" stroke-width="1.3"/><circle cx="5" cy="5" r="1.3" fill="'+accent+'"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>'
+      :'<path d="M3 1.5h5l3.5 3.5v7.5h-8.5z" fill="none" stroke="'+accent+'" stroke-width="1.3"/>'
+    // Drawn at the screen's scale (at least 2x) and shown at its logical size, so it stays sharp.
+    var scale=Math.max(2,Math.ceil(editor.Screen.devicePixelRatio || 1))
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+(w*scale)+'" height="'+(h*scale)+'" viewBox="0 0 '+w+' '+h+'">'
+      +'<rect x="0.5" y="0.5" width="'+(w-1)+'" height="'+(h-1)+'" rx="'+Math.round(h/3.2)+'" fill="'+ink+'" fill-opacity="0.07" stroke="'+ink+'" stroke-opacity="0.16"/>'
+      +'<g transform="translate('+pad+','+((h-icon)/2)+') scale('+(icon/14)+')">'+glyph+'</g>'
+      +'<text x="'+(pad+icon+gap)+'" y="'+baseline+'" font-family="'+family+'" font-size="'+f+'" fill="'+ink+'">'+escapeHtml(chipName.elidedText)+'</text>'
+      +(size?'<text x="'+(pad+icon+gap+nameW+gap)+'" y="'+baseline+'" font-family="'+family+'" font-size="'+f+'" fill="'+ink+'" fill-opacity="0.55">'+escapeHtml(size)+'</text>':"")+'</svg>'
+    return '<img src="data:image/svg+xml,'+encodeURIComponent(svg)+'" width="'+w+'" height="'+h+'" style="vertical-align:middle">'
+  }
+  TextMetrics{id:chipName;font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;elideWidth:Style.space(200)}
+  TextMetrics{id:chipSize;font.pixelSize:Style.font.caption}
+  function htmlOf(split){var n=0,self=root;return '<span style="white-space:pre-wrap">'+split.text.split("").map(function(ch){return ch==="\ufffc"?self.chipImage(split.refs[n++]):ch==="\n"?"<br>":self.escapeHtml(ch)}).join("")+"</span>"}
+  // Draft -> editor, when the draft changed from outside the editor (thread switch, completion, paste, undo).
+  function renderEditor(){
+    var split=splitReferences(draft.text)
+    if(split.text===viewText&&split.refs.join("\n")===viewRefs.join("\n")&&editorPlain()===viewText)return
+    var cursor=editor.cursorPosition;syncingEditor=true
+    viewRefs=split.refs;viewText=split.text;editor.text=htmlOf(split)
+    editor.cursorPosition=Math.min(cursor,editor.length);syncingEditor=false
+  }
+  // Editor -> draft: keep the references whose chips survived the edit, in order.
+  function editorEdited(){
+    var next=editorPlain(),old=viewText,p=0,q=0
+    while(p<old.length&&p<next.length&&old[p]===next[p])p++
+    while(q<old.length-p&&q<next.length-p&&old[old.length-1-q]===next[next.length-1-q])q++
+    var count=function(t){return (t.match(/\ufffc/g) || []).length}
+    var before=count(old.slice(0,p)),after=count(old.slice(old.length-q)),middle=next.slice(p,next.length-q),stray=count(middle)>0
+    var refs=viewRefs.slice(0,before).concat(after?viewRefs.slice(viewRefs.length-after):[])
+    if(stray)next=next.slice(0,p)+middle.replace(/\ufffc/g,"")+next.slice(next.length-q)
+    viewRefs=refs;viewText=next
+    if(stray)Qt.callLater(renderEditor)
+    return joinReferences(next,refs)
   }
   property string lastDraftText:""
   property string pendingCursorKey:bridge.selectedKey
-  function positionDraftAtEnd(){if(pendingCursorKey!==bridge.selectedKey||draft.loading)return;var key=pendingCursorKey;Qt.callLater(function(){if(key!==root.bridge.selectedKey||root.draft.loading)return;editor.cursorPosition=editor.text.length;root.bridge.rememberDraftCursor(editor.cursorPosition,editor.cursorPosition);root.pendingCursorKey=""})}
+  function positionDraftAtEnd(){if(pendingCursorKey!==bridge.selectedKey||draft.loading)return;var key=pendingCursorKey;Qt.callLater(function(){if(key!==root.bridge.selectedKey||root.draft.loading)return;editor.cursorPosition=editor.length;root.bridge.rememberDraftCursor(root.sourcePosition(editor.cursorPosition),root.sourcePosition(editor.cursorPosition));root.pendingCursorKey=""})}
   Component.onCompleted:positionDraftAtEnd()
-  Connections{target:root.bridge;function onSelectedKeyChanged(){root.pendingCursorKey=root.bridge.selectedKey;root.positionDraftAtEnd()}function onDraftRestored(key,start,end){if(key!==root.bridge.selectedKey)return;Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;editor.select(start,end);editor.forceActiveFocus()})}}
-  onDraftChanged:{positionDraftAtEnd();if(!draft.loading && draft.text!==lastDraftText && editor.activeFocus)saveQuietPeriod.restart();lastDraftText=draft.text}
+  Connections{target:root.bridge;function onSelectedKeyChanged(){root.pendingCursorKey=root.bridge.selectedKey;root.positionDraftAtEnd()}function onDraftRestored(key,start,end){if(key!==root.bridge.selectedKey)return;Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.select(root.viewPosition(start),root.viewPosition(end));editor.forceActiveFocus()})}}
+  onDraftChanged:{renderEditor();positionDraftAtEnd();if(!draft.loading && draft.text!==lastDraftText && editor.activeFocus)saveQuietPeriod.restart();lastDraftText=draft.text}
   Timer{id:saveQuietPeriod;interval:1000}
 
-  Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;editor.cursorPosition=cursor;editor.forceActiveFocus()})}}
+  Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.cursorPosition=root.viewPosition(cursor);editor.forceActiveFocus()})}}
   property int historyIndex: -1
   property string historyScratch: ""
   readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
@@ -53,10 +117,10 @@ Rectangle {
   property int completionIndex: 0
   property string dismissedCompletion: ""
   readonly property bool completionVisible: !!completion && editor.activeFocus && !locked
-  function closeCompletion() { dismissedCompletion=editor.text+"/"+editor.cursorPosition;completion=null;bridge.dismissSuggestions() }
+  function closeCompletion() { dismissedCompletion=root.viewText+"/"+editor.cursorPosition;completion=null;bridge.dismissSuggestions() }
   function updateCompletion() {
-    if (!editor.activeFocus || locked || dismissedCompletion===editor.text+"/"+editor.cursorPosition) return
-    var prefix=editor.text.slice(0,editor.cursorPosition)
+    if (!editor.activeFocus || locked || dismissedCompletion===root.viewText+"/"+editor.cursorPosition) return
+    var prefix=root.viewText.slice(0,editor.cursorPosition)
     var match=/(?:^|\s)([@$])([^\s]*)$/.exec(prefix)
     var slash=/(?:^|\n)\/([^\s]*)$/.exec(prefix)
     var next=match ? {kind:match[1]==="@"?"path":"skill",query:match[2],start:prefix.length-match[2].length-1,end:editor.cursorPosition} : slash ? {kind:"command",query:slash[1],start:prefix.length-slash[1].length-1,end:editor.cursorPosition} : null
@@ -67,9 +131,9 @@ Rectangle {
   }
   function chooseCompletion(index) {
     if(!completion || !bridge.suggestionItems[index])return false
-    var item=bridge.suggestionItems[index];var before=editor.text.slice(0,completion.start);var after=editor.text.slice(completion.end)
-    var insert=item.insert || "";bridge.edit(before+insert+after);var cursor=before.length+insert.length
-    closeCompletion();Qt.callLater(function(){editor.cursorPosition=cursor;dismissedCompletion=editor.text+"/"+cursor;editor.forceActiveFocus();if(item.kind==="model"){root.showOptions=true;modelPicker.forceActiveFocus();modelPicker.popup.open()}});return true
+    var item=bridge.suggestionItems[index];var before=root.viewText.slice(0,completion.start);var after=root.viewText.slice(completion.end)
+    var insert=item.insert || "";root.commitView(before+insert+after);var cursor=before.length+insert.length
+    closeCompletion();Qt.callLater(function(){editor.cursorPosition=cursor;dismissedCompletion=root.viewText+"/"+cursor;editor.forceActiveFocus();if(item.kind==="model"){root.showOptions=true;modelPicker.forceActiveFocus();modelPicker.popup.open()}});return true
   }
   function completionKey(event,step) {
     if(!completionVisible || event.modifiers!==Qt.NoModifier)return false
@@ -78,6 +142,8 @@ Rectangle {
     return true
   }
   Timer { id: completionDelay; interval:140; onTriggered:root.updateCompletion() }
+  // A draft briefly locked (loading or saving) skips completion; look again once it is free.
+  onLockedChanged:if(!locked&&editor.activeFocus)completionDelay.restart()
   Connections { target:root.bridge; function onThreadWillChange(){root.completion=null;root.dismissedCompletion=""} }
   Controls.Popup {
     id:completionPopup
@@ -110,27 +176,27 @@ Rectangle {
   }
   function navigateHistory(direction) {
     if (locked || draft.queueEdit || editor.selectionStart !== editor.selectionEnd) return false
-    var edge=editor.positionToRectangle(direction < 0 ? 0 : editor.text.length)
+    var edge=editor.positionToRectangle(direction < 0 ? 0 : editor.length)
     if (Math.abs(editor.cursorRectangle.y-edge.y)>1) return false
     if (direction < 0) {
       if (historyIndex+1 >= promptHistory.length) return false
-      if (historyIndex < 0) historyScratch=editor.text
+      if (historyIndex < 0) historyScratch=root.draft.text
       historyIndex++;bridge.edit(promptHistory[historyIndex])
     } else {
       if (historyIndex < 0) return false
       historyIndex--;bridge.edit(historyIndex < 0 ? historyScratch : promptHistory[historyIndex])
     }
-    Qt.callLater(function(){editor.cursorPosition=direction<0?0:editor.text.length});return true
+    Qt.callLater(function(){editor.cursorPosition=direction<0?0:editor.length});return true
   }
   function continueList() {
     if(locked || editor.selectionStart!==editor.selectionEnd)return false
-    var cursor=editor.cursorPosition;var before=editor.text.slice(0,cursor);var start=before.lastIndexOf("\n")+1
+    var cursor=editor.cursorPosition;var before=root.viewText.slice(0,cursor);var start=before.lastIndexOf("\n")+1
     var line=before.slice(start);var match=/^([ \t]*)([-+*•◦‣–]|\d+[.)])\s+(\[[ xX]\]\s+)?(.*)$/.exec(line)
     if(!match)return false
-    var suffix=editor.text.slice(cursor);var insert="";var next=cursor
+    var suffix=root.viewText.slice(cursor);var insert="";var next=cursor
     if(!match[4].trim() && !suffix.split("\n")[0].trim()) {before=before.slice(0,start);next=start}
     else {var marker=match[2];if(/^\d/.test(marker))marker=String(Number(marker.slice(0,-1))+1)+marker.slice(-1);insert="\n"+match[1]+marker+" "+(match[3]?"[ ] ":"");next=cursor+insert.length}
-    bridge.edit(before+insert+suffix);Qt.callLater(function(){editor.cursorPosition=next});return true
+    root.commitView(before+insert+suffix);Qt.callLater(function(){editor.cursorPosition=next});return true
   }
   function handleEnter(event) {
     // Let the input method finish a composed character before interpreting send.
@@ -139,20 +205,20 @@ Rectangle {
     if(root.completionVisible && modifiers===Qt.NoModifier){event.accepted=true;root.chooseCompletion(root.completionIndex);return}
     if(modifiers===(Qt.ControlModifier|Qt.ShiftModifier)){event.accepted=true;if(!event.isAutoRepeat)root.bridge.submit(true);return}
     if(modifiers===Qt.ControlModifier || (modifiers===Qt.NoModifier && !root.expanded)){
-      event.accepted=true;if(!event.isAutoRepeat)root.bridge.submit();return
+      event.accepted=true;if(!event.isAutoRepeat)root.bridge.submit(false,undefined,modifiers===Qt.ControlModifier&&!root.expanded);return
     }
     if(modifiers===Qt.ShiftModifier || (modifiers===Qt.NoModifier && root.expanded)){
       event.accepted=true
       if(!root.locked && !root.continueList()){
         var start=editor.selectionStart,end=editor.selectionEnd
-        root.bridge.edit(editor.text.slice(0,start)+"\n"+editor.text.slice(end),true)
+        root.commitView(root.viewText.slice(0,start)+"\n"+root.viewText.slice(end),true)
         Qt.callLater(function(){editor.cursorPosition=start+1})
       }
       return
     }
     event.accepted=false
   }
-  Text { id:compactMeasure;visible:false;width:Math.max(1,root.width-Style.space(36));text:editor.text;font:editor.font;wrapMode:Text.Wrap;textFormat:Text.PlainText }
+  Text { id:compactMeasure;visible:false;width:Math.max(1,root.width-Style.space(36));text:root.viewText.replace(/\ufffc/g,"\u2003\u2003\u2003\u2003\u2003");font:editor.font;wrapMode:Text.Wrap;textFormat:Text.PlainText }
   readonly property real compactEditorHeight: Math.min(Style.space(130),Math.max(Style.space(56),compactMeasure.implicitHeight+Style.space(12)))
   function attachFiles() { if(locked)return; files.environment=bridge.selectedEnvironment;files.thread=bridge.selectedThread;files.open() }
   readonly property var draft: bridge.draft
@@ -164,6 +230,11 @@ Rectangle {
   readonly property bool running: !!bridge.selectedInfo.activeRunId
   readonly property bool hasContent: !!draft.text.trim() || draft.attachments.length > 0
   readonly property bool stopMode: running && !hasContent && !draft.queueEdit
+  // During a run a message follows T3's follow-up preference (queue or steer);
+  // Ctrl, held while typing or over the send button, switches to the other one.
+  property bool editorCtrlHeld:false
+  readonly property bool alternateHeld:editorCtrlHeld||(sendHover.hovered&&(sendHover.point.modifiers&Qt.ControlModifier)!==0)
+  readonly property string followUp:bridge.dispatchMode(alternateHeld)
   readonly property bool uploading: draft.attachments.some(function(f) { return f.uploading })
   readonly property bool invalidFiles: draft.attachments.some(function(f) { return !!f.error })
   readonly property color fg: Color.popups.text
@@ -213,8 +284,8 @@ Rectangle {
     }
     // Subagents still working for this thread (T3's subagent bar).
     Flow {
-      objectName:"t3SubagentBar";Layout.fillWidth:true;spacing:Style.space(6);visible:(root.bridge.activeSubagents||[]).some(function(s){return ["pending","running","waiting"].indexOf(s.status)>=0||s.workflow})
-      Repeater{model:(root.bridge.activeSubagents||[]).filter(function(s){return ["pending","running","waiting"].indexOf(s.status)>=0||s.workflow})
+      objectName:"t3SubagentBar";Layout.fillWidth:true;spacing:Style.space(6);visible:(root.bridge.activeSubagents||[]).some(function(s){return ["pending","running","waiting"].indexOf(s.status)>=0||!!s.scriptPath})
+      Repeater{model:(root.bridge.activeSubagents||[]).filter(function(s){return ["pending","running","waiting"].indexOf(s.status)>=0||!!s.scriptPath})
         Rectangle{required property var modelData;height:Style.space(26);width:subRow.implicitWidth+Style.space(14);radius:height/2;color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.1)
           Row{id:subRow;anchors.centerIn:parent;spacing:Style.space(6)
             WorkIndicator{active:modelData.status==="running";visible:active;implicitWidth:Style.space(10);implicitHeight:implicitWidth;anchors.verticalCenter:parent.verticalCenter}
@@ -244,9 +315,36 @@ Rectangle {
       spacing: Style.space(5)
       Repeater {
         model: root.draft.attachments
-        Rectangle {
+        // Uploaded images show as thumbnails, as in T3's composer; other files as chips.
+        Item {
+          id: attachmentTile
           required property var modelData
           required property int index
+          readonly property bool image: !!modelData.attachment && modelData.attachment.type === "image" && !modelData.error && !modelData.uploading
+          implicitWidth: image ? thumbnail.width : chip.width; implicitHeight: image ? thumbnail.height : chip.height
+          width: implicitWidth; height: implicitHeight
+          T3MessageImage {
+            id: thumbnail
+            objectName: "t3PreviewDraftAttachment_" + attachmentTile.index
+            visible: attachmentTile.image; enabled: attachmentTile.image
+            width: Style.space(56); height: Style.space(56)
+            bridge: root.bridge; attachment: attachmentTile.modelData.attachment || ({})
+            active: attachmentTile.image && root.visible
+            onEnlarge: function(a) { root.previewAttachment(a) }
+            T3IconButton {
+              objectName: "t3RemoveDraftImage_" + attachmentTile.index
+              anchors.top: parent.top; anchors.right: parent.right; anchors.margins: Style.space(3)
+              implicitWidth: Style.space(20); implicitHeight: implicitWidth; name: "x"
+              radius: width / 2; color: Qt.rgba(0, 0, 0, 0.55); tint: "white"
+              enabled: !root.locked; tooltipText: T3I18n.tr("Remove attachment") + ": " + attachmentTile.modelData.name
+              onClicked: root.bridge.removeAttachment(attachmentTile.index)
+            }
+          }
+        Rectangle {
+          id: chip
+          visible: !attachmentTile.image
+          readonly property var modelData: attachmentTile.modelData
+          readonly property int index: attachmentTile.index
           width: Math.min(fileRow.implicitWidth + Style.space(14), Style.space(270)); height: Style.space(30)
           radius: Style.space(7); color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.06)
           RowLayout {
@@ -255,9 +353,10 @@ Rectangle {
             WorkIndicator { visible: modelData.uploading; active: visible && root.visible; implicitWidth: Style.space(13) }
             T3Icon { visible: !modelData.uploading; name: modelData.error ? "circle-alert" : "file"; tint: modelData.error ? Color.urgent : Color.accent; implicitWidth: Style.space(14) }
             Text { Layout.fillWidth: true; text: modelData.name; color: root.fg; font.pixelSize: Style.font.caption; elide: Text.ElideMiddle; textFormat: Text.PlainText }
-            T3IconButton { objectName:"t3PreviewDraftAttachment_"+index;name:"eye";glyph:"\uf06e";glyphScale:0.85;enabled:!modelData.uploading&&!modelData.error&&!!modelData.attachment;tooltipText:T3I18n.tr("Preview")+": "+modelData.name;onClicked:root.previewAttachment(modelData.attachment) }
+            T3IconButton { objectName:"t3PreviewDraftFile_"+index;name:"eye";glyph:"\uf06e";glyphScale:0.85;enabled:!modelData.uploading&&!modelData.error&&!!modelData.attachment;tooltipText:T3I18n.tr("Preview")+": "+modelData.name;onClicked:root.previewAttachment(modelData.attachment) }
             T3IconButton { name: "x"; enabled: !root.locked && !modelData.uploading; tooltipText: T3I18n.error(modelData.error) || T3I18n.tr("Remove attachment"); onClicked: root.bridge.removeAttachment(index) }
           }
+        }
         }
       }
     }
@@ -282,10 +381,12 @@ Rectangle {
         id: editor
         width:editorViewport.width
         height:Math.max(implicitHeight,editorViewport.height)
-        textFormat:TextEdit.PlainText
+        textFormat:TextEdit.RichText
         LayoutMirroring.enabled:false
         objectName: "t3ComposerEditor"
-        text: root.draft.text
+        // The draft's text as plain text (chips as references), for keyboard handling and tests.
+        readonly property string plainText: root.viewText
+        Component.onCompleted: root.renderEditor()
         placeholderText: T3I18n.tr("Ask anything, @files/folders, $skills or /commands…")
         color: root.fg; placeholderTextColor: root.dim
         selectionColor: Color.accent; selectedTextColor: Color.popups.background
@@ -293,13 +394,14 @@ Rectangle {
         wrapMode: TextEdit.Wrap; selectByMouse: true
         readOnly: root.locked
         background: Item {}
-        onTextChanged: { if (text !== root.draft.text && activeFocus && !root.locked) {root.historyIndex=-1;root.bridge.edit(text,true)};completionDelay.restart() }
-        onSelectionStartChanged:if(!root.draft.loading)root.bridge.rememberDraftCursor(selectionStart,selectionEnd)
-        onSelectionEndChanged:if(!root.draft.loading)root.bridge.rememberDraftCursor(selectionStart,selectionEnd)
-        onCursorPositionChanged: {if(!root.draft.loading)root.bridge.rememberDraftCursor(selectionStart,selectionEnd);completionDelay.restart();Qt.callLater(editorViewport.revealCursor)}
+        onTextChanged: { if (root.syncingEditor) return; var source=root.editorEdited(); if (source !== root.draft.text && activeFocus && !root.locked) {root.historyIndex=-1;root.bridge.edit(source,true)} else if (source !== root.draft.text) Qt.callLater(root.renderEditor);completionDelay.restart() }
+        onSelectionStartChanged:if(!root.draft.loading)root.bridge.rememberDraftCursor(root.sourcePosition(selectionStart),root.sourcePosition(selectionEnd))
+        onSelectionEndChanged:if(!root.draft.loading)root.bridge.rememberDraftCursor(root.sourcePosition(selectionStart),root.sourcePosition(selectionEnd))
+        onCursorPositionChanged: {if(!root.draft.loading)root.bridge.rememberDraftCursor(root.sourcePosition(selectionStart),root.sourcePosition(selectionEnd));completionDelay.restart();Qt.callLater(editorViewport.revealCursor)}
         onCursorRectangleChanged:Qt.callLater(editorViewport.revealCursor)
-        Keys.onPressed:function(event){if(event.modifiers===Qt.ShiftModifier&&event.key===Qt.Key_Backtab&&root.bridge.interactionModeEnabled===true&&!root.locked){root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan");event.accepted=true;return}if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(editor.selectionStart,editor.selectionEnd)}}
-        onActiveFocusChanged: { if (!activeFocus) root.bridge.flushDrafts(); else completionDelay.restart() }
+        Keys.onReleased:function(event){if(event.key===Qt.Key_Control)root.editorCtrlHeld=false}
+        Keys.onPressed:function(event){if(event.key===Qt.Key_Control)root.editorCtrlHeld=true;if(event.modifiers===Qt.ShiftModifier&&event.key===Qt.Key_Backtab&&root.bridge.interactionModeEnabled===true&&!root.locked){root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan");event.accepted=true;return}if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(root.sourcePosition(editor.selectionStart),root.sourcePosition(editor.selectionEnd))}}
+        onActiveFocusChanged: { if (!activeFocus) {root.editorCtrlHeld=false;root.bridge.flushDrafts()} else completionDelay.restart() }
         Keys.onUpPressed: function(event) { event.accepted = root.completionKey(event,-1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(-1)) }
         Keys.onDownPressed: function(event) { event.accepted = root.completionKey(event,1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(1)) }
         Keys.onTabPressed: function(event) {event.accepted=root.completionVisible;if(event.accepted)root.chooseCompletion(root.completionIndex)}
@@ -344,7 +446,7 @@ Rectangle {
       }
       T3PermissionPicker {
         id:permissionPicker
-        bridge:root.bridge;Layout.minimumWidth:Style.space(38);Layout.maximumWidth:Style.space(170)
+        bridge:root.bridge
         enabled:!root.locked&&!root.draft.queueEdit&&root.bridge.catalog.canWrite!==false
         onPicked:editor.forceActiveFocus()
       }
@@ -397,24 +499,15 @@ Rectangle {
         enabled:!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
         onClicked:root.bridge.submit(true)
       }
-      T3Select {
-        objectName:"t3DeliverySelect"
-        Layout.preferredWidth: Style.space(115)
-        visible:!root.draft.queueEdit
-        model: [T3I18n.tr("Automatic"), T3I18n.tr("Queue")]
-        currentIndex: root.draft.delivery === "queue" ? 1 : 0
-        enabled: !root.locked
-        onActivated: function(index) { root.bridge.patchDraft(root.bridge.selectedKey, {delivery: index === 1 ? "queue" : "auto"}) }
-      }
       Rectangle {
         id: primaryAction
         objectName: "t3PrimaryAction"
-        property string actionMode: root.stopMode ? "stop" : root.draft.queueEdit ? "edit" : root.running ? "queue" : "send"
-        property string iconName: root.stopMode ? "stop-filled" : root.draft.attempt ? "refresh-cw" : root.draft.queueEdit ? "check" : root.running ? "list-plus" : "arrow-up"
+        property string actionMode: root.stopMode ? "stop" : root.draft.queueEdit ? "edit" : root.running ? root.followUp : "send"
+        property string iconName: root.stopMode ? "stop-filled" : root.draft.attempt ? "refresh-cw" : root.draft.queueEdit ? "check" : root.running ? (root.followUp === "steer" ? "corner-up-right" : "list-plus") : "arrow-up"
         activeFocusOnTab: sendMouse.enabled
         Accessible.role: Accessible.Button
-        Accessible.name: root.stopMode ? T3I18n.tr("Stop execution and hold queue") : root.draft.queueEdit ? T3I18n.tr("Save queued message") : root.running ? T3I18n.tr("Queue message") : T3I18n.tr("Send message")
-        function activate() { if(sendMouse.enabled) { if(root.stopMode) root.bridge.stop(); else root.bridge.submit() } }
+        Accessible.name: root.stopMode ? T3I18n.tr("Stop execution and hold queue") : root.draft.queueEdit ? T3I18n.tr("Save queued message") : root.running ? T3I18n.tr(root.followUp === "steer" ? "Steer the active run" : "Queue message") : T3I18n.tr("Send message")
+        function activate(alternate) { if(sendMouse.enabled) { if(root.stopMode) root.bridge.stop(); else root.bridge.submit(false, undefined, alternate === undefined ? root.alternateHeld : alternate) } }
         Keys.onReturnPressed: activate()
         Keys.onSpacePressed: activate()
         border.width: activeFocus ? 1 : 0; border.color: root.fg
@@ -427,10 +520,10 @@ Rectangle {
         MouseArea {
           id: sendMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
           enabled: root.stopMode ? !root.draft.stopping : !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
-          onClicked: primaryAction.activate()
+          onClicked: function(mouse) { primaryAction.activate((mouse.modifiers & Qt.ControlModifier) !== 0) }
         }
         Controls.ToolTip.visible: sendHover.hovered
-        Controls.ToolTip.text: primaryAction.Accessible.name + (root.stopMode ? "" : root.expanded ? " · Ctrl+Enter" : " · Enter")
+        Controls.ToolTip.text: primaryAction.Accessible.name + (root.stopMode ? "" : root.expanded ? " · Ctrl+Enter" : " · Enter") + (root.running && !root.stopMode && !root.draft.queueEdit ? "\n" + T3I18n.tr(root.followUp === "steer" ? "Ctrl-click or Ctrl+Enter to queue instead" : "Ctrl-click or Ctrl+Enter to steer instead") : "")
         HoverHandler { id: sendHover }
       }
 

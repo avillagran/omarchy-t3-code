@@ -19,19 +19,19 @@ Controls.Button {
  readonly property var current:definitions.find(function(d){return d.id===root.mode}) || definitions[0]
  readonly property var provider:(bridge.catalog.providers || []).find(function(p){return p.instanceId===(root.bridge.draft.modelSelection || root.bridge.selectedInfo.modelSelection || {}).instanceId}) || ({})
  readonly property var modes:definitions.filter(function(d){return !(root.provider.supportedRuntimeModes || []).length || root.provider.supportedRuntimeModes.indexOf(d.id)>=0})
- implicitHeight:Style.space(30);implicitWidth:permissionMetrics.width+Style.space(54)
- TextMetrics{id:permissionMetrics;text:T3I18n.tr(root.current.label);font.pixelSize:Style.font.caption}
+ // Icon only: the mode's name and description are in the tooltip and the menu.
+ implicitHeight:Style.space(30);implicitWidth:Style.space(44)
  leftPadding:Style.space(8);rightPadding:leftPadding
  hoverEnabled:true
+ Accessible.name:T3I18n.tr("Thread permissions")+": "+T3I18n.tr(root.current.label)
  contentItem:RowLayout {
   spacing:Style.space(6)
   T3Icon{name:root.current.icon;implicitWidth:Style.space(15);opacity:root.enabled?0.75:0.4}
-  Text{Layout.fillWidth:true;text:T3I18n.tr(root.current.label);color:Color.popups.text;font.pixelSize:Style.font.caption;elide:Text.ElideRight;visible:root.width>Style.space(70);opacity:root.enabled?1:0.4}
   T3Icon{name:"chevron-down";implicitWidth:Style.space(11);opacity:root.enabled?0.5:0.3}
  }
  background:Rectangle{radius:Style.space(6);color:root.hovered?Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.07):"transparent";border.width:root.activeFocus?1:0;border.color:Color.accent}
  Controls.ToolTip.visible:hovered&&!menu.opened
- Controls.ToolTip.text:T3I18n.tr("Thread permissions")+"\n"+T3I18n.tr(current.description)
+ Controls.ToolTip.text:T3I18n.tr("Thread permissions")+": "+T3I18n.tr(current.label)+"\n"+T3I18n.tr(current.description)
  Controls.ToolTip.delay:400
  function choose(mode){if(!enabled||!modes.some(function(d){return d.id===mode}))return;bridge.chooseRuntimeMode(mode);menu.close();picked()}
  onClicked:menu.open()

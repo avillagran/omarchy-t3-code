@@ -99,7 +99,7 @@ pub fn describe(row: &Value) -> Option<Value> {
             .collect()
     };
     Some(
-        json!({"id":i["id"],"type":typ,"category":category,"title":title,"command":executable,"runId":i["runId"],"status":i["status"],"active":matches!(text(i,"status"),"running"|"in_progress"|"inProgress"|"started")}),
+        json!({"id":i["id"],"type":typ,"category":category,"title":title,"command":executable,"runId":i["runId"],"status":i["status"],"failed":text(i,"status")=="failed"||i["outputIndicatesFailure"]==true,"active":matches!(text(i,"status"),"running"|"in_progress"|"inProgress"|"started")}),
     )
 }
 #[cfg(test)]

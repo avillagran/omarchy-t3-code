@@ -2,7 +2,7 @@
 // Original cleanup resolver fixture generation; never used at application runtime.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),crypto=require('node:crypto'),vm=require('node:vm');
 const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly'));
-const commit='fb990765a49414a5bfbdc73365455fc8b5fbe691',file='packages/shared/src/projectSettings.ts';
+const commit=require('./upstream-pin.cjs').revision,file='packages/shared/src/projectSettings.ts';
 const text=fs.readFileSync(path.join(source,file),'utf8');
 if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==commit||cp.execFileSync('git',['-C',source,'show',commit+':'+file],{encoding:'utf8'})!==text)throw Error('Original resolver input changed');
 const body=require('node:module').stripTypeScriptTypes(text.slice(text.indexOf('export function resolveWorktreeCleanup(')),{mode:'strip'}).replace(/^export /gm,'');

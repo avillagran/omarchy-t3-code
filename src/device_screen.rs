@@ -117,7 +117,7 @@ impl Manager {
                         })();
                         // Native T3 gives up waiting on a shutdown after 15 s while the
                         // device keeps powering off; report it as still shutting down.
-                        let error = result.err().map(|e| if shutdown && e == "rpc_rejected" { "device_shutdown_pending".to_string() } else { e });
+                        let error = result.err().map(|e| if shutdown && protocol::error_code(&e) == "rpc_rejected" { "device_shutdown_pending".to_string() } else { e });
                         surface(&target.request_id, json!({"kind":"closed","error":error}));
                     });
                 } else {

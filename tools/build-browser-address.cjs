@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Test-data generation only; the plugin runtime is Rust and Qt.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),vm=require('node:vm'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin='fb990765a49414a5bfbdc73365455fc8b5fbe691',file='packages/shared/src/preview.ts';
+const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin=require('./upstream-pin.cjs').revision,file='packages/shared/src/preview.ts';
 const native=fs.readFileSync(path.join(source,file),'utf8');if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin||cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==native)throw Error('Native source must match pinned clean input');
 const regex=native.match(/^const LOOPBACK_PREFIX_PATTERN = .*;$/m)[0];let body=native.slice(native.indexOf('function previewUrlProtocol('));body=require('node:module').stripTypeScriptTypes(body,{mode:'strip'}).replace(/^export /gm,'');
 const sandbox={URL,encodeURIComponent};vm.createContext(sandbox);vm.runInContext('class PreviewUrlNormalizationError extends Error{constructor(value){super(value.reason);this.reason=value.reason;}}\n'+regex+'\n'+body+'\nthis.resolve=resolveAddressBarInput;',sandbox);

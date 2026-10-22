@@ -166,6 +166,23 @@ Rectangle {
         }
        }}
       }
+      // The T3 Code revision ot3 is validated with, and each connected server's version.
+      T3PreferenceSection{objectName:"preferencesT3Compatibility";visible:root.page==="general"&&(!root.query.trim()||root.matches("T3 Code compatibility"));Layout.fillWidth:true;title:"T3 Code compatibility";icon:"server"
+       body:Component{Column{width:parent.width;spacing:Style.space(6)
+        Text{width:parent.width;text:T3I18n.tr("ot3 is validated with T3 Code {version} ({date}).",{version:(root.bridge.validatedT3 || {}).tag || "—",date:(root.bridge.validatedT3 || {}).date || "—"});color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+        Repeater{model:(root.bridge.state.environments || []).filter(function(e){return e.state==="ready"&&!!root.bridge.serverVersion(e.id)})
+         Text{required property var modelData;readonly property bool newer:root.bridge.t3VersionNewer(root.bridge.serverVersion(modelData.id));objectName:"t3CompatibilityRow_"+modelData.id;width:parent.width
+          text:(modelData.name || modelData.id)+": T3 "+root.bridge.serverVersion(modelData.id)+(newer?" · "+T3I18n.tr("newer: features added since then may be missing or behave differently."):" · "+T3I18n.tr("validated"))
+          color:newer?T3Palette.waiting:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+        }
+       }}
+      }
+      // T3 followUpBehavior, shared with T3 through its client settings.
+      T3PreferenceSection{visible:root.page==="general"&&(!root.query.trim()||root.matches("Follow-up behavior")||root.matches("Steer"));Layout.fillWidth:true;title:"Follow-up behavior";icon:"corner-up-right"
+       body:Component{Column{width:parent.width
+        T3PreferenceField{width:parent.width;controlName:"preferenceFollowUpBehavior";field:({key:"followUpBehavior",label:"Follow-up behavior",description:"Queue follow-ups while the agent runs or steer the current run. Ctrl+Enter, or Ctrl over the send button, does the opposite for one message.",kind:"choice",value:root.bridge.followUpBehavior,choices:[{id:"queue",name:"Queue"},{id:"steer",name:"Steer"}]});writable:!!((root.bridge.clientSettings || {}).data || {}).revision&&!((root.bridge.clientSettings || {}).busy);onChanged:function(value){root.bridge.requestClientSettings({followUpBehavior:value})}}
+       }}
+      }
       T3PreferenceSection{visible:root.page==="general"&&(!root.query.trim()||root.matches("Notifications")||root.matches("Thread notifications"));Layout.fillWidth:true;title:"Notifications";icon:"bell"
        body:Component{Column{width:parent.width
         T3PreferenceField{width:parent.width;controlName:"preferenceThreadNotifications";field:({key:"threadNotifications",label:"Thread notifications",description:"How you hear about threads that finish or need input while the panel is closed. Threads finishing together play one sound.",kind:"choice",value:root.bridge.viewState.threadNotifications || "notifications",choices:[{id:"notifications",name:"Notifications only"},{id:"notifications-and-sound",name:"Notifications with sound"},{id:"sound",name:"Sound only"},{id:"off",name:"Off"}]});writable:true;onChanged:function(value){root.bridge.rememberView({threadNotifications:value})}}

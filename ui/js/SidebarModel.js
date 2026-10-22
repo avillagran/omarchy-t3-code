@@ -1,5 +1,26 @@
 .pragma library
+// T3's row status (resolveSidebarThreadStatus, computed in sidebar.rs) refined
+// for the row label: approval, input, plan, waiting, goal, working, limited,
+// failed, woke, done or "" (nothing to say).
+function detail(t) {
+  var s = t.sidebarStatus
+  if (s === undefined) {
+    var legacy = legacyState(t)
+    return legacy === "waiting" ? (t.reason === "plan" ? "plan" : "input") : legacy === "idle" || (legacy === "done" && !t.pending) ? "" : legacy
+  }
+  if (s === "approval" || s === "input") return s
+  if (s === "ready" && t.pending && t.reason === "plan") return "plan"
+  if (s !== "ready") return s
+  if (t.woke && !t.snoozed) return "woke"
+  if (t.pending && t.reason === "review") return "done"
+  return ""
+}
+// The shelf and filter bucket: waiting (needs you), working, failed, done, woke or idle.
 function state(t) {
+  if (t.sidebarStatus === undefined) return legacyState(t)
+  return ({approval: "waiting", input: "waiting", plan: "waiting", goal: "working", working: "working", limited: "failed", failed: "failed", done: "done", woke: "woke"})[detail(t)] || "idle"
+}
+function legacyState(t) {
   if (t.pending && ["request", "plan", "waiting"].indexOf(t.reason) >= 0) return "waiting"
   if (t.working) return "working"
   if (t.status === "failed") return "failed"
@@ -51,4 +72,57 @@ function compareActive(a,b,grouped,returned) {
 function compareSettled(a,b){return (b.settledSortAt || b.updatedAt || 0)-(a.settledSortAt || a.updatedAt || 0) || tie(a,b)}
 function shelfRows(rows, expanded, selectedKey, reveal) {
   return expanded || reveal ? rows : rows.filter(function(t){return t.key===selectedKey})
+}
+
+// Sub-threads (subagents) hang under their parent thread, newest first.
+function isSubthread(t) { return t.relationshipToParent === "subagent" && !!t.parentThreadId }
+function childrenByParent(threads) {
+  var map = {}
+  threads.forEach(function(t) {
+    if (!isSubthread(t)) return
+    var key = t.environmentId + "/" + t.parentThreadId
+    ;(map[key] = map[key] || []).push(t)
+  })
+  Object.keys(map).forEach(function(k) { map[k].sort(function(a,b){return (b.lastSentAt || b.updatedAt || 0)-(a.lastSentAt || a.updatedAt || 0) || tie(a,b)}) })
+  return map
+}
+function descendantKeys(key, map, depth) {
+  var out = []
+  if ((depth || 0) > 4) return out
+  ;(map[key] || []).forEach(function(c) { out.push(c.key); out = out.concat(descendantKeys(c.key, map, (depth || 0) + 1)) })
+  return out
+}
+// A parent opens on its own while a child works or waits, or holds the
+// selection; an explicit choice (overrides[key]) always wins.
+function subthreadsExpanded(key, map, overrides, selectedKey) {
+  if (overrides && overrides[key] !== undefined) return !!overrides[key]
+  var kids = map[key] || []
+  return kids.some(function(c) { var s = state(c); return s === "working" || s === "waiting" }) || descendantKeys(key, map).indexOf(selectedKey) >= 0
+}
+function childSummary(kids) {
+  var s = {count: kids.length, working: 0, waiting: 0, failed: 0, done: 0}
+  kids.forEach(function(c) { var k = state(c); if (s[k] !== undefined) s[k]++ })
+  return s
+}
+function nest(rows, threads, overrides, selectedKey) {
+  var map = childrenByParent(threads || [])
+  if (!Object.keys(map).length) return rows
+  var out = []
+  function add(t, depth, parentKey) {
+    var kids = depth < 4 ? (map[t.key] || []) : []
+    var row = t
+    if (kids.length || depth) {
+      row = Object.assign({}, t, {depth: depth, subthreadParentKey: parentKey || ""})
+      if (kids.length) { row.subthreads = childSummary(kids); row.subthreadsExpanded = subthreadsExpanded(t.key, map, overrides, selectedKey) }
+    }
+    out.push(row)
+    if (kids.length && row.subthreadsExpanded) kids.forEach(function(c) { add(c, depth + 1, t.key) })
+  }
+  rows.forEach(function(t) { if (t.sectionHeader) out.push(t); else if (!isSubthread(t)) add(t, 0, "") })
+  return out
+}
+// Siblings of a sub-thread in the order the sidebar shows them.
+function siblings(threads, t) {
+  if (!t || !isSubthread(t)) return []
+  return childrenByParent(threads || [])[t.environmentId + "/" + t.parentThreadId] || []
 }

@@ -47,6 +47,11 @@ Item {
     add("browser","Open browser","globe",thread,function(){openSide("browser")},"Ctrl+Shift+J")
     add("renders","Show HTML renders","code",thread,function(){openSide("renders")})
     add("devices","Show devices","smartphone",thread,function(){openSide("devices")})
+    add("agents","Show agents","bot",thread,function(){openSide("agents")})
+    add("thread-details","Thread details","square-menu",thread,function(){toggleThreadDetails()},"Ctrl+Shift+B")
+    add("parent-thread","Open parent thread","corner-left-up",b.subthread&&!!b.parentThread,function(){b.openParentThread()})
+    add("next-subagent","Next subagent","chevron-right",b.siblingThreads.length>1,function(){b.openSibling(1)})
+    add("previous-subagent","Previous subagent","chevron-left",b.siblingThreads.length>1,function(){b.openSibling(-1)})
     add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Meta+B")
     add("copy-reference","Copy thread reference","copy",thread,function(){var badge=b.selectedInfo.pullRequestBadge || {};b.copyText((badge.current || {}).url || b.selectedThread)})
     // Prompt links open a new thread with this draft on the hosted T3 app (T3 promptLinks).
@@ -67,6 +72,11 @@ Item {
     return [{label:"Actions",items:actions,limit:actions.length},{label:"Recent threads",items:threads,limit:8},{label:"Projects",items:projects,limit:6},{label:"Settings",items:pages,limit:pages.length}]
   }
   function toggleCommandPalette(){if(commandPalette.opened){commandPalette.close();return}commandPalette.groups=paletteGroups();commandPalette.show()}
+  // Thread details card (T3 ThreadDetailsPanel), remembered across threads.
+  readonly property bool threadDetailsOpen:bridge.viewState.threadDetailsOpen===true
+  // Its size is the content's until the user drags an edge (double-click resets).
+  readonly property real threadDetailsWidth:Math.max(Style.space(240),Math.min(Style.space(560),Number(bridge.viewState.threadDetailsWidth) || Style.space(290)))
+  function toggleThreadDetails(){bridge.rememberView({threadDetailsOpen:!threadDetailsOpen})}
   function openSide(tab){sideTab=tab;sidePanelOpen=true;if(composerExpanded)expandComposer(false)}
   function closeSide(){sidePanelOpen=false}
   function toggleSide(){if(sidePanelOpen)closeSide();else openSide(sideTab)}
@@ -195,6 +205,8 @@ Item {
     edit.select(pos,pos+q.length)
   }}
   readonly property var composerView: composerPanel
+  // Tasks, queue, approvals, questions and the live status line share the composer's column.
+  readonly property real composerColumnWidth: composerPanel.width
   readonly property var searchInput: searchField
   readonly property var sidebarView: threads
   property bool usageCollapsed: bridge.viewState.usageExpanded !== true
@@ -325,7 +337,11 @@ Item {
   function localShortcutAvailable(sequence){return !nativeKeybindingsEnabled||!nativeShortcuts.claimsSequence(sequence)}
   Component.onCompleted: { initialized = true;syncConversation() }
   property bool panelOpen:false
-  property string windowMode:bridge.viewState.windowMode || (bridge.viewState.detached?"tiled":"panel")
+  // Run as the desktop app (app/shell.qml). The bar popup ("panel") needs the
+  // bar's place, which the app learns from the bar widget; without it, a window.
+  property bool standalone:false
+  property bool panelAvailable:!standalone
+  property string windowMode:{var mode=bridge.viewState.windowMode || (bridge.viewState.detached?"tiled":"panel");return mode==="panel"&&!panelAvailable?"floating":mode}
   readonly property bool detached:windowMode!=="panel"
   readonly property bool opened:panelOpen
   readonly property var managedToplevel:ToplevelManager.toplevels.values.find(function(t){return t.title===desktop.title&&t.appId===Quickshell.appId}) || null
@@ -338,8 +354,9 @@ Item {
   property bool screenshotHidden:false
   Connections{target:root.bridge;function onScreenshotCapture(active){if(active){if(root.opened&&!root.detached&&root.bridge.screenshotHidesPanel){root.screenshotHidden=true;root.close()}}else if(root.screenshotHidden){root.screenshotHidden=false;root.open();Qt.callLater(function(){composerPanel.inputField.forceActiveFocus()})}}}
   readonly property var normalWindow:desktop
+  readonly property var panelPopup:popup
   function setDetached(value){setWindowMode(value?"floating":"panel")}
-  function cycleWindowMode(){setWindowMode(windowMode==="panel"?"floating":windowMode==="floating"?"tiled":"panel")}
+  function cycleWindowMode(){setWindowMode(windowMode==="panel"?"floating":windowMode==="floating"?"tiled":panelAvailable?"panel":"floating")}
   function setWindowMode(value){
     if(windowMode===value)return;windowApplyAttempts=0
     conversation.stopWheel();captureState();documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();keyHelp.close();filterMenu.close();projectMenu.dismissContext()
@@ -348,7 +365,7 @@ Item {
     Qt.callLater(function(){root.restoreSidebarShelves();root.restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false});composerPanel.inputField.forceActiveFocus()})
   }
   property int windowApplyAttempts:0
-  Timer{id:applyWindowMode;interval:150;onTriggered:if(root.opened&&root.detached&&root.managedToplevel){root.windowApplyAttempts++;root.bridge.applyWindowLayout(root.windowMode,Quickshell.processId)}}
+  Timer{id:applyWindowMode;interval:150;onTriggered:if(root.opened&&root.detached&&root.managedToplevel){root.windowApplyAttempts++;root.bridge.applyWindowLayout(root.windowMode,Quickshell.processId,{width:Style.space(root.bridge.viewState.windowWidth || root.panelWidth),height:Style.space(root.bridge.viewState.windowHeight || root.panelHeight)})}}
   Connections{target:root.bridge;function onWindowLayoutFinished(error){if(error==="window_not_ready"&&root.windowApplyAttempts<6&&root.opened&&root.detached)applyWindowMode.restart()}}
   readonly property color fg: Color.popups.text
   readonly property color dim: Qt.rgba(fg.r, fg.g, fg.b, 0.57)
@@ -519,13 +536,17 @@ Item {
   readonly property var sidebarRows: Sidebar.rows(bridge.state.threads, statusFilter, projectScope, settledExpanded, bridge.query)
   readonly property bool settledShown: settledExpanded
   readonly property var inboxRows: sidebarRows.filter(function(t) { return !t.sectionHeader && !t.settled && !t.snoozed })
-  readonly property var activeRows:inboxRows.filter(function(t){return !root.sidebarCompact || !Sidebar.inWorkingShelf(t)}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned)})
-  readonly property var workingRows:sidebarCompact ? inboxRows.filter(Sidebar.inWorkingShelf).sort(function(a,b){return (b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)}) : []
+  // Each section lists sub-threads right under their parent (Sidebar.nest).
+  function nestRows(rows){return Sidebar.nest(rows,bridge.state.threads,bridge.viewState.subthreadsExpanded,bridge.selectedKey)}
+  function topCount(rows){return rows.filter(function(r){return !r.depth}).length}
+  function toggleSubthreads(row){var all=Object.assign({},bridge.viewState.subthreadsExpanded || {});all[row.key]=!row.subthreadsExpanded;var keys=Object.keys(all);while(keys.length>512)delete all[keys.shift()];bridge.rememberView({subthreadsExpanded:all})}
+  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.sidebarCompact || !Sidebar.inWorkingShelf(t)}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned)}))
+  readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(function(a,b){return (b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)})) : []
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
   readonly property var visibleSettledRows:settledShown ? settledRows : []
-  readonly property var settledRows: Sidebar.rows(bridge.state.threads,statusFilter,projectScope,true,bridge.query).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(Sidebar.compareSettled)
-  readonly property var snoozedRows: Sidebar.rows(bridge.state.threads,statusFilter,projectFilter,true,bridge.query).filter(function(t){return !t.sectionHeader && !!t.snoozed})
+  readonly property var settledRows: nestRows(Sidebar.rows(bridge.state.threads,statusFilter,projectScope,true,bridge.query).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(Sidebar.compareSettled))
+  readonly property var snoozedRows: nestRows(Sidebar.rows(bridge.state.threads,statusFilter,projectFilter,true,bridge.query).filter(function(t){return !t.sectionHeader && !!t.snoozed}))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   function kind(t) { return Sidebar.state(t) }
   // Last seen state per thread and when it changed, so rows can celebrate a
@@ -647,10 +668,13 @@ Item {
     if (dirty) stateChangedAt = changed
   }
   Connections { target: root.bridge; function onStateChanged() { root.trackThreadStates() } }
-  function stateColor(t) { return T3Palette.stateColor(kind(t)) }
+  function stateColor(t) { return T3Palette.detailColor(Sidebar.detail(t)) }
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
   function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
   function toggle() { opened ? close() : open() }
+  // Above the sidebar footer button that opened it, kept inside the window.
+  // y follows the popup's height, which is only known once its rows are laid out.
+  function openHosts(anchor){var p=anchor.mapToItem(hostsPopup.parent,0,0);hostsPopup.anchorTop=p.y;hostsPopup.x=Math.max(Style.space(8),p.x+anchor.width-hostsPopup.width);hostsPopup.open()}
   function date(ms) { return ms ? new Date(ms).toLocaleString(Qt.locale(T3I18n.locale), "dd MMM · HH:mm") : "—" }
   function age(ms) {
     if (!ms) return "—"
@@ -685,6 +709,9 @@ Item {
     html=html.replace(new RegExp('(href="ot3-code-diagram://[0-9]+">)Show diagram(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Show diagram")+b})
     html=html.replace(new RegExp('(href="ot3-table-copy://[0-9]+/markdown">)Copy as Markdown(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as Markdown")+b}).replace(new RegExp('(href="ot3-table-copy://[0-9]+/csv">)Copy as CSV(</a>)',"g"),function(_,a,b){return a+T3I18n.tr("Copy as CSV")+b})
     html=MarkdownStyle.render(html,Style.font.body,Style.spaceReal(1),String(root.fg),String(root.dim),String(root.surface),String(root.divider))
+    // Inline code as T3's chat-markdown code: a soft tint inside the line, not a separate box.
+    var tint="rgba("+Math.round(Color.popups.text.r*255)+","+Math.round(Color.popups.text.g*255)+","+Math.round(Color.popups.text.b*255)+",0.10)"
+    html=html.replace(/(<pre[^>]*>)?<code>([\s\S]*?)<\/code>/g,function(full,pre,body){return pre?full:'<code style="background-color:'+tint+';">&#8202;'+body+'&#8202;</code>'})
     return MarkdownLinks.decorate(html).replace(/<a /g,"<a style=\"color:"+Color.accent+";\" ")
   }
   function shortcutHelp(){
@@ -701,8 +728,10 @@ Item {
     var p = String(provider || "").toLowerCase()
     return p.indexOf("codex") >= 0 || p.indexOf("openai") >= 0 ? "openai" : p.indexOf("claude") >= 0 ? "claude" : p.indexOf("cursor") >= 0 ? "cursor" : "acp"
   }
+  // T3 SidebarThreadRow labels; plan stays ot3's own "Plan ready".
   function status(t) {
-    return kind(t) === "waiting" ? T3I18n.tr("Waiting") : kind(t) === "working" ? T3I18n.tr("Working") : kind(t) === "failed" ? T3I18n.tr("Failed") : kind(t) === "done" && t.pending ? T3I18n.tr("Done") : ""
+    var label = ({approval: "Approval", input: "Input", plan: "Plan ready", waiting: "Waiting", goal: "Goal", working: "Working", limited: "Limited", failed: "Failed", woke: "Woke", done: "Done"})[Sidebar.detail(t)]
+    return label ? T3I18n.tr(label) : ""
   }
   // Rows around a moving one slide to open or close its gap; a leaving row
   // is kept alive while it fades or flies (see rowLeaving).
@@ -738,6 +767,7 @@ Item {
       onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
       onProjectContextDismissed:projectMenu.dismissContext()
       onProjectContextRequested:function(item,px,py){projectMenu.showProject(modelData.projectKey,item,px,py)}
+      onSubthreadsToggled:root.toggleSubthreads(modelData)
       ListView.onPooled:pooled=true
       ListView.onReused:pooled=false
       ListView.onAdd:root.rowArriving(sidebarRow)
@@ -761,6 +791,27 @@ Item {
     onClosed:if(root.detached)root.close()
     onWidthChanged:if(visible&&root.detached)saveWindowSize.restart()
     onHeightChanged:if(visible&&root.detached)saveWindowSize.restart()
+    // Floating: corners (with the panel's ◢ marks) and edges resize through the
+    // compositor, like any window. Tiled windows are sized by Hyprland.
+    Repeater {
+      model:root.windowMode==="floating"?[
+        {e:Qt.TopEdge|Qt.LeftEdge,x:-1,y:-1},{e:Qt.TopEdge|Qt.RightEdge,x:1,y:-1},{e:Qt.BottomEdge|Qt.LeftEdge,x:-1,y:1},{e:Qt.BottomEdge|Qt.RightEdge,x:1,y:1},
+        {e:Qt.TopEdge,x:0,y:-1},{e:Qt.BottomEdge,x:0,y:1},{e:Qt.LeftEdge,x:-1,y:0},{e:Qt.RightEdge,x:1,y:0}]:[]
+      MouseArea {
+        required property var modelData
+        readonly property bool corner:modelData.x!==0&&modelData.y!==0
+        objectName:"t3WindowResize_"+modelData.x+"_"+modelData.y
+        parent:desktop.contentItem;z:1000
+        width:corner?Style.space(16):modelData.x===0?Math.max(0,desktop.width-Style.space(32)):Style.space(5)
+        height:corner?Style.space(16):modelData.y===0?Math.max(0,desktop.height-Style.space(32)):Style.space(5)
+        x:modelData.x<0?0:modelData.x>0?desktop.width-width:Style.space(16)
+        y:modelData.y<0?0:modelData.y>0?desktop.height-height:Style.space(16)
+        hoverEnabled:true
+        cursorShape:!corner?(modelData.x===0?Qt.SizeVerCursor:Qt.SizeHorCursor):modelData.x===modelData.y?Qt.SizeFDiagCursor:Qt.SizeBDiagCursor
+        onPressed:desktop.startSystemResize(modelData.e)
+        Text{visible:parent.corner;anchors.centerIn:parent;text:"◢";rotation:parent.modelData.x<0?(parent.modelData.y<0?180:90):(parent.modelData.y<0?270:0);color:root.fg;opacity:parent.containsMouse?0.6:0.16;font.pixelSize:Style.space(10)}
+      }
+    }
   }
   Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.windowMode==="floating")root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
   Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
@@ -804,6 +855,7 @@ Item {
       anchors.fill: parent; spacing: 0
       palette.window:root.themeSurface;palette.windowText:root.fg;palette.base:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05));palette.alternateBase:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.text:root.fg;palette.button:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.buttonText:root.fg;palette.highlight:Color.accent;palette.highlightedText:root.themeSurface;palette.placeholderText:root.dim;palette.toolTipBase:root.themeSurface;palette.toolTipText:root.fg;palette.link:Color.accent;palette.light:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.16));palette.midlight:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12));palette.mid:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.2));palette.dark:Qt.darker(root.themeSurface,1.4);palette.shadow:Qt.rgba(0,0,0,0.5)
       T3ShortcutRouter{id:nativeShortcuts;active:root.nativeKeybindingsEnabled&&root.nativeKeysActive;primary:root.nativePrimaryKeys;scripts:root.nativeScriptKeys;context:root.nativeShortcutContext;localOverrides:root.findOpen?["Ctrl+G","Ctrl+Shift+G"]:[];supports:function(command){return root.supportsNativeShortcut(command)};onTriggered:function(command){root.triggerNativeShortcut(command)}}
+      Shortcut { sequence:"Ctrl+Shift+B";enabled:root.opened&&!!root.bridge.selectedThread&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+B");onActivated:root.toggleThreadDetails() }
       Shortcut { sequence:"Meta+B";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+B");onActivated:root.toggleSidebar() }
       Shortcut { sequence:"Ctrl+F";enabled:!root.nativeKeybindingsEnabled&&(root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+F");onActivated:root.openFind() }
       Shortcut { sequence:"Ctrl+Shift+F";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+F");onActivated:{if(root.composerExpanded)root.expandComposer(false);if(root.sidebarCollapsed)root.toggleSidebar(false);searchField.forceActiveFocus();searchField.selectAll()} }
@@ -1103,7 +1155,7 @@ Item {
             RowLayout {
               Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12)
               visible: !!root.bridge.managementError
-              Text { Layout.fillWidth: true; text: T3I18n.error(root.bridge.managementError); color: Color.urgent; font.pixelSize: Style.font.caption; elide: Text.ElideRight }
+              Text { objectName:"t3ManagementError"; Layout.fillWidth: true; text: T3I18n.error(root.bridge.managementError); color: Color.urgent; font.pixelSize: Style.font.caption; wrapMode: Text.Wrap; maximumLineCount: 6; elide: Text.ElideRight; textFormat: Text.PlainText }
               T3IconButton { name: "refresh-cw"; visible: !!root.bridge.managementRequest; tooltipText: T3I18n.tr("Retry action"); onClicked: root.bridge.manage({}) }
             }
             ListView {
@@ -1147,7 +1199,7 @@ Item {
                 id:workingToggle;objectName:"workingShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
                 color:"transparent";activeFocusOnTab:true
-                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.workingRows.length})
+                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.topCount(root.workingRows)})
                 Keys.onReturnPressed:root.workingExpanded=!root.workingExpanded
                 Keys.onSpacePressed:root.workingExpanded=!root.workingExpanded
                 Keys.onUpPressed:root.moveSidebarFocus(workingToggle,-1)
@@ -1192,7 +1244,7 @@ Item {
                 id:snoozedToggle;objectName:"snoozedShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
                 color:"transparent";activeFocusOnTab:true
-                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Snoozed ({count})",{count:root.snoozedRows.length})
+                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Snoozed ({count})",{count:root.topCount(root.snoozedRows)})
                 Keys.onReturnPressed:root.snoozedExpanded=!root.snoozedExpanded
                 Keys.onSpacePressed:root.snoozedExpanded=!root.snoozedExpanded
                 Keys.onUpPressed:root.moveSidebarFocus(snoozedToggle,-1)
@@ -1236,7 +1288,7 @@ Item {
                 Accessible.role: Accessible.Button
                 id:settledToggle;objectName:"settledShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-                Accessible.name: T3I18n.tr("Settled ({count})",{count:root.settledRows.length})
+                Accessible.name: T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)})
                 Keys.onReturnPressed: root.settledExpanded = !root.settledExpanded
                 Keys.onSpacePressed: root.settledExpanded = !root.settledExpanded
                 Keys.onUpPressed:root.moveSidebarFocus(settledToggle,-1)
@@ -1246,7 +1298,7 @@ Item {
                 color: "transparent"
                 RowLayout {
                   anchors.fill: parent; anchors.leftMargin: Style.space(5); anchors.rightMargin: Style.space(5)
-                  Text { text:T3I18n.tr("Settled ({count})",{count:root.settledRows.length}); color: root.dim; font.pixelSize: Style.font.caption }
+                  Text { text:T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)}); color: root.dim; font.pixelSize: Style.font.caption }
                   Rectangle {objectName:"settledShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}
                   T3Icon { name: root.settledShown ? "chevron-down" : "chevron-up"; tint: root.dim; implicitWidth: Style.space(12) }
                 }
@@ -1294,14 +1346,15 @@ Item {
                 Controls.ToolTip.text:statusText
               }
               Item{Layout.fillWidth:true}
-              T3Icon {
-                objectName:"localBackendGuiIndicator";name:"monitor";implicitWidth:Style.space(20)
-                visible:root.bridge.localBackend.owner==="gui";tint:root.dim
-                Accessible.name:T3I18n.tr("Managed by T3 Code GUI")
-                HoverHandler{id:guiOwnerHover}
-                Controls.ToolTip.visible:guiOwnerHover.hovered
-                Controls.ToolTip.text:T3I18n.tr("Managed by T3 Code GUI")
+              // The machine button lists every environment with its state and a reconnect.
+              T3IconButton {
+                id:localBackendGuiIndicator;objectName:"localBackendGuiIndicator";name:"monitor"
+                visible:root.bridge.localBackend.owner==="gui"
+                tint:(root.bridge.state.environments || []).some(function(e){return e.state!=="ready"})?Color.urgent:hostsPopup.opened?Color.accent:root.dim
+                tooltipText:T3I18n.tr("Environments")+" · "+T3I18n.tr("Managed by T3 Code GUI")
+                onClicked:hostsPopup.opened?hostsPopup.close():root.openHosts(localBackendGuiIndicator)
               }
+              T3HostsPopup{id:hostsPopup;property real anchorTop:0;y:anchorTop-height-Style.space(6);bridge:root.bridge;onSettingsRequested:root.openPreferencesPage("connections")}
               T3IconButton {
                 id:localBackendControl;objectName:"startLocalBackend"
                 onVisibleChanged:if(!visible&&localBackendMenu)localBackendMenu.close()
@@ -1317,6 +1370,7 @@ Item {
                   background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.dim}
                   Controls.MenuItem{objectName:"localBackendStart";text:T3I18n.tr("Start local backend");enabled:root.bridge.localBackend.canControl&&!root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.startBackend()}
                   Controls.MenuItem{objectName:"localBackendRestart";text:T3I18n.tr("Restart local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("restart")}
+                  Controls.MenuItem{objectName:"localBackendHosts";text:T3I18n.tr("Environments");onTriggered:root.openHosts(localBackendControl)}
                   Controls.MenuItem{objectName:"localBackendStop";text:T3I18n.tr("Stop local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("stop")}
                 }
               }
@@ -1350,6 +1404,30 @@ Item {
         id:mainChatArea;objectName:"t3MainChatArea"
         Layout.fillWidth: true; Layout.fillHeight: true
         color: "transparent"
+        Column {
+          id:chatOverlays;objectName:"t3ChatOverlays";z:18;spacing:Style.space(8)
+          anchors{top:parent.top;right:parent.right;topMargin:Math.max(Style.space(62),usageBottom+Style.space(8));rightMargin:Style.space(16)}
+          // Below the usage bars when they are open, so the cards never cover them.
+          // y and height are read so the mapping follows the reveal animation.
+          readonly property real usageBottom:usageReveal.visible&&usageReveal.height>0?(usageReveal.y,usageReveal.height,usageReveal.mapToItem(mainChatArea,0,usageReveal.height).y):0
+          width:Math.min(Math.max(Style.space(320),root.threadDetailsWidth),parent.width-Style.space(32))
+          visible:!root.preferencesOpen&&!root.pullRequestsOpen&&!(root.sideShown&&!root.browserInline)
+          T3ProviderUpdateNotice{id:updateNotice;width:parent.width;bridge:root.bridge;notice:root.bridge.providerUpdateNotice;onSettingsRequested:root.openPreferencesPage("providers")}
+          Loader {
+            objectName:"t3ThreadDetailsLoader";width:Math.min(root.threadDetailsWidth,parent.width);anchors.right:parent.right
+            active:root.threadDetailsOpen&&!!root.bridge.selectedThread&&root.opened
+            sourceComponent:T3ThreadDetails{
+              bridge:root.bridge;maxHeight:Math.max(Style.space(160),chatOverlays.parent.height-chatOverlays.y-(updateNotice.visible?updateNotice.height+chatOverlays.spacing:0)-Style.space(190))
+              preferredHeight:Number(root.bridge.viewState.threadDetailsHeight) || 0
+              onResized:function(w,h){root.bridge.rememberView({threadDetailsWidth:Math.round(w),threadDetailsHeight:Math.round(h)})}
+              onClosed:root.toggleThreadDetails()
+              onGitRequested:{root.bridge.requestGit();gitPopup.open()}
+              onChangesRequested:{root.bridge.requestWorkingReview("working-tree","",root.bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}
+              onAgentsRequested:root.openSide("agents")
+              onAutomationsRequested:scheduledTasksPage.show()
+            }
+          }
+        }
         Loader{id:overlaySideLoader;objectName:"t3BrowserSheet";anchors.fill:parent;z:20;active:root.sideShown&&!root.browserInline;sourceComponent:sidePanelComponent}
         Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
         Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
@@ -1362,19 +1440,26 @@ Item {
             Layout.leftMargin: Style.space(24); Layout.rightMargin: Style.space(14)
             spacing: Style.space(10)
             T3IconButton { visible: root.sidebarCollapsed; name: "panel-left"; tooltipText: T3I18n.tr("Open sidebar"); onClicked: root.toggleSidebar() }
+            T3ProjectIcon {
+              objectName:"t3HeaderProjectIcon";visible:!!root.bridge.selectedThread&&!!root.bridge.selectedInfo.projectKey
+              project:(root.bridge.state.projects || []).find(function(p){return p.key===root.bridge.selectedInfo.projectKey}) || ({});projects:root.bridge.state.projects || []
+              monogram:root.bridge.selectedInfo.projectMonogram || "PR";projectKey:root.bridge.selectedInfo.projectKey || ""
+              Layout.preferredWidth:Style.space(16);Layout.preferredHeight:Style.space(16);radius:Style.space(4)
+            }
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
             Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
             T3IconButton {objectName:"t3MergeBack";visible:!!root.bridge.mergeBackTarget;name:"git-merge";enabled:!!root.bridge.mergeBackRunId&&!root.bridge.managementBusy&&!root.bridge.selectedInfo.working;tint:root.dim;tooltipText:!root.bridge.mergeBackRunId?T3I18n.tr("Complete a run in this fork before merging it back"):root.bridge.mergeBackTitle?T3I18n.tr("Merge this conversation back into {title}",{title:root.bridge.mergeBackTitle}):T3I18n.tr("Merge this conversation back into its source");onClicked:root.bridge.mergeBack()}
+            T3IconButton {objectName:"t3ToggleThreadDetails";name:"square-menu";enabled:!!root.bridge.selectedThread;tint:root.threadDetailsOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread details")+" · Ctrl+Shift+B";onClicked:root.toggleThreadDetails()}
             T3IconButton {objectName:"t3OpenSidePanel";name:"panel-right";enabled:!!root.bridge.selectedThread;tint:root.sidePanelOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Side panel");onClicked:root.toggleSide()}
             T3IconButton {objectName:"t3OpenGit";name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
             T3IconButton {objectName:"t3OpenTerminal";name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
-            T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
+            T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"||(!root.panelAvailable&&root.windowMode==="tiled")?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
             T3IconButton { name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
             T3IconButton{name:"shrink";tooltipText:T3I18n.tr("Automatic compaction");onClicked:compactionSettings.open()}
             T3IconButton{objectName:"t3FindInChat";name:"search";tooltipText:T3I18n.tr("Find in conversation");enabled:!!root.bridge.selectedThread;onClicked:root.openFind()}
             Controls.Button {text:"?";implicitWidth:Style.space(28);Accessible.name:T3I18n.tr("Keyboard shortcuts");onClicked:keyHelp.open()}
-            T3IconButton {objectName:"t3CloseWindow";name:"x";tooltipText:T3I18n.tr("Close");onClicked:root.close()}
+            T3IconButton {objectName:"t3CloseWindow";name:root.standalone?"minus":"x";tooltipText:T3I18n.tr(root.standalone?"Hide":"Close");onClicked:root.close()}
           }
           RowLayout{
             Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14)
@@ -1415,6 +1500,17 @@ Item {
             // The reveal does the collapsing so the strip keeps its height.
             showHeader:false;collapsed:false
           }
+          }
+          T3SubthreadBar {
+            visible:root.bridge.subthread&&!root.composerExpanded
+            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.topMargin:Style.space(4);Layout.bottomMargin:Style.space(4)
+            bridge:root.bridge
+            onAgentsRequested:root.openSide("agents")
+          }
+          T3ThreadErrorBanner {
+            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.topMargin:Style.space(4);Layout.bottomMargin:Style.space(4)
+            bridge:root.bridge
+            Layout.preferredHeight:visible?implicitHeight:0
           }
           Item {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -1524,7 +1620,14 @@ Item {
                 ListView.onPooled:{pooled=true;opacity=1}
                 ListView.onReused:{pooled=false;opacity=1}
                 readonly property bool userMessage: modelData.role === "user"
-                readonly property bool commentary: modelData.role === "assistant" && index+1<root.bridge.transcript.length && root.bridge.transcript[index+1].role!=="user"
+                // T3 deriveTerminalAssistantMessageIds: only the last response before the
+                // next prompt carries copy/fork; earlier ones are the run's commentary.
+                readonly property bool commentary: {
+                  if (modelData.role !== "assistant") return false
+                  var rows = root.bridge.transcript
+                  for (var i = index + 1; i < rows.length && rows[i].role !== "user"; i++) if (rows[i].role === "assistant" && !!rows[i].text) return true
+                  return false
+                }
                 readonly property real bottomGap:Style.space(modelData.role==="activity"?0:commentary?8:16)
                 readonly property real verticalInset:Style.space(userMessage?12:modelData.role==="activity"?0:2)
                 readonly property real laneWidth:messageLane.width
@@ -1699,6 +1802,14 @@ Item {
                       sourceComponent:T3ActivityBlock{bridge:root.bridge;activity:message.modelData.activity || {};onInspectRequested:function(reference){toolPopup.open();toolInspector.openItem(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     }
                     Loader{
+                      width:Math.min(parent.width,Style.space(640));active:message.modelData.role==="subagents";visible:active
+                      sourceComponent:T3SubagentCards{bridge:root.bridge;cards:message.modelData.subagents || [];active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
+                    }
+                    Loader{
+                      width:Math.min(parent.width,Style.space(640));active:message.modelData.role==="error";visible:active
+                      sourceComponent:T3RunError{bridge:root.bridge;failure:message.modelData.error || ({})}
+                    }
+                    Loader{
                       width:parent.width;active:message.modelData.role==="plan";visible:active
                       sourceComponent:T3PlanWorkflow{width:parent.width;planId:message.modelData.plan?message.modelData.plan.id:"";view:({plans:message.modelData.plan?[message.modelData.plan]:[],ready:null});onCopyRequested:function(markdown){root.bridge.copyText(markdown)};onLinkRequested:function(link){root.bridge.openReference(link)}}
                     }
@@ -1777,7 +1888,7 @@ Item {
             Layout.fillWidth:true;Layout.fillHeight:root.composerExpanded
             spacing:0
           RowLayout {
-            Layout.fillWidth: true; Layout.leftMargin: Style.space(26); Layout.rightMargin: Style.space(26); Layout.bottomMargin: Style.space(12)
+            Layout.fillWidth: false; Layout.preferredWidth: root.composerColumnWidth - Style.space(4); Layout.maximumWidth: root.composerColumnWidth - Style.space(4); Layout.alignment: Qt.AlignHCenter; Layout.bottomMargin: Style.space(12)
             objectName:"t3LiveContext"
             visible: !!root.bridge.selectedInfo.working && !root.composerExpanded
             WorkIndicator { active: root.opened && parent.visible; tint: T3Palette.working }
@@ -1790,14 +1901,14 @@ Item {
             }
           }
           RowLayout{
-            objectName:"t3RewindBanner";Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(6)
+            objectName:"t3RewindBanner";Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter;Layout.bottomMargin:Style.space(6)
             visible:root.bridge.rewindPending || !!(root.bridge.rewindPreview || {}).error || !!(root.bridge.rewindPreview || {}).busy
             WorkIndicator{visible:!!(root.bridge.rewindPreview || {}).busy||!!(root.bridge.rewindRecoveries || {})[root.bridge.selectedKey];active:visible}
             Text{Layout.fillWidth:true;text:(root.bridge.rewindPreview || {}).error?rewindWorkflow.errorText(root.bridge.rewindPreview.error):(root.bridge.rewindOperation || {}).recoveryError?rewindWorkflow.errorText(root.bridge.rewindOperation.recoveryError):T3I18n.tr((root.bridge.rewindPreview || {}).busy?"Loading…":(root.bridge.rewindOperation || {}).state==="complete"?"Restoring draft…":(root.bridge.rewindOperation || {}).state==="uncertain"?"Outcome unknown. Refresh to check before retrying the same action.":"Waiting for the thread to rewind…");color:(root.bridge.rewindOperation || {}).recoveryError?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
             T3PickerButton{primary:false;visible:root.bridge.rewindPending || false;enabled:!(root.bridge.rewindRecoveries || {})[root.bridge.selectedKey];text:T3I18n.tr((root.bridge.rewindOperation || {}).recoveryError?"Retry":"Edit from here");onClicked:if((root.bridge.rewindOperation || {}).recoveryError)root.bridge.recoverRewind(root.bridge.rewindOperation);else root.bridge.showPendingRewind()}
           }
           T3PlanWorkflow{
-            objectName:"t3ReadyPlan";compact:true;Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(8)
+            objectName:"t3ReadyPlan";compact:true;Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter;Layout.bottomMargin:Style.space(8)
             visible:!!root.bridge.readyPlan||!!(root.bridge.planView || {}).error||!!(root.bridge.planOperation || {}).error||!!(root.bridge.planOperation || {}).busy
             view:root.bridge.readyPlanView || ({plans:[],ready:null});modeEnabled:root.bridge.interactionModeEnabled===true;interactionMode:root.bridge.interactionMode || "default";canOperate:!root.bridge.providerSubagent&&root.bridge.catalog.canWrite!==false;busy:!!(root.bridge.planOperation || {}).busy||root.bridge.draft.busy||!!root.bridge.draft.attempt;draftText:root.bridge.draft.text;hasAttachments:root.bridge.draft.attachments.length>0
             onFollowUpRequested:function(plan,draft,newThread){root.bridge.requestPlanFollowUp(plan,draft,newThread)}
@@ -1807,26 +1918,26 @@ Item {
           }
           T3Queue {
             objectName:"t3QueueControl"
-            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(5)
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter;Layout.bottomMargin:Style.space(5)
             bridge:root.bridge
             onEditSelected:composerPanel.inputField.forceActiveFocus()
           }
           T3Tasks{
             objectName:"t3TasksControl"
-            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(5)
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter;Layout.bottomMargin:Style.space(5)
             bridge:root.bridge
           }
           T3Approvals {
-            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(8)
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter;Layout.bottomMargin:Style.space(8)
             bridge:root.bridge
           }
           T3Questions {
-            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(8)
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter;Layout.bottomMargin:Style.space(8)
             bridge:root.bridge
           }
           ColumnLayout {
             objectName:"t3ProviderSubagentNotice"
-            Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24);Layout.bottomMargin:Style.space(18)
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter;Layout.bottomMargin:Style.space(18)
             visible:root.bridge.providerSubagent===true
             Text {Layout.fillWidth:true;text:T3I18n.tr("This subagent is managed by its provider and cannot receive messages. Open the parent chat or create a new chat.");color:root.fg;wrapMode:Text.Wrap;font.pixelSize:Style.font.body;textFormat:Text.PlainText}
             RowLayout {

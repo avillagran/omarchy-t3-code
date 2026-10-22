@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Window
+import QtQuick.Window 6.11
 import Quickshell
 import QtTest
 import qs.Commons

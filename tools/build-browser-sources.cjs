@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Test fixtures extracted from the original function; never a runtime dependency.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),vm=require('node:vm'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin='fb990765a49414a5bfbdc73365455fc8b5fbe691',file='apps/desktop/src/preview/BrowserImport/Sources.ts';
+const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin=require('./upstream-pin.cjs').revision,file='apps/desktop/src/preview/BrowserImport/Sources.ts';
 const native=fs.readFileSync(path.join(source,file),'utf8');if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin||cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==native)throw Error('Native source must match pinned clean input');
 const start=native.indexOf('export function parseFirefoxProfiles('),end=start+native.slice(start).search(/\n(?:\/\*\*|export )/);
 const body=require('node:module').stripTypeScriptTypes(native.slice(start,end),{mode:'strip'}).replace('export function','function');const sandbox={};vm.createContext(sandbox);vm.runInContext(body+'\nthis.parse=parseFirefoxProfiles;',sandbox);

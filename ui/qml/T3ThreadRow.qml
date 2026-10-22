@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
 import "../js/IconAssets.js" as Icons
+import "../js/SidebarModel.js" as Sidebar
 
 Item {
   id: root
@@ -14,6 +15,7 @@ Item {
   signal newThreadOnBranch(var source)
   signal projectContextDismissed()
   signal projectContextRequested(var item,real px,real py)
+  signal subthreadsToggled()
   required property var bridge
   property bool panelVisible: true
   property bool pooled: false
@@ -27,6 +29,10 @@ Item {
   // shooting star even if the row was just created in another section.
   property real stateChangedAt: 0
   readonly property bool needsInput: !!thread.pending && ["request","plan","waiting"].indexOf(thread.reason) >= 0
+  // T3's row status (SidebarModel.detail): approval, input, plan, waiting, goal,
+  // working, limited, failed, woke, done or "".
+  readonly property string stateKind: Sidebar.detail(thread)
+  readonly property bool woke: stateKind === "woke"
   readonly property bool skyMoving: !!sky && sky.animated
   // Styles chosen in Preferences; a still sky keeps every effect still.
   property var effects: ({working: "comet", input: "glints", change: "star", intensity: 1})
@@ -35,6 +41,9 @@ Item {
   readonly property int changeStyle: ["star","flash"].indexOf(effects.change)
   property string providerGlyph: "acp"
   property var catalog: bridge.catalogs[thread.environmentId] || ({})
+  // T3's machine kind for this thread's environment (server, cloud, linux, laptop…).
+  readonly property string machine: catalog.machine || "server"
+  readonly property string machineIcon: ({server:"server",cloud:"cloud",linux:"linux",desktop:"monitor",laptop:"laptop","mac-mini":"mac-mini","mac-studio":"mac-studio"})[machine] || "server"
   readonly property var projectInfo:(bridge.state.projects || []).find(function(p){return p.key===root.thread.projectKey}) || ({})
   readonly property bool scratchProject:!!thread.projectIsScratch || (!!catalog.scratchWorkspaceRoot&&String(projectInfo.workspaceRoot || "").replace(/[/\\]+$/,"")===String(catalog.scratchWorkspaceRoot).replace(/[/\\]+$/,""))
   readonly property bool showScratchMachine:!thread.branch&&scratchProject&&(bridge.state.environments || []).length>1
@@ -42,7 +51,12 @@ Item {
   readonly property var draft: bridge.drafts[thread.key] || ({})
   readonly property bool hasDraft: !draft.queueEdit && (!!String(draft.text || "").trim() || !!(draft.attachments && draft.attachments.length))
   readonly property bool showDraft:hasDraft&&bridge.selectedKey!==thread.key
-  readonly property bool slim:!!thread.settled||!!thread.snoozed
+  // Sub-threads (subagents) sit indented under their parent as compact rows.
+  readonly property int depth:thread.depth || 0
+  readonly property bool child:depth>0
+  readonly property real indent:Style.space(16)*depth
+  readonly property var subthreads:thread.subthreads || null
+  readonly property bool slim:!!thread.settled||!!thread.snoozed||child
   readonly property bool selected:bridge.selectedKey===thread.key
   readonly property bool receding:!selected&&!showActions&&((!!thread.working&&!(thread.pending&&["request","plan","waiting"].indexOf(thread.reason)>=0))||!!thread.settled)
   readonly property bool busy: !!bridge.managementBusy || !!bridge.managementRequest
@@ -63,8 +77,8 @@ Item {
   property string editAction:"thread-rename"
   property string editRequest:""
   property string editError:""
-  readonly property bool canSettle: canOperate && !!catalog.capabilities && catalog.capabilities.threadSettlement === true
-  readonly property bool canSnooze: canOperate && !!catalog.capabilities && catalog.capabilities.threadSnooze === true && thread.canSnooze === true
+  readonly property bool canSettle: canOperate && !child && !!catalog.capabilities && catalog.capabilities.threadSettlement === true
+  readonly property bool canSnooze: canOperate && !child && !!catalog.capabilities && catalog.capabilities.threadSnooze === true && thread.canSnooze === true
   readonly property bool showActions: rowHover.hovered || keyboardCurrent || snoozeMenu.visible || rowMenu.visible || settleButton.activeFocus || snoozeButton.activeFocus || discardButton.activeFocus
   readonly property bool hovered: rowHover.hovered
   readonly property bool previewVisible: preview.visible
@@ -155,8 +169,12 @@ Item {
   }
   Timer { id:openDelay;interval:500;onTriggered:if(root.hovered && !actionsHover.hovered && !snoozeMenu.visible && !rowMenu.visible && root.panelVisible && !root.pooled)preview.open() }
   Timer { id:closeDelay;interval:140;onTriggered:if(!root.hovered && !previewHover.hovered)preview.close() }
+  Repeater {
+    model:root.depth
+    Rectangle{required property int index;objectName:"threadTreeGuide";x:Style.space(16)*index+Style.space(15);width:1;height:root.height;color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.14)}
+  }
   Rectangle {
-    anchors.fill:parent;anchors.topMargin:Style.space(root.slim?0:2);anchors.bottomMargin:Style.space(root.slim?0:2)
+    anchors.fill:parent;anchors.leftMargin:root.indent;anchors.topMargin:Style.space(root.slim?0:2);anchors.bottomMargin:Style.space(root.slim?0:2)
     radius:Style.space(6)
     color: root.selected ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.075) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.045) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
     border.width:root.keyboardCurrent?1:0;border.color:Color.accent
@@ -208,7 +226,9 @@ Item {
           Layout.preferredWidth:implicitWidth*reveal;Layout.rightMargin:-Style.space(6)*(1-reveal)
           opacity:reveal;scale:0.4+0.6*reveal;visible:reveal>0
         }
+        T3Icon{objectName:"threadSubagentIcon";visible:root.child;name:root.thread.working?"loader-circle":"bot";implicitWidth:Style.space(14);tint:root.stateLabel?root.stateColor:root.dim}
         T3ProjectIcon {
+          visible:!root.child
           project:root.projectInfo;projects:root.bridge.state.projects || [];monogram:root.thread.projectMonogram || "PR";projectKey:root.thread.projectKey || ""
           width:Style.space(16);height:width;radius:Style.space(4)
           opacity:root.slim&&!root.showActions?0.4:1
@@ -221,11 +241,34 @@ Item {
         }
         T3IconButton{objectName:"threadPinIndicator";visible:!!root.thread.pinned;name:root.canPin&&root.hovered?"pin-off":"pin";implicitWidth:Style.space(18);implicitHeight:Style.space(18);tooltipText:T3I18n.tr("Unpin thread");opacity:root.canPin?1:0.65;enabled:root.canPin&&!root.busy;onClicked:root.manage("unpin")}
         T3PullRequestBadge{id:slimPRBadge;objectName:root.slim?"threadPullRequestBadge":"slimThreadPullRequestBadge";active:root.slim&&root.panelVisible&&!root.pooled;badge:root.thread.pullRequestBadge || null;visible:root.slim&&!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
+        Controls.Button {
+          id:subthreadToggle;objectName:"threadSubthreadsToggle";visible:!!root.subthreads
+          implicitHeight:Style.space(20);implicitWidth:subthreadContent.implicitWidth+Style.space(8);padding:0;leftPadding:Style.space(4);rightPadding:Style.space(4)
+          Accessible.name:root.subthreads?T3I18n.tr(root.thread.subthreadsExpanded?"Hide {count} subagents":"Show {count} subagents",{count:root.subthreads.count}):""
+          background:Rectangle{radius:Style.space(4);color:subthreadToggle.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.04);border.width:subthreadToggle.activeFocus?1:0;border.color:Color.accent}
+          contentItem:RowLayout{id:subthreadContent;spacing:Style.space(3)
+            T3Icon{name:"bot";implicitWidth:Style.space(12);tint:root.subthreads&&(root.subthreads.working||root.subthreads.waiting)?T3Palette.working:root.dim}
+            Text{text:root.subthreads?(root.subthreads.working?root.subthreads.working+"/"+root.subthreads.count:String(root.subthreads.count)):"";color:root.dim;font.pixelSize:Style.font.caption}
+            T3Icon{name:root.thread.subthreadsExpanded?"chevron-down":"chevron-right";implicitWidth:Style.space(12);tint:root.dim}
+          }
+          Controls.ToolTip.visible:hovered;Controls.ToolTip.delay:500;Controls.ToolTip.text:Accessible.name
+          onClicked:{root.hidePreview();root.subthreadsToggled()}
+        }
         RowLayout {
-          visible:!root.showActions || (!root.canSettle && !root.canSnooze && !root.showDraft);spacing:Style.space(4)
+          // Woke stays on hover: it is also the button that dismisses it.
+          visible:root.woke || !root.showActions || (!root.canSettle && !root.canSnooze && !root.showDraft);spacing:Style.space(4)
+          MouseArea {
+            objectName:"threadWokeDismiss";visible:root.woke;Layout.preferredWidth:wokeTip.implicitWidth;Layout.preferredHeight:Style.space(18);hoverEnabled:true;cursorShape:Qt.PointingHandCursor
+            onClicked:{root.hidePreview();root.bridge.visitThread(root.thread.environmentId,root.thread.id,root.thread.wokeAt)}
+            Controls.ToolTip.visible:containsMouse;Controls.ToolTip.delay:400;Controls.ToolTip.text:T3I18n.tr("Dismiss Woke notification")
+            RowLayout{id:wokeTip;anchors.fill:parent;spacing:Style.space(4)
+              T3Icon{name:"alarm-clock";implicitWidth:Style.space(root.slim?13:16);tint:T3Palette.warning}
+              Text{text:T3I18n.tr("Woke");color:T3Palette.warning;font.pixelSize:Style.font.caption;font.weight:Font.Medium}
+            }
+          }
           T3Icon{
             id:stateIcon;objectName:"threadStateIcon"
-            name:root.thread.pending&&["request","plan","waiting"].indexOf(root.thread.reason)>=0?"message-circle-question":root.thread.working?"circle-dashed":root.stateLabel===T3I18n.tr("Done")?"circle-check":"circle-alert";visible:!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor
+            name:({approval:"shield-question",input:"message-circle-question",plan:"message-circle-question",waiting:"circle-dot-dashed",goal:"circle-dashed",working:"circle-dashed",limited:"circle-alert",failed:"circle-alert",done:"circle-check"})[root.stateKind] || "circle-alert";visible:!root.woke&&!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor
             Behavior on tint{enabled:root.motionReady;ColorAnimation{duration:320}}
             // Working turns slowly on the sky clock, like the auras: its own
             // animation would repaint the whole panel at the display rate for
@@ -242,7 +285,7 @@ Item {
               }
             }
           }
-          Text{text:!root.slim&&root.stateLabel ? root.stateLabel+(root.stateLabel===T3I18n.tr("Working") && root.timeLabel ? " "+root.timeLabel : "") : root.timeLabel;color:!root.slim&&root.stateLabel ? root.stateColor : root.dim;font.pixelSize:Style.font.caption}
+          Text{visible:!root.woke;readonly property bool labelled:(!root.slim||root.child)&&!!root.stateLabel;text:labelled ? root.stateLabel+((root.stateKind==="working"||root.stateKind==="goal") && root.timeLabel ? " "+root.timeLabel : "") : root.timeLabel;color:labelled ? root.stateColor : root.thread.snoozed ? T3Palette.working : root.dim;font.pixelSize:Style.font.caption;font.weight:labelled?Font.Medium:Font.Normal}
         }
         RowLayout {
           visible:root.showActions;spacing:0
@@ -271,10 +314,10 @@ Item {
       RowLayout{
         visible:!root.slim
         Layout.fillWidth:true;spacing:Style.space(6)
-        T3Icon{objectName:"threadWorkspaceIcon";name:root.thread.branch?"folder-git-2":"server";visible:root.thread.branch?!!root.thread.worktreePath:root.showScratchMachine;tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);implicitWidth:Style.space(12)}
+        T3Icon{objectName:"threadWorkspaceIcon";name:root.thread.branch?"folder-git-2":root.machineIcon;visible:root.thread.branch?!!root.thread.worktreePath:root.showScratchMachine;tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);implicitWidth:Style.space(12)}
         Text{objectName:"threadBranch";Layout.fillWidth:true;text:root.thread.branch||(root.showScratchMachine?root.thread.environmentName || "":"");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
         T3PullRequestBadge{id:threadPRBadge;active:!root.slim&&root.panelVisible&&!root.pooled;objectName:root.slim?"cardThreadPullRequestBadge":"threadPullRequestBadge";badge:root.thread.pullRequestBadge || null;visible:!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
-        T3Icon{objectName:"threadRemoteIcon";name:"server";tint:root.dim;implicitWidth:Style.space(12);visible:root.thread.environmentId!=="local"&&!root.showScratchMachine}
+        T3Icon{objectName:"threadRemoteIcon";name:root.machineIcon;tint:root.dim;implicitWidth:Style.space(12);visible:root.thread.environmentId!=="local"&&!root.showScratchMachine}
         T3ProviderIcon{provider:root.modelInfo.instanceId?root.modelInfo:({driverKind:root.thread.provider,registryIcon:""});tint:root.dim;Layout.preferredWidth:Style.space(12);Layout.preferredHeight:Style.space(12)}
       }
     }
@@ -287,12 +330,12 @@ Item {
       HoverHandler{id:previewHover;onHoveredChanged:if(hovered)closeDelay.stop();else closeDelay.restart()}
       Text{Layout.fillWidth:true;Layout.bottomMargin:Style.space(2);text:root.thread.title||"";color:root.fg;font.pixelSize:Style.font.caption;font.weight:Font.Medium;elide:Text.ElideRight;textFormat:Text.PlainText}
       Repeater{
-        model:[{icon:"folder",label:root.thread.project},{icon:"server",label:root.thread.environmentName},{icon:"git-branch",label:root.thread.branch},{icon:root.providerGlyph,label:root.modelInfo.displayName||root.thread.model},{icon:"arrow-right-left",label:(root.thread.providerHistory||[]).filter(function(p){return p!==root.thread.provider}).map(function(p){var provider=(root.catalog.providers||[]).find(function(v){return v.instanceId===p});return provider?provider.name:p}).join(", ")},{icon:"circle-alert",label:root.thread.hasRuntimeError?T3I18n.tr(root.thread.runtimeErrorClass==="usage_limit"?"Usage limit reached":"Error occurred"):""}].filter(function(m){return !!m.label})
+        model:[{icon:"folder",label:root.thread.project},{icon:root.machineIcon,label:root.thread.environmentName},{icon:"git-branch",label:root.thread.branch},{icon:root.providerGlyph,label:root.modelInfo.displayName||root.thread.model},{icon:"arrow-right-left",label:(root.thread.providerHistory||[]).filter(function(p){return p!==root.thread.provider}).map(function(p){var provider=(root.catalog.providers||[]).find(function(v){return v.instanceId===p});return provider?provider.name:p}).join(", ")},{icon:"circle-alert",label:root.thread.hasRuntimeError?(root.thread.runtimeErrorClass==="usage_limit"?T3I18n.tr("Usage limit reached")+(root.thread.runtimeError?" · "+root.thread.runtimeError:""):root.thread.runtimeError || T3I18n.tr("Error occurred")):""}].filter(function(m){return !!m.label})
         delegate:RowLayout{
           required property var modelData
           Layout.fillWidth:true;spacing:Style.space(8)
           T3Icon{name:modelData.icon;tint:modelData.icon==="circle-alert"?Color.urgent:root.dim;implicitWidth:Style.space(12)}
-          Text{Layout.fillWidth:true;text:modelData.label;color:modelData.icon==="circle-alert"?Color.urgent:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
+          Text{Layout.fillWidth:true;text:modelData.label;color:modelData.icon==="circle-alert"?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:modelData.icon==="circle-alert"?Text.Wrap:Text.NoWrap;maximumLineCount:modelData.icon==="circle-alert"?8:1;elide:modelData.icon==="circle-alert"?Text.ElideRight:Text.ElideMiddle;textFormat:Text.PlainText}
         }
       }
     }

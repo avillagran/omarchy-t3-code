@@ -7,6 +7,18 @@ if [ ! -x "$cli" ]; then cli="$HOME/.local/bin/t3"; fi
 if [ ! -x "$cli" ]; then cli=$(command -v t3) || exit 127; fi
 runtime="$base/userdata/server-runtime.json"
 info=$("$cli" __ssh-helper runtime-port "$runtime" 2>/dev/null || true)
+# T3 Desktop's SSH launcher records the server it started or found under
+# ~/.t3/ssh-launch/*/port; that server answers even when server-runtime.json
+# is gone. Use it before starting a second server.
+launched=""
+if [ -z "$info" ]; then
+  for file in "$base"/ssh-launch/*/port; do
+    [ -f "$file" ] || continue
+    candidate=$(cat "$file" 2>/dev/null || true)
+    case "$candidate" in ''|*[!0-9]*) continue ;; esac
+    if "$cli" __ssh-helper wait-ready "$candidate" 2000 500 >/dev/null 2>&1; then info="launcher $candidate"; launched=$candidate; break; fi
+  done
+fi
 if [ -z "$info" ]; then
   unit="$HOME/.config/systemd/user/t3code.service"
   if [ -f "$unit" ]; then
@@ -26,7 +38,7 @@ fi
 [ -n "$info" ] || exit 9
 port=${info#* }
 "$cli" __ssh-helper wait-ready "$port" 15000 1000 >/dev/null || exit 9
-cat "$runtime"
+if [ -n "$launched" ] && [ ! -f "$runtime" ]; then printf '{"port":%s}' "$launched"; else cat "$runtime"; fi
 printf '\nT3_AUTH\n'
 # One session subject per ot3 device, so ot3 can retire its own stale sessions.
 subject=omarchy-t3-code

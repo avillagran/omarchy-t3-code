@@ -20,7 +20,8 @@ Singleton{
   if(root.rtl)value=String(value).replace(/(@files\/folders|\$skills|\/commands|Ctrl\+Enter)/g,"\u2068$1\u2069")
   return String(value).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g,function(full,key){if(!args || args[key]===undefined)return full;var a=String(args[key]);return root.rtl?"\u2068"+a+"\u2069":a})
  }
- function error(value){if(!value)return "";if(!/^[a-z][a-z0-9_]+$/.test(value))return tr(value);return tr("T3 request failed ({code})",{code:value})}
+ // Codes may carry the server's reason after ": " (e.g. "rpc_rejected: Project not found").
+ function error(value){if(!value)return "";var m=/^([a-z][a-z0-9_]+): ([\s\S]+)$/.exec(String(value));if(m)return m[1]==="rpc_rejected"?tr("T3 rejected the request: {reason}",{reason:m[2]}):m[1]==="write_not_authorized"?tr("T3 did not allow this: {reason}",{reason:m[2]}):tr("T3 request failed ({code}): {reason}",{code:m[1],reason:m[2]});if(!/^[a-z][a-z0-9_]+$/.test(value))return tr(value);return tr("T3 request failed ({code})",{code:value})}
  property FileView translations:FileView{
   path:Qt.resolvedUrl("../../translations/i18n.json").toString().replace(/^file:\/\//,"");watchChanges:true;printErrors:false
   onLoaded:{try{var next=JSON.parse(text());if(next.en)root.catalog=next}catch(e){console.warn("Invalid T3 translation catalog")}}

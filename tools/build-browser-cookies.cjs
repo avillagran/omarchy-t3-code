@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Test-only execution of the pinned original Linux decryptor.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),vm=require('node:vm'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin='fb990765a49414a5bfbdc73365455fc8b5fbe691',file='apps/desktop/src/preview/BrowserImport/ChromiumCookies.ts';
+const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(root,'../t3code-nightly')),pin=require('./upstream-pin.cjs').revision,file='apps/desktop/src/preview/BrowserImport/ChromiumCookies.ts';
 const native=fs.readFileSync(path.join(source,file),'utf8');if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin||cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==native)throw Error('Native source must match pinned clean input');
 const body=native.slice(native.indexOf('const stripDomainBinding ='),native.indexOf('export const readChromiumCookieDatabase'));
 const code=require('node:module').stripTypeScriptTypes(body,{mode:'strip'}).replace('export function','function');const sandbox={NodeCrypto:crypto,Buffer};vm.createContext(sandbox);vm.runInContext('const AES_CBC_IV=Buffer.alloc(16,0x20),AES_GCM_NONCE_LENGTH=12,AES_GCM_TAG_LENGTH=16;\n'+code+'\nthis.decrypt=decryptChromiumValue;',sandbox);

@@ -19,5 +19,10 @@ try{
  fs.writeFileSync(running,'');r=run();assert.equal(r.status,0,r.stderr);assert(r.log.includes('auth session issue --base-dir '+base+' --subject omarchy-t3-code:0123456789abcdef '));assert(r.stdout.trim().endsWith('fixture-token'));
  r=run('fixture-id',{},"x'; rm -rf /");assert.equal(r.status,0,r.stderr);assert(r.log.includes('--subject omarchy-t3-code --scope'));
  r=run('fixture-id',{T3_TEST_FAIL:'--subject'});assert.equal(r.status,0,r.stderr);assert.equal((r.log.match(/auth session issue/g)||[]).length,2);assert(r.stdout.trim().endsWith('fixture-token'));
- console.log('REMOTE_BOOTSTRAP_PASS: running server reused; stopped native service started; absent service installed; readiness checked; profile/environment mismatch and readiness/start failures rejected; local-bin CLI fallback; per-device session subject with safe fallbacks');
+ // T3 Desktop's launcher records its server under ssh-launch; without the runtime file it is reused, not replaced.
+ if(fs.existsSync(running))fs.unlinkSync(running);if(fs.existsSync(unit))fs.unlinkSync(unit);fs.unlinkSync(path.join(base,'userdata/server-runtime.json'));fs.mkdirSync(path.join(base,'ssh-launch/abc'),{recursive:true});fs.writeFileSync(path.join(base,'ssh-launch/abc/port'),'8643\n');
+ r=run();assert.equal(r.status,0,r.stderr);assert(!r.log.includes('service install')&&!r.log.includes('--user start'),'no second server');assert(r.log.includes('wait-ready 8643'));assert(r.stdout.startsWith('{"port":8643}\nT3_AUTH\n'),r.stdout);
+ fs.writeFileSync(path.join(base,'ssh-launch/abc/port'),'8643; rm -rf /');r=run();assert(r.log.includes('service install'),'malformed launcher ports are ignored');
+ fs.rmSync(path.join(base,'ssh-launch'),{recursive:true});fs.writeFileSync(path.join(base,'userdata/server-runtime.json'),'{}');
+ console.log('REMOTE_BOOTSTRAP_PASS: running server reused; stopped native service started; absent service installed; readiness checked; profile/environment mismatch and readiness/start failures rejected; local-bin CLI fallback; T3 Desktop launcher port reused; per-device session subject with safe fallbacks');
 }finally{fs.rmSync(root,{recursive:true,force:true})}

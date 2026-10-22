@@ -3,7 +3,7 @@
 const vm=require('node:vm');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process'),{stripTypeScriptTypes}=require('node:module');
 const repo=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||path.join(repo,'../t3code-nightly'));
-const pinned='fb990765a49414a5bfbdc73365455fc8b5fbe691';
+const pinned=require('./upstream-pin.cjs').revision;
 if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pinned)throw Error('Native keybindings source must be pinned to '+pinned);
 const files=['packages/contracts/src/keybindings.ts','packages/shared/src/keybindings.ts','apps/web/src/components/usage/usageShortcuts.ts','apps/web/src/components/settings/KeybindingsSettings.logic.ts','apps/web/src/components/settings/KeybindingsSettings.tsx','apps/web/src/keybindings.ts','packages/contracts/src/editor.ts','apps/web/src/projectScripts.ts'];
 const inputs=files.map(f=>{const text=fs.readFileSync(path.join(source,f),'utf8');if(cp.execFileSync('git',['-C',source,'show',pinned+':'+f],{encoding:'utf8'})!==text)throw Error('Native input differs from pinned revision: '+f);return text;});
