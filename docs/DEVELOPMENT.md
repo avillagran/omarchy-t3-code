@@ -52,6 +52,13 @@ Generated binaries are excluded from Git. Packages target Omarchy on Arch Linux,
 not arbitrary Linux distributions. The portable Omi library remains a separate
 host-platform build; these desktop packages do not replace an Android build.
 
+Each worktree builds its own `target/` (several GB). `t3.json` declares a
+**Clean build output** action with `runOnSettle`: once imported into the
+project's actions in T3, it runs `cargo clean` in a thread's worktree whenever
+the thread settles. It names `--target-dir target` explicitly, so a
+`CARGO_TARGET_DIR` in the terminal environment (for example one shared with the
+main checkout) is never cleaned; the main checkout itself is skipped by T3.
+
 ## Automated installer
 
 The root [installer](../install.sh) installs runtime dependencies and prebuilt binaries, enables the widget and starts the local service only if stopped.
