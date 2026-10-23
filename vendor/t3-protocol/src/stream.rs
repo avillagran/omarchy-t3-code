@@ -1,5 +1,10 @@
 //! Effect RPC streams. A host worker owns retry/backoff and snapshot cursors.
 use super::*;
+/// Same liveness budget as T3's client runtime (rpc/protocol.ts): a ping every 5 s and a
+/// socket dropped after 15-20 s without any frame, so a suspended host or a changed network
+/// is detected within seconds instead of a minute.
+pub const STREAM_PING_INTERVAL:Duration=Duration::from_secs(5);
+pub const STREAM_IDLE_TIMEOUT:Duration=Duration::from_secs(20);
 impl Connection {
  /// `None` flushes a chunk boundary/idle tick. Cancel is checked at most100ms after a read.
  pub fn subscribe(&self,tag:&str,payload:Value,cancel:impl Fn()->bool,mut receive:impl FnMut(Option<Value>)->Result<()>)->Result<()>{
@@ -26,8 +31,8 @@ impl Connection {
     Err(tungstenite::Error::Io(e)) if matches!(e.kind(),std::io::ErrorKind::WouldBlock|std::io::ErrorKind::TimedOut)=>receive(None)?,
     Err(_)=>return Err("disconnected".into())
    }
-   if ping.elapsed()>=Duration::from_secs(15){ws.send(Message::Text(json!({"_tag":"Ping"}).to_string().into())).map_err(|_|"disconnected")?;ping=Instant::now();}
-   if seen.elapsed()>Duration::from_secs(60){return Err("stream_timeout".into())}
+   if ping.elapsed()>=STREAM_PING_INTERVAL{ws.send(Message::Text(json!({"_tag":"Ping"}).to_string().into())).map_err(|_|"disconnected")?;ping=Instant::now();}
+   if seen.elapsed()>STREAM_IDLE_TIMEOUT{return Err("stream_timeout".into())}
   }
   let _=ws.send(Message::Text(json!({"_tag":"Interrupt","requestId":"1"}).to_string().into()));let _=ws.close(None);Ok(())
  }
