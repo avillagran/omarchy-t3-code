@@ -61,6 +61,8 @@ pub mod thread_details;
 pub mod provider_updates;
 pub mod failure_context;
 pub mod videos;
+pub mod shell_state;
+pub mod server_capabilities;
 /// Any attachment's bytes through its signed asset URL (assets.createUrl), at
 /// most `limit` bytes. The grant authorizes the GET itself, as for images,
 /// so no credential header is needed.
@@ -824,8 +826,12 @@ pub fn snapshot(client: &Client) -> Result<Value> {
     let mut states = vec![];
     let mut projects = vec![];
     for e in environments()? {
-        match client
-            .get(&e, "/api/orchestration/shell", true)
+        // A live shell stream already holds this environment's shell; HTTP is the fallback.
+        let shell = match shell_state::live(&e.id) {
+            Some(d) => Ok(d),
+            None => client.get(&e, "/api/orchestration/shell", true),
+        };
+        match shell
             .and_then(|d| {
                 for p in d["projects"].as_array().into_iter().flatten() {
                     projects.push(json!({"id":p["id"],"environmentId":e.id,"key":format!("{}/{}",e.id,text(p,"id")),"title":p["title"],"workspaceRoot":p["workspaceRoot"],"repositoryIdentity":p["repositoryIdentity"],"faviconPath":p["faviconPath"],"projectIcon":p["projectIcon"],"defaultThreadEnvMode":p["defaultThreadEnvMode"],"autoPull":p["autoPull"],"isScratch":p["isScratch"],"defaultModelSelection":p["defaultModelSelection"]}));
