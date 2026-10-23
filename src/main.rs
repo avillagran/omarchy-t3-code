@@ -15,6 +15,7 @@ mod ui_state;
 mod quotas;
 mod local_quotas;
 mod disk_space;
+mod build_cleanup;
 use omarchy_t3_client::write;
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
@@ -364,6 +365,7 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="quit"{let _=cloud_manager.cancel_active();}
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
+                if v["op"]=="build-cleanup"{let started=start_build_cleanup(input_client.clone(),input_tx.clone());if !started{emit("build-cleanup",json!({"running":true}));}continue}
                 // Walks worktree build folders and runs git: one report at a time, off the input thread.
                 if v["op"]=="disk-report"{
                     static BUSY:std::sync::atomic::AtomicBool=std::sync::atomic::AtomicBool::new(false);
@@ -409,12 +411,17 @@ fn watch(client: Client) -> Result<()> {
     let mut quota_running = false;
     let mut message_cache: Option<(String, String, i64, Value)> = None;
     let mut next_disk = Instant::now();
+    let mut next_build_cleanup = Instant::now() + build_cleanup::FIRST_CHECK;
     let mut disk_threshold: Option<Value> = None;
     loop {
         if Instant::now() >= next_disk {
             next_disk = Instant::now() + disk_space::CHECK_INTERVAL;
             let ui = disk_threshold.as_ref().map(|t| json!({"lowDiskThresholdGb":t})).unwrap_or_else(ui_state::load);
             emit("disk-space", disk_space::status(&ui));
+        }
+        if Instant::now() >= next_build_cleanup {
+            next_build_cleanup = Instant::now() + build_cleanup::CHECK_INTERVAL;
+            start_build_cleanup(client.clone(), tx.clone());
         }
         if Instant::now() >= next_quota && !quota_running {
             quota_running = true;
@@ -494,6 +501,7 @@ fn watch(client: Client) -> Result<()> {
         let timeout = next_poll
             .min(if quota_running {next_poll}else{next_quota})
             .min(next_disk)
+            .min(next_build_cleanup)
             .saturating_duration_since(Instant::now())
             .max(Duration::from_millis(1));
         let cmd = match rx.recv_timeout(timeout) {
@@ -559,6 +567,20 @@ fn watch(client: Client) -> Result<()> {
         }
     }
 }
+/// Background build output cleanup; reports to the panel and re-reads free space after
+/// removing anything. False when a pass is already running.
+fn start_build_cleanup(client: Client, tx: mpsc::Sender<Value>) -> bool {
+    let started = build_cleanup::spawn(client, move |result| {
+        if result.as_ref().is_ok_and(|r| r["entries"].as_array().is_some_and(|e| !e.is_empty())) {
+            let _ = tx.send(json!({"op":"disk-check"}));
+        }
+        emit("build-cleanup", json!({"running":false,"report":result.as_ref().ok(),"error":result.as_ref().err()}));
+    });
+    if started {
+        emit("build-cleanup", json!({"running":true}));
+    }
+    started
+}
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().is_some_and(|s|s=="super-enter") {
@@ -572,6 +594,7 @@ fn run() -> Result<()> {
         "watch" => return watch(client),
         "licenses-read" => third_party_licenses::read()?,
         "disk-report" => disk_space::report(&client,&ui_state::load()),
+        "build-cleanup" => build_cleanup::run(&client,&ui_state::load(),args.iter().any(|a|a=="--dry-run"))?,
         "browser-import-sources" => browser_sources::list_at(&home())?,
         "browser-profiles-read" if args.len()>1 => browser_profiles::execute(&json!({"op":"browser-profiles-read","environments":args[1..]}))?,
         "preview-read" if args.len()==3 => {let e=environments()?.into_iter().find(|e|e.id==args[1]).ok_or("unknown_environment")?;preview_transport::read(&e,&args[2])?},

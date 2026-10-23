@@ -1607,7 +1607,15 @@
     "{size} in target/": "{size} in target/",
     "Warn when free disk space is below (GB)": "Warn when free disk space is below (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.",
-    "This computer": "This computer"
+    "This computer": "This computer",
+    "Clean build output of idle worktrees": "Clean build output of idle worktrees",
+    "Clean build output of idle project checkouts": "Clean build output of idle project checkouts",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "The same for each project's main checkout. Its next build starts from scratch.",
+    "Cleaning build output…": "Cleaning build output…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Last build cleanup: {count} folders, {freed} freed.",
+    "No idle build output to clean.": "No idle build output to clean.",
+    "Clean build output now": "Clean build output now"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3217,7 +3225,15 @@
     "{size} in target/": "{size} en target/",
     "Warn when free disk space is below (GB)": "Avisar cuando el espacio libre en disco sea menor que (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Comprueba cada 5 minutos el disco con los datos y worktrees de T3. Los entornos remotos no se comprueban.",
-    "This computer": "Este equipo"
+    "This computer": "Este equipo",
+    "Clean build output of idle worktrees": "Limpiar la salida de compilación de worktrees inactivos",
+    "Clean build output of idle project checkouts": "Limpiar la salida de compilación de checkouts inactivos",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Borra las carpetas de compilación ignoradas por git que las herramientas regeneran (target/, build/, .gradle/, .next/, zig-cache/ y carpetas marcadas con CACHEDIR.TAG) cuando el hilo lleva este número de días inactivo y sin cambios en ningún archivo. Se conservan el código, las ramas y los cambios sin commit; node_modules no se toca.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Lo mismo para el checkout principal de cada proyecto. Su próxima compilación empieza desde cero.",
+    "Cleaning build output…": "Limpiando la salida de compilación…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Última limpieza de compilación: {count} carpetas, {freed} liberados.",
+    "No idle build output to clean.": "No hay salida de compilación inactiva que limpiar.",
+    "Clean build output now": "Limpiar la salida de compilación ahora"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4827,7 +4843,15 @@
     "{size} in target/": "{size} em target/",
     "Warn when free disk space is below (GB)": "Avisar quando o espaço livre em disco for menor que (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Verifica a cada 5 minutos o disco com os dados e worktrees do T3. Ambientes remotos não são verificados.",
-    "This computer": "Este computador"
+    "This computer": "Este computador",
+    "Clean build output of idle worktrees": "Limpar a saída de compilação de worktrees inativos",
+    "Clean build output of idle project checkouts": "Limpar a saída de compilação de checkouts inativos",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Apaga as pastas de compilação ignoradas pelo git que as ferramentas regeneram (target/, build/, .gradle/, .next/, zig-cache/ e pastas marcadas com CACHEDIR.TAG) quando a conversa fica inativa e nenhum arquivo muda por esse número de dias. Código, branches e alterações não commitadas são mantidos; node_modules não é tocado.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "O mesmo para o checkout principal de cada projeto. A próxima compilação começa do zero.",
+    "Cleaning build output…": "Limpando a saída de compilação…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Última limpeza de compilação: {count} pastas, {freed} liberados.",
+    "No idle build output to clean.": "Nenhuma saída de compilação inativa para limpar.",
+    "Clean build output now": "Limpar a saída de compilação agora"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6437,7 +6461,15 @@
     "{size} in target/": "{size} dans target/",
     "Warn when free disk space is below (GB)": "Avertir quand l'espace disque libre est inférieur à (Go)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Vérifie toutes les 5 minutes le disque contenant les données et worktrees de T3. Les environnements distants ne sont pas vérifiés.",
-    "This computer": "Cet ordinateur"
+    "This computer": "Cet ordinateur",
+    "Clean build output of idle worktrees": "Nettoyer la sortie de compilation des worktrees inactifs",
+    "Clean build output of idle project checkouts": "Nettoyer la sortie de compilation des checkouts inactifs",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Supprime les dossiers de compilation ignorés par git que les outils régénèrent (target/, build/, .gradle/, .next/, zig-cache/ et dossiers marqués CACHEDIR.TAG) lorsque le fil est inactif et qu'aucun fichier n'a changé depuis ce nombre de jours. Le code, les branches et les modifications non commitées sont conservés ; node_modules n'est pas touché.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Idem pour le checkout principal de chaque projet. Sa prochaine compilation repart de zéro.",
+    "Cleaning build output…": "Nettoyage de la sortie de compilation…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Dernier nettoyage de compilation : {count} dossiers, {freed} libérés.",
+    "No idle build output to clean.": "Aucune sortie de compilation inactive à nettoyer.",
+    "Clean build output now": "Nettoyer la sortie de compilation maintenant"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8047,7 +8079,15 @@
     "{size} in target/": "{size} in target/",
     "Warn when free disk space is below (GB)": "Warnen, wenn der freie Speicherplatz unter (GB) fällt",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Prüft alle 5 Minuten den Datenträger mit den Daten und Worktrees von T3. Entfernte Umgebungen werden nicht geprüft.",
-    "This computer": "Dieser Computer"
+    "This computer": "Dieser Computer",
+    "Clean build output of idle worktrees": "Build-Ausgabe inaktiver Worktrees bereinigen",
+    "Clean build output of idle project checkouts": "Build-Ausgabe inaktiver Projekt-Checkouts bereinigen",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Löscht von git ignorierte Build-Ordner, die Werkzeuge neu erzeugen (target/, build/, .gradle/, .next/, zig-cache/ und mit CACHEDIR.TAG markierte Ordner), sobald der Chat so viele Tage inaktiv war und sich keine Datei geändert hat. Code, Branches und nicht committete Änderungen bleiben erhalten; node_modules wird nicht angefasst.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Dasselbe für den Haupt-Checkout jedes Projekts. Sein nächster Build beginnt von vorn.",
+    "Cleaning build output…": "Build-Ausgabe wird bereinigt…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Letzte Build-Bereinigung: {count} Ordner, {freed} freigegeben.",
+    "No idle build output to clean.": "Keine inaktive Build-Ausgabe zu bereinigen.",
+    "Clean build output now": "Build-Ausgabe jetzt bereinigen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9657,7 +9697,15 @@
     "{size} in target/": "{size} in target/",
     "Warn when free disk space is below (GB)": "Avvisa quando lo spazio libero su disco è inferiore a (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Controlla ogni 5 minuti il disco con i dati e i worktree di T3. Gli ambienti remoti non vengono controllati.",
-    "This computer": "Questo computer"
+    "This computer": "Questo computer",
+    "Clean build output of idle worktrees": "Pulisci l'output di build dei worktree inattivi",
+    "Clean build output of idle project checkouts": "Pulisci l'output di build dei checkout inattivi",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Elimina le cartelle di build ignorate da git che gli strumenti rigenerano (target/, build/, .gradle/, .next/, zig-cache/ e cartelle con CACHEDIR.TAG) quando la chat è inattiva e nessun file è cambiato da questo numero di giorni. Codice, branch e modifiche non committate restano; node_modules non viene toccato.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Lo stesso per il checkout principale di ogni progetto. La build successiva riparte da zero.",
+    "Cleaning build output…": "Pulizia dell'output di build…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Ultima pulizia di build: {count} cartelle, {freed} liberati.",
+    "No idle build output to clean.": "Nessun output di build inattivo da pulire.",
+    "Clean build output now": "Pulisci ora l'output di build"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11267,7 +11315,15 @@
     "{size} in target/": "{size} in target/",
     "Warn when free disk space is below (GB)": "Waarschuwen als de vrije schijfruimte lager is dan (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Controleert elke 5 minuten de schijf met de gegevens en worktrees van T3. Externe omgevingen worden niet gecontroleerd.",
-    "This computer": "Deze computer"
+    "This computer": "Deze computer",
+    "Clean build output of idle worktrees": "Build-uitvoer van inactieve worktrees opschonen",
+    "Clean build output of idle project checkouts": "Build-uitvoer van inactieve projectcheckouts opschonen",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Verwijdert door git genegeerde buildmappen die tools opnieuw aanmaken (target/, build/, .gradle/, .next/, zig-cache/ en mappen met CACHEDIR.TAG) zodra het gesprek zoveel dagen inactief is en er geen bestand is gewijzigd. Code, branches en niet-gecommitte wijzigingen blijven behouden; node_modules wordt niet aangeraakt.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Hetzelfde voor de hoofdcheckout van elk project. De volgende build begint opnieuw.",
+    "Cleaning build output…": "Build-uitvoer wordt opgeschoond…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Laatste build-opschoning: {count} mappen, {freed} vrijgemaakt.",
+    "No idle build output to clean.": "Geen inactieve build-uitvoer om op te schonen.",
+    "Clean build output now": "Build-uitvoer nu opschonen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12877,7 +12933,15 @@
     "{size} in target/": "{size} w target/",
     "Warn when free disk space is below (GB)": "Ostrzegaj, gdy wolne miejsce na dysku spadnie poniżej (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Co 5 minut sprawdza dysk z danymi i worktree T3. Środowiska zdalne nie są sprawdzane.",
-    "This computer": "Ten komputer"
+    "This computer": "Ten komputer",
+    "Clean build output of idle worktrees": "Czyść wyniki kompilacji nieaktywnych worktree",
+    "Clean build output of idle project checkouts": "Czyść wyniki kompilacji nieaktywnych checkoutów projektów",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Usuwa ignorowane przez git foldery kompilacji, które narzędzia odtwarzają (target/, build/, .gradle/, .next/, zig-cache/ i foldery oznaczone CACHEDIR.TAG), gdy wątek jest nieaktywny i żaden plik nie zmienił się przez tyle dni. Kod, gałęzie i niezatwierdzone zmiany zostają; node_modules nie jest ruszany.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "To samo dla głównego checkoutu każdego projektu. Następna kompilacja zaczyna się od zera.",
+    "Cleaning build output…": "Czyszczenie wyników kompilacji…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Ostatnie czyszczenie kompilacji: {count} folderów, zwolniono {freed}.",
+    "No idle build output to clean.": "Brak nieaktywnych wyników kompilacji do wyczyszczenia.",
+    "Clean build output now": "Wyczyść wyniki kompilacji teraz"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14487,7 +14551,15 @@
     "{size} in target/": "{size} в target/",
     "Warn when free disk space is below (GB)": "Предупреждать, когда свободного места на диске меньше (ГБ)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Каждые 5 минут проверяет диск с данными и рабочими деревьями T3. Удалённые окружения не проверяются.",
-    "This computer": "Этот компьютер"
+    "This computer": "Этот компьютер",
+    "Clean build output of idle worktrees": "Очищать результаты сборки неактивных рабочих деревьев",
+    "Clean build output of idle project checkouts": "Очищать результаты сборки неактивных основных копий проектов",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Удаляет игнорируемые git папки сборки, которые инструменты создают заново (target/, build/, .gradle/, .next/, zig-cache/ и папки с CACHEDIR.TAG), когда чат неактивен и ни один файл не менялся столько дней. Код, ветки и незафиксированные изменения сохраняются; node_modules не затрагивается.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "То же для основной копии каждого проекта. Следующая сборка начнётся с нуля.",
+    "Cleaning build output…": "Очистка результатов сборки…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Последняя очистка сборки: папок: {count}, освобождено {freed}.",
+    "No idle build output to clean.": "Нет неактивных результатов сборки для очистки.",
+    "Clean build output now": "Очистить результаты сборки сейчас"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16097,7 +16169,15 @@
     "{size} in target/": "{size} у target/",
     "Warn when free disk space is below (GB)": "Попереджати, коли вільного місця на диску менше (ГБ)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Кожні 5 хвилин перевіряє диск із даними та робочими деревами T3. Віддалені середовища не перевіряються.",
-    "This computer": "Цей комп'ютер"
+    "This computer": "Цей комп'ютер",
+    "Clean build output of idle worktrees": "Очищати результати збирання неактивних робочих дерев",
+    "Clean build output of idle project checkouts": "Очищати результати збирання неактивних основних копій проєктів",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Видаляє ігноровані git теки збирання, які інструменти створюють знову (target/, build/, .gradle/, .next/, zig-cache/ і теки з CACHEDIR.TAG), коли чат неактивний і жоден файл не змінювався стільки днів. Код, гілки й незафіксовані зміни зберігаються; node_modules не зачіпається.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Те саме для основної копії кожного проєкту. Наступне збирання почнеться з нуля.",
+    "Cleaning build output…": "Очищення результатів збирання…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Останнє очищення збирання: тек: {count}, звільнено {freed}.",
+    "No idle build output to clean.": "Немає неактивних результатів збирання для очищення.",
+    "Clean build output now": "Очистити результати збирання зараз"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17707,7 +17787,15 @@
     "{size} in target/": "target/ に {size}",
     "Warn when free disk space is below (GB)": "ディスクの空き容量がこれを下回ったら警告 (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "T3 のデータとワークツリーがあるディスクを 5 分ごとに確認します。リモート環境は確認されません。",
-    "This computer": "このコンピューター"
+    "This computer": "このコンピューター",
+    "Clean build output of idle worktrees": "使われていないワークツリーのビルド出力を削除",
+    "Clean build output of idle project checkouts": "使われていないプロジェクトのチェックアウトのビルド出力を削除",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "スレッドが指定日数使われず、ファイルも変更されていない場合、ツールが再生成できる git 管理外のビルドフォルダー (target/、build/、.gradle/、.next/、zig-cache/、CACHEDIR.TAG 付きフォルダー) を削除します。コード、ブランチ、未コミットの変更は残り、node_modules には触れません。",
+    "The same for each project's main checkout. Its next build starts from scratch.": "各プロジェクトのメインのチェックアウトにも同じことを行います。次のビルドは最初からになります。",
+    "Cleaning build output…": "ビルド出力を削除しています…",
+    "Last build cleanup: {count} folders, {freed} freed.": "前回のビルド削除: {count} フォルダー、{freed} を解放。",
+    "No idle build output to clean.": "削除する未使用のビルド出力はありません。",
+    "Clean build output now": "今すぐビルド出力を削除"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19317,7 +19405,15 @@
     "{size} in target/": "target/에 {size}",
     "Warn when free disk space is below (GB)": "디스크 여유 공간이 다음보다 적으면 경고 (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "T3 데이터와 워크트리가 있는 디스크를 5분마다 확인합니다. 원격 환경은 확인하지 않습니다.",
-    "This computer": "이 컴퓨터"
+    "This computer": "이 컴퓨터",
+    "Clean build output of idle worktrees": "사용하지 않는 워크트리의 빌드 출력 정리",
+    "Clean build output of idle project checkouts": "사용하지 않는 프로젝트 체크아웃의 빌드 출력 정리",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "스레드가 이 일수 동안 비활성이고 파일 변경도 없으면, 도구가 다시 만드는 git 무시 빌드 폴더(target/, build/, .gradle/, .next/, zig-cache/, CACHEDIR.TAG 표시 폴더)를 삭제합니다. 코드, 브랜치, 커밋되지 않은 변경은 유지되며 node_modules는 건드리지 않습니다.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "각 프로젝트의 기본 체크아웃에도 동일하게 적용합니다. 다음 빌드는 처음부터 시작됩니다.",
+    "Cleaning build output…": "빌드 출력을 정리하는 중…",
+    "Last build cleanup: {count} folders, {freed} freed.": "마지막 빌드 정리: 폴더 {count}개, {freed} 확보.",
+    "No idle build output to clean.": "정리할 비활성 빌드 출력이 없습니다.",
+    "Clean build output now": "지금 빌드 출력 정리"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20927,7 +21023,15 @@
     "{size} in target/": "target/ 中 {size}",
     "Warn when free disk space is below (GB)": "磁盘可用空间低于此值时警告 (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "每 5 分钟检查一次存放 T3 数据和工作树的磁盘。不检查远程环境。",
-    "This computer": "此计算机"
+    "This computer": "此计算机",
+    "Clean build output of idle worktrees": "清理闲置工作树的构建输出",
+    "Clean build output of idle project checkouts": "清理闲置项目检出的构建输出",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "当会话闲置且文件在这么多天内没有变化时，删除工具可重新生成且被 git 忽略的构建文件夹（target/、build/、.gradle/、.next/、zig-cache/ 以及带 CACHEDIR.TAG 的文件夹）。代码、分支和未提交的更改会保留；不会触碰 node_modules。",
+    "The same for each project's main checkout. Its next build starts from scratch.": "对每个项目的主检出执行相同操作。其下一次构建将从头开始。",
+    "Cleaning build output…": "正在清理构建输出…",
+    "Last build cleanup: {count} folders, {freed} freed.": "上次构建清理：{count} 个文件夹，释放 {freed}。",
+    "No idle build output to clean.": "没有需要清理的闲置构建输出。",
+    "Clean build output now": "立即清理构建输出"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22537,7 +22641,15 @@
     "{size} in target/": "{size} في target/",
     "Warn when free disk space is below (GB)": "التنبيه عندما تقل المساحة الحرة على القرص عن (غيغابايت)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "يفحص كل 5 دقائق القرص الذي يحتوي على بيانات T3 وأشجار العمل. لا يتم فحص البيئات البعيدة.",
-    "This computer": "هذا الكمبيوتر"
+    "This computer": "هذا الكمبيوتر",
+    "Clean build output of idle worktrees": "تنظيف مخرجات البناء لأشجار العمل غير النشطة",
+    "Clean build output of idle project checkouts": "تنظيف مخرجات البناء لنسخ المشاريع غير النشطة",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "يحذف مجلدات البناء التي يتجاهلها git وتعيد الأدوات إنشاءها (target/ وbuild/ و.gradle/ و.next/ وzig-cache/ والمجلدات الموسومة بـ CACHEDIR.TAG) عندما تبقى المحادثة غير نشطة ولا يتغير أي ملف طوال هذا العدد من الأيام. تُحفظ الشيفرة والفروع والتغييرات غير المُثبتة؛ ولا يُمس node_modules.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "الأمر نفسه للنسخة الرئيسية من كل مشروع. يبدأ بناؤها التالي من الصفر.",
+    "Cleaning build output…": "جارٍ تنظيف مخرجات البناء…",
+    "Last build cleanup: {count} folders, {freed} freed.": "آخر تنظيف للبناء: {count} مجلدات، تم تحرير {freed}.",
+    "No idle build output to clean.": "لا توجد مخرجات بناء غير نشطة لتنظيفها.",
+    "Clean build output now": "تنظيف مخرجات البناء الآن"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24147,7 +24259,15 @@
     "{size} in target/": "target/ içinde {size}",
     "Warn when free disk space is below (GB)": "Boş disk alanı şunun altına düşünce uyar (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "T3 verilerinin ve worktree'lerin bulunduğu diski 5 dakikada bir denetler. Uzak ortamlar denetlenmez.",
-    "This computer": "Bu bilgisayar"
+    "This computer": "Bu bilgisayar",
+    "Clean build output of idle worktrees": "Boştaki worktree'lerin derleme çıktısını temizle",
+    "Clean build output of idle project checkouts": "Boştaki proje checkout'larının derleme çıktısını temizle",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Konuşma bu kadar gün boşta kaldığında ve hiçbir dosya değişmediğinde, araçların yeniden ürettiği ve git'in yok saydığı derleme klasörlerini (target/, build/, .gradle/, .next/, zig-cache/ ve CACHEDIR.TAG ile işaretli klasörler) siler. Kod, dallar ve commit edilmemiş değişiklikler korunur; node_modules'a dokunulmaz.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Her projenin ana checkout'u için de aynısı. Sonraki derleme sıfırdan başlar.",
+    "Cleaning build output…": "Derleme çıktısı temizleniyor…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Son derleme temizliği: {count} klasör, {freed} boşaltıldı.",
+    "No idle build output to clean.": "Temizlenecek boşta derleme çıktısı yok.",
+    "Clean build output now": "Derleme çıktısını şimdi temizle"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25757,7 +25877,15 @@
     "{size} in target/": "{size} i target/",
     "Warn when free disk space is below (GB)": "Varna när ledigt diskutrymme understiger (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Kontrollerar disken med T3:s data och worktrees var 5:e minut. Fjärrmiljöer kontrolleras inte.",
-    "This computer": "Den här datorn"
+    "This computer": "Den här datorn",
+    "Clean build output of idle worktrees": "Rensa byggutdata för inaktiva worktrees",
+    "Clean build output of idle project checkouts": "Rensa byggutdata för inaktiva projektutcheckningar",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Tar bort git-ignorerade byggmappar som verktygen återskapar (target/, build/, .gradle/, .next/, zig-cache/ och mappar märkta med CACHEDIR.TAG) när tråden varit inaktiv och ingen fil ändrats på så många dagar. Kod, grenar och ändringar som inte committats behålls; node_modules rörs inte.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Samma sak för varje projekts huvudutcheckning. Nästa bygge börjar från början.",
+    "Cleaning build output…": "Rensar byggutdata…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Senaste byggrensning: {count} mappar, {freed} frigjort.",
+    "No idle build output to clean.": "Ingen inaktiv byggutdata att rensa.",
+    "Clean build output now": "Rensa byggutdata nu"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27367,7 +27495,15 @@
     "{size} in target/": "{size} i target/",
     "Warn when free disk space is below (GB)": "Advar, når ledig diskplads er under (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Kontrollerer disken med T3's data og worktrees hvert 5. minut. Fjernmiljøer kontrolleres ikke.",
-    "This computer": "Denne computer"
+    "This computer": "Denne computer",
+    "Clean build output of idle worktrees": "Ryd build-output for inaktive worktrees",
+    "Clean build output of idle project checkouts": "Ryd build-output for inaktive projekt-checkouts",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Sletter git-ignorerede build-mapper, som værktøjerne genskaber (target/, build/, .gradle/, .next/, zig-cache/ og mapper mærket med CACHEDIR.TAG), når tråden har været inaktiv, og ingen fil er ændret i så mange dage. Kode, branches og ændringer, der ikke er committet, bevares; node_modules røres ikke.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Det samme for hvert projekts primære checkout. Dets næste build starter forfra.",
+    "Cleaning build output…": "Rydder build-output…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Seneste build-oprydning: {count} mapper, {freed} frigjort.",
+    "No idle build output to clean.": "Intet inaktivt build-output at rydde.",
+    "Clean build output now": "Ryd build-output nu"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28977,7 +29113,15 @@
     "{size} in target/": "{size} i target/",
     "Warn when free disk space is below (GB)": "Varsle når ledig diskplass er under (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Sjekker disken med T3s data og worktrees hvert 5. minutt. Eksterne miljøer kontrolleres ikke.",
-    "This computer": "Denne datamaskinen"
+    "This computer": "Denne datamaskinen",
+    "Clean build output of idle worktrees": "Rydd byggeresultater for inaktive worktrees",
+    "Clean build output of idle project checkouts": "Rydd byggeresultater for inaktive prosjektkopier",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Sletter git-ignorerte byggemapper som verktøyene lager på nytt (target/, build/, .gradle/, .next/, zig-cache/ og mapper merket med CACHEDIR.TAG) når tråden har vært inaktiv og ingen fil er endret på så mange dager. Kode, grener og endringer som ikke er committet beholdes; node_modules røres ikke.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Det samme for hvert prosjekts hovedkopi. Neste bygg starter fra bunnen.",
+    "Cleaning build output…": "Rydder byggeresultater…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Siste byggopprydding: {count} mapper, {freed} frigjort.",
+    "No idle build output to clean.": "Ingen inaktive byggeresultater å rydde.",
+    "Clean build output now": "Rydd byggeresultater nå"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30587,7 +30731,15 @@
     "{size} in target/": "{size} kansiossa target/",
     "Warn when free disk space is below (GB)": "Varoita, kun vapaa levytila on alle (Gt)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Tarkistaa 5 minuutin välein levyn, jolla T3:n tiedot ja worktreet ovat. Etäympäristöjä ei tarkisteta.",
-    "This computer": "Tämä tietokone"
+    "This computer": "Tämä tietokone",
+    "Clean build output of idle worktrees": "Siivoa käyttämättömien worktreeiden käännöstulosteet",
+    "Clean build output of idle project checkouts": "Siivoa käyttämättömien projektien checkoutien käännöstulosteet",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Poistaa gitin ohittamat käännöskansiot, jotka työkalut luovat uudelleen (target/, build/, .gradle/, .next/, zig-cache/ ja CACHEDIR.TAG-merkityt kansiot), kun keskustelu on ollut käyttämättä eikä mikään tiedosto ole muuttunut näin moneen päivään. Koodi, haarat ja commitoimattomat muutokset säilyvät; node_modulesiin ei kosketa.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Sama jokaisen projektin pää-checkoutille. Seuraava käännös alkaa alusta.",
+    "Cleaning build output…": "Siivotaan käännöstulosteita…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Viimeisin käännössiivous: {count} kansiota, {freed} vapautettu.",
+    "No idle build output to clean.": "Ei käyttämättömiä käännöstulosteita siivottavaksi.",
+    "Clean build output now": "Siivoa käännöstulosteet nyt"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32197,6 +32349,14 @@
     "{size} in target/": "{size} v target/",
     "Warn when free disk space is below (GB)": "Upozornit, když volné místo na disku klesne pod (GB)",
     "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Každých 5 minut kontroluje disk s daty a worktree T3. Vzdálená prostředí se nekontrolují.",
-    "This computer": "Tento počítač"
+    "This computer": "Tento počítač",
+    "Clean build output of idle worktrees": "Čistit výstup sestavení nečinných worktree",
+    "Clean build output of idle project checkouts": "Čistit výstup sestavení nečinných checkoutů projektů",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Smaže gitem ignorované složky sestavení, které nástroje znovu vytvoří (target/, build/, .gradle/, .next/, zig-cache/ a složky označené CACHEDIR.TAG), když je vlákno tolik dní nečinné a žádný soubor se nezměnil. Kód, větve a necommitnuté změny zůstanou; node_modules se nemění.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "Totéž pro hlavní checkout každého projektu. Další sestavení začne od nuly.",
+    "Cleaning build output…": "Čistí se výstup sestavení…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Poslední čištění sestavení: {count} složek, uvolněno {freed}.",
+    "No idle build output to clean.": "Žádný nečinný výstup sestavení k vyčištění.",
+    "Clean build output now": "Vyčistit výstup sestavení nyní"
   }
 }
