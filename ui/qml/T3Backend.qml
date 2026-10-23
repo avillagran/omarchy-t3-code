@@ -590,7 +590,17 @@ Singleton {
   function agentSessionsAction(values){if(agentSessions.busy)return;var id=uuid();agentSessions=Object.assign({},agentSessions,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,action:values.action});send(Object.assign({op:"agent-sessions",environment:selectedEnvironment||"local",requestId:id},values))}
   // Storage cleanup: last report and a manual run, on the selected environment.
   property var storageCleanup:({busy:false,error:"",report:null,requestId:""})
-  function storageCleanupAction(action){if(storageCleanup.busy&&action==="run")return;var id=uuid();storageCleanup=Object.assign({},storageCleanup,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,running:action==="run"});send({op:"storage-cleanup",environment:selectedEnvironment||"local",action:action,requestId:id})}
+  function storageCleanupAction(action,environment){if(storageCleanup.busy&&action==="run")return;var id=uuid();storageCleanup=Object.assign({},storageCleanup,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,running:action==="run",environment:environment||selectedEnvironment||"local"});send({op:"storage-cleanup",environment:environment||selectedEnvironment||"local",action:action,requestId:id})}
+  // Free space on this computer's T3 disk ("disk-space", every 5 minutes) and the
+  // on-demand worktree report behind the low disk space notice.
+  property var diskSpace:null
+  property var diskReport:({busy:false,error:"",result:null,requestId:""})
+  property bool diskNoticeDismissed:false
+  property bool diskCleanupRan:false
+  readonly property var lowDiskThresholdGb:viewState.lowDiskThresholdGb===undefined?15:viewState.lowDiskThresholdGb
+  function setLowDiskThreshold(gb){rememberView({lowDiskThresholdGb:gb});send({op:"disk-check",lowDiskThresholdGb:gb})}
+  function requestDiskReport(){if(diskReport.busy)return;var id=uuid();diskReport=Object.assign({},diskReport,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id});send({op:"disk-report",requestId:id})}
+  function cleanLocalStorage(){diskCleanupRan=true;storageCleanupAction("run","local")}
   // Scheduled tasks (scheduledTasks.*) of the selected environment.
   property var scheduledTasks:({busy:false,error:"",tasks:[],requestId:""})
   function scheduledTasksAction(values){var id=uuid();scheduledTasks=Object.assign({},scheduledTasks,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,lastAction:values.action});send(Object.assign({op:"scheduled-tasks",environment:selectedEnvironment||"local",requestId:id},values))}
@@ -1390,7 +1400,8 @@ Singleton {
     if(data.op==="agent-sessions"){if(data.requestId!==agentSessions.requestId)return;var r=data.result||{};var next=Object.assign({},agentSessions,{busy:false,error:data.error||""});if(!data.error&&agentSessions.action==="scan")next.candidates=r.candidates||[];if(!data.error&&agentSessions.action==="import"){next.last=r;refresh()}agentSessions=next;if(!data.error&&agentSessions.action==="import")agentSessionsAction({action:"scan"});return}
     if(data.op==="provider-setup"){var key=Object.keys(providerSetup).find(function(k){return providerSetup[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},providerSetup),r=data.result||{};all[key]=Object.assign({},all[key],{busy:false,error:data.error||"",kind:r.kind||all[key].kind,state:data.error?all[key].state:(r.kind==="update"?null:r.state)});providerSetup=all;if(r.kind==="update"&&all[key].environment){requestProviderInstances(all[key].environment,"read");return}var phase=r.state&&r.state.phase;if(phase==="succeeded"&&all[key].environment)requestProviderInstances(all[key].environment,"read");return}
     if(data.op==="mcp-app"){var call=appCalls[data.requestId];if(!call)return;var rest=Object.assign({},appCalls);delete rest[data.requestId];appCalls=rest;appReply(call.session,call.rpcId,data.result,data.error);return}
-    if(data.op==="storage-cleanup"){if(data.requestId!==storageCleanup.requestId)return;storageCleanup=Object.assign({},storageCleanup,{busy:false,running:false,error:data.error||"",report:data.error?storageCleanup.report:(data.result||{}).report||null});return}
+    if(data.op==="storage-cleanup"){if(data.requestId!==storageCleanup.requestId)return;var ran=storageCleanup.running;storageCleanup=Object.assign({},storageCleanup,{busy:false,running:false,error:data.error||"",report:data.error?storageCleanup.report:(data.result||{}).report||null});if(ran&&storageCleanup.environment==="local"){send({op:"disk-check"});if(diskReport.result)requestDiskReport()}return}
+    if(data.op==="disk-report"){if(data.requestId!==diskReport.requestId)return;diskReport=Object.assign({},diskReport,{busy:false,error:data.error||"",result:data.error?diskReport.result:data.result||null});if(!data.error&&data.result)diskSpace=data.result;return}
     if(data.op==="scheduled-tasks"){if(data.requestId!==scheduledTasks.requestId)return;scheduledTasks=Object.assign({},scheduledTasks,{busy:false,error:data.error||"",tasks:data.error?scheduledTasks.tasks:(data.result.tasks||[])});return}
     if(data.op==="usage-summary"){if(data.requestId!==usage.requestId)return;usage=Object.assign({},usage,{busy:false,error:data.error||"",data:data.error?usage.data:data.result});return}
     if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
@@ -1856,6 +1867,7 @@ Singleton {
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
+      else if(event.type==="disk-space"){diskSpace=data;if(!data.low)diskNoticeDismissed=false}
       else if(event.type==="worktree-setup"){worktreeSetup={key:data.environment+"/"+data.thread,snapshot:data.snapshot||null}}
       else if(event.type==="command-output"){if(data.requestId===commandOutput.requestId)commandOutput=Object.assign({},commandOutput,{text:data.text!==undefined?data.text:commandOutput.text,running:!!data.running,error:data.error||"",truncated:!!data.truncated})}
       else if(event.type==="document-app-request" && inlineDocuments[data.requestId]){appRequest(data.requestId,data.request)}

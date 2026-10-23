@@ -1599,6 +1599,14 @@
     "newer: features added since then may be missing or behave differently.": "newer: features added since then may be missing or behave differently.",
     "validated": "validated",
     "Steered the active turn": "Steered the active turn",
-    "Originally queued, then promoted to steer the active turn": "Originally queued, then promoted to steer the active turn"
+    "Originally queued, then promoted to steer the active turn": "Originally queued, then promoted to steer the active turn",
+    "Low disk space: {free} free": "Low disk space: {free} free",
+    "Below the {threshold} warning on this computer. Remote environments are not checked.": "Below the {threshold} warning on this computer. Remote environments are not checked.",
+    "Local changes": "Local changes",
+    "No worktrees found.": "No worktrees found.",
+    "{size} in target/": "{size} in target/",
+    "Warn when free disk space is below (GB)": "Warn when free disk space is below (GB)",
+    "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.",
+    "This computer": "This computer"
   }
 }

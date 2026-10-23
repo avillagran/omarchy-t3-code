@@ -63,6 +63,13 @@ ColumnLayout {
  T3PreferenceSection {Layout.fillWidth:true;visible:root.artifacts.length>0;title:"Artifacts and logs";icon:"archive"
   body:Component {Column {width:parent.width;Repeater {model:root.artifacts;T3PreferenceField {required property var modelData;required property int index;width:parent.width;field:modelData;divided:index>0;writable:root.writable;onChanged:function(value){root.updateRule(modelData.key.slice("storageCleanup.".length),value)}}}}}
  }
+ // ot3's own low disk space notice: this computer only, stored in the panel state.
+ readonly property var diskField:({key:"lowDiskThresholdGb",label:"Warn when free disk space is below (GB)",description:"Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.",kind:"days",value:bridge?bridge.lowDiskThresholdGb:15,enabledValue:15,minimum:1,maximum:1000})
+ T3PreferenceSection {Layout.fillWidth:true;visible:!!root.bridge&&!root.projectScope&&root.matches(root.diskField);title:"This computer";icon:"hard-drive"
+  body:Component {Column {width:parent.width
+   T3PreferenceField {objectName:"lowDiskThreshold";width:parent.width;field:root.diskField;writable:true;onChanged:function(value){root.bridge.setLowDiskThreshold(value)}}
+  }}
+ }
  // The last cleanup and a manual run (T3's Clean up now).
  T3PreferenceSection {Layout.fillWidth:true;visible:!!root.bridge&&!root.projectScope&&root.supported&&(!root.query.trim()||root.matches({label:"Clean up now",description:""}));title:"Cleanup";icon:"trash-2"
   body:Component {ColumnLayout {width:parent.width;spacing:Style.space(8)

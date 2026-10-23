@@ -14,6 +14,7 @@ mod localization;
 mod ui_state;
 mod quotas;
 mod local_quotas;
+mod disk_space;
 use omarchy_t3_client::write;
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
@@ -269,6 +270,7 @@ fn watch(client: Client) -> Result<()> {
     let command_watch=command_output::Watch::default();
     let setup_watch=worktree_setup::Watch::default();
     let input_live=live.clone();
+    let input_client=client.clone();
     let browser_manager=browser_sessions::Manager::start(browser_guest::Config::native()?,|id|environments()?.into_iter().find(|e|e.id==id).ok_or("unknown_environment".into()),connection_preferences::read_client_preferences,|data|emit("browser-surface",data));
     std::thread::spawn(move || {
         let mut input_visible=false;
@@ -362,6 +364,13 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="quit"{let _=cloud_manager.cancel_active();}
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
+                // Walks worktree build folders and runs git: one report at a time, off the input thread.
+                if v["op"]=="disk-report"{
+                    static BUSY:std::sync::atomic::AtomicBool=std::sync::atomic::AtomicBool::new(false);
+                    if BUSY.swap(true,std::sync::atomic::Ordering::SeqCst){emit("action",json!({"op":"disk-report","requestId":v["requestId"],"error":"disk_report_busy"}));continue}
+                    let c=input_client.clone();
+                    std::thread::spawn(move||{let result=disk_space::report(&c,&ui_state::load());BUSY.store(false,std::sync::atomic::Ordering::SeqCst);emit("action",json!({"op":"disk-report","requestId":v["requestId"],"result":result}));});continue
+                }
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-omabridge"|"omabridge-manage"|"omabridge-install-prompt"|"omabridge-invite-handoff"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"|"worktree-setup-cancel"|"otlp-check"|"workflow-script"|"workflow-stop"|"thread-details-read"|"thread-details-open-editor"|"provider-update"|"failure-context"|"tool-failure"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
@@ -399,7 +408,14 @@ fn watch(client: Client) -> Result<()> {
     let mut next_quota = Instant::now();
     let mut quota_running = false;
     let mut message_cache: Option<(String, String, i64, Value)> = None;
+    let mut next_disk = Instant::now();
+    let mut disk_threshold: Option<Value> = None;
     loop {
+        if Instant::now() >= next_disk {
+            next_disk = Instant::now() + disk_space::CHECK_INTERVAL;
+            let ui = disk_threshold.as_ref().map(|t| json!({"lowDiskThresholdGb":t})).unwrap_or_else(ui_state::load);
+            emit("disk-space", disk_space::status(&ui));
+        }
         if Instant::now() >= next_quota && !quota_running {
             quota_running = true;
             next_quota = Instant::now() + Duration::from_secs(300);
@@ -477,6 +493,7 @@ fn watch(client: Client) -> Result<()> {
         }
         let timeout = next_poll
             .min(if quota_running {next_poll}else{next_quota})
+            .min(next_disk)
             .saturating_duration_since(Instant::now())
             .max(Duration::from_millis(1));
         let cmd = match rx.recv_timeout(timeout) {
@@ -531,6 +548,8 @@ fn watch(client: Client) -> Result<()> {
                 }
             }
             "quotas-refresh" => {quotas.refresh();next_quota=Instant::now();}
+            // The panel sends its threshold along: its UI state is saved with a delay.
+            "disk-check" => {if let Some(t)=cmd.get("lowDiskThresholdGb"){disk_threshold=Some(t.clone());}next_disk=Instant::now();}
             "quota_result" => {
                 quota_running = cmd["complete"]!=true;
                 if !quota_running {next_quota=Instant::now()+Duration::from_secs(300);}
@@ -552,6 +571,7 @@ fn run() -> Result<()> {
     let result = match args.first().map(String::as_str).unwrap_or("watch") {
         "watch" => return watch(client),
         "licenses-read" => third_party_licenses::read()?,
+        "disk-report" => disk_space::report(&client,&ui_state::load()),
         "browser-import-sources" => browser_sources::list_at(&home())?,
         "browser-profiles-read" if args.len()>1 => browser_profiles::execute(&json!({"op":"browser-profiles-read","environments":args[1..]}))?,
         "preview-read" if args.len()==3 => {let e=environments()?.into_iter().find(|e|e.id==args[1]).ok_or("unknown_environment")?;preview_transport::read(&e,&args[2])?},
