@@ -116,7 +116,7 @@ fn watch(env: String, stop: Arc<AtomicBool>, tx: mpsc::Sender<Value>) {
         }
         let error = result.err().unwrap_or_else(|| "stream_closed".into());
         // The server ending the stream may mean it rejected the cursor: start over.
-        if error == "stream_closed" {
+        if !reconnect::transient(&error) {
             shell_state::reset(&env);
             server_capabilities::invalidate(&env);
         }
