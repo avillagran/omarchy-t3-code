@@ -65,9 +65,23 @@ ColumnLayout {
  }
  // ot3's own low disk space notice: this computer only, stored in the panel state.
  readonly property var diskField:({key:"lowDiskThresholdGb",label:"Warn when free disk space is below (GB)",description:"Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.",kind:"days",value:bridge?bridge.lowDiskThresholdGb:15,enabledValue:15,minimum:1,maximum:1000})
- T3PreferenceSection {Layout.fillWidth:true;visible:!!root.bridge&&!root.projectScope&&root.matches(root.diskField);title:"This computer";icon:"hard-drive"
+ readonly property var buildCleanup:bridge&&bridge.buildCleanup?bridge.buildCleanup:({})
+ readonly property var buildReport:buildCleanup.report || null
+ readonly property var buildFields:!bridge||projectScope?[]:[
+  {key:"buildCleanupWorktreeDays",label:"Clean build output of idle worktrees",description:"Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.",kind:"days",value:bridge.buildCleanupWorktreeDays,enabledValue:1,minimum:1,maximum:365,retention:true},
+  {key:"buildCleanupCheckoutDays",label:"Clean build output of idle project checkouts",description:"The same for each project's main checkout. Its next build starts from scratch.",kind:"days",value:bridge.buildCleanupCheckoutDays,enabledValue:7,minimum:1,maximum:365,retention:true}
+ ].filter(function(f){return root.matches(f)})
+ T3PreferenceSection {Layout.fillWidth:true;visible:!!root.bridge&&!root.projectScope&&(root.matches(root.diskField)||root.buildFields.length>0);title:"This computer";icon:"hard-drive"
   body:Component {Column {width:parent.width
-   T3PreferenceField {objectName:"lowDiskThreshold";width:parent.width;field:root.diskField;writable:true;onChanged:function(value){root.bridge.setLowDiskThreshold(value)}}
+   T3PreferenceField {objectName:"lowDiskThreshold";visible:root.matches(root.diskField);width:parent.width;field:root.diskField;writable:true;onChanged:function(value){root.bridge.setLowDiskThreshold(value)}}
+   Repeater {model:root.buildFields;T3PreferenceField {required property var modelData;width:parent.width;field:modelData;divided:true;writable:true;onChanged:function(value){root.bridge.setBuildCleanupDays(modelData.key,value)}}}
+   ColumnLayout {width:parent.width;spacing:Style.space(8);visible:root.buildFields.length>0
+    Text{objectName:"buildCleanupResult";Layout.fillWidth:true;Layout.topMargin:Style.space(8);wrapMode:Text.Wrap;textFormat:Text.PlainText;color:root.buildCleanup.error?Color.urgent:Color.popups.text;opacity:root.buildCleanup.error?1:0.75;font.pixelSize:Style.font.caption
+     text:root.buildCleanup.running?T3I18n.tr("Cleaning build output…"):root.buildCleanup.error?T3I18n.error(root.buildCleanup.error):root.buildReport?(root.buildReport.entries.length?T3I18n.tr("Last build cleanup: {count} folders, {freed} freed.",{count:root.buildReport.entries.length,freed:root.size(root.buildReport.freedBytes)}):T3I18n.tr("No idle build output to clean.")):""}
+    Repeater{model:root.buildReport?root.buildReport.entries.slice(0,8):[]
+     Text{required property var modelData;Layout.fillWidth:true;elide:Text.ElideMiddle;textFormat:Text.PlainText;font.pixelSize:Style.font.caption;color:Color.popups.text;opacity:0.7;text:"✓ "+modelData.dir+" · "+root.size(modelData.bytes)}}
+    T3PickerButton{objectName:"buildCleanupRun";primary:false;implicitHeight:Style.space(30);enabled:!root.buildCleanup.running;text:T3I18n.tr(root.buildCleanup.running?"Cleaning build output…":"Clean build output now");onClicked:root.bridge.runBuildCleanup()}
+   }
   }}
  }
  // The last cleanup and a manual run (T3's Clean up now).

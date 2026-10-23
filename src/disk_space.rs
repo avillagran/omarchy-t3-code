@@ -31,7 +31,7 @@ pub fn low(free: u64, threshold: Option<u64>) -> bool {
     threshold.is_some_and(|t| free < t)
 }
 
-fn worktrees_root() -> PathBuf {
+pub(crate) fn worktrees_root() -> PathBuf {
     t3_home().join("worktrees")
 }
 fn watched_path() -> PathBuf {
@@ -58,7 +58,7 @@ pub fn status(ui_state: &Value) -> Value {
 }
 
 /// Disk usage of a directory tree (allocated blocks, symlinks not followed).
-fn disk_usage(root: &Path) -> u64 {
+pub(crate) fn disk_usage(root: &Path) -> u64 {
     let mut total = 0;
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
@@ -74,7 +74,7 @@ fn disk_usage(root: &Path) -> u64 {
     total
 }
 
-fn git(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
+pub(crate) fn git(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
     Command::new("git")
         .arg("-C")
         .arg(dir)
@@ -103,23 +103,36 @@ fn merged_into_default(dir: &Path) -> Option<bool> {
     Some(git(dir, &["merge-base", "--is-ancestor", "HEAD", &base])?.status.success())
 }
 
+/// The local environment's shell: the live stream's copy, or one HTTP read.
+pub(crate) fn local_shell(client: &Client) -> Result<Value> {
+    shell_state::live("local").map(Ok).unwrap_or_else(|| {
+        environments()?.into_iter().find(|e| e.id == "local").ok_or("unknown_environment".to_string()).and_then(|e| client.get(&e, "/api/orchestration/shell", true))
+    })
+}
+/// Checkouts under T3's worktree folder (`<project>/<worktree>` with a `.git` entry).
+pub(crate) fn worktree_folders() -> Vec<PathBuf> {
+    let mut out = vec![];
+    for project in std::fs::read_dir(worktrees_root()).into_iter().flatten().flatten() {
+        for tree in std::fs::read_dir(project.path()).into_iter().flatten().flatten() {
+            if tree.path().join(".git").exists() {
+                out.push(tree.path());
+            }
+        }
+    }
+    out
+}
+
 /// Worktrees of local threads, plus any other checkout under T3's worktree folder.
 fn candidates(client: &Client) -> BTreeMap<PathBuf, Value> {
     let mut found = BTreeMap::new();
-    let shell = shell_state::live("local").map(Ok).unwrap_or_else(|| {
-        environments()?.into_iter().find(|e| e.id == "local").ok_or("unknown_environment".to_string()).and_then(|e| client.get(&e, "/api/orchestration/shell", true))
-    });
+    let shell = local_shell(client);
     for t in shell.as_ref().ok().and_then(|s| s["threads"].as_array()).into_iter().flatten() {
         let Some(path) = t["worktreePath"].as_str().filter(|p| !p.is_empty()) else { continue };
         let merged_pr = t["pullRequests"].as_array().into_iter().flatten().any(|pr| pr["snapshot"]["state"] == "merged");
         found.entry(PathBuf::from(path)).or_insert_with(|| json!({"threadId":t["id"],"title":t["title"],"branch":t["branch"],"pullRequestMerged":merged_pr}));
     }
-    for project in std::fs::read_dir(worktrees_root()).into_iter().flatten().flatten() {
-        for tree in std::fs::read_dir(project.path()).into_iter().flatten().flatten() {
-            if tree.path().join(".git").exists() {
-                found.entry(tree.path()).or_insert_with(|| json!({}));
-            }
-        }
+    for tree in worktree_folders() {
+        found.entry(tree).or_insert_with(|| json!({}));
     }
     found
 }

@@ -601,6 +601,12 @@ Singleton {
   function setLowDiskThreshold(gb){rememberView({lowDiskThresholdGb:gb});send({op:"disk-check",lowDiskThresholdGb:gb})}
   function requestDiskReport(){if(diskReport.busy)return;var id=uuid();diskReport=Object.assign({},diskReport,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id});send({op:"disk-report",requestId:id})}
   function cleanLocalStorage(){diskCleanupRan=true;storageCleanupAction("run","local")}
+  // Automatic build output cleanup on this computer ("build-cleanup": hourly, or on request).
+  property var buildCleanup:({running:false,error:"",report:null})
+  readonly property var buildCleanupWorktreeDays:viewState.buildCleanupWorktreeDays===undefined?1:viewState.buildCleanupWorktreeDays
+  readonly property var buildCleanupCheckoutDays:viewState.buildCleanupCheckoutDays===undefined?7:viewState.buildCleanupCheckoutDays
+  function setBuildCleanupDays(key,days){var v={};v[key]=days;rememberView(v)}
+  function runBuildCleanup(){if(buildCleanup.running)return;buildCleanup=Object.assign({},buildCleanup,{running:worker.running,error:worker.running?"":"disconnected"});persistView.stop();persistViewNow();send({op:"build-cleanup"})}
   // Scheduled tasks (scheduledTasks.*) of the selected environment.
   property var scheduledTasks:({busy:false,error:"",tasks:[],requestId:""})
   function scheduledTasksAction(values){var id=uuid();scheduledTasks=Object.assign({},scheduledTasks,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,lastAction:values.action});send(Object.assign({op:"scheduled-tasks",environment:selectedEnvironment||"local",requestId:id},values))}
@@ -1867,6 +1873,7 @@ Singleton {
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
+      else if(event.type==="build-cleanup"){buildCleanup=Object.assign({},buildCleanup,{running:!!data.running,error:data.error||"",report:data.report||buildCleanup.report})}
       else if(event.type==="disk-space"){diskSpace=data;if(!data.low)diskNoticeDismissed=false}
       else if(event.type==="worktree-setup"){worktreeSetup={key:data.environment+"/"+data.thread,snapshot:data.snapshot||null}}
       else if(event.type==="command-output"){if(data.requestId===commandOutput.requestId)commandOutput=Object.assign({},commandOutput,{text:data.text!==undefined?data.text:commandOutput.text,running:!!data.running,error:data.error||"",truncated:!!data.truncated})}
