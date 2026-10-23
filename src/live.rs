@@ -33,11 +33,12 @@ impl Control{
      if marker{payload["requestCompletionMarker"]=json!(true);}
      let mut dirty=false;let mut emitted=Instant::now();
      // A wakeup checks the open socket instead of trusting it.
-     c.subscribe_probed("orchestration.subscribeThread",payload,||worker.generation.load(Ordering::Relaxed)!=generation,||{let w=waiter.take();probed|=w;w},|update|{
+     let streamed=c.subscribe_probed("orchestration.subscribeThread",payload,||worker.generation.load(Ordering::Relaxed)!=generation,||{let w=waiter.take();probed|=w;w},|update|{
       if worker.generation.load(Ordering::Relaxed)!=generation{return Ok(())}
       // Without a completion marker the server gives no catch-up signal; like T3, the
       // resumed stream counts as live once subscribed.
       if (update.is_some()||!marker) && !worker.connected.swap(true,Ordering::Relaxed){backoff.connected();crate::emit("live-state",json!({"serial":serial,"connected":true}));}
+      let boundary=update.is_none();
       if let Some(item)=update{
        match text(&item,"kind"){
         "snapshot"=>{*envelope=bounded_snapshot::restore(item.clone())?;sequence=item["snapshotSequence"].as_u64().unwrap_or(sequence);dirty=true;},
@@ -47,12 +48,13 @@ impl Control{
         _=>{}
        }
       }
-      if dirty && emitted.elapsed()>=Duration::from_millis(75){crate::emit("messages",json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));dirty=false;emitted=Instant::now();}
+      // Only at chunk boundaries: a resumed replay never shows a half-applied state.
+      if dirty && boundary && emitted.elapsed()>=Duration::from_millis(75){crate::emit("messages",json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));dirty=false;emitted=Instant::now();}
       Ok(())
-     })?;
-     // Flush what arrived inside the last throttle window before the stream ended.
-     if dirty{crate::emit("messages",json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));}
-     Ok(())
+     });
+     // Flush what arrived inside the last throttle window before the stream dropped.
+     if dirty && worker.generation.load(Ordering::Relaxed)==generation{crate::emit("messages",json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));}
+     streamed
     })();
     worker.connected.store(false,Ordering::Relaxed);
     if worker.generation.load(Ordering::Relaxed)!=generation{break}
