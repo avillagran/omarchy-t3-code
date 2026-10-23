@@ -30,6 +30,9 @@ pub fn live(env: &str) -> Option<Value> {
 pub fn cursor(env: &str) -> Option<u64> {
     with(env, |e| e.shell.as_ref().and_then(|s| s["snapshotSequence"].as_u64()))
 }
+pub fn is_live(env: &str) -> bool {
+    with(env, |e| e.live)
+}
 pub fn has_shell(env: &str) -> bool {
     with(env, |e| e.shell.is_some())
 }

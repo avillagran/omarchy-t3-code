@@ -262,6 +262,10 @@ fn watch(client: Client) -> Result<()> {
     let input_tx = tx.clone();
     let live=live::Control::new(client.clone());
     let shell_environments=shell_watch::start(tx.clone());
+    // Resume from suspend / network change: streams reconnect on their own; re-check
+    // connections (SSH tunnels die with a suspend) and rebuild the sidebar now.
+    let wake_tx=tx.clone();
+    reconnect::watch_system(move||{let _=wake_tx.send(json!({"op":"refresh"}));});
     let command_watch=command_output::Watch::default();
     let setup_watch=worktree_setup::Watch::default();
     let input_live=live.clone();
