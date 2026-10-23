@@ -28,7 +28,7 @@
     "src/queue.rs": "26bc7d98335917b6271a14ebcdc381992918fb7903e2fad7746c348ae1109cdd",
     "src/settings.rs": "cc3d358be178433037d5c8644d06f9833fd85e1d72f5c20b074cc876b9d3515b",
     "src/sidebar.rs": "3a5d107f1ae4751006ec1105c645c92651b674b6cd70b16c17a1ddf02158abec",
-    "src/stream.rs": "825f16c4d9be724a88f526ccb576fa8a7751bbfce33755ec176ad9929a29e3ef",
+    "src/stream.rs": "a5ad3998d8493f2971da3016b05c0f3dc66182054dc7da4e5e695fc3d915ec30",
     "src/tasks.rs": "27eed96aa7b145d3d5a035a7b131d6aeaed5f31441051514cf274ce945817585",
     "src/terminal.rs": "21e1a93820363ce3c19881b1213547ce4a54e49b4e888001834c98b0fe8553e9"
   },
@@ -46,6 +46,7 @@
     "src/queue.rs hides a queued or cancelled run's message only while that run still owns it, so a message promoted to steer stays visible on the active run",
     "src/lib.rs and src/long_rpc.rs keep a failed RPC's reason after its code (\"rpc_rejected: <message>\"): only the cause's first error message or error tag is read, bounded to one line; error_code() strips it for callers that compare codes; rpc_connection_failed keeps the websocket handshake error",
     "src/activity.rs marks failed tool rows (`failed`: status failed or output indicating failure) so the timeline can show what failed",
-    "src/sidebar.rs follows T3 0.1.2 snooze and status rules: sidebar_status() ports resolveSidebarThreadStatus over presentThreadShell's runtime (approval, input, waiting, working, goal, limited, failed, ready; background work parks at idle, commands hold nothing); metadata() reads V2 thread-level status/lastError, wakes a snooze only on a request or a fresh failure (never on a completed run) and exports wokeAt/woke (threadWokeAt)"
+    "src/sidebar.rs follows T3 0.1.2 snooze and status rules: sidebar_status() ports resolveSidebarThreadStatus over presentThreadShell's runtime (approval, input, waiting, working, goal, limited, failed, ready; background work parks at idle, commands hold nothing); metadata() reads V2 thread-level status/lastError, wakes a snooze only on a request or a fresh failure (never on a completed run) and exports wokeAt/woke (threadWokeAt)",
+    "src/stream.rs pings every 5 s and drops a subscription after 20 s without any frame (T3 client runtime: 5 s ping, 15 s timeout), instead of 15 s / 60 s; subscribe_probed adds a caller-driven liveness check (immediate ping, socket dropped without a frame within 3 s) for resume and network changes"
   ]
 }

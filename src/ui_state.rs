@@ -28,6 +28,10 @@ pub fn sanitize(input: &Value) -> Value {
     if let Some(list)=input["autoCompactExcludedThreads"].as_array(){out["autoCompactExcludedThreads"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|s.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)))).take(1024).collect::<Vec<_>>());}
     // Provider update notices the user closed: "env=driver:version|…" keys.
     if let Some(list)=input["providerUpdateDismissals"].as_array(){out["providerUpdateDismissals"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|!s.is_empty()&&s.len()<=2048&&!s.chars().any(char::is_control))).take(32).collect::<Vec<_>>());}
+    // Low disk space warning threshold in GB; null switches the warning off.
+    match input.get("lowDiskThresholdGb"){Some(Value::Null)=>{out["lowDiskThresholdGb"]=Value::Null;},Some(v)=>{if let Some(n)=v.as_u64().filter(|n|(1..=1000).contains(n)){out["lowDiskThresholdGb"]=json!(n);}},None=>{}}
+    // Automatic build output cleanup after this many idle days; null switches it off.
+    for k in ["buildCleanupWorktreeDays","buildCleanupCheckoutDays"]{match input.get(k){Some(Value::Null)=>{out[k]=Value::Null;},Some(v)=>{if let Some(n)=v.as_u64().filter(|n|(1..=365).contains(n)){out[k]=json!(n);}},None=>{}}}
     for k in ["threadDetailsWidth","threadDetailsHeight"]{if let Some(n)=input[k].as_f64().filter(|n|n.is_finite()&&*n>=0.0&&*n<=4000.0){out[k]=json!(n.round() as i64);}}
     if let Some(v)=input["preferredEditor"].as_str().filter(|v|!v.is_empty()&&v.len()<=64&&v.chars().all(|c|c.is_ascii_alphanumeric()||c=='-'||c=='_')){out["preferredEditor"]=json!(v);}
     // Sub-threads the user expanded or collapsed under a parent thread ("env/thread").

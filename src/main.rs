@@ -14,6 +14,8 @@ mod localization;
 mod ui_state;
 mod quotas;
 mod local_quotas;
+mod disk_space;
+mod build_cleanup;
 use omarchy_t3_client::write;
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
@@ -261,10 +263,15 @@ fn watch(client: Client) -> Result<()> {
     std::thread::spawn(move||{for v in rewind_rx{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"operationId":v["operationId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));}});
     let input_tx = tx.clone();
     let live=live::Control::new(client.clone());
-    shell_watch::start(tx.clone());
+    let shell_environments=shell_watch::start(tx.clone());
+    // Resume from suspend / network change: streams reconnect on their own; re-check
+    // connections (SSH tunnels die with a suspend) and rebuild the sidebar now.
+    let wake_tx=tx.clone();
+    reconnect::watch_system(move||{let _=wake_tx.send(json!({"op":"refresh"}));});
     let command_watch=command_output::Watch::default();
     let setup_watch=worktree_setup::Watch::default();
     let input_live=live.clone();
+    let input_client=client.clone();
     let browser_manager=browser_sessions::Manager::start(browser_guest::Config::native()?,|id|environments()?.into_iter().find(|e|e.id==id).ok_or("unknown_environment".into()),connection_preferences::read_client_preferences,|data|emit("browser-surface",data));
     std::thread::spawn(move || {
         let mut input_visible=false;
@@ -358,6 +365,14 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"]=="quit"{let _=cloud_manager.cancel_active();}
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
+                if v["op"]=="build-cleanup"{let started=start_build_cleanup(input_client.clone(),input_tx.clone());if !started{emit("build-cleanup",json!({"running":true}));}continue}
+                // Walks worktree build folders and runs git: one report at a time, off the input thread.
+                if v["op"]=="disk-report"{
+                    static BUSY:std::sync::atomic::AtomicBool=std::sync::atomic::AtomicBool::new(false);
+                    if BUSY.swap(true,std::sync::atomic::Ordering::SeqCst){emit("action",json!({"op":"disk-report","requestId":v["requestId"],"error":"disk_report_busy"}));continue}
+                    let c=input_client.clone();
+                    std::thread::spawn(move||{let result=disk_space::report(&c,&ui_state::load());BUSY.store(false,std::sync::atomic::Ordering::SeqCst);emit("action",json!({"op":"disk-report","requestId":v["requestId"],"result":result}));});continue
+                }
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-omabridge"|"omabridge-manage"|"omabridge-install-prompt"|"omabridge-invite-handoff"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"|"worktree-setup-cancel"|"otlp-check"|"workflow-script"|"workflow-stop"|"thread-details-read"|"thread-details-open-editor"|"provider-update"|"failure-context"|"tool-failure"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
@@ -395,7 +410,19 @@ fn watch(client: Client) -> Result<()> {
     let mut next_quota = Instant::now();
     let mut quota_running = false;
     let mut message_cache: Option<(String, String, i64, Value)> = None;
+    let mut next_disk = Instant::now();
+    let mut next_build_cleanup = Instant::now() + build_cleanup::FIRST_CHECK;
+    let mut disk_threshold: Option<Value> = None;
     loop {
+        if Instant::now() >= next_disk {
+            next_disk = Instant::now() + disk_space::CHECK_INTERVAL;
+            let ui = disk_threshold.as_ref().map(|t| json!({"lowDiskThresholdGb":t})).unwrap_or_else(ui_state::load);
+            emit("disk-space", disk_space::status(&ui));
+        }
+        if Instant::now() >= next_build_cleanup {
+            next_build_cleanup = Instant::now() + build_cleanup::CHECK_INTERVAL;
+            start_build_cleanup(client.clone(), tx.clone());
+        }
         if Instant::now() >= next_quota && !quota_running {
             quota_running = true;
             next_quota = Instant::now() + Duration::from_secs(300);
@@ -410,6 +437,7 @@ fn watch(client: Client) -> Result<()> {
             if let Ok(environments)=environments(){quotas.sync(environments);}
             match snapshot(&client) {
                 Ok(d) => {
+                    let _ = shell_environments.send(d["environments"].as_array().into_iter().flatten().map(|e|text(e,"id").to_string()).collect());
                     let _ = notify(&d);
                     compactor.observe(&d);
                     let mut before = state.clone();
@@ -472,6 +500,8 @@ fn watch(client: Client) -> Result<()> {
         }
         let timeout = next_poll
             .min(if quota_running {next_poll}else{next_quota})
+            .min(next_disk)
+            .min(next_build_cleanup)
             .saturating_duration_since(Instant::now())
             .max(Duration::from_millis(1));
         let cmd = match rx.recv_timeout(timeout) {
@@ -488,8 +518,9 @@ fn watch(client: Client) -> Result<()> {
             }
             "quit" => return Ok(()),
             "refresh" => { refresh_connections(); next_poll = Instant::now(); },
-            // Coalesce bursts of shell events into one snapshot.
-            "shell-changed" => { next_poll = next_poll.min((Instant::now() + Duration::from_millis(200)).max(last_snapshot + Duration::from_secs(1))); },
+            // Shell events are already applied in memory (shell_state); coalesce a burst
+            // into one sidebar rebuild. Only environments without a live stream use HTTP.
+            "shell-changed" => { next_poll = next_poll.min((Instant::now() + Duration::from_millis(250)).max(last_snapshot + Duration::from_secs(1))); },
             "compaction-deadline"=>{if let Some(at)=cmd["at"].as_i64(){let remaining=at.saturating_sub(chrono::Utc::now().timestamp_millis()).max(0) as u64;next_poll=next_poll.min(Instant::now()+Duration::from_millis(remaining));}},
             "visible" => {
                 visible = cmd["value"] == true;
@@ -525,6 +556,8 @@ fn watch(client: Client) -> Result<()> {
                 }
             }
             "quotas-refresh" => {quotas.refresh();next_quota=Instant::now();}
+            // The panel sends its threshold along: its UI state is saved with a delay.
+            "disk-check" => {if let Some(t)=cmd.get("lowDiskThresholdGb"){disk_threshold=Some(t.clone());}next_disk=Instant::now();}
             "quota_result" => {
                 quota_running = cmd["complete"]!=true;
                 if !quota_running {next_quota=Instant::now()+Duration::from_secs(300);}
@@ -533,6 +566,20 @@ fn watch(client: Client) -> Result<()> {
             _ => {}
         }
     }
+}
+/// Background build output cleanup; reports to the panel and re-reads free space after
+/// removing anything. False when a pass is already running.
+fn start_build_cleanup(client: Client, tx: mpsc::Sender<Value>) -> bool {
+    let started = build_cleanup::spawn(client, move |result| {
+        if result.as_ref().is_ok_and(|r| r["entries"].as_array().is_some_and(|e| !e.is_empty())) {
+            let _ = tx.send(json!({"op":"disk-check"}));
+        }
+        emit("build-cleanup", json!({"running":false,"report":result.as_ref().ok(),"error":result.as_ref().err()}));
+    });
+    if started {
+        emit("build-cleanup", json!({"running":true}));
+    }
+    started
 }
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -546,6 +593,8 @@ fn run() -> Result<()> {
     let result = match args.first().map(String::as_str).unwrap_or("watch") {
         "watch" => return watch(client),
         "licenses-read" => third_party_licenses::read()?,
+        "disk-report" => disk_space::report(&client,&ui_state::load()),
+        "build-cleanup" => build_cleanup::run(&client,&ui_state::load(),args.iter().any(|a|a=="--dry-run"))?,
         "browser-import-sources" => browser_sources::list_at(&home())?,
         "browser-profiles-read" if args.len()>1 => browser_profiles::execute(&json!({"op":"browser-profiles-read","environments":args[1..]}))?,
         "preview-read" if args.len()==3 => {let e=environments()?.into_iter().find(|e|e.id==args[1]).ok_or("unknown_environment")?;preview_transport::read(&e,&args[2])?},

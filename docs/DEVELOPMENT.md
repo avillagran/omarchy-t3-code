@@ -52,6 +52,13 @@ Generated binaries are excluded from Git. Packages target Omarchy on Arch Linux,
 not arbitrary Linux distributions. The portable Omi library remains a separate
 host-platform build; these desktop packages do not replace an Android build.
 
+Each worktree builds its own `target/` (several GB). `t3.json` declares a
+**Clean build output** action with `runOnSettle`: once imported into the
+project's actions in T3, it runs `cargo clean` in a thread's worktree whenever
+the thread settles. It names `--target-dir target` explicitly, so a
+`CARGO_TARGET_DIR` in the terminal environment (for example one shared with the
+main checkout) is never cleaned; the main checkout itself is skipped by T3.
+
 ## Automated installer
 
 The root [installer](../install.sh) installs runtime dependencies and prebuilt binaries, enables the widget and starts the local service only if stopped.
@@ -140,6 +147,26 @@ service data directory before starting it. Existing servers are reused without
 restart. Healthy SSH tunnels survive local runtime changes; failed connections
 expire early for the next refresh. This requires an installed native T3 CLI and
 working noninteractive SSH authentication on the inherited target.
+
+### Live synchronization
+
+Each environment has one `orchestration.subscribeShell` stream. Its items are
+applied in memory (`src/shell_state.rs`, after T3's shell reducer) and the
+sidebar is rebuilt from that shell; `/api/orchestration/shell` is read only for
+environments whose stream is down. A reconnect resumes with `afterSequence`
+(T3 replays up to 1000 events, otherwise sends a fresh snapshot). The visible
+chat resumes the same way from the envelope it already holds. Completion
+markers are requested only when `server.getConfig` advertises
+`shellResumeCompletionMarker`/`threadResumeCompletionMarker`.
+
+Streams ping every 5 s and drop a socket after 20 s of silence. Retries back
+off from 1 s to 5 min with jitter and start over after 30 s connected
+(`src/reconnect.rs`). Resuming from suspend (logind `PrepareForSleep`) or a
+NetworkManager connectivity change wakes every stream: open sockets must answer
+a ping within 3 s, waiting ones reconnect after a quick probe. Signals are read
+with `gdbus monitor` (glib2); without it, resume is detected from the
+boot-time/monotonic clock gap. Stream failures and wakeups are written to the
+client's standard error, once per change of error.
 
 Preferences write only an allowlisted subset of native settings via
 `server.updateSettings`, then reload `server.getSettings`. The shared
