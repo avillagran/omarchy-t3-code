@@ -1,0 +1,11 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "scripts": [
+    {
+      "name": "Clean build output",
+      "command": "cargo clean --offline --target-dir target && if [ -d vendor/t3-protocol/target ]; then cargo clean --offline --manifest-path vendor/t3-protocol/Cargo.toml --target-dir vendor/t3-protocol/target; fi",
+      "icon": "build",
+      "runOnSettle": true
+    }
+  ]
+}
