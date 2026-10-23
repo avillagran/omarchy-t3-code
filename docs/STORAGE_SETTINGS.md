@@ -13,3 +13,22 @@ Writes require the advertised native capability, with project overrides also req
 `tools/build-storage-cases.cjs` checks the pinned original file and executes its unchanged `resolveWorktreeCleanup` body after TypeScript erasure. Its dependency adapter supplies already-folded settings; it does not claim to test the complete original project resolver. Nine generated cases cover all preservation choices with Inherit, Off and Custom. Rust tests also cover retention bounds, safe projection, partial-policy completion, mode changes, mixed rules and an actual isolated native WebSocket update/readback. QML checks exercise the shared native control and existing source-control preferences.
 
 Next: mount the complete native Storage page with the original section/order/conditional visibility, project policy chooser and scope notices. Implement native `server.getStorageCleanupReport` and `server.runStorageCleanup` via the existing worker administration queues, using original permissions and per-environment single-flight behavior. The original report includes trigger/timestamps, removed/kept/failed counts, byte totals, omitted count and worktree/browser-artifact/log entries. Preserve partial/unknown outcomes and do not retry uncertain deletion. Then complete locale coverage and inspect native rendering against the original.
+
+## Low disk space notice (ot3 only)
+
+T3 does not warn about low free space, and its servers do not report it (neither
+0.0.46 nor 0.1.2 exposes a free-space reading). ot3 therefore checks **this
+computer only**: every 5 minutes `src/disk_space.rs` runs one `statvfs` on
+`$T3CODE_HOME/worktrees` (or the T3 home). Below the threshold (15 GB by default;
+Storage → This computer, stored as `lowDiskThresholdGb` in the panel state, Off
+disables it) a dismissible card appears above the chat with:
+
+- **Clean up now**: `server.runStorageCleanup` on the local environment, then a
+  new reading;
+- **Settings**: this Storage page, with the cleanup rules (all off by default);
+- **Worktrees**: measured on demand, each worktree of a local thread or under the
+  worktree folder with the size of its `target/`, whether its PR is merged or its
+  HEAD is in the default branch, and whether it has uncommitted or untracked files.
+
+`omarchy-t3-client disk-report` prints the same report. Remote environments are
+not checked.

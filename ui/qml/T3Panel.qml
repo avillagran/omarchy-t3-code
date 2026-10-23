@@ -1439,11 +1439,12 @@ Item {
           width:Math.min(Math.max(Style.space(320),root.threadDetailsWidth),parent.width-Style.space(32))
           visible:!root.preferencesOpen&&!root.pullRequestsOpen&&!(root.sideShown&&!root.browserInline)
           T3ProviderUpdateNotice{id:updateNotice;width:parent.width;bridge:root.bridge;notice:root.bridge.providerUpdateNotice;onSettingsRequested:root.openPreferencesPage("providers")}
+          T3DiskSpaceNotice{id:diskNotice;width:parent.width;bridge:root.bridge;onSettingsRequested:root.openPreferencesPage("storage")}
           Loader {
             objectName:"t3ThreadDetailsLoader";width:Math.min(root.threadDetailsWidth,parent.width);anchors.right:parent.right
             active:root.threadDetailsOpen&&!!root.bridge.selectedThread&&root.opened
             sourceComponent:T3ThreadDetails{
-              bridge:root.bridge;maxHeight:Math.max(Style.space(160),chatOverlays.parent.height-chatOverlays.y-(updateNotice.visible?updateNotice.height+chatOverlays.spacing:0)-Style.space(190))
+              bridge:root.bridge;maxHeight:Math.max(Style.space(160),chatOverlays.parent.height-chatOverlays.y-(updateNotice.visible?updateNotice.height+chatOverlays.spacing:0)-(diskNotice.visible?diskNotice.height+chatOverlays.spacing:0)-Style.space(190))
               preferredHeight:Number(root.bridge.viewState.threadDetailsHeight) || 0
               onResized:function(w,h){root.bridge.rememberView({threadDetailsWidth:Math.round(w),threadDetailsHeight:Math.round(h)})}
               onClosed:root.toggleThreadDetails()
