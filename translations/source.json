@@ -1599,6 +1599,22 @@
     "newer: features added since then may be missing or behave differently.": "newer: features added since then may be missing or behave differently.",
     "validated": "validated",
     "Steered the active turn": "Steered the active turn",
-    "Originally queued, then promoted to steer the active turn": "Originally queued, then promoted to steer the active turn"
+    "Originally queued, then promoted to steer the active turn": "Originally queued, then promoted to steer the active turn",
+    "Low disk space: {free} free": "Low disk space: {free} free",
+    "Below the {threshold} warning on this computer. Remote environments are not checked.": "Below the {threshold} warning on this computer. Remote environments are not checked.",
+    "Local changes": "Local changes",
+    "No worktrees found.": "No worktrees found.",
+    "{size} in target/": "{size} in target/",
+    "Warn when free disk space is below (GB)": "Warn when free disk space is below (GB)",
+    "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.": "Checks the disk that holds T3's data and worktrees every 5 minutes. Remote environments are not checked.",
+    "This computer": "This computer",
+    "Clean build output of idle worktrees": "Clean build output of idle worktrees",
+    "Clean build output of idle project checkouts": "Clean build output of idle project checkouts",
+    "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.": "Deletes git-ignored build folders that tools regenerate (target/, build/, .gradle/, .next/, zig-cache/ and folders marked with CACHEDIR.TAG) once the thread has been inactive and no file has changed for this many days. Code, branches and uncommitted changes are kept; node_modules is not touched.",
+    "The same for each project's main checkout. Its next build starts from scratch.": "The same for each project's main checkout. Its next build starts from scratch.",
+    "Cleaning build output…": "Cleaning build output…",
+    "Last build cleanup: {count} folders, {freed} freed.": "Last build cleanup: {count} folders, {freed} freed.",
+    "No idle build output to clean.": "No idle build output to clean.",
+    "Clean build output now": "Clean build output now"
   }
 }
