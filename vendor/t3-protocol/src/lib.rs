@@ -70,6 +70,9 @@ pub use pairing::{
     PairingClient,
 };
 use options::valid_limit;
+pub mod api;
+pub mod errors;
+mod ffi_call;
 
 pub type Result<T> = std::result::Result<T, String>;
 const MAX_BYTES: u64 = 8 * 1024 * 1024;
@@ -637,14 +640,9 @@ pub fn rejection_for_test(cause: &Value) -> String {
     rejection(cause)
 }
 /// Error for a failed RPC exit: an authorization or rejection code, with the server's reason.
+/// Authorization is decided by the error's `_tag` (see `errors::classify`), never by text.
 pub(crate) fn rejection(cause: &Value) -> String {
-    let summary = cause.to_string();
-    let code = if summary.contains("Auth") || summary.contains("Forbidden") || summary.contains("scope") {
-        "write_not_authorized"
-    } else {
-        "rpc_rejected"
-    };
-    with_reason(code, &failure_reason(cause, 0).unwrap_or_default())
+    errors::classify(cause).to_error()
 }
 
 /// Complete native T3 Connect flow. The host supplies its existing cloud JWT.
@@ -854,7 +852,7 @@ impl Connection {
  }
  fn image_resource(&self,resource:Value,expected:Option<&str>)->Result<(Vec<u8>,String)>{
   // Own grant checks: image callers keep their historical error codes.
-  let grant=self.rpc("assets.createUrl",json!({"resource":resource}))?;
+  let grant=api::assets::grant(self,resource)?;
   let url=endpoint(&self.base,field(&grant,"relativeUrl")?)?;if !url.path().starts_with("/api/assets/"){return Err("invalid_asset_url".into())}
   let assets::AssetBytes{bytes,mime}=self.signed_get(url,&assets::AssetOptions::new(10*1024*1024),&assets::IMAGE)?;
   if expected.is_some_and(|m|m!=mime){return Err("invalid_image".into())}

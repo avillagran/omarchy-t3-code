@@ -145,7 +145,7 @@ impl Server {
               // A status admitted by the HTTP preflight can arrive after revocation.
               // The native server rejects that in-flight RPC instead of panicking.
               if !oo.load(Ordering::Relaxed){
-                ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":{"_tag":"AuthScopeError"}}}).to_string().into())).unwrap();
+                ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":{"_tag":"Fail","error":{"_tag":"EnvironmentAuthorizationError","message":"The authenticated token is missing required scope: preview:operate.","requiredScope":"preview:operate"}}}}).to_string().into())).unwrap();
                 return;
               }
               Value::Null
@@ -491,7 +491,7 @@ fn status_rejected_after_permission_revocation_is_not_retried() {
     // reconciliation, before the already-admitted status reaches the server.
     assert_eq!(
         preview::report_status(&server.env, &scope, &snapshot("a")).unwrap_err(),
-        "write_not_authorized: AuthScopeError"
+        "write_not_authorized: [preview:operate] The authenticated token is missing required scope: preview:operate."
     );
     assert_eq!(
         preview::report_status(&server.env, &scope, &snapshot("a")).unwrap_err(),

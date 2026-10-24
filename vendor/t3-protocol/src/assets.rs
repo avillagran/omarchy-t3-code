@@ -112,7 +112,7 @@ impl Connection {
     }
     /// Grant for `resource`, resolved and checked against this connection's origin.
     pub(crate) fn asset_url(&self, resource: Value) -> Result<Url> {
-        let grant = self.rpc("assets.createUrl", json!({"resource":resource}))?;
+        let grant = crate::api::assets::grant(self, resource)?;
         let relative = grant["relativeUrl"].as_str().unwrap_or("");
         if !relative.starts_with("/api/assets/") {
             return Err("invalid_asset_url".into());

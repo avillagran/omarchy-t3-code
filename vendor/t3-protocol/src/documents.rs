@@ -12,7 +12,7 @@ impl Connection {
     /// RPC grant; the signed GET stays on the environment's origin.
     pub fn document(&self, resource:Value)->Result<Value>{
         if !matches!(resource["_tag"].as_str(),Some("media-file"|"workspace-file"|"attachment")){return Err("invalid_file".into())}
-        let grant=self.rpc("assets.createUrl",json!({"resource":resource}))?;
+        let grant=crate::api::assets::grant(self,resource)?;
         let url=endpoint(&self.base,field(&grant,"relativeUrl")?)?;
         if !url.path().starts_with("/api/assets/"){return Err("invalid_asset_url".into())}
         let response=self.http.get(url.clone()).timeout(Duration::from_secs(30)).send().map_err(|_|"document_unreachable")?;
