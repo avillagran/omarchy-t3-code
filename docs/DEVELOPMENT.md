@@ -397,6 +397,7 @@ for existing user configurations; new installations use `integrations/hyprland/`
 ```sh
 cargo test --workspace --locked
 node tools/check-translations.cjs
+cargo test --release --locked --manifest-path native/dictate/Cargo.toml
 node tools/test-installer.cjs
 omarchy plugin validate .
 
