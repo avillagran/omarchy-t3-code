@@ -325,6 +325,16 @@ fn result(text: &str, language: &str, seconds: f32, started: Instant) {
     ));
 }
 
+/// A muted source still records, only zeros: say so, so the panel can tell the
+/// user instead of showing a flat wave.
+fn muted() -> bool {
+    Command::new("wpctl")
+        .args(["get-volume", "@DEFAULT_AUDIO_SOURCE@"])
+        .stderr(Stdio::null())
+        .output()
+        .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains("[MUTED]"))
+}
+
 fn record(max_seconds: u64) -> (Child, Vec<f32>) {
     let mut child = Command::new("pw-record")
         .args(["--container", "raw", "--rate", "16000", "--channels", "1", "--format", "s16", "--media-role", "Communication", "-P", "{ node.name = ot3-dictate, media.name = \"T3 dictation\" }", "-"])
@@ -334,12 +344,13 @@ fn record(max_seconds: u64) -> (Child, Vec<f32>) {
         .spawn()
         .unwrap_or_else(|_| fail("recorder_unavailable"));
     RECORDER.store(child.id() as i32, Ordering::SeqCst);
-    emit("{\"type\":\"recording\"}".into());
+    emit(format!("{{\"type\":\"recording\",\"muted\":{}}}", muted()));
     let mut stdout = child.stdout.take().unwrap();
     let mut samples: Vec<f32> = Vec::with_capacity(RATE * 30);
     let mut buf = [0u8; 2560]; // 80 ms
     let mut carry: Option<u8> = None;
     let mut last_level = Instant::now();
+    let mut mark = 0;
     let limit = max_seconds as usize * RATE;
     while !STOP.load(Ordering::SeqCst) && !CANCEL.load(Ordering::SeqCst) && samples.len() < limit {
         let n = match stdout.read(&mut buf) {
@@ -347,7 +358,6 @@ fn record(max_seconds: u64) -> (Child, Vec<f32>) {
             Ok(n) => n,
         };
         let mut bytes = &buf[..n];
-        let start = samples.len();
         if let Some(lo) = carry.take() {
             samples.push(i16::from_le_bytes([lo, bytes[0]]) as f32 / 32768.0);
             bytes = &bytes[1..];
@@ -356,7 +366,8 @@ fn record(max_seconds: u64) -> (Child, Vec<f32>) {
         samples.extend(pairs.by_ref().map(|p| i16::from_le_bytes([p[0], p[1]]) as f32 / 32768.0));
         carry = pairs.remainder().first().copied();
         if last_level.elapsed() >= Duration::from_millis(70) {
-            emit(format!("{{\"type\":\"level\",\"value\":{:.3}}}", level(&samples[start..])));
+            emit(format!("{{\"type\":\"level\",\"value\":{:.3}}}", level(&samples[mark..])));
+            mark = samples.len();
             last_level = Instant::now();
         }
     }
