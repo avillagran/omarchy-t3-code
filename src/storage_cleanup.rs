@@ -12,7 +12,7 @@ fn summary(report: &Value) -> Value {
     json!({"trigger":report["trigger"],"finishedAt":report["finishedAt"],"counts":report["counts"],"bytesFreed":report["bytesFreed"],"omittedCount":report["omittedCount"],"entries":entries})
 }
 fn last_report(e: &Environment) -> Result<Value> {
-    let c = crate::integration_devices::connection(e)?;
+    let c = e.connection(true)?;
     let done = Cell::new(false);
     let started = Instant::now();
     let mut report = Value::Null;

@@ -35,7 +35,7 @@ pub fn paste(input:&Value)->Result<Value>{
   let ext=match *mime{"image/jpeg"=>"jpg","image/webp"=>"webp","image/gif"=>"gif",_=>"png"};
   let name=format!("clipboard-{}.{}",uuid::Uuid::new_v4(),ext);
   let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
-  let connection=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,true)?)?)?};
+  let connection=e.connection(true)?;
   let a=connection.upload_attachment(&name,mime,bytes.len() as u64,Cursor::new(bytes))?;
   return Ok(json!({"attachments":[a]}))
  }

@@ -11,19 +11,6 @@ static VIEWS: OnceLock<Mutex<HashMap<String, Value>>> = OnceLock::new();
 fn views() -> &'static Mutex<HashMap<String, Value>> {
     VIEWS.get_or_init(Default::default)
 }
-fn connection(e: &Environment, write: bool) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&crate::environment_token(e, write)?)?,
-    )
-}
 fn permitted(c: &protocol::Connection, required: &str) -> Result<bool> {
     let s = c.request_json("GET", "/api/auth/session", None, false)?;
     Ok(s["authenticated"] == true
@@ -218,11 +205,11 @@ pub fn read(e: &Environment, input: &Value) -> Result<Value> {
         return Err("archive_scope_changed".into());
     }
     let ids = project_ids(input)?;
-    let c = connection(e, false)?;
+    let c = e.connection(false)?;
     authorize(&c, "orchestration:read")?;
     let snapshot = raw(&c)?;
     let mut data = present(&snapshot, &e.id, ids.clone())?;
-    data["writable"] = json!(connection(e, true)
+    data["writable"] = json!(e.connection(true)
         .and_then(|c| permitted(&c, "orchestration:operate"))
         .unwrap_or(false));
     let mut operations = Vec::new();
@@ -274,7 +261,7 @@ fn action_inner(e: &Environment, input: &Value) -> Result<Value> {
     }
     let _guard = crate::checkpoint_journal::lock(&e.id, thread)?;
     crate::checkpoint_journal::ensure_available(&e.id, thread)?;
-    let c = connection(e, true)?;
+    let c = e.connection(true)?;
     authorize(&c, "orchestration:read")?;
     let new_action = !path.exists();
     let mut record = if !new_action {
@@ -391,7 +378,7 @@ pub fn observe(e: &Environment, input: &Value) -> Result<Value> {
     if input["environment"] != e.id || input["thread"] != r["threadId"] {
         return Err("archive_scope_changed".into());
     }
-    let c = connection(e, false)?;
+    let c = e.connection(false)?;
     authorize(&c, "orchestration:read")?;
     if blocking(&r) {
         if let Ok(_guard) = crate::checkpoint_journal::lock(&e.id, text(&r, "threadId")) {

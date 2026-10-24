@@ -15,7 +15,6 @@ impl Tty{
 }
 impl Drop for Tty{fn drop(&mut self){unsafe{libc::tcsetattr(0,libc::TCSANOW,&self.original);for (sig,old) in &self.signals{libc::sigaction(*sig,old,std::ptr::null_mut());}}let _=io::stdout().write_all(b"\x1b[?2004l\x1b[?25h\x1b[0m\r\n");}}
 fn size()->(u16,u16){let mut w:libc::winsize=unsafe{std::mem::zeroed()};if unsafe{libc::ioctl(io::stdout().as_raw_fd(),libc::TIOCGWINSZ,&mut w)}==0&&w.ws_col>0&&w.ws_row>0{(w.ws_col.clamp(1,1000),w.ws_row.clamp(1,500))}else{(80,24)}}
-fn connection(e:&Environment)->Result<protocol::Connection>{if let Some(error)=&e.connection_error{return Err(error.clone())}if let Some(c)=&e.connection{return Ok(c.as_ref().clone())}protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)}
 fn writable(e:&Environment)->Result<()>{if e.write_token_file.is_none()&&e.bearer.is_none()&&e.connection.is_none(){Err("write_access_required".into())}else{Ok(())}}
 /// No command or path is interpolated into a shell; the bridge resolves thread context itself.
 pub fn launch(e:&Environment,thread:&str)->Result<serde_json::Value>{launch_command(e,thread,None)}
@@ -57,7 +56,7 @@ fn consume(e:&Environment,thread:&str,path:&std::path::Path)->Result<serde_json:
 pub fn run_command(e:&Environment,thread:&str,path:Option<&std::path::Path>)->Result<()>{run_frontend(e,thread,path,None)}
 fn run_frontend(e:&Environment,thread:&str,path:Option<&std::path::Path>,session:Option<&str>)->Result<()>{
  writable(e)?;let launch=path.map(|p|consume(e,thread,p)).transpose()?;let terminal=session.or_else(||launch.as_ref().map(|v|text(v,"terminalId"))).unwrap_or("term-1");protocol::terminal::session(thread,terminal)?;
- let c=connection(e)?;let shell=Client::new()?.get(e,"/api/orchestration/shell",true)?;
+ let c=e.connection(true)?;let shell=Client::new()?.get(e,"/api/orchestration/shell",true)?;
  let context=protocol::terminal::context(&shell,thread,"").or_else(|error|{if error!="terminal_directory_unavailable"{return Err(error)}let config=c.rpc("server.getConfig",serde_json::json!({}))?;protocol::terminal::context(&shell,thread,text(&config,"scratchWorkspaceRoot"))})?;
  let (cols,rows)=size();let mut payload=protocol::terminal::attach(thread,terminal,&context,cols,rows)?;if session.is_some(){payload["restartIfNotRunning"]=serde_json::json!(false);}
  eprintln!("T3 · {} · {}\r",e.name,text(&context,"cwd"));

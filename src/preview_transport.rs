@@ -165,21 +165,8 @@ fn bounded(v: Value) -> Result<Value> {
         Ok(v)
     }
 }
-fn connection(e: &Environment) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&crate::environment_token(e, true)?)?,
-    )
-}
 pub(crate) fn inspect(e: &Environment) -> Result<(protocol::Connection, Value)> {
-    let c = connection(e)?;
+    let c = e.connection(true)?;
     let auth = c.request_json("GET", "/api/auth/session", None, false)?;
     let has = |scope: &str| {
         auth["authenticated"] == true

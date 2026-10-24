@@ -17,7 +17,7 @@ impl Watch {
         let current = self.generation.clone();
         std::thread::spawn(move || {
             let Ok(e) = environments().and_then(|all| all.into_iter().find(|e| e.id == env).ok_or("unknown_environment".into())) else { return };
-            let Ok(c) = integration_devices::connection(&e) else { return };
+            let Ok(c) = e.connection(true) else { return };
             let cancel = || current.load(Ordering::Relaxed) != generation;
             let _ = c.subscribe("subscribeWorktreeSetup", json!({"threadId":thread}), cancel, |item| {
                 if let Some(snapshot) = item {

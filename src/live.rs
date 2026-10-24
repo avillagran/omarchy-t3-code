@@ -27,7 +27,7 @@ impl Control{
       sequence=fetched["snapshotSequence"].as_u64().ok_or("missing_sequence")?;held=Some(fetched);
      }
      let envelope=held.as_mut().ok_or("missing_snapshot")?;
-     let c=if let Some(c)=e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,true)?)?)?};
+     let c=e.connection(true)?;
      let marker=server_capabilities::get(&env,&c)?.thread_completion_marker;
      let mut payload=json!({"threadId":thread,"afterSequence":sequence,"acceptBoundedSnapshot":true,"acceptCompactTurnItems":true});
      if marker{payload["requestCompletionMarker"]=json!(true);}

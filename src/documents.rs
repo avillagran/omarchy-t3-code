@@ -9,7 +9,7 @@ pub fn read(e:&Environment,input:&Value)->Result<Value>{
  if input["attachment"]["generated"]=="qml"{return crate::qml_preview::page(input)}
  let resource=if input["attachment"].is_object(){let a=&input["attachment"];let id=text(a,"id");if !valid_id(id){return Err("invalid_file".into())}json!({"_tag":"attachment","attachmentId":id,"fileName":text(a,"name"),"mimeType":text(a,"mimeType"),"disposition":"inline"})}else{protocol::documents::resource(text(input,"thread"),text(input,"path"))?};
  let name=if input["attachment"].is_object(){text(&input["attachment"],"name")}else{text(input,"path")};
- let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?};
+ let c=e.connection(true)?;
  let mut doc=if resource["_tag"]=="workspace-file" {
   // Asset grants only serve browser media. Text uses the native Files RPC,
   // including absolute host paths and the selected thread's worktree cwd.

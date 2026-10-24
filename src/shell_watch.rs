@@ -65,14 +65,7 @@ fn watch(env: String, stop: Arc<AtomicBool>, tx: mpsc::Sender<Value>) {
                 .into_iter()
                 .find(|e| e.id == env)
                 .ok_or("unknown_environment")?;
-            let c = match e.connection {
-                Some(c) => c.as_ref().clone(),
-                None => protocol::Connection::new(
-                    &e.base_url,
-                    None,
-                    protocol::Credential::bearer(&environment_token(&e, true)?)?,
-                )?,
-            };
+            let c = e.connection(true)?;
             let request_marker = server_capabilities::get(&env, &c)?.shell_completion_marker;
             let mut payload = json!({});
             if let Some(sequence) = shell_state::cursor(&env) {

@@ -375,6 +375,34 @@ pub fn environment_token(e: &Environment, write: bool) -> Result<String> {
     if let Some(token) = &e.bearer {return Ok(token.clone())}
     private_token(if write {e.write_token_file.as_ref().unwrap_or(&e.token_file)} else {&e.token_file})
 }
+impl Environment {
+    /// How ot3 reaches this environment's T3 server: its relay connection when it has one, else
+    /// a bearer connection with the write token or the read token.
+    pub fn connection(&self, write: bool) -> Result<protocol::Connection> {
+        if let Some(error) = &self.connection_error {return Err(error.clone())}
+        if let Some(c) = &self.connection {return Ok(c.as_ref().clone())}
+        t3_connection(&self.base_url, protocol::Credential::bearer(&environment_token(self, write)?)?)
+    }
+}
+/// Builds a bearer connection over one process-wide HTTP pool with the policy of
+/// `protocol::Connection::new` (12 s per request, no proxy, no redirects), so calls reuse
+/// keep-alive connections instead of each opening its own pool.
+pub(crate) fn t3_connection(base: &str, credential: protocol::Credential) -> Result<protocol::Connection> {
+    static HTTP: std::sync::OnceLock<Http> = std::sync::OnceLock::new();
+    let http = match HTTP.get() {
+        Some(http) => http,
+        None => {
+            let http = Http::builder()
+                .no_proxy()
+                .redirect(reqwest::redirect::Policy::none())
+                .timeout(Duration::from_secs(12))
+                .build()
+                .map_err(|_| "local_error")?;
+            HTTP.get_or_init(|| http)
+        }
+    };
+    protocol::Connection::with_http_client(http.clone(), base, None, credential)
+}
 pub fn validate_base(base: &str) -> Result<()> {
     let u = reqwest::Url::parse(base).map_err(|_| "invalid_endpoint")?;
     if !["http", "https"].contains(&u.scheme())

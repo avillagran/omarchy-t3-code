@@ -4,9 +4,7 @@ use serde_json::{json, Value};
 use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 
 pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
-    if let Some(error)=&e.connection_error {return Err(error.clone())}
-    if let Some(connection)=&e.connection {return connection.rpc(tag,payload)}
-    protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?.rpc(tag,payload)
+    e.connection(true)?.rpc(tag,payload)
 }
 fn interaction_mode(input:&Value)->Result<&str>{
     match input.get("interactionMode"){None|Some(Value::Null)=>Ok("default"),Some(v)=>v.as_str().filter(|s|matches!(*s,"default"|"plan")).ok_or("invalid_interaction_mode".into())}
@@ -69,8 +67,7 @@ pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
     let mime=mime_guess::from_path(&path).first_or_octet_stream().to_string();
     let image=matches!(mime.as_str(),"image/png"|"image/jpeg"|"image/gif"|"image/webp");
     if image && size>10*1024*1024 {return Err("image_limit_10MiB".into())}
-    if let Some(error)=&e.connection_error {return Err(error.clone())}
-    let connection=if let Some(c)=&e.connection {c.as_ref().clone()} else {protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?};
+    let connection=e.connection(true)?;
     connection.upload_attachment(name,&mime,size,file)
 }
 pub fn validate_message(input:&Value)->Result<()> {
@@ -298,7 +295,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "connection-access"=>crate::connection_access::execute(&e,input),
         "terminal-open"=>{let command=match input.get("command"){None|Some(Value::Null)=>None,Some(value)=>Some(value.as_str().ok_or("invalid_terminal_input")?)};crate::terminal::launch_command(&e,text(input,"thread"),command)},
         "document-open"=>crate::documents::read(&e,input),
-        "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{crate::connection_github::read(&e,&tag,payload)}},
+        "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=e.connection(false)?;c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{crate::connection_github::read(&e,&tag,payload)}},
         "settings" if matches!(text(input,"action"),"workspace-read"|"workspace-update")=>workspace_preference(&e,input),
         "settings"=>crate::native_settings::execute(&e,input),
         "provider-instances"=>crate::provider_instances::execute(&e,input),

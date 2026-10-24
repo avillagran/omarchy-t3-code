@@ -199,7 +199,7 @@ fn watch(
                     let shared = shared.clone();
                     let refreshing = refreshing.clone();
                     std::thread::spawn(move || {
-                        let result = quota_sources::connection(&e).and_then(|c| {
+                        let result = e.connection(false).and_then(|c| {
                             quota_sources::authorize(&c)?;
                             c.rpc("server.refreshProviders", json!({}))
                         });
