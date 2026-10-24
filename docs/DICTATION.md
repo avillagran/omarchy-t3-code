@@ -8,8 +8,8 @@ on-device keyboard dictation (FUTO Voice Input uses whisper.cpp too).
 ## Using it
 
 - **Microphone button** next to Attach and the screenshot button. Click to start,
-  click again to insert the text. While it records, a wave next to the button
-  shows the last two seconds of microphone level against the room's noise: flat
+  click again to insert the text. While it records, a bubble grows out of the
+  microphone with the last two seconds of microphone level against the room's noise: flat
   means nothing is heard, tall red bars mean it hears a voice.
 - **Ctrl+Space** in the composer: hold to talk (released after ~450 ms, it stops
   and inserts), or tap to start and tap again. **Esc** cancels and inserts nothing.
