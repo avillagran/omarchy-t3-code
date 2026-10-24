@@ -92,10 +92,12 @@ pub fn auto_routes(config:&Config,service:&str)->Vec<Route>{
 }
 /// The peer must serve this environment before any T3 credential is sent to it.
 pub fn verify_environment(url:&str,environment:&str)->Result<()>{
- let http=reqwest::blocking::Client::builder().timeout(Duration::from_secs(5)).build().map_err(|_|"local_error")?;
- let descriptor:Value=http.get(format!("{url}/.well-known/t3/environment")).send().and_then(|r|r.error_for_status()).and_then(|r|r.json()).map_err(|_|"omabridge_route_failed")?;
- if text(&descriptor,"environmentId")!=environment{return Err("t3_environment_mismatch".into())}
- Ok(())
+ let options=protocol::ConnectionOptions::default().with_request_timeout(Duration::from_secs(5));
+ match protocol::verify_environment(url,environment,&options){
+  Ok(_)=>Ok(()),
+  Err(error) if error=="t3_environment_mismatch"=>Err(error),
+  Err(_)=>Err("omabridge_route_failed".into()),
+ }
 }
 /// Environments currently carried by OmaBridge in this process, for the UI.
 static ACTIVE:Mutex<Option<HashMap<String,Value>>>=Mutex::new(None);

@@ -165,11 +165,10 @@ pub fn stale_ot3_sessions(clients:&Value,subject:&str,now:DateTime<Utc>)->Vec<St
     }).collect()
 }
 fn prune_sessions(base:&str,token:&str){
-    let Ok(http)=reqwest::blocking::Client::builder().timeout(Duration::from_secs(10)).build() else {return};
-    let Ok(clients)=http.get(format!("{base}/api/auth/clients")).bearer_auth(token).send().and_then(|r|r.error_for_status()).and_then(|r|r.json::<Value>()) else {return};
-    for id in stale_ot3_sessions(&clients,&format!("omarchy-t3-code:{}",client_id()),Utc::now()){
-        let _=http.post(format!("{base}/api/auth/clients/revoke")).bearer_auth(token).json(&json!({"sessionId":id})).send();
-    }
+    let options=protocol::ConnectionOptions::default().with_request_timeout(Duration::from_secs(10));
+    let Ok(connection)=protocol::Credential::bearer(token).and_then(|c|protocol::Connection::with_options(base,None,c,&options)) else {return};
+    let subject=format!("omarchy-t3-code:{}",client_id());
+    let _=connection.revoke_stale_sessions(|clients|stale_ot3_sessions(clients,&subject,Utc::now()));
 }
 fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {connect_ssh_via(profile,env,None)}
 /// Resolve the host key name OpenSSH would use for this profile, so a bridged
