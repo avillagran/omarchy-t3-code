@@ -49,6 +49,8 @@ case "$1" in
     trap 'exit 130' TERM
     printf '%s\n' '{"type":"recording"}' '{"type":"level","value":0.2}' '{"type":"level","value":0.2}' '{"type":"level","value":0.8}'
     while :; do sleep 0.05; done;;
+  recordings) printf '%s\n' '{"recordings":[{"id":"1700000000000","file":"/tmp/ot3-dictation-fixture/1700000000000.wav","time":1700000000000,"seconds":2.5,"text":"hola mundo"}]}';;
+  delete|forget|prune) printf '%s\n' '{"type":"ok"}';;
 esac
 DICTATE
   chmod 700 "$task_root/bin/ot3-dictate"

@@ -1784,6 +1784,17 @@
     "the T3 release list could not be read.": "the T3 release list could not be read.",
     "an update is already running.": "an update is already running.",
     "no newer release is known yet.": "no newer release is known yet.",
-    "Microphone muted · click to turn it on": "Microphone muted · click to turn it on"
+    "Microphone muted · click to turn it on": "Microphone muted · click to turn it on",
+    "Keep recordings": "Keep recordings",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.",
+    "Until the thread is closed": "Until the thread is closed",
+    "At most a month": "At most a month",
+    "At most a week": "At most a week",
+    "At most a day": "At most a day",
+    "Do not keep": "Do not keep",
+    "Recordings of this thread": "Recordings of this thread",
+    "No recordings kept for this thread yet.": "No recordings kept for this thread yet.",
+    "Delete recording": "Delete recording",
+    "Play the recording · the text went into the draft": "Play the recording · the text went into the draft"
   }
 }

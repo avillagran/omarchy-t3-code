@@ -1784,7 +1784,18 @@
     "the T3 release list could not be read.": "the T3 release list could not be read.",
     "an update is already running.": "an update is already running.",
     "no newer release is known yet.": "no newer release is known yet.",
-    "Microphone muted · click to turn it on": "Microphone muted · click to turn it on"
+    "Microphone muted · click to turn it on": "Microphone muted · click to turn it on",
+    "Keep recordings": "Keep recordings",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.",
+    "Until the thread is closed": "Until the thread is closed",
+    "At most a month": "At most a month",
+    "At most a week": "At most a week",
+    "At most a day": "At most a day",
+    "Do not keep": "Do not keep",
+    "Recordings of this thread": "Recordings of this thread",
+    "No recordings kept for this thread yet.": "No recordings kept for this thread yet.",
+    "Delete recording": "Delete recording",
+    "Play the recording · the text went into the draft": "Play the recording · the text went into the draft"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3571,7 +3582,18 @@
     "the T3 release list could not be read.": "no se pudo leer la lista de versiones de T3.",
     "an update is already running.": "ya hay una actualización en curso.",
     "no newer release is known yet.": "todavía no se conoce una versión más nueva.",
-    "Microphone muted · click to turn it on": "Micrófono silenciado · clic para activarlo"
+    "Microphone muted · click to turn it on": "Micrófono silenciado · clic para activarlo",
+    "Keep recordings": "Conservar grabaciones",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "El audio y el texto de cada dictado quedan en este equipo y se listan al dejar el mouse sobre el micrófono, para recuperar una transcripción perdida. Las grabaciones de un hilo se borran al archivarlo o eliminarlo.",
+    "Until the thread is closed": "Hasta cerrar el hilo",
+    "At most a month": "Como máximo un mes",
+    "At most a week": "Como máximo una semana",
+    "At most a day": "Como máximo un día",
+    "Do not keep": "No conservar",
+    "Recordings of this thread": "Grabaciones de este hilo",
+    "No recordings kept for this thread yet.": "Aún no hay grabaciones guardadas de este hilo.",
+    "Delete recording": "Eliminar grabación",
+    "Play the recording · the text went into the draft": "Reproducir la grabación · el texto fue al borrador"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5358,7 +5380,18 @@
     "the T3 release list could not be read.": "não foi possível ler a lista de versões do T3.",
     "an update is already running.": "já há uma atualização em andamento.",
     "no newer release is known yet.": "ainda não se conhece uma versão mais nova.",
-    "Microphone muted · click to turn it on": "Microfone silenciado · clique para ativar"
+    "Microphone muted · click to turn it on": "Microfone silenciado · clique para ativar",
+    "Keep recordings": "Manter gravações",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "O áudio e o texto de cada ditado ficam neste computador e aparecem ao pousar o mouse sobre o microfone, para recuperar uma transcrição perdida. As gravações de um tópico são apagadas ao arquivá-lo ou excluí-lo.",
+    "Until the thread is closed": "Até fechar o tópico",
+    "At most a month": "No máximo um mês",
+    "At most a week": "No máximo uma semana",
+    "At most a day": "No máximo um dia",
+    "Do not keep": "Não manter",
+    "Recordings of this thread": "Gravações deste tópico",
+    "No recordings kept for this thread yet.": "Ainda não há gravações guardadas deste tópico.",
+    "Delete recording": "Excluir gravação",
+    "Play the recording · the text went into the draft": "Reproduzir a gravação · o texto foi para o rascunho"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7145,7 +7178,18 @@
     "the T3 release list could not be read.": "la liste des versions de T3 est illisible.",
     "an update is already running.": "une mise à jour est déjà en cours.",
     "no newer release is known yet.": "aucune version plus récente n'est encore connue.",
-    "Microphone muted · click to turn it on": "Micro coupé · cliquez pour l'activer"
+    "Microphone muted · click to turn it on": "Micro coupé · cliquez pour l'activer",
+    "Keep recordings": "Conserver les enregistrements",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "L'audio et le texte de chaque dictée restent sur cet ordinateur et s'affichent quand la souris s'arrête sur le micro, pour récupérer une transcription perdue. Les enregistrements d'un fil disparaissent quand il est archivé ou supprimé.",
+    "Until the thread is closed": "Jusqu'à la fermeture du fil",
+    "At most a month": "Un mois au plus",
+    "At most a week": "Une semaine au plus",
+    "At most a day": "Un jour au plus",
+    "Do not keep": "Ne pas conserver",
+    "Recordings of this thread": "Enregistrements de ce fil",
+    "No recordings kept for this thread yet.": "Aucun enregistrement conservé pour ce fil pour l'instant.",
+    "Delete recording": "Supprimer l'enregistrement",
+    "Play the recording · the text went into the draft": "Lire l'enregistrement · le texte est allé dans le brouillon"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8932,7 +8976,18 @@
     "the T3 release list could not be read.": "die Liste der T3-Versionen konnte nicht gelesen werden.",
     "an update is already running.": "es läuft bereits ein Update.",
     "no newer release is known yet.": "es ist noch keine neuere Version bekannt.",
-    "Microphone muted · click to turn it on": "Mikrofon stumm · klicken zum Einschalten"
+    "Microphone muted · click to turn it on": "Mikrofon stumm · klicken zum Einschalten",
+    "Keep recordings": "Aufnahmen behalten",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Audio und Text jedes Diktats bleiben auf diesem Computer und werden aufgelistet, wenn die Maus auf dem Mikrofon ruht, damit eine verlorene Transkription wiederhergestellt werden kann. Die Aufnahmen eines Threads werden beim Archivieren oder Löschen entfernt.",
+    "Until the thread is closed": "Bis der Thread geschlossen wird",
+    "At most a month": "Höchstens einen Monat",
+    "At most a week": "Höchstens eine Woche",
+    "At most a day": "Höchstens einen Tag",
+    "Do not keep": "Nicht behalten",
+    "Recordings of this thread": "Aufnahmen dieses Threads",
+    "No recordings kept for this thread yet.": "Für diesen Thread sind noch keine Aufnahmen gespeichert.",
+    "Delete recording": "Aufnahme löschen",
+    "Play the recording · the text went into the draft": "Aufnahme abspielen · der Text ging in den Entwurf"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10719,7 +10774,18 @@
     "the T3 release list could not be read.": "non è stato possibile leggere l'elenco delle versioni di T3.",
     "an update is already running.": "è già in corso un aggiornamento.",
     "no newer release is known yet.": "non è ancora nota una versione più recente.",
-    "Microphone muted · click to turn it on": "Microfono disattivato · clic per attivarlo"
+    "Microphone muted · click to turn it on": "Microfono disattivato · clic per attivarlo",
+    "Keep recordings": "Conserva le registrazioni",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Audio e testo di ogni dettatura restano su questo computer e compaiono fermando il mouse sul microfono, per recuperare una trascrizione persa. Le registrazioni di un thread vengono eliminate quando viene archiviato o cancellato.",
+    "Until the thread is closed": "Finché il thread non viene chiuso",
+    "At most a month": "Al massimo un mese",
+    "At most a week": "Al massimo una settimana",
+    "At most a day": "Al massimo un giorno",
+    "Do not keep": "Non conservare",
+    "Recordings of this thread": "Registrazioni di questo thread",
+    "No recordings kept for this thread yet.": "Nessuna registrazione conservata per questo thread finora.",
+    "Delete recording": "Elimina registrazione",
+    "Play the recording · the text went into the draft": "Riproduci la registrazione · il testo è andato nella bozza"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12506,7 +12572,18 @@
     "the T3 release list could not be read.": "de lijst met T3-versies kon niet worden gelezen.",
     "an update is already running.": "er loopt al een update.",
     "no newer release is known yet.": "er is nog geen nieuwere versie bekend.",
-    "Microphone muted · click to turn it on": "Microfoon gedempt · klik om in te schakelen"
+    "Microphone muted · click to turn it on": "Microfoon gedempt · klik om in te schakelen",
+    "Keep recordings": "Opnames bewaren",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Audio en tekst van elke dictatie blijven op deze computer en verschijnen als de muis op de microfoon rust, zodat een verloren transcriptie te herstellen is. De opnames van een thread verdwijnen als die wordt gearchiveerd of verwijderd.",
+    "Until the thread is closed": "Tot de thread wordt gesloten",
+    "At most a month": "Hoogstens een maand",
+    "At most a week": "Hoogstens een week",
+    "At most a day": "Hoogstens een dag",
+    "Do not keep": "Niet bewaren",
+    "Recordings of this thread": "Opnames van deze thread",
+    "No recordings kept for this thread yet.": "Nog geen opnames bewaard voor deze thread.",
+    "Delete recording": "Opname verwijderen",
+    "Play the recording · the text went into the draft": "Opname afspelen · de tekst ging naar het concept"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14293,7 +14370,18 @@
     "the T3 release list could not be read.": "nie udało się odczytać listy wydań T3.",
     "an update is already running.": "aktualizacja już trwa.",
     "no newer release is known yet.": "nie jest jeszcze znana nowsza wersja.",
-    "Microphone muted · click to turn it on": "Mikrofon wyciszony · kliknij, aby włączyć"
+    "Microphone muted · click to turn it on": "Mikrofon wyciszony · kliknij, aby włączyć",
+    "Keep recordings": "Zachowuj nagrania",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Dźwięk i tekst każdego dyktowania zostają na tym komputerze i są wyświetlane, gdy mysz spoczywa na mikrofonie, aby odzyskać utraconą transkrypcję. Nagrania wątku znikają po jego zarchiwizowaniu lub usunięciu.",
+    "Until the thread is closed": "Do zamknięcia wątku",
+    "At most a month": "Najwyżej miesiąc",
+    "At most a week": "Najwyżej tydzień",
+    "At most a day": "Najwyżej dzień",
+    "Do not keep": "Nie zachowuj",
+    "Recordings of this thread": "Nagrania tego wątku",
+    "No recordings kept for this thread yet.": "Brak zachowanych nagrań tego wątku.",
+    "Delete recording": "Usuń nagranie",
+    "Play the recording · the text went into the draft": "Odtwórz nagranie · tekst trafił do szkicu"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16080,7 +16168,18 @@
     "the T3 release list could not be read.": "не удалось прочитать список выпусков T3.",
     "an update is already running.": "обновление уже выполняется.",
     "no newer release is known yet.": "более новая версия пока неизвестна.",
-    "Microphone muted · click to turn it on": "Микрофон выключен · нажмите, чтобы включить"
+    "Microphone muted · click to turn it on": "Микрофон выключен · нажмите, чтобы включить",
+    "Keep recordings": "Хранить записи",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Аудио и текст каждой диктовки остаются на этом компьютере и показываются, когда мышь задерживается на микрофоне, чтобы восстановить потерянную расшифровку. Записи треда удаляются при его архивации или удалении.",
+    "Until the thread is closed": "Пока тред не закрыт",
+    "At most a month": "Не дольше месяца",
+    "At most a week": "Не дольше недели",
+    "At most a day": "Не дольше дня",
+    "Do not keep": "Не хранить",
+    "Recordings of this thread": "Записи этого треда",
+    "No recordings kept for this thread yet.": "Для этого треда пока нет сохранённых записей.",
+    "Delete recording": "Удалить запись",
+    "Play the recording · the text went into the draft": "Воспроизвести запись · текст попал в черновик"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16429,7 +16528,7 @@
     "Local folder": "Локальна папка",
     "Browse a folder on disk": "Переглянути папку на диску",
     "Parent folder": "Батьківська папка",
-    "Open folder": "Відкрити папку",
+    "Open folder": "Відкрити теку",
     "Open project": "Відкрити проєкт",
     "Floating window": "Плаваюче вікно",
     "Tiled window": "Мозаїчне вікно",
@@ -17867,7 +17966,18 @@
     "the T3 release list could not be read.": "не вдалося прочитати список випусків T3.",
     "an update is already running.": "оновлення вже виконується.",
     "no newer release is known yet.": "новіша версія поки невідома.",
-    "Microphone muted · click to turn it on": "Мікрофон вимкнено · натисніть, щоб увімкнути"
+    "Microphone muted · click to turn it on": "Мікрофон вимкнено · натисніть, щоб увімкнути",
+    "Keep recordings": "Зберігати записи",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Аудіо й текст кожного диктування лишаються на цьому комп’ютері та показуються, коли миша затримується на мікрофоні, щоб відновити втрачену розшифровку. Записи треду видаляються при його архівуванні або видаленні.",
+    "Until the thread is closed": "Доки тред не закрито",
+    "At most a month": "Не довше місяця",
+    "At most a week": "Не довше тижня",
+    "At most a day": "Не довше дня",
+    "Do not keep": "Не зберігати",
+    "Recordings of this thread": "Записи цього треду",
+    "No recordings kept for this thread yet.": "Для цього треду ще немає збережених записів.",
+    "Delete recording": "Видалити запис",
+    "Play the recording · the text went into the draft": "Відтворити запис · текст потрапив у чернетку"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19654,7 +19764,18 @@
     "the T3 release list could not be read.": "T3 のリリース一覧を読み込めませんでした。",
     "an update is already running.": "すでに更新を実行中です。",
     "no newer release is known yet.": "新しいリリースはまだ見つかっていません。",
-    "Microphone muted · click to turn it on": "マイクがミュート中 · クリックでオン"
+    "Microphone muted · click to turn it on": "マイクがミュート中 · クリックでオン",
+    "Keep recordings": "録音を保存",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "各音声入力の音声とテキストはこのコンピューターに残り、マイクにマウスを置くと一覧表示されるため、失われた文字起こしを復元できます。スレッドの録音はアーカイブまたは削除時に消えます。",
+    "Until the thread is closed": "スレッドを閉じるまで",
+    "At most a month": "最長1か月",
+    "At most a week": "最長1週間",
+    "At most a day": "最長1日",
+    "Do not keep": "保存しない",
+    "Recordings of this thread": "このスレッドの録音",
+    "No recordings kept for this thread yet.": "このスレッドにはまだ録音がありません。",
+    "Delete recording": "録音を削除",
+    "Play the recording · the text went into the draft": "録音を再生 · テキストは下書きへ"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21441,7 +21562,18 @@
     "the T3 release list could not be read.": "T3 릴리스 목록을 읽을 수 없습니다.",
     "an update is already running.": "이미 업데이트가 진행 중입니다.",
     "no newer release is known yet.": "아직 알려진 최신 릴리스가 없습니다.",
-    "Microphone muted · click to turn it on": "마이크 음소거됨 · 클릭하여 켜기"
+    "Microphone muted · click to turn it on": "마이크 음소거됨 · 클릭하여 켜기",
+    "Keep recordings": "녹음 보관",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "각 받아쓰기의 오디오와 텍스트는 이 컴퓨터에 남고 마이크에 마우스를 올리면 목록으로 표시되어, 잃어버린 변환 결과를 복구할 수 있습니다. 스레드의 녹음은 보관 또는 삭제 시 사라집니다.",
+    "Until the thread is closed": "스레드를 닫을 때까지",
+    "At most a month": "최대 한 달",
+    "At most a week": "최대 일주일",
+    "At most a day": "최대 하루",
+    "Do not keep": "보관 안 함",
+    "Recordings of this thread": "이 스레드의 녹음",
+    "No recordings kept for this thread yet.": "이 스레드에 보관된 녹음이 아직 없습니다.",
+    "Delete recording": "녹음 삭제",
+    "Play the recording · the text went into the draft": "녹음 재생 · 텍스트는 초안으로"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23228,7 +23360,18 @@
     "the T3 release list could not be read.": "无法读取 T3 版本列表。",
     "an update is already running.": "已有更新正在进行。",
     "no newer release is known yet.": "尚未发现更新的版本。",
-    "Microphone muted · click to turn it on": "麦克风已静音 · 点击开启"
+    "Microphone muted · click to turn it on": "麦克风已静音 · 点击开启",
+    "Keep recordings": "保留录音",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "每次听写的音频和文本都保留在这台电脑上，鼠标停在麦克风上时会列出，以便找回丢失的转写。线程归档或删除时其录音一并删除。",
+    "Until the thread is closed": "直到线程关闭",
+    "At most a month": "最多一个月",
+    "At most a week": "最多一周",
+    "At most a day": "最多一天",
+    "Do not keep": "不保留",
+    "Recordings of this thread": "此线程的录音",
+    "No recordings kept for this thread yet.": "此线程尚无保留的录音。",
+    "Delete recording": "删除录音",
+    "Play the recording · the text went into the draft": "播放录音 · 文本已进入草稿"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25015,7 +25158,18 @@
     "the T3 release list could not be read.": "تعذّرت قراءة قائمة إصدارات T3.",
     "an update is already running.": "هناك تحديث قيد التشغيل بالفعل.",
     "no newer release is known yet.": "لا يُعرف إصدار أحدث بعد.",
-    "Microphone muted · click to turn it on": "الميكروفون مكتوم · انقر لتشغيله"
+    "Microphone muted · click to turn it on": "الميكروفون مكتوم · انقر لتشغيله",
+    "Keep recordings": "الاحتفاظ بالتسجيلات",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "يبقى صوت ونص كل إملاء على هذا الحاسوب ويُعرضان عند توقف الفأرة فوق الميكروفون، لاسترداد تفريغ مفقود. تُحذف تسجيلات المحادثة عند أرشفتها أو حذفها.",
+    "Until the thread is closed": "حتى إغلاق المحادثة",
+    "At most a month": "شهر على الأكثر",
+    "At most a week": "أسبوع على الأكثر",
+    "At most a day": "يوم على الأكثر",
+    "Do not keep": "عدم الاحتفاظ",
+    "Recordings of this thread": "تسجيلات هذه المحادثة",
+    "No recordings kept for this thread yet.": "لا توجد تسجيلات محفوظة لهذه المحادثة بعد.",
+    "Delete recording": "حذف التسجيل",
+    "Play the recording · the text went into the draft": "تشغيل التسجيل · ذهب النص إلى المسودة"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26802,7 +26956,18 @@
     "the T3 release list could not be read.": "T3 sürüm listesi okunamadı.",
     "an update is already running.": "zaten bir güncelleme çalışıyor.",
     "no newer release is known yet.": "henüz daha yeni bir sürüm bilinmiyor.",
-    "Microphone muted · click to turn it on": "Mikrofon sessiz · açmak için tıklayın"
+    "Microphone muted · click to turn it on": "Mikrofon sessiz · açmak için tıklayın",
+    "Keep recordings": "Kayıtları sakla",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Her diktenin sesi ve metni bu bilgisayarda kalır ve fare mikrofonun üzerinde durduğunda listelenir; böylece kaybolan bir yazıya dökme kurtarılabilir. Bir konunun kayıtları arşivlendiğinde veya silindiğinde gider.",
+    "Until the thread is closed": "Konu kapatılana kadar",
+    "At most a month": "En fazla bir ay",
+    "At most a week": "En fazla bir hafta",
+    "At most a day": "En fazla bir gün",
+    "Do not keep": "Saklama",
+    "Recordings of this thread": "Bu konunun kayıtları",
+    "No recordings kept for this thread yet.": "Bu konu için henüz saklanan kayıt yok.",
+    "Delete recording": "Kaydı sil",
+    "Play the recording · the text went into the draft": "Kaydı oynat · metin taslağa gitti"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28589,7 +28754,18 @@
     "the T3 release list could not be read.": "listan över T3-versioner kunde inte läsas.",
     "an update is already running.": "en uppdatering pågår redan.",
     "no newer release is known yet.": "ingen nyare version är känd än.",
-    "Microphone muted · click to turn it on": "Mikrofonen är avstängd · klicka för att slå på"
+    "Microphone muted · click to turn it on": "Mikrofonen är avstängd · klicka för att slå på",
+    "Keep recordings": "Behåll inspelningar",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Ljud och text från varje diktering stannar på den här datorn och listas när musen vilar på mikrofonen, så att en förlorad transkription kan återfås. En tråds inspelningar försvinner när den arkiveras eller tas bort.",
+    "Until the thread is closed": "Tills tråden stängs",
+    "At most a month": "Högst en månad",
+    "At most a week": "Högst en vecka",
+    "At most a day": "Högst en dag",
+    "Do not keep": "Behåll inte",
+    "Recordings of this thread": "Inspelningar i den här tråden",
+    "No recordings kept for this thread yet.": "Inga inspelningar sparade för den här tråden ännu.",
+    "Delete recording": "Ta bort inspelning",
+    "Play the recording · the text went into the draft": "Spela upp inspelningen · texten gick till utkastet"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30376,7 +30552,18 @@
     "the T3 release list could not be read.": "listen over T3-versioner kunne ikke læses.",
     "an update is already running.": "en opdatering kører allerede.",
     "no newer release is known yet.": "ingen nyere version kendes endnu.",
-    "Microphone muted · click to turn it on": "Mikrofonen er slået fra · klik for at slå den til"
+    "Microphone muted · click to turn it on": "Mikrofonen er slået fra · klik for at slå den til",
+    "Keep recordings": "Behold optagelser",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Lyd og tekst fra hver diktering bliver på denne computer og vises, når musen hviler på mikrofonen, så en tabt transskription kan genskabes. En tråds optagelser forsvinder, når den arkiveres eller slettes.",
+    "Until the thread is closed": "Indtil tråden lukkes",
+    "At most a month": "Højst en måned",
+    "At most a week": "Højst en uge",
+    "At most a day": "Højst en dag",
+    "Do not keep": "Behold ikke",
+    "Recordings of this thread": "Optagelser i denne tråd",
+    "No recordings kept for this thread yet.": "Ingen optagelser gemt for denne tråd endnu.",
+    "Delete recording": "Slet optagelse",
+    "Play the recording · the text went into the draft": "Afspil optagelsen · teksten gik til kladden"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32163,7 +32350,18 @@
     "the T3 release list could not be read.": "listen over T3-versjoner kunne ikke leses.",
     "an update is already running.": "en oppdatering kjører allerede.",
     "no newer release is known yet.": "ingen nyere versjon er kjent ennå.",
-    "Microphone muted · click to turn it on": "Mikrofonen er dempet · klikk for å slå den på"
+    "Microphone muted · click to turn it on": "Mikrofonen er dempet · klikk for å slå den på",
+    "Keep recordings": "Behold opptak",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Lyd og tekst fra hver diktering blir på denne datamaskinen og listes når musen hviler på mikrofonen, slik at en tapt transkripsjon kan gjenopprettes. En tråds opptak forsvinner når den arkiveres eller slettes.",
+    "Until the thread is closed": "Til tråden lukkes",
+    "At most a month": "Høyst en måned",
+    "At most a week": "Høyst en uke",
+    "At most a day": "Høyst en dag",
+    "Do not keep": "Ikke behold",
+    "Recordings of this thread": "Opptak i denne tråden",
+    "No recordings kept for this thread yet.": "Ingen opptak lagret for denne tråden ennå.",
+    "Delete recording": "Slett opptak",
+    "Play the recording · the text went into the draft": "Spill av opptaket · teksten gikk til utkastet"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33950,7 +34148,18 @@
     "the T3 release list could not be read.": "T3-julkaisuluetteloa ei voitu lukea.",
     "an update is already running.": "päivitys on jo käynnissä.",
     "no newer release is known yet.": "uudempaa julkaisua ei vielä tunneta.",
-    "Microphone muted · click to turn it on": "Mikrofoni mykistetty · ota käyttöön napsauttamalla"
+    "Microphone muted · click to turn it on": "Mikrofoni mykistetty · ota käyttöön napsauttamalla",
+    "Keep recordings": "Säilytä tallenteet",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Jokaisen sanelun ääni ja teksti pysyvät tällä tietokoneella ja näkyvät, kun hiiri lepää mikrofonin päällä, jotta kadonnut litterointi voidaan palauttaa. Ketjun tallenteet poistuvat, kun se arkistoidaan tai poistetaan.",
+    "Until the thread is closed": "Kunnes ketju suljetaan",
+    "At most a month": "Enintään kuukausi",
+    "At most a week": "Enintään viikko",
+    "At most a day": "Enintään päivä",
+    "Do not keep": "Älä säilytä",
+    "Recordings of this thread": "Tämän ketjun tallenteet",
+    "No recordings kept for this thread yet.": "Tälle ketjulle ei ole vielä tallenteita.",
+    "Delete recording": "Poista tallenne",
+    "Play the recording · the text went into the draft": "Toista tallenne · teksti meni luonnokseen"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35737,6 +35946,17 @@
     "the T3 release list could not be read.": "seznam vydání T3 nelze načíst.",
     "an update is already running.": "aktualizace již probíhá.",
     "no newer release is known yet.": "novější vydání zatím není známo.",
-    "Microphone muted · click to turn it on": "Mikrofon je ztlumený · kliknutím zapnete"
+    "Microphone muted · click to turn it on": "Mikrofon je ztlumený · kliknutím zapnete",
+    "Keep recordings": "Uchovávat nahrávky",
+    "Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.": "Zvuk a text každého diktování zůstávají v tomto počítači a zobrazí se, když myš spočine na mikrofonu, aby šel ztracený přepis obnovit. Nahrávky vlákna zmizí při jeho archivaci nebo smazání.",
+    "Until the thread is closed": "Dokud se vlákno nezavře",
+    "At most a month": "Nejvýše měsíc",
+    "At most a week": "Nejvýše týden",
+    "At most a day": "Nejvýše den",
+    "Do not keep": "Neuchovávat",
+    "Recordings of this thread": "Nahrávky tohoto vlákna",
+    "No recordings kept for this thread yet.": "Pro toto vlákno zatím nejsou uložené nahrávky.",
+    "Delete recording": "Smazat nahrávku",
+    "Play the recording · the text went into the draft": "Přehrát nahrávku · text šel do konceptu"
   }
 }
