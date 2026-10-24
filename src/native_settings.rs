@@ -83,6 +83,11 @@ pub fn idle_compaction(raw: &Value) -> Option<&str> {
         value => idle_compaction_mode(value),
     }
 }
+/// T3 resolveIdleCompaction: a Claude instance may override the environment's
+/// mode in its config; "default" or no override falls back to the global mode.
+pub fn resolve_idle_compaction<'a>(raw: &'a Value, instance: &str) -> Option<&'a str> {
+    idle_compaction_mode(&raw["providerInstances"][instance]["config"]["idleCompaction"]).or_else(|| idle_compaction(raw))
+}
 /// T3 idleCompactionPatch: write the mode in the form this server reads. Shipped
 /// clients decode `compactIdleThreads` as a boolean, so it never carries a mode
 /// unless the server already stored one there.
