@@ -536,3 +536,126 @@ fn a_missing_identity_is_suggested_from_own_checkouts_and_set_on_the_vault_only(
     }
     assert_eq!(v::set_identity(&root.join("nope"), "Me", "me@example.org").unwrap_err(), "vault_not_cloned");
 }
+
+fn row(id: &str, updated: &str, machine: &str) -> v::ThreadRow {
+    v::ThreadRow { updated: updated.into(), machine: machine.into(), id: id.into(), title: format!("Hilo {id}"), status: "done".into() }
+}
+
+#[test]
+fn the_thread_registry_keeps_recent_titled_threads_only() {
+    // Which threads are history: settled, titled, top-level.
+    let t = json!({"id":"t1","title":"Arreglar | sync [x]","updatedAt":1792800000000_i64,"status":"done","parentThreadId":null,"working":false});
+    let r = v::ThreadRow::from_thread(&t, "node").unwrap();
+    assert_eq!(r.title, "Arreglar sync x");
+    assert!(r.line().contains("[Arreglar sync x](t3-thread://v1/t1)"));
+    assert_eq!(v::ThreadRow::parse(&r.line()), Some(r.clone()));
+    for skip in [json!({"id":"t","title":"","updatedAt":1}), json!({"id":"t","title":"New thread","updatedAt":1}), json!({"id":"t","title":"x","updatedAt":1,"parentThreadId":"p"}), json!({"id":"t","title":"x","updatedAt":1,"working":true})] {
+        assert!(v::ThreadRow::from_thread(&skip, "node").is_none(), "{skip}");
+    }
+    // One row per thread, newest first, at most MAX_THREADS.
+    let doc = v::upsert_threads("", "ot3", &[row("a", "2026-10-20 10:00", "node"), row("b", "2026-10-22 10:00", "omarchy")]);
+    assert!(doc.starts_with("---\nproject: ot3\n") && doc.find("t3-thread://v1/b").unwrap() < doc.find("t3-thread://v1/a").unwrap());
+    let again = v::upsert_threads(&doc, "ot3", &[row("a", "2026-10-23 09:00", "node")]);
+    assert_eq!(again.matches("t3-thread://v1/a").count(), 1);
+    assert!(again.find("t3-thread://v1/a").unwrap() < again.find("t3-thread://v1/b").unwrap());
+    // An older report does not overwrite a newer row.
+    assert_eq!(v::upsert_threads(&again, "ot3", &[row("a", "2026-10-01 00:00", "x")]), again);
+    let many: Vec<_> = (0..40).map(|i| row(&format!("n{i:02}"), &format!("2026-09-{:02} 10:00", i % 28 + 1), "node")).collect();
+    let full = v::upsert_threads(&again, "ot3", &many);
+    assert_eq!(full.matches("t3-thread://v1/").count(), v::MAX_THREADS);
+    // Text outside the table is kept.
+    let mine = format!("{}\nNota mía.\n", full);
+    assert!(v::upsert_threads(&mine, "ot3", &[row("z", "2027-01-01 00:00", "node")]).ends_with("Nota mía.\n"));
+}
+
+#[test]
+fn concurrent_registry_writes_from_two_computers_merge_without_conflict() {
+    let root = root("registry");
+    let url = bare(&root);
+    let (_, a) = device_with_vault(&root, "a", &url);
+    let b_paths = Paths::under(&root.join("b"));
+    setup(&b_paths, &url);
+    let b = b_paths.home.join("Obsidian/Dev");
+    v::pull(&a).unwrap();
+    assert!(v::record_threads(&a, "ot3", &[row("from-a", "2026-10-23 10:00", "a")]).unwrap());
+    v::commit_push(&a, "a").unwrap();
+    assert!(v::record_threads(&b, "ot3", &[row("from-b", "2026-10-23 11:00", "b")]).unwrap());
+    // Same file, same lines touched on both sides: rows are merged, the push goes through.
+    assert_eq!(v::commit_push(&b, "b").unwrap()["pushed"], true);
+    let merged = fs::read_to_string(b.join("Projects/ot3/Threads.md")).unwrap();
+    assert!(merged.contains("t3-thread://v1/from-a") && merged.contains("t3-thread://v1/from-b"), "{merged}");
+    assert!(!merged.contains("<<<<<<<"));
+}
+
+#[test]
+fn search_finds_notes_and_thread_links_without_loading_everything() {
+    let root = root("search");
+    let vault = root.join("vault");
+    v::create(&vault, None, None).unwrap();
+    fs::create_dir_all(vault.join("Projects/ot3")).unwrap();
+    fs::write(vault.join("Projects/ot3/MEMORY.md"), "# ot3\n\n## Decisiones\n- 2026-10-23 — Usar OmaBridge para SSH.\n").unwrap();
+    fs::write(vault.join("Projects/ot3/Threads.md"), "| 2026-10-23 10:00 | node | [Sync OmaBridge](t3-thread://v1/abc-1) | done |\n").unwrap();
+    fs::create_dir_all(vault.join(".obsidian")).unwrap();
+    fs::write(vault.join(".obsidian/omabridge.md"), "omabridge").unwrap();
+    let hits = v::search(&vault, "OmaBridge ot3", 10);
+    let files: Vec<&str> = hits.iter().map(|h| h["file"].as_str().unwrap()).collect();
+    assert!(files.contains(&"Projects/ot3/MEMORY.md") && files.contains(&"Projects/ot3/Threads.md"), "{files:?}");
+    assert!(!files.iter().any(|f| f.starts_with(".obsidian")));
+    let thread = hits.iter().find(|h| h["file"] == "Projects/ot3/Threads.md").unwrap();
+    assert_eq!(thread["thread"], "abc-1");
+    assert!(v::search(&vault, "nada-de-esto", 10).is_empty());
+    assert!(v::search(&vault, "   ", 10).is_empty());
+}
+
+#[test]
+fn host_instruction_state_is_reported() {
+    let current = format!("# x\n{}", v::block_for("~/Obsidian/Dev"));
+    assert_eq!(v::block_state(&current, "~/Obsidian/Dev"), "current");
+    assert_eq!(v::block_state(&current, "~/Notes/Dev"), "outdated");
+    assert_eq!(v::block_state("# nada", "~/Obsidian/Dev"), "missing");
+    let host = FakeHost::new(&[("~/.claude/CLAUDE.md", &current), ("~/Obsidian/Dev/AGENTS.md", "x")]);
+    let report = v::host_vaults(&host, None);
+    assert_eq!(report["vaults"][0]["instructions"], json!({"claude":"current","codex":"missing"}));
+    // The protocol asks for targeted searches, never the whole vault.
+    assert!(v::block_for("~/Obsidian/Dev").contains("rg -n -i") && v::block_for("~/Obsidian/Dev").contains("Threads.md"));
+}
+
+#[test]
+fn settled_threads_are_recorded_with_the_push() {
+    let config = json!({"enabled":true,"remote":{"url":"x"},"device":{"name":"mbp-m2"},"sync":{"pullOnOpen":false,"pullOnThreadStart":false,"pushOnSettle":true,"recordThreads":true},"projects":{}});
+    let thread = |working: bool| json!({"key":"local/t9","id":"t9","environmentId":"local","project":"ot3","title":"Memoria","status":"done","updatedAt":1792800000000_i64,"parentThreadId":null,"working":working});
+    let snap = |working: bool| json!({"threads":[thread(working)],"projects":[{"key":"local/p","id":"p","environmentId":"local","title":"ot3","workspaceRoot":"/w/omarchy-t3-code"}],"environments":[{"id":"local","name":"Local"}]});
+    let mut a = v::Automation::default();
+    let t0 = Instant::now();
+    a.observe(&config, &snap(true), t0);
+    assert!(a.observe(&config, &snap(false), t0 + Duration::from_secs(5)).is_empty());
+    let tasks = a.observe(&config, &snap(false), t0 + Duration::from_secs(40));
+    match tasks.as_slice() {
+        [Task::Record { slug, row }, Task::Push(p)] => {
+            assert_eq!((slug.as_str(), row.machine.as_str(), row.id.as_str(), p.as_str()), ("omarchy-t3-code", "mbp-m2", "t9", "omarchy-t3-code"));
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn an_outdated_local_block_is_renewed_but_a_missing_one_is_not_added() {
+    let root = root("refresh");
+    let url = bare(&root);
+    device_with_vault(&root, "node", &url);
+    let mac = Paths::under(&root.join("mac"));
+    setup(&mac, &url);
+    let file = mac.home.join(".claude/CLAUDE.md");
+    let old = fs::read_to_string(&file).unwrap().replace("Nunca cargar el vault completo.", "texto viejo");
+    fs::write(&file, format!("mío\n{old}")).unwrap();
+    let config = v::load_config(&mac);
+    assert!(v::refresh_instructions(&mac, &config));
+    let renewed = fs::read_to_string(&file).unwrap();
+    assert!(renewed.starts_with("mío\n") && renewed.contains("Nunca cargar el vault completo.") && !renewed.contains("texto viejo"));
+    assert!(!v::refresh_instructions(&mac, &config), "nothing to do when current");
+    // Removed by the person: not added back behind their back.
+    fs::write(&file, "mío\n").unwrap();
+    fs::remove_file(mac.home.join(".codex/AGENTS.md")).unwrap();
+    assert!(!v::refresh_instructions(&mac, &config));
+    assert_eq!(fs::read_to_string(&file).unwrap(), "mío\n");
+}
