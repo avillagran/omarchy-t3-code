@@ -1,4 +1,5 @@
 mod auto_compact;
+mod server_update;
 mod document_session;
 mod live;
 mod shell_watch;
@@ -230,6 +231,7 @@ fn watch(client: Client) -> Result<()> {
     emit("ui-state",ui_state::load());
     let (tx, rx) = mpsc::channel::<Value>();
     let compactor=auto_compact::Control::new(tx.clone());
+    let updater=server_update::Control::new();
     let (action_tx, action_rx) = mpsc::channel::<Value>();
     let input_action_tx=action_tx.clone();
     let mut document_manager=document_session::Pool::new();
@@ -375,6 +377,8 @@ fn watch(client: Client) -> Result<()> {
                     let c=input_client.clone();
                     std::thread::spawn(move||{let result=disk_space::report(&c,&ui_state::load());BUSY.store(false,std::sync::atomic::Ordering::SeqCst);emit("action",json!({"op":"disk-report","requestId":v["requestId"],"result":result}));});continue
                 }
+                // A server update takes minutes and restarts that server.
+                if v["op"]=="server-update"{std::thread::spawn(move||{let result=server_update::update_now(text(&v,"environment"));emit("action",json!({"op":v["op"],"environment":v["environment"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
                 if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-omabridge"|"omabridge-manage"|"omabridge-install-prompt"|"omabridge-invite-handoff"|"connection-route"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"|"worktree-setup-cancel"|"otlp-check"|"workflow-script"|"workflow-stop"|"thread-details-read"|"thread-details-open-editor"|"provider-update"|"failure-context"|"tool-failure"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
@@ -443,6 +447,7 @@ fn watch(client: Client) -> Result<()> {
                     let _ = shell_environments.send(d["environments"].as_array().into_iter().flatten().map(|e|text(e,"id").to_string()).collect());
                     let _ = notify(&d);
                     compactor.observe(&d);
+                    updater.observe(&d);
                     let mut before = state.clone();
                     let mut after = d.clone();
                     if let Some(o) = before.as_object_mut() {
