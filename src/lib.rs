@@ -447,7 +447,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         let mut sorting=p["thread"].as_object().cloned().map(Value::Object).unwrap_or_else(||json!({}));
         sorting["latestRun"]=p["runs"].as_array().and_then(|r|r.last()).cloned().unwrap_or(Value::Null);
         if sorting["latestRun"].is_object()&&sorting["latestRun"].get("requestedAt").is_none(){sorting["latestRun"]["requestedAt"]=sorting["latestRun"]["createdAt"].clone();}
-        let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status,"providerInstanceId":p["thread"]["providerInstanceId"],"interactionMode":p["thread"]["interactionMode"],"latestRunSettled":plan_workflow::latest_run_settled(p)});
+        let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status,"latestRunId":p["runs"].as_array().and_then(|r|r.last()).map(|r|r["id"].clone()).unwrap_or(Value::Null),"providerInstanceId":p["thread"]["providerInstanceId"],"interactionMode":p["thread"]["interactionMode"],"latestRunSettled":plan_workflow::latest_run_settled(p)});
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
         for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
         thread_state["contextWindow"]=context_window(p);
@@ -717,6 +717,8 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         let mut row=json!({"id":id,"environmentId":env,"key":format!("{env}/{id}"),"title":t["title"],"project":projects.get(project).copied().unwrap_or(project),"status":status,"working":working,"pending":!reason.is_empty()&&!snoozed,"reason":if reason.is_empty(){Value::Null}else{json!(reason)},"snoozed":snoozed,"updatedAt":epoch(&t["updatedAt"]),"lastVisitedAt":epoch(&t["lastVisitedAt"]),"usageLimitResetAt":epoch(&t["usageLimitResetAt"]),"latestRunCompletedAt":completed,"revision":revision,"parentThreadId":t["lineage"]["parentThreadId"]});
         // Waiting on its own agents or background work, not on the user.
         if !working && (background || blocked_on_wait) {row["backgroundWaiting"]=json!(true);}
+        // The screen reader announcer ties a turn to its run.
+        if let Some(run)=t["latestRunId"].as_str().filter(|r|!r.is_empty()){row["latestRunId"]=json!(run);}
         if let Some(relationship)=t["lineage"]["relationshipToParent"].as_str(){row["relationshipToParent"]=json!(relationship);}
         // Match native isProviderNativeSubagentThread; MCP children remain writable.
         if t["lineage"]["relationshipToParent"]=="subagent" && t["creationSource"]=="provider" {row["providerSubagent"]=json!(true);}
