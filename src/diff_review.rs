@@ -196,10 +196,7 @@ pub fn execute(e:&crate::Environment,input:&Value)->crate::Result<Value>{
             let whitespace=match input.get("ignoreWhitespace"){None=>true,Some(v)=>v.as_bool().ok_or("invalid_diff_option")?};
             let mut payload=json!({"threadId":thread,"toTurnCount":to,"ignoreWhitespace":whitespace});
             let tag=if from==0{"orchestration.getFullThreadDiff"}else{payload["fromTurnCount"]=json!(from);"orchestration.getTurnDiff"};
-            if let Some(error)=&e.connection_error{return Err(error.clone())}
-            let connection=if let Some(c)=&e.connection{c.as_ref().clone()}else{
-                crate::protocol::Connection::new(&e.base_url,None,crate::protocol::Credential::bearer(&crate::environment_token(e,false)?)?)?
-            };
+            let connection=e.connection(false)?;
             let result=connection.rpc(tag,payload.clone())?;
             if result["threadId"]!=thread{return Err("invalid_diff_thread".into())}
             if result["fromTurnCount"].as_u64()!=Some(from)||result["toTurnCount"].as_u64()!=Some(to){return Err("invalid_diff_range".into())}

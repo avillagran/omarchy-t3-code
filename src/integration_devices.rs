@@ -15,19 +15,6 @@ static OPERATIONS: OnceLock<Mutex<HashMap<String, Arc<Mutex<()>>>>> = OnceLock::
 fn views() -> &'static Mutex<HashMap<String, Value>> {
     VIEWS.get_or_init(Default::default)
 }
-pub fn connection(e: &Environment) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&crate::environment_token(e, true)?)?,
-    )
-}
 fn roles(c: &protocol::Connection) -> Result<Value> {
     let s = c.request_json("GET", "/api/auth/session", None, false)?;
     let scopes = s
@@ -276,7 +263,7 @@ fn remember(e: &Environment, permissions: Value, settings: Value, state: Value) 
     Ok(out)
 }
 pub fn read(e: &Environment) -> Result<Value> {
-    let c = connection(e)?;
+    let c = e.connection(true)?;
     let permissions = roles(&c)?;
     let settings = settings(&c.rpc("server.getSettings", json!({}))?)?;
     let state = state(&c)?;
@@ -288,7 +275,7 @@ pub fn watch(
     cancel: impl Fn() -> bool,
     mut receive: impl FnMut(&str, Value) -> Result<()>,
 ) -> Result<()> {
-    let c = connection(e)?;
+    let c = e.connection(true)?;
     roles(&c)?;
     let origin = digest(&json!(e.base_url));
     subscribe_state(&c, cancel, |state| receive(&origin, state))
@@ -378,7 +365,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
             .clone()
     };
     let _guard = lock.try_lock().map_err(|_| "device_busy")?;
-    let c = connection(e)?;
+    let c = e.connection(true)?;
     let permissions = roles(&c)?;
     let raw = settings(&c.rpc("server.getSettings", json!({}))?)?;
     if expected["settingsDigest"] != digest(&raw) {

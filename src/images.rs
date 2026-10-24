@@ -12,7 +12,7 @@ pub fn load(input:&Value)->Result<Value>{
  let cached=!workspace && std::fs::symlink_metadata(&file).is_ok_and(|m|m.is_file()&&m.uid()==unsafe{libc::geteuid()}&&m.mode()&0o077==0&&m.len()>0&&m.len()<=10*1024*1024);
  if !cached{
   let e=environments()?.into_iter().find(|e|e.id==env).ok_or("unknown_environment")?;
-  let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,true)?)?)?};
+  let c=e.connection(true)?;
   let bytes=if workspace{let source=text(a,"source");if source.starts_with("https://")||source.starts_with("http://")||source.starts_with("data:"){direct(source)?}else{let path=markdown_images::workspace_path(source)?;c.media_image(text(input,"thread"),&path)?.0}}else{c.attachment_image(id,text(a,"name"),mime)?};
   let tmp=root.join(format!(".{}.tmp",uuid::Uuid::new_v4()));let mut f=std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(&tmp).map_err(|_|"image_cache_failed")?;if f.write_all(&bytes).and_then(|_|std::fs::rename(&tmp,&file)).is_err(){let _=std::fs::remove_file(tmp);return Err("image_cache_failed".into())}
   // Keep at most128 images /128MiB. Never inspect paths outside this private cache.

@@ -1,6 +1,6 @@
 //! Shared native Git/script transport, trusted read cache and durable non-replaying journal.
 use crate::{
-    git_controls, json, protocol, read_json, save_json, text, xdg, Client, Environment, Result,
+    git_controls, json, read_json, save_json, text, xdg, Client, Environment, Result,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -15,19 +15,6 @@ use std::{
 static VIEWS: OnceLock<Mutex<HashMap<String, Value>>> = OnceLock::new();
 fn cache() -> &'static Mutex<HashMap<String, Value>> {
     VIEWS.get_or_init(Default::default)
-}
-fn connection(e: &Environment) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&crate::environment_token(e, true)?)?,
-    )
 }
 fn scopes(e: &Environment) -> Result<Value> {
     let session = Client::new()?.get(e, "/api/auth/session", false)?;
@@ -202,7 +189,7 @@ pub fn action(e: &Environment, input: &Value) -> Result<Value> {
     let mut r = json!({"scope":scope,"intent":intent,"actionId":id,"operation":operation,"plan":plan,"state":"pending","phase":"","error":"","result":null,"terminalId":null});
     // Save exact intent and all native steps under the same checkout lock before sending.
     save(scope, &r)?;
-    let c = connection(e)?;
+    let c = e.connection(true)?;
     let outcome = (|| -> Result<()> {
         for step in plan["steps"].as_array().ok_or("invalid_git_plan")? {
             let tag = text(step, "tag");

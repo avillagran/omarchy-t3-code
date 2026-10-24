@@ -107,16 +107,7 @@ fn favicon(project: &Value, environment: &str) -> Option<DynamicImage> {
         .ok()?
         .into_iter()
         .find(|e| e.id == environment)?;
-    let connection = if let Some(c) = e.connection {
-        c.as_ref().clone()
-    } else {
-        protocol::Connection::new(
-            &e.base_url,
-            None,
-            protocol::Credential::bearer(&environment_token(&e, false).ok()?).ok()?,
-        )
-        .ok()?
-    };
+    let connection = e.connection(false).ok()?;
     let grant = connection
         .rpc(
             "assets.createUrl",

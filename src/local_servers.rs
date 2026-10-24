@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::{cell::Cell, time::{Duration, Instant}};
 
 pub fn read(e: &Environment) -> Result<Value> {
-    let c = crate::integration_devices::connection(e)?;
+    let c = e.connection(true)?;
     let done = Cell::new(false);
     let started = Instant::now();
     let mut list = Value::Null;

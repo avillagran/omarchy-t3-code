@@ -133,19 +133,6 @@ pub fn apply(state: &mut Value, event: &Value) -> bool {
     }
     true
 }
-pub fn connection(e: &Environment) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&crate::environment_token(e, false)?)?,
-    )
-}
 pub fn authorize(c: &protocol::Connection) -> Result<()> {
     let session = c.request_json("GET", "/api/auth/session", None, false)?;
     if session["authenticated"] == true
@@ -165,7 +152,7 @@ pub fn subscribe(
     cancel: impl Fn() -> bool,
     mut receive: impl FnMut(Option<Value>) -> Result<()>,
 ) -> Result<()> {
-    let c = connection(e)?;
+    let c = e.connection(false)?;
     authorize(&c)?;
     c.subscribe("subscribeServerConfig",json!({"usageLimitSources":true}),cancel,|event| {
         // Unknown native events (including settings) never enter the observation.

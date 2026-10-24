@@ -82,7 +82,7 @@ impl Manager {
                 std::thread::spawn(move || {
                     let result = (|| -> Result<Value> {
                         let env = crate::env_by_id(&target.environment)?;
-                        let c = integration_devices::connection(&env)?;
+                        let c = env.connection(true)?;
                         if detail {
                             return c.rpc_with_timeout("device.detail", json!({"hostId":target.host_id,"deviceId":device}), Duration::from_secs(20));
                         }
@@ -108,7 +108,7 @@ impl Manager {
                     std::thread::spawn(move || {
                         let result = (|| -> Result<Value> {
                             let env = crate::env_by_id(&target.environment)?;
-                            let c = integration_devices::connection(&env)?;
+                            let c = env.connection(true)?;
                             c.rpc_with_timeout(
                                 "device.close",
                                 json!({"threadId":target.thread,"hostId":target.host_id,"deviceId":target.device_id,"shutdown":shutdown}),
@@ -272,7 +272,7 @@ fn start(target: Target, open: bool) -> Session {
 
 fn run(target: &Target, open: bool, cancel: &Arc<AtomicBool>, inputs: mpsc::Receiver<Value>, decoder: Arc<Mutex<Option<Child>>>, device: &Arc<Mutex<String>>) -> Result<()> {
     let env = crate::env_by_id(&target.environment)?;
-    let c = integration_devices::connection(&env)?;
+    let c = env.connection(true)?;
     let platform = match target.platform { Platform::Ios => "ios", Platform::Android => "android" };
     let mut screen_device = target.device_id.clone();
     if open {

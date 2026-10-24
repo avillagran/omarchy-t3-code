@@ -3,19 +3,6 @@ use crate::{git_controls, json, protocol, text, Client, Environment, Result};
 use serde_json::Value;
 use std::collections::HashSet;
 
-pub(crate) fn connection(e: &Environment) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&crate::environment_token(e, false)?)?,
-    )
-}
 pub(crate) fn scope(c: &protocol::Connection, input: &Value) -> Result<Value> {
     git_controls::scope(
         &c.request_json("GET", "/api/orchestration/shell", None, true)?,
@@ -215,7 +202,7 @@ pub fn refs(e: &Environment, input: &Value) -> Result<Value> {
     }
     let payload = refs_payload(input)?;
     authorize(e, "orchestration:read")?;
-    let c = connection(e)?;
+    let c = e.connection(false)?;
     let scoped = scope(&c, input)?;
     let mut result = refs_present(&c.rpc("vcs.listRefs", payload)?, input)?;
     if scope(&c, input)? != scoped {
@@ -230,7 +217,7 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
     if input["environment"] != e.id {
         return Err("git_scope_changed".into());
     }
-    let c = connection(e)?;
+    let c = e.connection(false)?;
     authorize(e, "filesystem:read")?;
     let scoped = scope(&c, input)?;
     let mut payload = option(input)?;

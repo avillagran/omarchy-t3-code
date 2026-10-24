@@ -239,7 +239,8 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
             }
             text(&access, "access_token").to_string()
         };
-        let conn = protocol::Connection::new(&base, None, protocol::Credential::bearer(&token)?)?;
+        // Not an Environment yet: the pairing is checked with the token just exchanged.
+        let conn = crate::t3_connection(&base, protocol::Credential::bearer(&token)?)?;
         conn.request_json("GET", "/api/auth/session", None, false)?;
         let label = if name.is_empty() {
             text(&descriptor, "label")

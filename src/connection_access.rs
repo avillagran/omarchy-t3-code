@@ -37,9 +37,10 @@ fn local_credential(path:&std::path::Path)->Result<Zeroizing<String>>{
 }
 fn connection(e: &Environment) -> Result<protocol::Connection> {
     if let Some(error)=&e.connection_error {return Err(error.clone())}
-    if e.id=="local"{return protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(local_credential(&e.token_file)?.trim())?)}
-    if let Some(c)=&e.connection {return Ok(c.as_ref().clone())}
-    protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)
+    // The local server is administered with a session the T3 CLI issues on the spot, not with
+    // the stored environment token, so it is the one connection with its own credential.
+    if e.id=="local"{return t3_connection(&e.base_url,protocol::Credential::bearer(local_credential(&e.token_file)?.trim())?)}
+    e.connection(true)
 }
 fn request(c:&protocol::Connection,method:&str,path:&str,body:Option<&Value>)->Result<Value>{c.request_json(method,path,body,false)}
 fn scopes(session:&Value)->Vec<String>{session.get("permissions").or_else(||session.get("scopes")).and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect()}
