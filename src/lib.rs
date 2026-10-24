@@ -6,7 +6,7 @@ pub mod markdown_images;
 pub mod documents;
 pub mod qml_preview;
 pub mod scroll;
-pub mod message_text;
+pub use t3_protocol::message_text;
 pub mod desktop_open;
 pub mod terminal;
 pub mod clipboard;
@@ -25,15 +25,15 @@ pub mod connection_github;
 pub mod native_settings;
 pub mod provider_instances;
 pub mod scoped_settings;
-pub mod plan_workflow;
-pub mod checkpoint_revert;
+pub use t3_protocol::plan_workflow;
+pub use t3_protocol::checkpoint_revert;
 pub mod checkpoint_journal;
 pub mod checkpoint_operations;
 pub mod drafts;
-pub mod prompt_recall;
+pub use t3_protocol::prompt_recall;
 pub mod git_controls;
 pub mod branch_picker;
-pub mod latex;
+pub use t3_protocol::latex;
 pub mod thread_search;
 pub mod pull_request_actions;
 pub mod usage_summary;
@@ -50,7 +50,7 @@ pub mod diff_review;
 pub mod working_review;
 pub mod review_document;
 pub mod archive_management;
-pub mod bounded_snapshot;
+pub use t3_protocol::bounded_snapshot;
 pub mod keybinding_settings;
 pub mod third_party_licenses;
 pub mod integration_devices;
@@ -69,19 +69,13 @@ pub mod reconnect;
 /// most `limit` bytes. The grant authorizes the GET itself, as for images,
 /// so no credential header is needed.
 pub fn attachment_bytes(e:&Environment,id:&str,name:&str,mime:&str,limit:u64)->Result<Vec<u8>>{
- use std::io::Read;
- if id.is_empty()||id.len()>256||name.len()>512||mime.len()>128{return Err("invalid_attachment".into())}
- let grant=write::rpc(e,"assets.createUrl",json!({"resource":{"_tag":"attachment","attachmentId":id,"fileName":name,"mimeType":mime,"disposition":"inline"}}))?;
- let relative=grant["relativeUrl"].as_str().ok_or("invalid_asset_url")?;
- let base=Url::parse(e.base_url.trim_end_matches('/')).map_err(|_|"invalid_endpoint")?;
- let url=base.join(relative).map_err(|_|"invalid_asset_url")?;
- if url.origin()!=base.origin()||!url.path().starts_with("/api/assets/"){return Err("invalid_asset_url".into())}
- let http=reqwest::blocking::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(120)).build().map_err(|_|"attachment_unreachable")?;
- let response=http.get(url).send().map_err(|_|"attachment_unreachable")?;
- if !response.status().is_success(){return Err("attachment_unavailable".into())}
- let mut bytes=vec![];response.take(limit+1).read_to_end(&mut bytes).map_err(|_|"attachment_unavailable")?;
- if bytes.len() as u64>limit{return Err("attachment_too_large".into())}
- Ok(bytes)
+ let resource=protocol::assets::attachment_resource(id,name,mime,true)?;
+ let options=protocol::AssetOptions::new(limit).with_timeout(Duration::from_secs(120));
+ e.connection(true)?.asset_bytes_with(resource,&options).map(|asset|asset.bytes).map_err(|error|asset_error(error,"attachment_"))
+}
+/// The library reports signed reads as `asset_*`; ot3's callers and QML name them per use.
+pub(crate) fn asset_error(error:String,prefix:&str)->String{
+ match error.strip_prefix("asset_"){Some(rest)=>format!("{prefix}{rest}"),None=>error}
 }
 
 
@@ -89,6 +83,7 @@ pub use t3_protocol as protocol;
 pub use connections::{read_catalog, t3_home, refresh_connections, stale_ot3_sessions};
 pub use desktop_cloud::{check_native_session,check_native_environment};
 use chrono::{DateTime, Utc};
+// Root imports that modules receive through `use crate::*`.
 use reqwest::blocking::Client as Http;
 /// The URL type every module parses with; modules name it through this re-export only.
 pub use reqwest::Url;
@@ -106,43 +101,7 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, String>;
 pub const MAX_BYTES: u64 = 8 * 1024 * 1024;
-pub fn text<'a>(v: &'a Value, k: &str) -> &'a str {
-    v[k].as_str().unwrap_or("")
-}
-pub fn truth(v: &Value) -> bool {
-    match v {
-        Value::Null => false,
-        Value::Bool(b) => *b,
-        Value::String(s) => !s.is_empty(),
-        Value::Array(a) => !a.is_empty(),
-        Value::Object(o) => !o.is_empty(),
-        Value::Number(n) => n.as_f64().unwrap_or(0.) != 0.,
-    }
-}
-pub fn valid_id(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 2048
-        && s.as_bytes()[0].is_ascii_alphanumeric()
-        && s.bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"_:%.-".contains(&b))
-}
-pub fn epoch(v: &Value) -> i64 {
-    if let Some(s) = v.as_str() {
-        return DateTime::parse_from_rfc3339(s)
-            .map(|d| d.timestamp_millis().max(0))
-            .unwrap_or(0);
-    }
-    v.as_f64()
-        .filter(|n| n.is_finite() && *n >= 0.)
-        .map(|n| {
-            if n < 100_000_000_000. {
-                (n * 1000.) as i64
-            } else {
-                n as i64
-            }
-        })
-        .unwrap_or(0)
-}
+pub use t3_protocol::util::{epoch, text, truth, valid_id};
 pub fn rendered_markdown(input:&str)->String{markdown_with_code_actions(input,None)}
 /// T3's mathRenderingEnabled client setting (off by default), re-read when the file changes.
 pub fn math_enabled()->bool{
@@ -386,20 +345,15 @@ impl Environment {
         t3_connection(&self.base_url, protocol::Credential::bearer(&environment_token(self, write)?)?)
     }
 }
-/// Builds a bearer connection over one process-wide HTTP pool with the policy of
-/// `protocol::Connection::new` (12 s per request, no proxy, no redirects), so calls reuse
-/// keep-alive connections instead of each opening its own pool.
+/// Builds a bearer connection over one process-wide HTTP pool with the library's default
+/// policy (`ConnectionOptions::default()`: 12 s per request, no proxy, no redirects), so calls
+/// reuse keep-alive connections instead of each opening its own pool.
 pub(crate) fn t3_connection(base: &str, credential: protocol::Credential) -> Result<protocol::Connection> {
     static HTTP: std::sync::OnceLock<Http> = std::sync::OnceLock::new();
     let http = match HTTP.get() {
         Some(http) => http,
         None => {
-            let http = Http::builder()
-                .no_proxy()
-                .redirect(reqwest::redirect::Policy::none())
-                .timeout(Duration::from_secs(12))
-                .build()
-                .map_err(|_| "local_error")?;
+            let http = protocol::ConnectionOptions::default().build_http_client()?;
             HTTP.get_or_init(|| http)
         }
     };
@@ -420,22 +374,23 @@ pub fn validate_base(base: &str) -> Result<()> {
     }
     Ok(())
 }
+/// HTTP policy of `Client` reads: 8 s per request, 3 s to connect, idle connections
+/// kept 90 s, 8 MiB per response (64 MiB for bounded thread snapshots).
+pub fn read_options() -> protocol::ConnectionOptions {
+    protocol::ConnectionOptions::default()
+        .with_request_timeout(Duration::from_secs(8))
+        .with_connect_timeout(Some(Duration::from_secs(3)))
+        .with_pool_idle_timeout(Some(Duration::from_secs(90)))
+}
+/// T3 reads with an environment's read token over one HTTP pool (`read_options`).
+/// Third-party HTTP goes through `ExternalHttp` instead.
 #[derive(Clone)]
 pub struct Client {
     http: Http,
 }
 impl Client {
     pub fn new() -> Result<Self> {
-        Ok(Self {
-            http: Http::builder()
-                .timeout(Duration::from_secs(8))
-                .connect_timeout(Duration::from_secs(3))
-                .pool_idle_timeout(Duration::from_secs(90))
-                .redirect(reqwest::redirect::Policy::none())
-                .no_proxy()
-                .build()
-                .map_err(|_| "local_error")?,
-        })
+        Ok(Self { http: read_options().build_http_client()? })
     }
     /// The process-wide client, so every read reuses one HTTP pool. Clones share it.
     pub fn shared() -> Result<Self> {
@@ -444,83 +399,21 @@ impl Client {
         let client = Self::new()?;
         Ok(SHARED.get_or_init(|| client).clone())
     }
-    pub fn fetch(&self, url: &str, token: &str, protocol: bool) -> Result<Value> {
-        self.fetch_headers(url, token, protocol, &[])
-    }
-    pub fn fetch_headers(
-        &self,
-        url: &str,
-        token: &str,
-        protocol: bool,
-        headers: &[(&str, &str)],
-    ) -> Result<Value> {
-        let mut req = self
-            .http
-            .get(url)
-            .bearer_auth(token)
-            .header("Accept", "application/json")
-            .header("Accept-Encoding", "identity");
-        for (name, value) in headers {
-            req = req.header(*name, *value);
-        }
-        if protocol {
-            req = req.header("x-t3-orchestration-protocol", "2");
-        }
-        let resp = req.send().map_err(|_| "unreachable")?;
-        let status = resp.status();
-        if [401, 403].contains(&status.as_u16()) {
-            return Err("unauthorized".into());
-        }
-        if !status.is_success() {
-            return Err(format!("http_{}", status.as_u16()));
-        }
-        if resp
-            .headers()
-            .get("content-type")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("")
-            .split(';')
-            .next()
-            .unwrap_or("")
-            .trim()
-            .to_lowercase()
-            != "application/json"
-        {
-            return Err("not_json".into());
-        }
-        if !["identity", ""].contains(
-            &resp
-                .headers()
-                .get("content-encoding")
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("identity"),
-        ) {
-            return Err("unsupported_encoding".into());
-        }
-        let mut bytes = vec![];
-        resp.take(MAX_BYTES + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|_| "unreachable")?;
-        if bytes.len() as u64 > MAX_BYTES {
-            return Err("too_large".into());
-        }
-        serde_json::from_slice(&bytes).map_err(|_| "malformed".into())
-    }
-    pub fn get(&self, e: &Environment, path: &str, protocol: bool) -> Result<Value> {
+    /// The read connection to `e`: its relay connection when it has one, else the read
+    /// token over this client's pool.
+    pub fn connection(&self, e: &Environment) -> Result<protocol::Connection> {
         if let Some(error) = &e.connection_error {return Err(error.clone())}
-        if let Some(connection) = &e.connection {return connection.request_json("GET",path,None,protocol)}
+        if let Some(connection) = &e.connection {return Ok(connection.as_ref().clone())}
         validate_base(&e.base_url)?;
         protocol::Connection::with_http_client(self.http.clone(), &e.base_url, None,
-            protocol::Credential::bearer(&environment_token(e,false)?)?)?.request_json("GET",path,None,protocol)
+            protocol::Credential::bearer(&environment_token(e,false)?)?)
+    }
+    pub fn get(&self, e: &Environment, path: &str, protocol: bool) -> Result<Value> {
+        self.connection(e)?.request_json("GET", path, None, protocol)
     }
     pub fn bounded_thread(&self, e: &Environment, id: &str) -> Result<Value> {
         if !valid_id(id) { return Err("invalid_id".into()); }
-        let mut u = Url::parse(e.base_url.trim_end_matches('/')).map_err(|_| "invalid_endpoint")?;
-        u.path_segments_mut().map_err(|_| "invalid_endpoint")?.extend(["api", "orchestration", "threads", id, "bounded"]);
-        // Native opt-in removes duplicated local timeline items without dropping history.
-        u.query_pairs_mut().append_pair("compactTurnItems", "1");
-        let path = format!("{}?{}", u.path(), u.query().unwrap());
-        bounded_snapshot::restore(self.get(e, &path, true)?)
+        self.connection(e)?.bounded_thread(id)
     }
     pub fn messages(&self, e: &Environment, id: &str) -> Result<Value> {
         normalize_messages(&self.bounded_thread(e, id)?)
@@ -1103,7 +996,7 @@ pub mod browser_cookies;
 
 pub mod browser_import;
 
-pub mod storage_settings;
+pub use t3_protocol::storage_settings;
 pub mod journal_vault;
 #[cfg(test)]
 mod context_window_tests {

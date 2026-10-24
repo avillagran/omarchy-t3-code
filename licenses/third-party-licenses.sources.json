@@ -1,7 +1,7 @@
 {
   "target": "aarch64-unknown-linux-gnu",
   "rustcVersion": "1.99.1",
-  "cargoLockSha256": "d68b526848b3be57f9673d2e64f651c86ea2147cd29c059a7e6d1bef7c64f12a",
+  "cargoLockSha256": "aa32f10f5f0b66818726413bb43cec779e7a6e6a5ebc9fc00ff8daf33cc8920c",
   "dictateCargoLockSha256": "f0e95e8044e00721d91dce3fe8e540121add2f93060b650b8795c81a529b51fd",
   "nativeHelperSha256": "1d9e49bea5c4fa11adb003413024fa14d70a13e8f1bb3934361228e31d5a1548",
   "inputs": {
@@ -268,7 +268,7 @@
     "cargo/syn@3.0.9/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "cargo/sync_wrapper@1.0.2/LICENSE": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     "cargo/synstructure@0.14.0/LICENSE": "219920e865eee70b7dcfc948a86b099e7f4fe2de01bcca2ca9a20c0a033f2b59",
-    "cargo/t3-protocol@0.2.0/LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
+    "cargo/t3-protocol@0.3.0/LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
     "cargo/thiserror@2.0.21/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
     "cargo/thiserror@2.0.21/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "cargo/thiserror-impl@2.0.21/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
@@ -392,5 +392,5 @@
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe"
   },
   "entries": 263,
-  "outputSha256": "a8104f8dc3124c14c09273f45acc5e1401ffa22cbe00d4868406617b78e59bfa"
+  "outputSha256": "992d8113484c524ec4cce8d41f4f54c683290bb7f186b66d9b35b307e6457b0d"
 }

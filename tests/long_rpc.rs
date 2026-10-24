@@ -217,20 +217,38 @@ fn rejections_keep_the_servers_reason_but_no_other_cause_data() {
 #[test]
 fn vendored_protocol_base_matches_the_existing_pinned_dependency_exactly() {
     use sha2::{Digest, Sha256};
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("vendor/t3-protocol");
+    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let root = manifest.join("vendor/t3-protocol");
     let provenance: Value =
         serde_json::from_slice(&std::fs::read(root.join("UPSTREAM.json")).unwrap()).unwrap();
-    assert_eq!(
-        provenance["revision"],
-        "1a616ab6ccb31b689f41ff6f74915e69c780b1a3"
-    );
-    for (name, expected) in provenance["upstreamFiles"].as_object().unwrap() {
-        let mut bytes = std::fs::read(root.join(name)).unwrap();
-        if name == "src/lib.rs" {
-            let suffix = b"\nmod long_rpc;\n";
-            assert!(bytes.ends_with(suffix));
-            bytes.truncate(bytes.len() - suffix.len());
+    let revision = provenance["revision"].as_str().unwrap();
+    // The vendor is the pinned revision, byte for byte; local changes go to the library.
+    let cargo = std::fs::read_to_string(manifest.join("Cargo.toml")).unwrap();
+    assert!(cargo.contains(&format!("rev = \"{revision}\"")));
+    assert_eq!(provenance["localChanges"], json!([]));
+    let files = provenance["upstreamFiles"].as_object().unwrap();
+    assert!(files.contains_key("src/lib.rs"));
+    fn walk(dir: &std::path::Path, root: &std::path::Path, out: &mut Vec<String>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            let name = path.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+            if path.is_dir() {
+                if name != "target" {
+                    walk(&path, root, out);
+                }
+            } else if name != "UPSTREAM.json" {
+                out.push(name);
+            }
         }
+    }
+    let mut present = vec![];
+    walk(&root, &root, &mut present);
+    present.sort();
+    let mut listed: Vec<String> = files.keys().cloned().collect();
+    listed.sort();
+    assert_eq!(present, listed, "vendor files not listed in UPSTREAM.json");
+    for (name, expected) in files {
+        let bytes = std::fs::read(root.join(name)).unwrap();
         assert_eq!(
             format!("{:x}", Sha256::digest(bytes)),
             expected.as_str().unwrap(),

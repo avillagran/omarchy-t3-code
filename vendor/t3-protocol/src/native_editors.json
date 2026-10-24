@@ -1,0 +1,86 @@
+[
+  {
+    "id": "cursor",
+    "label": "Cursor"
+  },
+  {
+    "id": "trae",
+    "label": "Trae"
+  },
+  {
+    "id": "kiro",
+    "label": "Kiro"
+  },
+  {
+    "id": "vscode",
+    "label": "VS Code"
+  },
+  {
+    "id": "vscode-insiders",
+    "label": "VS Code Insiders"
+  },
+  {
+    "id": "vscodium",
+    "label": "VSCodium"
+  },
+  {
+    "id": "zed",
+    "label": "Zed"
+  },
+  {
+    "id": "antigravity",
+    "label": "Antigravity"
+  },
+  {
+    "id": "idea",
+    "label": "IntelliJ IDEA"
+  },
+  {
+    "id": "aqua",
+    "label": "Aqua"
+  },
+  {
+    "id": "clion",
+    "label": "CLion"
+  },
+  {
+    "id": "datagrip",
+    "label": "DataGrip"
+  },
+  {
+    "id": "dataspell",
+    "label": "DataSpell"
+  },
+  {
+    "id": "goland",
+    "label": "GoLand"
+  },
+  {
+    "id": "phpstorm",
+    "label": "PhpStorm"
+  },
+  {
+    "id": "pycharm",
+    "label": "PyCharm"
+  },
+  {
+    "id": "rider",
+    "label": "Rider"
+  },
+  {
+    "id": "rubymine",
+    "label": "RubyMine"
+  },
+  {
+    "id": "rustrover",
+    "label": "RustRover"
+  },
+  {
+    "id": "webstorm",
+    "label": "WebStorm"
+  },
+  {
+    "id": "file-manager",
+    "label": "File Manager"
+  }
+]

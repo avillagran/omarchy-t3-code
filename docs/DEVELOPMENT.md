@@ -388,6 +388,21 @@ cargo test --workspace --config 'patch."https://github.com/avillagran/lib-t3-rus
 
 A local patch can require a temporary lockfile update; do not commit a path-based
 lock entry. Run the normal locked checks again after removing the patch.
+
+`vendor/t3-protocol` is the copy that builds by default (`[patch]` in Cargo.toml).
+It is the pinned revision byte for byte: `UPSTREAM.json` lists a SHA-256 for
+every file and an empty `localChanges`, and `cargo test --test long_rpc` fails
+if they drift. Change the library, merge it there, then re-pin both at once:
+
+```sh
+git -C ../lib-t3-rust fetch origin
+tools/sync-vendor ../lib-t3-rust <rev>   # vendor, UPSTREAM.json, Cargo.toml rev, Cargo.lock
+cargo test --locked
+```
+
+The script copies the tracked crate files of `<rev>` (`src`, `Cargo.*`,
+`README.md`, `LICENSE`, `include`, `docs`, `data`), never the working tree, and
+warns when the revision is not on the library's `origin/main`.
 Generated binaries, local measurements and development evidence
 are excluded from Git. The root `hypr-bindings.lua` is a compatibility entry point
 for existing user configurations; new installations use `integrations/hyprland/`.

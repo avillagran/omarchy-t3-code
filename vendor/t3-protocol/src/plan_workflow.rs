@@ -340,7 +340,7 @@ pub fn view(projection: &Value, render: impl Fn(&str) -> String) -> Value {
     }
 }
 fn pending_user_inputs(projection: &Value) -> usize {
-    t3_protocol::questions::pending(projection)
+    crate::questions::pending(projection)
         .as_array()
         .map(Vec::len)
         .unwrap_or(0)

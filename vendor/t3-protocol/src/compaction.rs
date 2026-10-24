@@ -1,9 +1,7 @@
 //! Preventive idle compaction policy. No processes, storage or timers; reusable by Omi.
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-fn text<'a>(v: &'a Value, k: &str) -> &'a str {
-    v[k].as_str().unwrap_or("")
-}
+use crate::util::text;
 fn rows<'a>(v: &'a Value, k: &str) -> impl DoubleEndedIterator<Item = &'a Value> {
     v[k].as_array().into_iter().flatten()
 }

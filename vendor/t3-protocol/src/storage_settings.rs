@@ -1,7 +1,7 @@
 //! Storage preference contracts from T3 Code settings.ts/projectSettings.ts.
 //! Only settings are projected here; cleanup execution belongs to the server.
-use crate::{json, text, Result};
-use serde_json::Value;
+use crate::util::{text, Result};
+use serde_json::{json, Value};
 const RULES: &[&str] = &[
     "worktreeKeepWhen",
     "worktreeAfterDays",

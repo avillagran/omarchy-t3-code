@@ -1,5 +1,4 @@
-#[path = "../src/checkpoint_revert.rs"]
-mod checkpoint_revert;
+use omarchy_t3_client::checkpoint_revert;
 use serde_json::{json, Value};
 
 fn projection() -> Value {
