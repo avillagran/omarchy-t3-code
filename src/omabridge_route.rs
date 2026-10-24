@@ -23,7 +23,7 @@ fn revision_of(raw:&Option<Vec<u8>>)->String{format!("{:x}",Sha256::digest(raw.a
 pub fn valid_peer(id:&str)->bool{id.len()==64&&id.bytes().all(|b|b.is_ascii_digit()||(b'a'..=b'f').contains(&b))}
 pub fn valid_service(name:&str)->bool{!name.is_empty()&&name.len()<=64&&name.bytes().all(|b|b.is_ascii_alphanumeric()||b"-_.".contains(&b))}
 fn valid_environment(id:&str)->bool{!id.is_empty()&&id!="local"&&id.len()<=128&&id.bytes().all(|b|b.is_ascii_alphanumeric()||b"-_".contains(&b))}
-fn valid_relay(url:&str)->bool{reqwest::Url::parse(url).is_ok_and(|u|u.scheme()=="https"&&u.host_str().is_some()&&u.username().is_empty()&&u.password().is_none()&&u.query().is_none())}
+fn valid_relay(url:&str)->bool{crate::Url::parse(url).is_ok_and(|u|u.scheme()=="https"&&u.host_str().is_some()&&u.username().is_empty()&&u.password().is_none()&&u.query().is_none())}
 /// SSH profiles are carried by a peer's `ssh` service; pairing links by any other
 /// service (normally `t3`). A route never applies to T3 Connect relay targets.
 pub fn carries(tag:&str,service:&str)->bool{

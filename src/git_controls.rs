@@ -226,18 +226,7 @@ pub fn execute(e: &crate::Environment, input: &Value) -> Result<Value> {
     if input["environment"] != e.id {
         return Err("git_scope_changed".into());
     }
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    let c = if let Some(c) = &e.connection {
-        c.as_ref().clone()
-    } else {
-        crate::protocol::Connection::new(
-            &e.base_url,
-            None,
-            crate::protocol::Credential::bearer(&crate::environment_token(e, false)?)?,
-        )?
-    };
+    let c = e.connection(false)?;
     let shell = c.request_json("GET", "/api/orchestration/shell", None, true)?;
     let scoped = scope(&shell, input)?;
     let project = shell["projects"]

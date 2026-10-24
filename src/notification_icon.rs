@@ -107,23 +107,14 @@ fn favicon(project: &Value, environment: &str) -> Option<DynamicImage> {
         .ok()?
         .into_iter()
         .find(|e| e.id == environment)?;
-    let connection = if let Some(c) = e.connection {
-        c.as_ref().clone()
-    } else {
-        protocol::Connection::new(
-            &e.base_url,
-            None,
-            protocol::Credential::bearer(&environment_token(&e, false).ok()?).ok()?,
-        )
-        .ok()?
-    };
+    let connection = e.connection(false).ok()?;
     let grant = connection
         .rpc(
             "assets.createUrl",
             json!({"resource":{"_tag":"project-favicon","cwd":cwd,"path":project["faviconPath"]}}),
         )
         .ok()?;
-    let base = reqwest::Url::parse(connection.base_url()).ok()?;
+    let base = crate::Url::parse(connection.base_url()).ok()?;
     let url = base.join(text(&grant, "relativeUrl")).ok()?;
     if url.origin() != base.origin()
         || !url.path().starts_with("/api/assets/")

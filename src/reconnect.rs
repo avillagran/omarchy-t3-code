@@ -37,7 +37,7 @@ pub fn transient(error: &str) -> bool {
 
 /// Quick check that a server answers before a wakeup reconnects to it.
 pub fn reachable(e: &crate::Environment) -> bool {
-    crate::Client::new().and_then(|c| c.get(e, "/.well-known/t3/environment", false)).is_ok()
+    crate::Client::shared().and_then(|c| c.get(e, "/.well-known/t3/environment", false)).is_ok()
 }
 
 pub struct Backoff {

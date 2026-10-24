@@ -1,4 +1,5 @@
 // Compiles the new module in isolation; no src/lib.rs integration is required.
+pub use omarchy_t3_client::Url;
 #[path = "../src/connection_cloud.rs"]
 mod connection_cloud;
 use connection_cloud::{device_prompt, parse_status, CloudManager, NativeCli};

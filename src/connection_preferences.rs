@@ -118,7 +118,7 @@ pub fn update_client_preferences(expected: &str, patch: &Value) -> Result<Value>
 }
 
 fn url_key(base: &str, scheme: &str) -> Option<String> {
-    let url = reqwest::Url::parse(base).ok()?;
+    let url = crate::Url::parse(base).ok()?;
     if !scheme.split('|').any(|s| url.scheme() == s) || !url.username().is_empty() || url.password().is_some() || url.host_str().is_none() { return None; }
     // URL::href in JS includes the slash for an empty root path; only trailing
     // slashes are stripped from the full href by the native trust algorithm.

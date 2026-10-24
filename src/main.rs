@@ -178,10 +178,10 @@ fn open_thread(client: &Client, env: &str, id: &str) -> Result<Value> {
     if !valid_id(eid) {
         return Err("malformed".into());
     }
-    let mut u = reqwest::Url::parse(&e.base_url).map_err(|_| "invalid_endpoint")?;
+    let mut u = Url::parse(&e.base_url).map_err(|_| "invalid_endpoint")?;
     // Fragment router components are encoded separately; never place a token in the URL.
     let encode = |s: &str| {
-        let mut u = reqwest::Url::parse("https://example.invalid/").unwrap();
+        let mut u = Url::parse("https://example.invalid/").unwrap();
         u.path_segments_mut().unwrap().push(s);
         u.path().trim_start_matches('/').to_string()
     };
@@ -601,7 +601,7 @@ fn run() -> Result<()> {
         let _=Command::new("omarchy-launch-terminal").stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).exec();
         return Err("terminal_launch_failed".into())
     }
-    let client = Client::new()?;
+    let client = Client::shared()?;
     let result = match args.first().map(String::as_str).unwrap_or("watch") {
         "watch" => return watch(client),
         "licenses-read" => third_party_licenses::read()?,

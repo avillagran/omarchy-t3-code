@@ -259,7 +259,7 @@ pub fn device_prompt(output: &str) -> Option<Value> {
         return None;
     }
     let url = prompt.lines().find(|l| !l.trim().is_empty())?.trim();
-    let parsed = reqwest::Url::parse(url).ok()?;
+    let parsed = crate::Url::parse(url).ok()?;
     if parsed.scheme() != "https"
         || parsed.host_str().is_none()
         || !parsed.username().is_empty()

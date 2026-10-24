@@ -4,9 +4,7 @@ use serde_json::{json, Value};
 use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 
 pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
-    if let Some(error)=&e.connection_error {return Err(error.clone())}
-    if let Some(connection)=&e.connection {return connection.rpc(tag,payload)}
-    protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?.rpc(tag,payload)
+    e.connection(true)?.rpc(tag,payload)
 }
 fn interaction_mode(input:&Value)->Result<&str>{
     match input.get("interactionMode"){None|Some(Value::Null)=>Ok("default"),Some(v)=>v.as_str().filter(|s|matches!(*s,"default"|"plan")).ok_or("invalid_interaction_mode".into())}
@@ -26,7 +24,7 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     result["machine"]=json!([&config["settings"]["environmentIcon"],&config["environment"]["platform"]["machine"]].into_iter().filter_map(Value::as_str).find(|k|MACHINES.contains(k)).unwrap_or("server"));
     // The server's own version (environment.serverVersion), shown against the T3 revision ot3 is validated with.
     result["serverVersion"]=json!(config["environment"]["serverVersion"].as_str().filter(|v|v.len()<=80&&v.chars().all(|c|c.is_ascii_alphanumeric()||".-+_".contains(c))));
-    let permission=Client::new()?.get(e,"/api/auth/session",false);
+    let permission=Client::shared()?.get(e,"/api/auth/session",false);
     result["canWrite"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="orchestration:operate"))));
     if let Err(error)=permission{result["permissionError"]=json!(error);}
     Ok(result)
@@ -52,12 +50,12 @@ pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
     let path=protocol::history::path(thread,text(input,"cursor"))?;
-    let page=Client::new()?.get(e,&path,true)?;
+    let page=Client::shared()?.get(e,&path,true)?;
     normalize_messages(&protocol::history::envelope(&page,thread)?)
 }
 
 pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
-    let url=reqwest::Url::parse(file_url).map_err(|_| "invalid_file")?;
+    let url=crate::Url::parse(file_url).map_err(|_| "invalid_file")?;
     if url.scheme()!="file" {return Err("invalid_file".into())}
     let path=url.to_file_path().map_err(|_| "invalid_file")?;
     let file=OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW|libc::O_NONBLOCK).open(&path).map_err(|_| "invalid_file")?;
@@ -69,8 +67,7 @@ pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
     let mime=mime_guess::from_path(&path).first_or_octet_stream().to_string();
     let image=matches!(mime.as_str(),"image/png"|"image/jpeg"|"image/gif"|"image/webp");
     if image && size>10*1024*1024 {return Err("image_limit_10MiB".into())}
-    if let Some(error)=&e.connection_error {return Err(error.clone())}
-    let connection=if let Some(c)=&e.connection {c.as_ref().clone()} else {protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)?};
+    let connection=e.connection(true)?;
     connection.upload_attachment(name,&mime,size,file)
 }
 pub fn validate_message(input:&Value)->Result<()> {
@@ -132,7 +129,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
             if read_json(&path)?!=expected {return Err("retry_payload_changed".into())}
             expected["command"].clone()
         } else {
-            let snapshot=Client::new()?.bounded_thread(e,thread)?;
+            let snapshot=Client::shared()?.bounded_thread(e,thread)?;
             protocol::approvals::command(input,&snapshot["projection"])?
         }
     } else if input["op"]=="question" {
@@ -209,7 +206,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
                 if meta["entries"][0]["kind"]!="directory"{return Err("invalid_folder".into())}path
             }else{
                 if e.id!="local"{return Err("local_folder_only".into())}
-                let path=reqwest::Url::parse(text(input,"url")).map_err(|_| "invalid_folder")?.to_file_path().map_err(|_| "invalid_folder")?.canonicalize().map_err(|_| "invalid_folder")?;
+                let path=crate::Url::parse(text(input,"url")).map_err(|_| "invalid_folder")?.to_file_path().map_err(|_| "invalid_folder")?.canonicalize().map_err(|_| "invalid_folder")?;
                 if !path.is_dir(){return Err("invalid_folder".into())}path.to_str().ok_or("invalid_folder")?.to_string()
             };
             let title=path.trim_end_matches('/').rsplit('/').next().filter(|s|!s.is_empty()).unwrap_or("Project");
@@ -298,7 +295,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "connection-access"=>crate::connection_access::execute(&e,input),
         "terminal-open"=>{let command=match input.get("command"){None|Some(Value::Null)=>None,Some(value)=>Some(value.as_str().ok_or("invalid_terminal_input")?)};crate::terminal::launch_command(&e,text(input,"thread"),command)},
         "document-open"=>crate::documents::read(&e,input),
-        "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=if let Some(c)=&e.connection{c.as_ref().clone()}else{protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(&e,false)?)?)?};c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{crate::connection_github::read(&e,&tag,payload)}},
+        "pull-requests"=>{let(tag,payload)=protocol::pull_requests::request(input)?;if tag=="diff" {let c=e.connection(false)?;c.request_json("POST","/api/pull-requests/diff",Some(&payload),false)}else{crate::connection_github::read(&e,&tag,payload)}},
         "settings" if matches!(text(input,"action"),"workspace-read"|"workspace-update")=>workspace_preference(&e,input),
         "settings"=>crate::native_settings::execute(&e,input),
         "provider-instances"=>crate::provider_instances::execute(&e,input),
@@ -371,7 +368,7 @@ pub fn execute(input:&Value) -> Result<Value> {
 /// Re-read the native plan before preparing a user-triggered follow-up. This
 /// operation only returns a prompt; the existing durable send path owns writes.
 pub fn prepare_plan_follow_up(e:&Environment,input:&Value)->Result<Value>{
-    let session=Client::new()?.get(e,"/api/auth/session",false)?;
+    let session=Client::shared()?.get(e,"/api/auth/session",false)?;
     if session["authenticated"]!=true || !session.get("permissions").or_else(||session.get("scopes")).and_then(Value::as_array).is_some_and(|scopes|scopes.iter().any(|scope|scope=="orchestration:operate")){return Err("permission_denied".into())}
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_plan_scope".into())}
     let config=rpc(e,"server.getConfig",json!({}))?;
@@ -381,7 +378,7 @@ pub fn prepare_plan_follow_up(e:&Environment,input:&Value)->Result<Value>{
     let gate=crate::plan_workflow::mode(local["planModeEnabled"]==true,provider,text(input,"interactionMode"));
     if gate["interactionMode"]!="plan"{return Err("plan_mode_unavailable".into())}
     crate::native_settings::patch(&json!({"key":"defaultModelSelection","value":selection}),Some(&config))?;
-    let bounded=Client::new()?.bounded_thread(e,thread)?;let projection=&bounded["projection"];
+    let bounded=Client::shared()?.bounded_thread(e,thread)?;let projection=&bounded["projection"];
     let view=crate::plan_workflow::view(projection,crate::rendered_markdown);
     let plan=&view["ready"];
     if view.get("error").is_some()||plan.is_null()||plan["id"]!=input["planId"]||input["hasAttachments"]!=false{return Err("plan_no_longer_ready".into())}

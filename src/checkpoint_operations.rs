@@ -2,21 +2,8 @@
 use crate::*;
 use crate::{checkpoint_journal as journal, checkpoint_revert as rewind};
 use std::io::Cursor;
-fn connection(e: &Environment) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&environment_token(e, true)?)?,
-    )
-}
 fn authorize(e: &Environment) -> Result<()> {
-    let s = Client::new()?.get(e, "/api/auth/session", false)?;
+    let s = Client::shared()?.get(e, "/api/auth/session", false)?;
     if s["authenticated"] == true
         && s.get("permissions")
             .or_else(|| s.get("scopes"))
@@ -169,8 +156,8 @@ fn prepare_attachments(e: &Environment, source: &Value, current: &Value) -> Resu
     if attachments.is_empty() {
         return Ok(vec![]);
     }
-    let c = connection(e)?;
-    let base = reqwest::Url::parse(&e.base_url).map_err(|_| "invalid_endpoint")?;
+    let c = e.connection(true)?;
+    let base = crate::Url::parse(&e.base_url).map_err(|_| "invalid_endpoint")?;
     let http = Http::builder()
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
