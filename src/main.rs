@@ -601,7 +601,7 @@ fn run() -> Result<()> {
         let _=Command::new("omarchy-launch-terminal").stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).exec();
         return Err("terminal_launch_failed".into())
     }
-    let client = Client::new()?;
+    let client = Client::shared()?;
     let result = match args.first().map(String::as_str).unwrap_or("watch") {
         "watch" => return watch(client),
         "licenses-read" => third_party_licenses::read()?,

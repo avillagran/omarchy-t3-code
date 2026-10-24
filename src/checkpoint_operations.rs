@@ -3,7 +3,7 @@ use crate::*;
 use crate::{checkpoint_journal as journal, checkpoint_revert as rewind};
 use std::io::Cursor;
 fn authorize(e: &Environment) -> Result<()> {
-    let s = Client::new()?.get(e, "/api/auth/session", false)?;
+    let s = Client::shared()?.get(e, "/api/auth/session", false)?;
     if s["authenticated"] == true
         && s.get("permissions")
             .or_else(|| s.get("scopes"))

@@ -1543,7 +1543,7 @@ fn adopt_identity(paths: &Paths, result: &mut Value) {
 /// Paths of the projects T3 has on this computer, for the identity suggestion.
 pub fn local_roots() -> Vec<PathBuf> {
     let Ok(environments) = crate::environments() else { return vec![] };
-    let Ok(client) = crate::Client::new() else { return vec![] };
+    let Ok(client) = crate::Client::shared() else { return vec![] };
     let Some(local) = environments.iter().find(|e| e.id == "local") else { return vec![] };
     let Ok(page) = client.get(local, "/api/projects", false) else { return vec![] };
     page["projects"].as_array().into_iter().flatten().map(|p| PathBuf::from(text(p, "workspaceRoot"))).filter(|p| p.join(".git").exists()).collect()
@@ -1684,7 +1684,7 @@ pub fn repair(paths: &Paths) -> Result<Value> {
 pub fn discover() -> Result<Value> {
     let environments = crate::environments()?;
     let primary = fs::read_to_string(crate::t3_home().join("userdata/environment-id")).unwrap_or_default();
-    let client = crate::Client::new().ok();
+    let client = crate::Client::shared().ok();
     let client = &client;
     let hosts: Vec<Value> = std::thread::scope(|scope| {
         let handles: Vec<_> = environments

@@ -170,7 +170,7 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         let (base, code) =
             protocol::connection_catalog::pairing_target(text(i, "url"), text(i, "pairingCode"))?;
         validate_base(&base)?;
-        let http = Client::new()?.http;
+        let http = Client::shared()?.http;
         let descriptor: Value = http
             .get(format!(
                 "{}/.well-known/t3/environment",

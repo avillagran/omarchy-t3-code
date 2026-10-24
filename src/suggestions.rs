@@ -9,7 +9,7 @@ pub fn query(e:&Environment,input:&Value)->Result<Value>{
  let cache=CACHE.get_or_init(||Mutex::new(HashMap::new()));
  let saved=cache.lock().unwrap().get(&key).filter(|(t,_)|t.elapsed()<Duration::from_secs(300)).map(|(_,v)|v.clone());
  let context=if let Some(v)=saved{v}else{
-  let shell=Client::new()?.get(e,"/api/orchestration/shell",true)?;
+  let shell=Client::shared()?.get(e,"/api/orchestration/shell",true)?;
   let t=shell["threads"].as_array().and_then(|ts|ts.iter().find(|t|t["id"]==thread)).ok_or("thread_not_found")?;
   let project=shell["projects"].as_array().and_then(|ps|ps.iter().find(|p|p["id"]==t["projectId"]));
   let cwd=t["worktreePath"].as_str().filter(|s|!s.is_empty()).or_else(||project.and_then(|p|p["workspaceRoot"].as_str())).unwrap_or("");

@@ -56,7 +56,7 @@ fn consume(e:&Environment,thread:&str,path:&std::path::Path)->Result<serde_json:
 pub fn run_command(e:&Environment,thread:&str,path:Option<&std::path::Path>)->Result<()>{run_frontend(e,thread,path,None)}
 fn run_frontend(e:&Environment,thread:&str,path:Option<&std::path::Path>,session:Option<&str>)->Result<()>{
  writable(e)?;let launch=path.map(|p|consume(e,thread,p)).transpose()?;let terminal=session.or_else(||launch.as_ref().map(|v|text(v,"terminalId"))).unwrap_or("term-1");protocol::terminal::session(thread,terminal)?;
- let c=e.connection(true)?;let shell=Client::new()?.get(e,"/api/orchestration/shell",true)?;
+ let c=e.connection(true)?;let shell=Client::shared()?.get(e,"/api/orchestration/shell",true)?;
  let context=protocol::terminal::context(&shell,thread,"").or_else(|error|{if error!="terminal_directory_unavailable"{return Err(error)}let config=c.rpc("server.getConfig",serde_json::json!({}))?;protocol::terminal::context(&shell,thread,text(&config,"scratchWorkspaceRoot"))})?;
  let (cols,rows)=size();let mut payload=protocol::terminal::attach(thread,terminal,&context,cols,rows)?;if session.is_some(){payload["restartIfNotRunning"]=serde_json::json!(false);}
  eprintln!("T3 · {} · {}\r",e.name,text(&context,"cwd"));

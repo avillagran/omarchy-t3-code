@@ -17,7 +17,7 @@ fn cache() -> &'static Mutex<HashMap<String, Value>> {
     VIEWS.get_or_init(Default::default)
 }
 fn scopes(e: &Environment) -> Result<Value> {
-    let session = Client::new()?.get(e, "/api/auth/session", false)?;
+    let session = Client::shared()?.get(e, "/api/auth/session", false)?;
     if session["authenticated"] != true {
         return Err("unauthorized".into());
     }
