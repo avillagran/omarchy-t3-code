@@ -607,6 +607,18 @@ Singleton {
   readonly property var buildCleanupCheckoutDays:viewState.buildCleanupCheckoutDays===undefined?7:viewState.buildCleanupCheckoutDays
   function setBuildCleanupDays(key,days){var v={};v[key]=days;rememberView(v)}
   function runBuildCleanup(){if(buildCleanup.running)return;buildCleanup=Object.assign({},buildCleanup,{running:worker.running,error:worker.running?"":"disconnected"});persistView.stop();persistViewNow();send({op:"build-cleanup"})}
+  // Memory/Obsidian (journal_vault.rs): the development vault on this computer, and
+  // what each connected host reports. Every write happens on this computer.
+  property var vault:({busy:false,error:"",state:null,requestId:""})
+  property var vaultHosts:({busy:false,error:"",hosts:[],vaults:[],requestId:"",loaded:false})
+  property var vaultAction:({busy:false,error:"",action:"",result:null,requestId:""})
+  function requestVault(){var id=uuid();vault=Object.assign({},vault,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id});send({op:"vault-read",requestId:id})}
+  function discoverVaults(){if(vaultHosts.busy)return;var id=uuid();vaultHosts=Object.assign({},vaultHosts,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id});send({op:"vault-discover",requestId:id})}
+  // Notes of the vault on this computer matching the palette's query (search is read-only).
+  property var vaultSearch:({query:"",hits:[],requestId:""})
+  function searchVault(query){var q=String(query||"").trim();if(q.length<2||!vault.state||!(vault.state.local||{}).state||vault.state.local.state!=="clone"){vaultSearch={query:q,hits:[],requestId:""};return}var id=uuid();vaultSearch={query:q,hits:vaultSearch.query&&q.indexOf(vaultSearch.query)===0?vaultSearch.hits:[],requestId:id};send({op:"vault-action",action:"search",query:q,limit:12,requestId:id})}
+  function openVaultNote(file){send({op:"vault-action",action:"open-note",file:file,requestId:uuid()})}
+  function runVaultAction(values){if(vaultAction.busy)return;var id=uuid();vaultAction={busy:worker.running,error:worker.running?"":"disconnected",action:values.action,result:null,requestId:id};send(Object.assign({op:"vault-action",requestId:id},values))}
   // Scheduled tasks (scheduledTasks.*) of the selected environment.
   property var scheduledTasks:({busy:false,error:"",tasks:[],requestId:""})
   function scheduledTasksAction(values){var id=uuid();scheduledTasks=Object.assign({},scheduledTasks,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id,lastAction:values.action});send(Object.assign({op:"scheduled-tasks",environment:selectedEnvironment||"local",requestId:id},values))}
@@ -1405,6 +1417,10 @@ Singleton {
     if(data.op==="process-diagnostics"){if(data.requestId!==processDiagnostics.requestId)return;processDiagnostics=Object.assign({},processDiagnostics,{busy:false,error:data.error||"",report:data.error?processDiagnostics.report:data.result});return}
     if(data.op==="agent-sessions"){if(data.requestId!==agentSessions.requestId)return;var r=data.result||{};var next=Object.assign({},agentSessions,{busy:false,error:data.error||""});if(!data.error&&agentSessions.action==="scan")next.candidates=r.candidates||[];if(!data.error&&agentSessions.action==="import"){next.last=r;refresh()}agentSessions=next;if(!data.error&&agentSessions.action==="import")agentSessionsAction({action:"scan"});return}
     if(data.op==="provider-setup"){var key=Object.keys(providerSetup).find(function(k){return providerSetup[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},providerSetup),r=data.result||{};all[key]=Object.assign({},all[key],{busy:false,error:data.error||"",kind:r.kind||all[key].kind,state:data.error?all[key].state:(r.kind==="update"?null:r.state)});providerSetup=all;if(r.kind==="update"&&all[key].environment){requestProviderInstances(all[key].environment,"read");return}var phase=r.state&&r.state.phase;if(phase==="succeeded"&&all[key].environment)requestProviderInstances(all[key].environment,"read");return}
+    if(data.op==="vault-read"){if(data.requestId!==vault.requestId)return;vault=Object.assign({},vault,{busy:false,error:data.error||"",state:data.error?vault.state:data.result});return}
+    if(data.op==="vault-discover"){if(data.requestId!==vaultHosts.requestId)return;var vd=data.result||{};vaultHosts=Object.assign({},vaultHosts,{busy:false,loaded:true,error:data.error||"",hosts:data.error?vaultHosts.hosts:vd.hosts||[],vaults:data.error?vaultHosts.vaults:vd.vaults||[]});return}
+    if(data.op==="vault-action"&&data.action==="search"){if(data.requestId!==vaultSearch.requestId)return;vaultSearch=Object.assign({},vaultSearch,{hits:data.error?[]:((data.result||{}).hits||[])});return}
+    if(data.op==="vault-action"){if(data.requestId!==vaultAction.requestId)return;vaultAction=Object.assign({},vaultAction,{busy:false,error:data.error||"",result:data.result||null});if(data.result&&data.result.state)vault=Object.assign({},vault,{state:data.result.state});return}
     if(data.op==="mcp-app"){var call=appCalls[data.requestId];if(!call)return;var rest=Object.assign({},appCalls);delete rest[data.requestId];appCalls=rest;appReply(call.session,call.rpcId,data.result,data.error);return}
     if(data.op==="storage-cleanup"){if(data.requestId!==storageCleanup.requestId)return;var ran=storageCleanup.running;storageCleanup=Object.assign({},storageCleanup,{busy:false,running:false,error:data.error||"",report:data.error?storageCleanup.report:(data.result||{}).report||null});if(ran&&storageCleanup.environment==="local"){send({op:"disk-check"});if(diskReport.result)requestDiskReport()}return}
     if(data.op==="disk-report"){if(data.requestId!==diskReport.requestId)return;diskReport=Object.assign({},diskReport,{busy:false,error:data.error||"",result:data.error?diskReport.result:data.result||null});if(!data.error&&data.result)diskSpace=data.result;return}
@@ -1874,6 +1890,7 @@ Singleton {
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
       else if(event.type==="build-cleanup"){buildCleanup=Object.assign({},buildCleanup,{running:!!data.running,error:data.error||"",report:data.report||buildCleanup.report})}
+      else if(event.type==="vault"){vault=Object.assign({},vault,{state:data})}
       else if(event.type==="disk-space"){diskSpace=data;if(!data.low)diskNoticeDismissed=false}
       else if(event.type==="worktree-setup"){worktreeSetup={key:data.environment+"/"+data.thread,snapshot:data.snapshot||null}}
       else if(event.type==="command-output"){if(data.requestId===commandOutput.requestId)commandOutput=Object.assign({},commandOutput,{text:data.text!==undefined?data.text:commandOutput.text,running:!!data.running,error:data.error||"",truncated:!!data.truncated})}

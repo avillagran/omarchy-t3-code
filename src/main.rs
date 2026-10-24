@@ -366,6 +366,8 @@ fn watch(client: Client) -> Result<()> {
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 if v["op"]=="build-cleanup"{let started=start_build_cleanup(input_client.clone(),input_tx.clone());if !started{emit("build-cleanup",json!({"running":true}));}continue}
+                // Memory/Obsidian runs git and reads hosts: off the input thread (journal_vault.rs).
+                if matches!(text(&v,"op"),"vault-read"|"vault-discover"|"vault-action"){std::thread::spawn(move||{let result=journal_vault::execute(&v);emit("action",json!({"op":v["op"],"action":v["action"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 // Walks worktree build folders and runs git: one report at a time, off the input thread.
                 if v["op"]=="disk-report"{
                     static BUSY:std::sync::atomic::AtomicBool=std::sync::atomic::AtomicBool::new(false);
@@ -413,6 +415,7 @@ fn watch(client: Client) -> Result<()> {
     let mut next_disk = Instant::now();
     let mut next_build_cleanup = Instant::now() + build_cleanup::FIRST_CHECK;
     let mut disk_threshold: Option<Value> = None;
+    let mut vault_automation = journal_vault::Automation::default();
     loop {
         if Instant::now() >= next_disk {
             next_disk = Instant::now() + disk_space::CHECK_INTERVAL;
@@ -450,6 +453,8 @@ fn watch(client: Client) -> Result<()> {
                     }
                     let changed = before != after;
                     state = d;
+                    let tasks = vault_automation.observe(&journal_vault::load_config(&journal_vault::Paths::current()), &state, Instant::now());
+                    journal_vault::run_tasks(journal_vault::Paths::current(), tasks, |v| emit("vault", v));
                     if changed {
                         emit("snapshot", view(&state, &query));
                     }
@@ -462,6 +467,8 @@ fn watch(client: Client) -> Result<()> {
             let active =
                 visible || (state["stale"] == false && state["working"].as_u64().unwrap_or(0) > 0);
             next_poll = Instant::now() + Duration::from_secs(if active { 10 } else { 60 });
+            // A settled thread's vault push is due before the next regular poll.
+            if let Some(due) = vault_automation.next_due() {next_poll = next_poll.min(due.max(Instant::now() + Duration::from_secs(1)));}
             if visible && last_activity.elapsed() >= Duration::from_secs(60) {
                 if let Some((env, id, _)) = &selected {
                     last_activity = Instant::now();
@@ -594,6 +601,10 @@ fn run() -> Result<()> {
         "watch" => return watch(client),
         "licenses-read" => third_party_licenses::read()?,
         "disk-report" => disk_space::report(&client,&ui_state::load()),
+        "vault-status" => journal_vault::execute(&json!({"op":"vault-read"}))?,
+        "vault-discover" => journal_vault::discover()?,
+        "vault-search" if args.len()>=2 => journal_vault::execute(&json!({"op":"vault-action","action":"search","query":args[1..].join(" "),"limit":20}))?,
+        "vault-sync" => {let mut r=journal_vault::execute(&json!({"op":"vault-action","action":"pull"}))?;if args.iter().any(|a|a=="--push"){r=journal_vault::execute(&json!({"op":"vault-action","action":"push"}))?;}r},
         "build-cleanup" => build_cleanup::run(&client,&ui_state::load(),args.iter().any(|a|a=="--dry-run"))?,
         "browser-import-sources" => browser_sources::list_at(&home())?,
         "browser-profiles-read" if args.len()>1 => browser_profiles::execute(&json!({"op":"browser-profiles-read","environments":args[1..]}))?,
