@@ -184,7 +184,7 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
    Ok(_)=>error="review_context_limit".into(),Err(e)=>error=e
   }
     }
-    let fresh = c.rpc("review.getDiffPreview", snapshot["payload"].clone())?;
+    let fresh = crate::working_review::diff_preview(&c, &snapshot["payload"])?;
     let fresh_source = fresh["sources"]
         .as_array()
         .and_then(|ss| ss.iter().find(|s| s["kind"] == source["kind"]))

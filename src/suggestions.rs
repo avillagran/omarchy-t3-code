@@ -23,7 +23,7 @@ pub fn query(e:&Environment,input:&Value)->Result<Value>{
   return Ok(json!({"items":protocol::composer::paths(&result),"truncated":result["truncated"]}));
  }
  let config=if context["config"].is_object(){context["config"].clone()}else{
-  let result=if !cwd.is_empty()&&!instance.is_empty(){write::rpc(e,"server.refreshProviders",json!({"instanceId":instance,"cwd":cwd}))?}else{write::rpc(e,"server.getConfig",json!({}))?};
+  let result=if !cwd.is_empty()&&!instance.is_empty(){write::rpc(e,"server.refreshProviders",json!({"instanceId":instance,"cwd":cwd}))?}else{protocol::api::server::config(&e.connection(true)?)?};
   // Retain only provider metadata needed for composer suggestions; never auth/config secrets.
   let providers:Vec<Value>=result["providers"].as_array().into_iter().flatten().filter(|p|p["instanceId"]==instance).map(|p|{let scoped=p["workspaceSnapshots"].as_array().and_then(|a|a.iter().find(|s|s["cwd"]==cwd)).unwrap_or(p);json!({"instanceId":p["instanceId"],"enabled":p["enabled"],"skills":scoped["skills"],"slashCommands":scoped["slashCommands"]})}).collect();
   let value=json!({"providers":providers});let mut c=cache.lock().unwrap();let mut next=context.clone();next["config"]=value.clone();c.insert(key,(Instant::now(),next));value

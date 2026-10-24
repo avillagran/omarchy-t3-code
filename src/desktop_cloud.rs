@@ -306,7 +306,7 @@ pub fn check_native_environment(id: &str) -> Result<Value> {
         Arc::new(protocol::DpopKey::generate()),
     )?;
     let shell = connection.request_json("GET", "/api/orchestration/shell", None, true)?;
-    let config = connection.rpc("server.getConfig", json!({}))?;
+    let config = protocol::api::server::config(&connection)?;
     Ok(
         json!({"environmentId":id,"connection":"ready","http":"ready","rpc":"ready","providerCount":config["providers"].as_array().map(|p|p.len()),"shellReceived":shell.is_object()}),
     )

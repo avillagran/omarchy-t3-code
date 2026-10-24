@@ -15,7 +15,7 @@ pub fn read(e:&Environment,input:&Value)->Result<Value>{
   // including absolute host paths and the selected thread's worktree cwd.
   let cwd=text(input,"cwd");if cwd.is_empty(){return Err("invalid_workspace".into())}
   local_reference(e,cwd,text(input,"path"))?;
-  let doc=c.rpc("projects.readFile",json!({"cwd":cwd,"relativePath":text(input,"path")}))?;
+  let doc=protocol::api::projects::read_file(&c,cwd,text(input,"path"),None)?;
   if doc["truncated"]==true||text(&doc,"contents").len()>4*1024*1024{return Err("document_limit_4MiB".into())}doc
  }else{c.document(resource)?};
  doc["internalReview"]=json!(false);
