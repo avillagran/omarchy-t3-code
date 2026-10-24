@@ -482,8 +482,9 @@ Rectangle {
         WorkIndicator { anchors.centerIn: parent; implicitWidth: Style.space(26); visible: dictateButton.mode === "transcribing" || dictateButton.mode === "downloading"; active: visible && root.visible; tint: Color.accent }
         // While it records, a bubble grows out of the microphone with the last two
         // seconds of sound, newest on the right, measured from the room's noise:
-        // flat while nothing is heard, tall bars for a voice.
-        Rectangle {
+        // flat while nothing is heard, tall bars for a voice. Two drops rise first,
+        // then the bubble stretches out of a circle and settles with a small wobble.
+        Item {
           id: dictationWave
           objectName: "t3ComposerDictationWave"
           readonly property bool shown: dictateButton.visible && dictateButton.listening
@@ -491,51 +492,105 @@ Rectangle {
           readonly property int count: root.bridge.dictationWaveLength
           readonly property real floor: Math.min(0.5, levels.reduce(function(low, v) { return Math.min(low, v) }, 1))
           function bar(v) { return Math.max(0, Math.min(1, (v - floor) / Math.max(0.2, 0.85 - floor))) }
+          function clamp(v) { return Math.max(0, Math.min(1, v)) }
           // Pauses can arrive as exact zeros (a mic's noise gate), so only a muted
           // source replaces the wave.
           readonly property bool muted: root.bridge.dictation.muted === true
           readonly property string notice: muted ? T3I18n.tr("Microphone muted · click to turn it on") : ""
-          x: 0; anchors.bottom: parent.top; anchors.bottomMargin: Style.space(8); z: 10
-          width: notice ? noticeText.implicitWidth + Style.space(28) : count * Style.space(4) + Style.space(20); height: Style.space(34); radius: height / 2
-          color: Color.popups.background
-          border.width: 1; border.color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.35)
-          transformOrigin: Item.BottomLeft
-          visible: opacity > 0
-          opacity: shown ? 1 : 0
-          scale: shown ? 1 : 0.15
-          Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-          Behavior on scale { NumberAnimation { duration: 260; easing.type: dictationWave.shown ? Easing.OutBack : Easing.InCubic } }
-          // The tail points at the microphone the bubble came from.
+          property real startedAt: 0
+          property int seconds: 0
+          onShownChanged: if (shown) { startedAt = Date.now(); seconds = 0 }
+          Timer { interval: 250; repeat: true; running: dictationWave.shown; onTriggered: dictationWave.seconds = Math.floor((Date.now() - dictationWave.startedAt) / 1000) }
+          // 0 → 1 drives the drops, then the bubble; it overshoots a little on the way in.
+          property real grow: shown ? 1 : 0
+          Behavior on grow { NumberAnimation { duration: dictationWave.shown ? 520 : 220; easing.type: dictationWave.shown ? Easing.OutBack : Easing.InCubic; easing.overshoot: 1.6 } }
+          readonly property real morph: Math.max(0, (grow - 0.3) / 0.7)
+          readonly property real tone: 0.35 + 0.65 * root.bridge.dictation.level
+          readonly property color red: Color.urgent
+          readonly property real full: notice ? noticeText.implicitWidth + Style.space(32) : waveContent.implicitWidth + Style.space(28)
+          readonly property real tall: Style.space(34)
+          x: 0; width: full; height: tall + Style.space(18); z: 10
+          anchors.bottom: parent.top; anchors.bottomMargin: -Style.space(2)
+          visible: grow > 0.01
+          // The drops between the microphone and the bubble.
+          Repeater {
+            model: 2
+            Rectangle {
+              readonly property real size: Style.space(index ? 8 : 5)
+              readonly property real pop: dictationWave.clamp(dictationWave.grow * 4 - index * 0.7)
+              x: dictateButton.width / 2 - width / 2 + index * Style.space(2)
+              y: dictationWave.height - Style.space(index ? 13 : 6) - height / 2
+              width: size * pop; height: width; radius: width / 2
+              color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.55)
+              opacity: pop
+            }
+          }
+          // A soft glow that breathes with the voice.
           Rectangle {
-            width: Style.space(10); height: width; rotation: 45; z: -1
-            x: dictateButton.width / 2 - width / 2; y: parent.height - height / 2 - 1
-            color: parent.color; border.width: 1; border.color: parent.border.color
+            anchors.fill: waveBubble; anchors.margins: -Style.space(3)
+            radius: height / 2; opacity: waveBubble.opacity
+            color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.04 + 0.14 * root.bridge.dictation.level)
+            Behavior on color { ColorAnimation { duration: 120 } }
           }
-          Rectangle { x: dictateButton.width / 2 - Style.space(8); y: parent.height - Style.space(2) - 1; width: Style.space(16); height: Style.space(2); color: parent.color }
-          Text {
-            id: noticeText
-            objectName: "t3ComposerDictationNotice"
-            anchors.centerIn: parent; visible: !!dictationWave.notice
-            text: dictationWave.notice; color: Color.urgent; font.pixelSize: Style.font.caption; textFormat: Text.PlainText
-          }
-          MouseArea {
-            anchors.fill: parent; enabled: dictationWave.muted; cursorShape: Qt.PointingHandCursor
-            onClicked: root.bridge.unmuteMicrophone()
-          }
-          Row {
-            visible: !dictationWave.notice
-            anchors.centerIn: parent; height: parent.height - Style.space(12); spacing: Style.space(2)
-            Repeater {
-              model: dictationWave.count
+          Rectangle {
+            id: waveBubble
+            readonly property real m: dictationWave.morph
+            // Out of a circle over the microphone into the full width, squashing as it stretches.
+            width: dictationWave.tall + (dictationWave.full - dictationWave.tall) * m
+            height: dictationWave.tall * (1 - 0.12 * Math.max(0, m - 1) / 0.15)
+            x: (dictateButton.width / 2 - dictationWave.tall / 2) * Math.max(0, 1 - m)
+            y: (dictationWave.tall - height) / 2
+            radius: height / 2
+            opacity: dictationWave.clamp(m * 2.5)
+            color: Color.popups.background
+            border.width: 1; border.color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.3 + 0.4 * root.bridge.dictation.level)
+            Behavior on border.color { ColorAnimation { duration: 120 } }
+            clip: true
+            Text {
+              id: noticeText
+              objectName: "t3ComposerDictationNotice"
+              anchors.centerIn: parent; visible: !!dictationWave.notice
+              opacity: dictationWave.clamp((waveBubble.m - 0.6) / 0.4)
+              text: dictationWave.notice; color: dictationWave.red; font.pixelSize: Style.font.caption; textFormat: Text.PlainText
+            }
+            MouseArea {
+              anchors.fill: parent; enabled: dictationWave.muted; cursorShape: Qt.PointingHandCursor
+              onClicked: root.bridge.unmuteMicrophone()
+            }
+            Row {
+              id: waveContent
+              visible: !dictationWave.notice
+              anchors.centerIn: parent; spacing: Style.space(10)
+              opacity: dictationWave.clamp((waveBubble.m - 0.6) / 0.4)
               Rectangle {
-                readonly property int at: index - (dictationWave.count - dictationWave.levels.length)
-                readonly property real value: at >= 0 ? dictationWave.bar(dictationWave.levels[at]) : 0
                 anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(2); radius: width / 2
-                height: Math.max(width, parent.height * value)
-                color: value > 0.3 ? Color.urgent : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.35)
-                Behavior on height { NumberAnimation { duration: 110; easing.type: Easing.OutQuad } }
-                Behavior on color { ColorAnimation { duration: 110 } }
+                width: Style.space(7); height: width; radius: width / 2; color: dictationWave.red
+                SequentialAnimation on opacity {
+                  running: dictationWave.shown; loops: Animation.Infinite
+                  NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
+                  NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                }
+              }
+              Row {
+                anchors.verticalCenter: parent.verticalCenter
+                height: dictationWave.tall - Style.space(14); spacing: Style.space(2)
+                Repeater {
+                  model: dictationWave.count
+                  Rectangle {
+                    readonly property int at: index - (dictationWave.count - dictationWave.levels.length)
+                    readonly property real value: at >= 0 ? dictationWave.bar(dictationWave.levels[at]) : 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Style.space(3); radius: width / 2
+                    height: Math.max(width, parent.height * value)
+                    color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.25 + 0.75 * value)
+                    Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                  }
+                }
+              }
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Math.floor(dictationWave.seconds / 60) + ":" + ("0" + dictationWave.seconds % 60).slice(-2)
+                color: root.dim; font.pixelSize: Style.font.caption; font.features: { "tnum": 1 }; textFormat: Text.PlainText
               }
             }
           }

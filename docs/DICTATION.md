@@ -8,9 +8,9 @@ on-device keyboard dictation (FUTO Voice Input uses whisper.cpp too).
 ## Using it
 
 - **Microphone button** next to Attach and the screenshot button. Click to start,
-  click again to insert the text. While it records, a bubble grows out of the
-  microphone with the last two seconds of microphone level against the room's noise: flat
-  means nothing is heard, tall red bars mean it hears a voice. If the system
+  click again to insert the text. While it records, a bubble with the recording
+  time grows out of the microphone with the last two seconds of microphone level
+  against the room's noise: flat means nothing is heard, tall red bars mean it hears a voice. If the system
   microphone is muted the bubble says so and a click turns it on.
 - Pauses are kept short before transcribing, so everything said after a long
   silence still comes through.
