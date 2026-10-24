@@ -164,7 +164,7 @@ fn remember(e: &Environment, mut data: Value) -> Result<Value> {
 pub fn read(e: &Environment) -> Result<Value> {
     let c = e.connection(false)?;
     authorize(&c, "orchestration:read")?;
-    let mut data = present(&c.rpc("server.getConfig", json!({}))?)?;
+    let mut data = present(&protocol::api::server::config(&c)?)?;
     data["writable"] = json!(e.connection(true)
         .and_then(|c| permission(&c, "settings:write"))
         .unwrap_or(false));
@@ -216,7 +216,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
     let c = e.connection(true)?;
     authorize(&c, "orchestration:read")?;
     authorize(&c, "settings:write")?;
-    let fresh = present(&c.rpc("server.getConfig", json!({}))?)?;
+    let fresh = present(&protocol::api::server::config(&c)?)?;
     if fresh["revision"] != expected["data"]["revision"] {
         return Err("keybindings_changed_reload".into());
     }
@@ -236,7 +236,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
     };
     let result = c.rpc(method, payload).and_then(|ack| {
         let ack = present(&ack)?;
-        let mut data = present(&c.rpc("server.getConfig", json!({}))?)?;
+        let mut data = present(&protocol::api::server::config(&c)?)?;
         if data["keybindings"] != ack["keybindings"] {
             return Err("keybindings_changed_reload".into());
         }
@@ -264,7 +264,7 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
     let c = e.connection(true)?;
     authorize(&c, "orchestration:read")?;
     authorize(&c, "orchestration:operate")?;
-    let fresh = present(&c.rpc("server.getConfig", json!({}))?)?;
+    let fresh = present(&protocol::api::server::config(&c)?)?;
     if text(&fresh, "path").is_empty() || fresh["path"] != expected["data"]["path"] {
         return Err("keybindings_changed_reload".into());
     }

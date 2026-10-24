@@ -1,7 +1,7 @@
 //! Thread branch picker: the composer's branch toolbar from T3 BranchToolbarBranchSelector.
 //! Lists refs for the thread's checkout, switches or creates a branch through the server,
 //! then records the branch (and worktree) on the thread.
-use crate::{json, text, write::rpc, Environment, Result};
+use crate::{json, protocol, text, write::{dispatch_command, rpc}, Environment, Result};
 use serde_json::Value;
 pub use t3_protocol::branch_picker::{dedupe, derive_local, mismatch, sanitize, selection_target, temporary_branch};
 
@@ -74,10 +74,9 @@ pub fn switch(e: &Environment, input: &Value) -> Result<Value> {
         }
     };
     let id = uuid::Uuid::new_v4();
-    rpc(
+    dispatch_command(
         e,
-        "orchestration.dispatchCommand",
-        json!({"type":"thread.metadata.update","commandId":format!("omarchy-branch-{id}"),"threadId":thread,"branch":branch,"worktreePath":next_worktree}),
+        &json!({"type":"thread.metadata.update","commandId":format!("omarchy-branch-{id}"),"threadId":thread,"branch":branch,"worktreePath":next_worktree}),
     )?;
     Ok(json!({"branch":branch,"worktreePath":next_worktree}))
 }
@@ -88,7 +87,7 @@ pub fn check(e: &Environment, input: &Value) -> Result<Value> {
         return Err("invalid_id".into());
     }
     let scope = thread_scope(e, thread)?;
-    let status = rpc(e, "vcs.refreshStatus", json!({"cwd":scope["cwd"]}))?;
+    let status = protocol::api::vcs::refresh_status(&e.connection(true)?, text(&scope, "cwd"))?;
     if status["isRepo"] == false {
         return Ok(json!({"mismatch":null}));
     }
@@ -101,7 +100,7 @@ pub fn resolve(e: &Environment, input: &Value) -> Result<Value> {
         return Err("invalid_id".into());
     }
     let scope = thread_scope(e, thread)?;
-    let status = rpc(e, "vcs.refreshStatus", json!({"cwd":scope["cwd"]}))?;
+    let status = protocol::api::vcs::refresh_status(&e.connection(true)?, text(&scope, "cwd"))?;
     let Some(found) = mismatch(scope["worktreePath"].as_str(), scope["branch"].as_str(), status["refName"].as_str()).as_object().cloned() else {
         return Ok(json!({"mismatch":null}));
     };
@@ -114,6 +113,6 @@ pub fn resolve(e: &Environment, input: &Value) -> Result<Value> {
     } else {
         text(&Value::Object(found.clone()), "currentBranch").to_string()
     };
-    rpc(e, "orchestration.dispatchCommand", json!({"type":"thread.metadata.update","commandId":format!("omarchy-branch-{}",uuid::Uuid::new_v4()),"threadId":thread,"branch":branch}))?;
+    dispatch_command(e, &json!({"type":"thread.metadata.update","commandId":format!("omarchy-branch-{}",uuid::Uuid::new_v4()),"threadId":thread,"branch":branch}))?;
     Ok(json!({"mismatch":null,"branch":branch}))
 }

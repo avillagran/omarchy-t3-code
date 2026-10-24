@@ -15,7 +15,7 @@ pub fn read(e: &Environment, input: &Value) -> Result<Value> {
     if !valid_id(thread) {
         return Err("invalid_id".into());
     }
-    let config = write::rpc(e, "server.getConfig", json!({}))?;
+    let config = protocol::api::server::config(&e.connection(true)?)?;
     let cwd = workspace(&shell(e)?, thread).ok();
     Ok(json!({"environment":e.id,"thread":thread,"editors":editors(&config),"cwd":cwd}))
 }
@@ -25,7 +25,7 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
     if !valid_id(thread) {
         return Err("invalid_id".into());
     }
-    let config = write::rpc(e, "server.getConfig", json!({}))?;
+    let config = protocol::api::server::config(&e.connection(true)?)?;
     let list = editors(&config);
     let editor = match input["editor"].as_str().filter(|s| !s.is_empty()) {
         Some(id) => list.iter().find(|e| e["id"] == id),

@@ -179,7 +179,7 @@ pub(crate) fn inspect(e: &Environment) -> Result<(protocol::Connection, Value)> 
     if !has("orchestration:read") {
         return Err("permission_denied".into());
     }
-    let config = c.rpc("server.getConfig", json!({}))?;
+    let config = protocol::api::server::config(&c)?;
     Ok((
         c,
         json!({"environment":e.id,"originKey":format!("{:x}",Sha256::digest(e.base_url.as_bytes())),"canOperate":has("preview:operate"),"serverBrowser":config["environment"]["capabilities"]["serverBrowser"]==true}),
@@ -193,7 +193,7 @@ pub fn read(e: &Environment, thread: &str) -> Result<Value> {
     let (c, mut out) = inspect(e)?;
     out["kind"] = json!("list");
     out["thread"] = json!(thread);
-    out["result"] = list(&c.rpc("preview.list", json!({"threadId":thread}))?, thread)?;
+    out["result"] = list(&protocol::api::preview::list(&c, thread)?, thread)?;
     Ok(out)
 }
 /// Authorize a local website surface from current native metadata. UI fields
@@ -240,7 +240,7 @@ pub fn report_status(e: &Environment, scope: &Value, status: &Value) -> Result<(
     }
     let thread = string(&scope["thread"], 2048, true)?;
     let tab = string(&scope["tabId"], 128, true)?;
-    let current = list(&c.rpc("preview.list", json!({"threadId":thread}))?, thread)?;
+    let current = list(&protocol::api::preview::list(&c, thread)?, thread)?;
     if current["serverEpoch"] != scope["serverEpoch"] {
         return Err("preview_server_restarted".into());
     }
@@ -300,7 +300,7 @@ pub fn observe(
         let relevant = item.as_ref().filter(|v| text(v, "threadId") == thread);
         let new_epoch = relevant.is_some_and(|v| text(v, "serverEpoch") != epoch);
         if refreshed.is_none_or(|t| t.elapsed() >= Duration::from_secs(5)) || new_epoch {
-            let result = list(&c.rpc("preview.list", json!({"threadId":thread}))?, thread)?;
+            let result = list(&protocol::api::preview::list(&c, thread)?, thread)?;
             epoch = text(&result, "serverEpoch").to_owned();
             if cancel() {
                 return Ok(());

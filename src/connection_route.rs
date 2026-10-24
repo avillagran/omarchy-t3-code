@@ -35,7 +35,7 @@ pub fn choose(input:&Value)->Result<Value>{
    let canonical=if e.id=="local"{primary.trim()}else{&e.id};let weight=preferences["loadBalancingWeights"][canonical].as_u64().unwrap_or(50);
    if weight==0{continue}
    handles.push(scope.spawn(move||{
-    let config=write::rpc(e,"server.getConfig",json!({})).ok()?;
+    let config=e.connection(true).and_then(|c|protocol::api::server::config(&c)).ok()?;
     if !provider_eligible(&config,text(p,"id"),provider,model){return None}
     let resources=write::rpc(e,"server.getHostResources",json!({})).ok()?;
     Some((json!({"environmentId":e.id,"weight":weight,"receivedAt":Utc::now().timestamp_millis(),"resources":resources}),json!({"environment":e.id,"projectId":p["id"],"modelSelection":input["modelSelection"],"balanced":true})))

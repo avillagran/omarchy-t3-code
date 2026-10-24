@@ -12,17 +12,17 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
     let writable=scopes.is_some_and(|v|v.iter().any(|s|s=="providers:manage"));
     if text(input,"action")!="read" {
         if !writable {return Err("permission_denied".into());}
-        let settings=crate::write::rpc(e,"server.getSettings",json!({}))?;
+        let settings=protocol::api::server::settings(&e.connection(true)?)?;
         let payload=mutation(input,&settings)?;
-        crate::write::rpc(e,"server.updateSettings",payload.clone())?;
+        crate::write::update_settings(&e.connection(true)?,&payload)?;
         // Read back the exact instance. A successful RPC alone isn't proof it persisted.
-        let saved=crate::write::rpc(e,"server.getSettings",json!({}))?;
+        let saved=protocol::api::server::settings(&e.connection(true)?)?;
         let id=text(input,"instanceId");
         if !confirm_target(text(input,"action"),id,&payload,&saved){
             return Err("provider_write_unconfirmed".into());
         }
     }
-    let settings=crate::write::rpc(e,"server.getSettings",json!({}))?;
-    let config=crate::write::rpc(e,"server.getConfig",json!({}))?;
+    let settings=protocol::api::server::settings(&e.connection(true)?)?;
+    let config=protocol::api::server::config(&e.connection(true)?)?;
     Ok(projection(&settings,&config,writable))
 }

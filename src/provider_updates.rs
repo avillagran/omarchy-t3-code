@@ -49,7 +49,7 @@ pub fn run_update(e: &Environment, driver: &str, instance: &str) -> Result<Value
         .and_then(|c| c.rpc_with_timeout("server.updateProvider", payload, Duration::from_secs(300)));
     match result {
         Err(error) if protocol::error_code(&error) == "rpc_outcome_unknown" => {
-            let config = write::rpc(e, "server.getConfig", json!({}))?;
+            let config = protocol::api::server::config(&e.connection(true)?)?;
             let state = config["providers"].as_array().into_iter().flatten().find(|p| p["instanceId"] == instance).map(|p| p["updateState"].clone()).unwrap_or(Value::Null);
             if state.is_null() {
                 return Err(error);
@@ -66,7 +66,7 @@ pub fn update(e: &Environment, input: &Value) -> Result<Value> {
     if !valid_id(instance) {
         return Err("invalid_provider".into());
     }
-    let config = write::rpc(e, "server.getConfig", json!({}))?;
+    let config = protocol::api::server::config(&e.connection(true)?)?;
     let native = config["providers"].as_array().into_iter().flatten().find(|p| p["instanceId"] == instance).ok_or("invalid_provider")?;
     let a = advisory(native);
     if a["oneClick"] != true {

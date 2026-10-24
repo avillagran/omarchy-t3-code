@@ -326,7 +326,7 @@ fn action_inner(e: &Environment, input: &Value) -> Result<Value> {
     record["state"] = json!("pending");
     record["error"] = json!("");
     save(&record, new_action)?;
-    match c.rpc("orchestration.dispatchCommand", record["command"].clone()) {
+    match crate::write::send_command(&c, &record["command"]) {
         Ok(ack) if ack["sequence"].as_u64().is_some() => {
             record["state"] = json!("accepted");
             record["sequence"] = ack["sequence"].clone();

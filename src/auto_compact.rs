@@ -53,7 +53,7 @@ fn supported(
         .get(&e.id)
         .is_none_or(|(at, _)| at.elapsed() > Duration::from_secs(300))
     {
-        let c = write::rpc(e, "server.getConfig", json!({}))?;
+        let c = protocol::api::server::config(&e.connection(true)?)?;
         let providers=c["providers"].as_array().into_iter().flatten().map(|p|json!({"instanceId":p["instanceId"],"enabled":p["enabled"],"commands":p["slashCommands"]})).collect::<Vec<_>>();
         cache.insert(e.id.clone(), (Instant::now(), json!(providers)));
     }
@@ -78,7 +78,7 @@ fn server_compacts(
         .is_none_or(|(at, _)| at.elapsed() > Duration::from_secs(60))
     {
         // A server that cannot report its settings does not compact idle threads itself.
-        let raw = write::rpc(e, "server.getSettings", json!({})).unwrap_or(Value::Null);
+        let raw = e.connection(true).and_then(|c|protocol::api::server::settings(&c)).unwrap_or(Value::Null);
         cache.insert(e.id.clone(), (Instant::now(), raw));
     }
     omarchy_t3_client::native_settings::resolve_idle_compaction(&cache[&e.id].1, instance)
@@ -270,7 +270,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
                     emit(key, &plan);
                     // A claim is durable before dispatch. Unknown RPC outcomes are never retried automatically.
                     let command = policy::command(id, &request, &plan["modelSelection"]);
-                    match write::rpc(&e, "orchestration.dispatchCommand", command.clone()) {
+                    match write::dispatch_command(&e, &command) {
                         Ok(_) => {
                             plan["status"] = json!("accepted");
                             // T3 queues start_immediately if another client won the race. Never leave
@@ -287,7 +287,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
                                         })
                                     {
                                         let cancel = json!({"type":"queued-run.cancel","commandId":format!("omarchy-compact-cancel-{request}"),"threadId":id,"runId":run["id"]});
-                                        if write::rpc(&e, "orchestration.dispatchCommand", cancel)
+                                        if write::dispatch_command(&e, &cancel)
                                             .is_ok()
                                         {
                                             plan["status"] = json!("cancelled")

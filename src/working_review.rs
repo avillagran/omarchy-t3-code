@@ -31,6 +31,11 @@ fn option(input: &Value) -> Result<Value> {
     }
     Ok(p)
 }
+/// `review.getDiffPreview` through the typed API, for a payload built by `option` (plus `file`).
+pub(crate) fn diff_preview(c: &protocol::Connection, p: &Value) -> Result<Value> {
+    let file = p.get("file").map(protocol::api::review::DiffFile::from_json).transpose()?;
+    protocol::api::review::diff_preview(c, text(p, "cwd"), p["baseRef"].as_str(), p["ignoreWhitespace"].as_bool(), file.as_ref())
+}
 /// Preserve complete native statistics even when the global patch was truncated. Older
 /// servers without statistics fall back to the bounded existing checkpoint parser.
 pub fn present(result: &Value, wanted: &str) -> Result<Value> {
@@ -221,7 +226,7 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
     authorize(e, "filesystem:read")?;
     let scoped = scope(&c, input)?;
     let mut payload = option(input)?;
-    let raw = c.rpc("review.getDiffPreview", payload.clone())?;
+    let raw = diff_preview(&c, &payload)?;
     if raw["cwd"] != scoped["cwd"] {
         return Err("git_scope_changed".into());
     }
@@ -237,7 +242,7 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
             .ok_or("review_file_changed")?;
         payload["file"] =
             json!({"path":path,"previousPath":f["previousPath"],"sourceKind":input["sourceKind"]});
-        let result = c.rpc("review.getDiffPreview", payload.clone())?;
+        let result = diff_preview(&c, &payload)?;
         if result["cwd"] != scoped["cwd"] {
             return Err("git_scope_changed".into());
         }

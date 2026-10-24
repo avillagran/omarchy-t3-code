@@ -1,5 +1,5 @@
 //! Native Git header and project-script contracts. Reads only; mutation builders never send.
-use serde_json::{json, Value};
+use serde_json::Value;
 pub use t3_protocol::git_controls::{actions, build_action, build_verified_action, present, resolve_scripts, scope, scoped_result, validate_status, MAX_FILES, MAX_SCRIPTS};
 
 type Result<T> = std::result::Result<T, String>;
@@ -17,9 +17,9 @@ pub fn execute(e: &crate::Environment, input: &Value) -> Result<Value> {
         .as_array()
         .and_then(|ps| ps.iter().find(|p| p["id"] == scoped["projectId"]))
         .ok_or("git_project_unavailable")?;
-    let settings = c.rpc("server.getSettings", json!({}))?;
+    let settings = t3_protocol::api::server::settings(&c)?;
     let scripts = resolve_scripts(&settings, project)?;
-    let status = c.rpc("vcs.refreshStatus", json!({"cwd":scoped["cwd"]}))?;
+    let status = t3_protocol::api::vcs::refresh_status(&c, crate::text(&scoped, "cwd"))?;
     present(&scoped, &status, &scripts)
 }
 
