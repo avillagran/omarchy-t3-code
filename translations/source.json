@@ -1671,7 +1671,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Remove the password or token from the URL. This computer's own sign-in is used.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.",
-    "Set your git name and email on this computer.": "Set your git name and email on this computer.",
     "Install git on this computer.": "Install git on this computer.",
     "Another vault operation is running.": "Another vault operation is running.",
     "Choose a folder inside your home, not the home itself.": "Choose a folder inside your home, not the home itself.",
@@ -1696,6 +1695,14 @@
     "existing clone reused": "existing clone reused",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Not set up in ot3 yet; there is a vault clone at {path}.",
     "remote not readable": "remote not readable",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "No other host is connected. Clone a remote or create a vault in Other options."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "No other host is connected. Clone a remote or create a vault in Other options.",
+    "Commits in the vault need a git name and email.": "Commits in the vault need a git name and email.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "This is the last author of the vault. It is set for this vault only; nothing global changes.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.",
+    "It is set for this vault only; nothing global changes.": "It is set for this vault only; nothing global changes.",
+    "Email": "Email",
+    "Use for this vault and sync": "Use for this vault and sync",
+    "Git name and email for commits": "Git name and email for commits",
+    "The vault has no git name and email for commits yet.": "The vault has no git name and email for commits yet."
   }
 }

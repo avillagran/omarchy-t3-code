@@ -1671,7 +1671,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Remove the password or token from the URL. This computer's own sign-in is used.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.",
-    "Set your git name and email on this computer.": "Set your git name and email on this computer.",
     "Install git on this computer.": "Install git on this computer.",
     "Another vault operation is running.": "Another vault operation is running.",
     "Choose a folder inside your home, not the home itself.": "Choose a folder inside your home, not the home itself.",
@@ -1696,7 +1695,15 @@
     "existing clone reused": "existing clone reused",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Not set up in ot3 yet; there is a vault clone at {path}.",
     "remote not readable": "remote not readable",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "No other host is connected. Clone a remote or create a vault in Other options."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "No other host is connected. Clone a remote or create a vault in Other options.",
+    "Commits in the vault need a git name and email.": "Commits in the vault need a git name and email.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "This is the last author of the vault. It is set for this vault only; nothing global changes.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.",
+    "It is set for this vault only; nothing global changes.": "It is set for this vault only; nothing global changes.",
+    "Email": "Email",
+    "Use for this vault and sync": "Use for this vault and sync",
+    "Git name and email for commits": "Git name and email for commits",
+    "The vault has no git name and email for commits yet.": "The vault has no git name and email for commits yet."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3370,7 +3377,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Este vault es un repositorio en ese host. Conéctate por SSH u OmaBridge para clonarlo.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Quita la contraseña o el token de la URL. Se usa el inicio de sesión propio de este equipo.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Tus cambios entran en conflicto con el remoto. Resuélvelos en la carpeta del vault; se conservaron los commits locales.",
-    "Set your git name and email on this computer.": "Configura tu nombre y correo de git en este equipo.",
     "Install git on this computer.": "Instala git en este equipo.",
     "Another vault operation is running.": "Hay otra operación del vault en curso.",
     "Choose a folder inside your home, not the home itself.": "Elige una carpeta dentro de tu home, no el home mismo.",
@@ -3395,7 +3401,15 @@
     "existing clone reused": "clon existente reutilizado",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Aún no está configurado en ot3; hay un clon del vault en {path}.",
     "remote not readable": "remoto no legible",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "No hay otro host conectado. Clona un remoto o crea un vault en Otras opciones."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "No hay otro host conectado. Clona un remoto o crea un vault en Otras opciones.",
+    "Commits in the vault need a git name and email.": "Los commits del vault necesitan un nombre y correo de git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Es el último autor del vault. Se configura solo para este vault; no cambia nada global.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Tus proyectos en este equipo hacen commits con esta identidad. Se configura solo para este vault; no cambia nada global.",
+    "It is set for this vault only; nothing global changes.": "Se configura solo para este vault; no cambia nada global.",
+    "Email": "Correo",
+    "Use for this vault and sync": "Usar para este vault y sincronizar",
+    "Git name and email for commits": "Nombre y correo de git para commits",
+    "The vault has no git name and email for commits yet.": "El vault aún no tiene nombre y correo de git para los commits."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5069,7 +5083,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Este vault é um repositório nesse host. Conecte-se por SSH ou OmaBridge para cloná-lo.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Remova a senha ou o token da URL. É usado o login próprio deste computador.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Suas mudanças conflitam com o remoto. Resolva-as na pasta do vault; os commits locais foram mantidos.",
-    "Set your git name and email on this computer.": "Configure seu nome e e-mail do git neste computador.",
     "Install git on this computer.": "Instale o git neste computador.",
     "Another vault operation is running.": "Outra operação do vault está em andamento.",
     "Choose a folder inside your home, not the home itself.": "Escolha uma pasta dentro da sua home, não a própria home.",
@@ -5094,7 +5107,15 @@
     "existing clone reused": "clone existente reutilizado",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Ainda não configurado no ot3; há um clone do vault em {path}.",
     "remote not readable": "remoto ilegível",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Nenhum outro host conectado. Clone um remoto ou crie um vault em Outras opções."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Nenhum outro host conectado. Clone um remoto ou crie um vault em Outras opções.",
+    "Commits in the vault need a git name and email.": "Os commits do vault precisam de um nome e e-mail do git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "É o último autor do vault. É configurado só para este vault; nada global muda.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Seus projetos neste computador fazem commits com esta identidade. É configurada só para este vault; nada global muda.",
+    "It is set for this vault only; nothing global changes.": "É configurado só para este vault; nada global muda.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Usar para este vault e sincronizar",
+    "Git name and email for commits": "Nome e e-mail do git para commits",
+    "The vault has no git name and email for commits yet.": "O vault ainda não tem nome e e-mail do git para os commits."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6768,7 +6789,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Ce coffre est un dépôt sur cet hôte. Connectez-vous par SSH ou OmaBridge pour le cloner.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Retirez le mot de passe ou le jeton de l'URL. La connexion propre à cet ordinateur est utilisée.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Vos modifications sont en conflit avec le dépôt distant. Résolvez-les dans le dossier du coffre ; les commits locaux sont conservés.",
-    "Set your git name and email on this computer.": "Définissez votre nom et votre e-mail git sur cet ordinateur.",
     "Install git on this computer.": "Installez git sur cet ordinateur.",
     "Another vault operation is running.": "Une autre opération du coffre est en cours.",
     "Choose a folder inside your home, not the home itself.": "Choisissez un dossier dans votre dossier personnel, pas le dossier personnel lui-même.",
@@ -6793,7 +6813,15 @@
     "existing clone reused": "clone existant réutilisé",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Pas encore configuré dans ot3 ; un clone du coffre existe dans {path}.",
     "remote not readable": "dépôt distant illisible",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Aucun autre hôte n'est connecté. Clonez un dépôt distant ou créez un coffre dans Autres options."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Aucun autre hôte n'est connecté. Clonez un dépôt distant ou créez un coffre dans Autres options.",
+    "Commits in the vault need a git name and email.": "Les commits du coffre nécessitent un nom et un e-mail git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "C'est le dernier auteur du coffre. Il est défini pour ce coffre uniquement ; rien de global ne change.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Vos projets sur cet ordinateur commitent avec cette identité. Elle est définie pour ce coffre uniquement ; rien de global ne change.",
+    "It is set for this vault only; nothing global changes.": "Défini pour ce coffre uniquement ; rien de global ne change.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Utiliser pour ce coffre et synchroniser",
+    "Git name and email for commits": "Nom et e-mail git pour les commits",
+    "The vault has no git name and email for commits yet.": "Le coffre n'a pas encore de nom ni d'e-mail git pour les commits."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8467,7 +8495,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Dieser Vault ist ein Repository auf diesem Host. Verbinde dich per SSH oder OmaBridge, um ihn zu klonen.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Entferne Passwort oder Token aus der URL. Die eigene Anmeldung dieses Computers wird verwendet.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Deine Änderungen kollidieren mit dem Remote. Löse sie im Vault-Ordner; lokale Commits bleiben erhalten.",
-    "Set your git name and email on this computer.": "Lege auf diesem Computer deinen git-Namen und deine E-Mail fest.",
     "Install git on this computer.": "Installiere git auf diesem Computer.",
     "Another vault operation is running.": "Ein anderer Vault-Vorgang läuft.",
     "Choose a folder inside your home, not the home itself.": "Wähle einen Ordner in deinem Home-Verzeichnis, nicht das Home-Verzeichnis selbst.",
@@ -8492,7 +8519,15 @@
     "existing clone reused": "vorhandener Klon wiederverwendet",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "In ot3 noch nicht eingerichtet; unter {path} liegt ein Klon des Vaults.",
     "remote not readable": "Remote nicht lesbar",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Kein anderer Host verbunden. Klone ein Remote oder erstelle einen Vault unter Weitere Optionen."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Kein anderer Host verbunden. Klone ein Remote oder erstelle einen Vault unter Weitere Optionen.",
+    "Commits in the vault need a git name and email.": "Commits im Vault brauchen einen git-Namen und eine E-Mail.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Das ist der letzte Autor des Vaults. Es gilt nur für diesen Vault; global ändert sich nichts.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Deine Projekte auf diesem Computer committen mit dieser Identität. Sie gilt nur für diesen Vault; global ändert sich nichts.",
+    "It is set for this vault only; nothing global changes.": "Gilt nur für diesen Vault; global ändert sich nichts.",
+    "Email": "E-Mail",
+    "Use for this vault and sync": "Für diesen Vault verwenden und synchronisieren",
+    "Git name and email for commits": "git-Name und E-Mail für Commits",
+    "The vault has no git name and email for commits yet.": "Der Vault hat noch keinen git-Namen und keine E-Mail für Commits."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10166,7 +10201,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Questo vault è un repository su quell'host. Collegati via SSH o OmaBridge per clonarlo.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Rimuovi la password o il token dall'URL. Viene usato l'accesso di questo computer.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Le tue modifiche sono in conflitto con il remoto. Risolvile nella cartella del vault; i commit locali sono stati mantenuti.",
-    "Set your git name and email on this computer.": "Imposta nome ed email di git su questo computer.",
     "Install git on this computer.": "Installa git su questo computer.",
     "Another vault operation is running.": "È in corso un'altra operazione sul vault.",
     "Choose a folder inside your home, not the home itself.": "Scegli una cartella dentro la tua home, non la home stessa.",
@@ -10191,7 +10225,15 @@
     "existing clone reused": "clone esistente riutilizzato",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Non ancora configurato in ot3; c'è un clone del vault in {path}.",
     "remote not readable": "remoto non leggibile",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Nessun altro host connesso. Clona un remoto o crea un vault in Altre opzioni."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Nessun altro host connesso. Clona un remoto o crea un vault in Altre opzioni.",
+    "Commits in the vault need a git name and email.": "I commit del vault richiedono un nome e un'email git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "È l'ultimo autore del vault. Viene impostato solo per questo vault; nulla di globale cambia.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "I tuoi progetti su questo computer fanno commit con questa identità. Viene impostata solo per questo vault; nulla di globale cambia.",
+    "It is set for this vault only; nothing global changes.": "Viene impostato solo per questo vault; nulla di globale cambia.",
+    "Email": "Email",
+    "Use for this vault and sync": "Usa per questo vault e sincronizza",
+    "Git name and email for commits": "Nome ed email git per i commit",
+    "The vault has no git name and email for commits yet.": "Il vault non ha ancora nome ed email git per i commit."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11865,7 +11907,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Deze vault is een repository op die host. Maak verbinding via SSH of OmaBridge om hem te klonen.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Verwijder het wachtwoord of token uit de URL. De eigen aanmelding van deze computer wordt gebruikt.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Je wijzigingen conflicteren met de remote. Los ze op in de vaultmap; lokale commits zijn bewaard.",
-    "Set your git name and email on this computer.": "Stel je git-naam en e-mail in op deze computer.",
     "Install git on this computer.": "Installeer git op deze computer.",
     "Another vault operation is running.": "Er loopt al een andere vaultbewerking.",
     "Choose a folder inside your home, not the home itself.": "Kies een map in je thuismap, niet de thuismap zelf.",
@@ -11890,7 +11931,15 @@
     "existing clone reused": "bestaande kloon hergebruikt",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Nog niet ingesteld in ot3; er staat een kloon van de vault in {path}.",
     "remote not readable": "remote niet leesbaar",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Geen andere host verbonden. Kloon een remote of maak een vault via Andere opties."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Geen andere host verbonden. Kloon een remote of maak een vault via Andere opties.",
+    "Commits in the vault need a git name and email.": "Commits in de vault hebben een git-naam en e-mail nodig.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Dit is de laatste auteur van de vault. Het geldt alleen voor deze vault; er verandert niets globaal.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Je projecten op deze computer committen met deze identiteit. Die geldt alleen voor deze vault; er verandert niets globaal.",
+    "It is set for this vault only; nothing global changes.": "Geldt alleen voor deze vault; er verandert niets globaal.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Gebruiken voor deze vault en synchroniseren",
+    "Git name and email for commits": "Git-naam en e-mail voor commits",
+    "The vault has no git name and email for commits yet.": "De vault heeft nog geen git-naam en e-mail voor commits."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13564,7 +13613,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Ten vault to repozytorium na tamtym hoście. Połącz się przez SSH lub OmaBridge, aby go sklonować.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Usuń hasło lub token z adresu URL. Używane jest własne logowanie tego komputera.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Twoje zmiany kolidują z repozytorium. Rozwiąż je w folderze vaulta; lokalne commity zachowano.",
-    "Set your git name and email on this computer.": "Ustaw nazwę i e-mail git na tym komputerze.",
     "Install git on this computer.": "Zainstaluj git na tym komputerze.",
     "Another vault operation is running.": "Trwa inna operacja na vaulcie.",
     "Choose a folder inside your home, not the home itself.": "Wybierz folder w katalogu domowym, a nie sam katalog domowy.",
@@ -13589,7 +13637,15 @@
     "existing clone reused": "użyto istniejącego klonu",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Jeszcze nieskonfigurowany w ot3; w {path} jest klon vaulta.",
     "remote not readable": "nie można odczytać repozytorium",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Brak innych połączonych hostów. Sklonuj repozytorium lub utwórz vault w sekcji Inne opcje."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Brak innych połączonych hostów. Sklonuj repozytorium lub utwórz vault w sekcji Inne opcje.",
+    "Commits in the vault need a git name and email.": "Commity w vaulcie wymagają nazwy i e-maila git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "To ostatni autor vaulta. Ustawienie dotyczy tylko tego vaulta; nic globalnego się nie zmienia.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Twoje projekty na tym komputerze commitują z tą tożsamością. Ustawienie dotyczy tylko tego vaulta; nic globalnego się nie zmienia.",
+    "It is set for this vault only; nothing global changes.": "Dotyczy tylko tego vaulta; nic globalnego się nie zmienia.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Użyj dla tego vaulta i synchronizuj",
+    "Git name and email for commits": "Nazwa i e-mail git do commitów",
+    "The vault has no git name and email for commits yet.": "Vault nie ma jeszcze nazwy i e-maila git do commitów."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15263,7 +15319,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Это хранилище — репозиторий на том хосте. Подключитесь по SSH или OmaBridge, чтобы клонировать его.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Уберите пароль или токен из URL. Используется собственный вход этого компьютера.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Ваши изменения конфликтуют с удалённым репозиторием. Разрешите их в папке хранилища; локальные коммиты сохранены.",
-    "Set your git name and email on this computer.": "Укажите имя и e-mail git на этом компьютере.",
     "Install git on this computer.": "Установите git на этом компьютере.",
     "Another vault operation is running.": "Выполняется другая операция с хранилищем.",
     "Choose a folder inside your home, not the home itself.": "Выберите папку внутри домашнего каталога, а не сам каталог.",
@@ -15288,7 +15343,15 @@
     "existing clone reused": "использован существующий клон",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Ещё не настроено в ot3; в {path} есть клон хранилища.",
     "remote not readable": "удалённый репозиторий не читается",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Других хостов не подключено. Клонируйте репозиторий или создайте хранилище в разделе «Другие варианты»."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Других хостов не подключено. Клонируйте репозиторий или создайте хранилище в разделе «Другие варианты».",
+    "Commits in the vault need a git name and email.": "Коммитам в хранилище нужны имя и e-mail git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Это последний автор хранилища. Задаётся только для этого хранилища; глобально ничего не меняется.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Ваши проекты на этом компьютере коммитят с этой идентичностью. Она задаётся только для этого хранилища; глобально ничего не меняется.",
+    "It is set for this vault only; nothing global changes.": "Задаётся только для этого хранилища; глобально ничего не меняется.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Использовать для этого хранилища и синхронизировать",
+    "Git name and email for commits": "Имя и e-mail git для коммитов",
+    "The vault has no git name and email for commits yet.": "У хранилища пока нет имени и e-mail git для коммитов."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16962,7 +17025,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Це сховище — репозиторій на тому хості. Під'єднайтеся через SSH або OmaBridge, щоб клонувати його.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Приберіть пароль або токен з URL. Використовується власний вхід цього комп'ютера.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Ваші зміни конфліктують з віддаленим репозиторієм. Розв'яжіть їх у теці сховища; локальні коміти збережено.",
-    "Set your git name and email on this computer.": "Укажіть ім'я та e-mail git на цьому комп'ютері.",
     "Install git on this computer.": "Встановіть git на цьому комп'ютері.",
     "Another vault operation is running.": "Виконується інша операція зі сховищем.",
     "Choose a folder inside your home, not the home itself.": "Виберіть теку всередині домашнього каталогу, а не сам каталог.",
@@ -16987,7 +17049,15 @@
     "existing clone reused": "використано наявний клон",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Ще не налаштовано в ot3; у {path} є клон сховища.",
     "remote not readable": "віддалений репозиторій не читається",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Інших хостів не під'єднано. Клонуйте репозиторій або створіть сховище в розділі «Інші варіанти»."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Інших хостів не під'єднано. Клонуйте репозиторій або створіть сховище в розділі «Інші варіанти».",
+    "Commits in the vault need a git name and email.": "Комітам у сховищі потрібні ім'я та e-mail git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Це останній автор сховища. Задається лише для цього сховища; глобально нічого не змінюється.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Ваші проєкти на цьому комп'ютері комітять з цією ідентичністю. Вона задається лише для цього сховища; глобально нічого не змінюється.",
+    "It is set for this vault only; nothing global changes.": "Задається лише для цього сховища; глобально нічого не змінюється.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Використати для цього сховища й синхронізувати",
+    "Git name and email for commits": "Ім'я та e-mail git для комітів",
+    "The vault has no git name and email for commits yet.": "У сховища ще немає імені та e-mail git для комітів."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18661,7 +18731,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "このボールトはそのホスト上のリポジトリです。クローンするには SSH または OmaBridge で接続してください。",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "URL からパスワードやトークンを削除してください。このコンピューター自身のサインインを使います。",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "変更がリモートと競合しています。ボールトのフォルダーで解決してください。ローカルのコミットは保持されています。",
-    "Set your git name and email on this computer.": "このコンピューターで git の名前とメールを設定してください。",
     "Install git on this computer.": "このコンピューターに git をインストールしてください。",
     "Another vault operation is running.": "別のボールト操作を実行中です。",
     "Choose a folder inside your home, not the home itself.": "ホームフォルダー自体ではなく、その中のフォルダーを選んでください。",
@@ -18686,7 +18755,15 @@
     "existing clone reused": "既存のクローンを再利用",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "ot3 ではまだ設定されていません。{path} にボールトのクローンがあります。",
     "remote not readable": "リモートを読み取れません",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "他のホストは接続されていません。「その他のオプション」でリモートをクローンするか、ボールトを作成してください。"
+    "No other host is connected. Clone a remote or create a vault in Other options.": "他のホストは接続されていません。「その他のオプション」でリモートをクローンするか、ボールトを作成してください。",
+    "Commits in the vault need a git name and email.": "ボールトのコミットには git の名前とメールが必要です。",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "ボールトの最後の作成者です。このボールトだけに設定され、グローバル設定は変わりません。",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "このコンピューターのプロジェクトはこの ID でコミットしています。このボールトだけに設定され、グローバル設定は変わりません。",
+    "It is set for this vault only; nothing global changes.": "このボールトだけに設定され、グローバル設定は変わりません。",
+    "Email": "メール",
+    "Use for this vault and sync": "このボールトに使って同期",
+    "Git name and email for commits": "コミット用の git 名とメール",
+    "The vault has no git name and email for commits yet.": "ボールトにはまだコミット用の git 名とメールがありません。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20360,7 +20437,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "이 볼트는 해당 호스트의 저장소입니다. 클론하려면 SSH 또는 OmaBridge로 연결하세요.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "URL에서 비밀번호나 토큰을 제거하세요. 이 컴퓨터의 자체 로그인을 사용합니다.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "변경 사항이 원격과 충돌합니다. 볼트 폴더에서 해결하세요. 로컬 커밋은 유지되었습니다.",
-    "Set your git name and email on this computer.": "이 컴퓨터에서 git 이름과 이메일을 설정하세요.",
     "Install git on this computer.": "이 컴퓨터에 git을 설치하세요.",
     "Another vault operation is running.": "다른 볼트 작업이 실행 중입니다.",
     "Choose a folder inside your home, not the home itself.": "홈 폴더 자체가 아니라 그 안의 폴더를 선택하세요.",
@@ -20385,7 +20461,15 @@
     "existing clone reused": "기존 클론 재사용",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "아직 ot3에서 설정되지 않았습니다. {path}에 볼트 클론이 있습니다.",
     "remote not readable": "원격을 읽을 수 없음",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "연결된 다른 호스트가 없습니다. 다른 옵션에서 원격을 클론하거나 볼트를 만드세요."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "연결된 다른 호스트가 없습니다. 다른 옵션에서 원격을 클론하거나 볼트를 만드세요.",
+    "Commits in the vault need a git name and email.": "볼트 커밋에는 git 이름과 이메일이 필요합니다.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "볼트의 마지막 작성자입니다. 이 볼트에만 설정되며 전역 설정은 바뀌지 않습니다.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "이 컴퓨터의 프로젝트는 이 ID로 커밋합니다. 이 볼트에만 설정되며 전역 설정은 바뀌지 않습니다.",
+    "It is set for this vault only; nothing global changes.": "이 볼트에만 설정되며 전역 설정은 바뀌지 않습니다.",
+    "Email": "이메일",
+    "Use for this vault and sync": "이 볼트에 사용하고 동기화",
+    "Git name and email for commits": "커밋용 git 이름과 이메일",
+    "The vault has no git name and email for commits yet.": "볼트에 아직 커밋용 git 이름과 이메일이 없습니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22059,7 +22143,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "此 vault 是该主机上的仓库。请通过 SSH 或 OmaBridge 连接后克隆。",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "请从 URL 中删除密码或令牌。将使用此电脑自己的登录。",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "你的更改与远程仓库冲突。请在 vault 文件夹中解决；本地提交已保留。",
-    "Set your git name and email on this computer.": "请在此电脑上设置 git 的姓名和邮箱。",
     "Install git on this computer.": "请在此电脑上安装 git。",
     "Another vault operation is running.": "另一个 vault 操作正在进行。",
     "Choose a folder inside your home, not the home itself.": "请选择主目录中的文件夹，而不是主目录本身。",
@@ -22084,7 +22167,15 @@
     "existing clone reused": "已重用现有克隆",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "尚未在 ot3 中设置；{path} 有一个 vault 克隆。",
     "remote not readable": "无法读取远程仓库",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "没有其他已连接的主机。请在“其他选项”中克隆远程仓库或创建 vault。"
+    "No other host is connected. Clone a remote or create a vault in Other options.": "没有其他已连接的主机。请在“其他选项”中克隆远程仓库或创建 vault。",
+    "Commits in the vault need a git name and email.": "vault 中的提交需要 git 姓名和邮箱。",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "这是 vault 的最后一位作者。仅为此 vault 设置；不会更改任何全局设置。",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "你在此电脑上的项目使用此身份提交。仅为此 vault 设置；不会更改任何全局设置。",
+    "It is set for this vault only; nothing global changes.": "仅为此 vault 设置；不会更改任何全局设置。",
+    "Email": "邮箱",
+    "Use for this vault and sync": "用于此 vault 并同步",
+    "Git name and email for commits": "用于提交的 git 姓名和邮箱",
+    "The vault has no git name and email for commits yet.": "vault 尚未设置用于提交的 git 姓名和邮箱。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23758,7 +23849,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "هذا المخزن مستودع على ذلك المضيف. اتصل به عبر SSH أو OmaBridge لنسخه.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "أزل كلمة المرور أو الرمز من عنوان URL. يُستخدم تسجيل دخول هذا الحاسوب.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "تتعارض تغييراتك مع المستودع البعيد. حلّها في مجلد المخزن؛ احتُفظ بالإيداعات المحلية.",
-    "Set your git name and email on this computer.": "عيّن اسمك وبريدك في git على هذا الحاسوب.",
     "Install git on this computer.": "ثبّت git على هذا الحاسوب.",
     "Another vault operation is running.": "توجد عملية أخرى على المخزن قيد التشغيل.",
     "Choose a folder inside your home, not the home itself.": "اختر مجلدًا داخل مجلد المنزل، لا مجلد المنزل نفسه.",
@@ -23783,7 +23873,15 @@
     "existing clone reused": "أُعيد استخدام النسخة الموجودة",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "لم يُعدّ في ot3 بعد؛ توجد نسخة من المخزن في {path}.",
     "remote not readable": "تعذّرت قراءة المستودع البعيد",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "لا يوجد مضيف آخر متصل. انسخ مستودعًا بعيدًا أو أنشئ مخزنًا من خيارات أخرى."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "لا يوجد مضيف آخر متصل. انسخ مستودعًا بعيدًا أو أنشئ مخزنًا من خيارات أخرى.",
+    "Commits in the vault need a git name and email.": "تحتاج إيداعات المخزن إلى اسم وبريد git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "هذا آخر مؤلف للمخزن. يُضبط لهذا المخزن فقط؛ لا يتغير شيء عام.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "تُودِع مشاريعك على هذا الحاسوب بهذه الهوية. تُضبط لهذا المخزن فقط؛ لا يتغير شيء عام.",
+    "It is set for this vault only; nothing global changes.": "يُضبط لهذا المخزن فقط؛ لا يتغير شيء عام.",
+    "Email": "البريد الإلكتروني",
+    "Use for this vault and sync": "استخدمها لهذا المخزن وزامن",
+    "Git name and email for commits": "اسم وبريد git للإيداعات",
+    "The vault has no git name and email for commits yet.": "لا يملك المخزن بعد اسمًا وبريد git للإيداعات."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25457,7 +25555,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Bu kasa o ana bilgisayardaki bir depo. Klonlamak için SSH veya OmaBridge ile bağlanın.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "URL'den parolayı veya belirteci kaldırın. Bu bilgisayarın kendi oturumu kullanılır.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Değişiklikleriniz uzak depoyla çakışıyor. Kasa klasöründe çözün; yerel commit'ler korundu.",
-    "Set your git name and email on this computer.": "Bu bilgisayarda git adınızı ve e-postanızı ayarlayın.",
     "Install git on this computer.": "Bu bilgisayara git kurun.",
     "Another vault operation is running.": "Başka bir kasa işlemi çalışıyor.",
     "Choose a folder inside your home, not the home itself.": "Ana klasörün kendisini değil, içindeki bir klasörü seçin.",
@@ -25482,7 +25579,15 @@
     "existing clone reused": "mevcut klon yeniden kullanıldı",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "ot3'te henüz kurulmadı; {path} konumunda bir kasa klonu var.",
     "remote not readable": "uzak depo okunamıyor",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Başka bağlı ana bilgisayar yok. Diğer seçeneklerde bir uzak depoyu klonlayın veya kasa oluşturun."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Başka bağlı ana bilgisayar yok. Diğer seçeneklerde bir uzak depoyu klonlayın veya kasa oluşturun.",
+    "Commits in the vault need a git name and email.": "Kasadaki commit'ler için git adı ve e-postası gerekir.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Bu, kasanın son yazarı. Yalnızca bu kasa için ayarlanır; genel hiçbir şey değişmez.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Bu bilgisayardaki projeleriniz bu kimlikle commit ediyor. Yalnızca bu kasa için ayarlanır; genel hiçbir şey değişmez.",
+    "It is set for this vault only; nothing global changes.": "Yalnızca bu kasa için ayarlanır; genel hiçbir şey değişmez.",
+    "Email": "E-posta",
+    "Use for this vault and sync": "Bu kasa için kullan ve eşitle",
+    "Git name and email for commits": "Commit'ler için git adı ve e-postası",
+    "The vault has no git name and email for commits yet.": "Kasanın henüz commit'ler için git adı ve e-postası yok."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27156,7 +27261,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Det här valvet är ett förråd på den värden. Anslut via SSH eller OmaBridge för att klona det.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Ta bort lösenordet eller token från URL:en. Den här datorns egen inloggning används.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Dina ändringar krockar med fjärrförrådet. Lös dem i valvmappen; lokala commits behölls.",
-    "Set your git name and email on this computer.": "Ange ditt git-namn och din e-post på den här datorn.",
     "Install git on this computer.": "Installera git på den här datorn.",
     "Another vault operation is running.": "En annan valvåtgärd pågår.",
     "Choose a folder inside your home, not the home itself.": "Välj en mapp i din hemkatalog, inte själva hemkatalogen.",
@@ -27181,7 +27285,15 @@
     "existing clone reused": "befintlig klon återanvänd",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Inte konfigurerat i ot3 än; det finns en klon av valvet i {path}.",
     "remote not readable": "fjärrförrådet går inte att läsa",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Ingen annan värd är ansluten. Klona ett fjärrförråd eller skapa ett valv under Andra alternativ."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Ingen annan värd är ansluten. Klona ett fjärrförråd eller skapa ett valv under Andra alternativ.",
+    "Commits in the vault need a git name and email.": "Commits i valvet behöver ett git-namn och en e-post.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Det här är valvets senaste författare. Det gäller bara det här valvet; inget globalt ändras.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Dina projekt på den här datorn committar med den här identiteten. Den gäller bara det här valvet; inget globalt ändras.",
+    "It is set for this vault only; nothing global changes.": "Gäller bara det här valvet; inget globalt ändras.",
+    "Email": "E-post",
+    "Use for this vault and sync": "Använd för det här valvet och synka",
+    "Git name and email for commits": "Git-namn och e-post för commits",
+    "The vault has no git name and email for commits yet.": "Valvet har inget git-namn och ingen e-post för commits än."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28855,7 +28967,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Denne boks er et lager på den vært. Forbind via SSH eller OmaBridge for at klone den.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Fjern adgangskoden eller tokenet fra URL'en. Denne computers eget login bruges.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Dine ændringer er i konflikt med fjernlageret. Løs dem i boksens mappe; lokale commits blev bevaret.",
-    "Set your git name and email on this computer.": "Angiv dit git-navn og din e-mail på denne computer.",
     "Install git on this computer.": "Installer git på denne computer.",
     "Another vault operation is running.": "En anden handling på boksen kører.",
     "Choose a folder inside your home, not the home itself.": "Vælg en mappe i din hjemmemappe, ikke selve hjemmemappen.",
@@ -28880,7 +28991,15 @@
     "existing clone reused": "eksisterende klon genbrugt",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Endnu ikke opsat i ot3; der er en klon af boksen i {path}.",
     "remote not readable": "fjernlageret kan ikke læses",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Ingen anden vært er forbundet. Klon et fjernlager eller opret en boks under Andre muligheder."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Ingen anden vært er forbundet. Klon et fjernlager eller opret en boks under Andre muligheder.",
+    "Commits in the vault need a git name and email.": "Commits i boksen kræver et git-navn og en e-mail.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Det er boksens seneste forfatter. Det gælder kun denne boks; intet globalt ændres.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Dine projekter på denne computer committer med denne identitet. Den gælder kun denne boks; intet globalt ændres.",
+    "It is set for this vault only; nothing global changes.": "Gælder kun denne boks; intet globalt ændres.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Brug til denne boks og synkroniser",
+    "Git name and email for commits": "Git-navn og e-mail til commits",
+    "The vault has no git name and email for commits yet.": "Boksen har endnu ikke et git-navn og en e-mail til commits."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30554,7 +30673,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Dette hvelvet er et lager på den verten. Koble til via SSH eller OmaBridge for å klone det.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Fjern passordet eller tokenet fra URL-en. Denne datamaskinens egen pålogging brukes.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Endringene dine er i konflikt med fjernlageret. Løs dem i hvelvmappen; lokale commits ble beholdt.",
-    "Set your git name and email on this computer.": "Angi git-navnet og e-posten din på denne datamaskinen.",
     "Install git on this computer.": "Installer git på denne datamaskinen.",
     "Another vault operation is running.": "En annen hvelvoperasjon pågår.",
     "Choose a folder inside your home, not the home itself.": "Velg en mappe i hjemmemappen din, ikke selve hjemmemappen.",
@@ -30579,7 +30697,15 @@
     "existing clone reused": "eksisterende klon gjenbrukt",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Ikke satt opp i ot3 ennå; det finnes en klon av hvelvet i {path}.",
     "remote not readable": "fjernlageret kan ikke leses",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Ingen annen vert er tilkoblet. Klon et fjernlager eller opprett et hvelv under Andre alternativer."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Ingen annen vert er tilkoblet. Klon et fjernlager eller opprett et hvelv under Andre alternativer.",
+    "Commits in the vault need a git name and email.": "Commits i hvelvet trenger et git-navn og en e-post.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Dette er hvelvets siste forfatter. Det gjelder bare dette hvelvet; ingenting globalt endres.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Prosjektene dine på denne datamaskinen committer med denne identiteten. Den gjelder bare dette hvelvet; ingenting globalt endres.",
+    "It is set for this vault only; nothing global changes.": "Gjelder bare dette hvelvet; ingenting globalt endres.",
+    "Email": "E-post",
+    "Use for this vault and sync": "Bruk for dette hvelvet og synkroniser",
+    "Git name and email for commits": "Git-navn og e-post for commits",
+    "The vault has no git name and email for commits yet.": "Hvelvet har ikke git-navn og e-post for commits ennå."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32253,7 +32379,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Tämä holvi on varasto kyseisellä isännällä. Yhdistä SSH:lla tai OmaBridgellä kloonataksesi sen.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Poista salasana tai tunnus URL-osoitteesta. Tämän tietokoneen omaa kirjautumista käytetään.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Muutoksesi ovat ristiriidassa etävaraston kanssa. Ratkaise ne holvin kansiossa; paikalliset commitit säilytettiin.",
-    "Set your git name and email on this computer.": "Aseta git-nimesi ja sähköpostisi tällä tietokoneella.",
     "Install git on this computer.": "Asenna git tälle tietokoneelle.",
     "Another vault operation is running.": "Toinen holvitoiminto on käynnissä.",
     "Choose a folder inside your home, not the home itself.": "Valitse kansio kotihakemistostasi, älä itse kotihakemistoa.",
@@ -32278,7 +32403,15 @@
     "existing clone reused": "olemassa oleva klooni käytetty uudelleen",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "Ei vielä määritetty ot3:ssa; kohteessa {path} on holvin klooni.",
     "remote not readable": "etävarastoa ei voi lukea",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Muita isäntiä ei ole yhdistetty. Kloonaa etävarasto tai luo holvi kohdassa Muut vaihtoehdot."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Muita isäntiä ei ole yhdistetty. Kloonaa etävarasto tai luo holvi kohdassa Muut vaihtoehdot.",
+    "Commits in the vault need a git name and email.": "Holvin commitit tarvitsevat git-nimen ja sähköpostin.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Tämä on holvin viimeisin tekijä. Asetus koskee vain tätä holvia; mikään yleinen ei muutu.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Projektisi tällä tietokoneella commitoivat tällä identiteetillä. Asetus koskee vain tätä holvia; mikään yleinen ei muutu.",
+    "It is set for this vault only; nothing global changes.": "Koskee vain tätä holvia; mikään yleinen ei muutu.",
+    "Email": "Sähköposti",
+    "Use for this vault and sync": "Käytä tälle holville ja synkronoi",
+    "Git name and email for commits": "Git-nimi ja sähköposti commiteille",
+    "The vault has no git name and email for commits yet.": "Holvilla ei ole vielä git-nimeä ja sähköpostia commiteille."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33952,7 +34085,6 @@
     "This vault is a repository on that host. Connect to it over SSH or OmaBridge to clone it.": "Tento trezor je repozitář na onom hostiteli. Pro klonování se připojte přes SSH nebo OmaBridge.",
     "Remove the password or token from the URL. This computer's own sign-in is used.": "Odstraňte z URL heslo nebo token. Použije se vlastní přihlášení tohoto počítače.",
     "Your changes conflict with the remote. Resolve them in the vault folder; local commits were kept.": "Vaše změny jsou v konfliktu se vzdáleným repozitářem. Vyřešte je ve složce trezoru; místní commity zůstaly zachovány.",
-    "Set your git name and email on this computer.": "Nastavte na tomto počítači své jméno a e-mail pro git.",
     "Install git on this computer.": "Nainstalujte na tento počítač git.",
     "Another vault operation is running.": "Probíhá jiná operace s trezorem.",
     "Choose a folder inside your home, not the home itself.": "Vyberte složku uvnitř domovského adresáře, ne samotný adresář.",
@@ -33977,6 +34109,14 @@
     "existing clone reused": "použit existující klon",
     "Not set up in ot3 yet; there is a vault clone at {path}.": "V ot3 zatím nenastaveno; v {path} je klon trezoru.",
     "remote not readable": "vzdálený repozitář nelze přečíst",
-    "No other host is connected. Clone a remote or create a vault in Other options.": "Žádný jiný hostitel není připojen. Naklonujte vzdálený repozitář nebo vytvořte trezor v části Další možnosti."
+    "No other host is connected. Clone a remote or create a vault in Other options.": "Žádný jiný hostitel není připojen. Naklonujte vzdálený repozitář nebo vytvořte trezor v části Další možnosti.",
+    "Commits in the vault need a git name and email.": "Commity v trezoru potřebují jméno a e-mail pro git.",
+    "This is the last author of the vault. It is set for this vault only; nothing global changes.": "Toto je poslední autor trezoru. Nastaví se jen pro tento trezor; nic globálního se nemění.",
+    "Your projects on this computer commit with this identity. It is set for this vault only; nothing global changes.": "Vaše projekty na tomto počítači commitují s touto identitou. Nastaví se jen pro tento trezor; nic globálního se nemění.",
+    "It is set for this vault only; nothing global changes.": "Nastaví se jen pro tento trezor; nic globálního se nemění.",
+    "Email": "E-mail",
+    "Use for this vault and sync": "Použít pro tento trezor a synchronizovat",
+    "Git name and email for commits": "Jméno a e-mail pro commity v gitu",
+    "The vault has no git name and email for commits yet.": "Trezor zatím nemá jméno a e-mail pro commity v gitu."
   }
 }

@@ -125,6 +125,18 @@ Without hosts (or with every host offline) the page still offers **Clone a remot
 templates, optionally create a private GitHub repository with `gh repo create
 --private`, and push.
 
+## Commit identity
+
+Many people keep no global git identity and set one per checkout. A vault clone
+without `user.name`/`user.email` cannot commit, so the page counts it as a pending
+step (**Git name and email for commits**) and never says *ready* without it. It
+suggests an identity from the checkouts T3 has on this computer (`git config
+--local`), preferring one that already authored commits in the vault, else the
+vault's last author. When the suggestion is both (wrote the vault and is set in a
+checkout here), the wizard sets it on its own; otherwise the page shows it prefilled
+with **Use for this vault and sync**. It is always written to the vault's
+`.git/config` only; the global configuration is never touched.
+
 ## Agent instructions
 
 A marked block is written to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` on this
