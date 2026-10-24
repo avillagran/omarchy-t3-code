@@ -114,10 +114,12 @@ pub fn advisory(current: &str, latest: Option<&str>) -> Value {
     json!({"current":current,"channel":channel(current),"latest":newer})
 }
 /// Whether an environment is quiet enough to restart its server unasked: no
-/// agent working there and nothing on it changed in the last ten minutes.
+/// agent working or paused on a question there, and nothing on it changed in
+/// the last ten minutes. Threads only awaiting review, a plan or a retry run
+/// nothing a restart could interrupt.
 pub fn quiet(snapshot: &Value, environment: &str, now: i64) -> bool {
     snapshot["threads"].as_array().into_iter().flatten().filter(|t| t["environmentId"] == environment).all(|t| {
-        t["working"] != true && t["pending"] != true && t["updatedAt"].as_i64().is_none_or(|at| now - at >= QUIET_MS)
+        t["working"] != true && t["reason"] != "request" && t["updatedAt"].as_i64().is_none_or(|at| now - at >= QUIET_MS)
     })
 }
 /// Whether the automatic update may run now for this environment, given its
