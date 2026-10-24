@@ -1,6 +1,6 @@
 //! Portable composer suggestions. Server catalog is authoritative; no local scans.
 use serde_json::{json,Value};
-fn text<'a>(v:&'a Value,k:&str)->&'a str{v[k].as_str().unwrap_or("")}
+use crate::util::text;
 /// Same Markdown file link serialization as T3's shared composerTrigger module.
 pub fn file_link(path:&str)->String {
  let basename=path.rsplit(['/', '\\']).next().unwrap_or(path);

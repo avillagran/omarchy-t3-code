@@ -1,6 +1,6 @@
 //! Bounded thread projection reducer, shared with Omi. Unknown events advance the cursor safely.
 use serde_json::{json,Value};
-fn text<'a>(v:&'a Value,k:&str)->&'a str{v[k].as_str().unwrap_or("")}
+use crate::util::text;
 fn upsert(p:&mut Value,key:&str,v:&Value,cap:usize){
  if !p[key].is_array(){p[key]=json!([])}let list=p[key].as_array_mut().unwrap();
  if let Some(i)=list.iter().position(|a|a["id"]==v["id"]){list[i]=v.clone()}else{list.push(v.clone());if list.len()>cap{list.drain(..list.len()-cap);}}

@@ -1,0 +1,215 @@
+{
+  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
+  "source": "packages/shared/src/projectSettings.ts",
+  "sourceSha256": "7f67e210d91a6511d7ee490db9e400cb6a122eb5bf239525f01fb1dc61e7de08",
+  "adaptation": "Dependency adapter receives already-folded settings; original resolveWorktreeCleanup body unchanged after TypeScript erasure.",
+  "cases": [
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "any-local-files",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": null
+      },
+      "expected": {
+        "worktreeKeepWhen": "any-local-files",
+        "worktreeAfterDays": 8,
+        "worktreeOnMerge": true,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": true
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "any-local-files",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "off"
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "any-local-files",
+        "worktreeAfterDays": null,
+        "worktreeSettledAfterDays": null,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "any-local-files",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "custom",
+          "rules": {
+            "worktreeKeepWhen": "tracked-changes",
+            "worktreeAfterDays": 3650,
+            "worktreeOnMerge": false,
+            "worktreeOnDelete": true,
+            "worktreeUnchanged": false
+          }
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 3650,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": true,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "uncommitted-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": null
+      },
+      "expected": {
+        "worktreeKeepWhen": "uncommitted-changes",
+        "worktreeAfterDays": 8,
+        "worktreeOnMerge": true,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": true
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "uncommitted-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "off"
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "uncommitted-changes",
+        "worktreeAfterDays": null,
+        "worktreeSettledAfterDays": null,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "uncommitted-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "custom",
+          "rules": {
+            "worktreeKeepWhen": "tracked-changes",
+            "worktreeAfterDays": 3650,
+            "worktreeOnMerge": false,
+            "worktreeOnDelete": true,
+            "worktreeUnchanged": false
+          }
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 3650,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": true,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "tracked-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": null
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 8,
+        "worktreeOnMerge": true,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": true
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "tracked-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "off"
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": null,
+        "worktreeSettledAfterDays": null,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": false,
+        "worktreeUnchanged": false
+      }
+    },
+    {
+      "settings": {
+        "storageCleanup": {
+          "worktreeKeepWhen": "tracked-changes",
+          "worktreeAfterDays": 8,
+          "worktreeOnMerge": true,
+          "worktreeOnDelete": false,
+          "worktreeUnchanged": true
+        },
+        "worktreeCleanup": {
+          "mode": "custom",
+          "rules": {
+            "worktreeKeepWhen": "tracked-changes",
+            "worktreeAfterDays": 3650,
+            "worktreeOnMerge": false,
+            "worktreeOnDelete": true,
+            "worktreeUnchanged": false
+          }
+        }
+      },
+      "expected": {
+        "worktreeKeepWhen": "tracked-changes",
+        "worktreeAfterDays": 3650,
+        "worktreeOnMerge": false,
+        "worktreeOnDelete": true,
+        "worktreeUnchanged": false
+      }
+    }
+  ]
+}

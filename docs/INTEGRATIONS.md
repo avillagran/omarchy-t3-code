@@ -59,9 +59,9 @@ Device reads and actions have separate lazy bounded worker pools, so a slow nati
 
 ## Shared transport extension
 
-The pinned `t3-protocol` dependency at `1a616ab6ccb31b689f41ff6f74915e69c780b1a3` has a short ordinary RPC deadline. Native tool preparation can take longer. `vendor/t3-protocol` contains that exact MIT-licensed source plus one additive `Connection::rpc_with_timeout` method. Root Cargo uses a path patch; the original Git dependency/pin remain recorded. `UPSTREAM.json` hashes every original file; only `src/lib.rs` appends the module declaration. No shared checkout or Cargo cache was changed.
+`Connection::rpc_with_timeout` is part of `t3-protocol` since 0.3.0. `vendor/t3-protocol` is an exact copy of the pinned lib-t3-rust revision, without local changes; root Cargo uses a path patch and `UPSTREAM.json` hashes every vendored file (see `tools/sync-vendor` in [DEVELOPMENT.md](DEVELOPMENT.md)).
 
-The new method reuses the crate's authenticated websocket factory, including DPoP ticket/relay admission. It preserves Effect Request/Exit framing, handles websocket and JSON heartbeats, ignores unrelated request exits, and uses an explicit deadline up to 300 seconds. Timeout sends Interrupt and reports unknown outcome, never replaying. Existing `rpc` behavior is unchanged. This is a local extension, not a claim that the shared library was updated upstream; it can be removed when an equivalent API is available at a verified upstream pin.
+The method reuses the crate's authenticated websocket factory, including DPoP ticket/relay admission. It preserves Effect Request/Exit framing, handles websocket and JSON heartbeats, ignores unrelated request exits, and uses an explicit deadline up to 300 seconds. Timeout sends Interrupt and reports unknown outcome, never replaying. Existing `rpc` behavior is unchanged.
 
 ## Verification
 

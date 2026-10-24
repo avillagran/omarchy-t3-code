@@ -1,8 +1,6 @@
 //! Compact, safe tool presentation shared with mobile. Never returns tool inputs/outputs.
 use serde_json::{json, Value};
-fn text<'a>(v: &'a Value, k: &str) -> &'a str {
-    v[k].as_str().unwrap_or("")
-}
+use crate::util::text;
 pub fn item(row: &Value) -> &Value {
     if row["item"].is_object() {
         &row["item"]

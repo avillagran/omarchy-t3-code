@@ -1,6 +1,6 @@
 //! Context boundaries and native handoff identities, shared with Omi.
 use serde_json::{json,Value};
-fn text<'a>(v:&'a Value,k:&str)->&'a str{v[k].as_str().unwrap_or("")}
+use crate::util::text;
 pub fn describe(row:&Value,runs:&[Value])->Option<Value>{
  let i=crate::activity::item(row);let kind=text(i,"type");
  if !matches!(kind,"compaction"|"handoff"){return None}

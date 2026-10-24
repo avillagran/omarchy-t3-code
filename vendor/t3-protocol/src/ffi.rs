@@ -30,29 +30,36 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
     match field(&request, "op")? {
         "capabilities" => Ok(
             json!({"abiVersion":2,"libraryVersion":env!("CARGO_PKG_VERSION"),
-            "operations":["connectBearer","connectRelay","request","rpc","disconnect","subscribe","pollSubscription","cancelSubscription"],
+            "operations":["connectBearer","connectRelay","request","requestOk","rpc","rpcWithTimeout","disconnect","subscribe","pollSubscription","cancelSubscription","fetchDescriptor","pairBearer","boundedThread","assetBytes","projectFavicon"],
+            "binaryOperations":["image","assetBytes","projectFavicon"],
+            "connectionOptions":["requestTimeoutMs","connectTimeoutMs","poolIdleTimeoutMs","maxBytes"],
             "nativeAttachmentUpload":true,"nativeImageDownload":true,"maxSubscriptions":4,
-            "queueMaxItems":64,"queueMaxBytes":MAX_BYTES,"maxPollMs":1000}),
+            "queueMaxItems":64,"queueMaxBytes":MAX_BYTES,"maxPollMs":1000,
+            "maxAssetBytes":assets::MAX_ASSET_BYTES}),
         ),
         "connectBearer" => {
+            let options = options(&request)?;
             let mut h = handle.lock().map_err(|_| "internal_error")?;
-            let connection = Connection::new(
+            let connection = Connection::with_options(
                 field(&request, "httpBaseUrl")?,
                 request["wsBaseUrl"].as_str(),
                 Credential::bearer(field(&request, "token")?)?,
+                &options,
             )?;
             h.cancel_all();
             h.connection = Some(connection);
             Ok(json!({"connected":true}))
         }
         "connectRelay" => {
+            let options = options(&request)?;
             let mut h = handle.lock().map_err(|_| "internal_error")?;
-            let connection = connect_relay(
+            let connection = connect_relay_with_options(
                 field(&request, "relayUrl")?,
                 field(&request, "cloudJwt")?,
                 field(&request, "clientId")?,
                 field(&request, "environmentId")?,
                 h.key.clone(),
+                &options,
             )?;
             h.cancel_all();
             h.connection = Some(connection);
@@ -64,13 +71,65 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
             h.connection = None;
             Ok(json!({"connected":false}))
         }
-        "request" => connection(handle)?.request_json(
-            field(&request, "method")?,
-            field(&request, "path")?,
-            request.get("body"),
-            request["protocol"].as_bool().unwrap_or(true),
-        ),
+        "request" => {
+            let c = connection(handle)?;
+            let (method, path) = (field(&request, "method")?, field(&request, "path")?);
+            let protocol = request["protocol"].as_bool().unwrap_or(true);
+            match request.get("maxBytes") {
+                None | Some(Value::Null) => c.request_json(method, path, request.get("body"), protocol),
+                Some(v) => c.request_json_with_limit(method, path, request.get("body"), protocol, v.as_u64().ok_or("invalid_max_bytes")?),
+            }
+        }
+        "requestOk" => connection(handle)?
+            .request_ok(
+                field(&request, "method")?,
+                field(&request, "path")?,
+                request.get("body"),
+                request["protocol"].as_bool().unwrap_or(true),
+            )
+            .map(|_| json!({"succeeded":true})),
+        "fetchDescriptor" => {
+            let options = options(&request)?;
+            let base = field(&request, "httpBaseUrl")?;
+            match request["environmentId"].as_str() {
+                Some(id) => verify_environment(base, id, &options),
+                None => fetch_descriptor_with(base, &options),
+            }
+        }
+        "pairBearer" => {
+            let options = options(&request)?;
+            let client = pairing_client(&request["client"])?;
+            let paired = pair_bearer(
+                field(&request, "httpBaseUrl")?,
+                request["pairingCode"].as_str().ok_or("invalid_pairing_code")?,
+                request["environmentId"].as_str(),
+                &client,
+                &options,
+            )?;
+            let connected = request["connect"].as_bool().unwrap_or(false);
+            if connected {
+                let connection = paired.connection(&options)?;
+                let mut h = handle.lock().map_err(|_| "internal_error")?;
+                h.cancel_all();
+                h.connection = Some(connection);
+            }
+            Ok(json!({"accessToken":paired.access_token.as_str(),"tokenType":"Bearer",
+                "environmentId":paired.environment_id,"descriptor":paired.descriptor,
+                "scope":paired.scope,"expiresIn":paired.expires_in,"connected":connected}))
+        }
+        "boundedThread" => connection(handle)?.bounded_thread(field(&request, "threadId")?),
+        // Bytes never travel through JSON: these go through t3_client_image.
+        "assetBytes" | "projectFavicon" => Err("binary_operation".into()),
         "rpc" => connection(handle)?.rpc(field(&request, "tag")?, request["payload"].clone()),
+        "rpcWithTimeout" => {
+            // Validated before connecting: 1 ms to 300 s, as `rpc_with_timeout` requires.
+            let timeout = request["timeoutMs"]
+                .as_u64()
+                .filter(|ms| (1..=300_000).contains(ms))
+                .map(Duration::from_millis)
+                .ok_or("invalid_rpc_timeout")?;
+            connection(handle)?.rpc_with_timeout(field(&request, "tag")?, request["payload"].clone(), timeout)
+        }
         "subscribe" => {
             let mut h = handle.lock().map_err(|_| "internal_error")?;
             if h.subscriptions.len() >= 4 {
@@ -116,6 +175,49 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
         }
         _ => Err("unknown_operation".into()),
     }
+}
+/// Optional `options`: {requestTimeoutMs, connectTimeoutMs, poolIdleTimeoutMs,
+/// maxBytes}. Absent keys keep the defaults; null clears connect/pool timeouts.
+fn options(request: &Value) -> Result<ConnectionOptions> {
+    let mut o = ConnectionOptions::default();
+    let map = match request.get("options") {
+        None | Some(Value::Null) => return Ok(o),
+        Some(Value::Object(map)) => map,
+        Some(_) => return Err("invalid_connection_options".into()),
+    };
+    let ms = |v: &Value| v.as_u64().map(Duration::from_millis).ok_or("invalid_connection_options");
+    for (key, value) in map {
+        o = match (key.as_str(), value) {
+            ("requestTimeoutMs", v) => o.with_request_timeout(ms(v)?),
+            ("connectTimeoutMs", Value::Null) => o.with_connect_timeout(None),
+            ("connectTimeoutMs", v) => o.with_connect_timeout(Some(ms(v)?)),
+            ("poolIdleTimeoutMs", Value::Null) => o.with_pool_idle_timeout(None),
+            ("poolIdleTimeoutMs", v) => o.with_pool_idle_timeout(Some(ms(v)?)),
+            ("maxBytes", v) => o.with_max_bytes(v.as_u64().ok_or("invalid_connection_options")?),
+            _ => return Err("invalid_connection_options".into()),
+        };
+    }
+    o.validate()?;
+    Ok(o)
+}
+/// Optional `client`: {label, deviceType, os}.
+fn pairing_client(client: &Value) -> Result<PairingClient> {
+    let mut c = PairingClient::default();
+    let map = match client {
+        Value::Null => return Ok(c),
+        Value::Object(map) => map,
+        _ => return Err("invalid_pairing_client".into()),
+    };
+    for (key, value) in map {
+        let value = value.as_str().ok_or("invalid_pairing_client")?;
+        c = match key.as_str() {
+            "label" => c.with_label(value),
+            "deviceType" => c.with_device_type(value),
+            "os" => c.with_os(value),
+            _ => return Err("invalid_pairing_client".into()),
+        };
+    }
+    Ok(c)
 }
 fn connection(handle: &Mutex<Handle>) -> Result<Connection> {
     handle
@@ -165,7 +267,14 @@ pub unsafe extern "C" fn t3_client_call(
 fn response(result: Result<Value>) -> *mut c_char {
     let response = match result {
         Ok(data) => json!({"ok":true,"data":data}),
-        Err(code) => json!({"ok":false,"error":code}),
+        // `error` stays a stable code; a server's reason travels separately.
+        Err(error) => {
+            let code = error_code(&error);
+            match error.get(code.len() + 2..).filter(|_| code.len() < error.len()) {
+                Some(reason) => json!({"ok":false,"error":code,"message":reason}),
+                None => json!({"ok":false,"error":code}),
+            }
+        }
     };
     CString::new(response.to_string()).unwrap().into_raw()
 }
@@ -201,8 +310,11 @@ pub unsafe extern "C" fn t3_client_upload(
     response(result)
 }
 /// # Safety
-/// Callback borrows image bytes only for its duration, on the calling thread.
+/// Callback borrows the bytes only for its duration, on the calling thread.
 /// It must not unwind; copy bytes before returning. The host owns context.
+/// Metadata without `op` reads an attachment image; `op` may also be
+/// `assetBytes` or `projectFavicon`. The callback is not called when no
+/// favicon exists or on any error.
 #[no_mangle]
 pub unsafe extern "C" fn t3_client_image(
     handle: *mut std::ffi::c_void,
@@ -214,13 +326,43 @@ pub unsafe extern "C" fn t3_client_image(
     let result = std::panic::catch_unwind(|| {
         let receive = receive.ok_or("invalid_callback")?;
         let request = input_json(handle, input, len)?;
-        let bytes = connection(&*handle.cast::<Mutex<Handle>>())?.attachment_image(
-            field(&request, "id")?,
-            field(&request, "name")?,
-            field(&request, "mimeType")?,
-        )?;
-        receive(context, bytes.as_ptr(), bytes.len());
-        Ok(json!({"sizeBytes":bytes.len()}))
+        let connection = connection(&*handle.cast::<Mutex<Handle>>())?;
+        match request.get("op").and_then(Value::as_str) {
+            None => {
+                let bytes = connection.attachment_image(
+                    field(&request, "id")?,
+                    field(&request, "name")?,
+                    field(&request, "mimeType")?,
+                )?;
+                receive(context, bytes.as_ptr(), bytes.len());
+                Ok(json!({"sizeBytes":bytes.len()}))
+            }
+            Some("assetBytes") => {
+                let limit = request["maxBytes"].as_u64().ok_or("invalid_asset_limit")?;
+                let mut options = AssetOptions::new(limit);
+                if let Some(ms) = request.get("timeoutMs").filter(|v| !v.is_null()) {
+                    options = options.with_timeout(Duration::from_millis(ms.as_u64().ok_or("invalid_asset_timeout")?));
+                }
+                let resource = request.get("resource").filter(|r| r.is_object()).ok_or("invalid_asset_resource")?;
+                let asset = connection.asset_bytes_with(resource.clone(), &options)?;
+                receive(context, asset.bytes.as_ptr(), asset.bytes.len());
+                Ok(json!({"sizeBytes":asset.bytes.len(),"mimeType":asset.mime}))
+            }
+            Some("projectFavicon") => {
+                let path = match request.get("path") {
+                    None | Some(Value::Null) => None,
+                    Some(p) => Some(p.as_str().ok_or("invalid_asset_resource")?),
+                };
+                match connection.project_favicon(field(&request, "cwd")?, path)? {
+                    Some(icon) => {
+                        receive(context, icon.bytes.as_ptr(), icon.bytes.len());
+                        Ok(json!({"found":true,"sizeBytes":icon.bytes.len(),"mimeType":icon.mime}))
+                    }
+                    None => Ok(json!({"found":false,"sizeBytes":0})),
+                }
+            }
+            Some(_) => Err("unknown_operation".into()),
+        }
     })
     .unwrap_or_else(|_| Err("internal_error".into()));
     response(result)
@@ -275,6 +417,21 @@ mod tests {
             );
             t3_string_free(response);
             t3_client_free(h);
+        }
+    }
+    #[test]
+    fn c_abi_errors_keep_a_stable_code_and_carry_the_reason_apart() {
+        unsafe {
+            let read = |r: *mut c_char| {
+                let v: Value = serde_json::from_slice(CStr::from_ptr(r).to_bytes()).unwrap();
+                t3_string_free(r);
+                v
+            };
+            assert_eq!(
+                read(response(Err("rpc_rejected: Project p-1 was not found.".into()))),
+                json!({"ok":false,"error":"rpc_rejected","message":"Project p-1 was not found."})
+            );
+            assert_eq!(read(response(Err("not_connected".into()))), json!({"ok":false,"error":"not_connected"}));
         }
     }
 }
