@@ -603,6 +603,7 @@ fn run() -> Result<()> {
         "disk-report" => disk_space::report(&client,&ui_state::load()),
         "vault-status" => journal_vault::execute(&json!({"op":"vault-read"}))?,
         "vault-discover" => journal_vault::discover()?,
+        "vault-search" if args.len()>=2 => journal_vault::execute(&json!({"op":"vault-action","action":"search","query":args[1..].join(" "),"limit":20}))?,
         "vault-sync" => {let mut r=journal_vault::execute(&json!({"op":"vault-action","action":"pull"}))?;if args.iter().any(|a|a=="--push"){r=journal_vault::execute(&json!({"op":"vault-action","action":"push"}))?;}r},
         "build-cleanup" => build_cleanup::run(&client,&ui_state::load(),args.iter().any(|a|a=="--dry-run"))?,
         "browser-import-sources" => browser_sources::list_at(&home())?,

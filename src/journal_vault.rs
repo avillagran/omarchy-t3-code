@@ -269,6 +269,7 @@ pub fn host_vaults(files: &dyn HostFiles, home: Option<&str>) -> Value {
         Ok(k) => k,
         Err(e) => return json!({"state":host_error(&e),"error":e,"vaults":[]}),
     };
+    let mut instructions: Vec<Option<String>> = vec![None, None];
     let mut candidates: Vec<(String, &str)> = vec![];
     let add = |p: String, from: &'static str, list: &mut Vec<(String, &str)>| {
         let p = expand(&p);
@@ -289,6 +290,7 @@ pub fn host_vaults(files: &dyn HostFiles, home: Option<&str>) -> Value {
                 }
             }
         } else {
+            instructions[i - 1] = Some(contents.clone());
             for p in instruction_paths(&contents) {
                 add(p, "instructions", &mut candidates);
             }
@@ -322,7 +324,10 @@ pub fn host_vaults(files: &dyn HostFiles, home: Option<&str>) -> Value {
                 Err(e) => (None, Some(e)),
             }
         };
+        // Whether this host's agents get the current protocol for this vault.
+        let state = |c: &Option<String>| c.as_deref().map(|c| block_state(c, path)).unwrap_or("missing");
         vaults.push(json!({
+            "instructions":{"claude":state(&instructions[0]),"codex":state(&instructions[1])},
             "path":path,"from":from,"git":git,"remoteError":remote_error,
             "remote":remote.as_deref().map(redact_url),
             "canonical":remote.as_deref().and_then(canonical_remote),
@@ -593,11 +598,171 @@ pub fn pull(path: &Path) -> Result<Value> {
         return Ok(json!({"pulled":true}));
     }
     if rebasing(path) {
+        if resolve_managed(path) {
+            return Ok(json!({"pulled":true,"merged":true}));
+        }
         run_git(Some(path), &["rebase", "--abort"], None, 30);
         return Err("vault_conflict".into());
     }
     Err(classify(&out.stderr).into())
 }
+/// A rebase stopped only on ot3-managed rows (Threads.md, the device table) is
+/// finished by merging rows from both sides; anything else is left to the person.
+fn resolve_managed(path: &Path) -> bool {
+    for _ in 0..20 {
+        if !rebasing(path) {
+            return true;
+        }
+        let conflicted = run_git(Some(path), &["diff", "--name-only", "--diff-filter=U"], None, 30).stdout;
+        let files: Vec<&str> = conflicted.lines().filter(|l| !l.is_empty()).collect();
+        if files.is_empty() || !files.iter().all(|f| managed(f)) {
+            return false;
+        }
+        for file in &files {
+            // In a rebase, stage 2 is the remote side and stage 3 this computer's commit.
+            let theirs = run_git(Some(path), &["show", &format!(":2:{file}")], None, 30);
+            let ours = run_git(Some(path), &["show", &format!(":3:{file}")], None, 30);
+            if !theirs.ok || !ours.ok {
+                return false;
+            }
+            let Some(merged) = merge_managed(file, &format!("{}\n", theirs.stdout), &format!("{}\n", ours.stdout)) else { return false };
+            let target = path.join(file);
+            if confined(path, &target).is_err() || replace(&target, &merged).is_err() || !run_git(Some(path), &["add", "--", file], None, 30).ok {
+                return false;
+            }
+        }
+        let next = run_git(Some(path), &["-c", "core.editor=true", "rebase", "--continue"], None, 60);
+        if !next.ok && !rebasing(path) {
+            return false;
+        }
+    }
+    false
+}
+fn managed(file: &str) -> bool {
+    file == "Machines.md" || file.strip_prefix("Projects/").and_then(|r| r.strip_suffix("/Threads.md")).is_some_and(valid_slug)
+}
+/// Both sides' rows of the managed table in `file`, on the remote side's text.
+pub fn merge_managed(file: &str, theirs: &str, ours: &str) -> Option<String> {
+    if file == "Machines.md" {
+        let mut merged = theirs.to_string();
+        for row in marked_rows(ours, DEVICES_START, DEVICES_END)? {
+            let id = row.split('`').nth(1)?.to_string();
+            merged = upsert_row(&merged, DEVICES_START, DEVICES_END, DEVICES_HEADER, &row, &format!("| `{id}` |"))?;
+        }
+        return Some(merged);
+    }
+    let rows: Vec<ThreadRow> = marked_rows(ours, THREADS_START, THREADS_END)?.iter().filter_map(|r| ThreadRow::parse(r)).collect();
+    Some(upsert_threads(theirs, file.split('/').nth(1)?, &rows))
+}
+fn marked_rows(doc: &str, start: &str, end: &str) -> Option<Vec<String>> {
+    let (s, e) = (doc.find(start)?, doc.find(end)?);
+    (e > s).then(|| doc[s + start.len()..e].lines().filter(|l| l.starts_with("| ") && !l.starts_with("| Dispositivo") && !l.starts_with("| Actualizado") && !l.starts_with("|---")).map(str::to_owned).collect())
+}
+fn upsert_row(doc: &str, start: &str, end: &str, header: &str, row: &str, key: &str) -> Option<String> {
+    let mut rows = marked_rows(doc, start, end)?;
+    match rows.iter().position(|r| r.contains(key)) {
+        Some(i) => rows[i] = row.to_string(),
+        None => rows.push(row.to_string()),
+    }
+    let (s, e) = (doc.find(start)?, doc.find(end)?);
+    Some(format!("{}{start}\n{header}\n{}\n{end}{}", &doc[..s], rows.join("\n"), &doc[e + end.len()..]))
+}
+
+// ---------------------------------------------------------------- thread registry
+
+pub const THREADS_START: &str = "<!-- ot3-threads:start -->";
+pub const THREADS_END: &str = "<!-- ot3-threads:end -->";
+const THREADS_HEADER: &str = "| Actualizado | Máquina | Hilo | Estado |\n|---|---|---|---|";
+const DEVICES_HEADER: &str = "| Dispositivo (ot3) | Id | Environment local | Sistema | Vault | Actualizado |\n|---|---|---|---|---|---|";
+/// Only the most recent threads of a project are kept: agents search the file, never
+/// load history whole. Older rows stay in the file's git history.
+pub const MAX_THREADS: usize = 25;
+#[derive(Clone, Debug, PartialEq)]
+pub struct ThreadRow {
+    pub updated: String,
+    pub machine: String,
+    pub id: String,
+    pub title: String,
+    pub status: String,
+}
+fn cell(s: &str, max: usize) -> String {
+    let clean: String = s.chars().map(|c| if c.is_control() || "|[]`".contains(c) { ' ' } else { c }).collect();
+    let clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
+    if clean.chars().count() > max { format!("{}…", clean.chars().take(max).collect::<String>()) } else { clean }
+}
+impl ThreadRow {
+    /// A settled, titled, top-level thread of a real project; subagents, scratch
+    /// projects and untitled threads are not history worth keeping.
+    pub fn from_thread(t: &Value, machine: &str) -> Option<ThreadRow> {
+        let title = text(t, "title").trim();
+        let id = text(t, "id");
+        if t["working"] == true || !t["parentThreadId"].is_null() || title.is_empty() || title.eq_ignore_ascii_case("New thread") || id.is_empty() || id.contains(|c: char| c.is_whitespace() || c == ')') {
+            return None;
+        }
+        let at = t["updatedAt"].as_i64().filter(|v| *v > 0)?;
+        let updated = chrono::DateTime::from_timestamp_millis(at)?.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M").to_string();
+        let status = match text(t, "status") { "" => "settled", s => s };
+        Some(ThreadRow { updated, machine: cell(machine, 40), id: id.into(), title: cell(title, 90), status: cell(status, 20) })
+    }
+    pub fn line(&self) -> String {
+        format!("| {} | {} | [{}](t3-thread://v1/{}) | {} |", self.updated, self.machine, self.title, self.id, self.status)
+    }
+    pub fn parse(line: &str) -> Option<ThreadRow> {
+        let cells: Vec<&str> = line.trim().trim_matches('|').split(" | ").map(str::trim).collect();
+        let [updated, machine, link, status] = cells.as_slice() else { return None };
+        let (title, rest) = link.strip_prefix('[')?.split_once("](t3-thread://v1/")?;
+        Some(ThreadRow { updated: updated.to_string(), machine: machine.to_string(), id: rest.strip_suffix(')')?.to_string(), title: title.into(), status: status.to_string() })
+    }
+}
+/// Merge `rows` into a project's Threads.md (created when missing): one row per
+/// thread, newest first, at most MAX_THREADS.
+pub fn upsert_threads(doc: &str, slug: &str, rows: &[ThreadRow]) -> String {
+    let doc = if doc.contains(THREADS_START) && doc.contains(THREADS_END) {
+        doc.to_string()
+    } else if doc.trim().is_empty() {
+        format!("---\nproject: {slug}\nmanaged-by: omarchy-t3-code\n---\n# Hilos — {slug}\n\nLos {MAX_THREADS} hilos más recientes de este proyecto en todas las máquinas, mantenidos por Omarchy T3 Code. \
+Cada enlace `t3-thread://` se abre en la máquina indicada. Hilos anteriores: `git log -p -- Projects/{slug}/Threads.md`.\n\n{THREADS_START}\n{THREADS_HEADER}\n{THREADS_END}\n")
+    } else {
+        format!("{}\n\n{THREADS_START}\n{THREADS_HEADER}\n{THREADS_END}\n", doc.trim_end())
+    };
+    let mut all: Vec<ThreadRow> = marked_rows(&doc, THREADS_START, THREADS_END).unwrap_or_default().iter().filter_map(|r| ThreadRow::parse(r)).collect();
+    for row in rows {
+        match all.iter().position(|r| r.id == row.id) {
+            Some(i) if all[i].updated > row.updated => {}
+            Some(i) => all[i] = row.clone(),
+            None => all.push(row.clone()),
+        }
+    }
+    all.sort_by(|a, b| b.updated.cmp(&a.updated).then(a.id.cmp(&b.id)));
+    all.truncate(MAX_THREADS);
+    let (s, e) = (doc.find(THREADS_START).unwrap(), doc.find(THREADS_END).unwrap());
+    let body = all.iter().map(ThreadRow::line).collect::<Vec<_>>();
+    let rows = if body.is_empty() { String::new() } else { format!("{}\n", body.join("\n")) };
+    format!("{}{THREADS_START}\n{THREADS_HEADER}\n{rows}{THREADS_END}{}", &doc[..s], &doc[e + THREADS_END.len()..])
+}
+/// Write rows to `Projects/<slug>/Threads.md`; true when the file changed.
+pub fn record_threads(vault: &Path, slug: &str, rows: &[ThreadRow]) -> Result<bool> {
+    if !valid_slug(slug) {
+        return Err("vault_invalid_slug".into());
+    }
+    let dir = vault.join("Projects").join(slug);
+    confined(vault, &dir)?;
+    fs::create_dir_all(&dir).map_err(|_| "vault_write_failed")?;
+    confined(vault, &dir)?;
+    let file = dir.join("Threads.md");
+    let current = fs::read_to_string(&file).unwrap_or_default();
+    let next = upsert_threads(&current, slug, rows);
+    if next == current {
+        return Ok(false);
+    }
+    if current.is_empty() {
+        write_new(&file, &next)?;
+    } else {
+        replace(&file, &next)?;
+    }
+    Ok(true)
+}
+
 /// Commit whatever changed, rebase on the remote and push.
 pub fn commit_push(path: &Path, message: &str) -> Result<Value> {
     if rebasing(path) {
@@ -777,7 +942,7 @@ pub fn register_device(vault: &Path, device: &Value) -> Result<bool> {
         cell("path"),
         cell("updated"),
     );
-    let header = "| Dispositivo (ot3) | Id | Environment local | Sistema | Vault | Actualizado |\n|---|---|---|---|---|---|";
+    let header = DEVICES_HEADER;
     let (mut rows, before, after): (Vec<String>, String, String) = match (current.find(DEVICES_START), current.find(DEVICES_END)) {
         (Some(s), Some(e)) if e > s => {
             let inner = &current[s + DEVICES_START.len()..e];
@@ -872,15 +1037,38 @@ pub fn create(path: &Path, remote: Option<&str>, github: Option<&str>) -> Result
 
 pub fn instruction_block(vault: &Path, home: &Path) -> String {
     let shown = vault.strip_prefix(home).map(|r| format!("~/{}", r.display())).unwrap_or_else(|_| vault.display().to_string());
+    block_for(&shown)
+}
+/// The protocol for agents, for a vault shown as `shown` (`~/Obsidian/Dev`). It asks
+/// for targeted searches: the vault is never loaded whole into a prompt.
+pub fn block_for(shown: &str) -> String {
     format!(
         "{BLOCK_START}\n## Bitácora central de desarrollo (Dev Vault)\n\n\
 El vault git `{shown}` es la fuente de verdad de estado, decisiones y avances de cada proyecto, \
-compartida entre todas las máquinas. Antes de trabajar en un proyecto, leer `{shown}/AGENTS.md` y seguir su protocolo: \
-`git -C {shown} pull --rebase`, leer `Projects/<slug>/MEMORY.md` (crearlo desde la plantilla si falta) y, al terminar \
-o tras un avance significativo, actualizar ese MEMORY, añadir una nota en `Sessions/` si hubo trabajo sustancial, \
-y hacer commit y push. Nombres de archivos en inglés; sin secretos ni volcados de datos.\n\
+compartida entre todas las máquinas. Protocolo completo: `{shown}/AGENTS.md`.\n\n\
+- Al empezar: `git -C {shown} pull --rebase --quiet` y leer `Projects/<slug>/MEMORY.md` \
+(`<slug>` = carpeta del repo; crearlo desde `Templates/Project-MEMORY.md` si falta).\n\
+- Para buscar historial, decisiones o un hilo anterior: `rg -n -i '<término>' {shown} --glob '*.md'` \
+y leer solo las notas encontradas. Nunca cargar el vault completo.\n\
+- Hilos anteriores del proyecto en todas las máquinas: `Projects/<slug>/Threads.md` \
+(lo mantiene Omarchy T3 Code; no editarlo).\n\
+- Al terminar o tras un avance significativo: actualizar ese MEMORY (estado, decisiones fechadas, pendientes, \
+hilos relevantes con máquina y enlace `t3-thread://`), una nota en `Sessions/` si hubo trabajo sustancial, \
+y commit y push.\n\
+- Nombres de archivos en inglés; sin secretos ni volcados de datos. Si el vault no existe en esta máquina, avisar \
+en lugar de improvisar otra memoria.\n\
 (Bloque mantenido por Omarchy T3 Code, Preferencias → Memoria/Obsidian.)\n{BLOCK_END}\n"
     )
+}
+/// Whether an instruction file holds the current block for `shown`.
+pub fn block_state(contents: &str, shown: &str) -> &'static str {
+    if contents.contains(&block_for(shown)) {
+        "current"
+    } else if contents.contains(BLOCK_START) {
+        "outdated"
+    } else {
+        "missing"
+    }
 }
 /// Put `block` in place of the marked block, or after the content. Everything else,
 /// including other marked blocks, is kept byte for byte.
@@ -928,9 +1116,139 @@ pub fn install_instructions(home: &Path, vault: &Path) -> Result<Vec<Value>> {
     }
     Ok(done)
 }
+/// Renew this computer's block when ot3's protocol text changed. Only a block
+/// already there is rewritten; a file without one is left to the setup.
+pub fn refresh_instructions(paths: &Paths, config: &Value) -> bool {
+    let vault = PathBuf::from(text(config, "path"));
+    if config["enabled"] != true || config["agentInstructions"] != true || !vault.join(".git").is_dir() || instructions_installed(&paths.home, &vault) {
+        return false;
+    }
+    let outdated = HOST_FILES.iter().any(|n| fs::read_to_string(paths.home.join(n)).is_ok_and(|c| c.contains(BLOCK_START)));
+    outdated && install_instructions(&paths.home, &vault).is_ok()
+}
 pub fn instructions_installed(home: &Path, vault: &Path) -> bool {
     let block = instruction_block(vault, home);
     [".claude/CLAUDE.md", ".codex/AGENTS.md"].iter().all(|n| fs::read_to_string(home.join(n)).is_ok_and(|c| c.contains(&block)))
+}
+
+/// Install the agent protocol on a host, over that environment's SSH profile, only
+/// when the person asks. Each file is read, the block replaced as on this computer,
+/// and written back only if it did not change in between.
+pub const HOST_FILES: [&str; 2] = [".claude/CLAUDE.md", ".codex/AGENTS.md"];
+pub fn install_on_host(environment: &str, shown: &str) -> Result<Vec<Value>> {
+    if !safe_host_path(shown) {
+        return Err("vault_invalid_path".into());
+    }
+    let args = crate::connections::ssh_args_for(environment).map_err(|_| "vault_remote_needs_ssh")?;
+    let ssh = |script: &str, extra: &[&str], input: Option<&[u8]>| -> Result<(i32, Vec<u8>)> {
+        let mut remote = format!("sh -c {} sh", shell_quote(script));
+        for a in extra {
+            remote.push(' ');
+            remote.push_str(&shell_quote(a));
+        }
+        let mut child = Command::new("timeout")
+            .args(["30s", "ssh"])
+            .args(&args)
+            .arg(remote)
+            .stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() })
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|_| "ssh_unavailable")?;
+        if let Some(bytes) = input {
+            child.stdin.take().ok_or("ssh_unavailable")?.write_all(bytes).map_err(|_| "ssh_unavailable")?;
+        }
+        let out = child.wait_with_output().map_err(|_| "ssh_unavailable")?;
+        Ok((out.status.code().unwrap_or(-1), out.stdout))
+    };
+    let block = block_for(shown);
+    let mut done = vec![];
+    for name in HOST_FILES {
+        // 4: absent. Symlinks are followed to a regular file, as on this computer.
+        let (code, current) = ssh(r#"f="$HOME/$1"; [ -L "$f" ] && f=$(readlink -f "$f"); [ -f "$f" ] || exit 4; cat -- "$f""#, &[name], None)?;
+        let current = match code {
+            0 => String::from_utf8(current).map_err(|_| "vault_instructions_unwritable")?,
+            4 => String::new(),
+            124 => return Err("ssh_timeout".into()),
+            _ => return Err("ssh_unavailable".into()),
+        };
+        let next = upsert_block(&current, &block)?;
+        if next == current {
+            done.push(json!({"file":format!("~/{name}"),"changed":false}));
+            continue;
+        }
+        use sha2::{Digest, Sha256};
+        let expected = if code == 4 { "none".to_string() } else { format!("{:x}", Sha256::digest(current.as_bytes())) };
+        let write = r#"set -eu; f="$HOME/$1"; [ -L "$f" ] && f=$(readlink -f "$f"); mkdir -p "$(dirname "$f")"
+cur=none; [ -f "$f" ] && cur=$(sha256sum "$f" | cut -d' ' -f1); [ "$cur" = "$2" ] || exit 3
+tmp="$f.ot3-$$"; cat > "$tmp"; [ -f "$f" ] && chmod --reference="$f" "$tmp" 2>/dev/null || true; mv -f "$tmp" "$f""#;
+        match ssh(write, &[name, &expected], Some(next.as_bytes()))?.0 {
+            0 => done.push(json!({"file":format!("~/{name}"),"changed":true})),
+            3 => return Err("vault_instructions_changed".into()),
+            _ => return Err("vault_instructions_unwritable".into()),
+        }
+    }
+    Ok(done)
+}
+
+// ---------------------------------------------------------------- search
+
+const SEARCH_MAX_FILES: usize = 5000;
+const SEARCH_MAX_BYTES: u64 = 512 * 1024;
+/// Notes matching every word of `query` (case-insensitive), best first: a match in
+/// the path counts more than one in the text. Each hit carries its first matching
+/// line and, when that line links a thread, the thread id.
+pub fn search(vault: &Path, query: &str, limit: usize) -> Vec<Value> {
+    let words: Vec<String> = query.split_whitespace().map(|w| w.to_lowercase()).filter(|w| !w.is_empty()).take(8).collect();
+    if words.is_empty() || !vault.is_dir() {
+        return vec![];
+    }
+    let mut hits: Vec<(i64, Value)> = vec![];
+    let mut stack = vec![vault.to_path_buf()];
+    let mut seen = 0;
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            let Ok(kind) = entry.file_type() else { continue };
+            if kind.is_symlink() || name.starts_with('.') {
+                continue;
+            }
+            if kind.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if !name.ends_with(".md") || entry.metadata().map(|m| m.len() > SEARCH_MAX_BYTES).unwrap_or(true) {
+                continue;
+            }
+            seen += 1;
+            if seen > SEARCH_MAX_FILES {
+                break;
+            }
+            let Ok(body) = fs::read_to_string(&path) else { continue };
+            let rel = path.strip_prefix(vault).unwrap_or(&path).display().to_string();
+            let lower = body.to_lowercase();
+            let rel_lower = rel.to_lowercase();
+            if !words.iter().all(|w| lower.contains(w) || rel_lower.contains(w)) {
+                continue;
+            }
+            let mut score = words.iter().map(|w| if rel_lower.contains(w) { 50 } else { 0 } + lower.matches(w.as_str()).count().min(20) as i64).sum::<i64>();
+            // The line that matches most words, for the snippet.
+            let (line_no, line) = body
+                .lines()
+                .enumerate()
+                .max_by_key(|(i, l)| (words.iter().filter(|w| l.to_lowercase().contains(*w)).count(), -(*i as i64)))
+                .unwrap_or((0, ""));
+            if rel.ends_with("/MEMORY.md") || rel == "MEMORY.md" {
+                score += 10;
+            }
+            let thread = line.split("t3-thread://v1/").nth(1).map(|r| r.split([')', ' ', '`', '|']).next().unwrap_or("").to_string()).filter(|t| !t.is_empty());
+            let title = body.lines().find_map(|l| l.strip_prefix("# ")).unwrap_or(&rel).trim().to_string();
+            hits.push((score, json!({"file":rel,"title":title,"line":line_no+1,"snippet":cell(line,160),"thread":thread,"path":path.display().to_string()})));
+        }
+    }
+    hits.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| text(&a.1, "file").cmp(text(&b.1, "file"))));
+    hits.into_iter().take(limit.clamp(1, 50)).map(|(_, v)| v).collect()
 }
 
 // ---------------------------------------------------------------- Obsidian
@@ -1014,7 +1332,7 @@ pub fn install_help() -> Value {
 pub fn default_config(paths: &Paths) -> Value {
     json!({
         "version":1,"enabled":false,"path":paths.expand(DEFAULT_PATH).display().to_string(),"remote":null,
-        "sync":{"pullOnOpen":true,"pullOnThreadStart":true,"pushOnSettle":true,"intervalMinutes":null},
+        "sync":{"pullOnOpen":true,"pullOnThreadStart":true,"pushOnSettle":true,"recordThreads":true,"intervalMinutes":null},
         "agentInstructions":true,"projects":{},"device":{"name":device_name()},
     })
 }
@@ -1084,7 +1402,7 @@ pub fn save_config(paths: &Paths, patch: &Value) -> Result<Value> {
             "sync" => {
                 for (sk, sv) in value.as_object().ok_or("vault_invalid_config")? {
                     match sk.as_str() {
-                        "pullOnOpen" | "pullOnThreadStart" | "pushOnSettle" if sv.is_boolean() => config["sync"][sk] = sv.clone(),
+                        "pullOnOpen" | "pullOnThreadStart" | "pushOnSettle" | "recordThreads" if sv.is_boolean() => config["sync"][sk] = sv.clone(),
                         "intervalMinutes" if sv.is_null() || sv.as_u64().is_some_and(|n| (5..=1440).contains(&n)) => config["sync"][sk] = sv.clone(),
                         _ => return Err("vault_invalid_config".into()),
                     }
@@ -1394,6 +1712,7 @@ pub fn discover() -> Result<Value> {
                         }
                         v
                     };
+                    v["ssh"] = json!(crate::connections::ssh_args_for(&e.id).is_ok());
                     v["environment"] = json!(e.id);
                     v["name"] = json!(if e.name.is_empty() { &e.id } else { &e.name });
                     v
@@ -1414,6 +1733,12 @@ pub fn transport_for(environment: &str) -> HostTransport {
     HostTransport { ssh_args, omabridge }
 }
 
+/// `obsidian://open` for one note of the vault.
+pub fn note_uri(vault: &Path, file: &str) -> Option<String> {
+    let path = vault.join(file);
+    (file.ends_with(".md") && !file.split('/').any(|s| s == "..") && path.is_file()).then(|| obsidian_uri(&path))
+}
+
 /// Panel and CLI entry point: `vault-read`, `vault-discover`, `vault-action`.
 pub fn execute(input: &Value) -> Result<Value> {
     let mut result = execute_inner(input)?;
@@ -1429,8 +1754,15 @@ pub fn execute(input: &Value) -> Result<Value> {
 fn execute_inner(input: &Value) -> Result<Value> {
     let paths = Paths::current();
     match text(input, "op") {
-        "vault-read" => Ok(read(&paths)),
+        "vault-read" => {
+            refresh_instructions(&paths, &load_config(&paths));
+            Ok(read(&paths))
+        }
         "vault-discover" => discover(),
+        "vault-action" if input["action"] == "search" => {
+            let vault = PathBuf::from(text(&load_config(&paths), "path"));
+            Ok(json!({"query":input["query"],"hits":search(&vault, text(input, "query"), input["limit"].as_u64().unwrap_or(20) as usize)}))
+        }
         "vault-action" => {
             let _guard = Busy::take()?;
             match text(input, "action") {
@@ -1504,6 +1836,19 @@ fn execute_inner(input: &Value) -> Result<Value> {
                     record(&paths, "push", &result);
                     Ok(json!({"state":read(&paths),"push":result.as_ref().ok(),"error":result.as_ref().err()}))
                 }
+                "open-note" => {
+                    let vault = PathBuf::from(text(&load_config(&paths), "path"));
+                    let uri = note_uri(&vault, text(input, "file")).ok_or("vault_note_missing")?;
+                    obsidian(&paths.home).ok_or("vault_obsidian_missing")?;
+                    register_obsidian(&paths.home, obsidian(&paths.home).unwrap(), &vault)?;
+                    let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+                    Command::new(opener).arg(uri).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(|_| "vault_obsidian_open_failed")?;
+                    Ok(json!({"opened":true}))
+                }
+                "install-host" => {
+                    let files = install_on_host(text(input, "environment"), text(input, "path"))?;
+                    Ok(json!({"files":files}))
+                }
                 "open" => {
                     open_obsidian(&paths.home, Path::new(text(&load_config(&paths), "path")))?;
                     Ok(json!({"opened":true}))
@@ -1547,6 +1892,7 @@ pub enum Task {
     Pull,
     Push(String),
     Project { slug: String, title: String },
+    Record { slug: String, row: ThreadRow },
 }
 /// Decides what to do from successive snapshots: pull when ot3 opens and when a
 /// thread starts, push once threads settle, stub notes for new projects.
@@ -1557,6 +1903,7 @@ pub struct Automation {
     projects: HashSet<String>,
     environments: HashSet<String>,
     settled: Option<(Instant, String)>,
+    rows: Vec<(String, ThreadRow)>,
     last_pull: Option<Instant>,
     last_interval: Option<Instant>,
 }
@@ -1586,10 +1933,25 @@ impl Automation {
         } else if sync["pullOnThreadStart"] == true && working.iter().any(|k| !self.working.contains(k)) {
             pull = self.last_pull.is_none_or(|t| now.duration_since(t) >= PULL_SPACING);
         }
-        if sync["pushOnSettle"] == true {
-            if let Some(key) = self.working.iter().find(|k| !working.contains(*k)) {
-                let project = threads.iter().find(|t| text(t, "key") == key).map(|t| text(t, "project").to_string()).unwrap_or_default();
-                self.settled = Some((now, slug_of(&project).unwrap_or_else(|| "dev-vault".into())));
+        let record = sync["recordThreads"] != false;
+        if sync["pushOnSettle"] == true || record {
+            let machine = |env: &str| {
+                if env == "local" {
+                    text(&config["device"], "name").to_string()
+                } else {
+                    snapshot["environments"].as_array().into_iter().flatten().find(|e| text(e, "id") == env).map(|e| text(e, "name").to_string()).filter(|n| !n.is_empty()).unwrap_or_else(|| env.to_string())
+                }
+            };
+            for key in self.working.iter().filter(|k| !working.contains(*k)) {
+                let Some(t) = threads.iter().find(|t| text(t, "key") == key) else { continue };
+                let slug = slug_of(text(t, "project"));
+                if record {
+                    if let (Some(slug), Some(row)) = (&slug, ThreadRow::from_thread(t, &machine(text(t, "environmentId")))) {
+                        self.rows.retain(|(_, r)| r.id != row.id);
+                        self.rows.push((slug.clone(), row));
+                    }
+                }
+                self.settled = Some((now, slug.unwrap_or_else(|| "dev-vault".into())));
             }
         }
         if let Some(minutes) = sync["intervalMinutes"].as_u64() {
@@ -1610,7 +1972,12 @@ impl Automation {
         }
         if let Some((at, slug)) = &self.settled {
             if working.is_empty() && now.duration_since(*at) >= SETTLE_DELAY {
-                tasks.push(Task::Push(slug.clone()));
+                for (slug, row) in self.rows.drain(..) {
+                    tasks.push(Task::Record { slug, row });
+                }
+                if sync["pushOnSettle"] == true {
+                    tasks.push(Task::Push(slug.clone()));
+                }
                 self.settled = None;
             }
         }
@@ -1647,8 +2014,10 @@ pub fn run_tasks(paths: Paths, tasks: Vec<Task>, done: impl FnOnce(Value) + Send
         if text(&inspect(&vault, config["remote"]["url"].as_str()), "state") != "clone" {
             return;
         }
+        refresh_instructions(&paths, &config);
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         let mut created = vec![];
+        let mut recorded: Vec<String> = vec![];
         for task in &tasks {
             match task {
                 Task::Pull => {
@@ -1660,12 +2029,18 @@ pub fn run_tasks(paths: Paths, tasks: Vec<Task>, done: impl FnOnce(Value) + Send
                         created.push(slug.clone());
                     }
                 }
+                Task::Record { slug, row } => {
+                    if record_threads(&vault, slug, std::slice::from_ref(row)).unwrap_or(false) && !recorded.contains(slug) {
+                        recorded.push(slug.clone());
+                    }
+                }
                 Task::Push(_) => {}
             }
         }
         let push = tasks.iter().find_map(|t| if let Task::Push(s) = t { Some(s.clone()) } else { None });
         let message = match (&push, created.as_slice()) {
             (Some(slug), _) => Some(format!("journal({slug}): sync from {}", text(&config["device"], "name"))),
+            (None, []) if !recorded.is_empty() => Some(format!("journal({}): record threads", recorded.join(","))),
             (None, [one]) => Some(format!("journal({one}): add project memory")),
             (None, [_, ..]) => Some("journal: add project memories".into()),
             (None, []) => None,

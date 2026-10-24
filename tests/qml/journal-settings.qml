@@ -84,6 +84,14 @@ ShellRoot {
   bridge.vaultAction=({busy:false,error:"",action:"",result:null});
   keys.wait(100);keys.mouseClick(find("vaultAdopt"));var adopt=bridge.actions[bridge.actions.length-1];
   check(adopt.action==="setup"&&adopt.url===root.github,"adopt: "+JSON.stringify(adopt));
+  // A host whose agents have an old protocol: install there, after confirming.
+  bridge.vaultAction=({busy:false,error:"",action:"",result:null});
+  bridge.vaultHosts=({busy:false,loaded:true,error:"",hosts:[{environment:"node-id",name:"node",state:"online",ssh:true,vaults:[{path:"~/Obsidian/Dev",git:true,remote:root.github,instructions:{claude:"outdated",codex:"current"}}]}],vaults:[]});
+  check(find("vaultHostInstructions_node-id").text.indexOf(Test.T3I18n.tr("outdated"))>=0,"host protocol state: "+find("vaultHostInstructions_node-id").text);
+  var before=bridge.actions.length;keys.wait(100);keys.mouseClick(find("vaultInstallHost_node-id"));
+  check(bridge.actions.length===before,"the first click only asks to confirm");
+  keys.wait(100);keys.mouseClick(find("vaultInstallHost_node-id"));var inst=bridge.actions[bridge.actions.length-1];
+  check(inst.action==="install-host"&&inst.environment==="node-id"&&inst.path==="~/Obsidian/Dev","install: "+JSON.stringify(inst));
   console.log("JOURNAL_SETTINGS_QML_PASS: hosts, setup here, pending steps, Obsidian and source choice");Qt.quit()
  }}
 }

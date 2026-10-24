@@ -172,6 +172,47 @@ All on this computer, in the background, one git operation at a time:
 Every write is confined to the configured vault folder: paths are built from
 validated slugs, and symlinks leaving the vault are refused.
 
+## Thread registry
+
+When a thread settles, ot3 adds or updates its row in `Projects/<slug>/Threads.md`
+(**Record threads in the vault**, on by default), committed with the settle push:
+
+```
+| Actualizado | Máquina | Hilo | Estado |
+| 2026-10-23 21:40 | node | [Memoria/Obsidian](t3-thread://v1/<threadId>) | done |
+```
+
+- Only settled, titled, top-level threads of a real project: no subagents, scratch
+  projects or untitled threads. The machine is the environment's name, or this
+  computer's device name for its own server.
+- One row per thread, newest first, **at most 25** per project: agents search the
+  file, they never load history whole. Older rows remain in its git history.
+- Every ot3 writes the same table. A rebase that stops only on these rows (or on the
+  device table of `Machines.md`) is finished by merging the rows of both sides; any
+  other conflict still stops the sync.
+
+Summaries and decisions stay with the agents (`MEMORY.md`, `Sessions/`), as the
+protocol asks: ot3 records only what it knows for certain.
+
+## Agents and search
+
+The agent block asks for targeted reads: pull, read the project's `MEMORY.md`, and
+search with `rg -n -i '<term>' <vault> --glob '*.md'` before opening anything, using
+`Threads.md` to find earlier threads. When ot3's protocol text changes, an existing
+block on this computer is renewed (a removed one is not added back).
+
+**On your hosts** shows, for each host's vault, whether its agents' block is
+current. For an SSH environment, **Update <host>'s agents** (confirmed) reads each of
+`~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` there, replaces only the block, and
+writes it back only if the file's SHA-256 did not change meanwhile. Hosts reached
+only through a pairing link are not written.
+
+The command palette also searches the vault on this computer (**Memory (Obsidian)**):
+every word must match, a match in the path ranks higher, `.git`, `.obsidian` and
+hidden folders are skipped, and at most 5000 notes of up to 512 KB are read. A hit
+that links a thread opens that thread; any other opens the note in Obsidian.
+`omarchy-t3-client vault-search <words>` prints the same.
+
 ## Obsidian
 
 Detected from `obsidian` on `PATH`, the Flatpak `md.obsidian.Obsidian`, an
