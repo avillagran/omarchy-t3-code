@@ -505,3 +505,34 @@ fn configuration_is_validated_and_unknown_fields_kept() {
     assert_eq!(state["local"]["state"], "missing");
     assert_eq!(state["steps"]["clone"], false);
 }
+
+#[test]
+fn a_missing_identity_is_suggested_from_own_checkouts_and_set_on_the_vault_only() {
+    let root = root("identity");
+    let url = bare(&root);
+    let (_, vault) = device_with_vault(&root, "node", &url);
+    // The vault was written by "Test" (the isolated global identity of these tests).
+    let mine = |name: &str, user: &str, email: &str| {
+        let dir = root.join(name);
+        fs::create_dir_all(&dir).unwrap();
+        git(&dir, &["init", "-q"]);
+        git(&dir, &["config", "--local", "user.name", user]);
+        git(&dir, &["config", "--local", "user.email", email]);
+        dir
+    };
+    let roots = vec![mine("a", "Me", "me@example.org"), mine("b", "Me", "me@example.org"), mine("c", "Bot", "bot@example.org"), mine("d", "Test", "test@example.invalid")];
+    // One checkout uses the identity that already wrote the vault: it wins over the more common one.
+    let s = v::suggest_identity(&vault, &roots).unwrap();
+    assert_eq!((s["name"].as_str(), s["email"].as_str(), s["from"].as_str()), (Some("Test"), Some("test@example.invalid"), Some("vault-and-checkouts")));
+    let s = v::suggest_identity(&vault, &roots[..3]).unwrap();
+    assert_eq!((s["email"].as_str(), s["from"].as_str()), (Some("me@example.org"), Some("checkouts")));
+    assert_eq!(v::suggest_identity(&vault, &[]).unwrap()["from"], "vault");
+
+    v::set_identity(&vault, "Me", "me@example.org").unwrap();
+    assert_eq!(git(&vault, &["config", "--local", "user.email"]), "me@example.org");
+    assert_eq!(v::identity(&vault), Some(("Me".into(), "me@example.org".into())));
+    for (n, e) in [("", "a@b"), ("Me", "no-at"), ("M\ne", "a@b"), ("Me", "a b@c"), ("<x>", "a@b")] {
+        assert_eq!(v::set_identity(&vault, n, e).unwrap_err(), "vault_invalid_identity", "{n:?} {e:?}");
+    }
+    assert_eq!(v::set_identity(&root.join("nope"), "Me", "me@example.org").unwrap_err(), "vault_not_cloned");
+}

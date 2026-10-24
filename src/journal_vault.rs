@@ -1143,6 +1143,94 @@ fn device(paths: &Paths, config: &Value, vault: &Path) -> Value {
 
 // ---------------------------------------------------------------- status and wizard
 
+// ---------------------------------------------------------------- git identity
+
+/// The identity git would use for commits in `dir` (local, global or system).
+pub fn identity(dir: &Path) -> Option<(String, String)> {
+    let get = |k: &str| Some(run_git(Some(dir), &["config", "--get", k], Some(DEFAULT_SSH), 10)).filter(|o| o.ok && !o.stdout.is_empty()).map(|o| o.stdout);
+    Some((get("user.name")?, get("user.email")?))
+}
+/// Who this person commits as, when the vault has no identity: the identities set in
+/// their own checkouts on this computer (many people keep none globally), preferring
+/// one that already authored commits in the vault.
+pub fn suggest_identity(vault: &Path, roots: &[PathBuf]) -> Option<Value> {
+    let mut score: BTreeMap<(String, String), u32> = BTreeMap::new();
+    for root in roots.iter().take(60) {
+        let local = |k: &str| Some(run_git(Some(root), &["config", "--local", "--get", k], Some(DEFAULT_SSH), 10)).filter(|o| o.ok && !o.stdout.is_empty()).map(|o| o.stdout);
+        if let (Some(name), Some(email)) = (local("user.name"), local("user.email")) {
+            *score.entry((name, email)).or_default() += 1;
+        }
+    }
+    let log = run_git(Some(vault), &["log", "-200", "--format=%an%x09%ae"], Some(DEFAULT_SSH), 20).stdout;
+    let authors: HashSet<(String, String)> = log.lines().filter_map(|l| l.split_once('\t')).map(|(n, e)| (n.to_string(), e.to_string())).collect();
+    for (key, value) in score.iter_mut() {
+        if authors.contains(key) {
+            *value += 100;
+        }
+    }
+    if score.is_empty() {
+        // Nobody set one in a checkout: the vault's most recent author, if any.
+        let (name, email) = log.lines().next()?.split_once('\t')?;
+        return Some(json!({"name":name,"email":email,"from":"vault"}));
+    }
+    let ((name, email), points) = score.into_iter().max_by_key(|(_, v)| *v)?;
+    Some(json!({"name":name,"email":email,"from":if points>=100{"vault-and-checkouts"}else{"checkouts"}}))
+}
+fn identity_state(vault: &Path, roots: &[PathBuf]) -> Value {
+    match identity(vault) {
+        Some((name, email)) => json!({"set":true,"name":name,"email":email}),
+        None => json!({"set":false,"suggested":suggest_identity(vault, roots)}),
+    }
+}
+/// Set the commit identity for the vault clone only; nothing global changes.
+pub fn set_identity(vault: &Path, name: &str, email: &str) -> Result<()> {
+    let (name, email) = (name.trim(), email.trim());
+    let bad = |s: &str| s.is_empty() || s.len() > 200 || s.chars().any(|c| c.is_control() || "<>".contains(c));
+    if bad(name) || bad(email) || !email.contains('@') || email.contains(char::is_whitespace) {
+        return Err("vault_invalid_identity".into());
+    }
+    if !vault.join(".git").is_dir() {
+        return Err("vault_not_cloned".into());
+    }
+    for (k, v) in [("user.name", name), ("user.email", email)] {
+        if !run_git(Some(vault), &["config", "--local", k, v], Some(DEFAULT_SSH), 10).ok {
+            return Err("vault_git_failed".into());
+        }
+    }
+    Ok(())
+}
+/// After a setup whose device commit lacked an identity: when one identity both
+/// wrote the vault and is set in this person's checkouts here, use it for the vault
+/// and retry. Anything weaker is left to the page to confirm.
+fn adopt_identity(paths: &Paths, result: &mut Value) {
+    let Some(steps) = result["steps"].as_array_mut() else { return };
+    let Some(device) = steps.iter_mut().find(|s| s["id"] == "device" && s["error"] == "vault_git_identity_missing") else { return };
+    let config = load_config(paths);
+    let vault = PathBuf::from(text(&config, "path"));
+    let Some(suggested) = suggest_identity(&vault, &local_roots()).filter(|s| s["from"] == "vault-and-checkouts") else { return };
+    if set_identity(&vault, text(&suggested, "name"), text(&suggested, "email")).is_err() {
+        return;
+    }
+    let pushed = commit_push(&vault, &format!("journal(dev-vault): register {}", text(&config["device"], "name")));
+    record(paths, "push", &pushed);
+    *device = match pushed {
+        Ok(_) => json!({"id":"device","state":"done"}),
+        Err(e) => json!({"id":"device","state":"failed","error":e}),
+    };
+    let identity = json!({"id":"identity","state":"done","name":suggested["name"],"email":suggested["email"]});
+    let at = steps.iter().position(|s| s["id"] == "device").unwrap_or(steps.len());
+    steps.insert(at, identity);
+    result["complete"] = json!(steps.iter().all(|s| matches!(text(s, "state"), "done" | "skipped")));
+}
+/// Paths of the projects T3 has on this computer, for the identity suggestion.
+pub fn local_roots() -> Vec<PathBuf> {
+    let Ok(environments) = crate::environments() else { return vec![] };
+    let Ok(client) = crate::Client::new() else { return vec![] };
+    let Some(local) = environments.iter().find(|e| e.id == "local") else { return vec![] };
+    let Ok(page) = client.get(local, "/api/projects", false) else { return vec![] };
+    page["projects"].as_array().into_iter().flatten().map(|p| PathBuf::from(text(p, "workspaceRoot"))).filter(|p| p.join(".git").exists()).collect()
+}
+
 /// Everything the page shows about this computer. `configured` is true only when
 /// no step is pending.
 pub fn read(paths: &Paths) -> Value {
@@ -1153,15 +1241,17 @@ pub fn read(paths: &Paths) -> Value {
     let git = if text(&local, "state") == "clone" { status(&vault) } else { json!({"git":false}) };
     let instructions = config["agentInstructions"] != true || instructions_installed(&paths.home, &vault);
     let obsidian = obsidian(&paths.home);
+    let identity = if text(&local, "state") == "clone" { identity_state(&vault, &[]) } else { json!({"set":false}) };
     let steps = json!({
         "remote":remote.is_some(),
         "clone":text(&local,"state")=="clone",
+        "identity":identity["set"]==true,
         "instructions":instructions,
         "obsidian":obsidian.is_some(),
     });
     let configured = config["enabled"] == true && steps.as_object().unwrap().values().all(|v| v == true);
     json!({
-        "config":config,"local":local,"status":git,"steps":steps,"configured":configured,
+        "config":config,"local":local,"status":git,"steps":steps,"configured":configured,"identity":identity,
         "obsidian":{"installed":obsidian.is_some(),"how":obsidian,"install":install_help()},
         "sync":sync_state(paths),"device":{"id":device_id(),"name":text(&config["device"],"name")},
     })
@@ -1326,6 +1416,17 @@ pub fn transport_for(environment: &str) -> HostTransport {
 
 /// Panel and CLI entry point: `vault-read`, `vault-discover`, `vault-action`.
 pub fn execute(input: &Value) -> Result<Value> {
+    let mut result = execute_inner(input)?;
+    // The identity suggestion looks at this computer's T3 checkouts: only when missing.
+    let state = if input["op"] == "vault-read" { Some(&mut result) } else { result.get_mut("state") };
+    let Some(state) = state else { return Ok(result) };
+    if state["identity"]["set"] == false && state["local"]["state"] == "clone" {
+        let vault = PathBuf::from(text(&state["config"], "path"));
+        state["identity"]["suggested"] = suggest_identity(&vault, &local_roots()).unwrap_or(Value::Null);
+    }
+    Ok(result)
+}
+fn execute_inner(input: &Value) -> Result<Value> {
     let paths = Paths::current();
     match text(input, "op") {
         "vault-read" => Ok(read(&paths)),
@@ -1350,7 +1451,8 @@ pub fn execute(input: &Value) -> Result<Value> {
                     } else {
                         request["sshCommand"] = Value::Null;
                     }
-                    let result = setup(&paths, &request)?;
+                    let mut result = setup(&paths, &request)?;
+                    adopt_identity(&paths, &mut result);
                     Ok(json!({"setup":result,"state":read(&paths)}))
                 }
                 "create" => {
@@ -1392,6 +1494,15 @@ pub fn execute(input: &Value) -> Result<Value> {
                     record(&paths, "push", &result);
                     result?;
                     Ok(json!({"state":read(&paths)}))
+                }
+                "identity" => {
+                    let config = load_config(&paths);
+                    let vault = PathBuf::from(text(&config, "path"));
+                    set_identity(&vault, text(input, "name"), text(input, "email"))?;
+                    // What was waiting for an identity (the device row, notes) goes now.
+                    let result = pull(&vault).and_then(|_| commit_push(&vault, &format!("journal: sync from {}", text(&config["device"], "name"))));
+                    record(&paths, "push", &result);
+                    Ok(json!({"state":read(&paths),"push":result.as_ref().ok(),"error":result.as_ref().err()}))
                 }
                 "open" => {
                     open_obsidian(&paths.home, Path::new(text(&load_config(&paths), "path")))?;

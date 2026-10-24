@@ -55,6 +55,14 @@ ShellRoot {
   check(find("vaultObsidianMissing").visible&&find("vaultObsidianMissing").text.indexOf("omarchy-pkg-add obsidian")>=0,"install guidance");
   check(!find("vaultOpenObsidian").visible,"no Open in Obsidian without Obsidian");
   check(find("vaultSyncState").text.indexOf("main")>=0,"sync state shown");
+  // Cloned and set up, but the vault has no commit identity: offer the suggested one.
+  var ident=JSON.parse(JSON.stringify(s));ident.steps.obsidian=true;ident.obsidian.installed=true;ident.steps.identity=false;ident.identity={set:false,suggested:{name:"Me",email:"me@example.org",from:"vault-and-checkouts"}};
+  bridge.vault=({busy:false,error:"",state:ident});bridge.vaultAction=({busy:false,error:"",action:"",result:null});
+  check(find("vaultSuggestion").visible&&find("vaultUseIdentity").visible&&!find("vaultCopyFrom").visible,"identity is the next step, not another copy");
+  check(find("vaultIdentityEmail").text==="me@example.org","suggested email prefilled");
+  keys.wait(100);keys.mouseClick(find("vaultUseIdentity"));var id=bridge.actions[bridge.actions.length-1];
+  check(id.action==="identity"&&id.name==="Me"&&id.email==="me@example.org","identity: "+JSON.stringify(id));
+  check(find("vaultLocalState").text===Test.T3I18n.tr("Not set up on this computer yet."),"not ready without identity");
   // Everything done.
   s=JSON.parse(JSON.stringify(s));s.steps.obsidian=true;s.obsidian.installed=true;s.configured=true;
   bridge.vault=({busy:false,error:"",state:s});bridge.vaultAction=({busy:false,error:"",action:"",result:null});

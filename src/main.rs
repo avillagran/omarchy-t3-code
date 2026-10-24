@@ -601,7 +601,7 @@ fn run() -> Result<()> {
         "watch" => return watch(client),
         "licenses-read" => third_party_licenses::read()?,
         "disk-report" => disk_space::report(&client,&ui_state::load()),
-        "vault-status" => journal_vault::read(&journal_vault::Paths::current()),
+        "vault-status" => journal_vault::execute(&json!({"op":"vault-read"}))?,
         "vault-discover" => journal_vault::discover()?,
         "vault-sync" => {let mut r=journal_vault::execute(&json!({"op":"vault-action","action":"pull"}))?;if args.iter().any(|a|a=="--push"){r=journal_vault::execute(&json!({"op":"vault-action","action":"push"}))?;}r},
         "build-cleanup" => build_cleanup::run(&client,&ui_state::load(),args.iter().any(|a|a=="--dry-run"))?,
