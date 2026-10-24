@@ -1116,13 +1116,14 @@ Item {
           color: Qt.rgba(0, 0, 0, 0.09)
           // Same sky as the panel, at night: darker base, brighter stars and most
           // of the shooting stars while working. Solid behind the header, then it
-          // dissolves behind the search row into the panel sky.
+          // dissolves behind the search row into the panel sky. Light themes get a
+          // soft shade instead: a dark band would sink the dark logo into it.
           T3Starfield {
             width: parent.width; height: searchRow.y + searchRow.height + Style.space(12)
             leader: sky; header: true
             origin: Qt.vector2d(sidebar.x, 0)
-            base: Qt.darker(Color.popups.background, 2.4)
-            brightness: 1.25; nebula: 0.55; meteorRate: 0.85
+            base: lightSky ? Qt.tint(surface, Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.06)) : Qt.darker(surface, 2.4)
+            brightness: lightSky ? 0.9 : 1.25; nebula: 0.55; meteorRate: 0.85
             fade: height > 0 ? 1 - brand.height * 0.85 / height : 0
           }
           // Rows flying between sections are drawn here, above every list.
