@@ -227,6 +227,9 @@ ShellRoot {
     function usageCollapsed(value: bool): void { app.show(); panel.usageCollapsed = value }
     function filters(value: bool): void { app.show(); if (value) panel.showFilters(); else panel.hideFilters() }
     function refresh(): void { app.backend.refresh() }
+    // Memory/Obsidian host detection, for diagnosis from a terminal.
+    function vaultDiscover(): void { app.backend.discoverVaults() }
+    function vaultHosts(): string { return JSON.stringify(app.backend.vaultHosts) }
     function preferences(page: string): void { app.show(); Qt.callLater(function() { panel.openPreferencesPage(page || "general") }) }
     function openProject(environment: string, projectId: string): void { app.show(); app.backend.openProject(environment, projectId) }
   }

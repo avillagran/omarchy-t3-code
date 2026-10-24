@@ -35,7 +35,11 @@ ShellRoot {
   check(find("vaultHost_lab-id").text.indexOf(Test.T3I18n.tr("offline: unknown, not checked"))>=0,"an offline host is unknown, not empty");
   check(find("vaultHost_node-id").text.indexOf(root.github)>=0,"node's vault and remote are listed");
   check(!find("vaultSource").visible,"one vault: no choice to make");
-  keys.mouseClick(find("vaultSetupHere"));
+  check(find("vaultSuggestion").visible,"the page proposes copying node's setup first");
+  check(find("vaultCopyFrom").text===Test.T3I18n.tr("Copy setup from {host}",{host:"node"}),"button: "+find("vaultCopyFrom").text);
+  check(!find("vaultOtherWays").visible,"manual options wait behind Other options");
+  keys.mouseClick(find("vaultShowOther"));check(find("vaultOtherWays").visible,"Other options shows them");
+  keys.mouseClick(find("vaultCopyFrom"));
   var sent=bridge.actions[0];
   check(sent.action==="setup"&&sent.url===root.github&&sent.environment==="node-id"&&sent.path==="/home/me/Obsidian/Dev","Set up on this computer: "+JSON.stringify(sent));
   // Missing sign-in on this computer: explained, the rest pending.
@@ -55,13 +59,23 @@ ShellRoot {
   s=JSON.parse(JSON.stringify(s));s.steps.obsidian=true;s.obsidian.installed=true;s.configured=true;
   bridge.vault=({busy:false,error:"",state:s});bridge.vaultAction=({busy:false,error:"",action:"",result:null});
   check(find("vaultLocalState").text===Test.T3I18n.tr("Ready: {path} stays in sync with {remote}.",{path:"/home/me/Obsidian/Dev",remote:root.github}),"ready: "+find("vaultLocalState").text);
-  check(!find("vaultSetupHere").visible,"no second setup offer");
+  check(!find("vaultSuggestion").visible,"no second setup offer");
   keys.wait(100);keys.mouseClick(find("vaultOpenObsidian"));
   check(bridge.actions[bridge.actions.length-1].action==="open","Open in Obsidian");
   // Two distinct vaults: the source must be chosen.
   var h=JSON.parse(JSON.stringify(bridge.vaultHosts));h.vaults.push({id:"gitlab.com/me/work",remote:"https://gitlab.com/me/work.git",shareable:true,hosts:[{environment:"lab-id",name:"lab",path:"~/Obsidian/Dev",remote:"https://gitlab.com/me/work.git"}]});
   bridge.vaultHosts=h;
   check(find("vaultSource").visible,"several vaults: choose one");
+  // A clone here and a host whose remote cannot be read: adopt the clone.
+  s=JSON.parse(JSON.stringify(s));s.configured=false;s.config.enabled=false;s.config.remote=null;s.local={state:"clone",remote:root.github,canonical:"github.com/me/dev-vault"};
+  bridge.vault=({busy:false,error:"",state:s});
+  bridge.vaultHosts=({busy:false,loaded:true,error:"",hosts:[{environment:"node-id",name:"node",state:"online",vaults:[{path:"~/Obsidian/Dev",git:true,remote:null,remoteError:"rpc_rejected: x"}]}],vaults:[{id:"x",remote:null,shareable:false,hosts:[]}]});
+  check(find("vaultAdopt").visible&&!find("vaultCopyFrom").visible,"adopt the local clone");
+  check(find("vaultSuggestionDetail").text.indexOf(Test.T3I18n.tr("{host} also has a vault at {path}, but its remote could not be read.",{host:"node",path:"~/Obsidian/Dev"}))>=0,"unreadable remote explained");
+  check(find("vaultHost_node-id").text.indexOf(Test.T3I18n.tr("remote not readable"))>=0,"host row: "+find("vaultHost_node-id").text);
+  bridge.vaultAction=({busy:false,error:"",action:"",result:null});
+  keys.wait(100);keys.mouseClick(find("vaultAdopt"));var adopt=bridge.actions[bridge.actions.length-1];
+  check(adopt.action==="setup"&&adopt.url===root.github,"adopt: "+JSON.stringify(adopt));
   console.log("JOURNAL_SETTINGS_QML_PASS: hosts, setup here, pending steps, Obsidian and source choice");Qt.quit()
  }}
 }

@@ -27,6 +27,15 @@ ColumnLayout {
  readonly property string folderPath:folder.trim()||(config.path||"~/Obsidian/Dev")
  property string manualUrl:""
  property string githubName:"dev-vault"
+ // What the page proposes first: copy the setup of a host that already uses a vault,
+ // or adopt a clone already on this computer. Everything else is under Other options.
+ property bool showOther:false
+ readonly property string sourceHosts:source?source.hosts.map(function(h){return h.name}).join(", "):""
+ readonly property bool localMatches:!!source&&cloned&&local.canonical===source.id
+ readonly property var unreadable:{var all=root.hosts.hosts||[];for(var i=0;i<all.length;i++){var v=(all[i].vaults||[]).find(function(x){return !x.remote&&x.git&&x.remoteError!=="no-origin"});if(v)return {name:all[i].name,path:v.path}}return null}
+ readonly property string suggestion:!state||configured?"":source?"copy":cloned&&!!local.remote?"clone":""
+ readonly property bool settingUp:action.busy&&action.action==="setup"
+ function copyFromHost(){var h=root.source.hosts[0];root.setup({url:root.source.remote,hostRemote:h.remote,environment:h.environment})}
  readonly property var setupResult:action.action==="setup"&&action.result?action.result.setup:null
  spacing:Style.space(24)
  Component.onCompleted:if(bridge){bridge.requestVault();bridge.discoverVaults()}
@@ -45,12 +54,45 @@ ColumnLayout {
  component Field: Controls.TextField{id:field;Layout.fillWidth:true;implicitHeight:Style.space(34);color:root.fg;font.pixelSize:Style.font.caption;selectByMouse:true;leftPadding:Style.space(10);rightPadding:Style.space(10)
   background:Rectangle{radius:Style.space(6);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.025);border.width:1;border.color:field.activeFocus?Color.accent:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.1)}}
 
+ // ---------------------------------------------------------------- suggestion
+ T3PreferenceSection {objectName:"vaultSuggestion";Layout.fillWidth:true;title:"Recommended";icon:"star";visible:!!root.suggestion&&!root.query.trim()
+  body:Component {ColumnLayout {width:parent.width;spacing:Style.space(8)
+   Item{implicitHeight:Style.space(4)}
+   Text{objectName:"vaultSuggestionTitle";Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);wrapMode:Text.Wrap;textFormat:Text.PlainText;color:root.fg;font.pixelSize:Style.font.body;font.weight:Font.DemiBold
+    text:root.suggestion==="copy"?T3I18n.tr("{host} already uses a development vault. Set up this computer the same way.",{host:root.sourceHosts}):T3I18n.tr("There is a vault clone at {path}, not set up in ot3 yet.",{path:root.config.path})}
+   Caption{objectName:"vaultSuggestionDetail";Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)
+    text:root.suggestion==="copy"?(T3I18n.tr("Vault: {remote}",{remote:(root.source||{}).remote})+"\n"+(root.localMatches?T3I18n.tr("Your clone at {path} is the same vault: it is reused, nothing is downloaded again.",{path:root.config.path}):T3I18n.tr("It is cloned to {path} with this computer's own sign-in; nothing is copied from {host}.",{path:root.folderPath,host:root.sourceHosts}))+"\n"+T3I18n.tr("Then the agent instructions, this computer's row in Machines.md and Obsidian are set up here."))
+     :(T3I18n.tr("Vault: {remote}",{remote:root.local.remote})+(root.unreadable?"\n"+T3I18n.tr("{host} also has a vault at {path}, but its remote could not be read.",{host:root.unreadable.name,path:root.unreadable.path}):"")+"\n"+T3I18n.tr("Then the agent instructions, this computer's row in Machines.md and Obsidian are set up here."))}
+   Flow{Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);Layout.bottomMargin:Style.space(10);spacing:Style.space(8)
+    T3PickerButton{objectName:"vaultCopyFrom";visible:root.suggestion==="copy";primary:true;implicitHeight:Style.space(30);enabled:!root.action.busy;text:root.settingUp?T3I18n.tr("Setting up…"):T3I18n.tr("Copy setup from {host}",{host:root.sourceHosts});onClicked:root.copyFromHost()}
+    T3PickerButton{objectName:"vaultAdopt";visible:root.suggestion==="clone";primary:true;implicitHeight:Style.space(30);enabled:!root.action.busy;text:root.settingUp?T3I18n.tr("Setting up…"):T3I18n.tr("Use this clone");onClicked:root.setup({path:root.config.path,url:root.local.remote})}
+    T3PickerButton{objectName:"vaultShowOther";primary:false;implicitHeight:Style.space(30);text:T3I18n.tr(root.showOther?"Hide other options":"Other options");onClicked:root.showOther=!root.showOther}
+   }
+  }}
+ }
+ // The wizard's steps, each with its own state.
+ T3PreferenceSection {objectName:"vaultProgress";Layout.fillWidth:true;title:"Setup progress";icon:"circle-check";visible:!!root.setupResult||root.settingUp||!!root.action.error&&(root.action.action==="setup"||root.action.action==="create")
+  body:Component {ColumnLayout {width:parent.width;spacing:Style.space(8)
+   Item{implicitHeight:Style.space(4)}
+   Caption{visible:root.settingUp;Layout.leftMargin:Style.space(12);text:T3I18n.tr("Setting up…")}
+   Repeater{model:root.setupResult?root.setupResult.steps:[]
+    ColumnLayout{required property var modelData;Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);spacing:Style.space(4)
+     Caption{objectName:"vaultSetupStep_"+modelData.id;opacity:1;color:modelData.state==="failed"?Color.urgent:root.fg
+      text:(modelData.state==="done"?"✓ ":modelData.state==="failed"?"✕ ":"○ ")+T3I18n.tr(({folder:"Folder",access:"Access with this computer's sign-in",clone:"Clone",instructions:"Agent instructions",device:"Device registered in Machines.md",obsidian:"Obsidian"})[modelData.id]||modelData.id)+(modelData.reused||modelData.reuse?" · "+T3I18n.tr("existing clone reused"):"")+(modelData.error?" · "+root.message(modelData.error):modelData.state==="pending"?" · "+T3I18n.tr("pending"):"")}
+     Caption{visible:!!modelData.help;text:modelData.help?T3I18n.tr("Sign in on this computer, then try again: {steps}",{steps:modelData.help.steps.join("  ·  ")}):""}
+    }}
+   Caption{objectName:"vaultSetupComplete";visible:!!root.setupResult;Layout.leftMargin:Style.space(12);opacity:1;text:root.setupResult&&root.setupResult.complete?T3I18n.tr("Set up on this computer."):T3I18n.tr("Some steps are still pending.")}
+   Caption{visible:!!root.action.error&&(root.action.action==="setup"||root.action.action==="create");Layout.leftMargin:Style.space(12);Layout.bottomMargin:Style.space(10);color:Color.urgent;opacity:1;text:root.message(root.action.error)}
+   Item{implicitHeight:Style.space(6)}
+  }}
+ }
+
  // ---------------------------------------------------------------- this computer
  T3PreferenceSection {Layout.fillWidth:true;title:"On this computer";icon:"hard-drive";visible:root.matches("On this computer")||root.matches("Open in Obsidian")
   body:Component {ColumnLayout {width:parent.width;spacing:Style.space(8)
    Item{implicitHeight:Style.space(4)}
    Caption{objectName:"vaultLocalState";Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);opacity:1
-    text:!root.state?T3I18n.tr("Loading…"):root.configured?T3I18n.tr("Ready: {path} stays in sync with {remote}.",{path:root.config.path,remote:root.config.remote.url}):root.cloned&&!root.config.remote?T3I18n.tr("There is a vault clone at {path}, not set up in ot3 yet.",{path:root.config.path}):T3I18n.tr("Not set up on this computer yet.")}
+    text:!root.state?T3I18n.tr("Loading…"):root.configured?T3I18n.tr("Ready: {path} stays in sync with {remote}.",{path:root.config.path,remote:(root.config.remote||{}).url}):root.cloned&&!root.config.remote?T3I18n.tr("Not set up in ot3 yet; there is a vault clone at {path}.",{path:root.config.path}):T3I18n.tr("Not set up on this computer yet.")}
    Repeater{model:root.state&&root.config.enabled?[{id:"clone",label:"Clone of the remote"},{id:"instructions",label:"Agent instructions"},{id:"obsidian",label:"Obsidian installed"}]:[]
     Caption{required property var modelData;objectName:"vaultStep_"+modelData.id;Layout.leftMargin:Style.space(12);text:(root.steps[modelData.id]?"✓ ":"○ ")+T3I18n.tr(modelData.label)+(root.steps[modelData.id]?"":" · "+T3I18n.tr("pending"))}}
    Caption{objectName:"vaultSyncState";visible:root.cloned&&!!root.sync.git;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)
@@ -60,10 +102,9 @@ ColumnLayout {
    Caption{objectName:"vaultObsidianMissing";visible:!!root.state&&!root.state.obsidian.installed;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)
     text:!root.state?"":root.state.obsidian.install.command?T3I18n.tr("Obsidian is not installed. Install it with {command}, or from {url}.",{command:root.state.obsidian.install.command,url:root.state.obsidian.install.url}):T3I18n.tr("Obsidian is not installed. Download it from {url}.",{url:root.state.obsidian.install.url})}
    Flow{Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);Layout.bottomMargin:Style.space(10);spacing:Style.space(8)
-    T3PickerButton{objectName:"vaultOpenObsidian";visible:root.cloned&&!!root.state&&root.state.obsidian.installed;primary:true;implicitHeight:Style.space(30);enabled:!root.action.busy;text:T3I18n.tr("Open in Obsidian");onClicked:root.bridge.runVaultAction({action:"open"})}
+    T3PickerButton{objectName:"vaultOpenObsidian";visible:root.cloned&&!!root.state&&root.state.obsidian.installed;primary:root.configured;implicitHeight:Style.space(30);enabled:!root.action.busy;text:T3I18n.tr("Open in Obsidian");onClicked:root.bridge.runVaultAction({action:"open"})}
     T3PickerButton{objectName:"vaultSyncNow";visible:root.configured||root.cloned&&!!root.config.remote;primary:false;implicitHeight:Style.space(30);enabled:!root.action.busy;text:T3I18n.tr(root.action.busy&&root.action.action==="push"?"Syncing…":"Sync now");onClicked:root.bridge.runVaultAction({action:"push"})}
     T3PickerButton{objectName:"vaultRepair";visible:root.cloned&&!!root.config.remote;primary:false;implicitHeight:Style.space(30);enabled:!root.action.busy;text:T3I18n.tr("Repair");onClicked:root.bridge.runVaultAction({action:"repair"})}
-    T3PickerButton{objectName:"vaultAdopt";visible:root.cloned&&!root.config.remote&&!!root.local.remote;primary:true;implicitHeight:Style.space(30);enabled:!root.action.busy;text:T3I18n.tr("Use this clone");onClicked:root.setup({path:root.config.path,url:root.local.remote})}
    }
    Caption{objectName:"vaultActionError";visible:!!root.action.error&&root.action.action!=="setup";Layout.leftMargin:Style.space(12);Layout.bottomMargin:Style.space(10);color:Color.urgent;opacity:1;text:root.message(root.action.error)}
   }}
@@ -75,21 +116,19 @@ ColumnLayout {
    Item{implicitHeight:Style.space(4)}
    Caption{Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);text:T3I18n.tr("Vaults set up on your connected environments. They are only read; the clone is made on this computer with its own sign-in.")}
    Caption{objectName:"vaultHostsLoading";visible:root.hosts.busy;Layout.leftMargin:Style.space(12);text:T3I18n.tr("Looking at your hosts…")}
-   Caption{objectName:"vaultNoHosts";visible:!root.hosts.busy&&root.hosts.loaded&&!(root.hosts.hosts||[]).length;Layout.leftMargin:Style.space(12);text:T3I18n.tr("No other host is connected. Clone a remote or create a vault below.")}
+   Caption{objectName:"vaultNoHosts";visible:!root.hosts.busy&&root.hosts.loaded&&!(root.hosts.hosts||[]).length;Layout.leftMargin:Style.space(12);text:T3I18n.tr("No other host is connected. Clone a remote or create a vault in Other options.")}
    Repeater{model:root.hosts.hosts||[]
     Caption{required property var modelData;objectName:"vaultHost_"+modelData.environment;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);opacity:modelData.state==="online"?0.85:0.65
-     text:modelData.name+" · "+(modelData.state==="offline"?T3I18n.tr("offline: unknown, not checked"):modelData.state==="unsupported"?T3I18n.tr("this T3 version cannot report it"):!modelData.vaults.length?T3I18n.tr("no vault"):modelData.vaults.map(function(v){return v.path+" → "+(v.remote||T3I18n.tr("no remote"))}).join(" · "))}}
+     text:modelData.name+" · "+(modelData.state==="offline"?T3I18n.tr("offline: unknown, not checked"):modelData.state==="unsupported"?T3I18n.tr("this T3 version cannot report it"):!modelData.vaults.length?T3I18n.tr("no vault"):modelData.vaults.map(function(v){return v.path+" → "+(v.remote||T3I18n.tr(v.git&&v.remoteError!=="no-origin"?"remote not readable":"no remote"))}).join(" · "))}}
    T3Select{objectName:"vaultSource";visible:root.shareable.length>1;Layout.leftMargin:Style.space(12);Layout.preferredWidth:Style.space(320);popupAbove:false;model:root.shareable.map(function(v){return {id:v.id,name:v.remote+" ("+v.hosts.map(function(h){return h.name}).join(", ")+")"}});textRole:"name";currentIndex:Math.max(0,root.shareable.findIndex(function(v){return v.id===root.chosen}));onActivated:function(i){root.chosen=root.shareable[i].id}}
    Flow{Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);Layout.bottomMargin:Style.space(10);spacing:Style.space(8)
-    T3PickerButton{objectName:"vaultSetupHere";visible:!!root.source&&!root.configured;primary:true;implicitHeight:Style.space(30);enabled:!root.action.busy;text:T3I18n.tr(root.action.busy&&root.action.action==="setup"?"Setting up…":"Set up on this computer")
-     onClicked:{var h=root.source.hosts[0];root.setup({url:root.source.remote,hostRemote:h.remote,environment:h.environment})}}
     T3PickerButton{objectName:"vaultRefreshHosts";primary:false;implicitHeight:Style.space(30);enabled:!root.hosts.busy;text:T3I18n.tr("Look again");onClicked:root.bridge.discoverVaults()}
    }
   }}
  }
 
  // ---------------------------------------------------------------- set up
- T3PreferenceSection {Layout.fillWidth:true;title:"Set up";icon:"folder-git-2";visible:!root.configured&&root.matches("Set up")
+ T3PreferenceSection {objectName:"vaultOtherWays";Layout.fillWidth:true;title:root.suggestion?"Other ways to set up":"Set up";icon:"folder-git-2";visible:!!root.state&&!root.configured&&(root.showOther||!root.suggestion)&&root.matches("Set up")
   body:Component {ColumnLayout {width:parent.width;spacing:Style.space(8)
    Item{implicitHeight:Style.space(4)}
    Caption{Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);text:T3I18n.tr("Folder on this computer. An existing clone of the same remote is reused; a folder with other files is never overwritten.")}
@@ -104,15 +143,6 @@ ColumnLayout {
     Field{objectName:"vaultGithubName";text:root.githubName;onTextEdited:root.githubName=text}
     T3PickerButton{objectName:"vaultCreate";primary:false;implicitHeight:Style.space(30);enabled:!root.action.busy;text:T3I18n.tr("Create vault");onClicked:root.bridge.runVaultAction({action:"create",path:root.folderPath,github:root.githubName.trim()})}
    }
-   // The wizard's steps, each with its own state.
-   Repeater{model:root.setupResult?root.setupResult.steps:[]
-    ColumnLayout{required property var modelData;Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);spacing:Style.space(4)
-     Caption{objectName:"vaultSetupStep_"+modelData.id;opacity:1;color:modelData.state==="failed"?Color.urgent:root.fg
-      text:(modelData.state==="done"?"✓ ":modelData.state==="failed"?"✕ ":"○ ")+T3I18n.tr(({folder:"Folder",access:"Access with this computer's sign-in",clone:"Clone",instructions:"Agent instructions",device:"Device registered in Machines.md",obsidian:"Obsidian"})[modelData.id]||modelData.id)+(modelData.error?" · "+root.message(modelData.error):modelData.state==="pending"?" · "+T3I18n.tr("pending"):"")}
-     Caption{visible:!!modelData.help;text:modelData.help?T3I18n.tr("Sign in on this computer, then try again: {steps}",{steps:modelData.help.steps.join("  ·  ")}):""}
-    }}
-   Caption{objectName:"vaultSetupComplete";visible:!!root.setupResult;Layout.leftMargin:Style.space(12);opacity:1;text:root.setupResult&&root.setupResult.complete?T3I18n.tr("Set up on this computer."):T3I18n.tr("Some steps are still pending.")}
-   Caption{visible:!!root.action.error&&(root.action.action==="setup"||root.action.action==="create");Layout.leftMargin:Style.space(12);color:Color.urgent;opacity:1;text:root.message(root.action.error)}
    Item{implicitHeight:Style.space(6)}
   }}
  }

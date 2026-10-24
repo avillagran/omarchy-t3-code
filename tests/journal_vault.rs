@@ -294,6 +294,12 @@ fn an_unreachable_host_is_not_a_host_without_vault() {
     assert!(v::host_vaults(&old, None)["vaults"].as_array().unwrap().is_empty());
     let home = v::home_from_projects(&["/srv/x".into(), "/home/node/Desarrollo/ggup".into()]).unwrap();
     assert_eq!(v::host_vaults(&old, Some(&home))["vaults"][0]["path"], "/home/node/Obsidian/Dev");
+    // node (Oct 2026): getMetadata expands ~/ but readFile does not.
+    let server = |p: &str| -> Result<String, String> {
+        if p.starts_with("~/") { Err("rpc_rejected: Failed to read workspace file".into()) } else if p == "/home/node/Obsidian/Dev/.git/config" { Ok(GIT_CONFIG.into()) } else { Err("missing".into()) }
+    };
+    assert!(v::read_with_home(server, None, "~/Obsidian/Dev/.git/config").is_err());
+    assert_eq!(v::read_with_home(server, Some("/home/node"), "~/Obsidian/Dev/.git/config").unwrap(), GIT_CONFIG);
     // A vault without origin is reported, but cannot be shared.
     let local = FakeHost::new(&[("~/Obsidian/Dev/AGENTS.md", "x"), ("~/Obsidian/Dev/.git/config", "[core]\n")]);
     let mut h = v::host_vaults(&local, None);
