@@ -10,119 +10,24 @@
 //! D-Bus signals are read with `gdbus monitor` (glib2, part of every Omarchy
 //! install) rather than a new D-Bus crate. Without it, resume is detected from the
 //! gap between the boot-time and monotonic clocks.
-use crate::protocol;
 use std::{
     io::{BufRead, BufReader},
     os::unix::process::CommandExt,
     process::{Command, Stdio},
-    sync::{Condvar, Mutex},
-    time::{Duration, Instant},
+    time::Duration,
 };
-
-pub const BASE_DELAY: Duration = Duration::from_secs(1);
-pub const MAX_DELAY: Duration = Duration::from_secs(300);
-pub const STABLE_AFTER: Duration = Duration::from_secs(30);
-/// Budget for the liveness check of a connected socket after a wakeup.
-pub const PROBE_TIMEOUT: Duration = Duration::from_secs(3);
-
-/// Transport failures leave a held snapshot valid, so the next attempt resumes from
-/// its sequence. Anything else (the server ending the stream, auth, malformed data)
-/// starts over from a fresh snapshot.
-pub fn transient(error: &str) -> bool {
-    matches!(
-        protocol::error_code(error),
-        "disconnected" | "stream_timeout" | "unreachable" | "rpc_connection_failed" | "rpc_outcome_unknown"
-    )
-}
+pub use t3_protocol::reconnect::{transient, Backoff, Waiter, BASE_DELAY, MAX_DELAY, PROBE_TIMEOUT, STABLE_AFTER};
 
 /// Quick check that a server answers before a wakeup reconnects to it.
 pub fn reachable(e: &crate::Environment) -> bool {
     crate::Client::shared().and_then(|c| c.get(e, "/.well-known/t3/environment", false)).is_ok()
 }
 
-pub struct Backoff {
-    failures: u32,
-    connected_at: Option<Instant>,
-    seed: u64,
-}
-impl Default for Backoff {
-    fn default() -> Self {
-        let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(1);
-        Self { failures: 0, connected_at: None, seed: seed | 1 }
-    }
-}
-impl Backoff {
-    /// The stream is up; a failure 30 s or more from now starts again at the base delay.
-    pub fn connected(&mut self) {
-        self.connected_at.get_or_insert_with(Instant::now);
-    }
-    pub fn reset(&mut self) {
-        self.failures = 0;
-        self.connected_at = None;
-    }
-    fn random(&mut self) -> f64 {
-        // xorshift64: enough to spread reconnects of several streams apart.
-        self.seed ^= self.seed << 13;
-        self.seed ^= self.seed >> 7;
-        self.seed ^= self.seed << 17;
-        (self.seed >> 11) as f64 / (1u64 << 53) as f64
-    }
-    pub fn ceiling(failures: u32) -> Duration {
-        BASE_DELAY.saturating_mul(2u32.saturating_pow(failures.saturating_add(1).min(20))).min(MAX_DELAY)
-    }
-    /// Delay before the next attempt after a failure.
-    pub fn next_delay(&mut self) -> Duration {
-        if self.connected_at.take().is_some_and(|at| at.elapsed() >= STABLE_AFTER) {
-            self.failures = 0;
-        }
-        let ceiling = Self::ceiling(self.failures);
-        self.failures = self.failures.saturating_add(1);
-        ceiling / 2 + ceiling.mul_f64(self.random() / 2.0)
-    }
-}
-
-static WAKE: Mutex<u64> = Mutex::new(0);
-static WAKE_SIGNAL: Condvar = Condvar::new();
-
-/// Wakes every stream (resume, network change).
+/// Wakes every stream (resume, network change): `Waiter::default()` follows the
+/// library's process-wide counter.
 pub fn wake(reason: &str) {
-    *WAKE.lock().unwrap_or_else(|e| e.into_inner()) += 1;
-    WAKE_SIGNAL.notify_all();
+    t3_protocol::reconnect::notify();
     eprintln!("ot3: reconnecting streams after {reason}");
-}
-fn wake_count() -> u64 {
-    *WAKE.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// One stream's view of wakeups.
-pub struct Waiter {
-    seen: u64,
-}
-impl Default for Waiter {
-    fn default() -> Self {
-        Self { seen: wake_count() }
-    }
-}
-impl Waiter {
-    /// True once per wakeup that happened since the last call.
-    pub fn take(&mut self) -> bool {
-        let now = wake_count();
-        let woke = now != self.seen;
-        self.seen = now;
-        woke
-    }
-    /// Sleeps up to `delay` or until a wakeup (cut short by `stop`); true when woken.
-    pub fn sleep(&mut self, delay: Duration, stop: impl Fn() -> bool) -> bool {
-        let until = Instant::now() + delay;
-        let mut guard = WAKE.lock().unwrap_or_else(|e| e.into_inner());
-        while *guard == self.seen && !stop() {
-            let Some(left) = until.checked_duration_since(Instant::now()) else { return false };
-            guard = WAKE_SIGNAL.wait_timeout(guard, left.min(Duration::from_millis(250))).unwrap_or_else(|e| e.into_inner()).0;
-        }
-        let woke = *guard != self.seen;
-        self.seen = *guard;
-        woke
-    }
 }
 
 /// What a `gdbus monitor` line means for the streams.
@@ -243,52 +148,6 @@ pub fn watch_system(on_wake: impl Fn() + Send + Sync + 'static) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn only_transport_failures_keep_the_cursor() {
-        for e in ["disconnected", "stream_timeout", "unreachable", "rpc_connection_failed: tls handshake eof"] {
-            assert!(transient(e), "{e}");
-        }
-        for e in ["stream_closed", "unauthorized", "malformed_stream", "unknown_environment", "rpc_rejected: no"] {
-            assert!(!transient(e), "{e}");
-        }
-    }
-    #[test]
-    fn backoff_doubles_with_jitter_up_to_five_minutes() {
-        let mut b = Backoff::default();
-        for failures in 0..12 {
-            let ceiling = Backoff::ceiling(failures);
-            let d = b.next_delay();
-            assert!(d >= ceiling / 2 && d <= ceiling, "{failures}: {d:?} outside {ceiling:?}");
-        }
-        assert_eq!(Backoff::ceiling(0), Duration::from_secs(2));
-        assert_eq!(Backoff::ceiling(3), Duration::from_secs(16));
-        assert_eq!(Backoff::ceiling(11), MAX_DELAY);
-        assert_eq!(Backoff::ceiling(u32::MAX), MAX_DELAY);
-    }
-    #[test]
-    fn backoff_resets_only_after_a_stable_connection() {
-        let mut b = Backoff::default();
-        for _ in 0..5 {
-            b.next_delay();
-        }
-        b.connected();
-        assert!(b.next_delay() >= Backoff::ceiling(5) / 2, "a short-lived connection keeps backing off");
-        b.connected_at = Some(Instant::now() - STABLE_AFTER);
-        assert!(b.next_delay() <= Backoff::ceiling(0), "30 s up starts over");
-        b.reset();
-        assert!(b.next_delay() <= Backoff::ceiling(0));
-    }
-    #[test]
-    fn waiter_sees_each_wakeup_once() {
-        let mut w = Waiter::default();
-        assert!(!w.take());
-        assert!(!w.sleep(Duration::from_millis(20), || false));
-        wake("test");
-        assert!(w.sleep(Duration::from_secs(5), || false));
-        assert!(!w.take());
-        wake("test");
-        assert!(w.take());
-    }
     #[test]
     fn gdbus_monitor_lines() {
         assert_eq!(parse_signal("/org/freedesktop/login1: org.freedesktop.login1.Manager.PrepareForSleep (false,)"), Some(Signal::Resumed));

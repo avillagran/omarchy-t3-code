@@ -6,7 +6,7 @@ pub mod markdown_images;
 pub mod documents;
 pub mod qml_preview;
 pub mod scroll;
-pub mod message_text;
+pub use t3_protocol::message_text;
 pub mod desktop_open;
 pub mod terminal;
 pub mod clipboard;
@@ -25,15 +25,15 @@ pub mod connection_github;
 pub mod native_settings;
 pub mod provider_instances;
 pub mod scoped_settings;
-pub mod plan_workflow;
-pub mod checkpoint_revert;
+pub use t3_protocol::plan_workflow;
+pub use t3_protocol::checkpoint_revert;
 pub mod checkpoint_journal;
 pub mod checkpoint_operations;
 pub mod drafts;
-pub mod prompt_recall;
+pub use t3_protocol::prompt_recall;
 pub mod git_controls;
 pub mod branch_picker;
-pub mod latex;
+pub use t3_protocol::latex;
 pub mod thread_search;
 pub mod pull_request_actions;
 pub mod usage_summary;
@@ -101,43 +101,7 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, String>;
 pub const MAX_BYTES: u64 = 8 * 1024 * 1024;
-pub fn text<'a>(v: &'a Value, k: &str) -> &'a str {
-    v[k].as_str().unwrap_or("")
-}
-pub fn truth(v: &Value) -> bool {
-    match v {
-        Value::Null => false,
-        Value::Bool(b) => *b,
-        Value::String(s) => !s.is_empty(),
-        Value::Array(a) => !a.is_empty(),
-        Value::Object(o) => !o.is_empty(),
-        Value::Number(n) => n.as_f64().unwrap_or(0.) != 0.,
-    }
-}
-pub fn valid_id(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 2048
-        && s.as_bytes()[0].is_ascii_alphanumeric()
-        && s.bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"_:%.-".contains(&b))
-}
-pub fn epoch(v: &Value) -> i64 {
-    if let Some(s) = v.as_str() {
-        return DateTime::parse_from_rfc3339(s)
-            .map(|d| d.timestamp_millis().max(0))
-            .unwrap_or(0);
-    }
-    v.as_f64()
-        .filter(|n| n.is_finite() && *n >= 0.)
-        .map(|n| {
-            if n < 100_000_000_000. {
-                (n * 1000.) as i64
-            } else {
-                n as i64
-            }
-        })
-        .unwrap_or(0)
-}
+pub use t3_protocol::util::{epoch, text, truth, valid_id};
 pub fn rendered_markdown(input:&str)->String{markdown_with_code_actions(input,None)}
 /// T3's mathRenderingEnabled client setting (off by default), re-read when the file changes.
 pub fn math_enabled()->bool{
@@ -1032,7 +996,7 @@ pub mod browser_cookies;
 
 pub mod browser_import;
 
-pub mod storage_settings;
+pub use t3_protocol::storage_settings;
 pub mod journal_vault;
 #[cfg(test)]
 mod context_window_tests {
