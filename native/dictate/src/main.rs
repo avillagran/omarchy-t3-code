@@ -183,7 +183,7 @@ fn level(samples: &[f32]) -> f32 {
     ((db + 60.0) / 60.0).clamp(0.0, 1.0)
 }
 
-/// Cuts leading and trailing silence and shortens every pause inside to 0.4 s;
+/// Cuts leading and trailing silence and shortens every pause inside to 0.6 s;
 /// None when nothing in the clip rises above the room's noise, so Whisper never
 /// sees a silent clip (it invents captions). A long pause, often exact zeros
 /// from a mic's noise gate, makes Whisper drop what was said after it.
@@ -195,8 +195,14 @@ fn speech(samples: &[f32]) -> Option<Vec<f32>> {
     }
     let mut sorted = energies.clone();
     sorted.sort_by(|a, b| a.total_cmp(b));
+    // Measured against this clip's own voice: a quiet microphone still speaks
+    // well above its pauses, and a fixed level would count its words as pauses.
     let floor = sorted[sorted.len() / 5];
-    let threshold = (floor * 3.0).max(0.01);
+    let voice = sorted[sorted.len() * 19 / 20];
+    if voice < 0.002 {
+        return None;
+    }
+    let threshold = (floor * 3.0).max(voice / 8.0).max(0.001);
     let first = energies.iter().position(|e| *e > threshold)?;
     let last = energies.iter().rposition(|e| *e > threshold)?;
     // A lone click is not speech: ask for about 120 ms above the threshold.
@@ -206,7 +212,7 @@ fn speech(samples: &[f32]) -> Option<Vec<f32>> {
     let pad = RATE / 4;
     let start = (first * frame).saturating_sub(pad);
     let end = ((last + 1) * frame + pad).min(samples.len());
-    let keep = RATE * 2 / 5 / frame;
+    let keep = RATE * 3 / 5 / frame;
     let mut out = Vec::with_capacity(end - start);
     let mut quiet = 0;
     for (i, chunk) in samples[..end].chunks(frame).enumerate().skip(start / frame) {
@@ -214,6 +220,12 @@ fn speech(samples: &[f32]) -> Option<Vec<f32>> {
         if quiet <= keep {
             out.extend_from_slice(chunk);
         }
+    }
+    // Whisper hears a quiet microphone better at a normal level.
+    let peak = out.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+    if peak > 0.0 && peak < 0.5 {
+        let gain = (0.5 / peak).min(20.0);
+        out.iter_mut().for_each(|s| *s *= gain);
     }
     Some(out)
 }
@@ -496,13 +508,25 @@ mod tests {
     }
     #[test]
     fn pauses_are_shortened_and_no_speech_is_lost() {
-        let tone = |n: usize| (0..n).map(|i| if i % 2 == 0 { 0.3 } else { -0.3 }).collect::<Vec<f32>>();
+        let tone = |n: usize| (0..n).map(|i| if i % 2 == 0 { 0.6 } else { -0.6 }).collect::<Vec<f32>>();
         let mut clip = tone(RATE);
         clip.extend(vec![0.0; RATE * 5]);
         clip.extend(tone(RATE));
         let voice = speech(&clip).unwrap();
         assert!(voice.len() < RATE * 3, "pause kept: {}", voice.len());
         assert!(voice.iter().filter(|s| s.abs() > 0.1).count() >= RATE * 2 - RATE / 50);
+    }
+    #[test]
+    fn quiet_speech_is_not_a_pause() {
+        // A quiet microphone: words at 0.005, a drop to 0.003, a real pause.
+        let tone = |n: usize, a: f32| (0..n).map(|i| if i % 2 == 0 { a } else { -a }).collect::<Vec<f32>>();
+        let mut clip = tone(RATE, 0.005);
+        clip.extend(tone(RATE, 0.003));
+        clip.extend(vec![0.0; RATE * 3]);
+        clip.extend(tone(RATE, 0.005));
+        let voice = speech(&clip).unwrap();
+        assert!(voice.iter().filter(|s| s.abs() > 0.01).count() >= RATE * 3 - RATE / 50, "speech lost");
+        assert!(voice.len() < RATE * 5);
     }
     #[test]
     fn output_is_valid_json() {
