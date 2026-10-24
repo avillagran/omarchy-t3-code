@@ -77,6 +77,33 @@ fn perform(environment: &str, target: &str) -> Result<()> {
     RECHECK.store(true, std::sync::atomic::Ordering::SeqCst);
     result.map(|_| ())
 }
+/// Each ready environment's version against the newest release on its channel.
+/// The flag says the release index could not be read.
+pub fn check(ready: &[String]) -> (serde_json::Map<String, Value>, bool) {
+    let mut latest: HashMap<&str, Result<String>> = HashMap::new();
+    let mut rows = serde_json::Map::new();
+    let mut unreachable = false;
+    for e in environments().unwrap_or_default().into_iter().filter(|e| ready.contains(&e.id)) {
+        let Some(current) = write::rpc(&e, "server.getConfig", json!({})).ok().and_then(|c| c["environment"]["serverVersion"].as_str().map(String::from)) else { continue };
+        let channel = updates::channel(&current);
+        let newest = latest.entry(channel).or_insert_with(|| updates::latest(channel));
+        let mut row = updates::advisory(&current, newest.as_ref().ok().map(String::as_str));
+        row["name"] = json!(e.name);
+        match updates::route(&e.id) {
+            Ok(_) => row["canUpdate"] = json!(true),
+            Err(reason) => {
+                row["canUpdate"] = json!(false);
+                row["reason"] = json!(reason);
+            }
+        }
+        if let Err(error) = newest {
+            row["error"] = json!(error);
+            unreachable = true;
+        }
+        rows.insert(e.id.clone(), row);
+    }
+    (rows, unreachable)
+}
 fn run(rx: mpsc::Receiver<Value>) {
     let mut checked_at = 0i64;
     let mut known: Vec<String> = vec![];
@@ -94,27 +121,10 @@ fn run(rx: mpsc::Receiver<Value>) {
         if recheck || ready != known || now - checked_at >= CHECK_MS {
             checked_at = now;
             known = ready.clone();
-            let mut latest: HashMap<&str, Result<String>> = HashMap::new();
-            let mut rows = serde_json::Map::new();
-            for e in environments().unwrap_or_default().into_iter().filter(|e| ready.contains(&e.id)) {
-                let Some(current) = write::rpc(&e, "server.getConfig", json!({})).ok().and_then(|c| c["environment"]["serverVersion"].as_str().map(String::from)) else { continue };
-                let channel = updates::channel(&current);
-                let newest = latest.entry(channel).or_insert_with(|| updates::latest(channel));
-                let mut row = updates::advisory(&current, newest.as_ref().ok().map(String::as_str));
-                row["name"] = json!(e.name);
-                match updates::route(&e.id) {
-                    Ok(_) => row["canUpdate"] = json!(true),
-                    Err(reason) => {
-                        row["canUpdate"] = json!(false);
-                        row["reason"] = json!(reason);
-                    }
-                }
-                if let Err(error) = newest {
-                    row["error"] = json!(error);
-                    // An unreachable release index is asked again in ten minutes, not an hour.
-                    checked_at = now - CHECK_MS + 10 * 60 * 1000;
-                }
-                rows.insert(e.id.clone(), row);
+            let (mut rows, unreachable) = check(&ready);
+            if unreachable {
+                // An unreachable release index is asked again in ten minutes, not an hour.
+                checked_at = now - CHECK_MS + 10 * 60 * 1000;
             }
             publish(|s| {
                 let previous = s["environments"].clone();
