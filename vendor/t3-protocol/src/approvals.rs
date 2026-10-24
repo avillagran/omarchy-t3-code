@@ -1,7 +1,7 @@
 //! Native pending approvals and decisions. Shared by desktop and Omi hosts.
 use serde_json::{json, Value};
 
-fn valid_decision(s: &str) -> bool {
+pub fn valid_decision(s: &str) -> bool {
     matches!(
         s,
         "accept" | "acceptForSession" | "acceptAlways" | "decline" | "cancel"

@@ -184,7 +184,7 @@ fn lifecycle_uses_existing_dpop_ticket_admission_without_exporting_bound_credent
         .unwrap();
         let request: Value = serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
         assert_eq!(request["tag"], "device.list");
-        ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":{"_tag":"AuthScopeError","private":"DO NOT RETURN"}}}).to_string().into())).unwrap();
+        ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":{"_tag":"Fail","error":{"_tag":"EnvironmentAuthorizationError","requiredScope":"orchestration:read","private":"DO NOT RETURN"}}}}).to_string().into())).unwrap();
     });
     let key = Arc::new(protocol::DpopKey::generate());
     let credential =
@@ -198,7 +198,7 @@ fn lifecycle_uses_existing_dpop_ticket_admission_without_exporting_bound_credent
             Duration::from_secs(2)
         )
         .unwrap_err(),
-        "write_not_authorized: AuthScopeError"
+        "write_not_authorized: [orchestration:read]"
     );
     server.join().unwrap();
 }
