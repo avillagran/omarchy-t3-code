@@ -52,7 +52,19 @@ Singleton {
     onFileChanged: reload()
     onLoadFailed: root.load("")
   }
-  // Theme switches replace the symlink; Color's IPC update also triggers a reload.
+  // omarchy-theme-set swaps the whole theme directory (killing the watch above)
+  // and pushes the new colours by IPC only to the main shell. theme.name is
+  // rewritten last, so watching it refreshes Color/Style in the detached app too.
+  FileView {
+    path: Color.stateHome + "/omarchy/current/theme.name"
+    watchChanges: true; printErrors: false
+    onFileChanged: themeSwitch.restart()
+  }
+  Timer {
+    id: themeSwitch; interval: 150
+    onTriggered: { Color.colorsFile.reload(); Color.shellFile.reload(); Style.scheduleRefresh(); root.themeFileReload() }
+  }
+  // Color's IPC update (main shell) also triggers a reload.
   Connections { target: Color; function onAccentChanged() { themeReload.restart() } function onBackgroundChanged() { themeReload.restart() } function onShellValuesChanged() { themeReload.restart() } }
   Timer { id: themeReload; interval: 100; onTriggered: themeFileReload() }
   function themeFileReload() { themeFile.reload() }
