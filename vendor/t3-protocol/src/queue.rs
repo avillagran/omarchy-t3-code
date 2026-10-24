@@ -1,6 +1,6 @@
 //! T3 queued-run workflow, portable for desktop and Omi.
 use serde_json::{json,Value};
-fn text<'a>(v:&'a Value,k:&str)->&'a str{v[k].as_str().unwrap_or("")}
+use crate::util::text;
 fn rows<'a>(v:&'a Value,k:&str)->impl DoubleEndedIterator<Item=&'a Value>{v[k].as_array().into_iter().flatten()}
 pub fn derive(p:&Value)->Value{
  let active=rows(p,"runs").rev().find(|r|matches!(text(r,"status"),"preparing"|"starting"|"running"|"waiting"));

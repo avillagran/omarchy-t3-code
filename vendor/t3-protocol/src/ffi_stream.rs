@@ -1,5 +1,5 @@
 //! Bounded foreign-host event inbox. No host callbacks or unbounded worker queues.
-use crate::{Connection, Result, MAX_BYTES};
+use crate::{error_code, Connection, Result, MAX_BYTES};
 use serde_json::{json, Value};
 use std::{
     collections::VecDeque,
@@ -93,7 +93,10 @@ impl Subscription {
             .map_err(|_| "internal_error")?;
         let items: Vec<_> = inbox.items.drain(..).map(|(v, _)| v).collect();
         inbox.bytes = 0;
-        Ok(json!({"items":items,"closed":inbox.closed,"error":inbox.error}))
+        // `error` stays a stable code; a reason after it goes to `errorMessage`.
+        let code = inbox.error.as_deref().map(error_code);
+        let message = inbox.error.as_deref().zip(code).and_then(|(e, c)| e.get(c.len() + 2..));
+        Ok(json!({"items":items,"closed":inbox.closed,"error":code,"errorMessage":message}))
     }
     pub(crate) fn cancel(&self) {
         self.cancel.store(true, Ordering::Release);
