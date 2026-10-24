@@ -8,7 +8,9 @@ on-device keyboard dictation (FUTO Voice Input uses whisper.cpp too).
 ## Using it
 
 - **Microphone button** next to Attach and the screenshot button. Click to start,
-  click again to insert the text; a ring follows the microphone level.
+  click again to insert the text. While it records, a wave next to the button
+  shows the last two seconds of microphone level against the room's noise: flat
+  means nothing is heard, tall red bars mean it hears a voice.
 - **Ctrl+Space** in the composer: hold to talk (released after ~450 ms, it stops
   and inserts), or tap to start and tap again. **Esc** cancels and inserts nothing.
 - Text goes in at the draft's cursor, with a space added where words would touch.
@@ -96,5 +98,5 @@ The installer installs the helper when the package has it.
 - `cargo test --release ui_state`: persisted preferences reject unknown models,
   argument-like languages and multi-line vocabulary.
 - `tools/test-qml dictation`: a stand-in helper; insertion at the cursor with
-  spacing, prompt vocabulary, level, cancel, first-use model download and the
+  spacing, prompt vocabulary, level wave, cancel, first-use model download and the
   visibility preference.

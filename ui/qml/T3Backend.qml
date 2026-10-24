@@ -788,7 +788,9 @@ Singleton {
   readonly property bool dictationAvailable:dictationCatalog.loaded&&dictationCatalog.recorder&&!!dictationModelInfo
   readonly property bool dictationEnabled:dictationAvailable&&viewState.dictationButton!==false
   // state: idle, starting, recording, transcribing or cancelling.
-  property var dictation:({state:"idle",key:"",level:0,error:""})
+  property var dictation:({state:"idle",key:"",level:0,levels:[],error:""})
+  // The last ~2 s of microphone levels (one every 70 ms) drawn as the composer's wave.
+  readonly property int dictationWaveLength:28
   property var dictationDownload:({busy:false,model:"",bytes:0,total:0,error:""})
   signal dictationInserted(string key,int cursor)
   function refreshDictation(){if(!dictationCatalogProcess.running)dictationCatalogProcess.running=true}
@@ -804,7 +806,7 @@ Singleton {
     var d=drafts[selectedKey];if(!selectedThread||!d||d.busy||d.attempt||d.loading||d.loadError)return
     var args=[dictationBinary,"listen","--model",dictationModel,"--language",viewState.dictationLanguage || "auto"],prompt=dictationPrompt()
     if(prompt)args.push("--prompt",prompt)
-    dictation={state:"starting",key:selectedKey,level:0,error:""}
+    dictation={state:"starting",key:selectedKey,level:0,levels:[],error:""}
     dictationOutput.result=null;dictationProcess.command=args;dictationProcess.running=true
   }
   function stopDictation(){if(dictationProcess.running&&["starting","recording"].indexOf(dictation.state)>=0){dictation=Object.assign({},dictation,{state:"transcribing",level:0});dictationProcess.signal(2)}}
@@ -824,7 +826,7 @@ Singleton {
   function dictationLine(line){
     var event;try{event=JSON.parse(line)}catch(_){return}
     if(event.type==="recording"&&dictation.state==="starting")dictation=Object.assign({},dictation,{state:"recording"})
-    else if(event.type==="level"&&dictation.state==="recording")dictation=Object.assign({},dictation,{level:Number(event.value) || 0})
+    else if(event.type==="level"&&dictation.state==="recording"){var level=Number(event.value) || 0;dictation=Object.assign({},dictation,{level:level,levels:(dictation.levels || []).concat([level]).slice(-dictationWaveLength)})}
     else if(event.type==="text")dictationOutput.result=event
   }
   Process {
@@ -835,7 +837,7 @@ Singleton {
       var job=root.dictation,result=dictationOutput.result,failure=dictationErrors.text.trim().split("\n").pop()
       var error=job.state==="cancelling"||code===130?"":code!==0?({model_missing:"Download the dictation model in Preferences → General → Dictation.",model_invalid:"The dictation model could not be loaded. Remove it and download it again in Preferences.",recorder_unavailable:"Dictation needs PipeWire's pw-record to use the microphone."}[failure] || "Dictation failed."):""
       if(!error&&result&&result.text)error=root.insertDictation(job.key,String(result.text))
-      root.dictation={state:"idle",key:"",level:0,error:error}
+      root.dictation={state:"idle",key:"",level:0,levels:[],error:error}
       if(failure==="model_missing")root.refreshDictation()
     }
   }

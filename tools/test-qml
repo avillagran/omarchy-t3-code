@@ -38,7 +38,7 @@ case "$1" in
   download) printf '%s\n' '{"type":"progress","bytes":1000,"total":2000}'; : > "$HOME/small-installed"; printf '%s\n' '{"type":"done","model":"small"}';;
   listen) trap 'printf "%s\n" "{\"type\":\"transcribing\"}" "{\"type\":\"text\",\"text\":\"hola mundo\",\"language\":\"es\",\"seconds\":1,\"elapsedMs\":5}"; exit 0' INT
     trap 'exit 130' TERM
-    printf '%s\n' '{"type":"recording"}' '{"type":"level","value":0.5}'
+    printf '%s\n' '{"type":"recording"}' '{"type":"level","value":0.2}' '{"type":"level","value":0.2}' '{"type":"level","value":0.8}'
     while :; do sleep 0.05; done;;
 esac
 DICTATE
