@@ -50,7 +50,7 @@ Rectangle {
 
  property string query:""
  readonly property bool compact:width<Style.space(780)
- readonly property var pages:[{id:"general",name:"General",icon:"settings"},{id:"appearance",name:"Appearance",icon:"layers"},{id:"projects",name:"Projects",icon:"folder-git-2"},{id:"shortcuts",name:"Keyboard shortcuts",icon:"keyboard"},{id:"providers",name:"Providers",icon:"acp"},{id:"integrations",name:"Integrations",icon:"plug"},{id:"source-control",name:"Source control",icon:"git-branch"},{id:"connections",name:"Connections",icon:"server"},{id:"storage",name:"Storage",icon:"hard-drive"},{id:"archived",name:"Archive",icon:"archive"},{id:"licenses",name:"Open-source licenses",icon:"file-text",nav:false}]
+ readonly property var pages:[{id:"general",name:"General",icon:"settings"},{id:"appearance",name:"Appearance",icon:"layers"},{id:"projects",name:"Projects",icon:"folder-git-2"},{id:"shortcuts",name:"Keyboard shortcuts",icon:"keyboard"},{id:"providers",name:"Providers",icon:"acp"},{id:"integrations",name:"Integrations",icon:"plug"},{id:"source-control",name:"Source control",icon:"git-branch"},{id:"connections",name:"Connections",icon:"server"},{id:"storage",name:"Storage",icon:"hard-drive"},{id:"memory",name:"Memory/Obsidian",icon:"book-open"},{id:"archived",name:"Archive",icon:"archive"},{id:"licenses",name:"Open-source licenses",icon:"file-text",nav:false}]
  readonly property bool licenseSearchMatch:matches("Open-source licenses")||matches("Third-party notices")||matches("Notices for dependencies, assets, and tools used by ot3.")
  readonly property var currentPage:pages.find(function(p){return p.id===root.page}) || pages[0]
  readonly property var sections:[
@@ -230,6 +230,7 @@ Rectangle {
       }
       Loader{Layout.fillWidth:true;active:root.page==="storage";visible:active;sourceComponent:Component{T3StorageSettings{bridge:root.bridge;settings:root.result;projectScope:root.projectScope;writable:root.writable;query:root.query;drafts:root.edits;onSettingChanged:function(key,value){root.save(key,value)};onStaged:function(key,value){root.stage(key,value)}}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="integrations";visible:active;sourceComponent:Component{T3Integrations{bridge:root.bridge;targets:root.scope.targets;settings:root.result;settingsWritable:root.writable;onSettingChanged:function(key,value){root.save(key,value)};onInheritRequested:function(key){root.clearOverride(key)}}}}
+      Loader{Layout.fillWidth:true;active:root.page==="memory";visible:active;sourceComponent:Component{T3JournalSettings{bridge:root.bridge;query:root.query}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="licenses";visible:active;sourceComponent:Component{T3Licenses{bridge:root.bridge}}}
       Loader{Layout.fillWidth:true;Layout.preferredHeight:Math.max(Style.space(280),settingsScroll.height-Style.space(170));active:!root.query.trim()&&root.page==="archived";visible:active;sourceComponent:Component{T3Archive{bridge:root.bridge;targets:root.scope.targets}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="connections";visible:active;sourceComponent:Component{T3Connections{bridge:root.bridge;environment:root.environment}}}

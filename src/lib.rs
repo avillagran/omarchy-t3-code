@@ -1066,6 +1066,7 @@ pub mod browser_cookies;
 pub mod browser_import;
 
 pub mod storage_settings;
+pub mod journal_vault;
 #[cfg(test)]
 mod context_window_tests {
     use super::context_window;
