@@ -420,6 +420,17 @@ Singleton {
   }
   property var compactionStates: ({})
   function configureCompaction(patch){rememberView(patch);persistViewNow();refresh()}
+  // T3 server updates (server_update.rs): per environment {current,channel,latest,canUpdate,reason,state,error}.
+  property var serverUpdates:({mode:"auto",environments:{}})
+  property var serverUpdateErrors:({})
+  readonly property string serverUpdateMode:viewState.t3ServerUpdates || "auto"
+  function setServerUpdateMode(mode){rememberView({t3ServerUpdates:mode});persistViewNow();refresh()}
+  function serverUpdate(environment){return (serverUpdates.environments || {})[environment] || null}
+  function updateServer(environment){
+    var u=serverUpdate(environment);if(!u||!u.latest||!u.canUpdate||u.state==="running"||!worker.running)return
+    var errors=Object.assign({},serverUpdateErrors);delete errors[environment];serverUpdateErrors=errors
+    send({op:"server-update",environment:environment,requestId:uuid()})
+  }
   property var catalogs: ({})
   // The T3 Code revision ot3 is validated against (upstream/t3code.json, see
   // tools/upstream-drift.cjs) and the connected servers newer than it.
@@ -1415,6 +1426,7 @@ Singleton {
     send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:captured.fromTurnCount,toTurnCount:captured.toTurnCount,summary:captured,ignoreWhitespace:ws})
   }
   function action(data) {
+    if(data.op==="server-update"){if(data.error){var errors=Object.assign({},serverUpdateErrors);errors[data.environment]=data.error;serverUpdateErrors=errors}return}
     if(data.op==="provider-update"||data.op==="thread-details-read"||data.op==="thread-details-open-editor"){detailsAction(data);return}
     if(data.op==="failure-context"||data.op==="tool-failure"){failureAction(data);return}
     if(data.op==="browser-import-sources"||data.op==="browser-import-read"||data.op==="browser-import-action"){ImportFlow.receipt(root,data);return}
@@ -1980,6 +1992,7 @@ Singleton {
       }
       else if (event.type === "ui-state-error") { console.warn("T3 presentation state could not be saved: " + data.error) }
       else if(event.type==="live-state" && data.serial===requestedSerial && panelVisible){liveConnected=!!data.connected;if(data.error&&!transcript.length){loadingMessages=false;messageError=data.error}}
+      else if(event.type==="server-updates"){serverUpdates=data}
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
