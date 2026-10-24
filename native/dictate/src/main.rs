@@ -5,9 +5,14 @@
 //!   ot3-dictate remove <model>         delete a downloaded model
 //!   ot3-dictate listen [options]       record until SIGINT, then print the text
 //!   ot3-dictate transcribe <file>      transcribe 16 kHz mono s16le raw or WAV
+//!   ot3-dictate recordings <folder>    the recordings kept for one thread (JSON)
+//!   ot3-dictate delete <folder> <id>   remove one kept recording
+//!   ot3-dictate forget <folder>        remove every recording of one thread
+//!   ot3-dictate prune <seconds>        remove kept recordings older than that
 //!
 //! listen options: --model <id>, --language <code|auto>, --prompt <text>,
-//! --max-seconds <n>. It lives only while one dictation runs: PipeWire records
+//! --max-seconds <n>, --keep <folder> (save the recording and its text under
+//! the thread's folder). It lives only while one dictation runs: PipeWire records
 //! from the start, the model loads alongside, and the process exits after
 //! printing one result. SIGINT stops and transcribes; SIGTERM cancels.
 //! Every stdout line is one JSON object; errors are one short code on stderr.
@@ -197,8 +202,10 @@ fn speech(samples: &[f32]) -> Option<Vec<f32>> {
     sorted.sort_by(|a, b| a.total_cmp(b));
     // Measured against this clip's own voice: a quiet microphone still speaks
     // well above its pauses, and a fixed level would count its words as pauses.
-    let floor = sorted[sorted.len() / 5];
-    let voice = sorted[sorted.len() * 19 / 20];
+    // The floor is the 10th percentile and the voice the 98th, so a clip that
+    // is mostly one long pause still finds its few seconds of speech.
+    let floor = sorted[sorted.len() / 10];
+    let voice = sorted[sorted.len() * 49 / 50];
     if voice < 0.002 {
         return None;
     }
@@ -228,6 +235,58 @@ fn speech(samples: &[f32]) -> Option<Vec<f32>> {
         out.iter_mut().for_each(|s| *s *= gain);
     }
     Some(out)
+}
+
+/// Longest piece handed to Whisper at once. Its window is 30 s; a longer
+/// clip makes it slide the window itself, and what sits in the second window
+/// comes back cut mid-word or not at all. Cutting here keeps every piece
+/// inside one window.
+const PIECE: usize = RATE * 25;
+/// How far before the nominal cut the quietest spot is looked for.
+const PIECE_SEARCH: usize = RATE * 3 / 2;
+/// A cut sits in the middle of the quietest 120 ms: the closure of a stop
+/// consonant is near-silent for 30–80 ms, a pause between words lasts longer.
+const QUIET_FRAMES: usize = 6;
+
+/// Splits a clip into consecutive pieces of at most `PIECE` samples, each
+/// ending in the quietest stretch of the 1.5 s before the nominal length.
+fn pieces(audio: &[f32]) -> Vec<(usize, usize)> {
+    let frame = RATE * 20 / 1000;
+    let mut out = Vec::new();
+    let mut start = 0;
+    while audio.len() - start > PIECE {
+        let nominal = start + PIECE;
+        let energies: Vec<f32> = audio[nominal - PIECE_SEARCH..nominal].chunks_exact(frame).map(rms).collect();
+        let mut best = (energies.len() - QUIET_FRAMES, f32::INFINITY);
+        for i in 0..=energies.len() - QUIET_FRAMES {
+            let sum: f32 = energies[i..i + QUIET_FRAMES].iter().sum();
+            if sum <= best.1 {
+                best = (i, sum);
+            }
+        }
+        let cut = nominal - PIECE_SEARCH + (best.0 * frame + (best.0 + QUIET_FRAMES) * frame) / 2;
+        out.push((start, cut));
+        start = cut;
+    }
+    out.push((start, audio.len()));
+    out
+}
+
+/// Joins the pieces' texts. A piece cut mid-sentence tends to end in a period
+/// the speaker never made; it goes when the next piece carries on in lowercase.
+fn join(parts: &[String]) -> String {
+    let mut out = String::new();
+    for part in parts.iter().filter(|p| !p.is_empty()) {
+        if !out.is_empty() {
+            let lowercase = part.chars().next().is_some_and(|c| c.is_lowercase());
+            if lowercase && out.ends_with('.') && !out.ends_with("..") {
+                out.pop();
+            }
+            out.push(' ');
+        }
+        out.push_str(part);
+    }
+    out
 }
 
 // Captions Whisper is known to invent from noise or silence.
@@ -267,9 +326,10 @@ struct Options {
     language: String,
     prompt: String,
     max_seconds: u64,
+    keep: Option<PathBuf>,
 }
 fn options(args: &[String]) -> Options {
-    let mut o = Options { model: model(DEFAULT_MODEL), language: "auto".into(), prompt: String::new(), max_seconds: 120 };
+    let mut o = Options { model: model(DEFAULT_MODEL), language: "auto".into(), prompt: String::new(), max_seconds: 120, keep: None };
     let mut i = 0;
     while i < args.len() {
         let value = args.get(i + 1).cloned().unwrap_or_default();
@@ -278,6 +338,7 @@ fn options(args: &[String]) -> Options {
             "--language" => o.language = value,
             "--prompt" => o.prompt = value.chars().take(600).collect(),
             "--max-seconds" => o.max_seconds = value.parse().unwrap_or(120).clamp(5, 600),
+            "--keep" => o.keep = Some(folder(&value)),
             _ => fail("bad_arguments"),
         }
         i += 2;
@@ -288,22 +349,22 @@ fn options(args: &[String]) -> Options {
     o
 }
 
-fn transcribe(ctx: &WhisperContext, samples: &[f32], o: &Options) -> (String, String) {
-    let Some(voice) = speech(samples) else {
-        return (String::new(), String::new());
-    };
+/// Runs Whisper over one piece that fits its 30 s window. Returns the text and
+/// the language it decided on.
+fn decode(ctx: &WhisperContext, piece: &[f32], language: &str, o: &Options, beam: bool) -> (String, String) {
     // whisper.cpp ignores clips under a second.
-    let mut audio = voice;
+    let mut audio = piece.to_vec();
     if audio.len() < RATE + RATE / 10 {
         audio.resize(RATE + RATE / 10, 0.0);
     }
     let mut state = ctx.create_state().unwrap_or_else(|_| fail("model_invalid"));
-    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+    let mut params = FullParams::new(if beam { SamplingStrategy::BeamSearch { beam_size: 5, patience: -1.0 } } else { SamplingStrategy::Greedy { best_of: 1 } });
     let threads = std::env::var("OT3_DICTATE_THREADS").ok().and_then(|v| v.parse().ok()).unwrap_or_else(|| thread::available_parallelism().map(|n| n.get()).unwrap_or(4).clamp(1, 8));
     params.set_n_threads(threads as i32);
-    params.set_language(Some(if o.language == "auto" { "auto" } else { &o.language }));
+    params.set_language(Some(language));
     params.set_translate(false);
     params.set_no_context(true);
+    params.set_single_segment(true);
     params.set_no_timestamps(true);
     params.set_suppress_blank(true);
     params.set_suppress_nst(true);
@@ -317,8 +378,10 @@ fn transcribe(ctx: &WhisperContext, samples: &[f32], o: &Options) -> (String, St
     }
     // The encoder costs the same for every clip unless told how long it is:
     // one audio context step is 20 ms, and 1500 covers Whisper's 30 s window.
+    // A retry gets the full window so a too-small one cannot repeat its output.
     let ctx_steps = match std::env::var("OT3_DICTATE_AUDIO_CTX").ok().as_deref() {
         Some("full") => 0,
+        _ if beam => 0,
         _ => (audio.len() / 320 + 64).min(1500) as i32,
     };
     if ctx_steps > 0 && ctx_steps < 1500 {
@@ -327,15 +390,135 @@ fn transcribe(ctx: &WhisperContext, samples: &[f32], o: &Options) -> (String, St
     state.full(params, &audio).unwrap_or_else(|_| fail("transcription_failed"));
     let mut text = String::new();
     for segment in state.as_iter() {
-        if segment.no_speech_probability() > 0.8 {
-            continue;
-        }
         if let Ok(s) = segment.to_str_lossy() {
             text.push_str(&s);
         }
     }
     let language = whisper_rs::get_lang_str(state.full_lang_id_from_state()).unwrap_or("").to_string();
     (clean(&text), language)
+}
+
+fn transcribe(ctx: &WhisperContext, samples: &[f32], o: &Options) -> (String, String) {
+    let Some(voice) = speech(samples) else {
+        return (String::new(), String::new());
+    };
+    // The language is detected once, on the first piece, so the later pieces
+    // of one dictation cannot each decide on a different one.
+    let mut language = o.language.clone();
+    let mut parts = Vec::new();
+    for (start, end) in pieces(&voice) {
+        let piece = &voice[start..end];
+        if start > 0 && speech(piece).is_none() {
+            continue;
+        }
+        let (mut text, detected) = decode(ctx, piece, &language, o, false);
+        if text.is_empty() && piece.len() >= RATE {
+            // Greedy decoding sometimes returns nothing for real speech; a
+            // beam search over the full window usually recovers it.
+            text = decode(ctx, piece, &language, o, true).0;
+        }
+        if language == "auto" && !detected.is_empty() {
+            language = detected;
+        }
+        parts.push(text);
+    }
+    (join(&parts), if language == "auto" { String::new() } else { language })
+}
+
+/// Recordings the panel asked to keep live under the models, one folder per
+/// thread, as `<millis>.wav` with the text in `<millis>.txt`. A folder name
+/// comes from the panel and is checked here, so no path escapes this root.
+fn recordings_dir() -> PathBuf {
+    models_dir().join("recordings")
+}
+fn folder(name: &str) -> PathBuf {
+    let ok = !name.is_empty() && name.len() <= 128 && !name.starts_with('.') && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+    if !ok {
+        fail("bad_arguments");
+    }
+    recordings_dir().join(name)
+}
+fn now_millis() -> u128 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+}
+fn wav(samples: &[f32]) -> Vec<u8> {
+    let data: Vec<u8> = samples.iter().flat_map(|s| ((s * 32767.0).clamp(-32768.0, 32767.0) as i16).to_le_bytes()).collect();
+    let mut out = Vec::with_capacity(44 + data.len());
+    out.extend_from_slice(b"RIFF");
+    out.extend_from_slice(&(36 + data.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"WAVEfmt ");
+    out.extend_from_slice(&16u32.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&(RATE as u32).to_le_bytes());
+    out.extend_from_slice(&(RATE as u32 * 2).to_le_bytes());
+    out.extend_from_slice(&2u16.to_le_bytes());
+    out.extend_from_slice(&16u16.to_le_bytes());
+    out.extend_from_slice(b"data");
+    out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    out.extend_from_slice(&data);
+    out
+}
+/// Saves the raw recording; returns its id. Best effort: a failure keeps nothing
+/// and loses nothing.
+fn keep(dir: &Path, samples: &[f32]) -> Option<String> {
+    fs::create_dir_all(dir).ok()?;
+    let id = now_millis().to_string();
+    fs::write(dir.join(format!("{id}.wav")), wav(samples)).ok()?;
+    Some(id)
+}
+fn recordings(dir: &Path) {
+    let mut items: Vec<(u128, String)> = Vec::new();
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let Some(id) = name.strip_suffix(".wav") else { continue };
+            let Ok(time) = id.parse::<u128>() else { continue };
+            let bytes = entry.metadata().map(|m| m.len()).unwrap_or(0).saturating_sub(44);
+            let text = fs::read_to_string(dir.join(format!("{id}.txt"))).unwrap_or_default();
+            items.push((time, format!("{{\"id\":{},\"file\":{},\"time\":{time},\"seconds\":{:.1},\"text\":{}}}", quote(id), quote(&entry.path().to_string_lossy()), bytes as f32 / (RATE as f32 * 2.0), quote(text.trim()))));
+        }
+    }
+    items.sort_by(|a, b| b.0.cmp(&a.0));
+    emit(format!("{{\"recordings\":[{}]}}", items.into_iter().map(|(_, s)| s).collect::<Vec<_>>().join(",")));
+}
+fn delete(dir: &Path, id: &str) {
+    if id.is_empty() || !id.chars().all(|c| c.is_ascii_digit()) {
+        fail("bad_arguments");
+    }
+    let _ = fs::remove_file(dir.join(format!("{id}.wav")));
+    let _ = fs::remove_file(dir.join(format!("{id}.txt")));
+    let _ = fs::remove_dir(dir);
+    emit(format!("{{\"type\":\"deleted\",\"id\":{}}}", quote(id)));
+}
+fn forget(dir: &Path) {
+    match fs::remove_dir_all(dir) {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(_) => fail("local_error"),
+    }
+    emit("{\"type\":\"forgotten\"}".into());
+}
+/// Removes every kept recording older than `max_age` seconds (0 removes all)
+/// and the thread folders left empty.
+fn prune(max_age: u64) {
+    let cutoff = now_millis().saturating_sub(max_age as u128 * 1000);
+    let mut removed = 0;
+    if let Ok(folders) = fs::read_dir(recordings_dir()) {
+        for folder in folders.flatten().filter(|f| f.path().is_dir()) {
+            if let Ok(entries) = fs::read_dir(folder.path()) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    let Some((id, _)) = name.rsplit_once('.') else { continue };
+                    if id.parse::<u128>().is_ok_and(|t| t < cutoff) && fs::remove_file(entry.path()).is_ok() {
+                        removed += 1;
+                    }
+                }
+            }
+            let _ = fs::remove_dir(folder.path());
+        }
+    }
+    emit(format!("{{\"type\":\"pruned\",\"files\":{removed}}}"));
 }
 
 fn result(text: &str, language: &str, seconds: f32, started: Instant) {
@@ -412,16 +595,22 @@ fn listen(o: Options) {
     }
     let started = Instant::now();
     emit("{\"type\":\"transcribing\"}".into());
+    let kept = o.keep.as_ref().and_then(|dir| keep(dir, &samples));
     let ctx = loader.join().unwrap_or_else(|_| fail("model_invalid"));
     if CANCEL.load(Ordering::SeqCst) {
         std::process::exit(130);
     }
     let (text, language) = transcribe(&ctx, &samples, &o);
+    if let (Some(dir), Some(id)) = (&o.keep, &kept) {
+        let _ = fs::write(dir.join(format!("{id}.txt")), format!("{text}\n"));
+    }
     result(&text, &language, samples.len() as f32 / RATE as f32, started);
 }
 
 fn read_audio(path: &str) -> Vec<f32> {
-    let bytes = fs::read(path).unwrap_or_else(|_| fail("local_error"));
+    read_audio_bytes(&fs::read(path).unwrap_or_else(|_| fail("local_error")))
+}
+fn read_audio_bytes(bytes: &[u8]) -> Vec<f32> {
     let data = if bytes.starts_with(b"RIFF") && bytes.len() > 44 {
         // Find the "data" chunk of a 16 kHz mono s16 WAV.
         let mut at = 12;
@@ -436,7 +625,7 @@ fn read_audio(path: &str) -> Vec<f32> {
         }
         found.unwrap_or_else(|| fail("bad_audio"))
     } else {
-        &bytes[..]
+        bytes
     };
     data.chunks_exact(2).map(|p| i16::from_le_bytes([p[0], p[1]]) as f32 / 32768.0).collect()
 }
@@ -464,6 +653,10 @@ fn main() {
             }
         }
         Some("listen") => listen(options(&args[1..])),
+        Some("recordings") if args.len() == 2 => recordings(&folder(&args[1])),
+        Some("delete") if args.len() == 3 => delete(&folder(&args[1]), &args[2]),
+        Some("forget") if args.len() == 2 => forget(&folder(&args[1])),
+        Some("prune") if args.len() == 2 => prune(args[1].parse().unwrap_or_else(|_| fail("bad_arguments"))),
         Some("transcribe") if args.len() >= 2 => {
             let o = options(&args[2..]);
             let samples = read_audio(&args[1]);
@@ -527,6 +720,49 @@ mod tests {
         let voice = speech(&clip).unwrap();
         assert!(voice.iter().filter(|s| s.abs() > 0.01).count() >= RATE * 3 - RATE / 50, "speech lost");
         assert!(voice.len() < RATE * 5);
+    }
+    #[test]
+    fn a_short_phrase_after_a_very_long_pause_is_still_speech() {
+        // 3 s of words in 100 s of recording: under 5% of the frames.
+        let tone = |n: usize| (0..n).map(|i| if i % 2 == 0 { 0.3 } else { -0.3 }).collect::<Vec<f32>>();
+        let mut clip = tone(RATE * 2);
+        clip.extend(vec![0.0; RATE * 95]);
+        clip.extend(tone(RATE));
+        let voice = speech(&clip).expect("speech found");
+        assert!(voice.iter().filter(|s| s.abs() > 0.1).count() >= RATE * 3 - RATE / 50);
+    }
+    #[test]
+    fn long_clips_are_cut_in_pauses() {
+        assert_eq!(pieces(&vec![0.5; RATE * 20]), vec![(0, RATE * 20)]);
+        // 60 s of tone with 300 ms gaps at 24.0 s and 48.5 s: the cuts land in them.
+        let mut clip: Vec<f32> = (0..RATE * 60).map(|i| if i % 2 == 0 { 0.5 } else { -0.5 }).collect();
+        for gap in [RATE * 24, RATE * 485 / 10] {
+            clip[gap..gap + RATE * 3 / 10].iter_mut().for_each(|s| *s = 0.0);
+        }
+        let cuts = pieces(&clip);
+        assert_eq!(cuts.len(), 3, "{cuts:?}");
+        assert!(cuts[0].1 > RATE * 24 && cuts[0].1 < RATE * 243 / 10, "{cuts:?}");
+        assert!(cuts[1].1 > RATE * 485 / 10 && cuts[1].1 < RATE * 488 / 10, "{cuts:?}");
+        assert_eq!(cuts[2], (cuts[1].1, RATE * 60));
+        for w in cuts.windows(2) {
+            assert_eq!(w[0].1, w[1].0);
+        }
+        assert!(cuts.iter().all(|(s, e)| e - s <= PIECE));
+    }
+    #[test]
+    fn pieces_join_without_a_cut_period() {
+        assert_eq!(join(&["Abre el archivo.".into(), "y guárdalo".into()]), "Abre el archivo y guárdalo");
+        assert_eq!(join(&["Listo.".into(), "Ahora sigue".into()]), "Listo. Ahora sigue");
+        assert_eq!(join(&["Uno...".into(), "dos".into(), String::new(), "tres".into()]), "Uno... dos tres");
+    }
+    #[test]
+    fn kept_recordings_are_wav_under_a_checked_folder() {
+        assert_eq!(folder("local_abc-1.2").file_name().unwrap(), "local_abc-1.2");
+        assert!(folder("x").starts_with(recordings_dir()));
+        let bytes = wav(&[0.0, 0.5, -0.5]);
+        assert_eq!(bytes.len(), 44 + 6);
+        assert_eq!(&bytes[..4], b"RIFF");
+        assert_eq!(read_audio_bytes(&bytes), vec![0.0, 0.5, -0.5].iter().map(|s| ((*s * 32767.0) as i16) as f32 / 32768.0).collect::<Vec<f32>>());
     }
     #[test]
     fn output_is_valid_json() {

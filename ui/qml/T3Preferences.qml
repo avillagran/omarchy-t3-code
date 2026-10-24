@@ -223,7 +223,7 @@ Rectangle {
        }}
       }
       // ot3-dictate: whisper.cpp on this computer, models downloaded on demand.
-      T3PreferenceSection{objectName:"preferencesDictation";visible:root.page==="general"&&(!root.query.trim()||root.matches("Dictation")||root.matches("Dictation model")||root.matches("Dictation language")||root.matches("Vocabulary"));Layout.fillWidth:true;title:"Dictation";icon:"mic"
+      T3PreferenceSection{objectName:"preferencesDictation";visible:root.page==="general"&&(!root.query.trim()||root.matches("Dictation")||root.matches("Dictation model")||root.matches("Dictation language")||root.matches("Vocabulary")||root.matches("Keep recordings"));Layout.fillWidth:true;title:"Dictation";icon:"mic"
        body:Component{Column{width:parent.width
         readonly property var b:root.bridge
         readonly property var download:b.dictationDownload
@@ -240,6 +240,7 @@ Rectangle {
         }
         T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceDictationLanguage";field:({key:"dictationLanguage",label:"Dictation language",description:"Automatic detects the language of each dictation. Choosing one helps very short phrases; speech in another language is then translated into it.",kind:"choice",value:b.viewState.dictationLanguage || "auto",choices:[{id:"auto",name:"Automatic"},{id:"es",name:"Español"},{id:"en",name:"English"},{id:"pt",name:"Português"},{id:"fr",name:"Français"},{id:"de",name:"Deutsch"},{id:"it",name:"Italiano"}]});writable:b.dictationAvailable;onChanged:function(value){b.rememberView({dictationLanguage:value})}}
         T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceDictationVocabulary";field:({key:"dictationVocabulary",label:"Vocabulary",description:"Words to spell your way, separated by commas: names, tools, terms. The project, branch and thread title are added on their own.",kind:"text",commitOnBlur:true,maximumLength:600,placeholder:"Omarchy, Hyprland, worktree",value:b.viewState.dictationVocabulary || ""});writable:b.dictationAvailable;onChanged:function(value){b.rememberView({dictationVocabulary:value.trim()})}}
+        T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceDictationRecordings";field:({key:"dictationRecordings",label:"Keep recordings",description:"Each dictation's audio and text stay on this computer and are listed when the mouse rests on the microphone, so a lost transcription can be recovered. A thread's recordings go when it is archived or deleted.",kind:"choice",value:b.viewState.dictationRecordings || "thread",choices:[{id:"thread",name:"Until the thread is closed"},{id:"month",name:"At most a month"},{id:"week",name:"At most a week"},{id:"day",name:"At most a day"},{id:"off",name:"Do not keep"}]});writable:b.dictationAvailable;onChanged:function(value){b.rememberView({dictationRecordings:value});b.pruneDictationRecordings()}}
        }}
       }
       T3PreferenceSection{visible:!root.query.trim()&&root.page==="appearance";Layout.fillWidth:true;title:"Omarchy theme";icon:"layers"
