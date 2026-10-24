@@ -175,7 +175,26 @@ pub trait HostFiles {
     fn metadata(&self, paths: &[String]) -> Result<Vec<Option<String>>>;
     fn read(&self, path: &str) -> Result<String>;
 }
-pub struct RpcFiles<'a>(pub &'a Environment);
+/// Read `path`; when a `~/` path fails and the host's home is known, read it again
+/// as an absolute path.
+pub fn read_with_home(read: impl Fn(&str) -> Result<String>, home: Option<&str>, path: &str) -> Result<String> {
+    match (read(path), path.strip_prefix("~/"), home) {
+        (Err(_), Some(rest), Some(home)) => read(&format!("{home}/{rest}")),
+        (result, _, _) => result,
+    }
+}
+/// T3 on the host. `home` is the host's home folder when known: servers that
+/// expand `~/` in getMetadata but not in readFile (node, Oct 2026) need it.
+pub struct RpcFiles<'a>(pub &'a Environment, pub Option<String>);
+impl RpcFiles<'_> {
+    fn read_once(&self, path: &str) -> Result<String> {
+        let v = crate::write::rpc(self.0, "projects.readFile", json!({"cwd":"/","relativePath":path,"allowMissing":true}))?;
+        if v["truncated"] == true {
+            return Err("vault_host_file_too_large".into());
+        }
+        Ok(text(&v, "contents").into())
+    }
+}
 impl HostFiles for RpcFiles<'_> {
     fn metadata(&self, paths: &[String]) -> Result<Vec<Option<String>>> {
         let v = crate::write::rpc(self.0, "filesystem.getMetadata", json!({"paths":paths}))?;
@@ -183,11 +202,7 @@ impl HostFiles for RpcFiles<'_> {
         Ok(entries.iter().map(|e| e["kind"].as_str().map(str::to_owned)).collect())
     }
     fn read(&self, path: &str) -> Result<String> {
-        let v = crate::write::rpc(self.0, "projects.readFile", json!({"cwd":"/","relativePath":path,"allowMissing":true}))?;
-        if v["truncated"] == true {
-            return Err("vault_host_file_too_large".into());
-        }
-        Ok(text(&v, "contents").into())
+        read_with_home(|p| self.read_once(p), self.1.as_deref(), path)
     }
 }
 fn safe_host_path(p: &str) -> bool {
@@ -294,14 +309,21 @@ pub fn host_vaults(files: &dyn HostFiles, home: Option<&str>) -> Value {
         if !is_file(i * 2) {
             continue;
         }
-        let remote = if is_file(i * 2 + 1) {
-            files.read(&probes[i * 2 + 1]).ok().and_then(|c| origin_url(&c))
-        } else {
-            None
-        };
         let git = is_file(i * 2 + 1);
+        // Why a remote is missing, so the page can tell "no remote" from "unreadable".
+        let (remote, remote_error) = if !git {
+            (None, Some("no-git".to_string()))
+        } else {
+            match files.read(&probes[i * 2 + 1]) {
+                Ok(c) => match origin_url(&c) {
+                    Some(u) => (Some(u), None),
+                    None => (None, Some(if c.is_empty() { "empty-read".into() } else { "no-origin".into() })),
+                },
+                Err(e) => (None, Some(e)),
+            }
+        };
         vaults.push(json!({
-            "path":path,"from":from,"git":git,
+            "path":path,"from":from,"git":git,"remoteError":remote_error,
             "remote":remote.as_deref().map(redact_url),
             "canonical":remote.as_deref().and_then(canonical_remote),
             "kind":remote.as_deref().map(kind_of),
@@ -526,10 +548,10 @@ pub fn inspect(path: &Path, expected: Option<&str>) -> Value {
     let canonical = remote.as_deref().and_then(canonical_remote);
     let shown = remote.as_deref().map(redact_url);
     match (canonical, expected.and_then(canonical_remote)) {
-        (Some(a), Some(b)) if a == b => json!({"state":"clone","remote":shown}),
+        (Some(a), Some(b)) if a == b => json!({"state":"clone","remote":shown,"canonical":a}),
         (Some(_), Some(_)) => json!({"state":"occupied","reason":"other-remote","remote":shown}),
         (None, _) => json!({"state":"occupied","reason":"no-remote"}),
-        (Some(_), None) => json!({"state":"clone","remote":shown}),
+        (Some(a), None) => json!({"state":"clone","remote":shown,"canonical":a}),
     }
 }
 /// Clone into a missing or empty folder, or reuse a clone of the same remote.
@@ -1265,14 +1287,18 @@ pub fn discover() -> Result<Value> {
                     let mut v = if let Some(error) = &e.connection_error {
                         json!({"state":"offline","error":error,"vaults":[]})
                     } else {
-                        let files = RpcFiles(e);
+                        // The host's home, from its projects, for servers that do not expand ~/ everywhere.
+                        let home = client
+                            .as_ref()
+                            .and_then(|c| c.get(e, "/api/projects", false).ok())
+                            .map(|page| page["projects"].as_array().into_iter().flatten().map(|p| text(p, "workspaceRoot").to_string()).collect::<Vec<_>>())
+                            .as_deref()
+                            .and_then(home_from_projects);
+                        let files = RpcFiles(e, home.clone());
                         let mut v = host_vaults(&files, None);
-                        // Servers before ~/ expansion: retry with the home their projects show.
+                        // Servers before ~/ expansion at all: retry with absolute paths.
                         if v["state"] == "online" && v["vaults"].as_array().is_some_and(|a| a.is_empty()) {
-                            let roots = client.as_ref().and_then(|c| c.get(e, "/api/projects", false).ok()).map(|page| {
-                                page["projects"].as_array().into_iter().flatten().map(|p| text(p, "workspaceRoot").to_string()).collect::<Vec<_>>()
-                            });
-                            if let Some(home) = roots.as_deref().and_then(home_from_projects) {
+                            if let Some(home) = home {
                                 v = host_vaults(&files, Some(&home));
                             }
                         }

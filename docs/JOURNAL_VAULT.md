@@ -58,6 +58,11 @@ read-only and with `allowMissing`, for at most these files:
    "vault" in a "Dev Vault" heading (vaults set up by hand);
 3. the default `~/Obsidian/Dev`.
 
+Some servers (node, October 2026) expand `~/` in `filesystem.getMetadata` but not
+in `projects.readFile`: a failed `~/` read is retried with the host's home, taken
+from its projects' paths (`/home/<user>`, `/Users/<user>`, `/root`). A vault whose
+`.git/config` still cannot be read shows *remote not readable*, not *no remote*.
+
 For each candidate folder it reads `AGENTS.md` (it must exist: a development vault)
 and `.git/config` (the `origin` URL). Personal folders are never listed or scanned.
 Credentials embedded in a URL (`https://user:token@…`) are dropped and never shown,
@@ -79,6 +84,19 @@ than one distinct vault the page asks which one to use.
   the peer's `ssh` service. Without either the page explains that SSH is needed.
 - A vault without `origin` cannot be shared: the page says so and offers to
   configure a remote manually.
+
+## What the page proposes
+
+While this computer is not set up, a **Recommended** card comes first:
+
+- a host already uses a vault with a readable remote → **Copy setup from <host>**:
+  the same remote is cloned here (or the existing clone of it reused, which the
+  card says), then instructions, device row and Obsidian;
+- otherwise, a clone already on this computer → **Use this clone**, saying when a
+  host's vault could not be read.
+
+The folder field, manual URL and **Create vault** stay under **Other options**.
+The wizard's steps then appear in **Setup progress**.
 
 ## Set up on this computer
 
