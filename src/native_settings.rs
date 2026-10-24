@@ -7,6 +7,7 @@ const MODEL_KEYS: &[(&str, &str)] = &[
     ("sourceControlWriterModelSelection", "Source control writer model"),
     ("reviewGuideModelSelection", "Review guide model"),
 ];
+const TITLE_INSTRUCTIONS_LIMIT: usize = 16384;
 fn identifier(value: &str) -> bool {
     !value.trim().is_empty() && value.trim()==value && value.len()<=2048 && !value.chars().any(char::is_control)
 }
@@ -52,12 +53,50 @@ pub fn description(key: &str) -> &'static str {
         "branchNamePrefix"=>"Prefix added to automatically generated worktree branch names.",
         "branchNameInstructions"=>"Instructions for generating worktree branch names.",
         "textGenerationModelSelection"=>"Model used for titles and other generated text.",
+        "idleCompaction"=>"When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.",
+        "threadTitleInstructions"=>"Appended to the prompt for new and regenerated thread titles.",
         "sourceControlWriterModelSelection"=>"Model used to write commit and pull request messages.",
         "reviewGuideModelSelection"=>"Model used to generate pull request review guides.",
         "enableAgentBrowserAccess"=>"Allow agents to use the shared browser. Projects can override it.",
         "enableAgentDeviceAccess"=>"Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.",
         _=>"",
     }
+}
+const IDLE_COMPACTION_MODES: &[(&str, &str)] = &[
+    ("onReturn", "When you return"),
+    ("beforeCacheExpires", "Before the cache expires (beta)"),
+    ("off", "Never"),
+];
+fn idle_compaction_mode(value: &Value) -> Option<&str> {
+    value.as_str().filter(|mode| IDLE_COMPACTION_MODES.iter().any(|(m, _)| m == mode))
+}
+/// Whether the server stores modes; older ones keep only the on/off `compactIdleThreads`.
+fn reads_idle_compaction_modes(raw: &Value) -> bool {
+    raw.get("idleCompaction").is_some_and(|v| !v.is_null()) || raw["compactIdleThreads"].is_string()
+}
+/// T3 globalIdleCompaction: `idleCompaction`, else the legacy mode or switch.
+pub fn idle_compaction(raw: &Value) -> Option<&str> {
+    if let Some(mode) = idle_compaction_mode(&raw["idleCompaction"]) { return Some(mode) }
+    match &raw["compactIdleThreads"] {
+        Value::Bool(true) => Some("beforeCacheExpires"),
+        Value::Bool(false) => Some("onReturn"),
+        value => idle_compaction_mode(value),
+    }
+}
+/// T3 idleCompactionPatch: write the mode in the form this server reads. Shipped
+/// clients decode `compactIdleThreads` as a boolean, so it never carries a mode
+/// unless the server already stored one there.
+pub fn idle_compaction_patch(raw: &Value, patch: &Value) -> Result<Value> {
+    let mode = idle_compaction_mode(&patch["patch"]["idleCompaction"]).ok_or("invalid_settings")?;
+    Ok(if raw.get("idleCompaction").is_some_and(|v| !v.is_null()) {
+        json!({"patch":{"idleCompaction":mode}})
+    } else if raw["compactIdleThreads"].is_string() {
+        json!({"patch":{"compactIdleThreads":mode}})
+    } else if mode == "off" {
+        return Err("idle_compaction_unsupported".into())
+    } else {
+        json!({"patch":{"compactIdleThreads":mode=="beforeCacheExpires"}})
+    })
 }
 pub fn snapshot(raw: &Value) -> Value {
     let mut view=protocol::settings::snapshot(raw);
@@ -76,6 +115,15 @@ pub fn snapshot(raw: &Value) -> Value {
                 fields.push(field);
             }
         }
+    }
+    // T3 threadTitleInstructions (0.1.3): only servers that report it can apply it.
+    if let Some(v)=raw["threadTitleInstructions"].as_str() {
+        fields.push(json!({"key":"threadTitleInstructions","label":"Thread title instructions","section":"general","kind":"text","multiline":true,"maximumLength":TITLE_INSTRUCTIONS_LIMIT,"placeholder":"Keep titles to a few words. Lead with the main subject.","value":v}));
+    }
+    if let Some(mode)=idle_compaction(raw) {
+        // A server from before modes cannot store "Never".
+        let choices=IDLE_COMPACTION_MODES.iter().filter(|(m,_)|*m!="off"||reads_idle_compaction_modes(raw)).map(|(id,name)|json!({"id":id,"name":name})).collect::<Vec<_>>();
+        fields.push(json!({"key":"idleCompaction","label":"Compact idle threads","kind":"choice","section":"general","value":mode,"resetValue":"onReturn","choices":choices}));
     }
     if let Some(mode)=raw["defaultRuntimeMode"].as_str().filter(|s|protocol::models::valid_runtime_mode(s)) {
         fields.push(json!({"key":"defaultRuntimeMode","label":"Permissions","kind":"choice","section":"general","value":mode,"resetValue":"full-access","choices":[{"id":"approval-required","name":"Supervised"},{"id":"auto-accept-edits","name":"Auto-accept edits"},{"id":"auto","name":"Automatic"},{"id":"full-access","name":"Full access"}]}));
@@ -130,6 +178,14 @@ pub fn patch(input:&Value,config:Option<&Value>)->Result<Value> {
         }
         return Ok(json!({"patch":{key:selection}}))
     }
+    if key=="idleCompaction" {
+        let mode=idle_compaction_mode(value).ok_or("invalid_settings")?;
+        return Ok(json!({"patch":{key:mode}}))
+    }
+    if key=="threadTitleInstructions" {
+        let text=value.as_str().filter(|s|s.chars().count()<=TITLE_INSTRUCTIONS_LIMIT&&!s.contains('\0')).ok_or("invalid_settings")?;
+        return Ok(json!({"patch":{key:text.trim()}}))
+    }
     let valid=match key {
         "enableAgentBrowserAccess"|"enableAgentDeviceAccess"=>value.is_boolean(),
         "defaultRuntimeMode"=>value.as_str().is_some_and(protocol::models::valid_runtime_mode),
@@ -158,7 +214,9 @@ pub fn execute(e:&Environment,input:&Value)->Result<Value>{
         "read"=>{},
         "update"=>{
             let config=if crate::storage_settings::is_key(text(input,"key"))||MODEL_KEYS.iter().any(|(key,_)|*key==text(input,"key"))&&!input["value"].is_null(){Some(crate::write::rpc(e,"server.getConfig",json!({}))?)}else{None};
-            crate::write::rpc(e,"server.updateSettings",patch(input,config.as_ref())?)?;
+            let mut next=patch(input,config.as_ref())?;
+            if text(input,"key")=="idleCompaction"{next=idle_compaction_patch(&crate::write::rpc(e,"server.getSettings",json!({}))?,&next)?;}
+            crate::write::rpc(e,"server.updateSettings",next)?;
         },
         _=>return Err("invalid_settings".into()),
     }

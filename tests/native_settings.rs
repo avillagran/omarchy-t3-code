@@ -44,3 +44,30 @@ fn native_agent_access_fields_and_project_only_device_patch_use_existing_scope_p
  assert!(omarchy_t3_client::native_settings::patch(&json!({"key":"enableAgentDeviceAccess","value":"yes"}),None).is_err());
  let project=json!({"id":"p"});let raw=json!({"enableAgentDeviceAccess":false,"projectSettingsOverrides":{"p":{"branchNamePrefix":"keep/"}}});let patch=omarchy_t3_client::native_settings::patch(&json!({"key":"enableAgentDeviceAccess","value":true}),None).unwrap();let update=omarchy_t3_client::scoped_settings::project_patch(&raw,&project,"enableAgentDeviceAccess",&patch,false).unwrap();assert_eq!(update["patch"]["projectSettingsOverrides"]["p"],json!({"branchNamePrefix":"keep/","enableAgentDeviceAccess":true}));
 }
+#[test]
+fn idle_compaction_reads_and_writes_the_form_each_server_understands(){
+ let field=|raw:Value|settings::snapshot(&raw)["fields"].as_array().unwrap().iter().find(|f|f["key"]=="idleCompaction").cloned();
+ let ids=|f:&Value|f["choices"].as_array().unwrap().iter().map(|c|c["id"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+ // Before modes: the boolean switch only, so "Never" cannot be stored.
+ let legacy=field(json!({"compactIdleThreads":true})).unwrap();assert_eq!(legacy["value"],"beforeCacheExpires");assert_eq!(ids(&legacy),["onReturn","beforeCacheExpires"]);
+ assert_eq!(field(json!({"compactIdleThreads":false})).unwrap()["value"],"onReturn");
+ // 0.1.2 kept the mode in the legacy field; 0.1.3 moved it to idleCompaction.
+ assert_eq!(field(json!({"compactIdleThreads":"off"})).unwrap()["value"],"off");
+ let split=field(json!({"compactIdleThreads":false,"idleCompaction":"off"})).unwrap();assert_eq!(split["value"],"off");assert_eq!(ids(&split).len(),3);
+ assert!(field(json!({})).is_none());
+ let validated=|mode:&str|settings::patch(&json!({"key":"idleCompaction","value":mode}),None).unwrap();
+ assert!(settings::patch(&json!({"key":"idleCompaction","value":"sometimes"}),None).is_err());
+ assert_eq!(settings::idle_compaction_patch(&json!({"compactIdleThreads":false,"idleCompaction":"onReturn"}),&validated("off")).unwrap(),json!({"patch":{"idleCompaction":"off"}}));
+ assert_eq!(settings::idle_compaction_patch(&json!({"compactIdleThreads":"onReturn"}),&validated("off")).unwrap(),json!({"patch":{"compactIdleThreads":"off"}}));
+ assert_eq!(settings::idle_compaction_patch(&json!({"compactIdleThreads":false}),&validated("beforeCacheExpires")).unwrap(),json!({"patch":{"compactIdleThreads":true}}));
+ assert!(settings::idle_compaction_patch(&json!({"compactIdleThreads":false}),&validated("off")).is_err());
+}
+#[test]
+fn thread_title_instructions_are_trimmed_bounded_text(){
+ let view=settings::snapshot(&json!({"threadTitleInstructions":"Short titles"}));
+ let field=view["fields"].as_array().unwrap().iter().find(|f|f["key"]=="threadTitleInstructions").unwrap();
+ assert_eq!((field["section"].as_str(),field["multiline"].as_bool(),field["value"].as_str()),(Some("general"),Some(true),Some("Short titles")));
+ assert!(settings::snapshot(&json!({}))["fields"].as_array().unwrap().iter().all(|f|f["key"]!="threadTitleInstructions"));
+ assert_eq!(settings::patch(&json!({"key":"threadTitleInstructions","value":"  Lead with the subject  "}),None).unwrap(),json!({"patch":{"threadTitleInstructions":"Lead with the subject"}}));
+ for bad in [json!("x".repeat(16385)),json!("bad\0value"),json!(3)]{assert!(settings::patch(&json!({"key":"threadTitleInstructions","value":bad}),None).is_err())}
+}

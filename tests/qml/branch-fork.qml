@@ -10,12 +10,17 @@ ShellRoot{
  Connections{target:Test.T3Backend;function onSnapshotUpdated(){if(root.fixture)Test.T3Backend.state=root.fixture}}
  Timer{interval:220;running:true;repeat:true;onTriggered:{var b=Test.T3Backend
   if(phase===0){if(!b.viewStateLoaded)return;b.rememberView({windowMode:"floating",windowWidth:1300,windowHeight:900});fixture={threads:[{id:"one",key:"fixture/one",environmentId:"fixture",title:"One",projectId:"p",branch:"main"},{id:"parent",key:"fixture/parent",environmentId:"fixture",title:"Parent",projectId:"p"}],projects:[],environments:[]};b.state=fixture;b.selectThread("fixture","one");panel.open();phase=1
-  }else if(phase===1){if(b.draft.loading)return;b.messagesAboutToChange();b.transcript=[{id:"u",role:"user",text:"hi",createdAt:1},{id:"a",role:"assistant",text:"done",forkRunId:"run-1",createdAt:2},{id:"bot",role:"user",text:"daily",attribution:"automation",createdAt:3}];b.messagesUpdated();phase=2
+  }else if(phase===1){if(b.draft.loading)return;b.messagesAboutToChange();b.transcript=[{id:"u",role:"user",text:"hi",createdAt:1},{id:"a",role:"assistant",text:"done",forkRunId:"run-1",createdAt:2},{id:"bot",role:"user",text:"daily",attribution:"automation",createdAt:3},{id:"peer",role:"user",text:"\nReview the parser\nthen report",attribution:"agent",senderThreadId:"parent",createdAt:4}];b.messagesUpdated();phase=2
   }else if(phase===2){if(panel.restoringConversation)return
    var trigger=keys.findChild(panel,"t3BranchTrigger");check(trigger&&trigger.visible&&trigger.text==="main","composer shows the thread branch");
    var fork=keys.findChild(panel.conversationView.itemAtIndex(1),"t3ForkFromHere");check(fork&&fork.visible,"completed responses offer a fork");
    check(!keys.findChild(panel.conversationView.itemAtIndex(0),"t3ForkFromHere").visible,"user messages do not");
-   var who=keys.findChild(panel.conversationView.itemAtIndex(2),"t3MessageAttribution");check(who&&who.visible&&who.text.length>0,"automation messages say who sent them");
+   var bot=panel.conversationView.itemAtIndex(2),peer=panel.conversationView.itemAtIndex(3)
+   check(!keys.findChild(bot,"t3MessageAttribution").visible&&keys.findChild(bot,"t3FoldedMessageHeader").visible&&keys.findChild(bot,"t3FoldedMessageLabel").text===Test.T3I18n.tr("Automation"),"automation messages fold to one line that says who sent them");
+   check(!keys.findChild(bot,"t3MessageBody").visible&&!keys.findChild(bot,"t3MessageActions").visible,"folded messages hide their body and actions");
+   check(keys.findChild(peer,"t3FoldedMessageLabel").text==="Parent"&&keys.findChild(peer,"t3FoldedMessageSummary").text==="Review the parser","agent messages fold under the sending thread's title and first line");
+   check(!keys.findChild(panel.conversationView.itemAtIndex(0),"t3FoldedMessageHeader").visible,"the user's own messages never fold");
+   panel.toggleFold("peer");check(keys.findChild(peer,"t3MessageBody").visible&&keys.findChild(peer,"t3OpenSenderThread").visible,"an opened fold shows the message and a link to the sending thread");panel.toggleFold("peer");
    check(panel.composerView.promptHistory.indexOf("daily")<0&&panel.composerView.promptHistory.indexOf("hi")>=0,"prompt recall skips automation messages");
    check(!keys.findChild(panel,"t3MergeBack").visible,"merge back hidden outside forks");
    keys.findChild(panel,"t3BranchPicker").open();phase=3
