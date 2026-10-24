@@ -177,6 +177,9 @@ Item {
   // Native comfortable lane: 46rem, shared by timeline and composer.
   readonly property real chatContentMaxWidth:Style.space(736)
   property bool findOpen:false
+  // Folded agent/automation messages the user opened, by message id (rows are pooled).
+  property var expandedFolds:({})
+  function toggleFold(id){var next=Object.assign({},expandedFolds);if(next[id])delete next[id];else next[id]=true;expandedFolds=next}
   property string findQuery:""
   property int findIndex:-1
   readonly property var findMatches:{
@@ -1664,7 +1667,17 @@ Item {
                 width: conversation.width
                 // Automations and agents also send user-role messages; say who sent them.
                 readonly property string attribution:userMessage?String(modelData.attribution || ""):""
-                readonly property real attributionHeight:attribution?Style.space(18):0
+                // T3 0.1.3: messages from other agents and automations fold to one line,
+                // so the user's own prompts stay easy to find. Find opens the matched fold.
+                readonly property bool folded:userMessage&&(attribution==="agent"||attribution==="automation")
+                readonly property bool findTarget:root.findOpen&&!!root.findMatches[root.findIndex]&&root.findMatches[root.findIndex].id===modelData.id
+                readonly property bool foldExpanded:!folded||!!root.expandedFolds[modelData.id]||findTarget
+                readonly property string senderThreadId:folded?String(modelData.senderThreadId || ""):""
+                readonly property var senderThread:senderThreadId?root.bridge.state.threads.find(function(t){return t.key===root.bridge.selectedEnvironment+"/"+message.senderThreadId}) || null:null
+                readonly property string foldLabel:attribution==="automation"?T3I18n.tr("Automation"):senderThread&&String(senderThread.title || "").trim()?String(senderThread.title).trim():T3I18n.tr("Agent")
+                readonly property string foldSummary:folded?(String(modelData.text || "").split(/\r?\n/).find(function(line){return line.trim().length>0}) || "").trim():""
+                readonly property real foldHeaderHeight:folded?Style.space(36):0
+                readonly property real attributionHeight:attribution&&!folded?Style.space(18):0
                 height: attributionHeight+bubble.height+(messageActions.visible?messageActions.height+Style.space(6):0)+bottomGap
                 HoverHandler{id:messageHover}
                 FontMetrics{id:userMeasure;font:messageText.font}
@@ -1679,22 +1692,39 @@ Item {
                   Controls.ToolTip.visible:intentHover.hovered;Controls.ToolTip.delay:400
                   Controls.ToolTip.text:T3I18n.tr(message.modelData.inputIntent==="promoted_queued_to_steer"?"Originally queued, then promoted to steer the active turn":"Steered the active turn")
                 }
-                Text{objectName:"t3MessageAttribution";visible:!!message.attribution;anchors.right:parent.right;anchors.rightMargin:Style.space(4);text:T3I18n.tr(message.attribution==="automation"?"Sent by automation":message.attribution==="t3code"?"Sent by T3 Code":"Sent by another agent");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.55);font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
+                Text{objectName:"t3MessageAttribution";visible:!!message.attribution&&!message.folded;anchors.right:parent.right;anchors.rightMargin:Style.space(4);text:T3I18n.tr(message.attribution==="automation"?"Sent by automation":message.attribution==="t3code"?"Sent by T3 Code":"Sent by another agent");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.55);font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
                 Rectangle {
                   id: bubble
                   objectName:"t3MessageBubble"
                   y:message.attributionHeight
                   anchors.right: parent.right
-                  width: message.userMessage ? Math.min(parent.width*0.8,Math.max(Style.space(80),message.naturalUserWidth+Style.space(24),(message.modelData.attachments || []).length?Style.space(240):0)) : parent.width
-                  height: body.implicitHeight + 2*message.verticalInset
+                  width: message.folded ? (message.foldExpanded ? parent.width*0.8 : Math.min(parent.width*0.8,foldHeader.naturalWidth)) : message.userMessage ? Math.min(parent.width*0.8,Math.max(Style.space(80),message.naturalUserWidth+Style.space(24),(message.modelData.attachments || []).length?Style.space(240):0)) : parent.width
+                  height: message.folded ? message.foldHeaderHeight+(message.foldExpanded?body.implicitHeight+message.verticalInset:0) : body.implicitHeight + 2*message.verticalInset
                   radius: Style.space(16)
                   color: message.userMessage ? root.surface : "transparent"
                   border.width:root.findOpen&&root.findMatches[root.findIndex]&&root.findMatches[root.findIndex].id===message.modelData.id?1:0
                   border.color:Color.accent
+                  Item {
+                    id:foldHeader;objectName:"t3FoldedMessageHeader"
+                    visible:message.folded;width:parent.width;height:message.foldHeaderHeight
+                    readonly property real naturalWidth:userMeasure.advanceWidth(message.foldLabel)+userMeasure.advanceWidth(message.foldSummary)+Style.space(14+12+18+24)
+                    Accessible.role:Accessible.Button;Accessible.name:message.foldLabel+": "+message.foldSummary
+                    HoverHandler{cursorShape:Qt.PointingHandCursor}
+                    TapHandler{onTapped:root.toggleFold(message.modelData.id)}
+                    RowLayout{
+                      anchors{left:parent.left;right:parent.right;verticalCenter:parent.verticalCenter;leftMargin:Style.space(12);rightMargin:Style.space(12)}
+                      spacing:Style.space(6)
+                      T3Icon{name:message.attribution==="automation"?"calendar-clock":"message-square";implicitWidth:Style.space(14);tint:root.dim}
+                      Text{objectName:"t3FoldedMessageLabel";Layout.maximumWidth:foldHeader.width/2;text:message.foldLabel;elide:Text.ElideRight;color:root.dim;font.pixelSize:Style.font.body;textFormat:Text.PlainText}
+                      Text{objectName:"t3FoldedMessageSummary";Layout.fillWidth:true;text:message.foldSummary;elide:Text.ElideRight;color:root.fg;font.pixelSize:Style.font.body;textFormat:Text.PlainText}
+                      T3Icon{name:"chevron-down";implicitWidth:Style.space(12);tint:root.dim;rotation:message.foldExpanded?180:0}
+                    }
+                  }
                   Column {
                     id: body
                     objectName:"t3MessageBody"
-                  anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin:Style.space(message.userMessage?12:4);rightMargin:Style.space(message.userMessage?12:4);topMargin:message.verticalInset }
+                    visible:message.foldExpanded
+                  anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin:Style.space(message.userMessage?12:4);rightMargin:Style.space(message.userMessage?12:4);topMargin:message.folded?message.foldHeaderHeight:message.verticalInset }
                     spacing: Style.space(6)
                     TextEdit {
                       id:messageText;objectName:"chatMessageText"
@@ -1860,13 +1890,14 @@ Item {
                 }
                 Row {
                   id:messageActions;objectName:"t3MessageActions"
-                  visible:(message.modelData.role==="user"||message.modelData.role==="assistant")&&!message.commentary&&(!!message.modelData.text||!!message.modelData.canRewindMessage)&&message.modelData.streaming!==true
+                  visible:message.foldExpanded&&(message.modelData.role==="user"||message.modelData.role==="assistant")&&!message.commentary&&(!!message.modelData.text||!!message.modelData.canRewindMessage)&&message.modelData.streaming!==true
                   anchors.top:bubble.bottom;anchors.topMargin:Style.space(6)
                   anchors.right:message.userMessage?bubble.right:undefined
                   anchors.left:message.userMessage?undefined:bubble.left
                   layoutDirection:message.userMessage?Qt.RightToLeft:Qt.LeftToRight
                   spacing:Style.space(8)
                   opacity:messageHover.hovered||messageCopy.activeFocus||messageRevert.activeFocus||messageFork.activeFocus||messageCopy.copyState!=="idle"?1:0
+                  T3IconButton{objectName:"t3OpenSenderThread";name:"external-link";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!!message.senderThread;tooltipText:T3I18n.tr("Open thread");onClicked:root.selectSidebarThread(root.bridge.selectedEnvironment,message.senderThreadId)}
                   T3IconButton{id:messageRevert;objectName:"t3EditFromHere";name:"undo-2";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:message.userMessage&&!!message.modelData.canRewindMessage;enabled:root.bridge.canRewind===true&&!root.bridge.rewindPending&&!(root.bridge.rewindPreview || {}).busy;tooltipText:T3I18n.tr("Edit from here");onClicked:root.bridge.requestRewindPreview(message.modelData.id)}
                   T3IconButton{id:messageFork;objectName:"t3ForkFromHere";name:"git-fork";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!message.userMessage&&!!message.modelData.forkRunId&&!root.bridge.providerSubagent;enabled:!root.bridge.managementBusy;tooltipText:T3I18n.tr("Fork from this response");onClicked:root.bridge.forkFromRun(message.modelData.forkRunId)}
                   T3CopyButton{id:messageCopy;objectName:"copyChatMessage";visible:!!message.modelData.text;implicitWidth:Style.space(20);implicitHeight:implicitWidth;bridge:root.bridge;copyText:message.modelData.text || ""}
