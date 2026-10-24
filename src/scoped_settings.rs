@@ -1,7 +1,7 @@
 //! Native settings scope planning. No raw settings/provider configuration enters the UI.
 use crate::*;
 use std::collections::{HashMap,HashSet};
-pub const PROJECT_KEYS:&[&str]=&["worktreeCleanup","defaultModelSelection","defaultRuntimeMode","defaultThreadEnvMode","newWorktreesStartFromOrigin","worktreeSubmodules","defaultAutoPull","defaultProjectScripts","enableAgentBrowserAccess","enableAgentDeviceAccess","textGenerationModelSelection","sourceControlWriterModelSelection","reviewGuideModelSelection","reviewGuideInstructions","sourceControlWritingStyle","removeAgentCreditsOnMerge","branchNamingMode","branchNamePrefix","branchNameInstructions","pullRequestMergeMethod","sidebarAutoSettleOnMerge","sidebarAutoSettleAfterDays","sidebarAutoSettleKeepPullRequests","continueThreadsAfterServerUpdate","responseStreamingMode"];
+pub const PROJECT_KEYS:&[&str]=&["worktreeCleanup","defaultModelSelection","defaultRuntimeMode","defaultThreadEnvMode","newWorktreesStartFromOrigin","worktreeSubmodules","defaultAutoPull","defaultProjectScripts","enableAgentBrowserAccess","enableAgentDeviceAccess","textGenerationModelSelection","threadTitleInstructions","sourceControlWriterModelSelection","reviewGuideModelSelection","reviewGuideInstructions","sourceControlWritingStyle","removeAgentCreditsOnMerge","branchNamingMode","branchNamePrefix","branchNameInstructions","pullRequestMergeMethod","sidebarAutoSettleOnMerge","sidebarAutoSettleAfterDays","sidebarAutoSettleKeepPullRequests","continueThreadsAfterServerUpdate","responseStreamingMode"];
 fn base_key(key:&str)->&str{key.split('.').next().unwrap_or(key)}
 fn nullable(key:&str)->bool{matches!(key,"defaultModelSelection"|"sourceControlWriterModelSelection"|"reviewGuideModelSelection"|"pullRequestMergeMethod"|"sidebarAutoSettleAfterDays")}
 /// Missing/invalid files are absent, like native parseT3ProjectFile. JSON comments
@@ -152,7 +152,7 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
                 if project.is_some()&&(!project_capable||key=="worktreeCleanup"&&(config["environment"]["capabilities"]["projectWorktreeCleanup"]!=true||config["environment"]["capabilities"]["storageCleanup"]!=true)){return Err("project_settings_unsupported".into())}
                 let validation_config=project_catalog_config(config,&raw,project.as_ref());
                 let validated=if action=="clear"{json!({})}else{crate::native_settings::patch(input,Some(&validation_config))?};
-                let patch=if let Some(p)=&project{project_patch(&raw,p,key,&validated,action=="clear")?}else{if action=="clear"{return Err("invalid_settings".into())}crate::storage_settings::environment_patch(&raw,key,&validated)?};
+                let patch=if let Some(p)=&project{project_patch(&raw,p,key,&validated,action=="clear")?}else{if action=="clear"{return Err("invalid_settings".into())}if key=="idleCompaction"{crate::native_settings::idle_compaction_patch(&raw,&validated)?}else{crate::storage_settings::environment_patch(&raw,key,&validated)?}};
                 let before=raw.clone();
                 crate::write::rpc(e,"server.updateSettings",patch.clone())?;
                 raw=crate::write::rpc(e,"server.getSettings",json!({}))?;

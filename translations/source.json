@@ -1719,6 +1719,17 @@
     "The host cannot be reached over SSH.": "The host cannot be reached over SSH.",
     "The host did not answer over SSH in time.": "The host did not answer over SSH in time.",
     "Record threads in the vault": "Record threads in the vault",
-    "Projects/<project>/Threads.md lists the 25 most recent titled threads of each project on every machine, with a t3-thread:// link. Agents search it instead of loading history.": "Projects/<project>/Threads.md lists the 25 most recent titled threads of each project on every machine, with a t3-thread:// link. Agents search it instead of loading history."
+    "Projects/<project>/Threads.md lists the 25 most recent titled threads of each project on every machine, with a t3-thread:// link. Agents search it instead of loading history.": "Projects/<project>/Threads.md lists the 25 most recent titled threads of each project on every machine, with a t3-thread:// link. Agents search it instead of loading history.",
+    "Automation": "Automation",
+    "Agent": "Agent",
+    "Open thread": "Open thread",
+    "Thread title instructions": "Thread title instructions",
+    "Appended to the prompt for new and regenerated thread titles.": "Appended to the prompt for new and regenerated thread titles.",
+    "Keep titles to a few words. Lead with the main subject.": "Keep titles to a few words. Lead with the main subject.",
+    "Compact idle threads": "Compact idle threads",
+    "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.",
+    "When you return": "When you return",
+    "Before the cache expires (beta)": "Before the cache expires (beta)",
+    "Never": "Never"
   }
 }
