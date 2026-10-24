@@ -218,6 +218,19 @@ impl Parser<'_> {
     }
 }
 
+/// Rich text dialect a formula is rendered for. Only Qt's exists today; another
+/// surface gets its own variant once its renderer is designed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Surface {
+    #[default]
+    Qt,
+}
+/// One formula for `surface`; `Surface::Qt` is exactly [`to_rich_text`].
+pub fn render(tex: &str, display: bool, surface: Surface) -> String {
+    match surface {
+        Surface::Qt => to_rich_text(tex, display),
+    }
+}
 /// Qt rich text for one formula; `display` centers it on its own line.
 pub fn to_rich_text(tex: &str, display: bool) -> String {
     let mut parser = Parser { chars: tex.trim().chars().collect(), at: 0, depth: 0, _src: tex };

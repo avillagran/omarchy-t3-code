@@ -20,17 +20,24 @@ fn serve(status: &str, typ: &str, body: &str) -> (String, thread::JoinHandle<Str
     });
     (base, handle)
 }
+fn fixture(base: String) -> Environment {
+    Environment{id:"fixture".into(),name:"Fixture".into(),base_url:base,token_file:std::path::PathBuf::new(),write_token_file:None,bearer:Some("synthetic-test-token".into()),connection_error:None,connection:None}
+}
+// T3 reads go through the library with the read token; these fix the headers and
+// failure codes QML sees.
 #[test]
 fn headers_and_failure_boundaries() {
     let c = Client::new().unwrap();
     let (base, h) = serve("200 OK", "application/json", "{\"threads\":[]}");
     assert_eq!(
-        c.fetch(&base, "synthetic-test-token", true).unwrap(),
+        c.get(&fixture(base), "/api/orchestration/shell", true).unwrap(),
         json!({"threads":[]})
     );
     let req = h.join().unwrap().to_lowercase();
+    assert!(req.starts_with("get /api/orchestration/shell "));
     assert!(req.contains("authorization: bearer synthetic-test-token"));
     assert!(req.contains("x-t3-orchestration-protocol: 2"));
+    assert!(req.contains("accept: application/json"));
     assert!(req.contains("accept-encoding: identity"));
     for (status, typ, body, error) in [
         ("401 Unauthorized", "application/json", "{}", "unauthorized"),
@@ -38,20 +45,26 @@ fn headers_and_failure_boundaries() {
         ("200 OK", "text/html", "<html>", "not_json"),
         ("200 OK", "application/json", "{", "malformed"),
         ("302 Found", "text/html", "", "http_302"),
+        ("500 Internal Server Error", "application/json", "{}", "http_500"),
     ] {
         let (base, h) = serve(status, typ, body);
         assert_eq!(
-            c.fetch(&base, "synthetic-test-token", true).unwrap_err(),
+            c.get(&fixture(base), "/api/orchestration/shell", true).unwrap_err(),
             error
         );
         h.join().unwrap();
     }
+    // Media types match without case or parameters, as ot3's own client did.
+    let (base, h) = serve("200 OK", "Application/JSON; charset=utf-8", "{}");
+    assert_eq!(c.get(&fixture(base), "/api/auth/session", false).unwrap(), json!({}));
+    h.join().unwrap();
+    assert_eq!(c.get(&fixture("http://127.0.0.1:1".into()), "/api/auth/session", false).unwrap_err(), "unreachable");
 }
 #[test]
 fn discovery_omits_protocol_header() {
     let c = Client::new().unwrap();
     let (base, h) = serve("200 OK", "application/json", "{}");
-    c.fetch(&base, "synthetic-test-token", false).unwrap();
+    c.get(&fixture(base), "/.well-known/t3/environment", false).unwrap();
     assert!(!h
         .join()
         .unwrap()

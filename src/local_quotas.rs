@@ -2,6 +2,7 @@ use base64::Engine;
 use chrono::Utc;
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
+use std::{io::Read, time::Duration};
 
 // Supplemental accounts already available to local Hermes/CLI installations.
 // Enumerate every credential, not just the first entry in a provider pool.
@@ -159,7 +160,7 @@ fn read_env(key: &str) -> String {
                 .unwrap_or_default()
         })
 }
-fn provider(client: &Client, name: &str, token: &str) -> Value {
+fn provider(client: &ExternalHttp, name: &str, token: &str) -> Value {
     let mut status = "unauthenticated".to_string();
     let mut windows = vec![];
     let mut details = vec![];
@@ -329,7 +330,7 @@ fn go_windows(body: &Value) -> Option<Vec<Value>> {
 
     Some(windows)
 }
-fn opencode(client: &Client, token: &str) -> Value {
+fn opencode(client: &ExternalHttp, token: &str) -> Value {
     let mut usage = json!({"checkedAt":Utc::now().to_rfc3339(),"windows":[],"credentialFingerprint":fingerprint("opencode-go",token)});
     match client.fetch_headers(
         "https://opencode.ai/zen/go/v1/usage",
@@ -353,7 +354,7 @@ fn opencode(client: &Client, token: &str) -> Value {
     }
     json!({"id":fingerprint("opencode-go",token),"driver":"opencode","usageLimits":usage})
 }
-pub fn collect_with(client: &Client, mut receive: impl FnMut(Value, bool)) -> Value {
+pub fn collect_with(client: &ExternalHttp, mut receive: impl FnMut(Value, bool)) -> Value {
     let auth = read_json(&home().join(".hermes/auth.json")).unwrap_or(Value::Null);
     let mut names = std::collections::BTreeSet::new();
     for key in ["credential_pool", "providers"] {
@@ -441,12 +442,142 @@ pub fn collect_with(client: &Client, mut receive: impl FnMut(Value, bool)) -> Va
     receive(result.clone(), true);
     result
 }
-pub fn collect(client: &Client) -> Value {
+pub fn collect(client: &ExternalHttp) -> Value {
     collect_with(client, |_, _| {})
+}
+/// HTTP to the third-party usage APIs above (ChatGPT, Kimi, Nous, opencode), with
+/// credentials that are not T3's. T3 traffic goes through `protocol::Connection`, which
+/// only allows same-origin paths: 8 s per request, 3 s to connect, no proxy, no redirects,
+/// JSON responses up to 8 MiB.
+#[derive(Clone)]
+pub struct ExternalHttp {
+    http: reqwest::blocking::Client,
+}
+impl ExternalHttp {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            http: reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(8))
+                .connect_timeout(Duration::from_secs(3))
+                .pool_idle_timeout(Duration::from_secs(90))
+                .redirect(reqwest::redirect::Policy::none())
+                .no_proxy()
+                .build()
+                .map_err(|_| "local_error")?,
+        })
+    }
+    /// The process-wide client. Clones share its pool.
+    pub fn shared() -> Result<Self> {
+        static SHARED: std::sync::OnceLock<ExternalHttp> = std::sync::OnceLock::new();
+        if let Some(client) = SHARED.get() {return Ok(client.clone())}
+        let client = Self::new()?;
+        Ok(SHARED.get_or_init(|| client).clone())
+    }
+    pub fn fetch(&self, url: &str, token: &str, protocol: bool) -> Result<Value> {
+        self.fetch_headers(url, token, protocol, &[])
+    }
+    pub fn fetch_headers(
+        &self,
+        url: &str,
+        token: &str,
+        protocol: bool,
+        headers: &[(&str, &str)],
+    ) -> Result<Value> {
+        let mut req = self
+            .http
+            .get(url)
+            .bearer_auth(token)
+            .header("Accept", "application/json")
+            .header("Accept-Encoding", "identity");
+        for (name, value) in headers {
+            req = req.header(*name, *value);
+        }
+        if protocol {
+            req = req.header("x-t3-orchestration-protocol", "2");
+        }
+        let resp = req.send().map_err(|_| "unreachable")?;
+        let status = resp.status();
+        if [401, 403].contains(&status.as_u16()) {
+            return Err("unauthorized".into());
+        }
+        if !status.is_success() {
+            return Err(format!("http_{}", status.as_u16()));
+        }
+        if resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .split(';')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_lowercase()
+            != "application/json"
+        {
+            return Err("not_json".into());
+        }
+        if !["identity", ""].contains(
+            &resp
+                .headers()
+                .get("content-encoding")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("identity"),
+        ) {
+            return Err("unsupported_encoding".into());
+        }
+        let mut bytes = vec![];
+        resp.take(MAX_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "unreachable")?;
+        if bytes.len() as u64 > MAX_BYTES {
+            return Err("too_large".into());
+        }
+        serde_json::from_slice(&bytes).map_err(|_| "malformed".into())
+    }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn serve(status: &str, typ: &str, body: &str) -> (String, std::thread::JoinHandle<String>) {
+        use std::io::Write;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let (status, typ, body) = (status.to_owned(), typ.to_owned(), body.to_owned());
+        let handle = std::thread::spawn(move || {
+            let (mut conn, _) = listener.accept().unwrap();
+            let mut buf = [0; 8192];
+            let len = conn.read(&mut buf).unwrap();
+            write!(conn,"HTTP/1.1 {status}\r\nContent-Type: {typ}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).unwrap();
+            String::from_utf8_lossy(&buf[..len]).into_owned()
+        });
+        (base, handle)
+    }
+    #[test]
+    fn external_http_headers_and_failure_boundaries() {
+        let c = ExternalHttp::new().unwrap();
+        let (base, h) = serve("200 OK", "application/json", "{\"threads\":[]}");
+        assert_eq!(
+            c.fetch_headers(&base, "synthetic-test-token", false, &[("ChatGPT-Account-Id", "acct")]).unwrap(),
+            json!({"threads":[]})
+        );
+        let req = h.join().unwrap().to_lowercase();
+        assert!(req.contains("authorization: bearer synthetic-test-token"));
+        assert!(req.contains("chatgpt-account-id: acct"));
+        assert!(req.contains("accept-encoding: identity"));
+        assert!(!req.contains("x-t3-orchestration-protocol"));
+        for (status, typ, body, error) in [
+            ("401 Unauthorized", "application/json", "{}", "unauthorized"),
+            ("403 Forbidden", "application/json", "{}", "unauthorized"),
+            ("200 OK", "text/html", "<html>", "not_json"),
+            ("200 OK", "application/json", "{", "malformed"),
+            ("302 Found", "text/html", "", "http_302"),
+        ] {
+            let (base, h) = serve(status, typ, body);
+            assert_eq!(c.fetch(&base, "synthetic-test-token", false).unwrap_err(), error);
+            h.join().unwrap();
+        }
+    }
     #[test]
     fn all_pool_credentials_are_discovered_and_deduplicated() {
         let auth = json!({"credential_pool":{"openai-codex":[{"access_token":"one"},{"access_token":"two"},{"access_token":"one"}],"opencode-go":[{"api_key":"go-one"},{"key":"go-two"}]},"providers":{"openai-codex":{"access_token":"two"}}});

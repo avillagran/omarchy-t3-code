@@ -1,7 +1,7 @@
 //! Model picker catalog and settings contract, shared with Omi. No client-local favorites.
 use serde_json::{json,Value};
 use crate::{Connection,Result};
-fn text<'a>(v:&'a Value,k:&str)->&'a str{v[k].as_str().unwrap_or("")}
+use crate::util::text;
 pub const RUNTIME_MODES:&[&str]=&["approval-required","auto-accept-edits","auto","full-access"];
 pub fn valid_runtime_mode(mode:&str)->bool{RUNTIME_MODES.contains(&mode)}
 pub fn runtime_mode_command(thread:&str,command_id:&str,mode:&str)->Result<Value>{

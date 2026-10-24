@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Replaces vendor/t3-protocol with lib-t3-rust at one revision and pins ot3 to it.
+#
+#   tools/sync-vendor <lib-t3-rust checkout> <rev>
+#
+# Copies the tracked crate files of <rev> (never the working tree), rewrites
+# UPSTREAM.json with that revision and a SHA-256 per file, moves the `rev` of
+# the t3-protocol dependency in Cargo.toml and refreshes Cargo.lock (Cargo
+# fetches that revision once to resolve the patched dependency).
+# The vendor carries no local changes: fix them in the library instead.
+set -euo pipefail
+
+usage() { echo "usage: tools/sync-vendor <lib-t3-rust checkout> <rev>" >&2; exit 2; }
+[ $# -eq 2 ] || usage
+lib=$1
+root=$(cd "$(dirname "$0")/.." && pwd)
+vendor=$root/vendor/t3-protocol
+# Crate inputs only; tests, tools, bindings and examples run in the library repository.
+paths=(Cargo.toml Cargo.lock README.md LICENSE src include docs data)
+
+git -C "$lib" rev-parse --git-dir >/dev/null 2>&1 || { echo "sync-vendor: not a git checkout: $lib" >&2; exit 1; }
+rev=$(git -C "$lib" rev-parse --verify --quiet "$2^{commit}") || { echo "sync-vendor: unknown revision: $2" >&2; exit 1; }
+repository=$(git -C "$lib" config --get remote.origin.url || true)
+repository=${repository%.git}
+repository=${repository/git@github.com:/https://github.com/}
+[ "$repository" = https://github.com/avillagran/lib-t3-rust ] || {
+  echo "sync-vendor: origin is '$repository', expected https://github.com/avillagran/lib-t3-rust" >&2; exit 1; }
+git -C "$lib" merge-base --is-ancestor "$rev" origin/main 2>/dev/null ||
+  echo "sync-vendor: warning: $rev is not on origin/main; Cargo.toml would pin an unpublished revision" >&2
+
+present=()
+for p in "${paths[@]}"; do
+  [ -n "$(git -C "$lib" ls-tree --name-only "$rev" -- "$p")" ] && present+=("$p")
+done
+
+stage=$(mktemp -d)
+trap 'rm -rf "$stage"' EXIT
+git -C "$lib" archive --format=tar "$rev" -- "${present[@]}" | tar -x -C "$stage"
+
+# Keep the build output out of the way; replace everything else.
+find "$vendor" -mindepth 1 -maxdepth 1 ! -name target -exec rm -rf {} +
+cp -a "$stage/." "$vendor/"
+
+(cd "$vendor" && find . -type f ! -path './target/*' -printf '%P\n' | LC_ALL=C sort) |
+  node -e '
+    const fs = require("fs"), crypto = require("crypto"), path = require("path");
+    const [vendor, rev, repository] = process.argv.slice(1);
+    const files = {};
+    for (const name of fs.readFileSync(0, "utf8").split("\n").filter(Boolean))
+      files[name] = crypto.createHash("sha256").update(fs.readFileSync(path.join(vendor, name))).digest("hex");
+    const out = { repository, revision: rev, upstreamFiles: files, localChanges: [] };
+    fs.writeFileSync(path.join(vendor, "UPSTREAM.json"), JSON.stringify(out, null, 2) + "\n");
+  ' "$vendor" "$rev" "$repository"
+
+sed -i -E "s|^(t3-protocol = \{ git = \"https://github.com/avillagran/lib-t3-rust\", rev = \")[0-9a-f]+(\" \})|\1$rev\2|" "$root/Cargo.toml"
+grep -q "rev = \"$rev\"" "$root/Cargo.toml" || { echo "sync-vendor: could not update the rev in Cargo.toml" >&2; exit 1; }
+(cd "$root" && cargo update -p t3-protocol --quiet)
+
+echo "vendor/t3-protocol now at $rev ($(git -C "$lib" describe --tags --always "$rev"))"

@@ -1,6 +1,6 @@
 //! Checkpoint file summaries for the app run, not nested provider scopes.
 use serde_json::{json,Value};
-fn text<'a>(v:&'a Value,k:&str)->&'a str{v[k].as_str().unwrap_or("")}
+use crate::util::text;
 pub fn summaries(p:&Value)->Vec<Value>{
  let mut out=vec![];
  for c in p["checkpoints"].as_array().into_iter().flatten(){

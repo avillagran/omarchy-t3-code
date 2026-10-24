@@ -1,7 +1,4 @@
-// Compile only the assigned module: parent can integrate lib.rs independently.
-pub use omarchy_t3_client::{environment_token, Environment, Result};
-#[path = "../src/tool_inspector.rs"]
-mod tool_inspector;
+use omarchy_t3_client::{tool_inspector, Environment};
 use serde_json::{json, Value};
 use tool_inspector as inspector;
 

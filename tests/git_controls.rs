@@ -1,7 +1,4 @@
-// Owned module compiles without touching the parent's shared lib.rs registry.
-pub use omarchy_t3_client::{environment_token, protocol, Environment};
-#[path = "../src/git_controls.rs"]
-mod git_controls;
+use omarchy_t3_client::{git_controls, protocol, Environment};
 use serde_json::{json, Value};
 
 fn shell() -> Value {

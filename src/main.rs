@@ -228,6 +228,7 @@ fn device_pool(browser:browser_sessions::Manager)->mpsc::SyncSender<Value> {
     sender
 }
 fn watch(client: Client) -> Result<()> {
+    let external = local_quotas::ExternalHttp::shared()?;
     emit("ui-state",ui_state::load());
     let (tx, rx) = mpsc::channel::<Value>();
     let compactor=auto_compact::Control::new(tx.clone());
@@ -434,7 +435,7 @@ fn watch(client: Client) -> Result<()> {
             quota_running = true;
             next_quota = Instant::now() + Duration::from_secs(300);
             let tx = tx.clone();
-            let c = client.clone();
+            let c = external.clone();
             std::thread::spawn(move || {
                 local_quotas::collect_with(&c, |data,complete|{let _=tx.send(json!({"op":"quota_result","data":data,"complete":complete}));});
             });
