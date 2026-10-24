@@ -13,7 +13,9 @@ ShellRoot{
    b.edit("Antes después",false);editor.forceActiveFocus();phase=2
   }else if(phase===2){editor.cursorPosition=5;b.rememberView({dictationVocabulary:"Omarchy"});check(b.dictationPrompt().indexOf("Omarchy")===0&&b.dictationPrompt().indexOf("One")>0,"vocabulary, project and title in the prompt: "+b.dictationPrompt())
    b.startDictation();check(b.dictation.state==="starting","dictation starts");phase=3
-  }else if(phase===3){if(b.dictation.state!=="recording"||!(b.dictation.level>0))return;check(button.listening,"button shows recording");b.stopDictation();phase=4
+  }else if(phase===3){if(b.dictation.state!=="recording"||b.dictation.levels.length<3)return;check(button.listening,"button shows recording")
+   var wave=root.named(panel.composerView,"t3ComposerDictationWave");check(wave&&wave.visible,"the wave shows while recording")
+   check(wave.bar(0.2)===0&&wave.bar(0.8)>0.9,"room noise draws flat, a voice draws a tall bar: "+wave.bar(0.2)+" "+wave.bar(0.8));b.stopDictation();phase=4
   }else if(phase===4){if(b.dictation.state!=="idle")return
    check(b.draft.text==="Antes hola mundo después","text inserted at the cursor with spaces: "+JSON.stringify(b.draft.text));check(!b.dictation.error,"no error "+b.dictation.error)
    b.startDictation();phase=5
@@ -22,6 +24,6 @@ ShellRoot{
    b.rememberView({dictationModel:"small"});check(!b.dictationModelInfo.installed,"small not installed yet");b.startDictation();check(b.dictationDownload.busy&&b.dictation.state==="idle","first use downloads the model");phase=7
   }else if(phase===7){if(b.dictationDownload.busy||!b.dictationModelInfo.installed)return;check(!b.dictationDownload.error,"download succeeded")
    b.rememberView({dictationButton:false});phase=8
-  }else if(phase===8){check(!button.visible,"preference hides the microphone");panel.close();console.log("T3_DICTATION_QML_PASS: insert at cursor, prompt vocabulary, level, cancel, model download and visibility preference");Qt.quit()}
+  }else if(phase===8){check(!button.visible,"preference hides the microphone");panel.close();console.log("T3_DICTATION_QML_PASS: insert at cursor, prompt vocabulary, level wave, cancel, model download and visibility preference");Qt.quit()}
  }}
 }

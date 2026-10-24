@@ -481,6 +481,33 @@ Rectangle {
         }
         WorkIndicator { anchors.centerIn: parent; implicitWidth: Style.space(26); visible: dictateButton.mode === "transcribing" || dictateButton.mode === "downloading"; active: visible && root.visible; tint: Color.accent }
       }
+      // The last two seconds of microphone level, newest on the right, measured
+      // from the room's noise: flat while nothing is heard, tall bars for a voice.
+      Item {
+        id: dictationWave
+        objectName: "t3ComposerDictationWave"
+        visible: dictateButton.visible && dictateButton.listening
+        readonly property var levels: root.bridge.dictation.levels || []
+        readonly property int count: root.bridge.dictationWaveLength
+        readonly property real floor: Math.min(0.5, levels.reduce(function(low, v) { return Math.min(low, v) }, 1))
+        function bar(v) { return Math.max(0, Math.min(1, (v - floor) / Math.max(0.2, 0.85 - floor))) }
+        implicitWidth: count * Style.space(4); implicitHeight: Style.space(22)
+        Row {
+          anchors.centerIn: parent; height: parent.height; spacing: Style.space(2)
+          Repeater {
+            model: dictationWave.count
+            Rectangle {
+              readonly property int at: index - (dictationWave.count - dictationWave.levels.length)
+              readonly property real value: at >= 0 ? dictationWave.bar(dictationWave.levels[at]) : 0
+              anchors.verticalCenter: parent.verticalCenter
+              width: Style.space(2); radius: width / 2
+              height: Math.max(width, parent.height * value)
+              color: value > 0.3 ? Color.urgent : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.35)
+              Behavior on height { NumberAnimation { duration: 70 } }
+            }
+          }
+        }
+      }
       T3ModelPicker {
         id:modelPicker;objectName:"t3ComposerModel"
         Layout.fillWidth:true;Layout.maximumWidth:Style.space(300)
