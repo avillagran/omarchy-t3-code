@@ -60,7 +60,7 @@ fn snapshot(e:&Environment,c:&protocol::Connection,session:Value)->Value{
     let granted=scopes(&session);let mut result=json!({"session":session,"clients":null,"pairingLinks":null,"accessError":"","descriptor":null,"descriptorError":"","connect":null,"connectError":"","endpoint":e.base_url,"environmentIcon":null,"iconError":""});
     match request(c,"GET","/.well-known/t3/environment",None){Ok(v)=>result["descriptor"]=v,Err(err)=>result["descriptorError"]=json!(err)}
     if result["descriptor"]["capabilities"]["environmentIcon"]==true {
-        match crate::write::rpc(e,"server.getConfig",json!({})){Ok(config)=>result["environmentIcon"]=config["settings"]["environmentIcon"].clone(),Err(err)=>result["iconError"]=json!(err)}
+        match e.connection(true).and_then(|c|protocol::api::server::config(&c)){Ok(config)=>result["environmentIcon"]=config["settings"]["environmentIcon"].clone(),Err(err)=>result["iconError"]=json!(err)}
     }
     if granted.iter().any(|s|s=="access:read"){
         match request(c,"GET","/api/auth/clients",None){Ok(v)=>result["clients"]=v,Err(err)=>result["accessError"]=json!(err)}
@@ -111,7 +111,7 @@ pub fn execute(e:&Environment,input:&Value)->Result<Value>{
             let kind=&input["icon"];if !kind.is_null()&&!matches!(kind.as_str(),Some("server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){return Err("invalid_command".into())}
             let descriptor=request(&c,"GET","/.well-known/t3/environment",None)?;
             if descriptor["capabilities"]["environmentIcon"]!=true{return Err("unsupported_action".into())}
-            let response=crate::write::rpc(e,"server.updateSettings",json!({"patch":{"environmentIcon":kind}}))?;
+            let response=protocol::api::server::update_settings(&e.connection(true)?,&json!({"environmentIcon":kind}),None)?;
             json!({"environmentIcon":response["environmentIcon"]})
         },
         "connect-preferences"=>{

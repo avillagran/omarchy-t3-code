@@ -265,7 +265,7 @@ fn remember(e: &Environment, permissions: Value, settings: Value, state: Value) 
 pub fn read(e: &Environment) -> Result<Value> {
     let c = e.connection(true)?;
     let permissions = roles(&c)?;
-    let settings = settings(&c.rpc("server.getSettings", json!({}))?)?;
+    let settings = settings(&protocol::api::server::settings(&c)?)?;
     let state = state(&c)?;
     remember(e, permissions, settings, state)
 }
@@ -330,7 +330,11 @@ pub fn update_hosts(
 /// Lifecycle calls can legitimately outlast the shared short RPC deadline.
 /// Same native Effect non-stream RPC framing, heartbeats, no retry/replay.
 fn lifecycle_rpc(c: &protocol::Connection, tag: &str, payload: Value) -> Result<Value> {
-    c.rpc_with_timeout(tag, payload, Duration::from_secs(300))
+    let settings = protocol::api::server::UPDATE_SETTINGS;
+    let deadline = Duration::from_secs(300);
+    // server.updateSettings goes through its typed registry function, with the same deadline.
+    let result = if tag == settings.name { settings.call(c, &payload, Some(deadline)) } else { c.rpc_with_timeout(tag, payload, deadline) };
+    result
         .map_err(|error| {
             let code = match protocol::error_code(&error) {
                 "rpc_outcome_unknown" => "device_outcome_unknown",
@@ -367,7 +371,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
     let _guard = lock.try_lock().map_err(|_| "device_busy")?;
     let c = e.connection(true)?;
     let permissions = roles(&c)?;
-    let raw = settings(&c.rpc("server.getSettings", json!({}))?)?;
+    let raw = settings(&protocol::api::server::settings(&c)?)?;
     if expected["settingsDigest"] != digest(&raw) {
         return Err("device_settings_changed_reload".into());
     }
@@ -450,7 +454,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
                 &original,
             )?;
             (
-                "server.updateSettings",
+                protocol::api::server::UPDATE_SETTINGS.name,
                 json!({"patch":{"deviceHosts":next}}),
             )
         }
@@ -473,7 +477,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
         if action == "test-host" {
             return Ok(json!({"host":present_host(&ack)?,"data":read(e)?}));
         }
-        if tag != "server.updateSettings" {
+        if tag != protocol::api::server::UPDATE_SETTINGS.name {
             present_state(&ack)?;
         }
         let fresh = read(e)?;
@@ -491,7 +495,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
                 }
             }
         }
-        if tag == "server.updateSettings"
+        if tag == protocol::api::server::UPDATE_SETTINGS.name
             && fresh["settings"]["deviceHosts"] != payload["patch"]["deviceHosts"]
         {
             return Err("device_settings_changed_reload".into());

@@ -6,6 +6,23 @@ use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
     e.connection(true)?.rpc(tag,payload)
 }
+/// `orchestration.dispatchCommand` through the typed API, with the write token like `rpc`.
+pub fn dispatch_command(e: &Environment, command: &Value) -> Result<Value> {
+    send_command(&e.connection(true)?,command)
+}
+/// The command JSON a caller built (and an outbox may hold) is parsed into the typed
+/// `Command`, which sends it unchanged; a malformed command fails before any socket opens.
+pub fn send_command(c: &protocol::Connection, command: &Value) -> Result<Value> {
+    protocol::api::orchestration::dispatch(c,&protocol::api::Command::from_json(command)?)
+}
+/// `server.updateSettings` for a whole `{patch, providerInstanceMutation?}` payload.
+pub fn update_settings(c: &protocol::Connection, payload: &Value) -> Result<Value> {
+    let mutation=payload.get("providerInstanceMutation").map(protocol::api::server::ProviderInstanceMutation::from_json).transpose()?;
+    protocol::api::server::update_settings(c,&payload["patch"],mutation.as_ref())
+}
+/// Outbox tags of `manage` sent through the typed API; the envelope keeps the tag as before.
+const DISPATCH: &str = protocol::api::orchestration::DISPATCH_COMMAND.name;
+const LAUNCH: &str = protocol::api::orchestration::LAUNCH_THREAD.name;
 fn interaction_mode(input:&Value)->Result<&str>{
     match input.get("interactionMode"){None|Some(Value::Null)=>Ok("default"),Some(v)=>v.as_str().filter(|s|matches!(*s,"default"|"plan")).ok_or("invalid_interaction_mode".into())}
 }
@@ -14,7 +31,7 @@ fn runtime_mode(input:&Value)->Result<&str>{
     if protocol::models::valid_runtime_mode(mode){Ok(mode)}else{Err("invalid_runtime_mode".into())}
 }
 pub fn catalog(e: &Environment) -> Result<Value> {
-    let config = rpc(e,"server.getConfig",json!({}))?;
+    let config = protocol::api::server::config(&e.connection(true)?)?;
     let mut result=protocol::models::catalog(&config);
     for provider in result["providers"].as_array_mut().unwrap(){
         if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);provider["update"]=crate::provider_updates::advisory(native);}
@@ -30,7 +47,7 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     Ok(result)
 }
 pub fn project_sources(e:&Environment)->Result<Value>{
-    let config=rpc(e,"server.getConfig",json!({}))?;
+    let config=protocol::api::server::config(&e.connection(true)?)?;
     let discovery=rpc(e,"server.discoverSourceControl",json!({}))?;
     let providers=discovery["sourceControlProviders"].as_array().into_iter().flatten().map(|p|json!({"kind":p["kind"],"status":p["status"],"auth":{"status":p["auth"]["status"]}})).collect::<Vec<_>>();
     Ok(json!({"newProjectsRoot":config["newProjectsRoot"],"baseDirectory":config["settings"]["addProjectBaseDirectory"],"cloneTracking":config["environment"]["capabilities"]["projectCloneTracking"]==true,"providers":providers}))
@@ -39,8 +56,8 @@ pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
     let project=text(input,"projectId");if !valid_id(project){return Err("invalid_project".into())}
     let raw=if input["action"]=="workspace-update" {
         if !matches!(input["mode"].as_str(),Some("local"|"worktree")){return Err("invalid_settings".into())}
-        rpc(e,"server.updateSettings",json!({"patch":{"defaultThreadEnvMode":input["mode"]}}))?
-    }else if input["action"]=="workspace-read"{rpc(e,"server.getSettings",json!({}))?}else{return Err("invalid_settings".into())};
+        protocol::api::server::update_settings(&e.connection(true)?,&json!({"defaultThreadEnvMode":input["mode"]}),None)?
+    }else if input["action"]=="workspace-read"{protocol::api::server::settings(&e.connection(true)?)?}else{return Err("invalid_settings".into())};
     let overrides=&raw["projectSettingsOverrides"][project];
     let mode=overrides["defaultThreadEnvMode"].as_str().or(raw["defaultThreadEnvMode"].as_str()).filter(|s|matches!(*s,"local"|"worktree"));
     let origin=overrides["newWorktreesStartFromOrigin"].as_bool().or(raw["newWorktreesStartFromOrigin"].as_bool()).unwrap_or(true);
@@ -156,19 +173,21 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     // Persist before sending. An explicit retry must reuse exactly the same command.
     let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
     let permissions=if cmd["type"]=="message.dispatch"&&input.get("runtimeMode").is_some_and(|v|!v.is_null()){
-        Some(protocol::models::runtime_mode_command(thread,&format!("omarchy-{id}-runtime-mode"),runtime_mode(input)?)?)
+        Some(protocol::api::Command::runtime_mode(&format!("omarchy-{id}-runtime-mode"),thread,runtime_mode(input)?)?)
     }else{None};
     let mut envelope=json!({"environment":e.id,"command":cmd});
     if permissions.is_some(){envelope["runtimeMode"]=input["runtimeMode"].clone();}
     let interaction=if cmd["type"]=="message.dispatch"&&input.get("interactionMode").is_some_and(|v|!v.is_null()){
-        Some(json!({"type":"thread.interaction-mode.set","threadId":thread,"commandId":format!("omarchy-{id}-interaction-mode"),"interactionMode":interaction_mode(input)?}))
+        Some(protocol::api::Command::InteractionModeSet{command_id:format!("omarchy-{id}-interaction-mode"),thread_id:thread.to_string(),interaction_mode:interaction_mode(input)?.to_string()})
     }else{None};
     if interaction.is_some(){envelope["interactionMode"]=input["interactionMode"].clone();}
+    let command=protocol::api::Command::from_json(&cmd)?;
     if path.exists() {if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}}
     else { save_json(&path,&envelope)?; }
-    if let Some(mode)=permissions{rpc(e,"orchestration.dispatchCommand",mode)?;}
-    if let Some(mode)=interaction{rpc(e,"orchestration.dispatchCommand",mode)?;}
-    rpc(e,"orchestration.dispatchCommand",cmd)
+    let c=e.connection(true)?;
+    if let Some(mode)=permissions{protocol::api::orchestration::dispatch(&c,&mode)?;}
+    if let Some(mode)=interaction{protocol::api::orchestration::dispatch(&c,&mode)?;}
+    protocol::api::orchestration::dispatch(&c,&command)
 }
 /// Explicit management actions. Native launches own workspace preparation and
 /// may durably accept an initial message; legacy thread.create remains metadata-only.
@@ -197,7 +216,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
             thread=format!("omarchy-thread-{id}");
             let mode=runtime_mode(input)?;
-            if input["workspaceStrategy"].is_object(){("orchestration.launchThread",launch_command(input,&thread)?)}else{("orchestration.dispatchCommand",json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":interaction_mode(input)?,"branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))}
+            if input["workspaceStrategy"].is_object(){(LAUNCH,launch_command(input,&thread)?)}else{(DISPATCH,json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":interaction_mode(input)?,"branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))}
         },
         "add-project" => {
             let path=if input["workspaceRoot"].is_string(){
@@ -218,31 +237,34 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             if !valid_id(source)||!valid_id(run){return Err("invalid_id".into())}
             thread=format!("omarchy-thread-{id}");
             let title=text(input,"title").trim(); let title=if title.is_empty(){"Fork".to_string()}else{format!("{} fork",title.chars().take(250).collect::<String>())};
-            ("orchestration.dispatchCommand",json!({"type":"thread.fork","createdBy":"user","creationSource":"web","sourceThreadId":source,"targetThreadId":thread,"sourcePoint":{"type":"run","runId":run},"title":title}))
+            (DISPATCH,json!({"type":"thread.fork","createdBy":"user","creationSource":"web","sourceThreadId":source,"targetThreadId":thread,"sourcePoint":{"type":"run","runId":run},"title":title}))
         },
         "merge-back" => {
             let source=text(input,"thread"); let run=text(input,"runId"); let target=text(input,"targetThread");
             if !valid_id(source)||!valid_id(run)||!valid_id(target){return Err("invalid_id".into())}
             thread=target.to_string();
-            ("orchestration.dispatchCommand",json!({"type":"thread.merge_back","createdBy":"user","creationSource":"web","sourceThreadId":source,"targetThreadId":target,"sourcePoint":{"type":"run","runId":run}}))
+            (DISPATCH,json!({"type":"thread.merge_back","createdBy":"user","creationSource":"web","sourceThreadId":source,"targetThreadId":target,"sourcePoint":{"type":"run","runId":run}}))
         },
         // Stop one subagent of a run (subagent.stop).
         "stop-subagent" => {
             thread=text(input,"thread").to_string();let run=text(input,"runId");let node=text(input,"subagentId");
             if !valid_id(&thread)||!valid_id(run)||node.is_empty()||node.len()>512{return Err("invalid_id".into())}
-            ("orchestration.dispatchCommand",json!({"type":"subagent.stop","threadId":thread,"runId":run,"subagentId":node}))
+            (DISPATCH,json!({"type":"subagent.stop","threadId":thread,"runId":run,"subagentId":node}))
         },
-        "thread-rename"|"regenerate-title"|"pin"|"unpin"|"mark-unread"|"auto-settle"|"archive"|"delete-thread" => {thread=text(input,"thread").to_string();("orchestration.dispatchCommand",protocol::sidebar::thread_action(input)?)},
+        "thread-rename"|"regenerate-title"|"pin"|"unpin"|"mark-unread"|"auto-settle"|"archive"|"delete-thread" => {thread=text(input,"thread").to_string();(DISPATCH,protocol::sidebar::thread_action(input)?)},
         "project-rename" | "project-settings" | "project-remove" => ("projects.mutate",protocol::projects::command(input)?),
         "settle" | "unsettle" | "snooze" | "unsnooze" => {
             thread=text(input,"thread").to_string(); if !valid_id(&thread) {return Err("invalid_id".into())}
             let c=protocol::sidebar::command(text(input,"action"),&thread,input["snoozedUntil"].as_str())?;
-            ("orchestration.dispatchCommand",c)
+            (DISPATCH,c)
         },
         _=>return Err("invalid_command".into())
     };
     if command["type"]=="thread.create" && (text(&command,"title").is_empty() || text(&command,"title").chars().count()>255) {return Err("invalid_title".into())}
     command["commandId"]=json!(format!("omarchy-{id}"));
+    // Parsed before persisting: what the outbox keeps is what the typed API sends.
+    let typed=if tag==DISPATCH{Some(protocol::api::Command::from_json(&command)?)}else{None};
+    let launch=if tag==LAUNCH{Some(protocol::api::ThreadLaunch::from_json(&command)?)}else{None};
     let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
     let envelope=json!({"environment":e.id,"command":command,"rpc":tag});
     let receipt=path.with_extension("receipt.json");
@@ -252,7 +274,11 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
         if non_replayable {return if receipt.exists(){read_json(&receipt)}else{Err("rpc_outcome_unknown".into())}}
     } else {save_json(&path,&envelope)?;}
     let command_project=command["projectId"].clone();
-    let response=rpc(e,tag,command)?;
+    let response=match (&typed,&launch) {
+        (Some(command),_)=>protocol::api::orchestration::dispatch(&e.connection(true)?,command)?,
+        (_,Some(launch))=>protocol::api::orchestration::launch_thread(&e.connection(true)?,launch)?,
+        _=>rpc(e,tag,command)?,
+    };
     let project=response.get("projectId").or_else(||response.get("id")).filter(|v|v.is_string()).unwrap_or(if command_project.is_string(){&command_project}else{&input["projectId"]});
     let result=json!({"threadId":thread,"projectId":project,"action":input["action"]});
     if non_replayable{save_json(&receipt,&result)?;}
@@ -306,7 +332,7 @@ pub fn execute(input:&Value) -> Result<Value> {
             protocol::projects::folders(&rpc(&e,"filesystem.browse",json!({"partialPath":path}))?)
         },
         "history"=>history(&e,input),
-        "model-favorite"=>{let desired=input["favorite"].as_bool().ok_or("invalid_model")?;let current=rpc(&e,"server.getSettings",json!({}))?;if !current["favorites"].is_array(){return Err("model_preferences_uninitialized".into())}rpc(&e,"server.updateSettings",protocol::models::favorite_payload(text(input,"provider"),text(input,"model"),desired)?).map(|v|protocol::models::preferences(&v))},
+        "model-favorite"=>{let desired=input["favorite"].as_bool().ok_or("invalid_model")?;let current=protocol::api::server::settings(&e.connection(true)?)?;if !current["favorites"].is_array(){return Err("model_preferences_uninitialized".into())}update_settings(&e.connection(true)?,&protocol::models::favorite_payload(text(input,"provider"),text(input,"model"),desired)?).map(|v|protocol::models::preferences(&v))},
         "suggest"=>suggestions::query(&e,input),
         "plan-followup"=>prepare_plan_follow_up(&e,input),
         "rewind-preview"=>crate::checkpoint_operations::preview(&e,input),
@@ -357,7 +383,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "diff"=>crate::diff_review::execute(&e,input),
         "manage"=>manage(&e,input),
         // T3 ThreadVisitWatermark: the open thread is seen up to its updatedAt; Woke is cleared at wokeAt.
-        "thread-visit"=>{let thread=text(input,"thread");let at=text(input,"visitedAt");if !valid_id(thread)||chrono::DateTime::parse_from_rfc3339(at).is_err(){return Err("invalid_command".into())}rpc(&e,"orchestration.dispatchCommand",json!({"type":"thread.visit","commandId":format!("omarchy-visit-{}",uuid::Uuid::new_v4()),"threadId":thread,"visitedAt":at}))},
+        "thread-visit"=>{let thread=text(input,"thread");let at=text(input,"visitedAt");if !valid_id(thread)||chrono::DateTime::parse_from_rfc3339(at).is_err(){return Err("invalid_command".into())}dispatch_command(&e,&json!({"type":"thread.visit","commandId":format!("omarchy-visit-{}",uuid::Uuid::new_v4()),"threadId":thread,"visitedAt":at}))},
         "upload"=>upload(&e,text(input,"url")),
         "delete-upload"=>rpc(&e,"attachments.delete",json!({"attachmentId":input["attachmentId"]})),
         "approval"|"question"|"send"|"stop"|"queue"=>dispatch(&e,input),
@@ -371,7 +397,7 @@ pub fn prepare_plan_follow_up(e:&Environment,input:&Value)->Result<Value>{
     let session=Client::shared()?.get(e,"/api/auth/session",false)?;
     if session["authenticated"]!=true || !session.get("permissions").or_else(||session.get("scopes")).and_then(Value::as_array).is_some_and(|scopes|scopes.iter().any(|scope|scope=="orchestration:operate")){return Err("permission_denied".into())}
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_plan_scope".into())}
-    let config=rpc(e,"server.getConfig",json!({}))?;
+    let config=protocol::api::server::config(&e.connection(true)?)?;
     let selection=crate::native_settings::model_selection(&input["modelSelection"])?;
     let provider=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==selection["instanceId"]&&p["enabled"]==true&&p["status"]!="error");
     let local=crate::connection_preferences::read_client_preferences()?;
@@ -408,7 +434,7 @@ fn pin_reorder(input:&Value)->Result<Value>{
         let thread=text(a,"thread");let key=text(a,"orderKey");
         if !valid_id(thread)||key.is_empty()||key.len()>64||!key.bytes().all(|b|b.is_ascii_lowercase()){return Err("invalid_command".into())}
         let e=envs.iter().find(|e|e.id==text(a,"environment")).ok_or("unknown_environment")?;
-        rpc(e,"orchestration.dispatchCommand",json!({"type":"thread.pin.reorder","commandId":format!("omarchy-pin-{}",uuid::Uuid::new_v4()),"threadId":thread,"orderKey":key}))?;
+        dispatch_command(e,&json!({"type":"thread.pin.reorder","commandId":format!("omarchy-pin-{}",uuid::Uuid::new_v4()),"threadId":thread,"orderKey":key}))?;
     }
     Ok(json!({"count":rows.len()}))
 }

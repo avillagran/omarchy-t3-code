@@ -188,7 +188,7 @@ pub fn read_with_home(read: impl Fn(&str) -> Result<String>, home: Option<&str>,
 pub struct RpcFiles<'a>(pub &'a Environment, pub Option<String>);
 impl RpcFiles<'_> {
     fn read_once(&self, path: &str) -> Result<String> {
-        let v = crate::write::rpc(self.0, "projects.readFile", json!({"cwd":"/","relativePath":path,"allowMissing":true}))?;
+        let v = crate::protocol::api::projects::read_file(&self.0.connection(true)?, "/", path, Some(true))?;
         if v["truncated"] == true {
             return Err("vault_host_file_too_large".into());
         }

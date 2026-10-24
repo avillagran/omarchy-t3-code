@@ -31,7 +31,7 @@ fn projection(e: &Environment, thread: &str) -> Result<Value> {
     Ok(p.clone())
 }
 fn safety(e: &Environment, p: &Value, draft: &Value) -> Result<rewind::Safety> {
-    let config = write::rpc(e, "server.getConfig", json!({}))?;
+    let config = protocol::api::server::config(&e.connection(true)?)?;
     let instance = p["thread"]["providerInstanceId"]
         .as_str()
         .or(p["thread"]["modelSelection"]["instanceId"].as_str())
@@ -234,11 +234,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         {
             return Ok(journal::receipt(&stored));
         }
-        let outcome = write::rpc(
-            e,
-            "orchestration.dispatchCommand",
-            stored["envelope"]["command"].clone(),
-        );
+        let outcome = write::dispatch_command(e, &stored["envelope"]["command"]);
         stored["state"] = json!(if outcome.is_ok() {
             "accepted"
         } else {
@@ -265,11 +261,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     }
     let mut record = json!({"request":request,"envelope":envelope,"recovery":recovery,"prompt":prompt,"attachments":restored,"state":"prepared","recovered":false,"error":"","startedAt":Utc::now().timestamp_millis()});
     journal::insert(&record)?;
-    let result = write::rpc(
-        e,
-        "orchestration.dispatchCommand",
-        record["envelope"]["command"].clone(),
-    );
+    let result = write::dispatch_command(e, &record["envelope"]["command"]);
     record["state"] = json!(if result.is_ok() {
         "accepted"
     } else {

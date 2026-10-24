@@ -88,7 +88,7 @@ pub fn check(ready: &[String]) -> (serde_json::Map<String, Value>, bool) {
     let mut rows = serde_json::Map::new();
     let mut unreachable = false;
     for e in environments().unwrap_or_default().into_iter().filter(|e| ready.contains(&e.id)) {
-        let Some(current) = write::rpc(&e, "server.getConfig", json!({})).ok().and_then(|c| c["environment"]["serverVersion"].as_str().map(String::from)) else { continue };
+        let Some(current) = e.connection(true).and_then(|c|protocol::api::server::config(&c)).ok().and_then(|c| c["environment"]["serverVersion"].as_str().map(String::from)) else { continue };
         let channel = updates::channel(&current);
         let newest = latest.entry(channel).or_insert_with(|| updates::latest(channel));
         let mut row = updates::advisory(&current, newest.as_ref().ok().map(String::as_str));

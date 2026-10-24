@@ -33,7 +33,8 @@ let relay = connect_relay(
     "https://relay.example", "host-provided-cloud-jwt", "t3-mobile",
     "00000000-0000-4000-8000-000000000001", Arc::new(DpopKey::generate())
 )?;
-let config = relay.rpc("server.getConfig", json!({}))?;
+let config = t3_protocol::api::server::config(&relay)?;
+let vcs = relay.rpc("server.discoverSourceControl", json!({}))?; // a tag `api` does not wrap yet
 # Ok(()) }
 ```
 
@@ -83,9 +84,12 @@ C ABI commands:
 {"op":"request","method":"GET","path":"/api/orchestration/shell","protocol":true}
 {"op":"rpc","tag":"server.getConfig","payload":{}}
 {"op":"rpcWithTimeout","tag":"device.configure","payload":{},"timeoutMs":120000}
+{"op":"describe"}
+{"op":"call","fn":"vcs.refreshStatus","args":{"cwd":"/home/me/repo"}}
 {"op":"subscribe","tag":"orchestration.subscribeThread","payload":{"threadId":"selected"}}
 {"op":"pollSubscription","subscriptionId":"returned-id","timeoutMs":1000}
 {"op":"cancelSubscription","subscriptionId":"returned-id"}
+{"op":"wakeSubscriptions"}
 {"op":"disconnect"}
 {"op":"connectBearer","httpBaseUrl":"https://environment.example","token":"host-provided-token","options":{"requestTimeoutMs":8000,"connectTimeoutMs":3000,"poolIdleTimeoutMs":90000}}
 {"op":"request","method":"GET","path":"/api/orchestration/shell","maxBytes":1048576}
@@ -110,6 +114,82 @@ intact, so the host must treat the returned error as a failed switch.
 The library supplies native Android JNI binaries and a Kotlin adapter. It does
 not modify or publish the Omi application. Host tests and Android cross-builds
 are separate from Android device/UI validation; see the integration guide.
+
+## Typed API
+
+`t3_protocol::api` wraps T3 RPC tags in typed functions,
+`fn(conn: &Connection, …) -> Result<Value>`, and lists them in one registry.
+Arguments are typed and validated before a socket opens; responses stay
+`serde_json::Value`, because T3 declares them forward compatible. Each function
+sends exactly one request and never retries. A function also states its kind and
+the T3 scope it needs. The library does not pick a token; the host chooses the
+token from the published scope.
+
+```rust,no_run
+use t3_protocol::api::{self, orchestration::Command};
+# fn example(conn: &t3_protocol::Connection) -> t3_protocol::Result<()> {
+let status = api::vcs::refresh_status(conn, "/home/me/repo")?;
+// commandId is minted and kept by the host, so a resend after
+// rpc_outcome_unknown is deduplicated by the server.
+let archive = Command::ThreadArchive { command_id: "omarchy-1".into(), thread_id: "t-1".into() };
+api::orchestration::dispatch(conn, &archive)?;
+// The same through the registry, with JSON arguments (what the C ABI does):
+api::call(conn, "vcs.refreshStatus", &serde_json::json!({"cwd":"/home/me/repo"}), None)?;
+# Ok(()) }
+```
+
+Over the C ABI (ABI 3, additive) the same registry is two ops:
+
+```json
+{"op":"describe"}
+{"op":"call","fn":"vcs.refreshStatus","args":{"cwd":"/home/me/repo"}}
+{"op":"call","fn":"orchestration.dispatchCommand","timeoutMs":20000,"args":{"type":"thread.archive","commandId":"omarchy-1","threadId":"t-1"}}
+```
+
+`describe` needs no connection and returns, per function, `fn`, `module`, `tag`,
+`kind` (`read`/`mutation`), `replay`, `scope` (or `"dynamic"` plus `scopes`),
+`timeoutMs`, `stream` and typed `args`. `replay` is what a host may do after
+`rpc_outcome_unknown`: `free` (repeat the read), `id` (resend the same payload
+and `commandId`), `set` (repeating is harmless) or `never` (read the state back
+first). `call` checks the function name (`unknown_function`), `timeoutMs`
+(1..300 000, `invalid_rpc_timeout`) and `args` (an unknown member is
+`invalid_input`; a missing or malformed one is `invalid_<field>`, such as
+`invalid_cwd` or `invalid_command_id`) before it needs a connection.
+`rpc`/`rpcWithTimeout` remain for tags the registry does not wrap yet.
+
+`Command` types the 34 `dispatchCommand` variants ot3 sends. The existing builders
+remain the source of truth for the commands they build: `Command::queue`, `answer`,
+`approve`, `runtime_mode`, `sidebar` and `thread_action` wrap `queue`, `questions`,
+`approvals`, `models` and `sidebar`. The other contract types travel as
+`Command::Raw`.
+
+Authorization failures are classified by the error's `_tag`
+(`EnvironmentAuthorizationError`), not by its text: a git failure saying
+"Author identity unknown" or "Authentication failed" stays `rpc_rejected`. A
+missing scope reads `write_not_authorized: [settings:write] <message>`;
+`errors::required_scope` and `errors::message` split it, and the C ABI returns
+`{"ok":false,"error":"write_not_authorized","message":"…","requiredScope":"settings:write"}`.
+
+Tanda 1 (the ten most used tags in ot3):
+
+| Function (`fn`) | Rust | Kind · replay | Scope | Args |
+| --- | --- | --- | --- | --- |
+| `server.getConfig` | `api::server::config(conn)` | read · free | `orchestration:read` | — |
+| `server.getSettings` | `api::server::settings(conn)` | read · free | `orchestration:read` | — |
+| `server.updateSettings` | `api::server::update_settings(conn, patch, mutation?)` | mutation · set | dynamic: `settings:write`, `providers:manage` | `patch`, `providerInstanceMutation?` |
+| `orchestration.dispatchCommand` | `api::orchestration::dispatch(conn, &Command)` | mutation · id | `orchestration:operate` | the command: `type`, `commandId`, … |
+| `orchestration.launchThread` | `api::orchestration::launch_thread(conn, &ThreadLaunch)` | mutation · id | `orchestration:operate` | `commandId`, `projectId`, `title`, `modelSelection`, `runtimeMode`, `interactionMode`, `workspaceStrategy`, … |
+| `preview.list` | `api::preview::list(conn, thread_id)` | read · free | `orchestration:read` | `threadId` |
+| `assets.createUrl` | `api::assets::create_url(conn, &AssetResource)` | read · free | dynamic: `filesystem:read`, `orchestration:read` | `resource` |
+| `vcs.refreshStatus` | `api::vcs::refresh_status(conn, cwd)` | read · free | `orchestration:read` | `cwd` |
+| `review.getDiffPreview` | `api::review::diff_preview(conn, cwd, base_ref?, ignore_whitespace?, file?)` | read · free | `filesystem:read` | `cwd`, `baseRef?`, `ignoreWhitespace?`, `file?` |
+| `projects.readFile` | `api::projects::read_file(conn, cwd, relative_path, allow_missing?)` | read · free | `filesystem:read` | `cwd`, `relativePath`, `allowMissing?` |
+
+`tests/fixtures/t3-contract.json` pins the tag, stream and scope of every T3 RPC
+at the commit in `api::CONTRACT`. Regenerate it with
+`tools/extract-t3-contract <t3code checkout>`. `tests/api_contract.rs` fails if
+the registry drifts from it. With `T3_CONTRACTS_DIR=<checkout>/packages/contracts/src`
+set, the same test also re-reads the live sources.
 
 ## Validation
 
@@ -157,14 +237,17 @@ use local fixture servers, never real conversations or paid provider runs.
   a deadline sends `Interrupt` and returns `rpc_outcome_unknown`.
 - **Failure reasons.** A rejected RPC reads `rpc_rejected: <message>` (or
   `write_not_authorized: <tag>`), taking only the cause's first error message or
-  tag, bounded to one line. `error_code()` strips the reason before comparing.
+  tag, bounded to one line. (Authorization is now decided by `_tag`; see Typed API.) `error_code()` strips the reason before comparing.
 - **Stream liveness.** Subscriptions ping every 5 s and drop after 20 s without
   any frame (`STREAM_PING_INTERVAL`, `STREAM_IDLE_TIMEOUT`). `subscribe_probed`
   lets the host ask for an immediate check after a resume or network change; a
-  socket that sends nothing within 3 s fails with `stream_timeout`.
+  socket that sends nothing within 3 s fails with `stream_timeout`. C hosts get
+  the same check from `{"op":"wakeSubscriptions"}`; see [docs/ANDROID.md](docs/ANDROID.md)
+  for the poll contract (`boundaries`, `idle`, `completionMarker`).
 - **Bounded snapshots.** Protocol GETs of `/api/orchestration/threads/<id>/bounded`
   and `orchestration.subscribeThread` with `acceptBoundedSnapshot` accept up to
-  64 MiB; everything else stays at 8 MiB.
+  64 MiB; everything else stays at 8 MiB. Through the C ABI that stream's queue
+  takes one 64 MiB item (72 MiB in total), so the snapshot reaches the host whole.
 - **Images.** `media_image(thread, path)` reads host-local media through a signed
   grant scoped to that thread and path. Attachments also accept HEIC, HEIF and
   AVIF, and the served type must match the attachment.

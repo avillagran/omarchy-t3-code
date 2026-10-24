@@ -26,7 +26,12 @@ ShellRoot{
   }else if(phase===4){if(!grabbed)return;index++;phase=2
   }else if(phase===5){b.rememberView({language:"fr-CA"});phase=6
   }else if(phase===6){check(l.tr("Close")==="Fermer","regional locale falls back to base");b.rememberView({language:"zz"});phase=7
-  }else if(phase===7){check(l.tr("Close")==="Close","unsupported locale falls back to English");check(!keys.findChild(badges,"t3Badge_waiting").visible,"waiting badge hidden at zero");badges.counts={working:2,done:5,waiting:3};panel.close();badgeWindow.open=true;phase=8
+  }else if(phase===7){check(l.tr("Close")==="Close","unsupported locale falls back to English")
+    check(l.error("write_not_authorized: [settings:write] Settings are read-only.")==="T3 did not allow this: Settings are read-only. (settings:write)","missing scope follows the reason")
+    check(l.error("write_not_authorized: [settings:write] The authenticated token is missing required scope: settings:write.")==="T3 did not allow this: The authenticated token is missing required scope: settings:write.","scope shown once")
+    check(l.error("write_not_authorized: [orchestration:operate]")==="T3 did not allow this: orchestration:operate","bare missing scope")
+    check(l.error("rpc_rejected: Author identity unknown")==="T3 rejected the request: Author identity unknown","git failures stay rejections")
+    check(l.error("rpc_rejected: [not a scope] text")==="T3 rejected the request: [not a scope] text","other brackets untouched");check(!keys.findChild(badges,"t3Badge_waiting").visible,"waiting badge hidden at zero");badges.counts={working:2,done:5,waiting:3};panel.close();badgeWindow.open=true;phase=8
   }else if(phase===8){check(keys.findChild(badges,"t3Badge_waiting").visible,"third badge only for waiting input");check(keys.findChild(badges,"t3Badge_working").y<keys.findChild(badges,"t3Badge_done").y,"working upper, done lower");grabbed=false;badgePreview.grabToImage(function(image){check(image.saveToFile("/tmp/omarchy-t3-badges.png"),"badge render capture");root.grabbed=true});phase=9
   }else if(phase===9){if(!grabbed)return;badgeWindow.open=false;console.log("T3_I18N_QML_PASS: 20 locales, reactive selector, placeholders, regional/English fallback, real RTL layout, render captures and status badges");Qt.quit()}
  }}

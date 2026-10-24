@@ -21,9 +21,9 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
             }
             let write_allowed=*permissions.get(&e.id).unwrap();
             if action!="read"&&!write_allowed{return Err("settings_write_forbidden".into())}
-            if !configs.contains_key(&e.id){let config=crate::write::rpc(e,"server.getConfig",json!({}))?;configs.insert(e.id.clone(),config);}
+            if !configs.contains_key(&e.id){let config=protocol::api::server::config(&e.connection(true)?)?;configs.insert(e.id.clone(),config);}
             let config=configs.get(&e.id).unwrap();
-            let mut raw=crate::write::rpc(e,"server.getSettings",json!({}))?;
+            let mut raw=protocol::api::server::settings(&e.connection(true)?)?;
             let project=if let Some(id)=target["projectId"].as_str(){
                 let shell=client.get(e,"/api/orchestration/shell",true)?;
                 Some(shell["projects"].as_array().into_iter().flatten().find(|p|text(p,"id")==id).cloned().ok_or("settings_scope_unavailable")?)
@@ -36,12 +36,12 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
                 let validated=if action=="clear"{json!({})}else{crate::native_settings::patch(input,Some(&validation_config))?};
                 let patch=if let Some(p)=&project{project_patch(&raw,p,key,&validated,action=="clear")?}else{if action=="clear"{return Err("invalid_settings".into())}if key=="idleCompaction"{crate::native_settings::idle_compaction_patch(&raw,&validated)?}else{crate::storage_settings::environment_patch(&raw,key,&validated)?}};
                 let before=raw.clone();
-                crate::write::rpc(e,"server.updateSettings",patch.clone())?;
-                raw=crate::write::rpc(e,"server.getSettings",json!({}))?;
+                crate::write::update_settings(&e.connection(true)?,&patch)?;
+                raw=protocol::api::server::settings(&e.connection(true)?)?;
                 if write_was_dropped(&patch["patch"],&before,&raw){return Err("settings_write_dropped".into())}
                 saved.push(target.clone());
             }
-            let file=if let Some(p)=&project{crate::write::rpc(e,"projects.readFile",json!({"cwd":p["workspaceRoot"],"relativePath":"t3.json"})).ok().filter(|v|v["truncated"]==false).and_then(|v|project_file(text(&v,"contents")))}else{None};
+            let file=if let Some(p)=&project{e.connection(true).and_then(|c|protocol::api::projects::read_file(&c,text(p,"workspaceRoot"),"t3.json",None)).ok().filter(|v|v["truncated"]==false).and_then(|v|project_file(text(&v,"contents")))}else{None};
             let (effective,sources,overrides)=if project.is_some(){effective(&raw,project.as_ref(),file.as_ref())}else{(raw.clone(),json!({}),json!({}))};
             let mut view=crate::native_settings::snapshot(&effective);
             view["fields"].as_array_mut().unwrap().retain(|f| f.get("capability").and_then(Value::as_str).is_none_or(|cap| config["environment"]["capabilities"][cap]==true));
