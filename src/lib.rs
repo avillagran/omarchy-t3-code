@@ -437,6 +437,13 @@ impl Client {
                 .map_err(|_| "local_error")?,
         })
     }
+    /// The process-wide client, so every read reuses one HTTP pool. Clones share it.
+    pub fn shared() -> Result<Self> {
+        static SHARED: std::sync::OnceLock<Client> = std::sync::OnceLock::new();
+        if let Some(client) = SHARED.get() {return Ok(client.clone())}
+        let client = Self::new()?;
+        Ok(SHARED.get_or_init(|| client).clone())
+    }
     pub fn fetch(&self, url: &str, token: &str, protocol: bool) -> Result<Value> {
         self.fetch_headers(url, token, protocol, &[])
     }

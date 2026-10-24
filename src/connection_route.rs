@@ -18,7 +18,7 @@ pub fn choose(input:&Value)->Result<Value>{
  let preferences=connection_preferences::read_client_preferences()?;
  let fallback=json!({"environment":input["environment"],"projectId":input["projectId"],"modelSelection":input["modelSelection"],"balanced":false});
  if preferences["loadBalancingEnabled"]!=true||input["automatic"]!=true||input["attachments"].as_array().is_some_and(|v|!v.is_empty())||input["explicitEnvironment"]==true{return Ok(fallback)}
- let known=environments()?;let client=Client::new()?;
+ let known=environments()?;let client=Client::shared()?;
  let mut projects=vec![];
  // Use native snapshots rather than trusting a GUI-supplied repository match.
  for e in known.iter().filter(|e|e.connection_error.is_none()){

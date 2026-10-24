@@ -269,7 +269,7 @@ pub fn collect(_client: &Client) -> Value {
             .filter_map(|job| job.join().ok())
             .collect::<Vec<_>>()
     });
-    json!({"environments":views,"localSources":crate::local_quotas::collect(&Client::new().unwrap()),"updatedAt":chrono::Utc::now().timestamp()})
+    json!({"environments":views,"localSources":crate::local_quotas::collect(&Client::shared().unwrap()),"updatedAt":chrono::Utc::now().timestamp()})
 }
 
 #[cfg(test)]

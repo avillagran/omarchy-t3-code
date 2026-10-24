@@ -24,7 +24,7 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     result["machine"]=json!([&config["settings"]["environmentIcon"],&config["environment"]["platform"]["machine"]].into_iter().filter_map(Value::as_str).find(|k|MACHINES.contains(k)).unwrap_or("server"));
     // The server's own version (environment.serverVersion), shown against the T3 revision ot3 is validated with.
     result["serverVersion"]=json!(config["environment"]["serverVersion"].as_str().filter(|v|v.len()<=80&&v.chars().all(|c|c.is_ascii_alphanumeric()||".-+_".contains(c))));
-    let permission=Client::new()?.get(e,"/api/auth/session",false);
+    let permission=Client::shared()?.get(e,"/api/auth/session",false);
     result["canWrite"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="orchestration:operate"))));
     if let Err(error)=permission{result["permissionError"]=json!(error);}
     Ok(result)
@@ -50,7 +50,7 @@ pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
     let path=protocol::history::path(thread,text(input,"cursor"))?;
-    let page=Client::new()?.get(e,&path,true)?;
+    let page=Client::shared()?.get(e,&path,true)?;
     normalize_messages(&protocol::history::envelope(&page,thread)?)
 }
 
@@ -129,7 +129,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
             if read_json(&path)?!=expected {return Err("retry_payload_changed".into())}
             expected["command"].clone()
         } else {
-            let snapshot=Client::new()?.bounded_thread(e,thread)?;
+            let snapshot=Client::shared()?.bounded_thread(e,thread)?;
             protocol::approvals::command(input,&snapshot["projection"])?
         }
     } else if input["op"]=="question" {
@@ -368,7 +368,7 @@ pub fn execute(input:&Value) -> Result<Value> {
 /// Re-read the native plan before preparing a user-triggered follow-up. This
 /// operation only returns a prompt; the existing durable send path owns writes.
 pub fn prepare_plan_follow_up(e:&Environment,input:&Value)->Result<Value>{
-    let session=Client::new()?.get(e,"/api/auth/session",false)?;
+    let session=Client::shared()?.get(e,"/api/auth/session",false)?;
     if session["authenticated"]!=true || !session.get("permissions").or_else(||session.get("scopes")).and_then(Value::as_array).is_some_and(|scopes|scopes.iter().any(|scope|scope=="orchestration:operate")){return Err("permission_denied".into())}
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_plan_scope".into())}
     let config=rpc(e,"server.getConfig",json!({}))?;
@@ -378,7 +378,7 @@ pub fn prepare_plan_follow_up(e:&Environment,input:&Value)->Result<Value>{
     let gate=crate::plan_workflow::mode(local["planModeEnabled"]==true,provider,text(input,"interactionMode"));
     if gate["interactionMode"]!="plan"{return Err("plan_mode_unavailable".into())}
     crate::native_settings::patch(&json!({"key":"defaultModelSelection","value":selection}),Some(&config))?;
-    let bounded=Client::new()?.bounded_thread(e,thread)?;let projection=&bounded["projection"];
+    let bounded=Client::shared()?.bounded_thread(e,thread)?;let projection=&bounded["projection"];
     let view=crate::plan_workflow::view(projection,crate::rendered_markdown);
     let plan=&view["ready"];
     if view.get("error").is_some()||plan.is_null()||plan["id"]!=input["planId"]||input["hasAttachments"]!=false{return Err("plan_no_longer_ready".into())}

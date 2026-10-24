@@ -5,7 +5,7 @@ use crate::{json, text, write::rpc, Environment, Result};
 use serde_json::Value;
 
 fn thread_scope(e: &Environment, thread: &str) -> Result<Value> {
-    let shell = crate::Client::new()?.get(e, "/api/orchestration/shell", true)?;
+    let shell = crate::Client::shared()?.get(e, "/api/orchestration/shell", true)?;
     let t = shell["threads"]
         .as_array()
         .and_then(|ts| ts.iter().find(|t| t["id"] == thread && t["deletedAt"].is_null()))

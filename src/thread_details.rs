@@ -24,7 +24,7 @@ pub fn workspace(shell: &Value, thread: &str) -> Result<String> {
 }
 
 fn shell(e: &Environment) -> Result<Value> {
-    Client::new()?.get(e, "/api/orchestration/shell", true)
+    Client::shared()?.get(e, "/api/orchestration/shell", true)
 }
 
 pub fn read(e: &Environment, input: &Value) -> Result<Value> {

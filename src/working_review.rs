@@ -111,7 +111,7 @@ pub fn present(result: &Value, wanted: &str) -> Result<Value> {
 }
 
 pub(crate) fn authorize(e: &Environment, required: &str) -> Result<()> {
-    let session = Client::new()?.get(e, "/api/auth/session", false)?;
+    let session = Client::shared()?.get(e, "/api/auth/session", false)?;
     let permissions = session.get("permissions").or_else(|| session.get("scopes"));
     if session["authenticated"] != true
         || !permissions

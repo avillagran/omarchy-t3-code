@@ -114,7 +114,7 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     if !valid_id(thread) || run.is_empty() || run.len() > 1024 || run.chars().any(char::is_control) {
         return Err("invalid_id".into());
     }
-    let d = Client::new()?.bounded_thread(e, thread)?;
+    let d = Client::shared()?.bounded_thread(e, thread)?;
     let items = d["projection"]["turnItems"].as_array().map(Vec::as_slice).unwrap_or(&[]);
     let tools: Vec<Value> = candidates(items, run).into_iter().map(|i| read_item(e, i)).collect();
     Ok(json!({"environment":e.id,"thread":thread,"runId":run,"tools":tools}))
