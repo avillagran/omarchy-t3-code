@@ -67,7 +67,7 @@ pub(crate) fn native_primary()->Option<Value>{
     let env=env.trim();if env.is_empty(){return None}
     let runtime=read_json(&t3_home().join("userdata/server-runtime.json")).ok()?;
     let base=text(&runtime,"origin");validate_base(base).ok()?;
-    let mut ws=reqwest::Url::parse(base).ok()?;let scheme=if ws.scheme()=="https"{"wss"}else{"ws"};ws.set_scheme(scheme).ok()?;
+    let mut ws=crate::Url::parse(base).ok()?;let scheme=if ws.scheme()=="https"{"wss"}else{"ws"};ws.set_scheme(scheme).ok()?;
     Some(json!({"_tag":"PrimaryConnectionTarget","environmentId":env,"httpBaseUrl":base,"wsBaseUrl":ws.as_str().trim_end_matches('/')}))
 }
 fn preferences_snapshot(c:&Value)->Result<Value>{
@@ -190,7 +190,7 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         let id = if text(i, "connectionId").is_empty() {
             format!(
                 "bearer:{env}:{}",
-                reqwest::Url::parse(&base)
+                crate::Url::parse(&base)
                     .unwrap()
                     .origin()
                     .ascii_serialization()
@@ -247,7 +247,7 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         } else {
             name
         };
-        let mut ws = reqwest::Url::parse(&base).unwrap();
+        let mut ws = crate::Url::parse(&base).unwrap();
         let scheme = if ws.scheme() == "https" { "wss" } else { "ws" };
         ws.set_scheme(scheme).map_err(|_| "invalid_endpoint")?;
         protocol::connection_catalog::register(

@@ -120,7 +120,7 @@ pub fn thread_command(input: &Value) -> Result<Value> {
     let url = || {
         r["url"]
             .as_str()
-            .filter(|u| reqwest::Url::parse(u).is_ok_and(|u| matches!(u.scheme(), "http" | "https")))
+            .filter(|u| crate::Url::parse(u).is_ok_and(|u| matches!(u.scheme(), "http" | "https")))
             .ok_or("invalid_pull_request")
     };
     match text(input, "link") {

@@ -3,7 +3,7 @@ use crate::*;
 use std::process::{Command,Stdio};
 pub fn app_uri(environment:&str,thread:&str)->Result<String>{
  if !valid_id(environment)||!valid_id(thread){return Err("invalid_id".into())}
- let mut u=reqwest::Url::parse("t3code://threads/").unwrap();u.path_segments_mut().map_err(|_|"invalid_id")?.push(environment).push(thread);Ok(u.to_string())
+ let mut u=crate::Url::parse("t3code://threads/").unwrap();u.path_segments_mut().map_err(|_|"invalid_id")?.push(environment).push(thread);Ok(u.to_string())
 }
 pub fn open(environment:&str,thread:&str,web:&str)->Result<&'static str>{
  let uri=app_uri(environment,thread)?;

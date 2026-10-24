@@ -114,7 +114,7 @@ fn favicon(project: &Value, environment: &str) -> Option<DynamicImage> {
             json!({"resource":{"_tag":"project-favicon","cwd":cwd,"path":project["faviconPath"]}}),
         )
         .ok()?;
-    let base = reqwest::Url::parse(connection.base_url()).ok()?;
+    let base = crate::Url::parse(connection.base_url()).ok()?;
     let url = base.join(text(&grant, "relativeUrl")).ok()?;
     if url.origin() != base.origin()
         || !url.path().starts_with("/api/assets/")

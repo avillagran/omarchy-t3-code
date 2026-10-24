@@ -16,7 +16,7 @@ pub fn workspace_path(source:&str)->Result<String>{
  let source=source.trim();
  if source.is_empty()||source.len()>4096||source.chars().any(char::is_control)||source.starts_with(['#','?']){return Err("invalid_image".into())}
  if source.to_ascii_lowercase().starts_with("file:"){
-  return reqwest::Url::parse(source).ok().and_then(|u|u.to_file_path().ok()).and_then(|p|p.to_str().map(String::from)).filter(|p|!p.chars().any(char::is_control)).ok_or("invalid_image".into());
+  return crate::Url::parse(source).ok().and_then(|u|u.to_file_path().ok()).and_then(|p|p.to_str().map(String::from)).filter(|p|!p.chars().any(char::is_control)).ok_or("invalid_image".into());
  }
  if source.starts_with("//")||source.starts_with("~/")||source.contains(':'){return Err("invalid_image".into())}
  let raw=source.split(['#','?']).next().unwrap_or("");let mut bytes=Vec::new();let b=raw.as_bytes();let mut i=0;

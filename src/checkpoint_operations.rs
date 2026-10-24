@@ -157,7 +157,7 @@ fn prepare_attachments(e: &Environment, source: &Value, current: &Value) -> Resu
         return Ok(vec![]);
     }
     let c = e.connection(true)?;
-    let base = reqwest::Url::parse(&e.base_url).map_err(|_| "invalid_endpoint")?;
+    let base = crate::Url::parse(&e.base_url).map_err(|_| "invalid_endpoint")?;
     let http = Http::builder()
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())

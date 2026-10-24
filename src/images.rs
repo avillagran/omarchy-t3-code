@@ -21,7 +21,7 @@ pub fn load(input:&Value)->Result<Value>{
  // HEIC/AVIF from phones: the image crate cannot size them, Qt's kimageformats draws them.
  let dimensions=image::ImageReader::open(&file).ok().and_then(|r|r.with_guessed_format().ok()).and_then(|r|r.into_dimensions().ok()).unwrap_or((640,480));
  if dimensions.0==0||dimensions.1==0||u64::from(dimensions.0)*u64::from(dimensions.1)>40_000_000{return Err("invalid_image".into())}
- Ok(json!({"width":dimensions.0,"height":dimensions.1,"url":reqwest::Url::from_file_path(file).map_err(|_|"image_cache_failed")?.to_string()}))
+ Ok(json!({"width":dimensions.0,"height":dimensions.1,"url":crate::Url::from_file_path(file).map_err(|_|"image_cache_failed")?.to_string()}))
 }
 
 // Public Markdown media carries no environment credentials. Host-local files
@@ -33,7 +33,7 @@ fn direct(source:&str)->Result<Vec<u8>>{
   if !matches!(header,"data:image/png;base64"|"data:image/jpeg;base64"|"data:image/gif;base64"|"data:image/webp;base64")||body.len()>14*1024*1024{return Err("invalid_image".into())}
   base64::engine::general_purpose::STANDARD.decode(body).map_err(|_|"invalid_image")?
  }else{
-  let u=reqwest::Url::parse(source).map_err(|_|"invalid_image")?;
+  let u=crate::Url::parse(source).map_err(|_|"invalid_image")?;
   if !u.username().is_empty()||u.password().is_some(){return Err("invalid_image".into())}
   let http=reqwest::blocking::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::limited(3)).timeout(std::time::Duration::from_secs(20)).build().map_err(|_|"image_unreachable")?;
   let response=http.get(u).send().map_err(|_|"image_unreachable")?;

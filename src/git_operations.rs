@@ -349,7 +349,7 @@ pub fn pull_request_reference(scope: &Value, pr: &Value) -> Value {
     let Some(number) = pr["number"].as_u64().filter(|n| *n > 0) else {
         return Value::Null;
     };
-    let Ok(url) = reqwest::Url::parse(text(pr, "url")) else {
+    let Ok(url) = crate::Url::parse(text(pr, "url")) else {
         return Value::Null;
     };
     if url.scheme() != "https" || !url.username().is_empty() || url.password().is_some() {
