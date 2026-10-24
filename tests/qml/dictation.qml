@@ -26,7 +26,10 @@ ShellRoot{
   }else if(phase===6){if(b.dictation.state!=="idle")return;check(b.draft.text==="Antes hola mundo después"&&!b.dictation.error,"cancel inserts nothing")
    b.rememberView({dictationModel:"small"});check(!b.dictationModelInfo.installed,"small not installed yet");b.startDictation();check(b.dictationDownload.busy&&b.dictation.state==="idle","first use downloads the model");phase=7
   }else if(phase===7){if(b.dictationDownload.busy||!b.dictationModelInfo.installed)return;check(!b.dictationDownload.error,"download succeeded")
-   b.rememberView({dictationButton:false});phase=8
-  }else if(phase===8){check(!button.visible,"preference hides the microphone");panel.close();console.log("T3_DICTATION_QML_PASS: insert at cursor, prompt vocabulary, level wave, cancel, model download and visibility preference");Qt.quit()}
+   b.refreshDictationRecordings();phase=8
+  }else if(phase===8){if(b.dictationRecordings.key!=="fixture/one")return;check(b.dictationRecordings.items.length===1&&b.dictationRecordings.items[0].text==="hola mundo","kept recordings listed for the thread")
+   var popup=button.recordings;popup.open();check(popup.visible&&popup.items.length===1,"the recordings popup lists the thread's recording");check(!!root.named(popup.contentItem,"t3ComposerRecording_0"),"a recording row");popup.close()
+   b.rememberView({dictationButton:false});phase=9
+  }else if(phase===9){check(!button.visible,"preference hides the microphone");panel.close();console.log("T3_DICTATION_QML_PASS: insert at cursor, prompt vocabulary, level wave, cancel, model download, kept recordings and visibility preference");Qt.quit()}
  }}
 }

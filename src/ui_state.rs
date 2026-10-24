@@ -44,6 +44,7 @@ pub fn sanitize(input: &Value) -> Value {
     }
     if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
     if matches!(input["dictationModel"].as_str(),Some("base"|"small")){out["dictationModel"]=input["dictationModel"].clone();}
+    if matches!(input["dictationRecordings"].as_str(),Some("thread"|"day"|"week"|"month"|"off")){out["dictationRecordings"]=input["dictationRecordings"].clone();}
     if input["dictationLanguage"].as_str().is_some_and(|v|v=="auto"||(matches!(v.len(),2|3)&&v.chars().all(|c|c.is_ascii_lowercase()))){out["dictationLanguage"]=input["dictationLanguage"].clone();}
     for key in ["workingShelfHeight","snoozedShelfHeight","settledShelfHeight"] {
         if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=60.0 && *n<=1200.0){out[key]=json!(value);}
@@ -180,7 +181,8 @@ mod tests {
     fn dictation_preferences_reject_arguments_and_unknown_models() {
         let dictation = sanitize(&json!({"dictationButton":false,"dictationModel":"small","dictationLanguage":"es","dictationVocabulary":"Omarchy, Hyprland"}));
         assert_eq!((dictation["dictationButton"].clone(), dictation["dictationModel"].clone(), dictation["dictationLanguage"].clone(), dictation["dictationVocabulary"].clone()), (json!(false), json!("small"), json!("es"), json!("Omarchy, Hyprland")));
-        let invalid = sanitize(&json!({"dictationModel":"../model","dictationLanguage":"--prompt","dictationVocabulary":"a\nb"}));
-        assert!(invalid.get("dictationModel").is_none() && invalid.get("dictationLanguage").is_none() && invalid.get("dictationVocabulary").is_none());
+        let invalid = sanitize(&json!({"dictationModel":"../model","dictationLanguage":"--prompt","dictationVocabulary":"a\nb","dictationRecordings":"forever"}));
+        assert!(invalid.get("dictationModel").is_none() && invalid.get("dictationLanguage").is_none() && invalid.get("dictationVocabulary").is_none() && invalid.get("dictationRecordings").is_none());
+        assert_eq!(sanitize(&json!({"dictationRecordings":"week"}))["dictationRecordings"], json!("week"));
     }
 }

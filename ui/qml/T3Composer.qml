@@ -471,6 +471,62 @@ Rectangle {
           : T3I18n.tr("Dictate") + " · " + T3I18n.tr("Ctrl+Space: hold to talk, tap to start and stop")
         enabled: mode === "downloading" || listening || (mode === "idle" && (!model.installed || (!root.locked && !!root.bridge.selectedThread)))
         onClicked: mode === "downloading" ? root.bridge.cancelDictationDownload() : root.bridge.toggleDictation()
+        // Resting the mouse on the microphone lists the recordings kept for this
+        // thread, so the audio behind a lost transcription is a click away.
+        readonly property bool keepsRecordings: root.bridge.dictationRecordingsPolicy !== "off"
+        readonly property var recordings: recordingsPopup
+        Timer { interval: 900; running: dictateButton.hovered && dictateButton.mode === "idle" && dictateButton.keepsRecordings && !recordingsPopup.visible; onTriggered: { root.bridge.refreshDictationRecordings(); recordingsPopup.open() } }
+        Timer { interval: 450; running: recordingsPopup.visible && !dictateButton.hovered && !recordingsHover.hovered; onTriggered: recordingsPopup.close() }
+        Controls.Popup {
+          id: recordingsPopup
+          objectName: "t3ComposerRecordings"
+          readonly property var items: root.bridge.dictationRecordings.key === root.bridge.selectedKey ? (root.bridge.dictationRecordings.items || []).slice(0, 8) : []
+          readonly property color faint: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.6)
+          function when(ms) { var d = new Date(Number(ms)), now = new Date(); return d.toDateString() === now.toDateString() ? Qt.formatTime(d, "HH:mm") : Qt.formatDateTime(d, "d MMM HH:mm") }
+          function length(s) { var n = Math.round(Number(s) || 0); return Math.floor(n / 60) + ":" + ("0" + n % 60).slice(-2) }
+          parent: dictateButton; x: 0; y: -height - Style.space(6)
+          width: Style.space(320); padding: Style.space(8); modal: false
+          closePolicy: Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutside
+          background: Rectangle { color: Color.popups.background; radius: Style.space(9); border.width: 1; border.color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.15) }
+          contentItem: Column {
+            spacing: Style.space(2)
+            HoverHandler { id: recordingsHover }
+            Text { width: parent.width; leftPadding: Style.space(6); text: T3I18n.tr("Recordings of this thread"); color: recordingsPopup.faint; font.pixelSize: Style.font.caption; textFormat: Text.PlainText }
+            Text { width: parent.width; padding: Style.space(6); visible: recordingsPopup.items.length === 0; text: T3I18n.tr("No recordings kept for this thread yet."); color: root.fg; font.pixelSize: Style.font.body; wrapMode: Text.WordWrap; textFormat: Text.PlainText }
+            Repeater {
+              model: recordingsPopup.items
+              Rectangle {
+                id: recordingRow
+                required property var modelData
+                required property int index
+                objectName: "t3ComposerRecording_" + index
+                width: parent.width; height: Style.space(30); radius: Style.space(6)
+                color: rowMouse.containsMouse ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.07) : "transparent"
+                MouseArea { id: rowMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.bridge.openDictationRecording(recordingRow.modelData.file) }
+                Controls.ToolTip.visible: rowMouse.containsMouse; Controls.ToolTip.delay: 700
+                Controls.ToolTip.text: T3I18n.tr("Play the recording · the text went into the draft")
+                Row {
+                  anchors.fill: parent; anchors.leftMargin: Style.space(6); spacing: Style.space(8)
+                  T3Icon { name: "play"; tint: Color.accent; anchors.verticalCenter: parent.verticalCenter; implicitWidth: Style.space(13) }
+                  Text { text: recordingsPopup.when(recordingRow.modelData.time); color: recordingsPopup.faint; font.pixelSize: Style.font.caption; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText }
+                  Text { text: recordingsPopup.length(recordingRow.modelData.seconds); color: recordingsPopup.faint; font.pixelSize: Style.font.caption; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText }
+                  Text { width: recordingRow.width - Style.space(150); text: String(recordingRow.modelData.text || "").trim() || "…"; color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; maximumLineCount: 1; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText }
+                }
+                T3IconButton { name: "trash-2"; implicitWidth: Style.space(22); implicitHeight: implicitWidth; anchors.right: parent.right; anchors.rightMargin: Style.space(4); anchors.verticalCenter: parent.verticalCenter; tint: root.fg; visible: rowMouse.containsMouse || hovered; tooltipText: T3I18n.tr("Delete recording"); onClicked: root.bridge.deleteDictationRecording(recordingRow.modelData.id) }
+              }
+            }
+            Rectangle { width: parent.width; height: Style.space(8); color: "transparent"; visible: recordingsPopup.items.length > 0 }
+            Rectangle {
+              width: parent.width; height: Style.space(26); radius: Style.space(6); visible: recordingsPopup.items.length > 0
+              color: folderMouse.containsMouse ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.07) : "transparent"
+              Row { anchors.fill: parent; anchors.leftMargin: Style.space(6); spacing: Style.space(8)
+                T3Icon { name: "folder"; tint: recordingsPopup.faint; anchors.verticalCenter: parent.verticalCenter; implicitWidth: Style.space(13) }
+                Text { text: T3I18n.tr("Open folder"); color: recordingsPopup.faint; font.pixelSize: Style.font.caption; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText }
+              }
+              MouseArea { id: folderMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.bridge.openDictationRecordings() }
+            }
+          }
+        }
         // The ring follows the microphone level while recording.
         Rectangle {
           anchors.centerIn: parent; z: -1
