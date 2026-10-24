@@ -16,6 +16,8 @@ const REMOTE_UPDATE: &str = include_str!("remote-update.sh");
 pub const QUIET_MS: i64 = 10 * 60 * 1000;
 /// A failed automatic update of one version is tried again only after this long.
 pub const RETRY_MS: i64 = 6 * 60 * 60 * 1000;
+/// An update claimed this recently may still run (the host allows it 15 minutes).
+pub const CLAIM_MS: i64 = 20 * 60 * 1000;
 
 fn numeric(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()) && (s == "0" || !s.starts_with('0'))
@@ -126,10 +128,13 @@ pub fn quiet(snapshot: &Value, environment: &str, now: i64) -> bool {
 /// last recorded attempt (`{target,status,at}`).
 pub fn due(mode: &str, advisory: &Value, attempt: &Value, quiet: bool, now: i64) -> bool {
     let Some(target) = advisory["latest"].as_str() else { return false };
+    let age = attempt["at"].as_i64().map(|at| now - at);
     mode == "auto"
         && advisory["canUpdate"] == true
         && quiet
-        && !(attempt["target"] == target && attempt["at"].as_i64().is_some_and(|at| now - at < RETRY_MS))
+        // Another ot3 process may still be running a claimed update.
+        && !(attempt["status"] == "running" && age.is_some_and(|a| a < CLAIM_MS))
+        && !(attempt["target"] == target && attempt["status"] != "running" && age.is_some_and(|a| a < RETRY_MS))
 }
 /// How ot3 can reach this environment's host to update it, or why it cannot.
 pub fn route(environment: &str) -> std::result::Result<&'static str, &'static str> {
@@ -177,6 +182,7 @@ pub fn run(environment: &str, target: &str) -> Result<String> {
             Some(9) => "t3_remote_start_failed",
             Some(10) => "t3_update_failed",
             Some(11) => "service_required",
+            Some(12) => "t3_update_running",
             Some(124) => "t3_update_timeout",
             Some(255) => "ssh_unavailable",
             Some(127) => "t3_cli_unavailable",

@@ -5,13 +5,22 @@ set -eu
 #   $2  the exact version to install
 # Exit codes as remote-restart.sh: 7 wrong environment, 8 the service runs
 # another profile, 9 the server did not come back, 127 no T3 CLI; and
-# 10 `t3 update` failed, 11 no background service to switch over.
+# 10 `t3 update` failed, 11 no background service to switch over, 12 another
+# update is running on this host.
 base="$HOME/.t3"
 actual=$(cat "$base/userdata/environment-id")
 [ "$actual" = "$1" ] || exit 7
 unit="$HOME/.config/systemd/user/t3code.service"
 [ -f "$unit" ] || exit 11
 grep -Fx "Environment=T3CODE_HOME=$base" "$unit" >/dev/null || grep -Fx "Environment=T3CODE_HOME=\"$base\"" "$unit" >/dev/null || exit 8
+# One update at a time on this host, from any ot3. A lock older than 20
+# minutes belongs to an update that can no longer be running.
+lock="$base/userdata/ot3-update.lock"
+if ! mkdir "$lock" 2>/dev/null; then
+  [ -n "$(find "$lock" -maxdepth 0 -mmin +20 2>/dev/null)" ] || exit 12
+  rm -rf "$lock"; mkdir "$lock" || exit 12
+fi
+trap 'rm -rf "$lock"' EXIT
 # The runtime the service runs knows its own version; a desktop app's wrapper
 # would report the app's bundled one instead.
 service_cli() { sed -n 's/^ExecStart=\(\/.*\/t3\) __service-launcher$/\1/p' "$unit" | head -n 1; }
