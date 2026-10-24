@@ -60,8 +60,12 @@ fn perform(environment: &str, target: &str) -> Result<()> {
         s["environments"][environment]["error"] = Value::Null;
     });
     let now = chrono::Utc::now().timestamp_millis();
-    let result = updates::run(environment, target);
     let path = ledger_path();
+    // Claimed before it starts, so a restarted ot3 does not start it twice.
+    let mut ledger = read_json(&path).ok().filter(Value::is_object).unwrap_or_else(|| json!({}));
+    ledger[environment] = json!({"target":target,"at":now,"status":"running"});
+    let _ = save_json(&path, &ledger);
+    let result = updates::run(environment, target);
     let mut ledger = read_json(&path).ok().filter(Value::is_object).unwrap_or_else(|| json!({}));
     ledger[environment] = json!({"target":target,"at":now,"status":if result.is_ok(){"updated"}else{"failed"},"error":result.as_ref().err()});
     let _ = save_json(&path, &ledger);

@@ -64,6 +64,10 @@ fn automatic_updates_wait_for_a_quiet_server_and_never_loop_on_failure() {
     let failed = json!({"target":"0.1.3-nightly.20261024.3604","at":now - 1000,"status":"failed"});
     assert!(!updates::due("auto", &row, &failed, true, now));
     assert!(updates::due("auto", &row, &failed, true, now + updates::RETRY_MS));
+    // A claimed update may still run in another ot3; a stale claim is retried.
+    let claimed = json!({"target":"0.1.3-nightly.20261024.3604","at":now - 1000,"status":"running"});
+    assert!(!updates::due("auto", &row, &claimed, true, now));
+    assert!(updates::due("auto", &row, &claimed, true, now + updates::CLAIM_MS));
     // A newer release than the one that failed is tried right away.
     assert!(updates::due("auto", &json!({"latest":"0.1.4-nightly.20261025.3700","canUpdate":true}), &failed, true, now));
 }
