@@ -1,7 +1,7 @@
 //! Stream capabilities a T3 server advertises in `server.getConfig`, read once per
 //! environment and shared by the shell and chat streams. A completion marker is
 //! only requested from a server that announces it.
-use crate::{json, protocol, Result};
+use crate::{protocol, Result};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Mutex};
 
@@ -24,7 +24,7 @@ pub fn get(env: &str, c: &protocol::Connection) -> Result<Capabilities> {
     if let Some(found) = CACHE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(env).copied()) {
         return Ok(found);
     }
-    let found = match c.rpc("server.getConfig", json!({})) {
+    let found = match protocol::api::server::config(c) {
         Ok(config) => Capabilities::from_config(&config),
         // A refused config read only costs the catch-up markers.
         Err(error) if protocol::error_code(&error) == "rpc_rejected" => Capabilities::default(),

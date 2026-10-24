@@ -1,7 +1,7 @@
 //! Pull request writes from T3's pull request page: comment, review verdicts and the
 //! host actions (merge, close, reopen, ready, draft...). The page only offers what the
 //! detail's viewerPermissions allow; the server checks again.
-use crate::{json, text, write::rpc, Environment, Result};
+use crate::{json, text, write::{dispatch_command, rpc}, Environment, Result};
 use serde_json::Value;
 pub use t3_protocol::pull_requests::{payload, thread_command};
 
@@ -18,7 +18,7 @@ pub fn thread_link(e: &Environment, input: &Value) -> Result<Value> {
         return Err("invalid_id".into());
     }
     let command = thread_command(input)?;
-    rpc(e, "orchestration.dispatchCommand", command)?;
+    dispatch_command(e, &command)?;
     Ok(json!({"link":input["link"]}))
 }
 
@@ -39,6 +39,6 @@ pub fn open_thread(e: &Environment, input: &Value) -> Result<Value> {
     }
     let prepared = rpc(e, "git.preparePullRequestThread", payload)?;
     let title = format!("#{} {}", prepared["pullRequest"]["number"], text(&prepared["pullRequest"], "title")).chars().take(200).collect::<String>();
-    rpc(e, "orchestration.dispatchCommand", json!({"type":"thread.create","commandId":format!("omarchy-{}",uuid::Uuid::new_v4()),"threadId":thread,"projectId":project,"title":title.trim(),"modelSelection":input["modelSelection"],"runtimeMode":"approval-required","interactionMode":"default","branch":prepared["branch"],"worktreePath":prepared["worktreePath"],"createdBy":"user","creationSource":"web"}))?;
+    dispatch_command(e, &json!({"type":"thread.create","commandId":format!("omarchy-{}",uuid::Uuid::new_v4()),"threadId":thread,"projectId":project,"title":title.trim(),"modelSelection":input["modelSelection"],"runtimeMode":"approval-required","interactionMode":"default","branch":prepared["branch"],"worktreePath":prepared["worktreePath"],"createdBy":"user","creationSource":"web"}))?;
     Ok(json!({"threadId":thread,"branch":prepared["branch"],"worktreePath":prepared["worktreePath"],"onHead":prepared["isOnPullRequestHead"]!=false}))
 }

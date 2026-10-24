@@ -32,7 +32,7 @@ pub(crate) fn inspect(e: &Environment) -> Result<(protocol::Connection, Value)> 
         return Err("permission_denied".into());
     }
     let can_clear = has("preview:operate");
-    let config = c.rpc("server.getConfig", json!({}))?;
+    let config = protocol::api::server::config(&c)?;
     let data = json!({"environment":e.id,"originKey":origin(e),"serverBrowser":config["environment"]["capabilities"]["serverBrowser"]==true,"canClear":can_clear,"error":""});
     Ok((c, data))
 }

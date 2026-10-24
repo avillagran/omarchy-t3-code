@@ -194,7 +194,7 @@ impl Server {
       },
       "device.list"=>{if payload.get("updateTool").is_some()||payload.get("retryHostId").is_some(){assert!(oo.load(Ordering::Relaxed));}dd.lock().unwrap().clone()},
       "device.testHost"=>{assert!(ww.load(Ordering::Relaxed));let mut h=summary();h["id"]=payload["id"].clone();h["kind"]=json!("ssh");h},
-      "server.updateSettings"=>{assert!(ww.load(Ordering::Relaxed));let mut s=cc.lock().unwrap();s["deviceHosts"]=payload["patch"]["deviceHosts"].clone();s.clone()},
+      "server.updateSettings"=>{assert!(ww.load(Ordering::Relaxed));if cc.lock().unwrap()["fixtureDeny"]==true{ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":[{"_tag":"Fail","error":{"_tag":"EnvironmentAuthorizationError","message":"The authenticated token is missing required scope: settings:write.","requiredScope":"settings:write"}}]}}).to_string().into())).unwrap();return}let mut s=cc.lock().unwrap();s["deviceHosts"]=payload["patch"]["deviceHosts"].clone();s.clone()},
       // Background subscriptions the worker opens on its own; this fixture does not model them.
       "orchestration.subscribeShell"|"subscribeServerConfig"=>return,
       method=>panic!("unexpected native method {method}")
@@ -436,6 +436,16 @@ fn capabilities_native_roles_and_hosts_guard_every_action_without_replacing_unre
     assert_eq!(s.mutations().len(), before);
 }
 
+#[test]
+fn host_change_refused_for_a_missing_scope_maps_to_permission_denied() {
+    let s = Server::new();
+    s.settings.lock().unwrap()["deviceHosts"] = json!([host("environment-id", "user@old")]);
+    s.settings.lock().unwrap()["fixtureDeny"] = json!(true);
+    let view = devices::read(&s.environment).unwrap();
+    let refused = devices::apply(&s.environment, &json!({"viewId":view["viewId"],"action":"host-upsert","host":host("representative-id","user@new"),"original":host("representative-id","user@old")})).unwrap();
+    assert_eq!(refused["error"], "permission_denied: [settings:write] The authenticated token is missing required scope: settings:write.");
+    assert_eq!(s.mutations().len(), 1);
+}
 #[test]
 fn slow_native_install_does_not_block_draft_durability_or_device_reads() {
     use std::{

@@ -1,6 +1,6 @@
 //! Native preview lifecycle commands. No browser automation or OS navigation.
 //! Requests are bound to a read origin/epoch and never replayed automatically.
-use crate::{json, preview_transport as transport, text, Environment, Result};
+use crate::{json, preview_transport as transport, protocol, text, Environment, Result};
 use serde_json::Value;
 use std::{
     collections::HashSet,
@@ -132,7 +132,7 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
         return Err("server_browser_unavailable".into());
     }
     let thread = text(input, "thread");
-    let current = transport::list(&c.rpc("preview.list", json!({"threadId":thread}))?, thread)?;
+    let current = transport::list(&protocol::api::preview::list(&c, thread)?, thread)?;
     if current["serverEpoch"] != expected_epoch {
         return Err("preview_server_restarted".into());
     }
