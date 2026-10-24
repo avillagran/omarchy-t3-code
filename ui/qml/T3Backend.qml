@@ -805,6 +805,33 @@ Singleton {
   property var dictationDownload:({busy:false,model:"",bytes:0,total:0,error:""})
   signal dictationInserted(string key,int cursor)
   function refreshDictation(){if(!dictationCatalogProcess.running)dictationCatalogProcess.running=true}
+  // Each dictation's audio and text are kept per thread (Preferences → Dictation →
+  // Keep recordings) so a transcription that lost words can be recovered: the
+  // list opens when the mouse rests on the microphone. A thread's recordings go
+  // with it when it is archived or deleted; older ones go by the chosen age.
+  readonly property string dictationRecordingsPolicy:viewState.dictationRecordings || "thread"
+  function dictationFolder(key){return String(key || "").replace(/[^A-Za-z0-9._-]/g,"_").replace(/^\.+/,"").slice(0,128)}
+  property var dictationRecordings:({key:"",items:[]})
+  function refreshDictationRecordings(){
+    if(!dictationAvailable||!selectedKey||dictationRecordingsProcess.running)return
+    dictationRecordingsProcess.key=selectedKey;dictationRecordingsProcess.command=[dictationBinary,"recordings",dictationFolder(selectedKey)];dictationRecordingsProcess.running=true
+  }
+  Process{
+    id:dictationRecordingsProcess
+    property string key:""
+    stdout:StdioCollector{onStreamFinished:{var items=[];try{items=JSON.parse(text).recordings || []}catch(_){}root.dictationRecordings={key:dictationRecordingsProcess.key,items:items}}}
+  }
+  function openDictationRecording(file){if(file)Qt.openUrlExternally("file://"+String(file))}
+  function openDictationRecordings(){var first=(dictationRecordings.items || [])[0];if(first&&first.file)Qt.openUrlExternally("file://"+String(first.file).replace(/\/[^\/]*$/,""))}
+  function deleteDictationRecording(id){if(selectedKey)dictationMaintenance([dictationBinary,"delete",dictationFolder(selectedKey),String(id)])}
+  function forgetDictationRecordings(key){dictationMaintenance([dictationBinary,"forget",dictationFolder(key)])}
+  function pruneDictationRecordings(){var days={day:1,week:7,month:30}[dictationRecordingsPolicy];if(dictationRecordingsPolicy==="off")dictationMaintenance([dictationBinary,"prune","0"]);else if(days)dictationMaintenance([dictationBinary,"prune",String(days*86400)])}
+  property var dictationMaintenanceQueue:[]
+  function dictationMaintenance(cmd){if(!dictationCatalog.loaded)return;dictationMaintenanceQueue=dictationMaintenanceQueue.concat([cmd]);runDictationMaintenance()}
+  function runDictationMaintenance(){if(dictationMaintenanceProcess.running||!dictationMaintenanceQueue.length)return;dictationMaintenanceProcess.command=dictationMaintenanceQueue[0];dictationMaintenanceQueue=dictationMaintenanceQueue.slice(1);dictationMaintenanceProcess.running=true}
+  Process{id:dictationMaintenanceProcess;onExited:{root.refreshDictationRecordings();root.runDictationMaintenance()}}
+  readonly property bool dictationReady:dictationAvailable&&viewStateLoaded
+  onDictationReadyChanged:if(dictationReady)pruneDictationRecordings()
   // Names Whisper would otherwise misspell: the project, branch, thread and the user's own words.
   function dictationPrompt(){
     var words=[String(viewState.dictationVocabulary || "").trim(),selectedProject,selectedInfo.branch || "",selectedTitle].filter(function(w){return !!w&&w.length<=200})
@@ -817,6 +844,7 @@ Singleton {
     var d=drafts[selectedKey];if(!selectedThread||!d||d.busy||d.attempt||d.loading||d.loadError)return
     var args=[dictationBinary,"listen","--model",dictationModel,"--language",viewState.dictationLanguage || "auto"],prompt=dictationPrompt()
     if(prompt)args.push("--prompt",prompt)
+    if(dictationRecordingsPolicy!=="off")args.push("--keep",dictationFolder(selectedKey))
     dictation={state:"starting",key:selectedKey,level:0,levels:[],muted:false,error:""}
     dictationOutput.result=null;dictationProcess.command=args;dictationProcess.running=true
   }
@@ -853,6 +881,7 @@ Singleton {
       if(!error&&result&&result.text)error=root.insertDictation(job.key,String(result.text))
       root.dictation={state:"idle",key:"",level:0,levels:[],muted:false,error:error}
       if(failure==="model_missing")root.refreshDictation()
+      root.refreshDictationRecordings()
     }
   }
   Process {
@@ -881,7 +910,7 @@ Singleton {
   }
   Process{id:dictationRemoveProcess;onExited:root.refreshDictation()}
   // The microphone never stays open behind a hidden panel; an old error goes with its thread.
-  Connections{target:root;function onPanelVisibleChanged(){if(!root.panelVisible)root.cancelDictation()}function onSelectedKeyChanged(){if(root.dictation.error)root.dictation=Object.assign({},root.dictation,{error:""})}}
+  Connections{target:root;function onPanelVisibleChanged(){if(!root.panelVisible)root.cancelDictation()}function onSelectedKeyChanged(){if(root.dictation.error)root.dictation=Object.assign({},root.dictation,{error:""});if(root.dictationRecordings.key!==root.selectedKey)root.dictationRecordings=({key:"",items:[]})}}
   function removeAttachment(index) {
     var files = draft.attachments.slice(); var f = files[index]
     if (!f || f.uploading || draft.busy || draft.attempt) return
@@ -1801,6 +1830,7 @@ Singleton {
       if (!retryable) {managementRequest = null;settleNavigation=null}
       if (!data.error) {
         if(data.result.action==="project-remove" && selectedInfo.projectKey===data.environment+"/"+data.result.projectId){var next=state.threads.find(function(t){return t.projectKey!==root.selectedInfo.projectKey});if(next)selectThread(next.environmentId,next.id);else clearSelection()}
+        if(["archive","delete-thread"].indexOf(data.result.action)>=0&&data.result.threadId)forgetDictationRecordings(data.environment+"/"+data.result.threadId)
         if(["archive","delete-thread"].indexOf(data.result.action)>=0 && selectedKey===data.environment+"/"+data.result.threadId){var nextThread=state.threads.find(function(t){return t.key!==root.selectedKey});if(nextThread)selectThread(nextThread.environmentId,nextThread.id);else clearSelection()}
         if(data.result.action==="settle")finishSettleNavigation(parked)
         refresh(); if(data.result.action==="fork"||data.result.action==="merge-back")selectThread(data.environment,data.result.threadId)

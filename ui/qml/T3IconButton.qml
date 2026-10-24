@@ -8,6 +8,7 @@ Rectangle {
   property string glyphFont: "FiraCode Nerd Font"
   property real glyphScale: 1
   property string tooltipText: ""
+  readonly property bool hovered: mouse.containsMouse
   property color tint: Color.popups.text
   signal clicked()
   activeFocusOnTab: true
