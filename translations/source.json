@@ -1760,6 +1760,8 @@
     "Dictation language": "Dictation language",
     "Automatic detects the language of each dictation. Choosing one helps very short phrases; speech in another language is then translated into it.": "Automatic detects the language of each dictation. Choosing one helps very short phrases; speech in another language is then translated into it.",
     "Vocabulary": "Vocabulary",
-    "Words to spell your way, separated by commas: names, tools, terms. The project, branch and thread title are added on their own.": "Words to spell your way, separated by commas: names, tools, terms. The project, branch and thread title are added on their own."
+    "Words to spell your way, separated by commas: names, tools, terms. The project, branch and thread title are added on their own.": "Words to spell your way, separated by commas: names, tools, terms. The project, branch and thread title are added on their own.",
+    "Microphone muted · click to turn it on": "Microphone muted · click to turn it on",
+    "No sound from the microphone": "No sound from the microphone"
   }
 }

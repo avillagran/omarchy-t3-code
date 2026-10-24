@@ -19,7 +19,10 @@ ShellRoot{
   }else if(phase===4){if(b.dictation.state!=="idle")return
    check(b.draft.text==="Antes hola mundo después","text inserted at the cursor with spaces: "+JSON.stringify(b.draft.text));check(!b.dictation.error,"no error "+b.dictation.error)
    b.startDictation();phase=5
-  }else if(phase===5){if(b.dictation.state!=="recording")return;b.cancelDictation();phase=6
+  }else if(phase===5){if(b.dictation.state!=="recording")return
+   var bubble=root.named(panel.composerView,"t3ComposerDictationWave");b.dictation=Object.assign({},b.dictation,{muted:true})
+   check(bubble.muted&&bubble.notice.length>0,"a muted microphone says so: "+bubble.notice);b.dictationLine('{"type":"level","value":0.5}');check(!bubble.muted,"sound clears the muted notice")
+   b.dictation=Object.assign({},b.dictation,{levels:Array(14).fill(0)});check(bubble.silent&&bubble.notice.length>0,"a second of zeros says no sound arrives");b.cancelDictation();phase=6
   }else if(phase===6){if(b.dictation.state!=="idle")return;check(b.draft.text==="Antes hola mundo después"&&!b.dictation.error,"cancel inserts nothing")
    b.rememberView({dictationModel:"small"});check(!b.dictationModelInfo.installed,"small not installed yet");b.startDictation();check(b.dictationDownload.busy&&b.dictation.state==="idle","first use downloads the model");phase=7
   }else if(phase===7){if(b.dictationDownload.busy||!b.dictationModelInfo.installed)return;check(!b.dictationDownload.error,"download succeeded")

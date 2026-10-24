@@ -491,8 +491,12 @@ Rectangle {
           readonly property int count: root.bridge.dictationWaveLength
           readonly property real floor: Math.min(0.5, levels.reduce(function(low, v) { return Math.min(low, v) }, 1))
           function bar(v) { return Math.max(0, Math.min(1, (v - floor) / Math.max(0.2, 0.85 - floor))) }
+          // A second of exact zeros is no microphone at all, not a quiet room.
+          readonly property bool muted: root.bridge.dictation.muted === true
+          readonly property bool silent: levels.length >= 14 && levels.slice(-14).every(function(v) { return v <= 0 })
+          readonly property string notice: muted ? T3I18n.tr("Microphone muted · click to turn it on") : silent ? T3I18n.tr("No sound from the microphone") : ""
           x: 0; anchors.bottom: parent.top; anchors.bottomMargin: Style.space(8); z: 10
-          width: count * Style.space(4) + Style.space(20); height: Style.space(34); radius: height / 2
+          width: notice ? noticeText.implicitWidth + Style.space(28) : count * Style.space(4) + Style.space(20); height: Style.space(34); radius: height / 2
           color: Color.popups.background
           border.width: 1; border.color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.35)
           transformOrigin: Item.BottomLeft
@@ -508,7 +512,18 @@ Rectangle {
             color: parent.color; border.width: 1; border.color: parent.border.color
           }
           Rectangle { x: dictateButton.width / 2 - Style.space(8); y: parent.height - Style.space(2) - 1; width: Style.space(16); height: Style.space(2); color: parent.color }
+          Text {
+            id: noticeText
+            objectName: "t3ComposerDictationNotice"
+            anchors.centerIn: parent; visible: !!dictationWave.notice
+            text: dictationWave.notice; color: Color.urgent; font.pixelSize: Style.font.caption; textFormat: Text.PlainText
+          }
+          MouseArea {
+            anchors.fill: parent; enabled: dictationWave.muted; cursorShape: Qt.PointingHandCursor
+            onClicked: root.bridge.unmuteMicrophone()
+          }
           Row {
+            visible: !dictationWave.notice
             anchors.centerIn: parent; height: parent.height - Style.space(12); spacing: Style.space(2)
             Repeater {
               model: dictationWave.count
