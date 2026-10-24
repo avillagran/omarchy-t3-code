@@ -46,7 +46,8 @@ fn automatic_updates_wait_for_a_quiet_server_and_never_loop_on_failure() {
         {"environmentId":"local","working":false,"updatedAt":now - updates::QUIET_MS - 1},
         {"environmentId":"node","working":true,"updatedAt":now - updates::QUIET_MS - 1},
         {"environmentId":"recent","working":false,"updatedAt":now - 1000},
-        {"environmentId":"asking","working":false,"pending":true,"updatedAt":0},
+        {"environmentId":"asking","working":false,"pending":true,"reason":"request","updatedAt":0},
+        {"environmentId":"local","working":false,"pending":true,"reason":"review","updatedAt":0},
     ]});
     assert!(updates::quiet(&snapshot, "local", now));
     assert!(updates::quiet(&snapshot, "empty", now));
