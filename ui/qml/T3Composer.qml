@@ -108,6 +108,23 @@ Rectangle {
   onDraftChanged:{renderEditor();positionDraftAtEnd();if(!draft.loading && draft.text!==lastDraftText && editor.activeFocus)saveQuietPeriod.restart();lastDraftText=draft.text}
   Timer{id:saveQuietPeriod;interval:1000}
 
+  Connections{target:root.bridge;function onDictationInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.cursorPosition=root.viewPosition(cursor);editor.forceActiveFocus()})}}
+  // Ctrl+Space: held past a moment it is push-to-talk, a quick tap starts and a second tap stops.
+  property double dictationPressedAt: 0
+  function dictationKey(event,pressed){
+    if(event.key!==Qt.Key_Space||!bridge.dictationEnabled)return false
+    if(pressed){
+      if(event.modifiers!==Qt.ControlModifier)return false
+      if(event.isAutoRepeat)return true
+      var state=bridge.dictation.state
+      if(state==="idle"){dictationPressedAt=Date.now();bridge.startDictation()}else if(state==="starting"||state==="recording"){dictationPressedAt=0;bridge.stopDictation()}
+      return true
+    }
+    if(event.isAutoRepeat||!dictationPressedAt)return false
+    var held=Date.now()-dictationPressedAt>450;dictationPressedAt=0
+    if(held)bridge.stopDictation()
+    return held
+  }
   Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.cursorPosition=root.viewPosition(cursor);editor.forceActiveFocus()})}}
   property int historyIndex: -1
   property string historyScratch: ""
@@ -399,13 +416,13 @@ Rectangle {
         onSelectionEndChanged:if(!root.draft.loading)root.bridge.rememberDraftCursor(root.sourcePosition(selectionStart),root.sourcePosition(selectionEnd))
         onCursorPositionChanged: {if(!root.draft.loading)root.bridge.rememberDraftCursor(root.sourcePosition(selectionStart),root.sourcePosition(selectionEnd));completionDelay.restart();Qt.callLater(editorViewport.revealCursor)}
         onCursorRectangleChanged:Qt.callLater(editorViewport.revealCursor)
-        Keys.onReleased:function(event){if(event.key===Qt.Key_Control)root.editorCtrlHeld=false}
-        Keys.onPressed:function(event){if(event.key===Qt.Key_Control)root.editorCtrlHeld=true;if(event.modifiers===Qt.ShiftModifier&&event.key===Qt.Key_Backtab&&root.bridge.interactionModeEnabled===true&&!root.locked){root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan");event.accepted=true;return}if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(root.sourcePosition(editor.selectionStart),root.sourcePosition(editor.selectionEnd))}}
+        Keys.onReleased:function(event){if(event.key===Qt.Key_Control)root.editorCtrlHeld=false;if(root.dictationKey(event,false))event.accepted=true}
+        Keys.onPressed:function(event){if(event.key===Qt.Key_Control)root.editorCtrlHeld=true;if(root.dictationKey(event,true)){event.accepted=true;return}if(event.modifiers===Qt.ShiftModifier&&event.key===Qt.Key_Backtab&&root.bridge.interactionModeEnabled===true&&!root.locked){root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan");event.accepted=true;return}if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(root.sourcePosition(editor.selectionStart),root.sourcePosition(editor.selectionEnd))}}
         onActiveFocusChanged: { if (!activeFocus) {root.editorCtrlHeld=false;root.bridge.flushDrafts()} else completionDelay.restart() }
         Keys.onUpPressed: function(event) { event.accepted = root.completionKey(event,-1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(-1)) }
         Keys.onDownPressed: function(event) { event.accepted = root.completionKey(event,1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(1)) }
         Keys.onTabPressed: function(event) {event.accepted=root.completionVisible;if(event.accepted)root.chooseCompletion(root.completionIndex)}
-        Keys.onEscapePressed: function(event) {event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
+        Keys.onEscapePressed: function(event) {if(["starting","recording","transcribing"].indexOf(root.bridge.dictation.state)>=0){root.bridge.cancelDictation();event.accepted=true;return}event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
         KeyNavigation.priority: KeyNavigation.BeforeItem
         KeyNavigation.tab: expandEditorButton
         Keys.onReturnPressed: function(event) {root.handleEnter(event)}
@@ -419,6 +436,8 @@ Rectangle {
       text: root.draft.error ? (root.draft.error === "rpc_outcome_unknown" ? T3I18n.tr("No confirmation from T3. Retry the same submission; it will not duplicate.") : T3I18n.error(root.draft.error))
         : root.invalidFiles ? T3I18n.tr("An upload failed. Remove it and attach it again.")
         : root.bridge.screenshot.error ? T3I18n.tr(root.bridge.screenshot.error)
+        : root.bridge.dictation.error ? T3I18n.tr(root.bridge.dictation.error)
+        : root.bridge.dictationDownload.error ? T3I18n.tr(root.bridge.dictationDownload.error)
         : T3I18n.error(root.bridge.catalog.error || root.bridge.messageError)
       color: Color.urgent; font.pixelSize: Style.font.caption; wrapMode: Text.Wrap; textFormat: Text.PlainText
     }
@@ -436,6 +455,146 @@ Rectangle {
         tooltipText: T3I18n.tr(root.bridge.screenshot.busy ? "Cancel screenshot" : "Take a screenshot")
         enabled: !root.locked && !!root.bridge.selectedThread
         onClicked: root.bridge.captureScreenshot()
+      }
+      T3IconButton {
+        id: dictateButton
+        objectName: "t3ComposerDictate"
+        visible: root.bridge.dictationEnabled
+        readonly property string mode: root.bridge.dictationDownload.busy ? "downloading" : root.bridge.dictation.state
+        readonly property bool listening: mode === "starting" || mode === "recording"
+        readonly property var model: root.bridge.dictationModelInfo || ({})
+        name: "mic"; tint: listening ? Color.urgent : root.fg
+        tooltipText: mode === "downloading" ? T3I18n.tr("Downloading the dictation model… {percent}% · click to cancel",{percent:Math.floor(100*root.bridge.dictationDownload.bytes/Math.max(1,root.bridge.dictationDownload.total))})
+          : listening ? T3I18n.tr("Stop and insert the text") + " · Ctrl+Space · " + T3I18n.tr("Esc cancels")
+          : mode === "transcribing" ? T3I18n.tr("Transcribing…")
+          : !model.installed ? T3I18n.tr("Download the dictation model ({size}), then dictate",{size:root.sizeText(model.sizeBytes)})
+          : T3I18n.tr("Dictate") + " · " + T3I18n.tr("Ctrl+Space: hold to talk, tap to start and stop")
+        enabled: mode === "downloading" || listening || (mode === "idle" && (!model.installed || (!root.locked && !!root.bridge.selectedThread)))
+        onClicked: mode === "downloading" ? root.bridge.cancelDictationDownload() : root.bridge.toggleDictation()
+        // The ring follows the microphone level while recording.
+        Rectangle {
+          anchors.centerIn: parent; z: -1
+          width: parent.width * (0.75 + 0.45 * root.bridge.dictation.level); height: width; radius: width / 2
+          color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.18)
+          visible: dictateButton.listening
+          Behavior on width { NumberAnimation { duration: 70 } }
+        }
+        WorkIndicator { anchors.centerIn: parent; implicitWidth: Style.space(26); visible: dictateButton.mode === "transcribing" || dictateButton.mode === "downloading"; active: visible && root.visible; tint: Color.accent }
+        // While it records, a bubble grows out of the microphone with the last two
+        // seconds of sound, newest on the right, measured from the room's noise:
+        // flat while nothing is heard, tall bars for a voice. Two drops rise first,
+        // then the bubble stretches out of a circle and settles with a small wobble.
+        Item {
+          id: dictationWave
+          objectName: "t3ComposerDictationWave"
+          readonly property bool shown: dictateButton.visible && dictateButton.listening
+          readonly property var levels: root.bridge.dictation.levels || []
+          readonly property int count: root.bridge.dictationWaveLength
+          readonly property real floor: Math.min(0.5, levels.reduce(function(low, v) { return Math.min(low, v) }, 1))
+          function bar(v) { return Math.max(0, Math.min(1, (v - floor) / Math.max(0.2, 0.85 - floor))) }
+          function clamp(v) { return Math.max(0, Math.min(1, v)) }
+          // Pauses can arrive as exact zeros (a mic's noise gate), so only a muted
+          // source replaces the wave.
+          readonly property bool muted: root.bridge.dictation.muted === true
+          readonly property string notice: muted ? T3I18n.tr("Microphone muted · click to turn it on") : ""
+          property real startedAt: 0
+          property int seconds: 0
+          onShownChanged: if (shown) { startedAt = Date.now(); seconds = 0 }
+          Timer { interval: 250; repeat: true; running: dictationWave.shown; onTriggered: dictationWave.seconds = Math.floor((Date.now() - dictationWave.startedAt) / 1000) }
+          // 0 → 1 drives the drops, then the bubble; it overshoots a little on the way in.
+          property real grow: shown ? 1 : 0
+          Behavior on grow { NumberAnimation { duration: dictationWave.shown ? 520 : 220; easing.type: dictationWave.shown ? Easing.OutBack : Easing.InCubic; easing.overshoot: 1.6 } }
+          readonly property real morph: Math.max(0, (grow - 0.3) / 0.7)
+          readonly property real tone: 0.35 + 0.65 * root.bridge.dictation.level
+          readonly property color red: Color.urgent
+          readonly property real full: notice ? noticeText.implicitWidth + Style.space(32) : waveContent.implicitWidth + Style.space(28)
+          readonly property real tall: Style.space(34)
+          x: 0; width: full; height: tall + Style.space(18); z: 10
+          anchors.bottom: parent.top; anchors.bottomMargin: -Style.space(2)
+          visible: grow > 0.01
+          // The drops between the microphone and the bubble.
+          Repeater {
+            model: 2
+            Rectangle {
+              readonly property real size: Style.space(index ? 8 : 5)
+              readonly property real pop: dictationWave.clamp(dictationWave.grow * 4 - index * 0.7)
+              x: dictateButton.width / 2 - width / 2 + index * Style.space(2)
+              y: dictationWave.height - Style.space(index ? 13 : 6) - height / 2
+              width: size * pop; height: width; radius: width / 2
+              color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.55)
+              opacity: pop
+            }
+          }
+          // A soft glow that breathes with the voice.
+          Rectangle {
+            anchors.fill: waveBubble; anchors.margins: -Style.space(3)
+            radius: height / 2; opacity: waveBubble.opacity
+            color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.04 + 0.14 * root.bridge.dictation.level)
+            Behavior on color { ColorAnimation { duration: 120 } }
+          }
+          Rectangle {
+            id: waveBubble
+            readonly property real m: dictationWave.morph
+            // Out of a circle over the microphone into the full width, squashing as it stretches.
+            width: dictationWave.tall + (dictationWave.full - dictationWave.tall) * m
+            height: dictationWave.tall * (1 - 0.12 * Math.max(0, m - 1) / 0.15)
+            x: (dictateButton.width / 2 - dictationWave.tall / 2) * Math.max(0, 1 - m)
+            y: (dictationWave.tall - height) / 2
+            radius: height / 2
+            opacity: dictationWave.clamp(m * 2.5)
+            color: Color.popups.background
+            border.width: 1; border.color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.3 + 0.4 * root.bridge.dictation.level)
+            Behavior on border.color { ColorAnimation { duration: 120 } }
+            clip: true
+            Text {
+              id: noticeText
+              objectName: "t3ComposerDictationNotice"
+              anchors.centerIn: parent; visible: !!dictationWave.notice
+              opacity: dictationWave.clamp((waveBubble.m - 0.6) / 0.4)
+              text: dictationWave.notice; color: dictationWave.red; font.pixelSize: Style.font.caption; textFormat: Text.PlainText
+            }
+            MouseArea {
+              anchors.fill: parent; enabled: dictationWave.muted; cursorShape: Qt.PointingHandCursor
+              onClicked: root.bridge.unmuteMicrophone()
+            }
+            Row {
+              id: waveContent
+              visible: !dictationWave.notice
+              anchors.centerIn: parent; spacing: Style.space(10)
+              opacity: dictationWave.clamp((waveBubble.m - 0.6) / 0.4)
+              Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.space(7); height: width; radius: width / 2; color: dictationWave.red
+                SequentialAnimation on opacity {
+                  running: dictationWave.shown; loops: Animation.Infinite
+                  NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
+                  NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                }
+              }
+              Row {
+                anchors.verticalCenter: parent.verticalCenter
+                height: dictationWave.tall - Style.space(14); spacing: Style.space(2)
+                Repeater {
+                  model: dictationWave.count
+                  Rectangle {
+                    readonly property int at: index - (dictationWave.count - dictationWave.levels.length)
+                    readonly property real value: at >= 0 ? dictationWave.bar(dictationWave.levels[at]) : 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Style.space(3); radius: width / 2
+                    height: Math.max(width, parent.height * value)
+                    color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.25 + 0.75 * value)
+                    Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                  }
+                }
+              }
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Math.floor(dictationWave.seconds / 60) + ":" + ("0" + dictationWave.seconds % 60).slice(-2)
+                color: root.dim; font.pixelSize: Style.font.caption; font.features: { "tnum": 1 }; textFormat: Text.PlainText
+              }
+            }
+          }
+        }
       }
       T3ModelPicker {
         id:modelPicker;objectName:"t3ComposerModel"

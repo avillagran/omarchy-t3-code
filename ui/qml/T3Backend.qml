@@ -788,6 +788,100 @@ Singleton {
       if(code===0&&path.charAt(0)==="/")root.attach("file://"+encodeURI(path),job.environment,job.thread)
     }
   }
+  // Preferences > General > Dictation. bin/ot3-dictate records with PipeWire and
+  // transcribes on this computer with whisper.cpp. It runs only while you
+  // dictate (the model loads during the recording) and exits with the text,
+  // which goes in at the draft's cursor. No audio leaves this computer.
+  readonly property string dictationBinary:Quickshell.env("OMARCHY_T3_DICTATE") || Qt.resolvedUrl("../../bin/ot3-dictate").toString().replace(/^file:\/\//,"")
+  property var dictationCatalog:({loaded:false,models:[],default:"small",recorder:false})
+  readonly property string dictationModel:viewState.dictationModel || dictationCatalog.default
+  readonly property var dictationModelInfo:dictationCatalog.models.find(function(m){return m.id===root.dictationModel}) || null
+  readonly property bool dictationAvailable:dictationCatalog.loaded&&dictationCatalog.recorder&&!!dictationModelInfo
+  readonly property bool dictationEnabled:dictationAvailable&&viewState.dictationButton!==false
+  // state: idle, starting, recording, transcribing or cancelling.
+  property var dictation:({state:"idle",key:"",level:0,levels:[],muted:false,error:""})
+  // The last ~2 s of microphone levels (one every 70 ms) drawn as the composer's wave.
+  readonly property int dictationWaveLength:28
+  property var dictationDownload:({busy:false,model:"",bytes:0,total:0,error:""})
+  signal dictationInserted(string key,int cursor)
+  function refreshDictation(){if(!dictationCatalogProcess.running)dictationCatalogProcess.running=true}
+  // Names Whisper would otherwise misspell: the project, branch, thread and the user's own words.
+  function dictationPrompt(){
+    var words=[String(viewState.dictationVocabulary || "").trim(),selectedProject,selectedInfo.branch || "",selectedTitle].filter(function(w){return !!w&&w.length<=200})
+    return words.length?words.join(", ").slice(0,600):""
+  }
+  function toggleDictation(){if(dictation.state==="recording")stopDictation();else if(dictation.state==="idle")startDictation()}
+  function startDictation(){
+    if(!dictationEnabled||dictation.state!=="idle"||dictationDownload.busy)return
+    if(!dictationModelInfo.installed){downloadDictationModel(dictationModel);return}
+    var d=drafts[selectedKey];if(!selectedThread||!d||d.busy||d.attempt||d.loading||d.loadError)return
+    var args=[dictationBinary,"listen","--model",dictationModel,"--language",viewState.dictationLanguage || "auto"],prompt=dictationPrompt()
+    if(prompt)args.push("--prompt",prompt)
+    dictation={state:"starting",key:selectedKey,level:0,levels:[],muted:false,error:""}
+    dictationOutput.result=null;dictationProcess.command=args;dictationProcess.running=true
+  }
+  // A muted source records only zeros; the wave bubble offers this.
+  function unmuteMicrophone(){if(dictation.state==="recording"&&!microphoneUnmuteProcess.running){microphoneUnmuteProcess.running=true;dictation=Object.assign({},dictation,{muted:false})}}
+  Process{id:microphoneUnmuteProcess;command:["wpctl","set-mute","@DEFAULT_AUDIO_SOURCE@","0"]}
+  function stopDictation(){if(dictationProcess.running&&["starting","recording"].indexOf(dictation.state)>=0){dictation=Object.assign({},dictation,{state:"transcribing",level:0});dictationProcess.signal(2)}}
+  function cancelDictation(){if(dictationProcess.running&&dictation.state!=="cancelling"){dictation=Object.assign({},dictation,{state:"cancelling",level:0});dictationProcess.signal(15)}}
+  function insertDictation(key,text){
+    var d=drafts[key]
+    if(!d||d.busy||d.attempt||d.loading||d.loadError){copyText(text);return "The draft was busy, so the dictated text was copied to the clipboard."}
+    var cursor=draftCursors[key] || {start:d.text.length,end:d.text.length}
+    var start=Math.max(0,Math.min(cursor.start,d.text.length)),end=Math.max(start,Math.min(cursor.end,d.text.length))
+    var before=d.text.slice(0,start),after=d.text.slice(end),insert=text
+    if(before&&!/\s$/.test(before))insert=" "+insert
+    if(after&&!/^[\s.,;:!?)\]]/.test(after))insert+=" "
+    patchDraft(key,{text:before+insert+after,error:""},"edit")
+    var all=Object.assign({},draftCursors);all[key]={start:start+insert.length,end:start+insert.length};draftCursors=all
+    dictationInserted(key,start+insert.length);return ""
+  }
+  function dictationLine(line){
+    var event;try{event=JSON.parse(line)}catch(_){return}
+    if(event.type==="recording"&&dictation.state==="starting")dictation=Object.assign({},dictation,{state:"recording",muted:event.muted===true})
+    else if(event.type==="level"&&dictation.state==="recording"){var level=Number(event.value) || 0;dictation=Object.assign({},dictation,{level:level,muted:dictation.muted&&level<=0,levels:(dictation.levels || []).concat([level]).slice(-dictationWaveLength)})}
+    else if(event.type==="text")dictationOutput.result=event
+  }
+  Process {
+    id: dictationProcess
+    stdout: SplitParser{id:dictationOutput;property var result:null;onRead:function(line){root.dictationLine(line)}}
+    stderr: StdioCollector{id:dictationErrors}
+    onExited: function(code) {
+      var job=root.dictation,result=dictationOutput.result,failure=dictationErrors.text.trim().split("\n").pop()
+      var error=job.state==="cancelling"||code===130?"":code!==0?({model_missing:"Download the dictation model in Preferences → General → Dictation.",model_invalid:"The dictation model could not be loaded. Remove it and download it again in Preferences.",recorder_unavailable:"Dictation needs PipeWire's pw-record to use the microphone."}[failure] || "Dictation failed."):""
+      if(!error&&result&&result.text)error=root.insertDictation(job.key,String(result.text))
+      root.dictation={state:"idle",key:"",level:0,levels:[],muted:false,error:error}
+      if(failure==="model_missing")root.refreshDictation()
+    }
+  }
+  Process {
+    id: dictationCatalogProcess
+    command: [root.dictationBinary, "models"]
+    running: true
+    stdout: StdioCollector{onStreamFinished:{try{var c=JSON.parse(text);root.dictationCatalog={loaded:true,models:c.models || [],default:c.default || "small",recorder:c.recorder===true}}catch(_){root.dictationCatalog=({loaded:false,models:[],default:"small",recorder:false})}}}
+  }
+  function downloadDictationModel(id){
+    if(dictationDownload.busy||!dictationCatalog.models.some(function(m){return m.id===id}))return
+    var info=dictationCatalog.models.find(function(m){return m.id===id})
+    dictationDownload={busy:true,model:id,bytes:0,total:info.sizeBytes || 0,error:""}
+    dictationDownloadProcess.command=[dictationBinary,"download",id];dictationDownloadProcess.running=true
+  }
+  function cancelDictationDownload(){if(dictationDownloadProcess.running)dictationDownloadProcess.signal(15)}
+  function removeDictationModel(id){if(dictationDownload.busy||dictation.state!=="idle")return;dictationRemoveProcess.command=[dictationBinary,"remove",id];dictationRemoveProcess.running=true}
+  Process {
+    id: dictationDownloadProcess
+    stdout: SplitParser{onRead:function(line){try{var e=JSON.parse(line);if(e.type==="progress")root.dictationDownload=Object.assign({},root.dictationDownload,{bytes:e.bytes,total:e.total})}catch(_){}}}
+    stderr: StdioCollector{id:dictationDownloadErrors}
+    onExited: function(code) {
+      var failure=dictationDownloadErrors.text.trim().split("\n").pop()
+      root.dictationDownload=Object.assign({},root.dictationDownload,{busy:false,error:code===0||code===130?"":failure==="download_corrupt"?"The download did not match the model's checksum and was removed.":"The model could not be downloaded."})
+      root.refreshDictation()
+    }
+  }
+  Process{id:dictationRemoveProcess;onExited:root.refreshDictation()}
+  // The microphone never stays open behind a hidden panel; an old error goes with its thread.
+  Connections{target:root;function onPanelVisibleChanged(){if(!root.panelVisible)root.cancelDictation()}function onSelectedKeyChanged(){if(root.dictation.error)root.dictation=Object.assign({},root.dictation,{error:""})}}
   function removeAttachment(index) {
     var files = draft.attachments.slice(); var f = files[index]
     if (!f || f.uploading || draft.busy || draft.attempt) return

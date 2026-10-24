@@ -14,7 +14,7 @@ pub fn sanitize(input: &Value) -> Value {
         "sidebarCollapsed",
         "english",
         "composerExpanded","detached",
-        "screenshotButton","screenshotHidePanel",
+        "screenshotButton","screenshotHidePanel","dictationButton",
         "fpsMeter",
         "omabridgeIndicator",
         "threadDetailsOpen",
@@ -43,6 +43,8 @@ pub fn sanitize(input: &Value) -> Value {
         if input[key].as_str().is_some_and(|v|allowed.contains(&v)){out[key]=input[key].clone();}
     }
     if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
+    if matches!(input["dictationModel"].as_str(),Some("base"|"small")){out["dictationModel"]=input["dictationModel"].clone();}
+    if input["dictationLanguage"].as_str().is_some_and(|v|v=="auto"||(matches!(v.len(),2|3)&&v.chars().all(|c|c.is_ascii_lowercase()))){out["dictationLanguage"]=input["dictationLanguage"].clone();}
     for key in ["workingShelfHeight","snoozedShelfHeight","settledShelfHeight"] {
         if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=60.0 && *n<=1200.0){out[key]=json!(value);}
     }
@@ -56,6 +58,7 @@ pub fn sanitize(input: &Value) -> Value {
         ("query", 256),
         ("language", 32),
         ("screenshotCommand", 4096),
+        ("dictationVocabulary", 600),
     ] {
         if let Some(v) = input[key]
             .as_str()
@@ -172,5 +175,12 @@ mod tests {
         assert_eq!(clean["screenshotCommand"], "grim -g \"$(slurp)\" {file}");
         assert!(sanitize(&json!({"screenshotCommand":"grim\nrm -rf ~"})).get("screenshotCommand").is_none());
         assert!(sanitize(&json!({"screenshotCommand":"x".repeat(4097)})).get("screenshotCommand").is_none());
+    }
+    #[test]
+    fn dictation_preferences_reject_arguments_and_unknown_models() {
+        let dictation = sanitize(&json!({"dictationButton":false,"dictationModel":"small","dictationLanguage":"es","dictationVocabulary":"Omarchy, Hyprland"}));
+        assert_eq!((dictation["dictationButton"].clone(), dictation["dictationModel"].clone(), dictation["dictationLanguage"].clone(), dictation["dictationVocabulary"].clone()), (json!(false), json!("small"), json!("es"), json!("Omarchy, Hyprland")));
+        let invalid = sanitize(&json!({"dictationModel":"../model","dictationLanguage":"--prompt","dictationVocabulary":"a\nb"}));
+        assert!(invalid.get("dictationModel").is_none() && invalid.get("dictationLanguage").is_none() && invalid.get("dictationVocabulary").is_none());
     }
 }

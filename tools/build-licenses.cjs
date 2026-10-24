@@ -22,14 +22,20 @@ const helpers=fs.readFileSync(generated,'utf8'),provenance=JSON.parse(fs.readFil
 if(hash(helpers)!==provenance.outputSha256)throw Error('Generated native helpers changed; regenerate from pinned source');
 const sandbox={URL};vm.createContext(sandbox);vm.runInContext(helpers.replace(/^\.pragma library\n/,''),sandbox);const native=sandbox.nativeLicenses;
 const host=cp.execFileSync('rustc',['-vV'],{encoding:'utf8'}).match(/^host: (.+)$/m)[1];
-const cargo=JSON.parse(cp.execFileSync('cargo',['metadata','--locked','--offline','--format-version','1','--filter-platform',host],{cwd:root,encoding:'utf8',maxBuffer:32*1024*1024}));
+function metadata(manifest){return JSON.parse(cp.execFileSync('cargo',['metadata','--locked','--offline','--format-version','1','--filter-platform',host,'--manifest-path',manifest],{cwd:root,encoding:'utf8',maxBuffer:32*1024*1024}));}
+const cargo=metadata(path.join(root,'Cargo.toml'));
 const ids=new Set(cargo.resolve.nodes.map(p=>p.id));
+// bin/ot3-dictate is its own Cargo package (it links whisper.cpp).
+const dictate=metadata(path.join(root,'native/dictate/Cargo.toml'));
+const dictateIds=new Set(dictate.resolve.nodes.map(p=>p.id));
 const entries=[],inputs={};
 function read(file,label){const bytes=fs.readFileSync(file);inputs[label]=hash(bytes);return bytes.toString('utf8');}
 function url(value){try{const u=new URL(value);return ['https:','http:'].includes(u.protocol)?u.href:null;}catch{return null;}}
 function entry(name,version,license,bundles,noticeText,sourceUrl,kind='package'){entries.push({name,version,license,bundles,noticeText,sourceUrl:url(sourceUrl),kind});}
 function notices(dir,prefix,depth=0){if(depth>3)throw Error('Unexpectedly deep license directory: '+prefix);let result=[];for(const item of fs.readdirSync(dir,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){const file=path.join(dir,item.name),label=prefix+'/'+item.name;if(item.isFile()){if(fs.statSync(file).size>2*1024*1024)throw Error('Oversized license '+label);result.push(label+'\n'+read(file,label));}else if(item.isDirectory())result.push(...notices(file,label,depth+1));}return result;}
-for(const p of cargo.packages.filter(p=>ids.has(p.id)&&p.name!=='omarchy-t3-client')){
+const seen=new Set();
+for(const p of [...cargo.packages.filter(p=>ids.has(p.id)&&p.name!=='omarchy-t3-client'),...dictate.packages.filter(p=>dictateIds.has(p.id)&&p.name!=='ot3-dictate')]){
+ if(seen.has(p.name+'@'+p.version))continue;seen.add(p.name+'@'+p.version);
  const dir=path.dirname(p.manifest_path),label='cargo/'+p.name+'@'+p.version;let files=fs.readdirSync(dir,{withFileTypes:true}).filter(f=>/^(licen[cs]e|copying|notice|unlicense)([._-]|$)/i.test(f.name)).map(f=>f.name);
  if(p.license_file&&!files.includes(p.license_file))files.push(p.license_file);
  const texts=[];
@@ -37,6 +43,9 @@ for(const p of cargo.packages.filter(p=>ids.has(p.id)&&p.name!=='omarchy-t3-clie
   const file=path.resolve(dir,name);if(file!==dir&&!file.startsWith(dir+path.sep))throw Error('License path escapes crate: '+label);
   if(fs.statSync(file).isDirectory())texts.push(...notices(file,label+'/'+name));else texts.push(name+'\n'+read(file,label+'/'+name));
  }
+ // whisper-rs-sys ships no license file; it is whisper-rs's Unlicense, and the
+ // whisper.cpp sources it builds carry their own MIT notice (entry below).
+ if(!texts.length&&p.name==='whisper-rs-sys'){const sibling=dictate.packages.find(q=>q.name==='whisper-rs');texts.push('LICENSE (whisper-rs)\n'+read(path.join(path.dirname(sibling.manifest_path),'LICENSE'),label+'/whisper-rs-LICENSE'));}
  if(!texts.length||!p.license)throw Error('Missing exact license notice/SPDX metadata: '+label);
  entry(p.name,p.version,p.license,['desktop'],texts.join('\n\n'),p.repository||p.homepage||null);
 }
@@ -53,6 +62,9 @@ for(let i=0;i<headers.length;i++){
 }
 const t3Notices=[read(path.join(root,'licenses/T3-Code-MIT.txt'),'T3-Code-MIT.txt'),read(path.join(root,'ui/assets/T3-LICENSE'),'T3-assets-LICENSE')];
 entry('T3 Code',pinned,'MIT',['desktop'],[...new Set(t3Notices)].join('\n\n'),'https://github.com/pingdotgg/t3code','custom');
+const whisperSys=dictate.packages.find(p=>p.name==='whisper-rs-sys'),whisperDir=path.join(path.dirname(whisperSys.manifest_path),'whisper.cpp');
+const whisperVersion=fs.readFileSync(path.join(whisperDir,'CMakeLists.txt'),'utf8').match(/project\("whisper\.cpp" VERSION ([0-9.]+)\)/)[1];
+entry('whisper.cpp',whisperVersion,'MIT',['desktop'],read(path.join(whisperDir,'LICENSE'),'whisper.cpp-LICENSE'),'https://github.com/ggml-org/whisper.cpp','custom');
 entry('Lucide icons','0.564.0','ISC',['assets'],read(path.join(root,'ui/assets/lucide-project-icons.LICENSE'),'lucide-project-icons.LICENSE'),'https://lucide.dev','custom');
 entry('Lucide action icons',null,'ISC',['assets'],read(path.join(root,'ui/assets/LUCIDE-LICENSE'),'LUCIDE-LICENSE'),'https://lucide.dev','custom');
 entry('mermaid','11.17.2','MIT',['assets'],read(path.join(root,'ui/assets/mermaid/LICENSE'),'mermaid-LICENSE'),'https://github.com/mermaid-js/mermaid','custom');
@@ -77,6 +89,6 @@ entries.sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:(a.version||'').localeCompa
 const manifest=native.decodeThirdPartyLicenseManifest({schemaVersion:1,entries});
 const output=JSON.stringify(manifest)+'\n';
 writeChanged(path.join(root,'licenses/third-party-licenses.json'),output);
-const sourceManifest={target:host,rustcVersion:rustVersion,cargoLockSha256:hash(fs.readFileSync(path.join(root,'Cargo.lock'))),nativeHelperSha256:hash(helpers),inputs,entries:entries.length,outputSha256:hash(output)};
+const sourceManifest={target:host,rustcVersion:rustVersion,cargoLockSha256:hash(fs.readFileSync(path.join(root,'Cargo.lock'))),dictateCargoLockSha256:hash(fs.readFileSync(path.join(root,'native/dictate/Cargo.lock'))),nativeHelperSha256:hash(helpers),inputs,entries:entries.length,outputSha256:hash(output)};
 writeChanged(path.join(root,'licenses/third-party-licenses.sources.json'),JSON.stringify(sourceManifest,null,2)+'\n');
 console.log('Native-shaped licenses: '+entries.length+' entries, '+Buffer.byteLength(output)+' bytes, target '+host);
