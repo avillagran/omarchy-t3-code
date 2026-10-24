@@ -1730,7 +1730,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.",
     "When you return": "When you return",
     "Before the cache expires (beta)": "Before the cache expires (beta)",
-    "Never": "Never"
+    "Never": "Never",
+    "Compacted by the T3 server": "Compacted by the T3 server"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3463,7 +3464,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Cuándo compactar un hilo inactivo de Claude con más de 200.000 tokens: al volver, justo antes de que caduque su caché de prompt o nunca. Cada proveedor de Claude puede cambiarlo.",
     "When you return": "Al volver",
     "Before the cache expires (beta)": "Antes de que caduque la caché (beta)",
-    "Never": "Nunca"
+    "Never": "Nunca",
+    "Compacted by the T3 server": "La compacta el servidor T3"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5196,7 +5198,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Quando compactar uma conversa inativa do Claude com mais de 200.000 tokens: ao voltar, logo antes de o cache do prompt expirar ou nunca. Cada provedor Claude pode substituir isso.",
     "When you return": "Ao voltar",
     "Before the cache expires (beta)": "Antes de o cache expirar (beta)",
-    "Never": "Nunca"
+    "Never": "Nunca",
+    "Compacted by the T3 server": "Compactado pelo servidor T3"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6929,7 +6932,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Quand compacter un fil Claude inactif de plus de 200 000 jetons : à votre retour, juste avant l'expiration de son cache de prompt, ou jamais. Chaque fournisseur Claude peut le remplacer.",
     "When you return": "À votre retour",
     "Before the cache expires (beta)": "Avant l'expiration du cache (bêta)",
-    "Never": "Jamais"
+    "Never": "Jamais",
+    "Compacted by the T3 server": "Compacté par le serveur T3"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8662,7 +8666,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Wann ein inaktiver Claude-Thread über 200.000 Tokens komprimiert wird: wenn du zurückkehrst, kurz bevor sein Prompt-Cache abläuft, oder nie. Jeder Claude-Anbieter kann das überschreiben.",
     "When you return": "Wenn du zurückkehrst",
     "Before the cache expires (beta)": "Bevor der Cache abläuft (Beta)",
-    "Never": "Nie"
+    "Never": "Nie",
+    "Compacted by the T3 server": "Vom T3-Server komprimiert"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10395,7 +10400,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Quando compattare un thread Claude inattivo oltre 200.000 token: al tuo ritorno, poco prima che scada la cache del prompt o mai. Ogni provider Claude può sovrascriverlo.",
     "When you return": "Al tuo ritorno",
     "Before the cache expires (beta)": "Prima che scada la cache (beta)",
-    "Never": "Mai"
+    "Never": "Mai",
+    "Compacted by the T3 server": "Compattato dal server T3"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12128,7 +12134,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Wanneer een inactieve Claude-thread van meer dan 200.000 tokens wordt gecomprimeerd: als je terugkomt, vlak voordat de promptcache verloopt, of nooit. Elke Claude-provider kan dit overschrijven.",
     "When you return": "Als je terugkomt",
     "Before the cache expires (beta)": "Voordat de cache verloopt (bèta)",
-    "Never": "Nooit"
+    "Never": "Nooit",
+    "Compacted by the T3 server": "Gecomprimeerd door de T3-server"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13861,7 +13868,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Kiedy kompaktować nieaktywny wątek Claude powyżej 200 000 tokenów: po powrocie, tuż przed wygaśnięciem pamięci podręcznej promptu lub nigdy. Każdy dostawca Claude może to zmienić.",
     "When you return": "Po powrocie",
     "Before the cache expires (beta)": "Przed wygaśnięciem pamięci podręcznej (beta)",
-    "Never": "Nigdy"
+    "Never": "Nigdy",
+    "Compacted by the T3 server": "Skracane przez serwer T3"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15594,7 +15602,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Когда сжимать неактивный тред Claude больше 200 000 токенов: после вашего возвращения, перед истечением кэша промпта или никогда. Каждый провайдер Claude может это переопределить.",
     "When you return": "Когда вы вернётесь",
     "Before the cache expires (beta)": "До истечения кэша (бета)",
-    "Never": "Никогда"
+    "Never": "Никогда",
+    "Compacted by the T3 server": "Сжимается сервером T3"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17327,7 +17336,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Коли стискати неактивний тред Claude понад 200 000 токенів: після вашого повернення, перед завершенням кешу промпту або ніколи. Кожен провайдер Claude може це перевизначити.",
     "When you return": "Коли ви повернетеся",
     "Before the cache expires (beta)": "До завершення кешу (бета)",
-    "Never": "Ніколи"
+    "Never": "Ніколи",
+    "Compacted by the T3 server": "Стискається сервером T3"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19060,7 +19070,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "200,000 トークンを超えるアイドル状態の Claude スレッドを圧縮するタイミング：戻ったとき、プロンプトキャッシュの期限直前、または圧縮しない。各 Claude プロバイダーで上書きできます。",
     "When you return": "戻ったとき",
     "Before the cache expires (beta)": "キャッシュの期限前（ベータ）",
-    "Never": "しない"
+    "Never": "しない",
+    "Compacted by the T3 server": "T3 サーバーがコンパクト化"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20793,7 +20804,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "200,000 토큰이 넘는 유휴 Claude 스레드를 압축할 시점: 돌아왔을 때, 프롬프트 캐시가 만료되기 직전, 또는 안 함. 각 Claude 공급자가 재정의할 수 있습니다.",
     "When you return": "돌아왔을 때",
     "Before the cache expires (beta)": "캐시 만료 전(베타)",
-    "Never": "안 함"
+    "Never": "안 함",
+    "Compacted by the T3 server": "T3 서버가 압축"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22526,7 +22538,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "何时压缩超过 200,000 个令牌的空闲 Claude 会话：你返回时、提示缓存过期前，或从不。每个 Claude 提供方都可以覆盖此设置。",
     "When you return": "你返回时",
     "Before the cache expires (beta)": "缓存过期前（测试版）",
-    "Never": "从不"
+    "Never": "从不",
+    "Compacted by the T3 server": "由 T3 服务器压缩"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24259,7 +24272,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "متى تُضغط محادثة Claude خاملة تتجاوز 200,000 رمز: عند عودتك، أو قبل انتهاء ذاكرة الموجّه المؤقتة مباشرة، أو أبدًا. يمكن لكل مزوّد Claude تجاوز ذلك.",
     "When you return": "عند عودتك",
     "Before the cache expires (beta)": "قبل انتهاء الذاكرة المؤقتة (تجريبي)",
-    "Never": "أبدًا"
+    "Never": "أبدًا",
+    "Compacted by the T3 server": "يختصرها خادم T3"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25992,7 +26006,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "200.000 belirteci aşan boştaki bir Claude konusunun ne zaman sıkıştırılacağı: döndüğünüzde, istem önbelleği dolmadan hemen önce veya hiçbir zaman. Her Claude sağlayıcısı bunu geçersiz kılabilir.",
     "When you return": "Döndüğünüzde",
     "Before the cache expires (beta)": "Önbellek dolmadan önce (beta)",
-    "Never": "Hiçbir zaman"
+    "Never": "Hiçbir zaman",
+    "Compacted by the T3 server": "T3 sunucusu sıkıştırıyor"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27725,7 +27740,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "När en inaktiv Claude-tråd över 200 000 token komprimeras: när du kommer tillbaka, strax innan promptcachen går ut, eller aldrig. Varje Claude-leverantör kan åsidosätta detta.",
     "When you return": "När du kommer tillbaka",
     "Before the cache expires (beta)": "Innan cachen går ut (beta)",
-    "Never": "Aldrig"
+    "Never": "Aldrig",
+    "Compacted by the T3 server": "Komprimeras av T3-servern"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29458,7 +29474,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Hvornår en inaktiv Claude-tråd over 200.000 tokens komprimeres: når du vender tilbage, lige før prompt-cachen udløber, eller aldrig. Hver Claude-udbyder kan tilsidesætte det.",
     "When you return": "Når du vender tilbage",
     "Before the cache expires (beta)": "Før cachen udløber (beta)",
-    "Never": "Aldrig"
+    "Never": "Aldrig",
+    "Compacted by the T3 server": "Komprimeres af T3-serveren"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31191,7 +31208,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Når en inaktiv Claude-tråd over 200 000 tokens komprimeres: når du kommer tilbake, rett før prompt-bufferen utløper, eller aldri. Hver Claude-leverandør kan overstyre dette.",
     "When you return": "Når du kommer tilbake",
     "Before the cache expires (beta)": "Før bufferen utløper (beta)",
-    "Never": "Aldri"
+    "Never": "Aldri",
+    "Compacted by the T3 server": "Komprimeres av T3-serveren"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32924,7 +32942,8 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Milloin yli 200 000 tunnisteen joutilas Claude-ketju tiivistetään: kun palaat, juuri ennen kehotevälimuistin vanhenemista tai ei koskaan. Kukin Claude-palveluntarjoaja voi ohittaa tämän.",
     "When you return": "Kun palaat",
     "Before the cache expires (beta)": "Ennen välimuistin vanhenemista (beta)",
-    "Never": "Ei koskaan"
+    "Never": "Ei koskaan",
+    "Compacted by the T3 server": "T3-palvelin tiivistää"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34657,6 +34676,7 @@
     "When to compact an idle Claude thread over 200,000 tokens: after you return, just before its prompt cache expires, or never. Each Claude provider can override this.": "Kdy komprimovat nečinné vlákno Claude nad 200 000 tokenů: po vašem návratu, těsně před vypršením mezipaměti promptu, nebo nikdy. Každý poskytovatel Claude to může přepsat.",
     "When you return": "Po návratu",
     "Before the cache expires (beta)": "Před vypršením mezipaměti (beta)",
-    "Never": "Nikdy"
+    "Never": "Nikdy",
+    "Compacted by the T3 server": "Zhušťuje server T3"
   }
 }

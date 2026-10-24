@@ -67,6 +67,23 @@ fn supported(
                 .any(|c| c["name"] == "compact")
     }))
 }
+/// Whether the T3 server itself compacts this instance's idle threads (0.1.3+).
+fn server_compacts(
+    e: &Environment,
+    instance: &str,
+    cache: &mut HashMap<String, (Instant, Value)>,
+) -> bool {
+    if cache
+        .get(&e.id)
+        .is_none_or(|(at, _)| at.elapsed() > Duration::from_secs(60))
+    {
+        // A server that cannot report its settings does not compact idle threads itself.
+        let raw = write::rpc(e, "server.getSettings", json!({})).unwrap_or(Value::Null);
+        cache.insert(e.id.clone(), (Instant::now(), raw));
+    }
+    omarchy_t3_client::native_settings::resolve_idle_compaction(&cache[&e.id].1, instance)
+        == Some("beforeCacheExpires")
+}
 fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
     let dir = xdg("XDG_STATE_HOME", ".local/state").join("compaction");
     fs::create_dir_all(&dir).map_err(|_| "local_error")?;
@@ -104,6 +121,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
     let client = Client::new()?;
     let mut checked: HashMap<String, String> = HashMap::new();
     let mut catalogs = HashMap::new();
+    let mut server_settings = HashMap::new();
     let mut statuses: HashMap<String, Value> = HashMap::new();
     let mut settings_before = Value::Null;
     for snapshot in rx {
@@ -206,6 +224,11 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
                     && !supported(&e, text(&plan, "provider"), &mut catalogs)?
                 {
                     plan["status"] = json!("unsupported");
+                } else if matches!(text(&plan, "status"), "scheduled" | "due")
+                    && server_compacts(&e, text(&plan, "provider"), &mut server_settings)
+                {
+                    // T3 already sends /compact before this cache expires. Never compact twice.
+                    plan["status"] = json!("server");
                 }
                 if plan["status"] == "due" {
                     // Re-read immediately before claiming. Native state may have advanced while reading the catalog.

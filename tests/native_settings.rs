@@ -63,6 +63,14 @@ fn idle_compaction_reads_and_writes_the_form_each_server_understands(){
  assert!(settings::idle_compaction_patch(&json!({"compactIdleThreads":false}),&validated("off")).is_err());
 }
 #[test]
+fn claude_instances_may_override_the_idle_compaction_mode(){
+ let raw=json!({"idleCompaction":"onReturn","providerInstances":{"claudeAgent":{"config":{"idleCompaction":"beforeCacheExpires"}},"work":{"config":{"idleCompaction":"default"}}}});
+ assert_eq!(settings::resolve_idle_compaction(&raw,"claudeAgent"),Some("beforeCacheExpires"));
+ assert_eq!(settings::resolve_idle_compaction(&raw,"work"),Some("onReturn"));
+ assert_eq!(settings::resolve_idle_compaction(&json!({"compactIdleThreads":true}),"claudeAgent"),Some("beforeCacheExpires"));
+ assert_eq!(settings::resolve_idle_compaction(&json!({}),"claudeAgent"),None);
+}
+#[test]
 fn thread_title_instructions_are_trimmed_bounded_text(){
  let view=settings::snapshot(&json!({"threadTitleInstructions":"Short titles"}));
  let field=view["fields"].as_array().unwrap().iter().find(|f|f["key"]=="threadTitleInstructions").unwrap();
