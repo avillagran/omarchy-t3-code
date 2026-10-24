@@ -13,6 +13,7 @@ import "../js/MarkdownStyle.js" as MarkdownStyle
 import "../js/ProjectModel.js" as Projects
 import "../js/WheelMotion.js" as Motion
 import "../js/NativeKeybindings.js" as Native
+import "../js/ThreadAnnouncement.js" as Announce
 import "../js/KeybindingLabels.js" as KeyLabels
 
 Item {
@@ -821,6 +822,13 @@ Item {
   }
   T3ProjectMenu{id:projectMenu;bridge:root.bridge;scopedSettings:true;onSettingsRequested:function(key){root.openProjectSettings(key)};onGroupingChanged:function(previous,current){if(root.projectFilter===previous||root.projectFilter===projectMenu.project.key)root.projectFilter=current}}
   T3CompactionSettings{id:compactionSettings;bridge:root.bridge}
+  // Screen readers hear when the open thread starts, needs you or finishes (T3 ThreadActivityAnnouncer).
+  // A thread's first snapshot is a silent baseline, so opening or switching never replays history.
+  Item{id:activityAnnouncer;objectName:"t3ActivityAnnouncer";visible:false
+    property var memory:null;property string key:"";property string last:""
+    readonly property var snapshot:{var b=root.bridge,info=b.selectedInfo||{},approval=b.activeApproval,question=b.activeQuestion;if(!root.opened||!b.selectedKey||info.providerSubagent===true)return null;return {key:b.selectedKey,status:approval?"approval":question?"input":info.working===true?"working":"idle",requestId:approval?String(approval.requestId||""):question?String(question.requestId||""):null,runId:info.latestRunId||null,runStatus:info.status&&info.status!=="unknown"?info.status:null}}
+    onSnapshotChanged:{var s=snapshot;if(!s){memory=null;key="";return}var next=Announce.nextThreadAnnouncement(key===s.key?memory:null,s);key=s.key;memory=next.memory;if(next.announcement){last=next.announcement;Accessible.announce(T3I18n.tr(next.announcement))}}
+  }
   FloatingWindow {
     id:desktop
     title:"Omarchy T3 Code"

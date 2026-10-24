@@ -1844,7 +1844,9 @@
     "Worktree path": "Worktree path",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.",
-    "The Android device list may be incomplete. Check the device host and try again.": "The Android device list may be incomplete. Check the device host and try again."
+    "The Android device list may be incomplete. Check the device host and try again.": "The Android device list may be incomplete. Check the device host and try again.",
+    "Needs approval": "Needs approval",
+    "Needs your input": "Needs your input"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3691,7 +3693,9 @@
     "Worktree path": "Ruta del worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Permite abrir simuladores y emuladores en este entorno, tanto locales como en un host remoto.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Permite que las sesiones nuevas de agentes inicien y controlen dispositivos locales y remotos, con configuración automática de las herramientas necesarias.",
-    "The Android device list may be incomplete. Check the device host and try again.": "La lista de dispositivos Android puede estar incompleta. Revisa el host de dispositivos e inténtalo de nuevo."
+    "The Android device list may be incomplete. Check the device host and try again.": "La lista de dispositivos Android puede estar incompleta. Revisa el host de dispositivos e inténtalo de nuevo.",
+    "Needs approval": "Necesita aprobación",
+    "Needs your input": "Necesita tu respuesta"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5538,7 +5542,9 @@
     "Worktree path": "Caminho do worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Permite abrir simuladores e emuladores neste ambiente, locais ou em um host remoto.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Permite que novas sessões de agentes iniciem e controlem dispositivos locais e remotos, com configuração automática das ferramentas.",
-    "The Android device list may be incomplete. Check the device host and try again.": "A lista de dispositivos Android pode estar incompleta. Verifique o host e tente novamente."
+    "The Android device list may be incomplete. Check the device host and try again.": "A lista de dispositivos Android pode estar incompleta. Verifique o host e tente novamente.",
+    "Needs approval": "Precisa de aprovação",
+    "Needs your input": "Precisa da sua resposta"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7385,7 +7391,9 @@
     "Worktree path": "Chemin du worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Autorise cet environnement à ouvrir des simulateurs et émulateurs locaux ou sur un hôte distant.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Autorise les nouvelles sessions d’agent à démarrer et contrôler les appareils locaux et distants, avec les outils configurés automatiquement.",
-    "The Android device list may be incomplete. Check the device host and try again.": "La liste des appareils Android peut être incomplète. Vérifiez l’hôte et réessayez."
+    "The Android device list may be incomplete. Check the device host and try again.": "La liste des appareils Android peut être incomplète. Vérifiez l’hôte et réessayez.",
+    "Needs approval": "Approbation requise",
+    "Needs your input": "Votre réponse est requise"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9232,7 +9240,9 @@
     "Worktree path": "Worktree-Pfad",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Erlaubt dieser Umgebung, Simulatoren und Emulatoren lokal oder auf einem entfernten Host zu öffnen.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Erlaubt neuen Agentensitzungen, lokale und entfernte Geräte mit automatisch eingerichteten Werkzeugen zu starten und zu steuern.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Die Android-Geräteliste ist möglicherweise unvollständig. Prüfe den Gerätehost und versuche es erneut."
+    "The Android device list may be incomplete. Check the device host and try again.": "Die Android-Geräteliste ist möglicherweise unvollständig. Prüfe den Gerätehost und versuche es erneut.",
+    "Needs approval": "Freigabe erforderlich",
+    "Needs your input": "Deine Eingabe wird benötigt"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11079,7 +11089,9 @@
     "Worktree path": "Percorso del worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Consenti a questo ambiente di aprire simulatori ed emulatori locali o su un host remoto.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Consenti alle nuove sessioni agente di avviare e controllare dispositivi locali e remoti, configurando automaticamente gli strumenti.",
-    "The Android device list may be incomplete. Check the device host and try again.": "L’elenco dei dispositivi Android potrebbe essere incompleto. Controlla l’host e riprova."
+    "The Android device list may be incomplete. Check the device host and try again.": "L’elenco dei dispositivi Android potrebbe essere incompleto. Controlla l’host e riprova.",
+    "Needs approval": "Richiede approvazione",
+    "Needs your input": "Richiede il tuo intervento"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12926,7 +12938,9 @@
     "Worktree path": "Worktree-pad",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Laat deze omgeving simulatoren en emulators lokaal of op een externe host openen.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Laat nieuwe agentsessies lokale en externe apparaten starten en bedienen, met automatisch ingestelde hulpmiddelen.",
-    "The Android device list may be incomplete. Check the device host and try again.": "De Android-apparatenlijst is mogelijk onvolledig. Controleer de host en probeer opnieuw."
+    "The Android device list may be incomplete. Check the device host and try again.": "De Android-apparatenlijst is mogelijk onvolledig. Controleer de host en probeer opnieuw.",
+    "Needs approval": "Goedkeuring nodig",
+    "Needs your input": "Jouw invoer is nodig"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14773,7 +14787,9 @@
     "Worktree path": "Ścieżka worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Zezwól środowisku otwierać symulatory i emulatory lokalnie lub na zdalnym hoście.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Zezwól nowym sesjom agenta uruchamiać i sterować urządzeniami lokalnymi i zdalnymi, z automatyczną konfiguracją narzędzi.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Lista urządzeń Android może być niepełna. Sprawdź hosta i spróbuj ponownie."
+    "The Android device list may be incomplete. Check the device host and try again.": "Lista urządzeń Android może być niepełna. Sprawdź hosta i spróbuj ponownie.",
+    "Needs approval": "Wymaga zatwierdzenia",
+    "Needs your input": "Wymaga Twojej odpowiedzi"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16620,7 +16636,9 @@
     "Worktree path": "Путь worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Разрешить среде открывать симуляторы и эмуляторы локально или на удалённом хосте.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Разрешить новым сеансам агента запускать локальные и удалённые устройства и управлять ими с автоматической настройкой инструментов.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Список устройств Android может быть неполным. Проверьте хост и повторите попытку."
+    "The Android device list may be incomplete. Check the device host and try again.": "Список устройств Android может быть неполным. Проверьте хост и повторите попытку.",
+    "Needs approval": "Требуется разрешение",
+    "Needs your input": "Нужен ваш ответ"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18467,7 +18485,9 @@
     "Worktree path": "Шлях worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Дозволити середовищу відкривати симулятори й емулятори локально або на віддаленому хості.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Дозволити новим сеансам агента запускати локальні й віддалені пристрої та керувати ними з автоматичним налаштуванням інструментів.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Список пристроїв Android може бути неповним. Перевірте хост і спробуйте ще раз."
+    "The Android device list may be incomplete. Check the device host and try again.": "Список пристроїв Android може бути неповним. Перевірте хост і спробуйте ще раз.",
+    "Needs approval": "Потрібен дозвіл",
+    "Needs your input": "Потрібна ваша відповідь"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20314,7 +20334,9 @@
     "Worktree path": "Worktree のパス",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "この環境でローカルまたはリモートホストのシミュレーターとエミュレーターを開けるようにします。",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "新しいエージェントセッションで、必要なツールを自動設定してローカルおよびリモートのデバイスを起動・操作できます。",
-    "The Android device list may be incomplete. Check the device host and try again.": "Android デバイス一覧が不完全な可能性があります。デバイスホストを確認して再試行してください。"
+    "The Android device list may be incomplete. Check the device host and try again.": "Android デバイス一覧が不完全な可能性があります。デバイスホストを確認して再試行してください。",
+    "Needs approval": "承認が必要です",
+    "Needs your input": "入力が必要です"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22161,7 +22183,9 @@
     "Worktree path": "Worktree 경로",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "이 환경에서 로컬 또는 원격 호스트의 시뮬레이터와 에뮬레이터를 열 수 있습니다.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "새 에이전트 세션에서 필요한 도구를 자동으로 설정하여 로컬 및 원격 기기를 시작하고 제어할 수 있습니다.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Android 기기 목록이 불완전할 수 있습니다. 기기 호스트를 확인하고 다시 시도하세요."
+    "The Android device list may be incomplete. Check the device host and try again.": "Android 기기 목록이 불완전할 수 있습니다. 기기 호스트를 확인하고 다시 시도하세요.",
+    "Needs approval": "승인 필요",
+    "Needs your input": "입력이 필요합니다"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24008,7 +24032,9 @@
     "Worktree path": "工作树路径",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "允许此环境打开本地或远程主机上的模拟器。",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "允许新的代理会话启动和控制本地及远程设备，并自动配置所需工具。",
-    "The Android device list may be incomplete. Check the device host and try again.": "Android 设备列表可能不完整。请检查设备主机并重试。"
+    "The Android device list may be incomplete. Check the device host and try again.": "Android 设备列表可能不完整。请检查设备主机并重试。",
+    "Needs approval": "需要批准",
+    "Needs your input": "需要你的输入"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25855,7 +25881,9 @@
     "Worktree path": "مسار worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "السماح لهذه البيئة بفتح المحاكيات محليًا أو على مضيف بعيد.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "السماح لجلسات الوكيل الجديدة بتشغيل الأجهزة المحلية والبعيدة والتحكم بها مع إعداد الأدوات تلقائيًا.",
-    "The Android device list may be incomplete. Check the device host and try again.": "قد تكون قائمة أجهزة Android غير مكتملة. تحقق من المضيف وحاول مجددًا."
+    "The Android device list may be incomplete. Check the device host and try again.": "قد تكون قائمة أجهزة Android غير مكتملة. تحقق من المضيف وحاول مجددًا.",
+    "Needs approval": "يحتاج إلى موافقة",
+    "Needs your input": "يحتاج إلى ردك"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27702,7 +27730,9 @@
     "Worktree path": "Worktree yolu",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Bu ortamın yerel veya uzak bir ana makinede simülatör ve emülatör açmasına izin ver.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Yeni ajan oturumlarının gerekli araçları otomatik kurarak yerel ve uzak cihazları başlatmasına ve kontrol etmesine izin ver.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Android cihaz listesi eksik olabilir. Cihaz ana makinesini kontrol edip yeniden dene."
+    "The Android device list may be incomplete. Check the device host and try again.": "Android cihaz listesi eksik olabilir. Cihaz ana makinesini kontrol edip yeniden dene.",
+    "Needs approval": "Onay gerekiyor",
+    "Needs your input": "Yanıtınız gerekiyor"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29549,7 +29579,9 @@
     "Worktree path": "Worktree-sökväg",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Låt denna miljö öppna simulatorer och emulatorer lokalt eller på en fjärrvärd.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Låt nya agentsessioner starta och styra lokala och fjärranslutna enheter med automatiskt konfigurerade verktyg.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Android-enhetslistan kan vara ofullständig. Kontrollera enhetsvärden och försök igen."
+    "The Android device list may be incomplete. Check the device host and try again.": "Android-enhetslistan kan vara ofullständig. Kontrollera enhetsvärden och försök igen.",
+    "Needs approval": "Behöver godkännande",
+    "Needs your input": "Behöver ditt svar"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31396,7 +31428,9 @@
     "Worktree path": "Worktree-sti",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Lad dette miljø åbne simulatorer og emulatorer lokalt eller på en fjernvært.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Lad nye agentsessioner starte og styre lokale og eksterne enheder med automatisk opsatte værktøjer.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Listen over Android-enheder kan være ufuldstændig. Kontrollér værten, og prøv igen."
+    "The Android device list may be incomplete. Check the device host and try again.": "Listen over Android-enheder kan være ufuldstændig. Kontrollér værten, og prøv igen.",
+    "Needs approval": "Kræver godkendelse",
+    "Needs your input": "Kræver dit svar"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33243,7 +33277,9 @@
     "Worktree path": "Worktree-sti",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "La dette miljøet åpne simulatorer og emulatorer lokalt eller på en ekstern vert.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "La nye agentøkter starte og styre lokale og eksterne enheter med automatisk oppsatte verktøy.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Listen over Android-enheter kan være ufullstendig. Kontroller verten og prøv igjen."
+    "The Android device list may be incomplete. Check the device host and try again.": "Listen over Android-enheter kan være ufullstendig. Kontroller verten og prøv igjen.",
+    "Needs approval": "Trenger godkjenning",
+    "Needs your input": "Trenger svaret ditt"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35090,7 +35126,9 @@
     "Worktree path": "Worktreen polku",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Salli ympäristön avata simulaattoreita ja emulaattoreita paikallisesti tai etäpalvelimella.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Salli uusien agentti-istuntojen käynnistää ja ohjata paikallisia ja etälaitteita automaattisesti määritetyillä työkaluilla.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Android-laiteluettelo voi olla puutteellinen. Tarkista laitepalvelin ja yritä uudelleen."
+    "The Android device list may be incomplete. Check the device host and try again.": "Android-laiteluettelo voi olla puutteellinen. Tarkista laitepalvelin ja yritä uudelleen.",
+    "Needs approval": "Vaatii hyväksynnän",
+    "Needs your input": "Vaatii vastauksesi"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36937,6 +36975,8 @@
     "Worktree path": "Cesta worktree",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Povolit prostředí otevírat simulátory a emulátory místně nebo na vzdáleném hostiteli.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Povolit novým relacím agenta spouštět a ovládat místní i vzdálená zařízení s automatickým nastavením nástrojů.",
-    "The Android device list may be incomplete. Check the device host and try again.": "Seznam zařízení Android může být neúplný. Zkontrolujte hostitele a zkuste to znovu."
+    "The Android device list may be incomplete. Check the device host and try again.": "Seznam zařízení Android může být neúplný. Zkontrolujte hostitele a zkuste to znovu.",
+    "Needs approval": "Vyžaduje schválení",
+    "Needs your input": "Vyžaduje vaši odpověď"
   }
 }
