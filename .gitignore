@@ -27,3 +27,7 @@ __pycache__/
 
 # Daily T3 Code drift report (tools/upstream-watch); regenerated locally.
 /upstream/DRIFT.md
+
+# Local dictation helper build output.
+/bin/ot3-dictate
+/native/dictate/target/

@@ -35,5 +35,5 @@ t3-protocol = { path = "vendor/t3-protocol" }
 
 [workspace]
 members = []
-exclude = ["vendor/t3-protocol"]
+exclude = ["vendor/t3-protocol", "native/dictate"]
 resolver = "2"
