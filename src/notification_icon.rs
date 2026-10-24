@@ -2,7 +2,7 @@
 use crate::*;
 use image::{DynamicImage, Rgba, RgbaImage};
 use std::{
-    io::{Cursor, Read, Write},
+    io::{Cursor, Write},
     os::unix::fs::{OpenOptionsExt, PermissionsExt},
     process::{Command, Stdio},
     time::{Duration, SystemTime},
@@ -107,40 +107,12 @@ fn favicon(project: &Value, environment: &str) -> Option<DynamicImage> {
         .ok()?
         .into_iter()
         .find(|e| e.id == environment)?;
-    let connection = e.connection(false).ok()?;
-    let grant = connection
-        .rpc(
-            "assets.createUrl",
-            json!({"resource":{"_tag":"project-favicon","cwd":cwd,"path":project["faviconPath"]}}),
-        )
-        .ok()?;
-    let base = crate::Url::parse(connection.base_url()).ok()?;
-    let url = base.join(text(&grant, "relativeUrl")).ok()?;
-    if url.origin() != base.origin()
-        || !url.path().starts_with("/api/assets/")
-        || url.path().ends_with("/project-favicon-missing")
-    {
-        return None;
-    }
-    let response = reqwest::blocking::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .timeout(Duration::from_secs(3))
-        .build()
+    let asset = e
+        .connection(false)
         .ok()?
-        .get(url)
-        .send()
-        .ok()?;
-    if !response.status().is_success() {
-        return None;
-    }
-    let mut bytes = Vec::new();
-    response
-        .take(2 * 1024 * 1024 + 1)
-        .read_to_end(&mut bytes)
-        .ok()?;
-    if bytes.len() > 2 * 1024 * 1024 {
-        return None;
-    }
+        .project_favicon(cwd, project["faviconPath"].as_str())
+        .ok()??;
+    let bytes = asset.bytes;
     decode(&bytes).or_else(|| svg(&bytes))
 }
 fn line(image: &mut RgbaImage, a: (i32, i32), b: (i32, i32)) {

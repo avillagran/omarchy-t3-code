@@ -170,18 +170,20 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         let (base, code) =
             protocol::connection_catalog::pairing_target(text(i, "url"), text(i, "pairingCode"))?;
         validate_base(&base)?;
-        let http = Client::shared()?.http;
-        let descriptor: Value = http
-            .get(format!(
-                "{}/.well-known/t3/environment",
-                base.trim_end_matches('/')
-            ))
-            .send()
-            .map_err(|_| "unreachable")?
-            .error_for_status()
-            .map_err(|_| "unreachable")?
-            .json()
-            .map_err(|_| "malformed")?;
+        let options = crate::read_options();
+        // The descriptor names the environment before the pairing code leaves this device.
+        let (descriptor, token) = if code.is_empty() {
+            (protocol::fetch_descriptor_with(&base, &options).map_err(descriptor_error)?, None)
+        } else {
+            let client = protocol::PairingClient::default()
+                .with_label("ot3")
+                .with_device_type("desktop")
+                .with_os("linux");
+            let expected = Some(expected).filter(|e| !e.is_empty());
+            let paired = protocol::pair_bearer(&base, &code, expected, &client, &options)
+                .map_err(descriptor_error)?;
+            (paired.descriptor.clone(), Some(paired.access_token.to_string()))
+        };
         let env = text(&descriptor, "environmentId");
         uuid::Uuid::parse_str(env).map_err(|_| "invalid_t3_environment_id")?;
         if !expected.is_empty() && expected != env {
@@ -198,46 +200,16 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         } else {
             text(i, "connectionId").to_string()
         };
-        let token = if code.is_empty() {
-            c["credentials"]
+        let token = match token {
+            Some(token) => token,
+            None => c["credentials"]
                 .as_array()
                 .into_iter()
                 .flatten()
                 .find(|v| v["connectionId"] == id)
                 .and_then(|v| v["credential"]["token"].as_str())
                 .ok_or("pairing_code_required")?
-                .to_string()
-        } else {
-            let access: Value = http
-                .post(format!("{}/oauth/token", base.trim_end_matches('/')))
-                .form(&[
-                    (
-                        "grant_type",
-                        "urn:ietf:params:oauth:grant-type:token-exchange",
-                    ),
-                    ("subject_token", code.as_str()),
-                    (
-                        "subject_token_type",
-                        "urn:t3:params:oauth:token-type:environment-bootstrap",
-                    ),
-                    (
-                        "requested_token_type",
-                        "urn:ietf:params:oauth:token-type:access_token",
-                    ),
-                    ("client_label", "ot3"),
-                    ("client_device_type", "desktop"),
-                    ("client_os", "linux"),
-                ])
-                .send()
-                .map_err(|_| "unreachable")?
-                .error_for_status()
-                .map_err(|_| "pairing_rejected")?
-                .json()
-                .map_err(|_| "malformed")?;
-            if access["token_type"] != "Bearer" {
-                return Err("unsupported_pairing_token".into());
-            }
-            text(&access, "access_token").to_string()
+                .to_string(),
         };
         // Not an Environment yet: the pairing is checked with the token just exchanged.
         let conn = crate::t3_connection(&base, protocol::Credential::bearer(&token)?)?;
@@ -347,6 +319,16 @@ pub fn execute(i: &Value) -> Result<Value> {
     persist(&next, revision)?;
     refresh_connections();
     snapshot(&next)
+}
+/// The descriptor's HTTP failures read as ot3 has always shown them in the
+/// connection form: any refusal is `unreachable`, an unreadable body `malformed`.
+fn descriptor_error(error: String) -> String {
+    match error.as_str() {
+        "unauthorized" => "unreachable".into(),
+        "not_json" | "unsupported_encoding" | "too_large" => "malformed".into(),
+        e if e.starts_with("http_") => "unreachable".into(),
+        _ => error,
+    }
 }
 #[cfg(test)]
 mod tests {

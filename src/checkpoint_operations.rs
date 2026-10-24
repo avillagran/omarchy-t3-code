@@ -157,40 +157,19 @@ fn prepare_attachments(e: &Environment, source: &Value, current: &Value) -> Resu
         return Ok(vec![]);
     }
     let c = e.connection(true)?;
-    let base = crate::Url::parse(&e.base_url).map_err(|_| "invalid_endpoint")?;
-    let http = Http::builder()
-        .no_proxy()
-        .redirect(reqwest::redirect::Policy::none())
-        .timeout(Duration::from_secs(30))
-        .build()
-        .map_err(|_| "revert_attachment_unavailable")?;
     let mut restored = vec![];
     for a in attachments {
-        let grant=c.rpc("assets.createUrl",json!({"resource":{"_tag":"attachment","attachmentId":a["id"],"fileName":a["name"],"mimeType":a["mimeType"]}}))?;
-        let relative = text(&grant, "relativeUrl");
-        if !relative.starts_with("/api/assets/")
-            || relative.starts_with("//")
-            || relative.contains(['\\', '#'])
-        {
-            return Err("invalid_asset_url".into());
-        }
-        let url = base.join(relative).map_err(|_| "invalid_asset_url")?;
-        if url.origin() != base.origin() || !url.path().starts_with("/api/assets/") {
-            return Err("invalid_asset_url".into());
-        }
         let expected = a["sizeBytes"].as_u64().ok_or("invalid_attachments")?;
-        let response = http
-            .get(url)
-            .send()
-            .map_err(|_| "revert_attachment_unavailable")?;
-        if !response.status().is_success() {
-            return Err("revert_attachment_unavailable".into());
-        }
-        let mut bytes = vec![];
-        response
-            .take(expected + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|_| "revert_attachment_unavailable")?;
+        let resource = protocol::assets::attachment_resource(text(a, "id"), text(a, "name"), text(a, "mimeType"), false)?;
+        // Exactly the recorded size: a longer body is cut at the limit, a shorter one differs.
+        let bytes = c
+            .asset_bytes(resource, expected)
+            .map_err(|error| match error.as_str() {
+                "asset_too_large" => "revert_attachment_changed".into(),
+                "asset_unreachable" | "asset_unavailable" => "revert_attachment_unavailable".into(),
+                _ => error,
+            })?
+            .bytes;
         if bytes.len() as u64 != expected {
             return Err("revert_attachment_changed".into());
         }
