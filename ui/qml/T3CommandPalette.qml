@@ -13,19 +13,29 @@ Controls.Popup {
  signal searched(string query)
  Timer{id:searchDelay;interval:250;onTriggered:root.searched(root.query)}
  readonly property string query:search.text.trim().toLocaleLowerCase()
- // Every query word must appear in the title or detail; earlier and title matches rank first.
+ // Every query word must appear in the title or detail (T3 CommandPalette.logic). Words
+ // that start a word beat mid-word hits, titles beat details, and among recent threads a
+ // title prefix counts like any word start so recency picks between them.
+ function wordChar(c){return /[0-9]/.test(c)||c.toLowerCase()!==c.toUpperCase()}
+ function wordHit(field,w){var mid=-1;for(var at=field.indexOf(w);at>=0;at=field.indexOf(w,at+1)){if(at===0||!wordChar(field.charAt(at-1)))return {at:at,start:true};if(mid<0)mid=at}return {at:mid,start:false}}
  function score(item){
   if(!query)return 1
-  var title=T3I18n.tr(item.title).toLocaleLowerCase(),english=String(item.title).toLocaleLowerCase(),detail=String(item.detail||"").toLocaleLowerCase(),words=query.split(/\s+/),total=0
-  for(var i=0;i<words.length;i++){var w=words[i],at=title.indexOf(w);if(at<0)at=english.indexOf(w);if(at>=0){total+=at===0?3:2;continue}if(detail.indexOf(w)>=0){total+=1;continue}return 0}
-  return total
+  var title=T3I18n.tr(item.title).toLocaleLowerCase(),english=String(item.title).toLocaleLowerCase(),detail=String(item.detail||"").toLocaleLowerCase(),words=query.split(/\s+/),total=0,starts=true
+  for(var i=0;i<words.length;i++){
+   var w=words[i],hit=wordHit(title,w),other=wordHit(english,w)
+   if(other.at>=0&&(hit.at<0||other.start&&!hit.start))hit=other
+   if(hit.at>=0){total+=hit.at===0&&!item.recent?3:2;starts=starts&&hit.start;continue}
+   hit=wordHit(detail,w);if(hit.at>=0){total+=1;starts=starts&&hit.start;continue}
+   return 0
+  }
+  return (starts?100:0)+total
  }
  readonly property var rows:{
   var out=[]
   var all=groups.concat(liveGroups)
   for(var g=0;g<all.length;g++){
-   var group=all[g],items=(group.items||[]).map(function(item){return {item:item,score:group.live?1:root.score(item)}}).filter(function(x){return x.score>0})
-   if(query)items.sort(function(a,b){return b.score-a.score})
+   var group=all[g],items=(group.items||[]).map(function(item,index){return {item:item,index:index,score:group.live?1:root.score(item)}}).filter(function(x){return x.score>0})
+   if(query)items.sort(function(a,b){return b.score-a.score||a.index-b.index})
    items=items.slice(0,group.limit||(query?12:8))
    if(!items.length)continue
    out.push({header:true,label:group.label})
