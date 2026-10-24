@@ -63,6 +63,7 @@ pub mod failure_context;
 pub mod videos;
 pub mod shell_state;
 pub mod server_capabilities;
+pub mod server_updates;
 pub mod reconnect;
 /// Any attachment's bytes through its signed asset URL (assets.createUrl), at
 /// most `limit` bytes. The grant authorizes the GET itself, as for images,
