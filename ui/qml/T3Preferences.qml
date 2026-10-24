@@ -22,6 +22,7 @@ Rectangle {
  Connections {target:root.bridge
   function onSettingsResultChanged(){var r=root.result;if(r.busy||!root.savingRequest||r.requestId!==root.savingRequest)return;if(!r.error&&!(r.errors || []).length){var next=Object.assign({},root.edits);delete next[root.savingKey];root.edits=next}root.savingKey="";root.savingRequest=""}
  }
+ function serverUpdateReason(code){var reasons={backend_owned_by_gui:"the T3 Code desktop app runs this server and updates it itself.",service_required:"this server does not run as a T3 background service.",service_profile_mismatch:"the background service belongs to another T3 home.",ssh_environment_required:"this server is not connected over SSH.",t3_environment_mismatch:"the host answered with another T3 environment.",t3_update_failed:"t3 update did not finish.",t3_update_timeout:"t3 update took longer than 15 minutes.",t3_remote_start_failed:"the server did not come back after updating.",t3_cli_unavailable:"the t3 command was not found on that host.",ssh_unavailable:"the host could not be reached over SSH.",release_index_unavailable:"the T3 release list could not be read.",t3_update_running:"an update is already running.",t3_update_not_available:"no newer release is known yet."};return reasons[code]?T3I18n.tr(reasons[code]):T3I18n.error(code)}
  function clearOverride(key){if(writable)bridge.requestSettings(environment,key,null,scope,true)}
  function stage(key,value){var next=Object.assign({},edits);next[key]=value;edits=next}
  property string environment:bridge.selectedEnvironment || "local"
@@ -169,13 +170,36 @@ Rectangle {
        }}
       }
       // The T3 Code revision ot3 is validated with, and each connected server's version.
-      T3PreferenceSection{objectName:"preferencesT3Compatibility";visible:root.page==="general"&&(!root.query.trim()||root.matches("T3 Code compatibility"));Layout.fillWidth:true;title:"T3 Code compatibility";icon:"server"
+      T3PreferenceSection{objectName:"preferencesT3Compatibility";visible:root.page==="general"&&(!root.query.trim()||root.matches("T3 Code compatibility")||root.matches("T3 server updates"));Layout.fillWidth:true;title:"T3 Code compatibility";icon:"server"
        body:Component{Column{width:parent.width;spacing:Style.space(6)
         Text{width:parent.width;text:T3I18n.tr("ot3 is validated with T3 Code {version} ({date}).",{version:(root.bridge.validatedT3 || {}).tag || "—",date:(root.bridge.validatedT3 || {}).date || "—"});color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+        // T3 server updates: the native `t3 update`, run by ot3 when the server is idle.
+        T3PreferenceField{width:parent.width;controlName:"preferenceT3ServerUpdates";writable:!!root.bridge.setServerUpdateMode
+         field:({key:"t3ServerUpdates",label:"T3 server updates",description:"Keep each connected T3 server on the newest release of its channel. Automatic updates wait until no agent has worked on that server for ten minutes, because the update restarts it.",kind:"choice",value:root.bridge.serverUpdateMode || "auto",choices:[{id:"auto",name:"Automatically when idle"},{id:"notify",name:"Only show available updates"},{id:"off",name:"Off"}]})
+         onChanged:function(value){root.bridge.setServerUpdateMode(value)}}
         Repeater{model:(root.bridge.state.environments || []).filter(function(e){return e.state==="ready"&&!!root.bridge.serverVersion(e.id)})
-         Text{required property var modelData;readonly property bool newer:root.bridge.t3VersionNewer(root.bridge.serverVersion(modelData.id));objectName:"t3CompatibilityRow_"+modelData.id;width:parent.width
-          text:(modelData.name || modelData.id)+": T3 "+root.bridge.serverVersion(modelData.id)+(newer?" · "+T3I18n.tr("newer: features added since then may be missing or behave differently."):" · "+T3I18n.tr("validated"))
-          color:newer?T3Palette.waiting:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+         Column{required property var modelData;width:parent.width;spacing:Style.space(2)
+          readonly property bool newer:root.bridge.t3VersionNewer(root.bridge.serverVersion(modelData.id))
+          readonly property var update:root.bridge.serverUpdate?root.bridge.serverUpdate(modelData.id):null
+          readonly property string failure:(root.bridge.serverUpdateErrors || {})[modelData.id] || (update&&update.state==="failed"?update.error || "":"")
+          Text{objectName:"t3CompatibilityRow_"+modelData.id;width:parent.width
+           text:(modelData.name || modelData.id)+": T3 "+root.bridge.serverVersion(modelData.id)+(parent.newer?" · "+T3I18n.tr("newer: features added since then may be missing or behave differently."):" · "+T3I18n.tr("validated"))
+           color:parent.newer?T3Palette.waiting:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+          RowLayout{width:parent.width;spacing:Style.space(8);visible:!!parent.update&&(!!parent.update.latest||parent.update.state==="running"||!!parent.failure)
+           Text{objectName:"t3ServerUpdateStatus_"+modelData.id;Layout.fillWidth:true;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText
+            readonly property var update:parent.parent.update || ({})
+            readonly property string failure:parent.parent.failure
+            text:update.state==="running"?T3I18n.tr("Updating to T3 {version}… The server restarts when it finishes.",{version:update.latest || ""})
+             :failure?T3I18n.tr("The update failed: {reason}",{reason:root.serverUpdateReason(failure)})
+             :!update.canUpdate?T3I18n.tr("T3 {version} is available. ot3 cannot update it: {reason}",{version:update.latest,reason:root.serverUpdateReason(update.reason)})
+             :root.bridge.serverUpdateMode==="auto"?T3I18n.tr("T3 {version} is available. It installs once the server has been idle for ten minutes.",{version:update.latest})
+             :T3I18n.tr("T3 {version} is available.",{version:update.latest})
+            color:failure?Color.urgent:update.state==="running"?T3Palette.working:root.fg}
+           T3PickerButton{objectName:"t3ServerUpdateNow_"+modelData.id;primary:true;implicitHeight:Style.space(26);text:T3I18n.tr("Update now")
+            readonly property var update:parent.parent.update || ({})
+            visible:!!update.latest&&!!update.canUpdate&&update.state!=="running";onClicked:root.bridge.updateServer(modelData.id)}
+          }
+         }
         }
        }}
       }
