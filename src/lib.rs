@@ -73,7 +73,7 @@ pub fn attachment_bytes(e:&Environment,id:&str,name:&str,mime:&str,limit:u64)->R
  if id.is_empty()||id.len()>256||name.len()>512||mime.len()>128{return Err("invalid_attachment".into())}
  let grant=write::rpc(e,"assets.createUrl",json!({"resource":{"_tag":"attachment","attachmentId":id,"fileName":name,"mimeType":mime,"disposition":"inline"}}))?;
  let relative=grant["relativeUrl"].as_str().ok_or("invalid_asset_url")?;
- let base=reqwest::Url::parse(e.base_url.trim_end_matches('/')).map_err(|_|"invalid_endpoint")?;
+ let base=Url::parse(e.base_url.trim_end_matches('/')).map_err(|_|"invalid_endpoint")?;
  let url=base.join(relative).map_err(|_|"invalid_asset_url")?;
  if url.origin()!=base.origin()||!url.path().starts_with("/api/assets/"){return Err("invalid_asset_url".into())}
  let http=reqwest::blocking::Client::builder().no_proxy().redirect(reqwest::redirect::Policy::none()).timeout(std::time::Duration::from_secs(120)).build().map_err(|_|"attachment_unreachable")?;
@@ -90,6 +90,8 @@ pub use connections::{read_catalog, t3_home, refresh_connections, stale_ot3_sess
 pub use desktop_cloud::{check_native_session,check_native_environment};
 use chrono::{DateTime, Utc};
 use reqwest::blocking::Client as Http;
+/// The URL type every module parses with; modules name it through this re-export only.
+pub use reqwest::Url;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -404,7 +406,7 @@ pub(crate) fn t3_connection(base: &str, credential: protocol::Credential) -> Res
     protocol::Connection::with_http_client(http.clone(), base, None, credential)
 }
 pub fn validate_base(base: &str) -> Result<()> {
-    let u = reqwest::Url::parse(base).map_err(|_| "invalid_endpoint")?;
+    let u = Url::parse(base).map_err(|_| "invalid_endpoint")?;
     if !["http", "https"].contains(&u.scheme())
         || u.host_str().is_none()
         || !u.username().is_empty()
@@ -506,7 +508,7 @@ impl Client {
     }
     pub fn bounded_thread(&self, e: &Environment, id: &str) -> Result<Value> {
         if !valid_id(id) { return Err("invalid_id".into()); }
-        let mut u = reqwest::Url::parse(e.base_url.trim_end_matches('/')).map_err(|_| "invalid_endpoint")?;
+        let mut u = Url::parse(e.base_url.trim_end_matches('/')).map_err(|_| "invalid_endpoint")?;
         u.path_segments_mut().map_err(|_| "invalid_endpoint")?.extend(["api", "orchestration", "threads", id, "bounded"]);
         // Native opt-in removes duplicated local timeline items without dropping history.
         u.query_pairs_mut().append_pair("compactTurnItems", "1");

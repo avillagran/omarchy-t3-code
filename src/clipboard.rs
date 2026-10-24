@@ -15,7 +15,7 @@ fn paths(mime:&str,value:&str)->Result<Vec<String>>{
  let mut files=vec![];
  for line in value.lines().map(str::trim).filter(|s|!s.is_empty()&&!s.starts_with('#')){
   if mime=="x-special/gnome-copied-files" && matches!(line,"copy"|"cut"){continue}
-  let url=reqwest::Url::parse(line).map_err(|_|"invalid_clipboard_file")?;
+  let url=crate::Url::parse(line).map_err(|_|"invalid_clipboard_file")?;
   if url.scheme()!="file"||url.to_file_path().is_err(){return Err("invalid_clipboard_file".into())}files.push(url.to_string());
  }Ok(files)
 }
@@ -75,7 +75,7 @@ pub fn copy(input:&Value)->Result<Value>{
   "text"=>{let text=input["text"].as_str().ok_or("invalid_clipboard_text")?;if text.len()>480000{return Err("clipboard_too_large".into())}("text/plain;charset=utf-8",text.as_bytes().to_vec())},
   "image"=>{
    // Resolve through the same authenticated attachment/cache path as previews.
-   let loaded=images::load(input)?;let url=reqwest::Url::parse(text(&loaded,"url")).map_err(|_|"invalid_image")?;
+   let loaded=images::load(input)?;let url=crate::Url::parse(text(&loaded,"url")).map_err(|_|"invalid_image")?;
    let path=url.to_file_path().map_err(|_|"invalid_image")?;
    use std::os::unix::fs::{OpenOptionsExt,MetadataExt};
    let mut file=std::fs::OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW).open(path).map_err(|_|"invalid_image")?;

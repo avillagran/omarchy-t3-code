@@ -28,7 +28,7 @@ pub fn load(input:&Value)->Result<Value>{
   let mut entries=std::fs::read_dir(&root).map_err(|_|"video_cache_failed")?.flatten().filter_map(|e|e.metadata().ok().filter(|m|m.is_file()).map(|m|(e.path(),m.len(),m.modified().unwrap_or(std::time::UNIX_EPOCH)))).collect::<Vec<_>>();entries.sort_by_key(|e|std::cmp::Reverse(e.2));
   let mut total=0u64;for (i,(path,len,_)) in entries.iter().enumerate(){total+=len;if i>=16||total>512*1024*1024{let _=std::fs::remove_file(path);}}
  }
- Ok(json!({"mimeType":kind,"url":reqwest::Url::from_file_path(file).map_err(|_|"video_cache_failed")?.to_string()}))
+ Ok(json!({"mimeType":kind,"url":crate::Url::from_file_path(file).map_err(|_|"video_cache_failed")?.to_string()}))
 }
 #[cfg(test)]mod tests{use super::*;
  #[test]fn video_types_follow_t3(){assert_eq!(mime("a.mp4","video/mp4"),Some("video/mp4"));assert_eq!(mime("clip.MOV","application/octet-stream"),Some("video/quicktime"));assert_eq!(mime("x.mp4","text/plain"),None);assert_eq!(mime("x.txt",""),None);assert_eq!(mime("x.webm","video/webm; codecs=vp9"),Some("video/webm"));}

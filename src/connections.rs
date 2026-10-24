@@ -91,7 +91,7 @@ fn fresh_token(token:&str)->bool {
 fn local_environment()->Result<Environment> {
     let runtime=read_json(&t3_home().join("userdata/server-runtime.json")).map_err(|_|"t3_not_running")?;
     let origin=text(&runtime,"origin");validate_base(origin)?;
-    let url=reqwest::Url::parse(origin).map_err(|_|"invalid_t3_runtime")?;
+    let url=crate::Url::parse(origin).map_err(|_|"invalid_t3_runtime")?;
     if !matches!(url.host_str(),Some("127.0.0.1"|"localhost"|"[::1]"|"::1")) {return Err("invalid_t3_runtime".into())}
     if runtime["pid"].as_i64().is_none_or(|pid|pid<=0 || unsafe{libc::kill(pid as i32,0)}!=0) {return Err("t3_not_running".into())}
     let token=xdg("XDG_DATA_HOME",".local/share").join("local.write.token");
@@ -199,7 +199,7 @@ fn connect_ssh_via(profile:&Value, env:&mut Environment, bridge:Option<&crate::o
         Some(route)=>{
             let alias=host_key_alias(&ssh_args(&profile["target"])?)?;
             let (child,url)=crate::omabridge_route::connect(route,Duration::from_secs(15))?;forward=Some(child);
-            let port=reqwest::Url::parse(&url).ok().and_then(|u|u.port()).ok_or("omabridge_route_failed")?;
+            let port=crate::Url::parse(&url).ok().and_then(|u|u.port()).ok_or("omabridge_route_failed")?;
             bridged_ssh_args(&profile["target"],&alias,port)?
         }
     };

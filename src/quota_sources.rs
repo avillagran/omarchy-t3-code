@@ -64,7 +64,7 @@ pub fn limits(raw: &Value) -> Option<Value> {
         string(&raw["externalUsage"], "label", 256),
         string(&raw["externalUsage"], "url", 2048),
     ) {
-        if reqwest::Url::parse(url.as_str()?).is_ok_and(|u| {
+        if crate::Url::parse(url.as_str()?).is_ok_and(|u| {
             u.scheme() == "https" && u.username().is_empty() && u.password().is_none()
         }) {
             out["externalUsage"] = json!({"label":label,"url":url});

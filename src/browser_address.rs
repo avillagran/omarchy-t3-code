@@ -72,7 +72,7 @@ fn normalize(s: &str) -> Result<String> {
     } else {
         format!("{}://{s}", if loopback(s) { "http" } else { "https" })
     };
-    let url = reqwest::Url::parse(&candidate).map_err(|_| "invalid_preview_address")?;
+    let url = crate::Url::parse(&candidate).map_err(|_| "invalid_preview_address")?;
     if !matches!(url.scheme(), "http" | "https") {
         return Err("invalid_preview_address".into());
     }
@@ -118,7 +118,7 @@ pub fn valid_search_template(template: &str) -> bool {
         return false;
     }
     let authority = |q: &str| {
-        reqwest::Url::parse(&fill(template, q)).ok().filter(|u| matches!(u.scheme(), "http" | "https")).map(|u| {
+        crate::Url::parse(&fill(template, q)).ok().filter(|u| matches!(u.scheme(), "http" | "https")).map(|u| {
             format!("{}:{}@{}:{:?}", u.username(), u.password().unwrap_or(""), u.host_str().unwrap_or(""), u.port())
         })
     };

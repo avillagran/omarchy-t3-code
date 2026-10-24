@@ -36,7 +36,7 @@ pub fn decode(value: &Value) -> Result<Value> {
             || !["name", "license", "noticeText"].iter().all(|k| e[k].is_string())
             || !e["bundles"].as_array().is_some_and(|a| !a.is_empty() && a.len() <= 64 && a.iter().all(Value::is_string))
             || !e.get("version").is_some_and(|v| v.is_null() || v.is_string())
-            || !e.get("sourceUrl").is_some_and(|v| v.is_null() || v.as_str().is_some_and(|s| reqwest::Url::parse(s).is_ok_and(|u| matches!(u.scheme(), "http" | "https"))))
+            || !e.get("sourceUrl").is_some_and(|v| v.is_null() || v.as_str().is_some_and(|s| crate::Url::parse(s).is_ok_and(|u| matches!(u.scheme(), "http" | "https"))))
             || text(e,"noticeText").len() > 2 * 1024 * 1024
             || ["name", "license", "version", "sourceUrl"].iter().any(|k| text(e,k).len() > 4096)
         {

@@ -132,7 +132,7 @@ struct CookieCheck {
 }
 impl CookieCheck {
     fn expected(cookie: &crate::browser_cookies::ImportedCookie) -> Result<Self> {
-        let url = reqwest::Url::parse(&cookie.url).map_err(|_| "browser_cookie_import_unknown")?;
+        let url = crate::Url::parse(&cookie.url).map_err(|_| "browser_cookie_import_unknown")?;
         let host = cookie
             .domain
             .as_deref()
@@ -457,7 +457,7 @@ impl Pool {
                         }) {
                             continue;
                         }
-                        let Ok(url) = reqwest::Url::from_file_path(path) else {
+                        let Ok(url) = crate::Url::from_file_path(path) else {
                             continue;
                         };
                         receive(

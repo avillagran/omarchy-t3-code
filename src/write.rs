@@ -55,7 +55,7 @@ pub fn history(e: &Environment,input:&Value)->Result<Value>{
 }
 
 pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
-    let url=reqwest::Url::parse(file_url).map_err(|_| "invalid_file")?;
+    let url=crate::Url::parse(file_url).map_err(|_| "invalid_file")?;
     if url.scheme()!="file" {return Err("invalid_file".into())}
     let path=url.to_file_path().map_err(|_| "invalid_file")?;
     let file=OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW|libc::O_NONBLOCK).open(&path).map_err(|_| "invalid_file")?;
@@ -206,7 +206,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
                 if meta["entries"][0]["kind"]!="directory"{return Err("invalid_folder".into())}path
             }else{
                 if e.id!="local"{return Err("local_folder_only".into())}
-                let path=reqwest::Url::parse(text(input,"url")).map_err(|_| "invalid_folder")?.to_file_path().map_err(|_| "invalid_folder")?.canonicalize().map_err(|_| "invalid_folder")?;
+                let path=crate::Url::parse(text(input,"url")).map_err(|_| "invalid_folder")?.to_file_path().map_err(|_| "invalid_folder")?.canonicalize().map_err(|_| "invalid_folder")?;
                 if !path.is_dir(){return Err("invalid_folder".into())}path.to_str().ok_or("invalid_folder")?.to_string()
             };
             let title=path.trim_end_matches('/').rsplit('/').next().filter(|s|!s.is_empty()).unwrap_or("Project");

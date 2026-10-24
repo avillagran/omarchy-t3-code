@@ -17,7 +17,7 @@ fn valid_code(code:&str)->bool{!code.is_empty()&&code.len()<=64&&code.bytes().al
 fn valid_host(host:&str)->bool{
  host.len()<=253&&host.contains('.')&&host.split('.').all(|l|!l.is_empty()&&l.len()<=63&&!l.starts_with('-')&&!l.ends_with('-')&&l.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||b==b'-'))
 }
-fn valid_url(url:&str)->bool{reqwest::Url::parse(url).is_ok_and(|u|u.scheme()=="https"&&u.host_str().is_some()&&u.username().is_empty()&&u.password().is_none()&&u.query().is_none()&&u.fragment().is_none())}
+fn valid_url(url:&str)->bool{crate::Url::parse(url).is_ok_and(|u|u.scheme()=="https"&&u.host_str().is_some()&&u.username().is_empty()&&u.password().is_none()&&u.query().is_none()&&u.fragment().is_none())}
 fn gateway(g:&Value)->Option<Value>{
  let url=text(g,"url");if !valid_url(url){return None}
  Some(json!({"url":url,"running":g["running"]==true,"error":g["error"].as_str().filter(|e|valid_code(e)).unwrap_or_default()}))
