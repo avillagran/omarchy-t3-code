@@ -626,6 +626,7 @@ fn run() -> Result<()> {
         }
         "quotas" => quotas::collect(&client),
         "backend-status" => backend_service::status(),
+        "server-updates" => {let ready:Vec<String>=environments()?.into_iter().filter(|e|e.connection_error.is_none()).map(|e|e.id).collect();let (rows,_)=server_update::check(&ready);json!({"mode":ui_state::load()["t3ServerUpdates"].as_str().unwrap_or("auto"),"environments":rows,"ledger":read_json(&xdg("XDG_STATE_HOME",".local/state").join("server-updates.json")).unwrap_or(Value::Null)})},
         "omabridge-read" => omabridge_route::snapshot()?,
         // Same actions as Preferences, for other front ends; the request is read from stdin.
         "omabridge-manage" if args.len()==1 => {let mut raw=String::new();std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(),64*1024),&mut raw).map_err(|_|"invalid_command")?;let request:Value=serde_json::from_str(&raw).map_err(|_|"invalid_command")?;omabridge_device::execute(&json!({"request":request}))},
