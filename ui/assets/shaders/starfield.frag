@@ -19,6 +19,8 @@ layout(std140, binding = 0) uniform buf {
     vec4 star;
     vec4 accent;
     vec4 base;
+    vec4 meteor;
+    float ink;
 } ubuf;
 
 float hash12(vec2 p) {
@@ -93,8 +95,9 @@ void main() {
         m = meteor(q, 0.0) + meteor(q, 1.0) + meteor(q, 2.0) + meteor(q, 3.0);
     // Optional soft bottom edge: the instance dissolves into the sky below.
     float edge = ubuf.fade > 0.0 ? 1.0 - smoothstep(1.0 - ubuf.fade, 1.0, qt_TexCoord0.y) : 1.0;
-    float light = clamp(s * ubuf.brightness, 0.0, 1.0) * edge;
-    float shoot = clamp(m, 0.0, 1.0) * edge;
+    // ink > 1 on light skies: dark stars need more coverage to read on white.
+    float light = clamp(s * ubuf.brightness * ubuf.ink, 0.0, 1.0) * edge;
+    float shoot = clamp(m * ubuf.ink, 0.0, 1.0) * edge;
 
     // Base sky with a faint accent nebula toward the leading edge.
     vec2 uv = qt_TexCoord0;
@@ -107,7 +110,7 @@ void main() {
     float a = skyA;
     rgb = rgb * (1.0 - light) + starColor * light;
     a = a + light * (1.0 - a);
-    vec3 meteorColor = mix(vec3(1.0), ubuf.accent.rgb, 0.25);
+    vec3 meteorColor = mix(ubuf.meteor.rgb, ubuf.accent.rgb, 0.25);
     rgb = rgb * (1.0 - shoot) + meteorColor * shoot;
     a = a + shoot * (1.0 - a);
     fragColor = vec4(rgb, a) * ubuf.qt_Opacity;

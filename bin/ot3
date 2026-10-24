@@ -34,6 +34,9 @@ prepare() {
 ipc() { quickshell ipc -p "$run" call "$target" "$@" 2>/dev/null; }
 running() { [[ -e $run/shell.qml ]] && ipc ping >/dev/null; }
 unit=omarchy-t3-code
+# ot3's Qt Quick Controls style (ui/style/OmarchyT3): Fusion with Omarchy's
+# unified, themed tooltips. app/shell.qml respects it (RespectSystemStyle).
+style_env=(QT_QUICK_CONTROLS_STYLE=OmarchyT3 "QML_IMPORT_PATH=$run/ui/style${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}")
 # Its own user service when systemd is there: a shell restart, or a stuck bar
 # that launched it, never takes the app down with it.
 launch() {
@@ -46,10 +49,10 @@ launch() {
   if command -v systemd-run >/dev/null && systemctl --user show-environment >/dev/null 2>&1; then
     systemctl --user stop "$unit.service" >/dev/null 2>&1 || true
     systemctl --user reset-failed "$unit.service" >/dev/null 2>&1 || true
-    systemd-run --user --quiet --collect --unit="$unit" --description='Omarchy T3 Code' -- quickshell -n -p "$run" >/dev/null 2>&1 \
-      || setsid -f quickshell -n -d -p "$run" >/dev/null 2>&1 || true
+    systemd-run --user --quiet --collect --unit="$unit" --description='Omarchy T3 Code' "${style_env[@]/#/--setenv=}" -- quickshell -n -p "$run" >/dev/null 2>&1 \
+      || env "${style_env[@]}" setsid -f quickshell -n -d -p "$run" >/dev/null 2>&1 || true
   else
-    setsid -f quickshell -n -d -p "$run" >/dev/null 2>&1 || true
+    env "${style_env[@]}" setsid -f quickshell -n -d -p "$run" >/dev/null 2>&1 || true
   fi
   for _ in $(seq 1 100); do running && return 0; sleep 0.1; done
   printf 'ot3: the app did not start; see quickshell log -p %s\n' "$run" >&2

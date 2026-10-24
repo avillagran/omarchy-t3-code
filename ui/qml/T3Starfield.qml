@@ -52,9 +52,15 @@ ShaderEffect {
   property real fade: 0
   readonly property vector2d size: Qt.vector2d(width, height)
   property vector2d origin: Qt.vector2d(0, 0)
+  // Light themes invert the sky: stars and meteors are drawn in the theme's
+  // dark ink, a little denser, instead of white points lost on a white sky.
+  readonly property color surface: Color.popups.background
+  readonly property bool lightSky: 0.2126 * surface.r + 0.7152 * surface.g + 0.0722 * surface.b > 0.5
   property color star: Color.popups.text
   property color accent: Color.accent
   property color base: "transparent"
+  property color meteor: lightSky ? Color.popups.text : "white"
+  property real ink: lightSky ? 1.7 : 1
   blending: true
 
   property real lastTime: -1

@@ -1,5 +1,6 @@
 //@ pragma OmarchyLoadPatch
 //@ pragma AppId io.github.avillagran.omarchy-t3-code
+//@ pragma RespectSystemStyle
 // Omarchy T3 Code as a desktop app, run by bin/ot3 in its own Quickshell
 // process (never inside the Omarchy shell). The optional bar widget
 // (ui/qml/BarWidget.qml) only shows the status this app publishes and asks
