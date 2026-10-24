@@ -183,9 +183,11 @@ fn level(samples: &[f32]) -> f32 {
     ((db + 60.0) / 60.0).clamp(0.0, 1.0)
 }
 
-/// Cuts leading and trailing silence; None when nothing in the clip rises above
-/// the room's noise, so Whisper never sees a silent clip (it invents captions).
-fn speech(samples: &[f32]) -> Option<&[f32]> {
+/// Cuts leading and trailing silence and shortens every pause inside to 0.4 s;
+/// None when nothing in the clip rises above the room's noise, so Whisper never
+/// sees a silent clip (it invents captions). A long pause, often exact zeros
+/// from a mic's noise gate, makes Whisper drop what was said after it.
+fn speech(samples: &[f32]) -> Option<Vec<f32>> {
     let frame = RATE * 30 / 1000;
     let energies: Vec<f32> = samples.chunks(frame).map(rms).collect();
     if energies.is_empty() {
@@ -204,7 +206,16 @@ fn speech(samples: &[f32]) -> Option<&[f32]> {
     let pad = RATE / 4;
     let start = (first * frame).saturating_sub(pad);
     let end = ((last + 1) * frame + pad).min(samples.len());
-    Some(&samples[start..end])
+    let keep = RATE * 2 / 5 / frame;
+    let mut out = Vec::with_capacity(end - start);
+    let mut quiet = 0;
+    for (i, chunk) in samples[..end].chunks(frame).enumerate().skip(start / frame) {
+        quiet = if energies[i] > threshold { 0 } else { quiet + 1 };
+        if quiet <= keep {
+            out.extend_from_slice(chunk);
+        }
+    }
+    Some(out)
 }
 
 // Captions Whisper is known to invent from noise or silence.
@@ -270,7 +281,7 @@ fn transcribe(ctx: &WhisperContext, samples: &[f32], o: &Options) -> (String, St
         return (String::new(), String::new());
     };
     // whisper.cpp ignores clips under a second.
-    let mut audio = voice.to_vec();
+    let mut audio = voice;
     if audio.len() < RATE + RATE / 10 {
         audio.resize(RATE + RATE / 10, 0.0);
     }
@@ -482,6 +493,16 @@ mod tests {
         assert_eq!(clean("Thank you for watching!"), "");
         assert_eq!(clean("[Música] Abre el   archivo (risas) main.rs"), "Abre el archivo main.rs");
         assert_eq!(clean("Gracias por ver el video que te mandé"), "Gracias por ver el video que te mandé");
+    }
+    #[test]
+    fn pauses_are_shortened_and_no_speech_is_lost() {
+        let tone = |n: usize| (0..n).map(|i| if i % 2 == 0 { 0.3 } else { -0.3 }).collect::<Vec<f32>>();
+        let mut clip = tone(RATE);
+        clip.extend(vec![0.0; RATE * 5]);
+        clip.extend(tone(RATE));
+        let voice = speech(&clip).unwrap();
+        assert!(voice.len() < RATE * 3, "pause kept: {}", voice.len());
+        assert!(voice.iter().filter(|s| s.abs() > 0.1).count() >= RATE * 2 - RATE / 50);
     }
     #[test]
     fn output_is_valid_json() {

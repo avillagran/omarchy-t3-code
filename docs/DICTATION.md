@@ -11,8 +11,9 @@ on-device keyboard dictation (FUTO Voice Input uses whisper.cpp too).
   click again to insert the text. While it records, a bubble grows out of the
   microphone with the last two seconds of microphone level against the room's noise: flat
   means nothing is heard, tall red bars mean it hears a voice. If the system
-  microphone is muted the bubble says so and a click turns it on; a full second
-  of pure silence shows that no sound reaches the microphone.
+  microphone is muted the bubble says so and a click turns it on.
+- Pauses are kept short before transcribing, so everything said after a long
+  silence still comes through.
 - **Ctrl+Space** in the composer: hold to talk (released after ~450 ms, it stops
   and inserts), or tap to start and tap again. **Esc** cancels and inserts nothing.
 - Text goes in at the draft's cursor, with a space added where words would touch.

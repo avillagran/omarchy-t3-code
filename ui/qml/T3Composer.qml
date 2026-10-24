@@ -491,10 +491,10 @@ Rectangle {
           readonly property int count: root.bridge.dictationWaveLength
           readonly property real floor: Math.min(0.5, levels.reduce(function(low, v) { return Math.min(low, v) }, 1))
           function bar(v) { return Math.max(0, Math.min(1, (v - floor) / Math.max(0.2, 0.85 - floor))) }
-          // A second of exact zeros is no microphone at all, not a quiet room.
+          // Pauses can arrive as exact zeros (a mic's noise gate), so only a muted
+          // source replaces the wave.
           readonly property bool muted: root.bridge.dictation.muted === true
-          readonly property bool silent: levels.length >= 14 && levels.slice(-14).every(function(v) { return v <= 0 })
-          readonly property string notice: muted ? T3I18n.tr("Microphone muted · click to turn it on") : silent ? T3I18n.tr("No sound from the microphone") : ""
+          readonly property string notice: muted ? T3I18n.tr("Microphone muted · click to turn it on") : ""
           x: 0; anchors.bottom: parent.top; anchors.bottomMargin: Style.space(8); z: 10
           width: notice ? noticeText.implicitWidth + Style.space(28) : count * Style.space(4) + Style.space(20); height: Style.space(34); radius: height / 2
           color: Color.popups.background
