@@ -202,7 +202,7 @@ pub fn confirm_target(action:&str,id:&str,payload:&Value,saved:&Value)->bool {
 }
 
 pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
-    let client=Client::new()?;
+    let client=Client::shared()?;
     let session=client.get(e,"/api/auth/session",false)?;
     let scopes=session.get("permissions").or_else(||session.get("scopes")).and_then(Value::as_array);
     let readable=session["authenticated"]==true&&scopes.is_some_and(|v|v.iter().any(|s|s=="orchestration:read"));

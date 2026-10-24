@@ -70,7 +70,7 @@ impl Watch {
         std::thread::spawn(move || {
             let result = (|| -> Result<()> {
                 let e = environments()?.into_iter().find(|e| e.id == env).ok_or("unknown_environment")?;
-                let c = integration_devices::connection(&e)?;
+                let c = e.connection(true)?;
                 let mut text = String::new();
                 let mut truncated = false;
                 let mut running = true;

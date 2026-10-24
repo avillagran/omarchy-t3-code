@@ -44,14 +44,9 @@ pub fn advisory(native: &Value) -> Value {
 /// says what happened instead of a bare "outcome unknown".
 pub fn run_update(e: &Environment, driver: &str, instance: &str) -> Result<Value> {
     let payload = json!({"provider":driver,"instanceId":instance});
-    let result = if let Some(error) = &e.connection_error {
-        Err(error.clone())
-    } else if let Some(c) = &e.connection {
-        c.rpc_with_timeout("server.updateProvider", payload, Duration::from_secs(300))
-    } else {
-        protocol::Connection::new(&e.base_url, None, protocol::Credential::bearer(&environment_token(e, true)?)?)?
-            .rpc_with_timeout("server.updateProvider", payload, Duration::from_secs(300))
-    };
+    let result = e
+        .connection(true)
+        .and_then(|c| c.rpc_with_timeout("server.updateProvider", payload, Duration::from_secs(300)));
     match result {
         Err(error) if protocol::error_code(&error) == "rpc_outcome_unknown" => {
             let config = write::rpc(e, "server.getConfig", json!({}))?;

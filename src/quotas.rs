@@ -199,7 +199,7 @@ fn watch(
                     let shared = shared.clone();
                     let refreshing = refreshing.clone();
                     std::thread::spawn(move || {
-                        let result = quota_sources::connection(&e).and_then(|c| {
+                        let result = e.connection(false).and_then(|c| {
                             quota_sources::authorize(&c)?;
                             c.rpc("server.refreshProviders", json!({}))
                         });
@@ -269,7 +269,7 @@ pub fn collect(_client: &Client) -> Value {
             .filter_map(|job| job.join().ok())
             .collect::<Vec<_>>()
     });
-    json!({"environments":views,"localSources":crate::local_quotas::collect(&Client::new().unwrap()),"updatedAt":chrono::Utc::now().timestamp()})
+    json!({"environments":views,"localSources":crate::local_quotas::collect(&Client::shared().unwrap()),"updatedAt":chrono::Utc::now().timestamp()})
 }
 
 #[cfg(test)]

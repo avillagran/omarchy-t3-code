@@ -74,7 +74,7 @@ fn open_checkpoint(e: &Environment, input: &Value, snapshot: &Value) -> Result<V
         .as_array()
         .and_then(|fs| fs.iter().find(|f| f["path"] == path))
         .ok_or("review_file_changed")?;
-    let c = crate::working_review::connection(e)?;
+    let c = e.connection(false)?;
     let fresh = c.rpc(text(snapshot, "tag"), snapshot["payload"].clone())?;
     let scope = &snapshot["scope"];
     if fresh["threadId"] != scope["thread"]
@@ -158,7 +158,7 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
         return Err("review_file_changed".into());
     }
     crate::working_review::authorize(e, "filesystem:read")?;
-    let c = crate::working_review::connection(e)?;
+    let c = e.connection(false)?;
     if crate::working_review::scope(&c, scope)? != *scope {
         return Err("git_scope_changed".into());
     }

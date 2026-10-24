@@ -118,7 +118,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
     if interrupted {
         save_json(&file, &ledger)?;
     }
-    let client = Client::new()?;
+    let client = Client::shared()?;
     let mut checked: HashMap<String, String> = HashMap::new();
     let mut catalogs = HashMap::new();
     let mut server_settings = HashMap::new();

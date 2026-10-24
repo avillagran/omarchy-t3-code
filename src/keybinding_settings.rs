@@ -11,19 +11,6 @@ static VIEWS: OnceLock<Mutex<HashMap<String, Value>>> = OnceLock::new();
 fn views() -> &'static Mutex<HashMap<String, Value>> {
     VIEWS.get_or_init(Default::default)
 }
-fn connection(e: &Environment, write: bool) -> Result<protocol::Connection> {
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    if let Some(c) = &e.connection {
-        return Ok(c.as_ref().clone());
-    }
-    protocol::Connection::new(
-        &e.base_url,
-        None,
-        protocol::Credential::bearer(&crate::environment_token(e, write)?)?,
-    )
-}
 fn permission(c: &protocol::Connection, scope: &str) -> Result<bool> {
     let s = c.request_json("GET", "/api/auth/session", None, false)?;
     Ok(s["authenticated"] == true
@@ -47,7 +34,7 @@ pub fn subscribe_changes(
     cancel: impl Fn() -> bool,
     mut changed: impl FnMut() -> Result<()>,
 ) -> Result<()> {
-    let c = connection(e, false)?;
+    let c = e.connection(false)?;
     authorize(&c, "orchestration:read")?;
     c.subscribe("subscribeServerConfig", json!({}), &cancel, |event| {
         if cancel() { return Ok(()); }
@@ -175,13 +162,13 @@ fn remember(e: &Environment, mut data: Value) -> Result<Value> {
     Ok(data)
 }
 pub fn read(e: &Environment) -> Result<Value> {
-    let c = connection(e, false)?;
+    let c = e.connection(false)?;
     authorize(&c, "orchestration:read")?;
     let mut data = present(&c.rpc("server.getConfig", json!({}))?)?;
-    data["writable"] = json!(connection(e, true)
+    data["writable"] = json!(e.connection(true)
         .and_then(|c| permission(&c, "settings:write"))
         .unwrap_or(false));
-    data["canOpen"] = json!(connection(e, true)
+    data["canOpen"] = json!(e.connection(true)
         .and_then(|c| permission(&c, "orchestration:operate"))
         .unwrap_or(false));
     remember(e, data)
@@ -226,7 +213,7 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
     if expected["origin"] != e.base_url || expected["environment"] != e.id {
         return Err("keybindings_scope_changed".into());
     }
-    let c = connection(e, true)?;
+    let c = e.connection(true)?;
     authorize(&c, "orchestration:read")?;
     authorize(&c, "settings:write")?;
     let fresh = present(&c.rpc("server.getConfig", json!({}))?)?;
@@ -274,7 +261,7 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
     if expected["origin"] != e.base_url || expected["environment"] != e.id {
         return Err("keybindings_scope_changed".into());
     }
-    let c = connection(e, true)?;
+    let c = e.connection(true)?;
     authorize(&c, "orchestration:read")?;
     authorize(&c, "orchestration:operate")?;
     let fresh = present(&c.rpc("server.getConfig", json!({}))?)?;

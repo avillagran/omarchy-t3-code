@@ -1,5 +1,5 @@
 // Standalone integration test until the parent wires the module into lib.rs.
-pub use omarchy_t3_client::{browser_preferences, read_catalog, t3_home, Result, MAX_BYTES};
+pub use omarchy_t3_client::{browser_preferences, read_catalog, t3_home, Result, Url, MAX_BYTES};
 #[path = "../src/connection_preferences.rs"]
 mod preferences;
 use preferences::*;

@@ -127,7 +127,7 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
     // Resolve every selected environment before any write: stale selections never broaden.
     for t in &requested{if !environments.iter().any(|e|e.id==text(t,"environment")){return Err("settings_scope_unavailable".into())}}
     let mut views=vec![];let mut errors=vec![];let mut saved=vec![];
-    let mut configs=HashMap::new();let mut permissions=HashMap::new();let client=Client::new()?;
+    let mut configs=HashMap::new();let mut permissions=HashMap::new();let client=Client::shared()?;
     for target in &requested{
         let e=environments.iter().find(|e|e.id==text(target,"environment")).unwrap();
         let result=(||->Result<Value>{

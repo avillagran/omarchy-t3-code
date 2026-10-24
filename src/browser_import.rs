@@ -201,7 +201,7 @@ pub fn apply_at(
     let mut skipped = read.undecryptable;
     let mut domains = read.undecryptable_hosts;
     for cookie in read.cookies {
-        let host = reqwest::Url::parse(&cookie.url)
+        let host = crate::Url::parse(&cookie.url)
             .ok()
             .and_then(|u| u.host_str().map(str::to_owned))
             .unwrap_or_default();

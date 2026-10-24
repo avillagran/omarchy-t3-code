@@ -1,8 +1,7 @@
 //! On-demand native turn-item reads. No persistence, polling or mutation.
-use crate::{environment_token, Environment, Result};
+use crate::{Environment, Result};
 use serde_json::{json, Value};
 use std::io::{self, Write};
-use t3_protocol as protocol;
 
 pub const METHOD: &str = "orchestration.getTurnItem";
 pub const SECTION_BYTES: usize = 64 * 1024;
@@ -104,19 +103,7 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
     if input["environment"] != e.id {
         return Err("tool_scope_mismatch".into());
     }
-    if let Some(error) = &e.connection_error {
-        return Err(error.clone());
-    }
-    let response = if let Some(connection) = &e.connection {
-        connection.rpc(method, payload)?
-    } else {
-        protocol::Connection::new(
-            &e.base_url,
-            None,
-            protocol::Credential::bearer(&environment_token(e, false)?)?,
-        )?
-        .rpc(method, payload)?
-    };
+    let response = e.connection(false)?.rpc(method, payload)?;
     parse(input, &response)
 }
 

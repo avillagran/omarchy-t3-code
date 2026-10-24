@@ -67,7 +67,7 @@ pub(crate) fn native_primary()->Option<Value>{
     let env=env.trim();if env.is_empty(){return None}
     let runtime=read_json(&t3_home().join("userdata/server-runtime.json")).ok()?;
     let base=text(&runtime,"origin");validate_base(base).ok()?;
-    let mut ws=reqwest::Url::parse(base).ok()?;let scheme=if ws.scheme()=="https"{"wss"}else{"ws"};ws.set_scheme(scheme).ok()?;
+    let mut ws=crate::Url::parse(base).ok()?;let scheme=if ws.scheme()=="https"{"wss"}else{"ws"};ws.set_scheme(scheme).ok()?;
     Some(json!({"_tag":"PrimaryConnectionTarget","environmentId":env,"httpBaseUrl":base,"wsBaseUrl":ws.as_str().trim_end_matches('/')}))
 }
 fn preferences_snapshot(c:&Value)->Result<Value>{
@@ -170,7 +170,7 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         let (base, code) =
             protocol::connection_catalog::pairing_target(text(i, "url"), text(i, "pairingCode"))?;
         validate_base(&base)?;
-        let http = Client::new()?.http;
+        let http = Client::shared()?.http;
         let descriptor: Value = http
             .get(format!(
                 "{}/.well-known/t3/environment",
@@ -190,7 +190,7 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         let id = if text(i, "connectionId").is_empty() {
             format!(
                 "bearer:{env}:{}",
-                reqwest::Url::parse(&base)
+                crate::Url::parse(&base)
                     .unwrap()
                     .origin()
                     .ascii_serialization()
@@ -239,14 +239,15 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
             }
             text(&access, "access_token").to_string()
         };
-        let conn = protocol::Connection::new(&base, None, protocol::Credential::bearer(&token)?)?;
+        // Not an Environment yet: the pairing is checked with the token just exchanged.
+        let conn = crate::t3_connection(&base, protocol::Credential::bearer(&token)?)?;
         conn.request_json("GET", "/api/auth/session", None, false)?;
         let label = if name.is_empty() {
             text(&descriptor, "label")
         } else {
             name
         };
-        let mut ws = reqwest::Url::parse(&base).unwrap();
+        let mut ws = crate::Url::parse(&base).unwrap();
         let scheme = if ws.scheme() == "https" { "wss" } else { "ws" };
         ws.set_scheme(scheme).map_err(|_| "invalid_endpoint")?;
         protocol::connection_catalog::register(

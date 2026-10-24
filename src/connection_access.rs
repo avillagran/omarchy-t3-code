@@ -37,9 +37,10 @@ fn local_credential(path:&std::path::Path)->Result<Zeroizing<String>>{
 }
 fn connection(e: &Environment) -> Result<protocol::Connection> {
     if let Some(error)=&e.connection_error {return Err(error.clone())}
-    if e.id=="local"{return protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(local_credential(&e.token_file)?.trim())?)}
-    if let Some(c)=&e.connection {return Ok(c.as_ref().clone())}
-    protocol::Connection::new(&e.base_url,None,protocol::Credential::bearer(&environment_token(e,true)?)?)
+    // The local server is administered with a session the T3 CLI issues on the spot, not with
+    // the stored environment token, so it is the one connection with its own credential.
+    if e.id=="local"{return t3_connection(&e.base_url,protocol::Credential::bearer(local_credential(&e.token_file)?.trim())?)}
+    e.connection(true)
 }
 fn request(c:&protocol::Connection,method:&str,path:&str,body:Option<&Value>)->Result<Value>{c.request_json(method,path,body,false)}
 fn scopes(session:&Value)->Vec<String>{session.get("permissions").or_else(||session.get("scopes")).and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect()}
@@ -71,10 +72,10 @@ fn snapshot(e:&Environment,c:&protocol::Connection,session:Value)->Value{
     result
 }
 fn pairing_artifact(mut result:Value,endpoint:&str)->Value{
-    let Ok(mut url)=reqwest::Url::parse(endpoint)else{return result};
+    let Ok(mut url)=crate::Url::parse(endpoint)else{return result};
     if !matches!(url.scheme(),"http"|"https")||url.host_str().is_none()||!url.username().is_empty()||url.password().is_some(){return result}
     let token=text(&result,"credential").to_string();if token.is_empty(){return result}
-    url.set_path("/pair");url.set_query(None);let fragment=reqwest::Url::parse_with_params("https://placeholder.invalid/",&[("token",token)]).ok().and_then(|u|u.query().map(str::to_owned));url.set_fragment(fragment.as_deref());
+    url.set_path("/pair");url.set_query(None);let fragment=crate::Url::parse_with_params("https://placeholder.invalid/",&[("token",token)]).ok().and_then(|u|u.query().map(str::to_owned));url.set_fragment(fragment.as_deref());
     result["pairingUrl"]=json!(url.as_str());
     let loopback=url.host_str().is_some_and(|h|h=="localhost"||h.trim_matches(['[',']']).parse::<std::net::IpAddr>().is_ok_and(|ip|ip.is_loopback()||ip.is_unspecified()));
     result["qrShareable"]=json!(!loopback);
@@ -95,7 +96,7 @@ pub fn execute(e:&Environment,input:&Value)->Result<Value>{
         "read"=>return Ok(snapshot(e,&c,session)),
         "create-link"=>{
             let endpoint=input["endpoint"].as_str().unwrap_or(&e.base_url);
-            let url=reqwest::Url::parse(endpoint).map_err(|_|"invalid_endpoint")?;
+            let url=crate::Url::parse(endpoint).map_err(|_|"invalid_endpoint")?;
             if !matches!(url.scheme(),"http"|"https")||url.host_str().is_none()||!url.username().is_empty()||url.password().is_some(){return Err("invalid_endpoint".into())}
             pairing_artifact(request(&c,"POST","/api/auth/pairing-token",Some(&pairing_payload(input,&granted)?))?,endpoint)
         },
