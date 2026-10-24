@@ -56,9 +56,9 @@ Rectangle {
  readonly property var sections:[
   {page:"general",title:"New threads",icon:"square-pen",keys:["defaultModelSelection","defaultRuntimeMode","defaultThreadEnvMode","worktreeSubmodules"]},
   {page:"general",title:"Organization",icon:"list-todo",keys:["autoResumeLimitedThreads","snoozeLimitedThreads","sidebarAutoSettleOnMerge","sidebarAutoSettleAfterDays","sidebarAutoSettleKeepPullRequests"]},
-  {page:"general",title:"Behavior",icon:"settings",keys:["responseStreamingMode","enableProviderUpdateChecks","continueThreadsAfterServerUpdate","backgroundActivityProfile"]},
+  {page:"general",title:"Behavior",icon:"settings",keys:["responseStreamingMode","idleCompaction","enableProviderUpdateChecks","continueThreadsAfterServerUpdate","backgroundActivityProfile"]},
   {page:"general",title:"Projects & threads",icon:"folder-git-2",keys:["newWorktreesStartFromOrigin"]},
-  {page:"general",title:"Text generation",icon:"star",keys:["textGenerationModelSelection"]},
+  {page:"general",title:"Text generation",icon:"star",keys:["textGenerationModelSelection","threadTitleInstructions"]},
   {page:"general",title:"Telemetry export",icon:"server",keys:["observability.otlpTracesUrl","observability.otlpMetricsUrl","observability.otlpLogsUrl"]},
   {page:"source-control",title:"Repositories",icon:"folder-git-2",keys:["defaultAutoPull","removeAgentCreditsOnMerge","pullRequestMergeMethod"]},
   {page:"source-control",title:"Text generation",icon:"square-pen",keys:["branchNamingMode","branchNamePrefix","branchNameInstructions","sourceControlWritingStyle.mode","sourceControlWritingStyle.customInstructions","sourceControlWritingStyle.followChangeRequestTemplates","sourceControlWriterModelSelection"]},

@@ -72,6 +72,10 @@ impl Harness {
                                 "server.getConfig" => {
                                     json!({"providers":[{"instanceId":"codex","enabled":true,"slashCommands":[{"name":"compact"}]}]})
                                 }
+                                "server.getSettings" if mode == "server" => {
+                                    json!({"idleCompaction":"onReturn","providerInstances":{"codex":{"config":{"idleCompaction":"beforeCacheExpires"}}}})
+                                }
+                                "server.getSettings" => json!({"idleCompaction":"onReturn"}),
                                 "orchestration.dispatchCommand" => {
                                     let command = req["payload"].clone();
                                     assert!(matches!(
@@ -242,6 +246,14 @@ fn revalidation_prevents_compacting_new_active_work() {
     let h = Harness::new("busy");
     let (c, i, rx) = h.start();
     Harness::wait(&rx, "busy");
+    Harness::end(c, i);
+    assert!(h.commands.lock().unwrap().is_empty());
+}
+#[test]
+fn server_side_idle_compaction_is_never_doubled() {
+    let h = Harness::new("server");
+    let (c, i, rx) = h.start();
+    Harness::wait(&rx, "server");
     Harness::end(c, i);
     assert!(h.commands.lock().unwrap().is_empty());
 }
