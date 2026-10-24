@@ -6,9 +6,25 @@ cd "$plugin_dir"
 # The checked-in original T3 helper needs no sibling checkout or Node at runtime.
 task_build_target=$(rustc -vV | sed -n 's/^host: //p')
 cargo fetch --locked --target "$task_build_target"
+cargo fetch --locked --target "$task_build_target" --manifest-path native/dictate/Cargo.toml
 node tools/build-licenses.cjs
 cargo build --release --locked
 install -m755 target/release/omarchy-t3-client bin/omarchy-t3-client
+# Local dictation (whisper.cpp). Release packages set OT3_PORTABLE=1 so the CPU
+# code runs on every machine of the architecture, not only the builder's.
+if command -v cmake >/dev/null && command -v c++ >/dev/null; then
+  if [ "${OT3_PORTABLE:-}" = 1 ]; then
+    GGML_NATIVE=OFF; export GGML_NATIVE
+    case $(uname -m) in
+      aarch64) GGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16; export GGML_CPU_ARM_ARCH;;
+      x86_64) GGML_AVX=ON GGML_AVX2=ON GGML_FMA=ON GGML_F16C=ON; export GGML_AVX GGML_AVX2 GGML_FMA GGML_F16C;;
+    esac
+  fi
+  cargo build --release --locked --manifest-path native/dictate/Cargo.toml
+  install -m755 native/dictate/target/release/ot3-dictate bin/ot3-dictate
+else
+  printf '%s\n' 'Optional dictation helper not built: CMake and a C++ compiler are needed.' >&2
+fi
 if pkg-config --exists Qt6Quick Qt6WebEngineQuick; then
   tools/build-document-viewer
   tools/build-browser-viewer

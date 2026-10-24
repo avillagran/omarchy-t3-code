@@ -1,0 +1,22 @@
+[package]
+name = "ot3-dictate"
+version = "0.2.20"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "ot3-dictate"
+path = "src/main.rs"
+
+[dependencies]
+whisper-rs = "0.16"
+sha2 = "0.10"
+libc = "0.2"
+
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true
