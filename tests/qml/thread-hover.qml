@@ -52,7 +52,7 @@ ShellRoot {
     mouseMove(row,80,45);wait(520)
     mouseClick(row.snoozeControl,row.snoozeControl.width/2,row.snoozeControl.height/2);wait(100)
     root.check(row.snoozePopup.visible&&!row.previewVisible,"snooze menu replaces tooltip")
-    root.check(row.snoozePopup.choices.length>=4,"original presets")
+    root.check(row.snoozePopup.choices.length>=3&&row.presets(new Date(2026,9,20,10)).map(function(p){return p.label}).join()==="In 1 hour,In 3 hours,This evening,Tomorrow,Next week","original presets")
     var first=row.snoozePopup.itemAt(0);wait(180);first.forceActiveFocus();keyClick(Qt.Key_Return);wait(80)
     root.check(fixture.actions.length===2&&fixture.actions[1].action==="snooze"&&Date.parse(fixture.actions[1].snoozedUntil)>Date.now(),"preset dispatches future native snooze")
     root.check(row.presets(new Date(2026,9,18,10)).filter(function(p){return p.label==="Next week"}).length===0,"Sunday Monday duplicate removed")
