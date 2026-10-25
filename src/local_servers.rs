@@ -1,6 +1,6 @@
 //! Dev servers the environment sees listening (subscribeDiscoveredLocalServers), offered
 //! under the browser's address bar as in T3.
-use crate::{json, Environment, Result};
+use crate::{json, protocol::api::streams, Environment, Result};
 use serde_json::Value;
 use std::{cell::Cell, time::{Duration, Instant}};
 
@@ -9,8 +9,9 @@ pub fn read(e: &Environment) -> Result<Value> {
     let done = Cell::new(false);
     let started = Instant::now();
     let mut list = Value::Null;
-    // The first list can predate the scan; wait briefly for one with servers.
-    let result = c.subscribe("subscribeDiscoveredLocalServers", json!({}), || done.get() || started.elapsed() > Duration::from_secs(4), |item| {
+    // The first list can predate the scan; wait briefly for one with servers. Unlike
+    // `streams::discovered_servers`, no list within 4 s reads as none, not an error.
+    let result = streams::subscribe_local_servers(&c, None, || done.get() || started.elapsed() > Duration::from_secs(4), || false, |item| {
         if let Some(v) = item {
             if v["servers"].as_array().is_some_and(|s| !s.is_empty()) {
                 done.set(true);

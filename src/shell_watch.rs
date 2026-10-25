@@ -67,18 +67,15 @@ fn watch(env: String, stop: Arc<AtomicBool>, tx: mpsc::Sender<Value>) {
                 .ok_or("unknown_environment")?;
             let c = e.connection(true)?;
             let request_marker = server_capabilities::get(&env, &c)?.shell_completion_marker;
-            let mut payload = json!({});
-            if let Some(sequence) = shell_state::cursor(&env) {
-                payload["afterSequence"] = json!(sequence);
-            }
-            if request_marker {
-                payload["requestCompletionMarker"] = json!(true);
-            }
+            let sub = protocol::api::streams::ShellSub {
+                after_sequence: shell_state::cursor(&env),
+                request_completion_marker: request_marker.then_some(true),
+            };
             let mut changed = false;
             let mut caught_up = false;
-            c.subscribe_probed(
-                "orchestration.subscribeShell",
-                payload,
+            protocol::api::streams::subscribe_shell(
+                &c,
+                &sub,
                 stopped,
                 // A wakeup checks the open socket instead of trusting it.
                 || {

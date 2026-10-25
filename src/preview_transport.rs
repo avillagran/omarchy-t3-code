@@ -293,7 +293,7 @@ pub fn observe(
     let (c, base) = inspect(e)?;
     let mut refreshed = None::<Instant>;
     let mut epoch = String::new();
-    c.subscribe("subscribePreviewEvents", json!({}), &cancel, |item| {
+    protocol::api::streams::subscribe_preview_events(&c, &cancel, || false, |item| {
         if cancel() {
             return Ok(());
         }

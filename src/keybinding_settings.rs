@@ -36,7 +36,7 @@ pub fn subscribe_changes(
 ) -> Result<()> {
     let c = e.connection(false)?;
     authorize(&c, "orchestration:read")?;
-    c.subscribe("subscribeServerConfig", json!({}), &cancel, |event| {
+    protocol::api::streams::subscribe_server_config(&c, &Default::default(), &cancel, || false, |event| {
         if cancel() { return Ok(()); }
         if let Some(event) = event {
             if event["version"] == 1

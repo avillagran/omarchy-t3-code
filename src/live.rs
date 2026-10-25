@@ -3,6 +3,7 @@
 //! envelope already held; the bounded HTTP snapshot is read again only when the
 //! stream failed for a reason other than transport. Retries follow `reconnect`.
 use omarchy_t3_client::*;
+use protocol::{api::streams,stream::advance};
 use serde_json::{json,Value};
 use std::{sync::{Arc,mpsc,atomic::{AtomicU64,AtomicBool,Ordering}},time::{Duration,Instant}};
 #[derive(Clone)]pub struct Control{generation:Arc<AtomicU64>,pub connected:Arc<AtomicBool>,sender:mpsc::Sender<(u64,Option<(String,String,i64)>)>}
@@ -29,11 +30,11 @@ impl Control{
      let envelope=held.as_mut().ok_or("missing_snapshot")?;
      let c=e.connection(true)?;
      let marker=server_capabilities::get(&env,&c)?.thread_completion_marker;
-     let mut payload=json!({"threadId":thread,"afterSequence":sequence,"acceptBoundedSnapshot":true,"acceptCompactTurnItems":true});
-     if marker{payload["requestCompletionMarker"]=json!(true);}
+     let sub=streams::ThreadSub{after_sequence:Some(sequence),request_completion_marker:marker.then_some(true),accept_bounded_snapshot:Some(true),accept_compact_turn_items:Some(true),..streams::ThreadSub::new(&thread)};
+     let tag=streams::SUBSCRIBE_THREAD.name;
      let mut dirty=false;let mut emitted=Instant::now();
      // A wakeup checks the open socket instead of trusting it.
-     let streamed=c.subscribe_probed("orchestration.subscribeThread",payload,||worker.generation.load(Ordering::Relaxed)!=generation,||{let w=waiter.take();probed|=w;w},|update|{
+     let streamed=streams::subscribe_thread(&c,&sub,||worker.generation.load(Ordering::Relaxed)!=generation,||{let w=waiter.take();probed|=w;w},|update|{
       if worker.generation.load(Ordering::Relaxed)!=generation{return Ok(())}
       // Without a completion marker the server gives no catch-up signal; like T3, the
       // resumed stream counts as live once subscribed.
@@ -41,10 +42,11 @@ impl Control{
       let boundary=update.is_none();
       if let Some(item)=update{
        match text(&item,"kind"){
-        "snapshot"=>{*envelope=bounded_snapshot::restore(item.clone())?;sequence=item["snapshotSequence"].as_u64().unwrap_or(sequence);dirty=true;},
-        "event"=>{let seq=item["sequence"].as_u64().unwrap_or(0);if seq>sequence{dirty|=protocol::projection::apply(&mut envelope["projection"],&item["event"]);sequence=seq;}},
+        // The cursor follows `stream::advance`: a snapshot sets it, any other item only moves it on.
+        "snapshot"=>{*envelope=bounded_snapshot::restore(item.clone())?;sequence=advance(tag,Some(sequence),&item).unwrap_or(sequence);dirty=true;},
+        "event"=>{let next=advance(tag,Some(sequence),&item).unwrap_or(sequence);if next>sequence{dirty|=protocol::projection::apply(&mut envelope["projection"],&item["event"]);sequence=next;}},
         // Events this build cannot decode still move the resume cursor (T3 contracts).
-        "unknown-event"=>{sequence=sequence.max(item["sequence"].as_u64().unwrap_or(0));},
+        "unknown-event"=>{sequence=advance(tag,Some(sequence),&item).unwrap_or(sequence);},
         _=>{}
        }
       }
