@@ -249,6 +249,26 @@ Singleton {
   property bool stale: true
   property string error: ""
   property string quotaError: ""
+  property var mosaicTargets: []
+  property var mosaicData: ({})
+  property int mosaicSerial: 0
+  function watchMosaic(threads) {
+    var old=mosaicTargets,cache={},targets=threads.slice(0,8).map(function(t){
+      var found=old.find(function(x){return x.key===t.key})
+      var target=found || {key:t.key,environment:t.environmentId,thread:t.id,serial:++root.mosaicSerial}
+      if(root.mosaicData[t.key])cache[t.key]=root.mosaicData[t.key]
+      return target
+    })
+    if(JSON.stringify(targets)===JSON.stringify(old))return
+    mosaicTargets=targets;mosaicData=cache;send({op:"mosaic-watch",targets:targets})
+  }
+  function receiveMosaic(event,data) {
+    var target=mosaicTargets.find(function(t){return t.serial===data.serial})
+    if(!target)return
+    var cache=Object.assign({},mosaicData),previous=cache[target.key] || {}
+    cache[target.key]=event==="mosaic-messages"?Object.assign({},previous,{messages:data.result.timeline || data.result.messages || [],activity:data.result.activity || [],error:"",loaded:true}):Object.assign({},previous,{connected:!!data.connected,error:data.error || ""})
+    mosaicData=cache
+  }
   property var transcript: []
   property var activity: []
   property int visiblePanels: 0
@@ -1562,7 +1582,7 @@ Singleton {
     if(data.op==="scheduled-tasks"){if(data.requestId!==scheduledTasks.requestId)return;scheduledTasks=Object.assign({},scheduledTasks,{busy:false,error:data.error||"",tasks:data.error?scheduledTasks.tasks:(data.result.tasks||[])});return}
     if(data.op==="usage-summary"){if(data.requestId!==usage.requestId)return;usage=Object.assign({},usage,{busy:false,error:data.error||"",data:data.error?usage.data:data.result});return}
     if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
-    if(data.op==="thread-search"){if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
+    if(data.op==="thread-search"){if(data.requestId&&data.requestId===sidebarSearch.requestId){sidebarSearch=Object.assign({},sidebarSearch,{matches:data.error?[]:((data.result||{}).matches||[])});return}if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
     if(data.op==="branch-check"||data.op==="branch-resolve"){if(data.requestId!==branchMismatch.requestId)return;var m=data.error?null:(data.result||{}).mismatch||null;var same=!!m&&!!branchMismatch.value&&m.currentBranch===branchMismatch.value.currentBranch&&m.threadBranch===branchMismatch.value.threadBranch;branchMismatch=Object.assign({},branchMismatch,{busy:false,error:data.error||"",value:m,dismissed:same&&!!branchMismatch.dismissed});if(data.op==="branch-resolve")refresh();return}
     if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}
     if(data.op==="branch-switch"){if(data.requestId!==branchRefs.switchRequestId)return;branchRefs=Object.assign({},branchRefs,{switching:false,pendingBranch:data.error?"":(data.result.branch||""),error:data.error||""});if(data.error)branchSwitchFailed(data.error);refresh();branchCheckDelay.restart();return}
@@ -1909,7 +1929,11 @@ Singleton {
     return failedEntries&&a.count>1?T3I18n.tr("{activity} · {count} failed",{activity:label,count:failedEntries}):label
   }
   function refresh() { send({op: "refresh"}) }
-  function search(value) { query = value }
+  function search(value) { query = value; sidebarSearchDebounce.restart() }
+  // Message matches for the sidebar search, separate from the command palette's.
+  property var sidebarSearch: ({query:"",matches:[],requestId:""})
+  Timer { id: sidebarSearchDebounce; interval: 260; onTriggered: root.searchSidebar(root.query) }
+  function searchSidebar(value){var q=String(value||"").trim();if(q.length<3){sidebarSearch={query:q,matches:[],requestId:""};return}var id=uuid();sidebarSearch={query:q,matches:sidebarSearch.query&&q.indexOf(sidebarSearch.query)===0?sidebarSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
   function clearSelection(){clearInlineDocuments();closeDocument();documentOpen=({busy:false,error:"",requestId:""});dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""};threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";planView=({plans:[],ready:null});planOperation=({busy:false,error:"",command:null});transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
   function selectThread(env, thread) {
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}
@@ -1937,7 +1961,8 @@ Singleton {
   function receive(line) {
     try {
       var event = JSON.parse(line); var data = event.data
-      if(event.type==="browser-surface"){BrowserSurface.receive(root,data)}
+      if(event.type==="mosaic-messages"||event.type==="mosaic-state"){receiveMosaic(event.type,data)}
+      else if(event.type==="browser-surface"){BrowserSurface.receive(root,data)}
       else if(event.type==="preview-state"){Previews.receive(root,data)}
       else if(event.type==="devices-state"){Devices.receiveState(root,data)}
       else if(event.type==="device-surface"){receiveDeviceSurface(data)}
@@ -2072,12 +2097,13 @@ Singleton {
     onStarted: {
       if(root.gitView.scope.requestId)root.requestGit()
       root.send({op:"rewind-list",requestId:root.uuid()})
-      root.requestClientSettings();root.send({op: "visible", value: root.panelVisible}); root.send({op: "search", query: root.query})
+      root.requestClientSettings();root.send({op: "visible", value: root.panelVisible}); root.send({op: "search", query: ""})
       if(root.browserImportWizard.open&&root.browserImportOperation.state!=="uncertain")ImportFlow.refresh(root,false);
       root.syncPreview(true);Devices.visibility(root);if(root.browserProfileView.environments.length)root.requestBrowserProfiles(root.browserProfileView.environments,true);root.syncKeybindingWatches(true);root.ensureRuntimeKeybindings(true)
       if (root.selectedEnvironment) root.send({op: "catalog", environment: root.selectedEnvironment})
       if(root.panelVisible)root.probeScroll()
       if (root.panelVisible && root.selectedThread) root.fetchMessages()
+      if(root.panelVisible&&root.mosaicTargets.length)root.send({op:"mosaic-watch",targets:root.mosaicTargets})
       if(root.projectDrafts.command&&root.projectDrafts.command.action!=="list")root.retryProjectDrafts()
       Object.keys(root.drafts).forEach(function(key){ if(root.projectDraftTransferKey(key))return;if(root.drafts[key].loading)root.send({op:"draft-load",key:key,projectId:root.draftProject(key)});else root.flushDraft(key) })
     }

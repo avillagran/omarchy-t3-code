@@ -31,10 +31,50 @@ function matches(t, filter, project) {
   if (t.relationshipToParent === "subagent") return false
   return (!project || (Array.isArray(project) ? project.indexOf(t.projectKey)>=0 : t.projectKey === project)) && (filter === "all" || (filter === "settled" ? !!t.settled : filter === "pending" ? !!t.pending : state(t) === filter))
 }
-function rows(threads, filter, project, expanded, query) {
+// Search forgives accents, case, word order and small typos, and also finds
+// threads whose messages matched on the server (context.hits, keyed by thread).
+function fold(text) { return String(text || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") }
+function terms(query) { return fold(query).split(/[\s\/·,]+/).filter(function(w) { return w.length > 0 }) }
+// Edits needed to turn a into a prefix of b, stopping once over the limit.
+function near(a, b, limit) {
+  var prev = [], i, j
+  for (j = 0; j <= b.length; j++) prev.push(0)
+  for (i = 1; i <= a.length; i++) {
+    var cur = [i], best = i
+    for (j = 1; j <= b.length; j++) { cur.push(Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))); best = Math.min(best, cur[j]) }
+    if (best > limit) return false
+    prev = cur
+  }
+  return Math.min.apply(null, prev) <= limit
+}
+function termMatches(term, text, words) {
+  if (text.indexOf(term) >= 0) return true
+  var limit = term.length >= 7 ? 2 : term.length >= 4 ? 1 : 0
+  return limit > 0 && words.some(function(w) { return Math.abs(w.length - term.length) <= limit + 3 && near(term, w, limit) })
+}
+function haystack(t, context) {
+  var hosts = (context && context.hosts) || {}
+  return fold([t.title, t.project, hosts[t.environmentId] || "", t.environmentId, t.branch || "", t.worktreeBranch || ""].join(" "))
+}
+// 2: every word matches; 1: some word matches; 0: no match.
+function searchScore(t, query, context) {
+  var list = terms(query)
+  if (!list.length) return 2
+  if (context && context.hits && context.hits[t.key]) return 2
+  var text = haystack(t, context), words = text.split(/[^a-z0-9]+/).filter(function(w) { return w.length > 1 })
+  var found = list.filter(function(term) { return termMatches(term, text, words) }).length
+  return found === list.length ? 2 : found > 0 ? 1 : 0
+}
+function rows(threads, filter, project, expanded, query, context) {
   var result = [], settled = []
-  var needle = String(query || "").toLowerCase()
-  threads.forEach(function(t) { if (matches(t, filter, project) && (!needle || [t.title,t.project,t.environmentId].join(" ").toLowerCase().indexOf(needle) >= 0)) (t.settled ? settled : result).push(t) })
+  var needle = terms(query).length > 0, scored = [], best = 0
+  threads.forEach(function(t) {
+    if (!matches(t, filter, project)) return
+    var score = needle ? searchScore(t, query, context) : 2
+    if (score > 0) { scored.push({t: t, score: score}); best = Math.max(best, score) }
+  })
+  // Nothing matches every word: show what matches any of them rather than nothing.
+  scored.forEach(function(s) { if (s.score === best) (s.t.settled ? settled : result).push(s.t) })
   if (settled.length > 0) {
     result.push({sectionHeader: true, count: settled.length, key: "@settled"})
     if (expanded || filter === "settled" || needle) result = result.concat(settled)
