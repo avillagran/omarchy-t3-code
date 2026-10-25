@@ -1,6 +1,6 @@
 //! Server-wide thread search (T3 orchestration.searchThreads) across every connected
 //! environment. Environments that cannot search are skipped, not fatal.
-use crate::{environments, json, text, write::rpc, Result};
+use crate::{environments, json, protocol::api::orchestration, text, Result};
 use serde_json::Value;
 
 pub fn search(input: &Value) -> Result<Value> {
@@ -13,7 +13,7 @@ pub fn search(input: &Value) -> Result<Value> {
         .map(|e| {
             let query = query.clone();
             std::thread::spawn(move || {
-                let found = rpc(&e, "orchestration.searchThreads", json!({"query":query,"limit":20}));
+                let found = e.connection(true).and_then(|c| orchestration::search_threads(&c, &query, Some(20)));
                 (e.id, found)
             })
         })

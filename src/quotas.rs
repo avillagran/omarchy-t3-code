@@ -201,7 +201,7 @@ fn watch(
                     std::thread::spawn(move || {
                         let result = e.connection(false).and_then(|c| {
                             quota_sources::authorize(&c)?;
-                            c.rpc("server.refreshProviders", json!({}))
+                            protocol::api::provider::refresh(&c, None, None, None, None)
                         });
                         let mut state = shared.lock().unwrap();
                         if !cancel.load(Ordering::Relaxed) {

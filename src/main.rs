@@ -154,7 +154,23 @@ fn report_activity(env: String, thread: Option<String>, visible: bool) {
         if let Some(t) = thread.filter(|t| valid_id(t)) {
             scopes.push(json!({"type":"thread","threadId":t}));
         }
-        let _ = write::rpc(&e, "server.reportClientActivity", json!({"clientId":client,"clientKind":"desktop-renderer","visible":visible,"focused":visible,"recentlyInteracted":visible,"appState":if visible{"active"}else{"background"},"scopes":scopes,"ttlMs":120000}));
+        // T3 requires observedAt; without it the server rejected every report.
+        let activity = protocol::api::server::ClientActivity {
+            client_id: client,
+            client_kind: "desktop-renderer".into(),
+            visible,
+            focused: visible,
+            recently_interacted: visible,
+            scopes,
+            observed_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            environment_id: None,
+            app_state: Some(if visible { "active" } else { "background" }.into()),
+            low_power_mode: None,
+            battery_state: None,
+            network_type: None,
+            ttl_ms: Some(120000),
+        };
+        let _ = e.connection(true).and_then(|c| protocol::api::server::report_client_activity(&c, &activity));
     });
 }
 fn play_sound(name: &str) {

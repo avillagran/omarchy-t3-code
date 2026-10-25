@@ -1,6 +1,6 @@
 //! Native preview lifecycle commands. No browser automation or OS navigation.
 //! Requests are bound to a read origin/epoch and never replayed automatically.
-use crate::{json, preview_transport as transport, protocol, text, Environment, Result};
+use crate::{json, preview_transport as transport, protocol::{self, api::{preview as pv, Function}}, text, Environment, Result};
 use serde_json::Value;
 use std::{
     collections::HashSet,
@@ -33,7 +33,7 @@ fn address(value: &Value) -> Result<String> {
 }
 /// Whitelist exact native inputs. Address text uses the original-helper port;
 /// native T3 remains authoritative for URL normalization and session mutation.
-pub fn payload(input: &Value) -> Result<(&'static str, Value)> {
+pub fn payload(input: &Value) -> Result<(&'static Function, Value)> {
     let action = text(input, "action");
     let mut out = json!({"threadId":string(&input["thread"],2048)?});
     if action != "open" {
@@ -63,7 +63,7 @@ pub fn payload(input: &Value) -> Result<(&'static str, Value)> {
                 out["runtime"] = v.clone();
             }
             // Human controls do not forge provider automationOwner/reveal claims.
-            "preview.open"
+            &pv::OPEN
         }
         "navigate" => {
             out["url"] = if let Some(address) = input.get("address") {
@@ -78,11 +78,11 @@ pub fn payload(input: &Value) -> Result<(&'static str, Value)> {
                     .ok_or("invalid_preview_command")?;
                 out["resolvedTitle"] = json!(title);
             }
-            "preview.navigate"
+            &pv::NAVIGATE
         }
         "resize" => {
             out["viewport"] = preference("browserDefaultViewport", &input["viewport"])?;
-            "preview.resize"
+            &pv::RESIZE
         }
         "adjust" => {
             for (key, native) in [
@@ -105,12 +105,14 @@ pub fn payload(input: &Value) -> Result<(&'static str, Value)> {
             if out.as_object().unwrap().len() == 2 {
                 return Err("invalid_preview_command".into());
             }
-            "preview.adjust"
+            &pv::ADJUST
         }
-        "refresh" => "preview.refresh",
-        "close" => "preview.close",
+        "refresh" => &pv::REFRESH,
+        "close" => &pv::CLOSE,
         _ => return Err("invalid_preview_command".into()),
     };
+    // The typed function checks the arguments too, before anything is reserved or sent.
+    method.payload(&out).map_err(|_| "invalid_preview_command")?;
     Ok((method, out))
 }
 pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
@@ -161,17 +163,17 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
         }
         dispatched.insert(request.to_owned());
     }
-    let result = c.rpc(method, payload);
+    let result = method.call(&c, &payload, None);
     let mut receipt = json!({"environment":e.id,"thread":thread,"originKey":expected_origin,"serverEpoch":expected_epoch,"action":input["action"],"tabId":input["tabId"],"state":"uncertain","error":"preview_command_uncertain"});
     // Once dispatched, generic transport/RPC failure cannot establish that the
     // server did nothing. Never return raw error bodies or retry a mutation.
     if let Ok(result) = result {
-        let checked = if matches!(method, "preview.refresh" | "preview.close") {
+        let checked = if [pv::REFRESH.name, pv::CLOSE.name].contains(&method.name) {
             Ok(Value::Null)
         } else {
             transport::snapshot(&result).and_then(|s| {
                 if s["threadId"] == thread
-                    && (method == "preview.open" || s["tabId"] == input["tabId"])
+                    && (method.name == pv::OPEN.name || s["tabId"] == input["tabId"])
                 {
                     Ok(s)
                 } else {

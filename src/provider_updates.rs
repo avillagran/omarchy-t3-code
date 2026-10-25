@@ -4,7 +4,6 @@
 //! runs on the server; ot3 only names the provider.
 use crate::*;
 use serde_json::{json, Value};
-use std::time::Duration;
 use t3_protocol as protocol;
 
 /// T3 PROVIDER_DISPLAY_NAMES.
@@ -43,10 +42,8 @@ pub fn advisory(native: &Value) -> Value {
 /// deadline. If the answer still never arrives, the server's own update state
 /// says what happened instead of a bare "outcome unknown".
 pub fn run_update(e: &Environment, driver: &str, instance: &str) -> Result<Value> {
-    let payload = json!({"provider":driver,"instanceId":instance});
-    let result = e
-        .connection(true)
-        .and_then(|c| c.rpc_with_timeout("server.updateProvider", payload, Duration::from_secs(300)));
+    // The registry gives server.updateProvider the same 300 s deadline.
+    let result = e.connection(true).and_then(|c| protocol::api::provider::update(&c, driver, None, Some(instance)));
     match result {
         Err(error) if protocol::error_code(&error) == "rpc_outcome_unknown" => {
             let config = protocol::api::server::config(&e.connection(true)?)?;

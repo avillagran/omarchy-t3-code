@@ -1,5 +1,5 @@
 //! T3 scheduled tasks (scheduledTasks.*): list, create/edit, enable, run now, delete.
-use crate::{json, text, write::rpc, Environment, Result};
+use crate::{json, protocol::api::scheduled_tasks::{self as tasks, TaskUpsert}, text, Environment, Result};
 use serde_json::Value;
 
 fn id(input: &Value) -> Result<String> {
@@ -49,21 +49,25 @@ pub fn upsert_payload(input: &Value) -> Result<Value> {
     if input["id"].is_string() {
         p["id"] = json!(id(input)?);
         p["requireExisting"] = json!(true);
+    } else {
+        // T3 names a new task after its commandId (scheduled-task:<commandId>).
+        p["commandId"] = json!(format!("omarchy-task-{}", uuid::Uuid::new_v4()));
     }
     Ok(p)
 }
 pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     let action = text(input, "action");
+    let c = || e.connection(true);
     let result = match action {
-        "list" => rpc(e, "scheduledTasks.list", json!({}))?,
-        "upsert" => rpc(e, "scheduledTasks.upsert", upsert_payload(input)?)?,
-        "enable" => rpc(e, "scheduledTasks.setEnabled", json!({"id":id(input)?,"enabled":input["enabled"]==true}))?,
-        "delete" => rpc(e, "scheduledTasks.delete", json!({"id":id(input)?}))?,
-        "run" => rpc(e, "scheduledTasks.runNow", json!({"id":id(input)?}))?,
+        "list" => tasks::list(&c()?)?,
+        "upsert" => tasks::upsert(&c()?, &TaskUpsert::from_json(&upsert_payload(input)?)?)?,
+        "enable" => tasks::set_enabled(&c()?, &id(input)?, input["enabled"] == true)?,
+        "delete" => tasks::delete(&c()?, &id(input)?)?,
+        "run" => tasks::run_now(&c()?, &id(input)?)?,
         _ => return Err("invalid_command".into()),
     };
     // Every change answers with the fresh list, so the page never shows a stale row.
-    let list = if action == "list" { result } else { rpc(e, "scheduledTasks.list", json!({}))? };
+    let list = if action == "list" { result } else { tasks::list(&c()?)? };
     Ok(json!({"action":action,"tasks":list["tasks"]}))
 }
 

@@ -197,7 +197,7 @@ impl RpcFiles<'_> {
 }
 impl HostFiles for RpcFiles<'_> {
     fn metadata(&self, paths: &[String]) -> Result<Vec<Option<String>>> {
-        let v = crate::write::rpc(self.0, "filesystem.getMetadata", json!({"paths":paths}))?;
+        let v = crate::protocol::api::filesystem::metadata(&self.0.connection(true)?, paths)?;
         let entries = v["entries"].as_array().ok_or("vault_host_unsupported")?;
         Ok(entries.iter().map(|e| e["kind"].as_str().map(str::to_owned)).collect())
     }

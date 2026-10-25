@@ -209,7 +209,7 @@ pub fn refs(e: &Environment, input: &Value) -> Result<Value> {
     authorize(e, "orchestration:read")?;
     let c = e.connection(false)?;
     let scoped = scope(&c, input)?;
-    let mut result = refs_present(&c.rpc("vcs.listRefs", payload)?, input)?;
+    let mut result = refs_present(&protocol::api::vcs::LIST_REFS.call(&c, &payload, None)?, input)?;
     if scope(&c, input)? != scoped {
         return Err("git_scope_changed".into());
     }

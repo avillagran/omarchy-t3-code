@@ -1,6 +1,6 @@
 //! Storage cleanup run and its last report (server.runStorageCleanup /
 //! server.getStorageCleanupReport), as on T3's storage settings page.
-use crate::{json, text, write::rpc, Environment, Result};
+use crate::{json, protocol::api::diagnostics, text, Environment, Result};
 use serde_json::Value;
 use std::{cell::Cell, time::{Duration, Instant}};
 
@@ -32,7 +32,7 @@ fn last_report(e: &Environment) -> Result<Value> {
 }
 pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     let report = match text(input, "action") {
-        "run" => rpc(e, "server.runStorageCleanup", json!({}))?,
+        "run" => diagnostics::run_storage_cleanup(&e.connection(true)?)?,
         "report" => last_report(e)?,
         _ => return Err("invalid_command".into()),
     };
