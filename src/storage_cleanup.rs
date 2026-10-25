@@ -1,6 +1,6 @@
 //! Storage cleanup run and its last report (server.runStorageCleanup /
 //! server.getStorageCleanupReport), as on T3's storage settings page.
-use crate::{json, protocol::api::diagnostics, text, Environment, Result};
+use crate::{json, protocol::api::{diagnostics, streams}, text, Environment, Result};
 use serde_json::Value;
 use std::{cell::Cell, time::{Duration, Instant}};
 
@@ -16,10 +16,11 @@ fn last_report(e: &Environment) -> Result<Value> {
     let done = Cell::new(false);
     let started = Instant::now();
     let mut report = Value::Null;
-    c.subscribe(
-        "server.getStorageCleanupReport",
-        json!({}),
+    // Nothing within 10 s is no report yet, not an error (unlike `streams::storage_cleanup_report`).
+    streams::subscribe_storage_cleanup_report(
+        &c,
         || done.get() || started.elapsed() > Duration::from_secs(10),
+        || false,
         |item| {
             if let Some(v) = item {
                 report = v;

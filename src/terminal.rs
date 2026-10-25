@@ -63,7 +63,9 @@ fn run_frontend(e:&Environment,thread:&str,path:Option<&std::path::Path>,session
  let tty=Tty::enter()?;let done=Arc::new(AtomicBool::new(false));let ready=Arc::new(AtomicBool::new(false));let stream_done=done.clone();let stream_ready=ready.clone();let stream=c.clone();
  let output=std::thread::spawn(move||{
   let mut output=protocol::terminal::Output::default();
-  let result=stream.subscribe("terminal.attach",payload,||stream_done.load(Ordering::Relaxed)||INTERRUPTED.load(Ordering::Relaxed),|event|{
+  // `terminal::attach` builds the arguments; the typed stream checks and sends them.
+  let spec=protocol::api::streams::spec(protocol::api::streams::TERMINAL_ATTACH.name,&payload)?;
+  let result=spec.subscribe(&stream,||stream_done.load(Ordering::Relaxed)||INTERRUPTED.load(Ordering::Relaxed),||false,|event|{
    if let Some(event)=event{
     if let Some(bytes)=output.apply(&event)?{let mut stdout=io::stdout().lock();stdout.write_all(bytes.as_bytes()).and_then(|_|stdout.flush()).map_err(|_|"terminal_output_closed")?;}
     if event["type"]=="snapshot"||event["type"]=="started"||event["type"]=="restarted"{stream_ready.store(!output.finished,Ordering::Relaxed);}

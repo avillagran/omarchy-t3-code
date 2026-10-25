@@ -122,7 +122,7 @@ pub fn reduce(state: &mut Option<Value>, item: &Value) -> bool {
         }
         kind @ ("project.updated" | "project.removed" | "thread.updated" | "thread.removed") => {
             let Some(shell) = state.as_mut() else { return false };
-            let Some(sequence) = item["sequence"].as_u64() else { return false };
+            let Some(sequence) = crate::protocol::stream::cursor_of(crate::protocol::api::streams::SUBSCRIBE_SHELL.name, item) else { return false };
             if sequence <= shell["snapshotSequence"].as_u64().unwrap_or(0) {
                 return false;
             }

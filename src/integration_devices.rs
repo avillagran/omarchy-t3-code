@@ -172,7 +172,7 @@ pub fn subscribe_state(
     cancel: impl Fn() -> bool,
     mut receive: impl FnMut(Value) -> Result<()>,
 ) -> Result<()> {
-    c.subscribe("subscribeDeviceState", json!({}), cancel, |event| {
+    protocol::api::streams::subscribe_device_state(c, cancel, || false, |event| {
         if let Some(v) = event {
             receive(present_state(&v)?)?;
         }

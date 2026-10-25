@@ -1,6 +1,6 @@
 //! Public subscription observations only. Raw provider configuration and credentials
 //! never cross this boundary. Native drivers retain ownership of credential reads.
-use crate::{json, protocol, text, Environment, Result};
+use crate::{json, protocol::{self, api::streams}, text, Environment, Result};
 use serde_json::Value;
 pub use t3_protocol::quota_sources::{apply, limits, providers, sources};
 
@@ -25,7 +25,8 @@ pub fn subscribe(
 ) -> Result<()> {
     let c = e.connection(false)?;
     authorize(&c)?;
-    c.subscribe("subscribeServerConfig",json!({"usageLimitSources":true}),cancel,|event| {
+    let sub = streams::ConfigSub { usage_limit_sources: Some(true), ..Default::default() };
+    streams::subscribe_server_config(&c,&sub,cancel,||false,|event| {
         // Unknown native events (including settings) never enter the observation.
         if let Some(event)=event {
             if event["version"]==1 && matches!(text(&event,"type"),"snapshot"|"providerStatuses"|"usageLimitSourcesUpdated") {
