@@ -28,9 +28,15 @@ extern "C" {
  *     validates locally before any socket ("unknown_function", "invalid_input",
  *     "invalid_<field>", "invalid_rpc_timeout"), then sends exactly once.
  *   "write_not_authorized" failures add "requiredScope" (e.g. "settings:write").
+ *   describe also lists "streams":[{"fn","tag","itemKey","items","starts",
+ *     "cursor","ends","firstItem"}], one per function with "stream":true.
+ *   A stream function is "stream_function" through call; open it with subscribe.
  */
 /* Streams (wake, boundaries, idle and completionMarker are additive to ABI 3).
- * {"op":"subscribe","tag":T,"payload":{...}} -> {subscriptionId}.
+ * {"op":"subscribe","tag":T,"payload":{...}} -> {subscriptionId}, or by
+ * typed function: {"op":"subscribe","fn":F,"args":{...}}, validated before
+ * any connection like call ("unknown_function", "not_a_stream",
+ * "invalid_<field>"); the raw tag form stays unchecked. Not both at once.
  * Up to 8 per handle, each on its own WebSocket; at most 2 may be
  * orchestration.subscribeThread with "acceptBoundedSnapshot":true. A ninth (or
  * a third bounded) fails with "subscription_limit"; an ended stream keeps its
@@ -42,7 +48,8 @@ extern "C" {
  * returns as soon as there is something new (items, a chunk end, idle turning
  * true, or the end), else after timeoutMs, with
  *   {"items":[...],"boundaries":[n,...],"idle":bool,"completionMarker":bool,
- *    "closed":bool,"error":"code"|null,"errorMessage":"reason"|null}
+ *    "closed":bool,"error":"code"|null,"errorMessage":"reason"|null,
+ *    "cursor":n|null,"start":"snapshot"|"resume"|"events"|null}
  * items: native T3 stream items in server order; never dropped or reordered.
  * boundaries: strictly ascending end offsets into this batch's items. Each n
  *   means a server chunk ended after items[0..n): apply/paint there. Items after
@@ -58,6 +65,13 @@ extern "C" {
  *   in items, at its position) onward: the initial snapshot/replay is complete.
  * closed/error: once closed the stream delivers nothing more; error is a stable
  *   code (null after cancel), errorMessage an optional one-line reason.
+ * cursor: the payload's afterSequence advanced over every item polled so far
+ *   (a snapshot sets it, other items only move it on); subscribe again with it
+ *   as afterSequence. Null until known; for terminal.attach and
+ *   subscribeWorktreeSetup it only orders items.
+ * start: what the first polled item meant: it replaces the held state
+ *   (snapshot), resumes it from afterSequence (resume) or the stream carries
+ *   only events (events); null before the first item or for an unknown tag.
  * {"op":"wakeSubscriptions"} (optionally "subscriptionId":S) -> {"probed":n}:
  * after a resume from suspend or a network change, each open stream pings at
  * once (on its next 100 ms read tick) and ends with "stream_timeout" unless a

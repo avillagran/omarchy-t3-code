@@ -1,4 +1,5 @@
 //! JSON ABI 3: `call` and `describe` over the typed API registry (`api`).
+//! Stream functions go through `subscribe` with `fn` (`ffi_stream::target`).
 //! `ffi.rs` only dispatches here. Every check that needs no network (function
 //! name, `timeoutMs`, `args`) runs before a connection is even looked up.
 use crate::{api, errors, Connection, Result};
@@ -11,6 +12,9 @@ pub(crate) const ABI_VERSION: u64 = 3;
 pub(crate) fn call(request: &Value, connection: impl FnOnce() -> Result<Connection>) -> Result<Value> {
     let name = request["fn"].as_str().filter(|s| !s.is_empty()).ok_or("invalid_input")?;
     let function = api::function(name).ok_or("unknown_function")?;
+    if function.stream {
+        return Err("stream_function".into());
+    }
     let timeout = api::timeout(request.get("timeoutMs"))?;
     let args = match request.get("args") {
         None | Some(Value::Null) => json!({}),

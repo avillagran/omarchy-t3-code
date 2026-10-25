@@ -1,5 +1,5 @@
 //! Bounded foreign-host event inbox. No host callbacks or unbounded worker queues.
-use crate::{error_code, stream::{self, Tick}, Connection, Result, MAX_BYTES};
+use crate::{api, error_code, stream::{self, Start, Tick}, Connection, Result, MAX_BYTES};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, VecDeque},
@@ -71,6 +71,11 @@ struct Inbox {
     idle_unreported: bool,
     /// Sticky once the server's completion marker item was queued.
     completion_marker: bool,
+    /// Where to resume: the payload's `afterSequence`, advanced over every polled item.
+    cursor: Option<u64>,
+    /// What the first polled item meant (`stream::start_of`), once there was one.
+    start: Option<Start>,
+    first_polled: bool,
     closed: bool,
     error: Option<String>,
 }
@@ -81,10 +86,19 @@ struct Shared {
     limits: Limits,
     /// The payload asked for `requestCompletionMarker`, so `{"kind":"synchronized"}` is one.
     marker_requested: bool,
+    /// Wire tag, for `stream::advance` and `stream::start_of`.
+    tag: String,
 }
 impl Shared {
     fn new(limits: Limits, marker_requested: bool) -> Self {
         Self { limits, marker_requested, ..Self::default() }
+    }
+    fn of(tag: &str, payload: &Value) -> Self {
+        let shared = Self { tag: tag.into(), ..Self::new(Limits::of(tag, payload), payload["requestCompletionMarker"] == true) };
+        if let Ok(mut inbox) = shared.inbox.lock() {
+            inbox.cursor = payload["afterSequence"].as_u64();
+        }
+        shared
     }
     fn push(&self, item: Value) -> Result<()> {
         let mut size = Counter(0);
@@ -147,8 +161,7 @@ pub(crate) struct Subscription {
 }
 impl Subscription {
     pub(crate) fn start(connection: Connection, tag: String, payload: Value) -> Result<Self> {
-        let marker = payload["requestCompletionMarker"] == true;
-        let shared = Arc::new(Shared::new(Limits::of(&tag, &payload), marker));
+        let shared = Arc::new(Shared::of(&tag, &payload));
         let cancel = Arc::new(AtomicBool::new(false));
         let wake = Arc::new(Mutex::new(None));
         let (queue, stop, woken) = (shared.clone(), cancel.clone(), wake.clone());
@@ -207,6 +220,14 @@ impl Subscription {
             })
             .map_err(|_| "internal_error")?;
         let items: Vec<_> = inbox.items.drain(..).map(|(v, _)| v).collect();
+        let tag = self.shared.tag.as_str();
+        for item in &items {
+            if !inbox.first_polled {
+                inbox.first_polled = true;
+                inbox.start = stream::start_of(tag, item);
+            }
+            inbox.cursor = stream::advance(tag, inbox.cursor, item);
+        }
         let boundaries = std::mem::take(&mut inbox.boundaries);
         inbox.bytes = 0;
         inbox.idle_unreported = false;
@@ -215,7 +236,8 @@ impl Subscription {
         let message = inbox.error.as_deref().zip(code).and_then(|(e, c)| e.get(c.len() + 2..));
         Ok(json!({"items":items,"boundaries":boundaries,"idle":inbox.idle,
             "completionMarker":inbox.completion_marker,
-            "closed":inbox.closed,"error":code,"errorMessage":message}))
+            "closed":inbox.closed,"error":code,"errorMessage":message,
+            "cursor":inbox.cursor,"start":inbox.start.map(Start::as_str)}))
     }
     pub(crate) fn cancel(&self) {
         self.cancel.store(true, Ordering::Release);
@@ -244,11 +266,34 @@ pub(crate) fn with_capabilities(mut capabilities: Value) -> Value {
         ("maxPollMs", json!(1000)),
         ("probeTimeoutMs", json!(stream::STREAM_PROBE_TIMEOUT.as_millis() as u64)),
         ("idleTimeoutMs", json!(stream::STREAM_IDLE_TIMEOUT.as_millis() as u64)),
-        ("pollFields", json!(["items", "boundaries", "idle", "completionMarker", "closed", "error", "errorMessage"])),
+        ("pollFields", json!(["items", "boundaries", "idle", "completionMarker", "closed", "error", "errorMessage", "cursor", "start"])),
+        ("subscribeBy", json!(["tag", "fn"])),
     ] {
         capabilities[key] = value;
     }
     capabilities
+}
+/// What `subscribe` opens: `fn` + `args` through the typed registry (validated,
+/// before any connection is looked up), or the raw `tag` + `payload`, unchecked
+/// apart from the tag itself, as before ABI 3. Both at once is `invalid_input`.
+pub(crate) fn target(request: &Value) -> Result<(String, Value)> {
+    let Some(name) = request.get("fn") else {
+        let tag = crate::field(request, "tag")?;
+        if tag.len() > 256 || tag.chars().any(char::is_control) {
+            return Err("invalid_input".into());
+        }
+        return Ok((tag.into(), request["payload"].clone()));
+    };
+    if request.get("tag").is_some() || request.get("payload").is_some() {
+        return Err("invalid_input".into());
+    }
+    let name = name.as_str().filter(|s| !s.is_empty()).ok_or("invalid_input")?;
+    let args = match request.get("args") {
+        None | Some(Value::Null) => json!({}),
+        Some(args) => args.clone(),
+    };
+    let spec = api::streams::spec(name, &args)?;
+    Ok((spec.tag().into(), spec.payload))
 }
 /// A slot for one more stream, or `subscription_limit`. Ended streams keep their slot
 /// until the host cancels them.
@@ -395,6 +440,28 @@ mod tests {
         s.shared.finish(Some("stream_timeout".into()));
         let end = s.poll(0).unwrap();
         assert_eq!((end["error"].clone(), end["errorMessage"].clone()), (json!("stream_timeout"), Value::Null));
+    }
+    #[test]
+    fn poll_advances_the_cursor_from_after_sequence_and_keeps_the_start() {
+        let payload = json!({"threadId":"t","afterSequence":41});
+        let s = subscription(Shared::of("orchestration.subscribeThread", &payload));
+        let q = &s.shared;
+        let first = s.poll(0).unwrap();
+        assert_eq!((first["cursor"].clone(), first["start"].clone()), (json!(41), Value::Null));
+        q.push(json!({"kind":"event","sequence":42})).unwrap();
+        q.push(json!({"kind":"synchronized"})).unwrap();
+        let resumed = s.poll(0).unwrap();
+        assert_eq!((resumed["cursor"].clone(), resumed["start"].clone()), (json!(42), json!("resume")));
+        // A later snapshot sets the cursor but the start stays what the first item meant.
+        q.push(json!({"kind":"snapshot","snapshotSequence":60})).unwrap();
+        q.push(json!({"kind":"event","sequence":61})).unwrap();
+        let replaced = s.poll(0).unwrap();
+        assert_eq!((replaced["cursor"].clone(), replaced["start"].clone()), (json!(61), json!("resume")));
+        // A tag the typed API does not know never invents a cursor.
+        let s = subscription(Shared::of("somethingNew", &json!({})));
+        s.shared.push(json!({"sequence":5})).unwrap();
+        let raw = s.poll(0).unwrap();
+        assert_eq!((raw["cursor"].clone(), raw["start"].clone()), (Value::Null, Value::Null));
     }
     #[test]
     fn cancel_wakes_a_waiter_without_a_network_tick() {

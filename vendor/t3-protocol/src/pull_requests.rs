@@ -3,44 +3,30 @@
 //! verdicts and the host actions (merge, close, reopen, ready, draft...), and the
 //! thread.pull-request.* link commands. The page only offers what the detail's
 //! viewerPermissions allow; the server checks again.
+use crate::api::pull_requests::{
+    comment_payload, request_reviewers_payload, run_action_payload, set_labels_payload, submit_review_payload, ListQuery,
+    PrAction, PrRef,
+};
 use crate::util::{text, Result};
 use serde_json::{json, Value};
+/// ot3's page reads as `(tag, payload)`: `{action:"list",state?,involvement?,query?,cursors?}`
+/// or `{action:"detail"|"checks"|"activity"|"diff",reference:{projectId,repository,host,number}}`.
+/// The payloads come from `api::pull_requests`; `diff` is the HTTP route
+/// `/api/pull-requests/diff`, not an RPC.
 pub fn request(v: &Value) -> Result<(String, Value)> {
     let action = v["action"].as_str().unwrap_or("");
     if action == "list" {
-        let state = v["state"].as_str().unwrap_or("open");
-        let involvement = v["involvement"].as_str().unwrap_or("all");
-        if !["all", "open", "closed", "merged"].contains(&state)
-            || !["all", "authored", "reviewing"].contains(&involvement)
-        {
+        let mut query = ListQuery::new(v["state"].as_str().unwrap_or("open"));
+        query.involvement = Some(v["involvement"].as_str().unwrap_or("all").into());
+        query.limit = Some(50);
+        let text = v["query"].as_str().unwrap_or("");
+        if text.len() > 256 {
             return Err("invalid_filter".into());
         }
-        let query = v["query"].as_str().unwrap_or("");
-        if query.len() > 256 {
-            return Err("invalid_filter".into());
-        }
-        let mut p = json!({"state":state,"involvement":involvement,"limit":50});
-        if !query.trim().is_empty() {
-            p["query"] = json!(query)
-        }
-        if v["cursors"].is_object() && v["cursors"].to_string().len() < 64000 {
-            p["cursors"] = v["cursors"].clone()
-        }
-        return Ok(("pullRequests.list".into(), p));
+        query.query = Some(text.trim()).filter(|q| !q.is_empty()).map(Into::into);
+        query.cursors = v["cursors"].as_object().filter(|_| v["cursors"].to_string().len() < 64000).cloned();
+        return Ok(("pullRequests.list".into(), query.payload().map_err(|_| "invalid_filter")?));
     }
-    let r = &v["reference"];
-    let mut p = json!({});
-    for key in ["projectId", "repository", "host"] {
-        let s = r[key]
-            .as_str()
-            .filter(|s| !s.is_empty() && s.len() <= 512 && !s.chars().any(char::is_control))
-            .ok_or("invalid_pull_request")?;
-        p[key] = json!(s)
-    }
-    p["number"] = json!(r["number"]
-        .as_u64()
-        .filter(|n| *n > 0)
-        .ok_or("invalid_pull_request")?);
     let tag = match action {
         "detail" => "pullRequests.detail",
         "checks" => "pullRequests.checks",
@@ -48,12 +34,28 @@ pub fn request(v: &Value) -> Result<(String, Value)> {
         "diff" => "diff",
         _ => return Err("invalid_command".into()),
     };
+    let mut p = reference(v)?.to_json().map_err(|_| "invalid_pull_request")?;
     if action == "diff" {
         if let Some(cursor) = v["cursor"].as_str().filter(|s| s.len() < 4096) {
             p["cursor"] = json!(cursor)
         }
     }
     Ok((tag.into(), p))
+}
+/// The page's PR reference: `host` is required here, unlike in the contract.
+fn reference(v: &Value) -> Result<PrRef> {
+    let r = &v["reference"];
+    let s = |key: &str| {
+        r[key]
+            .as_str()
+            .filter(|s| !s.is_empty() && s.len() <= 512 && !s.chars().any(char::is_control))
+            .map(str::to_string)
+            .ok_or("invalid_pull_request")
+    };
+    let mut pr = PrRef::new(&s("projectId")?, &s("repository")?, r["number"].as_u64().filter(|n| *n > 0).ok_or("invalid_pull_request")?);
+    pr.host = Some(s("host")?);
+    pr.to_json().map_err(|_| "invalid_pull_request")?;
+    Ok(pr)
 }
 #[cfg(test)]
 mod tests {
@@ -249,13 +251,9 @@ pub fn sidebar_badge(thread: &Value) -> Value {
     json!({"kind":kind,"text":if kind=="stack"{n.to_string()}else if n>1{format!("+{n}")}else{current["number"].to_string()},"state":state,"current":current,"links":links})
 }
 
-const ACTIONS: &[&str] = &["merge", "ready", "draft", "close", "reopen", "delete-branch", "update-branch", "enable-auto-merge", "disable-auto-merge"];
+/// The host actions ot3's page offers (a subset of `api::pull_requests::ACTIONS`).
+const PAGE_ACTIONS: &[&str] = &["merge", "ready", "draft", "close", "reopen", "delete-branch", "update-branch", "enable-auto-merge", "disable-auto-merge"];
 
-fn reference(input: &Value) -> Result<Value> {
-    let mut probe = input.clone();
-    probe["action"] = json!("detail");
-    Ok(request(&probe)?.1)
-}
 fn body(input: &Value, allow_empty: bool) -> Result<String> {
     let body = input["body"].as_str().unwrap_or("");
     if body.len() > 65_536 || (!allow_empty && body.trim().is_empty()) {
@@ -263,60 +261,46 @@ fn body(input: &Value, allow_empty: bool) -> Result<String> {
     }
     Ok(body.to_string())
 }
+/// ot3's page writes as `(tag, payload)`, keyed by `kind`: `comment`, `review`,
+/// `action`, `reviewer-candidates`, `label-candidates`, `reviewers`, `labels`.
+/// The page's own rules (a comment needs words; only `PAGE_ACTIONS`) come first;
+/// the payloads are `api::pull_requests`'.
 pub fn payload(input: &Value) -> Result<(&'static str, Value)> {
-    let mut p = reference(input)?;
+    let pr = reference(input)?;
+    let command = |r: Result<Value>| r.map_err(|_| "invalid_command".to_string());
     Ok(match text(input, "kind") {
-        "comment" => {
-            p["body"] = json!(body(input, false)?);
-            ("pullRequests.comment", p)
-        }
+        "comment" => ("pullRequests.comment", comment_payload(&pr, &body(input, false)?).map_err(|_| "invalid_comment")?),
         "review" => {
             let verdict = text(input, "verdict");
             if !matches!(verdict, "comment" | "approve" | "request-changes") {
                 return Err("invalid_review".into());
             }
             // A plain comment review needs words; approving may be silent.
-            p["body"] = json!(body(input, verdict != "comment")?);
-            p["verdict"] = json!(verdict);
-            p["comments"] = json!([]);
-            ("pullRequests.submitReview", p)
+            let body = body(input, verdict != "comment")?;
+            ("pullRequests.submitReview", submit_review_payload(&pr, verdict, &body, &[]).map_err(|_| "invalid_review")?)
         }
         "action" => {
             let action = text(input, "action");
-            if !ACTIONS.contains(&action) {
+            if !PAGE_ACTIONS.contains(&action) {
                 return Err("invalid_command".into());
             }
-            p["action"] = json!(action);
-            if let Some(method) = input["mergeMethod"].as_str() {
-                if !matches!(method, "merge" | "squash" | "rebase") {
-                    return Err("invalid_command".into());
-                }
-                p["mergeMethod"] = json!(method);
-            }
-            ("pullRequests.runAction", p)
+            let action = PrAction { action: action.into(), merge_method: input["mergeMethod"].as_str().map(Into::into), ..PrAction::default() };
+            ("pullRequests.runAction", command(run_action_payload(&pr, &action))?)
         }
-        "reviewer-candidates" => ("pullRequests.reviewerCandidates", p),
-        "label-candidates" => ("pullRequests.labelCandidates", p),
+        "reviewer-candidates" => ("pullRequests.reviewerCandidates", command(pr.to_json())?),
+        "label-candidates" => ("pullRequests.labelCandidates", command(pr.to_json())?),
         "reviewers" => {
-            let rows = input["reviewers"].as_array().filter(|r| !r.is_empty() && r.len() <= 25).ok_or("invalid_command")?;
+            let rows = input["reviewers"].as_array().ok_or("invalid_command")?;
             let mut list = vec![];
             for r in rows {
                 let id = r["id"].as_str().filter(|s| !s.trim().is_empty() && s.len() <= 256).ok_or("invalid_command")?;
-                let kind = r["kind"].as_str().filter(|k| matches!(*k, "user" | "team")).ok_or("invalid_command")?;
-                list.push(json!({"id":id,"kind":kind}));
+                list.push((id.to_string(), r["kind"].as_str().unwrap_or("").to_string()));
             }
-            p["reviewers"] = json!(list);
-            p["requested"] = json!(input["requested"] == true);
-            ("pullRequests.requestReviewers", p)
+            ("pullRequests.requestReviewers", command(request_reviewers_payload(&pr, &list, input["requested"] == true))?)
         }
         "labels" => {
-            let labels: Vec<&str> = input["labels"].as_array().into_iter().flatten().filter_map(Value::as_str).filter(|l| !l.trim().is_empty() && l.len() <= 256).collect();
-            if labels.is_empty() || labels.len() > 25 {
-                return Err("invalid_command".into());
-            }
-            p["labels"] = json!(labels);
-            p["applied"] = json!(input["applied"] == true);
-            ("pullRequests.setLabels", p)
+            let labels: Vec<String> = input["labels"].as_array().into_iter().flatten().filter_map(Value::as_str).filter(|l| !l.trim().is_empty() && l.len() <= 256).map(str::to_string).collect();
+            ("pullRequests.setLabels", command(set_labels_payload(&pr, &labels, input["applied"] == true))?)
         }
         _ => return Err("invalid_command".into()),
     })

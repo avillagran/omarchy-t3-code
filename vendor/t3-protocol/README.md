@@ -170,26 +170,331 @@ missing scope reads `write_not_authorized: [settings:write] <message>`;
 `errors::required_scope` and `errors::message` split it, and the C ABI returns
 `{"ok":false,"error":"write_not_authorized","message":"…","requiredScope":"settings:write"}`.
 
-Tanda 1 (the ten most used tags in ot3):
+The registry has 99 unary functions in 20 modules: every unary T3 RPC that ot3
+calls, plus `pullRequests.list` and `terminal.resize`, which the library already
+built payloads for. The 13 streams and 4 composed reads are in
+[Typed streams](#typed-streams). A function's `fn` is its wire tag, so
+`provider.auth.start` keeps its three parts; the generated Kotlin method is
+`provider.authStart`. `module` is the Rust module in camelCase
+(`api::pull_requests` → `pullRequests`); a few tags live in another module
+(`server.getHostResources` in `diagnostics`, `attachments.delete` in `assets`).
+A deadline other than 20 s is ot3's own (`rpc_with_timeout`), and a caller's
+`timeoutMs` overrides it.
 
-| Function (`fn`) | Rust | Kind · replay | Scope | Args |
-| --- | --- | --- | --- | --- |
-| `server.getConfig` | `api::server::config(conn)` | read · free | `orchestration:read` | — |
-| `server.getSettings` | `api::server::settings(conn)` | read · free | `orchestration:read` | — |
-| `server.updateSettings` | `api::server::update_settings(conn, patch, mutation?)` | mutation · set | dynamic: `settings:write`, `providers:manage` | `patch`, `providerInstanceMutation?` |
-| `orchestration.dispatchCommand` | `api::orchestration::dispatch(conn, &Command)` | mutation · id | `orchestration:operate` | the command: `type`, `commandId`, … |
-| `orchestration.launchThread` | `api::orchestration::launch_thread(conn, &ThreadLaunch)` | mutation · id | `orchestration:operate` | `commandId`, `projectId`, `title`, `modelSelection`, `runtimeMode`, `interactionMode`, `workspaceStrategy`, … |
-| `preview.list` | `api::preview::list(conn, thread_id)` | read · free | `orchestration:read` | `threadId` |
-| `assets.createUrl` | `api::assets::create_url(conn, &AssetResource)` | read · free | dynamic: `filesystem:read`, `orchestration:read` | `resource` |
-| `vcs.refreshStatus` | `api::vcs::refresh_status(conn, cwd)` | read · free | `orchestration:read` | `cwd` |
-| `review.getDiffPreview` | `api::review::diff_preview(conn, cwd, base_ref?, ignore_whitespace?, file?)` | read · free | `filesystem:read` | `cwd`, `baseRef?`, `ignoreWhitespace?`, `file?` |
-| `projects.readFile` | `api::projects::read_file(conn, cwd, relative_path, allow_missing?)` | read · free | `filesystem:read` | `cwd`, `relativePath`, `allowMissing?` |
+Four functions take a union through `openArgs`: `orchestration.dispatchCommand`
+(`type`), `projects.mutate` (`project.create`/`update`/`delete`), `device.action`
+(14 `type`s) and, as a struct, `scheduledTasks.upsert`. Where the scope depends on
+the payload, a pure helper tells the host which token it needs before the call:
+`AssetResource::required_scope`, `ProjectMutation::required_scopes` (scripts add
+`settings:write`), `vcs::prepare_pull_request_thread_scopes` (a worktree for a
+thread adds `orchestration:operate`) and `device::list_scope` (`updateTool` or
+`retryHostId` need `orchestration:operate`). Inputs that carry secrets
+(`provider::AuthResponse::Credentials`, `secrets::SecretAnswer`, a webhook
+`TaskUpsert`) redact them in `Debug`, and no error string contains a value.
+
+`scheduledTasks.upsert` is `replay: id`: T3 derives the task id from
+`commandId` (`scheduled-task:<commandId>`) and upserts it, so the library requires
+`commandId` or an existing `id` and a resend never creates a second task.
+
+**`server`** (9)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `server.getConfig` | same | `server::config(conn)` | read · free | `orchestration:read` | 20 s | — |
+| `server.getSettings` | same | `server::settings(conn)` | read · free | `orchestration:read` | 20 s | — |
+| `server.updateSettings` | same | `server::update_settings(conn, patch, mutation?)` | mutation · set | dynamic: `settings:write`, `providers:manage` | 20 s | `patch`, `providerInstanceMutation`? |
+| `server.discoverSourceControl` | same | `server::discover_source_control(conn)` | read · free | `orchestration:read` | 20 s | — |
+| `server.reportClientActivity` | same | `server::report_client_activity(conn, &ClientActivity)` | mutation · set | `orchestration:read` | 20 s | `clientId`, `clientKind`, `visible`, `focused`, `recentlyInteracted`, `scopes`, `observedAt`, `environmentId`?, `appState`?, `lowPowerMode`?, `batteryState`?, `networkType`?, `ttlMs`? |
+| `server.upsertKeybinding` | same | `server::upsert_keybinding(conn, &Keybinding, replace?)` | mutation · set | `settings:write` | 20 s | `key`, `command`, `when`?, `replace`? |
+| `server.removeKeybinding` | same | `server::remove_keybinding(conn, &Keybinding)` | mutation · set | `settings:write` | 20 s | `key`, `command`, `when`? |
+| `server.searchAcpRegistry` | same | `server::search_acp_registry(conn, query, limit?)` | read · free | `orchestration:read` | 20 s | `query`, `limit`? |
+| `server.prepareAcpRegistryAgent` | same | `server::prepare_acp_registry_agent(conn, agent_id)` | mutation · set | `providers:manage` | 20 s | `agentId` |
+
+**`orchestration`** (10)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `orchestration.dispatchCommand` | same | `orchestration::dispatch(conn, &Command)` | mutation · id | `orchestration:operate` | 20 s | the variant: `type`, `commandId`, … |
+| `orchestration.launchThread` | same | `orchestration::launch_thread(conn, &ThreadLaunch)` | mutation · id | `orchestration:operate` | 20 s | `commandId`, `projectId`, `title`, `modelSelection`, `runtimeMode`, `interactionMode`, `workspaceStrategy`, `creationSource`?, `threadId`?, `reuseExistingThread`?, `generateTitle`?, `initialMessage`? |
+| `orchestration.getThreadProjection` | same | `orchestration::thread_projection(conn, thread_id)` | read · free | `orchestration:read` | 20 s | `threadId` |
+| `orchestration.getTurnItem` | same | `orchestration::turn_item(conn, thread_id, item_id, revision?)` | read · free | `orchestration:read` | 20 s | `threadId`, `itemId`, `revision`? |
+| `orchestration.getTurnDiff` | same | `orchestration::turn_diff(conn, thread_id, from, to, ignore_whitespace?)` | read · free | `orchestration:read` | 20 s | `threadId`, `fromTurnCount`, `toTurnCount`, `ignoreWhitespace`? |
+| `orchestration.getFullThreadDiff` | same | `orchestration::full_thread_diff(conn, thread_id, to, ignore_whitespace?)` | read · free | `orchestration:read` | 20 s | `threadId`, `toTurnCount`, `ignoreWhitespace`? |
+| `orchestration.getWorkflowScript` | same | `orchestration::workflow_script(conn, thread_id, script_path)` | read · free | `orchestration:read` | 20 s | `threadId`, `scriptPath` |
+| `orchestration.stopWorkflow` | same | `orchestration::stop_workflow(conn, thread_id, subagent_id)` | mutation · set | `orchestration:operate` | 20 s | `threadId`, `subagentId` |
+| `orchestration.searchThreads` | same | `orchestration::search_threads(conn, query, limit?)` | read · free | `orchestration:read` | 20 s | `query`, `limit`? |
+| `orchestration.getArchivedShellSnapshot` | same | `orchestration::archived_shell(conn)` | read · free | `orchestration:read` | 20 s | — |
+
+**`preview`** (9)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `preview.list` | same | `preview::list(conn, thread_id)` | read · free | `orchestration:read` | 20 s | `threadId` |
+| `preview.open` | same | `preview::open(conn, thread_id, &PreviewOpen)` | mutation · never | `preview:operate` | 20 s | `threadId`, `url`?, `viewport`?, `profileId`?, `runtime`?, `reveal`? |
+| `preview.navigate` | same | `preview::navigate(conn, thread_id, tab_id, url, resolved_title?)` | mutation · set | `preview:operate` | 20 s | `threadId`, `tabId`, `url`, `resolvedTitle`? |
+| `preview.resize` | same | `preview::resize(conn, thread_id, tab_id, viewport)` | mutation · set | `preview:operate` | 20 s | `threadId`, `tabId`, `viewport` |
+| `preview.adjust` | same | `preview::adjust(conn, thread_id, tab_id, &PreviewAdjust)` | mutation · set | `preview:operate` | 20 s | `threadId`, `tabId`, `colorScheme`?, `zoomFactor`?, `hardReload`?, `clear`? |
+| `preview.refresh` | same | `preview::refresh(conn, thread_id, tab_id)` | mutation · set | `preview:operate` | 20 s | `threadId`, `tabId` |
+| `preview.close` | same | `preview::close(conn, thread_id, tab_id?)` | mutation · set | `preview:operate` | 20 s | `threadId`, `tabId`? |
+| `preview.clearProfile` | same | `preview::clear_profile(conn, profile_id)` | mutation · set | `preview:operate` | 60 s | `profileId` |
+| `preview.reportStatus` | same | `preview::report_status(conn, thread_id, tab_id, nav, back, forward)` | mutation · set | `preview:operate` | 20 s | `threadId`, `tabId`, `navStatus`, `canGoBack`, `canGoForward` |
+
+**`assets`** (2)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `assets.createUrl` | same | `assets::create_url(conn, &AssetResource)` | read · free | dynamic: `filesystem:read`, `orchestration:read` | 20 s | `resource` |
+| `attachments.delete` | same | `assets::delete_attachment(conn, attachment_id)` | mutation · set | `orchestration:operate` | 20 s | `attachmentId` |
+
+**`vcs`** (7)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `vcs.refreshStatus` | same | `vcs::refresh_status(conn, cwd)` | read · free | `orchestration:read` | 20 s | `cwd` |
+| `vcs.listRefs` | same | `vcs::list_refs(conn, cwd, &RefQuery)` | read · free | `orchestration:read` | 20 s | `cwd`, `query`?, `cursor`?, `includeMatchingRemoteRefs`?, `refKind`?, `refresh`?, `limit`? |
+| `vcs.createRef` | same | `vcs::create_ref(conn, cwd, ref_name, switch_ref?)` | mutation · never | `source-control:write` | 20 s | `cwd`, `refName`, `switchRef`? |
+| `vcs.switchRef` | same | `vcs::switch_ref(conn, cwd, ref_name)` | mutation · set | `source-control:write` | 20 s | `cwd`, `refName` |
+| `vcs.pull` | same | `vcs::pull(conn, cwd)` | mutation · set | `source-control:write` | 20 s | `cwd` |
+| `vcs.init` | same | `vcs::init(conn, cwd, kind?)` | mutation · set | `source-control:write` | 20 s | `cwd`, `kind`? |
+| `git.preparePullRequestThread` | same | `vcs::prepare_pull_request_thread(conn, cwd, reference, mode, thread_id?)` | mutation · never | dynamic: `source-control:write`, `orchestration:operate` | 20 s | `cwd`, `reference`, `mode`, `threadId`? |
+
+**`review`** (2)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `review.getDiffPreview` | same | `review::diff_preview(conn, cwd, base_ref?, ignore_whitespace?, file?)` | read · free | `filesystem:read` | 20 s | `cwd`, `baseRef`?, `ignoreWhitespace`?, `file`? |
+| `review.getDiffFileContents` | same | `review::diff_file_contents(conn, &FileContentsQuery)` | read · free | `filesystem:read` | 20 s | `cwd`, `sourceKind`, `changeType`, `oldPath`, `newPath`, `baseRef`?, `headRef`? |
+
+**`projects`** (4)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `projects.readFile` | same | `projects::read_file(conn, cwd, relative_path, allow_missing?)` | read · free | `filesystem:read` | 20 s | `cwd`, `relativePath`, `allowMissing`? |
+| `projects.searchEntries` | same | `projects::search_entries(conn, cwd, query, limit, kind?, image_only?)` | read · free | `filesystem:read` | 20 s | `cwd`, `query`, `limit`, `kind`?, `imageOnly`? |
+| `projects.mutate` | same | `projects::mutate(conn, &ProjectMutation)` | mutation · id | dynamic: `orchestration:operate`, `settings:write` | 20 s | the variant: `type`, `commandId`, `projectId`, … |
+| `projects.createNew` | same | `projects::create_new(conn, name)` | mutation · never | `orchestration:operate` | 20 s | `name` |
+
+**`diagnostics`** (8)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `server.getHostResources` | same | `diagnostics::host_resources(conn)` | read · free | `orchestration:read` | 20 s | — |
+| `server.getProcessDiagnostics` | same | `diagnostics::processes(conn)` | read · free | `diagnostics:read` | 20 s | — |
+| `server.getResourceTelemetryHistory` | same | `diagnostics::telemetry_history(conn, window_ms, bucket_ms)` | read · free | `diagnostics:read` | 20 s | `windowMs`, `bucketMs` |
+| `server.signalProcess` | same | `diagnostics::signal_process(conn, pid, start_time_ms, signal)` | mutation · set | `environment:maintain` | 20 s | `pid`, `startTimeMs`, `signal` |
+| `server.checkOtlpEndpoint` | same | `diagnostics::check_otlp_endpoint(conn, signal, url)` | read · free | `settings:write` | 20 s | `signal`, `url` |
+| `server.getUsageSummary` | same | `diagnostics::usage_summary(conn, &UsageQuery)` | read · free | `diagnostics:read` | 20 s | `sinceDay`, `untilDay`, `timeZone`, `resolution`?, `sinceTime`?, `untilTime`?, `awaitRefresh`? |
+| `server.refreshUsageRates` | same | `diagnostics::refresh_usage_rates(conn)` | read · free | `diagnostics:read` | 20 s | — |
+| `server.runStorageCleanup` | same | `diagnostics::run_storage_cleanup(conn)` | mutation · never | `settings:write` | 20 s | — |
+
+**`provider`** (9)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `server.refreshProviders` | same | `provider::refresh(conn, instance_id?, cwd?, fresh?, refresh_models?)` | read · free | `orchestration:read` | 20 s | `instanceId`?, `cwd`?, `fresh`?, `refreshModels`? |
+| `server.updateProvider` | same | `provider::update(conn, provider, target_version?, instance_id?)` | mutation · never | `providers:manage` | 300 s | `provider`, `targetVersion`?, `instanceId`? |
+| `provider.auth.start` | same | `provider::auth_start(conn, instance_id, method_id?, return_url?, callback_mode?)` | mutation · never | `providers:manage` | 20 s | `instanceId`, `methodId`?, `returnUrl`?, `callbackMode`? |
+| `provider.auth.respond` | same | `provider::auth_respond(conn, instance_id, flow_id, interaction_id, &AuthResponse)` | mutation · never | `providers:manage` | 20 s | `instanceId`, `flowId`, `interactionId`, `response` |
+| `provider.auth.cancel` | same | `provider::auth_cancel(conn, instance_id, flow_id)` | mutation · set | `providers:manage` | 20 s | `instanceId`, `flowId` |
+| `provider.auth.logout` | same | `provider::auth_logout(conn, instance_id)` | mutation · set | `providers:manage` | 20 s | `instanceId` |
+| `provider.install.start` | same | `provider::install_start(conn, instance_id)` | mutation · never | `providers:manage` | 20 s | `instanceId` |
+| `provider.install.cancel` | same | `provider::install_cancel(conn, instance_id, operation_id)` | mutation · set | `providers:manage` | 20 s | `instanceId`, `operationId` |
+| `provider.install.remove` | same | `provider::install_remove(conn, instance_id)` | mutation · set | `providers:manage` | 20 s | `instanceId` |
+
+**`projectClone`** (1)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `projectClone.start` | same | `project_clone::start(conn, &CloneStart)` | mutation · never | `source-control:write` | 20 s | `projectId`, `title`, `createdAt`, `destinationPath`, `provider`?, `repository`?, `remoteUrl`?, `protocol`? |
+
+**`filesystem`** (2)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `filesystem.browse` | same | `filesystem::browse(conn, partial_path, cwd?)` | read · free | `filesystem:read` | 20 s | `partialPath`, `cwd`? |
+| `filesystem.getMetadata` | same | `filesystem::metadata(conn, paths)` | read · free | `filesystem:read` | 20 s | `paths` |
+
+**`pullRequests`** (13)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `pullRequests.list` | same | `pull_requests::list(conn, &ListQuery)` | read · free | `orchestration:read` | 20 s | `state`, `involvement`?, `filters`?, `projectId`?, `projectIds`?, `host`?, `limit`?, `cursors`?, `query`? |
+| `pullRequests.detail` | same | `pull_requests::detail(conn, &PrRef)` | read · free | `orchestration:read` | 20 s | `projectId`, `repository`, `number`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.checks` | same | `pull_requests::checks(conn, &PrRef)` | read · free | `orchestration:read` | 20 s | `projectId`, `repository`, `number`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.activity` | same | `pull_requests::activity(conn, &PrRef)` | read · free | `orchestration:read` | 20 s | `projectId`, `repository`, `number`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.routing` | same | `pull_requests::routing(conn, &PrRef)` | read · free | `orchestration:read` | 20 s | `projectId`, `repository`, `number`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.routingIdentity` | same | `pull_requests::routing_identity(conn, host)` | read · free | `orchestration:read` | 20 s | `host` |
+| `pullRequests.reviewerCandidates` | same | `pull_requests::reviewer_candidates(conn, &PrRef)` | read · free | `orchestration:read` | 20 s | `projectId`, `repository`, `number`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.labelCandidates` | same | `pull_requests::label_candidates(conn, &PrRef)` | read · free | `orchestration:read` | 20 s | `projectId`, `repository`, `number`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.comment` | same | `pull_requests::comment(conn, &PrRef, body)` | mutation · never | `source-control:write` | 20 s | `projectId`, `repository`, `number`, `body`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.submitReview` | same | `pull_requests::submit_review(conn, &PrRef, verdict, body, comments)` | mutation · never | `source-control:write` | 20 s | `projectId`, `repository`, `number`, `verdict`, `body`, `comments`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.runAction` | same | `pull_requests::run_action(conn, &PrRef, &PrAction)` | mutation · never | `source-control:write` | 20 s | `projectId`, `repository`, `number`, `action`, `mergeMethod`?, `updateMethod`?, `stackNumber`?, `expectedStackHeads`?, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.requestReviewers` | same | `pull_requests::request_reviewers(conn, &PrRef, reviewers, requested)` | mutation · set | `source-control:write` | 20 s | `projectId`, `repository`, `number`, `reviewers`, `requested`, `host`?, `expectedAccountId`?, `allowStale`? |
+| `pullRequests.setLabels` | same | `pull_requests::set_labels(conn, &PrRef, labels, applied)` | mutation · set | `source-control:write` | 20 s | `projectId`, `repository`, `number`, `labels`, `applied`, `host`?, `expectedAccountId`?, `allowStale`? |
+
+**`device`** (7)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `device.list` | same | `device::list(conn, update_tool?, inspect_only?, retry_host_id?)` | read · free | dynamic: `orchestration:read`, `orchestration:operate` | 300 s | `updateTool`?, `inspectOnly`?, `retryHostId`? |
+| `device.configure` | same | `device::configure(conn, enabled?, agent_access_enabled?, onboarding_completed?)` | mutation · set | `settings:write` | 300 s | `enabled`?, `agentAccessEnabled`?, `onboardingCompleted`? |
+| `device.testHost` | same | `device::test_host(conn, &SshHost)` | read · free | `settings:write` | 300 s | `id`, `label`, `target`, `kind`?, `identityFile`?, `port`? |
+| `device.open` | same | `device::open(conn, thread_id, device_id, platform, host_id?, boot?)` | mutation · never | `orchestration:operate` | 180 s | `threadId`, `deviceId`, `platform`, `hostId`?, `boot`? |
+| `device.close` | same | `device::close(conn, thread_id, host_id?, device_id?, shutdown?)` | mutation · set | `orchestration:operate` | 60 s | `threadId`, `hostId`?, `deviceId`?, `shutdown`? |
+| `device.detail` | same | `device::detail(conn, device_id, host_id?)` | read · free | `orchestration:read` | 20 s | `deviceId`, `hostId`? |
+| `device.action` | same | `device::action(conn, &DeviceAction)` | mutation · never | `orchestration:operate` | 30 s | the variant: `type`, `deviceId`, `hostId`, … |
+
+**`scheduledTasks`** (5)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `scheduledTasks.list` | same | `scheduled_tasks::list(conn)` | read · free | `orchestration:read` | 20 s | — |
+| `scheduledTasks.upsert` | same | `scheduled_tasks::upsert(conn, &TaskUpsert)` | mutation · id | `orchestration:operate` | 20 s | `title`, `prompt`, `enabled`, `schedule`, `projectId`, `workspaceStrategy`, `modelSelection`, `runtimeMode`, `interactionMode`, `commandId`?, `id`?, `requireExisting`?, `threadId`?, `createdBy`?, `creationSource`? |
+| `scheduledTasks.setEnabled` | same | `scheduled_tasks::set_enabled(conn, id, enabled)` | mutation · set | `orchestration:operate` | 20 s | `id`, `enabled` |
+| `scheduledTasks.delete` | same | `scheduled_tasks::delete(conn, id)` | mutation · set | `orchestration:operate` | 20 s | `id` |
+| `scheduledTasks.runNow` | same | `scheduled_tasks::run_now(conn, id)` | mutation · never | `orchestration:operate` | 20 s | `id` |
+
+**`agentSessions`** (2)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `agentSessions.scan` | same | `agent_sessions::scan(conn)` | read · free | `orchestration:read` | 20 s | — |
+| `agentSessions.import` | same | `agent_sessions::import(conn, project_id, expected_workspace_root?)` | mutation · set | `orchestration:operate` | 20 s | `projectId`, `expectedWorkspaceRoot`? |
+
+**`mcpApps`** (3)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `mcpApps.callTool` | same | `mcp_apps::call_tool(conn, thread_id, item_id, name, arguments)` | mutation · never | `orchestration:operate` | 20 s | `threadId`, `itemId`, `name`, `arguments` |
+| `mcpApps.readResource` | same | `mcp_apps::read_resource(conn, thread_id, item_id, uri)` | read · free | `orchestration:read` | 20 s | `threadId`, `itemId`, `uri` |
+| `mcpApps.updateModelContext` | same | `mcp_apps::update_model_context(conn, thread_id, item_id, conversation_thread_id, content?, structured_content?)` | mutation · set | `orchestration:operate` | 20 s | `threadId`, `itemId`, `conversationThreadId`, `content`?, `structuredContent`? |
+
+**`shell`** (1)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `shell.openInEditor` | same | `shell::open_in_editor(conn, cwd, editor, reveal?)` | mutation · never | `orchestration:operate` | 20 s | `cwd`, `editor`, `reveal`? |
+
+**`secrets`** (1)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `secrets.answerRequest` | same | `secrets::answer(conn, thread_id, turn_item_id, &SecretAnswer)` | mutation · never | `orchestration:operate` | 20 s | `threadId`, `turnItemId`, `answer` |
+
+**`worktreeSetup`** (1)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `worktreeSetup.cancel` | same | `worktree_setup::cancel(conn, thread_id)` | mutation · set | `orchestration:operate` | 20 s | `threadId` |
+
+**`terminal`** (3)
+
+| Function (`fn`) | Tag | Rust (`api::…`) | Kind · replay | Scope | Deadline | Args |
+| --- | --- | --- | --- | --- | --- | --- |
+| `terminal.open` | same | `terminal::open(conn, &TerminalOpen)` | mutation · set | `terminal:operate` | 20 s | `threadId`, `terminalId`, `cwd`, `worktreePath`?, `cols`?, `rows`?, `env`?, `providerInstanceId`? |
+| `terminal.write` | same | `terminal::write(conn, thread_id, terminal_id, data)` | mutation · never | `terminal:operate` | 20 s | `threadId`, `terminalId`, `data` |
+| `terminal.resize` | same | `terminal::resize(conn, thread_id, terminal_id, cols, rows)` | mutation · set | `terminal:operate` | 20 s | `threadId`, `terminalId`, `cols`, `rows` |
+
+Merged with what the library already had, so each payload has one builder:
+
+- `pull_requests::request` and `pull_requests::payload` keep their signatures and
+  error codes (`invalid_filter`, `invalid_pull_request`, `invalid_command`,
+  `invalid_comment`, `invalid_review`) and the page's own rules (a comment needs
+  words; only the page's nine actions), but build through `api::pull_requests`.
+  Changes: a `list` query over 200 characters once trimmed and malformed
+  `cursors` are now `invalid_filter` (before, the first reached the server and
+  the second was dropped), and `projectId` must pass `ids::id`.
+- `terminal::{session, dimensions, write, resize}` keep their signatures and codes
+  and build through `api::terminal`; `Connection::terminal_write`/`terminal_resize`
+  send through the registry. Changes: the thread id must pass `ids::id`, and an
+  empty terminal id is `invalid_terminal` (was `invalid_id`).
+- `usage_summary::request` builds its payload with `api::diagnostics::UsageQuery`;
+  a blank time zone is now `invalid_time_zone`.
+- `projects::command` is unchanged; `ProjectMutation::from_command(command_id, &built)`
+  types its output for `projects.mutate`.
+- `models::model_catalog`/`set_model_favorite` and `Connection::document` already
+  went through `api::server` and `api::assets` (tanda 1). `Connection::upload`
+  keeps `attachments.createUploadUrl`, which it streams.
+- Removed as redundant: the strict reader and small checks private to
+  `api::orchestration` (now `api::reader`, shared by every module), the private
+  payload code in `pull_requests` and `terminal`, and `pull_requests::ACTIONS`
+  (private; `api::pull_requests::ACTIONS` lists all eleven contract actions).
 
 `tests/fixtures/t3-contract.json` pins the tag, stream and scope of every T3 RPC
-at the commit in `api::CONTRACT`. Regenerate it with
+at the commit in `api::CONTRACT`, and the list of T3 scopes. Regenerate it with
 `tools/extract-t3-contract <t3code checkout>`. `tests/api_contract.rs` fails if
-the registry drifts from it. With `T3_CONTRACTS_DIR=<checkout>/packages/contracts/src`
+the registry drifts from it: a tag T3 does not serve, another stream flag, a
+fixed scope that differs, a dynamic scope T3 does not have (or the reverse), or a
+scope string T3 does not define. One scope is decided inside a handler rather
+than in T3's tables: `device.list` calls `requiredScopeForDeviceList` in `ws.ts`.
+The extractor records it as an exception and stops if the handler no longer
+calls it. With `T3_CONTRACTS_DIR=<checkout>/packages/contracts/src`
 set, the same test also re-reads the live sources.
+
+### Typed streams
+
+The 13 stream tags ot3 uses are registry rows with `"stream": true` in
+`api::streams`. Each has a `*_spec` that validates the payload with no network
+and returns a `StreamSpec` (registry row plus exact wire payload), and a
+`subscribe_*` that runs the existing `Connection::subscribe_probed` loop with
+the caller's `cancel`, `probe` and `receive`. Neither reconnects nor backs off:
+that stays with the host, as does keeping the cursor.
+
+```rust,no_run
+use t3_protocol::api::streams::{self, ThreadSub};
+# fn example(conn: &t3_protocol::Connection, cancelled: impl Fn() -> bool) -> t3_protocol::Result<()> {
+let sub = ThreadSub { after_sequence: Some(41), accept_bounded_snapshot: Some(true), ..ThreadSub::new("t-1") };
+let mut cursor = sub.after_sequence;
+streams::subscribe_thread(conn, &sub, cancelled, || false, |item| {
+    if let Some(item) = item {
+        // A snapshot sets the cursor; events, known or not, only move it on.
+        cursor = t3_protocol::stream::advance("orchestration.subscribeThread", cursor, &item);
+    }
+    Ok(())
+})?;
+// After a cut: subscribe again with `after_sequence: cursor`, with the host's backoff.
+# Ok(()) }
+```
+
+| `fn` | Wire tag | Rust | Items · cursor |
+| --- | --- | --- | --- |
+| `orchestration.subscribeShell` | same | `subscribe_shell(conn, &ShellSub, …)` | `kind`: `snapshot`, `synchronized`, `project.*`, `thread.*` · `afterSequence` |
+| `orchestration.subscribeThread` | same | `subscribe_thread(conn, &ThreadSub, …)` | `kind`: `snapshot`, `synchronized`, `event` · `afterSequence` |
+| `orchestration.subscribeCommandOutput` | same | `subscribe_command_output(conn, thread_id, item_id, …)` | `kind`: `replace`, `append` |
+| `terminal.attach` | same | `subscribe_terminal_attach(conn, &TerminalAttach, …)` | `type`, first `snapshot` · `sequence` (ordering only) |
+| `device.subscribeDeviceState` | `subscribeDeviceState` | `subscribe_device_state(conn, …)` | whole state per item |
+| `preview.subscribeDiscoveredLocalServers` | `subscribeDiscoveredLocalServers` | `subscribe_local_servers(conn, urls?, …)` | whole list per item |
+| `preview.subscribePreviewEvents` | `subscribePreviewEvents` | `subscribe_preview_events(conn, …)` | `type` events |
+| `server.subscribeServerConfig` | `subscribeServerConfig` | `subscribe_server_config(conn, &ConfigSub, …)` | `type`, first `snapshot` |
+| `worktreeSetup.subscribeWorktreeSetup` | `subscribeWorktreeSetup` | `subscribe_worktree_setup(conn, thread_id, …)` | whole state or `null` · `sequence` (ordering only) |
+| `server.getStorageCleanupReport` | same | `subscribe_storage_cleanup_report(conn, …)` | report or `null` |
+| `provider.install.subscribe` | same | `subscribe_provider_install(conn, instance_id, …)` | whole state per item |
+| `provider.auth.subscribe` | same | `subscribe_provider_auth(conn, instance_id, …)` | whole state per item |
+| `git.runStackedAction` | same | `subscribe_stacked_action(conn, &StackedAction, …)` | `kind` events, ends with `action_finished`/`action_failed`; replay `never` |
+
+`stream::cursor_of(tag, &item)` is an item's place in its stream:
+`snapshotSequence` of a shell or thread snapshot, otherwise `sequence`, also for
+thread events this build cannot decode. `stream::advance` applies ot3's rule (a
+snapshot sets the cursor; any other item only moves it forward), and
+`stream::start_of` tells whether a first item replaces the held state
+(`Snapshot`), resumes it from `afterSequence` (`Resume`) or only carries events
+(`Events`).
+
+`stream::first_item(conn, &spec, timeout, accept)` reads a stream like a request
+with a deadline. Four composed functions without a wire tag use it, callable
+through `call` like any unary function: `provider.installState`,
+`provider.authState` (10 s), `diagnostics.storageCleanupReport` (10 s, `null`
+before the first run) and `preview.discoveredServers` (4 s, waits for a list
+with servers). Nothing within the deadline is `stream_timeout`.
+
+Over the C ABI, `subscribe` takes `fn` and `args` next to the raw `tag` and
+`payload`. With `fn` the arguments are validated before a connection is looked
+up (`unknown_function`, `not_a_stream`, `invalid_<field>`); the raw form is
+unchanged. `call` on a stream function is `stream_function`. `describe` adds
+`streams`, one entry per stream function: `itemKey`, `items`, `starts`, `cursor`
+(`afterSequence` or `sequence`), `ends` and `firstItem`. `pollSubscription` adds
+`cursor` (the payload's `afterSequence` advanced over every polled item) and
+`start`. All of this is additive; `abiVersion` stays 3.
 
 ## Validation
 
