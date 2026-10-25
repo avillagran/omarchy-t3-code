@@ -15,7 +15,7 @@ pub fn sanitize(input: &Value) -> Value {
         "english",
         "composerExpanded","detached",
         "screenshotButton","screenshotHidePanel","dictationButton",
-        "fpsMeter",
+        "fpsMeter","mosaicOpen","quickRepliesButton",
         "omabridgeIndicator",
         "threadDetailsOpen",
     ] {
@@ -56,6 +56,7 @@ pub fn sanitize(input: &Value) -> Value {
         ("selectedEnvironment", 2048),
         ("selectedThread", 2048),
         ("projectFilter", 2200),
+        ("hostFilter", 2048),
         ("query", 256),
         ("language", 32),
         ("screenshotCommand", 4096),
@@ -70,9 +71,19 @@ pub fn sanitize(input: &Value) -> Value {
     }
     if let Some(v) = input["statusFilter"]
         .as_str()
-        .filter(|v| ["all", "working", "done", "failed", "pending", "settled"].contains(v))
+        .filter(|v| ["all", "working", "waiting", "idle", "done", "failed", "pending", "settled"].contains(v))
     {
         out["statusFilter"] = json!(v)
+    }
+    if let Some(n)=input["mosaicCount"].as_u64().filter(|n|(1..=8).contains(n)){out["mosaicCount"]=json!(n);}
+    if let Some(language)=input["quickReplyLanguage"].as_str().filter(|s|*s=="auto"||(s.len()==2&&s.chars().all(|c|c.is_ascii_lowercase()))){out["quickReplyLanguage"]=json!(language);}
+    if let Some(languages)=input["quickReplies"].as_object(){
+        let mut clean=serde_json::Map::new();
+        for (language,replies) in languages.iter().take(32){
+            if language.len()!=2||!language.chars().all(|c|c.is_ascii_lowercase()){continue}
+            if let Some(replies)=replies.as_array(){clean.insert(language.clone(),json!(replies.iter().filter_map(|r|r.as_str()).filter(|s|!s.trim().is_empty()&&s.len()<=1000&&!s.chars().any(char::is_control)).take(32).collect::<Vec<_>>()));}
+        }
+        out["quickReplies"]=Value::Object(clean);
     }
     if let Some(positions) = input["positions"].as_object() {
         for (key, p) in positions.iter().take(128).filter(|(k, _)| k.len() <= 2200) {
@@ -113,6 +124,17 @@ pub fn save(value: &Value) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn mosaic_and_quick_replies_are_bounded() {
+        let clean=sanitize(&json!({"hostFilter":"node","statusFilter":"waiting","mosaicOpen":true,"mosaicCount":8,"quickReplyLanguage":"es","quickReplies":{"es":["Continúa.","", "bad\nline"],"../en":["bad"]}}));
+        assert_eq!(clean["hostFilter"],"node");
+        assert_eq!(clean["statusFilter"],"waiting");
+        assert_eq!(clean["mosaicCount"],8);
+        assert_eq!(clean["quickReplies"],json!({"es":["Continúa."]}));
+        let invalid=sanitize(&json!({"mosaicCount":9,"hostFilter":"bad\nhost","quickReplyLanguage":"--arg"}));
+        assert!(invalid.get("mosaicCount").is_none()&&invalid.get("hostFilter").is_none()&&invalid.get("quickReplyLanguage").is_none());
+        assert_eq!(sanitize(&json!({"quickReplies":{"es":[]}}))["quickReplies"]["es"],json!([]));
+    }
     #[test]
     fn state_roundtrip_excludes_content_and_bounds_scroll() {
         let root = std::env::temp_dir().join(format!("t3-ui-state-{}", uuid::Uuid::new_v4()));

@@ -15,6 +15,8 @@ Item {
  property var motionState:({})
  readonly property int coastingDuration:Motion.glide.coasting
  readonly property bool running:ease.running
+ // The user moved this view (views that follow new content let go).
+ signal userScrolled()
  function stop(){coastStart.stop();ease.stop();coasting=false;motionState=({})}
  function scroll(angle,pixel,touchpad){
   var f=flickable;if(!f||!f.visible||f.height<=0)return false
@@ -29,6 +31,7 @@ Item {
   if(coastDelta!==0)coastStart.restart();else coastStart.stop()
   targetY=Math.max(lo,Math.min(hi,from-delta))
   if(!step.animate)f.contentY=targetY;else {ease.duration=Motion.duration(targetY-f.contentY);ease.start()}
+  userScrolled()
   return true
  }
  function route(angle,pixel,touchpad){

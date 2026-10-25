@@ -27,7 +27,7 @@ Item {
   // time; narrow windows show it as a sheet over the chat.
   property bool sidePanelOpen:false
   property string sideTab:"browser"
-  readonly property bool sideShown:sidePanelOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
+  readonly property bool sideShown:sidePanelOpen&&opened&&!mosaicOpen&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
   readonly property bool browserOpen:sidePanelOpen&&sideTab==="browser"
   function quoteSelection(selection){
     var quote=String(selection||"").replace(/\u2029/g,"\n").trim().split("\n").map(function(l){return "> "+l}).join("\n");if(!quote||!bridge.selectedKey)return
@@ -170,7 +170,7 @@ Item {
   function openProjectSettings(key){preferencesProjectKey=key;preferencesOpen=true;var loader=preferencesLoader;if(loader&&loader.item){loader.item.initialProjectKey=key;loader.item.selectInitialProject()}}
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
   onPullRequestsOpenChanged:{if(!pullRequestsOpen)prTarget=null;if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}}
-  function submitCurrent(){if(!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
+  function submitCurrent(){if(!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
   function selectSidebarThread(env,id){pullRequestsOpen=false;bridge.selectThread(env,id)}
   property bool initialized: false
   readonly property var conversationView: conversation
@@ -271,7 +271,7 @@ Item {
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
   readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
   readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
-  readonly property bool nativeKeysActive:shortcutActive&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
+  readonly property bool nativeKeysActive:shortcutActive&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
     function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.activeRows.concat(root.workingRows).concat(root.snoozedRows).concat(root.settledRows)}
     function onSettledLastThread(thread){
@@ -386,6 +386,11 @@ Item {
   palette.window:root.themeSurface;palette.windowText:root.fg;palette.base:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05));palette.alternateBase:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.text:root.fg;palette.button:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.buttonText:root.fg;palette.highlight:Color.accent;palette.highlightedText:root.themeSurface;palette.placeholderText:root.dim;palette.toolTipBase:root.themeSurface;palette.toolTipText:root.fg;palette.link:Color.accent;palette.light:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.16));palette.midlight:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12));palette.mid:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.2));palette.dark:Qt.darker(root.themeSurface,1.4);palette.shadow:Qt.rgba(0,0,0,0.5)
   readonly property color surface: Qt.rgba(fg.r, fg.g, fg.b, 0.045)
   readonly property color healthy: Color.accent
+  property string hostFilter: bridge.viewState.hostFilter || ""
+  readonly property var hostThreads: bridge.state.threads.filter(function(t){return !root.hostFilter || t.environmentId===root.hostFilter})
+  readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))
+  onHostFilterChanged: if(initialized && bridge.viewState.hostFilter!==hostFilter)bridge.rememberView({hostFilter:hostFilter})
+  readonly property bool mosaicOpen: bridge.viewState.mosaicOpen===true
   property string statusFilter: bridge.viewState.statusFilter || "all"
   property string projectFilter: bridge.viewState.projectFilter || ""
   Connections{target:root.bridge;function onProjectOpened(environment,projectId,error){if(!error){root.statusFilter="all";root.projectFilter="";root.bridge.query=""}}}
@@ -398,7 +403,7 @@ Item {
     bridge.sidebarCollapsed = !bridge.sidebarCollapsed
     if(focusTarget !== false) Qt.callLater(function() { if (!root.opened) return; if (root.sidebarCollapsed) { if (root.bridge.selectedThread) composerPanel.inputField.forceActiveFocus() } else searchField.forceActiveFocus() })
   }
-  function showFilters() { filterMenu.open() }
+  function showFilters() { if(sidebarCollapsed){toggleSidebar();Qt.callLater(function(){filterMenu.open()})}else filterMenu.open() }
   function hideFilters() { filterMenu.close() }
   property bool sidebarCompact: !!bridge.viewState.sidebarCompact
   property bool workingExpanded: !!bridge.viewState.workingExpanded
@@ -545,8 +550,19 @@ Item {
   }
   readonly property var projectGroups:Projects.groups(bridge.state.projects,Object.assign({},bridge.viewState,{nativeProjectGrouping:bridge.state.nativeProjectGrouping}))
   readonly property var projectScope:Projects.scope(projectFilter,projectGroups)
-  readonly property var sidebarRows: Sidebar.rows(bridge.state.threads, statusFilter, projectScope, settledExpanded, bridge.query)
-  readonly property bool settledShown: settledExpanded
+  readonly property var sidebarRows: Sidebar.rows(hostThreads, statusFilter, projectScope, settledExpanded, bridge.query, searchContext)
+  // Host names and the server's message matches for the current search.
+  readonly property bool searching: Sidebar.terms(bridge.query).length > 0
+  readonly property var searchContext: {
+    var hosts = {}, hits = {}, s = bridge.sidebarSearch || {}
+    ;(bridge.state.environments || []).forEach(function(e) { hosts[e.id] = e.name || e.label || e.id })
+    if (s.query && Sidebar.fold(s.query) === Sidebar.fold(String(bridge.query).trim())) (s.matches || []).forEach(function(m) { hits[m.environmentId + "/" + m.threadId] = true })
+    return {hosts: hosts, hits: hits}
+  }
+  // Filtering animates like a snapshot change: rows leave and arrive.
+  Connections { target: root.bridge; function onQueryChanged() { root.rowMotionPending = true } }
+  // Settled matches show while searching; shelves the user folded stay folded.
+  readonly property bool settledShown: settledExpanded || searching
   readonly property var inboxRows: sidebarRows.filter(function(t) { return !t.sectionHeader && !t.settled && !t.snoozed })
   // Each section lists sub-threads right under their parent (Sidebar.nest).
   function nestRows(rows){return Sidebar.nest(rows,bridge.state.threads,bridge.viewState.subthreadsExpanded,bridge.selectedKey)}
@@ -557,8 +573,8 @@ Item {
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
   readonly property var visibleSettledRows:settledShown ? settledRows : []
-  readonly property var settledRows: nestRows(Sidebar.rows(bridge.state.threads,statusFilter,projectScope,true,bridge.query).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(Sidebar.compareSettled))
-  readonly property var snoozedRows: nestRows(Sidebar.rows(bridge.state.threads,statusFilter,projectFilter,true,bridge.query).filter(function(t){return !t.sectionHeader && !!t.snoozed}))
+  readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(Sidebar.compareSettled))
+  readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   function kind(t) { return Sidebar.state(t) }
   // Last seen state per thread and when it changed, so rows can celebrate a
@@ -1078,7 +1094,7 @@ Item {
           spacing: Style.space(4)
           Text { text: T3I18n.tr("Status"); color: root.dim; font.pixelSize: Style.font.caption; Layout.margins: Style.space(5) }
           Repeater {
-            model: [{id:"all",es:"Todos",en:"All"},{id:"working",es:"Activos",en:"Working"},{id:"done",es:"Listos",en:"Done"},{id:"failed",es:"Fallidos",en:"Failed"},{id:"pending",es:"Pendientes",en:"Pending"},{id:"settled",es:"Settled",en:"Settled"}]
+            model: [{id:"all",es:"Todos",en:"All"},{id:"working",es:"Activos",en:"Working"},{id:"done",es:"Listos",en:"Done"},{id:"failed",es:"Fallidos",en:"Failed"},{id:"pending",es:"Pendientes",en:"Pending"},{id:"waiting",en:"Waiting"},{id:"idle",en:"Idle"},{id:"settled",es:"Settled",en:"Settled"}]
             Controls.ItemDelegate {
               required property var modelData
               Layout.fillWidth: true; implicitHeight: Style.space(31)
@@ -1086,7 +1102,7 @@ Item {
               contentItem: RowLayout {
                 T3Icon { name: "circle-check"; implicitWidth: Style.space(13); tint: parent.parent.tint; opacity: root.statusFilter === modelData.id ? 1 : 0 }
                 Text { Layout.fillWidth: true; text: T3I18n.tr(modelData.en); color: parent.parent.tint; font.pixelSize: Style.font.caption }
-                Text { text: Sidebar.count(root.bridge.state.threads,modelData.id,root.projectScope); color: parent.parent.tint; font.pixelSize: Style.font.caption }
+                Text { text: Sidebar.count(root.hostThreads,modelData.id,root.projectScope); color: parent.parent.tint; font.pixelSize: Style.font.caption }
               }
               background: Rectangle { radius: Style.space(5); color: parent.hovered || root.statusFilter === modelData.id ? root.surface : "transparent" }
               onClicked: { root.statusFilter = modelData.id; filterMenu.close() }
@@ -1178,12 +1194,17 @@ Item {
               T3IconButton{objectName:"clearThreadSearch";name:"x";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!!root.bridge.query;tooltipText:T3I18n.tr("Clear search");onClicked:{root.bridge.search("");searchField.forceActiveFocus()}}
               T3IconButton {
                 id: filterButton
-                name: "list-filter"; tooltipText: T3I18n.tr("Filter by state and project")
-                tint: root.statusFilter !== "all" || root.projectFilter ? Color.accent : root.dim
+                name: "list-filter"; tooltipText: T3I18n.tr("Filter by state, project and host")
+                tint: root.statusFilter !== "all" || root.projectFilter || root.hostFilter ? Color.accent : root.dim
                 onClicked: filterMenu.visible ? filterMenu.close() : filterMenu.open()
               }
               T3IconButton { objectName:"newProjectButton"; name: "folder-plus"; tooltipText: T3I18n.tr("Add project"); onClicked: sidebarActions.addProject() }
               T3IconButton { objectName:"newChatButton"; name: "square-pen"; tooltipText: T3I18n.tr("New chat"); onClicked: sidebarActions.newThread() }
+            }
+            RowLayout {
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)
+              T3Select {objectName:"t3HostFilter";Layout.fillWidth:true;popupAbove:false;model:root.hostItems;textRole:"name";currentIndex:Math.max(0,root.hostItems.findIndex(function(h){return h.id===root.hostFilter}));onActivated:function(index){root.hostFilter=root.hostItems[index].id};Accessible.name:T3I18n.tr("Host")}
+              T3IconButton {objectName:"t3MosaicToggle";name:"layout-grid";tint:root.mosaicOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread mosaic");onClicked:if(root.mosaicOpen&&mosaicLoader.item)mosaicLoader.item.dismiss();else root.bridge.rememberView({mosaicOpen:!root.mosaicOpen})}
             }
             RowLayout {
               Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12)
@@ -1193,6 +1214,9 @@ Item {
             }
             ListView {
               id: threads
+              // Scrolling is the wheel/touchpad (T3Wheel); a list that also
+              // drags and glides swallows the click that lands while it moves.
+              interactive: false
               Keys.onUpPressed:root.moveSidebarFocus(threads,-1)
               Keys.onDownPressed:root.moveSidebarFocus(threads,1)
               T3Wheel {flickable:threads}
@@ -1218,8 +1242,10 @@ Item {
               Text {
                 anchors.centerIn: parent; width: parent.width - Style.space(28)
                 visible: threads.count === 0
-                text: root.bridge.stale ? T3I18n.tr("T3 is offline") : T3I18n.tr("No threads here")
+                text: root.searching ? T3I18n.tr("No threads match “{query}”",{query:String(root.bridge.query).trim()}) : root.bridge.stale ? T3I18n.tr("T3 is offline") : T3I18n.tr("No threads here")
                 color: root.dim; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+                opacity: visible ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 220 } }
               }
             }
             T3ShelfResizer{objectName:"workingShelfResizer";label:"Working threads height";visible:workingReveal.shown&&!workingReveal.moving;value:root.workingShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("workingShelfHeight",h)}}
@@ -1250,7 +1276,7 @@ Item {
               Layout.maximumHeight:root.activeRows.length>0?Style.space(root.workingShelfHeight):Infinity
               Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
               ListView {
-                id:workingThreads;objectName:"workingThreadList"
+                id:workingThreads;objectName:"workingThreadList";interactive:false
                 anchors.fill:parent
                 Keys.onUpPressed:root.moveSidebarFocus(workingThreads,-1)
                 Keys.onDownPressed:root.moveSidebarFocus(workingThreads,1)
@@ -1294,7 +1320,7 @@ Item {
               Layout.fillWidth:true;Layout.maximumHeight:Style.space(root.snoozedShelfHeight)
               Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
               ListView {
-                id:snoozedThreads;objectName:"snoozedThreadList"
+                id:snoozedThreads;objectName:"snoozedThreadList";interactive:false
                 anchors.fill:parent
                 Keys.onUpPressed:root.moveSidebarFocus(snoozedThreads,-1)
                 Keys.onDownPressed:root.moveSidebarFocus(snoozedThreads,1)
@@ -1345,7 +1371,7 @@ Item {
               Layout.maximumHeight:root.activeRows.length>0?Style.space(root.settledShelfHeight):Infinity
               Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
               ListView {
-                id: settledThreads;objectName:"settledThreadList"
+                id: settledThreads;objectName:"settledThreadList";interactive:false
                 anchors.fill:parent
                 Keys.onUpPressed:root.moveSidebarFocus(settledThreads,-1)
                 Keys.onDownPressed:root.moveSidebarFocus(settledThreads,1)
@@ -1365,6 +1391,7 @@ Item {
                 Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
               }
             }
+            Item { objectName:"sidebarFiller"; Layout.fillWidth:true; Layout.fillHeight:!threads.visible&&!workingReveal.Layout.fillHeight&&!settledReveal.Layout.fillHeight }
             Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
             RowLayout {
               objectName:"t3SidebarFooter"
@@ -1444,7 +1471,7 @@ Item {
           // y and height are read so the mapping follows the reveal animation.
           readonly property real usageBottom:usageReveal.visible&&usageReveal.height>0?(usageReveal.y,usageReveal.height,usageReveal.mapToItem(mainChatArea,0,usageReveal.height).y):0
           width:Math.min(Math.max(Style.space(320),root.threadDetailsWidth),parent.width-Style.space(32))
-          visible:!root.preferencesOpen&&!root.pullRequestsOpen&&!(root.sideShown&&!root.browserInline)
+          visible:!root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen&&!(root.sideShown&&!root.browserInline)
           T3ProviderUpdateNotice{id:updateNotice;width:parent.width;bridge:root.bridge;notice:root.bridge.providerUpdateNotice;onSettingsRequested:root.openPreferencesPage("providers")}
           T3DiskSpaceNotice{id:diskNotice;width:parent.width;bridge:root.bridge;onSettingsRequested:root.openPreferencesPage("storage")}
           Loader {
@@ -1465,8 +1492,13 @@ Item {
         Loader{id:overlaySideLoader;objectName:"t3BrowserSheet";anchors.fill:parent;z:20;active:root.sideShown&&!root.browserInline;sourceComponent:sidePanelComponent}
         Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
         Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
+        Loader {
+          id:mosaicLoader
+          anchors.fill:parent;active:root.opened&&root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
+          sourceComponent:T3ThreadMosaic {bridge:root.bridge;sky:root.starfield;motion:root.rowMoveEffect!=="off"&&T3Motion.style!=="instant";effects:root.threadEffects;renderer:function(message,width){return root.renderMessage(message,width)};threads:Sidebar.rows(root.hostThreads,root.statusFilter,root.projectScope,true,root.bridge.query,root.searchContext).filter(function(t){return !t.sectionHeader});onClosed:root.bridge.rememberView({mosaicOpen:false});onFiltersRequested:root.showFilters()}
+        }
         ColumnLayout {
-          visible:!root.preferencesOpen&&!root.pullRequestsOpen
+          visible:!root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
           anchors.fill: parent; spacing: 0
           RowLayout {
             objectName:"t3ChatHeader"

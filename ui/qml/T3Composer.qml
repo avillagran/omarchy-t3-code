@@ -5,6 +5,7 @@ import QtQuick.Controls as Controls
 import QtQuick.Dialogs
 import qs.Commons
 import qs.Ui
+import "../js/QuickReplies.js" as QuickReplies
 
 Rectangle {
   id: root
@@ -455,6 +456,50 @@ Rectangle {
         tooltipText: T3I18n.tr(root.bridge.screenshot.busy ? "Cancel screenshot" : "Take a screenshot")
         enabled: !root.locked && !!root.bridge.selectedThread
         onClicked: root.bridge.captureScreenshot()
+      }
+      T3IconButton {
+        id:quickButton;objectName:"t3QuickRepliesButton"
+        readonly property var menu:quickPopup
+        name:"sparkles";tooltipText:T3I18n.tr("Quick replies")
+        visible:root.bridge.viewState.quickRepliesButton!==false
+        enabled:!root.locked&&!!root.bridge.selectedThread
+        readonly property string language:QuickReplies.language(root.bridge.draft.text,root.bridge.transcript,T3I18n.language,root.bridge.viewState.quickReplyLanguage)
+        readonly property var replies:QuickReplies.replies(language,root.bridge.viewState.quickReplies)
+        tint:hovered||quickPopup.visible?Color.accent:root.fg
+        scale:hovered?1.12:1
+        Behavior on scale {NumberAnimation{duration:180;easing.type:Easing.OutBack}}
+        Rectangle {
+          anchors.fill:parent;anchors.margins:-Style.space(2);radius:Style.space(9);color:"transparent"
+          border.width:1;border.color:Color.accent;visible:quickButton.hovered||quickPopup.visible
+          SequentialAnimation on opacity {running:quickButton.visible&&(quickButton.hovered||quickPopup.visible);loops:Animation.Infinite;NumberAnimation{from:0.15;to:0.65;duration:650} NumberAnimation{from:0.65;to:0.15;duration:650}}
+        }
+        Timer{interval:350;running:quickButton.hovered&&!quickPopup.visible;onTriggered:quickPopup.open()}
+        Timer{interval:500;running:quickPopup.visible&&!quickPopup.activeFocus&&!quickButton.hovered&&!quickHover.hovered;onTriggered:quickPopup.close()}
+        onClicked:{if(quickPopup.visible)quickPopup.close();else{quickPopup.open();quickPopup.forceActiveFocus()}}
+        Controls.Popup {
+          id:quickPopup;objectName:"t3QuickRepliesPopup";parent:quickButton;y:-height-Style.space(6)
+          width:Style.space(260);padding:Style.space(8);height:Math.min(implicitHeight,Style.space(350))
+          closePolicy:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
+          background:Rectangle{radius:Style.space(10);color:Color.popups.background;border.width:1;border.color:Color.accent}
+          enter:Transition{NumberAnimation{property:"opacity";from:0;to:1;duration:160}}
+          contentItem:ColumnLayout {
+            HoverHandler{id:quickHover}
+            Text{text:T3I18n.tr("Quick replies")+" · "+quickButton.language.toUpperCase();color:Color.popups.text;font.pixelSize:Style.font.caption}
+            ListView {
+              Layout.fillWidth:true;Layout.preferredHeight:Math.min(contentHeight,Style.space(290));clip:true
+              model:quickButton.replies
+              Controls.ScrollBar.vertical:Controls.ScrollBar{}
+              delegate:Controls.ItemDelegate {
+                required property string modelData
+                required property int index
+                objectName:"t3QuickReply_"+index
+                width:ListView.view.width
+                contentItem:Text{text:modelData;textFormat:Text.PlainText;wrapMode:Text.Wrap;color:Color.popups.text;font.pixelSize:Style.font.body}
+                onClicked:{root.bridge.insertDictation(root.bridge.selectedKey,modelData);quickPopup.close();editor.forceActiveFocus()}
+              }
+            }
+          }
+        }
       }
       T3IconButton {
         id: dictateButton

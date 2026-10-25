@@ -1795,6 +1795,19 @@
     "Recordings of this thread": "Recordings of this thread",
     "No recordings kept for this thread yet.": "No recordings kept for this thread yet.",
     "Delete recording": "Delete recording",
-    "Play the recording · the text went into the draft": "Play the recording · the text went into the draft"
+    "Play the recording · the text went into the draft": "Play the recording · the text went into the draft",
+    "All hosts": "All hosts",
+    "Thread mosaic": "Thread mosaic",
+    "Views": "Views",
+    "No thread": "No thread",
+    "No threads match these filters": "No threads match these filters",
+    "Assistant": "Assistant",
+    "Idle": "Idle",
+    "Quick replies": "Quick replies",
+    "One reply per line": "One reply per line",
+    "Filter by state, project and host": "Filter by state, project and host",
+    "Automatic uses the draft or your last message. Replies are inserted without sending.": "Automatic uses the draft or your last message. Replies are inserted without sending.",
+    "Responding": "Responding",
+    "No threads match “{query}”": "No threads match “{query}”"
   }
 }
