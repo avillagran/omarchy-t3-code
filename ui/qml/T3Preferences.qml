@@ -1,4 +1,5 @@
 import QtQuick 6.11
+import "../js/QuickReplies.js" as QuickReplies
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
@@ -221,6 +222,32 @@ Rectangle {
         T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceHtmlRenders";field:({key:"htmlRenders",label:"HTML renders",description:"Where pages made by the agent appear. The side panel needs a wide window; narrow windows keep them in the conversation.",kind:"choice",value:root.bridge.viewState.htmlRenders || "inline",choices:[{id:"inline",name:"In the conversation"},{id:"side",name:"Side panel"}]});writable:true;onChanged:function(value){root.bridge.rememberView({htmlRenders:value})}}
         T3PreferenceField{width:parent.width;divided:true;field:({key:"screenshotCommand",label:"Screenshot command",description:"Empty uses Omasnap, then Omarchy's screenshot tool, then grim and slurp. A command may write to {file}, print an image path, or copy a PNG to the clipboard.",kind:"text",commitOnBlur:true,maximumLength:4096,placeholder:"Automatic",value:root.bridge.viewState.screenshotCommand || ""});writable:true;onChanged:function(value){root.bridge.rememberView({screenshotCommand:value.trim()})}}
        }}
+      }
+      T3PreferenceSection {
+        objectName:"preferencesQuickReplies";Layout.fillWidth:true;title:"Quick replies";icon:"sparkles"
+        visible:root.page==="general"&&(!root.query.trim()||root.matches("Quick replies"))
+        body:Component{Column{
+          width:parent.width
+          property string editLanguage:QuickReplies.defaults[T3I18n.language]?T3I18n.language:"en"
+          onEditLanguageChanged:replyEditor.text=QuickReplies.replies(editLanguage,root.bridge.viewState.quickReplies).join("\n")
+          readonly property var languages:T3I18n.languages.filter(function(l){return !!QuickReplies.defaults[l.id]})
+          T3PreferenceField{width:parent.width;field:({key:"quickRepliesButton",label:"Quick replies",kind:"bool",value:root.bridge.viewState.quickRepliesButton!==false});writable:true;onChanged:function(value){root.bridge.rememberView({quickRepliesButton:value})}}
+          T3PreferenceField{width:parent.width;field:({key:"quickReplyLanguage",label:"Language",kind:"choice",value:root.bridge.viewState.quickReplyLanguage || "auto",choices:[{id:"auto",name:"Automatic"}].concat(parent.languages)});writable:true;onChanged:function(value){root.bridge.rememberView({quickReplyLanguage:value})}}
+          Text{width:parent.width;text:T3I18n.tr("Automatic uses the draft or your last message. Replies are inserted without sending.");color:Color.popups.text;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
+          T3Select {model:parent.languages;textRole:"name";currentIndex:parent.languages.findIndex(function(l){return l.id===parent.editLanguage});onActivated:function(index){parent.editLanguage=parent.languages[index].id};Accessible.name:T3I18n.tr("Language")}
+          Controls.TextArea {
+            id:replyEditor;objectName:"t3QuickRepliesEditor";width:parent.width
+            text:QuickReplies.replies(parent.editLanguage,root.bridge.viewState.quickReplies).join("\n")
+            wrapMode:TextEdit.Wrap;font.pixelSize:Style.font.body;color:Color.popups.text;selectByMouse:true
+            Accessible.name:T3I18n.tr("One reply per line")
+          }
+          Row {
+            spacing:Style.space(8)
+            T3PickerButton{objectName:"t3QuickRepliesSave";text:T3I18n.tr("Save");onClicked:{var all=Object.assign({},root.bridge.viewState.quickReplies || {});all[parent.parent.editLanguage]=QuickReplies.parse(replyEditor.text);root.bridge.rememberView({quickReplies:all})}}
+            T3PickerButton{text:T3I18n.tr("Reset");onClicked:{var all=Object.assign({},root.bridge.viewState.quickReplies || {});delete all[parent.parent.editLanguage];root.bridge.rememberView({quickReplies:all});replyEditor.text=QuickReplies.replies(parent.parent.editLanguage,all).join("\n")}}
+          }
+          Text{text:T3I18n.tr("One reply per line");color:Color.popups.text;font.pixelSize:Style.font.caption}
+        }}
       }
       // ot3-dictate: whisper.cpp on this computer, models downloaded on demand.
       T3PreferenceSection{objectName:"preferencesDictation";visible:root.page==="general"&&(!root.query.trim()||root.matches("Dictation")||root.matches("Dictation model")||root.matches("Dictation language")||root.matches("Vocabulary")||root.matches("Keep recordings"));Layout.fillWidth:true;title:"Dictation";icon:"mic"

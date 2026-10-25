@@ -142,3 +142,5 @@ T3ThreadDetails 1.0 T3ThreadDetails.qml
 T3ProviderUpdateNotice 1.0 T3ProviderUpdateNotice.qml
 T3ThreadErrorBanner 1.0 T3ThreadErrorBanner.qml
 T3HostsPopup 1.0 T3HostsPopup.qml
+
+T3ThreadMosaic 1.0 T3ThreadMosaic.qml

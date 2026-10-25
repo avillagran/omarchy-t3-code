@@ -294,6 +294,8 @@ fn watch(client: Client) -> Result<()> {
     let browser_manager=browser_sessions::Manager::start(browser_guest::Config::native()?,|id|environments()?.into_iter().find(|e|e.id==id).ok_or("unknown_environment".into()),connection_preferences::read_client_preferences,|data|emit("browser-surface",data));
     std::thread::spawn(move || {
         let mut input_visible=false;
+        let mut mosaic_readers:Vec<live::Control>=Vec::new();
+        let mut mosaic_targets:Vec<Option<(String,String,i64)>>=vec![None;8];
         let mut keybinding_watches=keybinding_watch::Control::default();
         let mut device_watches=device_watch::Control::default();
         let mut device_screens=device_screen::Manager::default();
@@ -327,6 +329,20 @@ fn watch(client: Client) -> Result<()> {
                 if matches!(text(&v,"op"),"document-open"|"document-input"|"document-close"){
                     if v["op"]=="document-open"&&!input_visible{emit("action",json!({"op":"document-open","requestId":v["requestId"],"error":"panel_hidden"}));continue}
                     document_manager.send(v);continue
+                }
+                if v["op"]=="mosaic-watch" || (v["op"]=="visible" && v["value"]==false) {
+                    let targets=v["targets"].as_array().cloned().unwrap_or_default();
+                    if input_visible && !targets.is_empty() && mosaic_readers.is_empty(){
+                        mosaic_readers=(0..8).map(|_|live::Control::named(input_client.clone(),"mosaic-messages","mosaic-state")).collect();
+                    }
+                    for (slot,reader) in mosaic_readers.iter().enumerate(){
+                        let target=if input_visible && v["op"]=="mosaic-watch"{targets.get(slot).and_then(|t|{
+                            let env=text(t,"environment");let thread=text(t,"thread");
+                            if valid_id(env)&&valid_id(thread){Some((env.to_owned(),thread.to_owned(),t["serial"].as_i64().unwrap_or(0)))}else{None}
+                        })}else{None};
+                        if mosaic_targets[slot]!=target{reader.select(target.clone());mosaic_targets[slot]=target;}
+                    }
+                    if v["op"]=="mosaic-watch"{continue}
                 }
                 if v["op"]=="select" {let key=format!("{}/{}",text(&v,"environment"),text(&v,"thread"));if key!=document_thread_key{document_manager.send(json!({"op":"document-close"}));preview_watches.clear();browser_manager.hide();device_screens.stop();document_thread_key=key;}}
                 if v["op"]=="clear-select" || (v["op"]=="visible" && v["value"]==false){document_manager.send(json!({"op":"document-close"}));}
