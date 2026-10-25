@@ -12,10 +12,12 @@ pub fn execute(e:&crate::Environment,input:&Value)->crate::Result<Value>{
             let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
             if input["summary"]["fromTurnCount"].as_u64()!=Some(from)||input["summary"]["toTurnCount"].as_u64()!=Some(to){return Err("invalid_diff_range".into())}
             let whitespace=match input.get("ignoreWhitespace"){None=>true,Some(v)=>v.as_bool().ok_or("invalid_diff_option")?};
+            use crate::protocol::api::orchestration as o;
+            // The function and its arguments are kept with the review snapshot, which re-reads them.
             let mut payload=json!({"threadId":thread,"toTurnCount":to,"ignoreWhitespace":whitespace});
-            let tag=if from==0{"orchestration.getFullThreadDiff"}else{payload["fromTurnCount"]=json!(from);"orchestration.getTurnDiff"};
+            let tag=if from==0{o::GET_FULL_THREAD_DIFF.name}else{payload["fromTurnCount"]=json!(from);o::GET_TURN_DIFF.name};
             let connection=e.connection(false)?;
-            let result=connection.rpc(tag,payload.clone())?;
+            let result=if from==0{o::full_thread_diff(&connection,thread,to,Some(whitespace))}else{o::turn_diff(&connection,thread,from,to,Some(whitespace))}?;
             if result["threadId"]!=thread{return Err("invalid_diff_thread".into())}
             if result["fromTurnCount"].as_u64()!=Some(from)||result["toTurnCount"].as_u64()!=Some(to){return Err("invalid_diff_range".into())}
             let mut view=present(&result,&input["summary"])?;

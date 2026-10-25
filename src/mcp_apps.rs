@@ -1,9 +1,10 @@
 //! Host side of MCP apps (T3 McpAppFrame): an app's JSON-RPC requests that need the
 //! server go through mcpApps.*, bound to the tool call that produced the app.
-use crate::{json, text, write::rpc, Environment, Result};
+use crate::{json, protocol::api::{mcp_apps as apps, Function}, text, Environment, Result};
 use serde_json::Value;
 
-pub fn request(input: &Value) -> Result<(&'static str, Value)> {
+/// The typed `mcpApps.*` function and its arguments for one app request.
+pub fn request(input: &Value) -> Result<(&'static Function, Value)> {
     let thread = text(input, "threadId");
     let item = text(input, "itemId");
     if !crate::valid_id(thread) || item.is_empty() || item.len() > 512 {
@@ -14,11 +15,11 @@ pub fn request(input: &Value) -> Result<(&'static str, Value)> {
         "tools/call" => {
             let name = params["name"].as_str().filter(|n| !n.trim().is_empty() && n.len() <= 256).ok_or("invalid_app_request")?;
             let arguments = if params["arguments"].is_object() { params["arguments"].clone() } else { json!({}) };
-            ("mcpApps.callTool", json!({"threadId":thread,"itemId":item,"name":name,"arguments":arguments}))
+            (&apps::CALL_TOOL, json!({"threadId":thread,"itemId":item,"name":name,"arguments":arguments}))
         }
         "resources/read" => {
             let uri = params["uri"].as_str().filter(|u| !u.trim().is_empty() && u.len() <= 2048).ok_or("invalid_app_request")?;
-            ("mcpApps.readResource", json!({"threadId":thread,"itemId":item,"uri":uri}))
+            (&apps::READ_RESOURCE, json!({"threadId":thread,"itemId":item,"uri":uri}))
         }
         "ui/update-model-context" => {
             let conversation = text(input, "conversationThreadId");
@@ -29,7 +30,7 @@ pub fn request(input: &Value) -> Result<(&'static str, Value)> {
             if params["structuredContent"].is_object() {
                 p["structuredContent"] = params["structuredContent"].clone();
             }
-            ("mcpApps.updateModelContext", p)
+            (&apps::UPDATE_MODEL_CONTEXT, p)
         }
         _ => return Err("unsupported_app_request".into()),
     })
@@ -39,21 +40,21 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         return Err("invalid_app_request".into());
     }
     let (tag, payload) = request(input)?;
-    let result = rpc(e, tag, payload)?;
-    Ok(if tag == "mcpApps.updateModelContext" { json!({}) } else { result })
+    let result = tag.call(&e.connection(true)?, &payload, None)?;
+    Ok(if tag.name == apps::UPDATE_MODEL_CONTEXT.name { json!({}) } else { result })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::request;
+    use super::{apps, request};
     use serde_json::json;
     #[test]
     fn maps_app_requests_to_the_server() {
         let base = json!({"threadId":"t","itemId":"i","method":"tools/call","params":{"name":"refresh","arguments":{"city":"Santiago"}}});
         let (tag, p) = request(&base).unwrap();
-        assert_eq!((tag, p["arguments"]["city"].as_str()), ("mcpApps.callTool", Some("Santiago")));
+        assert_eq!((tag.name, p["arguments"]["city"].as_str()), (apps::CALL_TOOL.name, Some("Santiago")));
         let (tag, p) = request(&json!({"threadId":"t","itemId":"i","method":"ui/update-model-context","params":{"structuredContent":{"a":1}}})).unwrap();
-        assert_eq!((tag, p["conversationThreadId"].as_str()), ("mcpApps.updateModelContext", Some("t")));
+        assert_eq!((tag.name, p["conversationThreadId"].as_str()), (apps::UPDATE_MODEL_CONTEXT.name, Some("t")));
         assert!(request(&json!({"threadId":"t","itemId":"i","method":"ui/open-link","params":{}})).is_err());
         assert!(request(&json!({"threadId":"t","itemId":"i","method":"tools/call","params":{}})).is_err());
     }

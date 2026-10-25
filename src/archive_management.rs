@@ -147,7 +147,7 @@ fn matches(e: &Environment, r: &Value) -> Result<()> {
     Ok(())
 }
 fn raw(c: &protocol::Connection) -> Result<Value> {
-    let v = c.rpc("orchestration.getArchivedShellSnapshot", json!({}))?;
+    let v = protocol::api::orchestration::archived_shell(c)?;
     present(&v, "validation", None)?;
     Ok(v)
 }

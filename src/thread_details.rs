@@ -33,7 +33,7 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
     }
     .ok_or("editor_unavailable")?;
     let cwd = workspace(&shell(e)?, thread)?;
-    write::rpc(e, "shell.openInEditor", json!({"cwd":cwd,"editor":editor["id"]}))?;
+    protocol::api::shell::open_in_editor(&e.connection(true)?, &cwd, text(editor, "id"), None)?;
     Ok(json!({"environment":e.id,"thread":thread,"editor":editor["id"],"opened":true}))
 }
 

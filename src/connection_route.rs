@@ -37,7 +37,7 @@ pub fn choose(input:&Value)->Result<Value>{
    handles.push(scope.spawn(move||{
     let config=e.connection(true).and_then(|c|protocol::api::server::config(&c)).ok()?;
     if !provider_eligible(&config,text(p,"id"),provider,model){return None}
-    let resources=write::rpc(e,"server.getHostResources",json!({})).ok()?;
+    let resources=e.connection(true).and_then(|c|protocol::api::diagnostics::host_resources(&c)).ok()?;
     Some((json!({"environmentId":e.id,"weight":weight,"receivedAt":Utc::now().timestamp_millis(),"resources":resources}),json!({"environment":e.id,"projectId":p["id"],"modelSelection":input["modelSelection"],"balanced":true})))
    }));
   }

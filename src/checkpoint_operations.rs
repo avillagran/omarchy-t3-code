@@ -19,11 +19,7 @@ fn projection(e: &Environment, thread: &str) -> Result<Value> {
     if !valid_id(thread) {
         return Err("revert_scope_mismatch".into());
     }
-    let raw = write::rpc(
-        e,
-        "orchestration.getThreadProjection",
-        json!({"threadId":thread}),
-    )?;
+    let raw = protocol::api::orchestration::thread_projection(&e.connection(true)?, thread)?;
     let p = raw.get("projection").unwrap_or(&raw);
     if p["thread"]["id"] != thread {
         return Err("revert_scope_mismatch".into());
