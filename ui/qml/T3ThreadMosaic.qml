@@ -65,9 +65,9 @@ Item {
     return d==="done"?"done":"idle"
   }
   function toneOf(phase){
-    return ({think:T3Palette.pick("bright_magenta",T3Palette.input),read:T3Palette.pick("cyan",T3Palette.working),edit:T3Palette.warning,
-             execute:T3Palette.pick("bright_blue",T3Palette.working),respond:T3Palette.done,agent:T3Palette.working,work:T3Palette.working,
-             attention:T3Palette.waiting,failed:T3Palette.failed,done:T3Palette.done})[phase] || dim
+    // Every active phase wears T3's working blue; the glyph and label tell them apart.
+    return ({think:T3Palette.working,read:T3Palette.working,edit:T3Palette.working,execute:T3Palette.working,respond:T3Palette.working,
+             agent:T3Palette.working,work:T3Palette.working,attention:T3Palette.waiting,failed:T3Palette.failed,done:T3Palette.done})[phase] || dim
   }
   function liveActivity(snap){var rows=snap.messages || [],last=rows.length?rows[rows.length-1]:null;return (snap.activity || [])[0] || (last&&last.role==="activity"&&last.activity&&last.activity.active?last.activity:null)}
   function labelOf(phase,thread,snap){

@@ -42,6 +42,7 @@ ShellRoot {
    var mosaic=keys.findChild(panel,"t3ThreadMosaic")
    root.fixtures.forEach(function(f,i){var t=b.state.threads.find(function(x){return x.id===f.id});check(mosaic.phaseOf(t,b.mosaicData[t.key])===f.expect,f.id+" reads as "+f.expect+", got "+mosaic.phaseOf(t,b.mosaicData[t.key]))})
    check(mosaic.labelOf("respond",b.state.threads[4],{})!=="","responding has a label")
+   ;["think","read","edit","execute","respond","agent","work"].forEach(function(ph){check(Qt.colorEqual(mosaic.toneOf(ph),Test.T3Palette.working),ph+" wears the working blue, got "+mosaic.toneOf(ph))})
    if(++frames<4)return
    keys.findChild(panel,"t3PanelLayout").grabToImage(function(r){r.saveToFile("/tmp/ot3-mosaic-phases.png");phase=3})
   } else if(phase===3){
