@@ -1,5 +1,7 @@
 //! `assets.createUrl`: short-lived signed same-origin URLs for files, attachments
 //! and icons. `Connection::document` and the image readers use the same grant.
+//! Also `attachments.delete`. Uploads (`attachments.createUploadUrl`) stay in
+//! `Connection::upload`, which streams the file.
 use super::{api_fn, ids, send, Function};
 use crate::{Connection, Result};
 use serde_json::{json, Map, Value};
@@ -13,7 +15,13 @@ pub const CREATE_URL: Function = api_fn! {
     args: [(resource, Object, required)],
     payload: |a| create_url_payload(&AssetResource::from_json(a.object("resource")?.ok_or_else(|| ids::invalid("resource"))?)?),
 };
-pub const FUNCTIONS: &[Function] = &[CREATE_URL];
+pub const DELETE_ATTACHMENT: Function = api_fn! {
+    name: "attachments.delete", module: "assets", tag: Some("attachments.delete"),
+    kind: IdempotentMutation, scope: Fixed("orchestration:operate"),
+    args: [(attachmentId, Token, required)],
+    payload: |a| delete_attachment_payload(a.req("attachmentId")?),
+};
+pub const FUNCTIONS: &[Function] = &[CREATE_URL, DELETE_ATTACHMENT];
 
 /// What to sign (`AssetResource`, a union by `_tag`).
 #[derive(Clone, Debug, PartialEq)]
@@ -185,4 +193,11 @@ fn create_url_payload(resource: &AssetResource) -> Result<Value> {
 /// their own (older, looser) resource checks.
 pub(crate) fn grant(conn: &Connection, resource: Value) -> Result<Value> {
     send(conn, &CREATE_URL, json!({"resource":resource}))
+}
+/// `attachments.delete`: `null`. Deleting a deleted attachment changes nothing.
+pub fn delete_attachment(conn: &Connection, attachment_id: &str) -> Result<Value> {
+    send(conn, &DELETE_ATTACHMENT, delete_attachment_payload(attachment_id)?)
+}
+fn delete_attachment_payload(attachment_id: &str) -> Result<Value> {
+    Ok(json!({"attachmentId":ids::token("attachmentId", attachment_id, 256)?}))
 }
