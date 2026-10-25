@@ -88,7 +88,7 @@ fn outbox_commands_reach_t3_byte_for_byte_on_send_and_retry() {
         json!({"action":"thread-rename","thread":"chat","title":"Renamed"}),
         json!({"action":"pin","thread":"chat"}),
         json!({"action":"archive","thread":"chat"}),
-        json!({"action":"snooze","thread":"chat","snoozedUntil":"2026-10-25T09:00:00.000Z"}),
+        json!({"action":"snooze","thread":"chat","snoozedUntil":"2099-01-01T09:00:00.000Z"}),
         json!({"action":"settle","thread":"chat"}),
     ];
     for mut input in actions {
