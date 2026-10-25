@@ -11,6 +11,68 @@ pub const STREAM_PROBE_TIMEOUT:Duration=Duration::from_secs(3);
 pub(crate) fn item_limit(tag:&str,payload:&Value)->u64{
  if tag=="orchestration.subscribeThread" && payload["acceptBoundedSnapshot"]==true {THREAD_SNAPSHOT_MAX_BYTES}else{MAX_BYTES}
 }
+/// Where `item` sits in its stream's sequence: `snapshotSequence` of a shell or
+/// thread `snapshot`, else the item's `sequence` (also for thread events this
+/// build cannot decode, which still move the cursor). Shell and thread resume
+/// from it with `afterSequence`; terminal and worktree setup items carry it only
+/// to drop replays. `None` for `synchronized` and for streams without one.
+pub fn cursor_of(tag:&str,item:&Value)->Option<u64>{
+ match tag{
+  "orchestration.subscribeShell" if item["kind"]=="snapshot"=>item["snapshot"]["snapshotSequence"].as_u64(),
+  "orchestration.subscribeThread" if item["kind"]=="snapshot"=>item["snapshotSequence"].as_u64(),
+  "orchestration.subscribeShell"|"orchestration.subscribeThread"|"subscribeWorktreeSetup"=>item["sequence"].as_u64(),
+  "terminal.attach"=>match item["type"].as_str(){
+   Some("snapshot"|"started"|"restarted")=>item["snapshot"]["sequence"].as_u64().or(item["sequence"].as_u64()),
+   _=>item["sequence"].as_u64(),
+  },
+  _=>None,
+ }
+}
+/// The cursor once `item` is applied on top of `cursor`: an item that replaces the
+/// host's state sets it (as ot3 does on a thread snapshot); any other only moves it on.
+pub fn advance(tag:&str,cursor:Option<u64>,item:&Value)->Option<u64>{
+ let at=cursor_of(tag,item);
+ if start_of(tag,item)==Some(Start::Snapshot){at.or(cursor)}else{cursor.max(at)}
+}
+/// What the first item of a subscription means for the state the host holds.
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub enum Start{
+ /// It replaces that state: a `snapshot`, a `replace` frame, or a stream whose every item is the whole state.
+ Snapshot,
+ /// The server resumed from `afterSequence`: apply the items on top of the state held at the cursor.
+ Resume,
+ /// The stream only carries events from now on; there is no state to replace.
+ Events,
+}
+impl Start{
+ pub fn as_str(self)->&'static str{match self{Start::Snapshot=>"snapshot",Start::Resume=>"resume",Start::Events=>"events"}}
+}
+/// `Start` for `item` as the first of a `tag` subscription; for `Snapshot`, also what
+/// the item does whenever it arrives. `None` for a tag the typed API does not know.
+pub fn start_of(tag:&str,item:&Value)->Option<Start>{
+ let replaced=match tag{
+  "orchestration.subscribeShell"|"orchestration.subscribeThread"=>item["kind"]=="snapshot",
+  "orchestration.subscribeCommandOutput"=>item["kind"]=="replace",
+  "terminal.attach"=>matches!(item["type"].as_str(),Some("snapshot"|"started"|"restarted")),
+  "subscribeServerConfig"=>item["type"]=="snapshot",
+  "subscribeDeviceState"|"subscribeDiscoveredLocalServers"|"subscribeWorktreeSetup"|"server.getStorageCleanupReport"|"provider.install.subscribe"|"provider.auth.subscribe"=>true,
+  "subscribePreviewEvents"|"git.runStackedAction"=>return Some(Start::Events),
+  _=>return None,
+ };
+ Some(if replaced{Start::Snapshot}else{Start::Resume})
+}
+/// A stream read as a request with a deadline: its first item `accept` takes, or the
+/// last item seen when `timeout` runs out or the server ends the stream first.
+/// `Ok(None)` when nothing arrived in time; an error only if none did before it.
+/// A JSON `null` item (no storage report yet) is `Some(Value::Null)`.
+pub fn first_item(conn:&Connection,spec:&crate::api::streams::StreamSpec,timeout:Duration,mut accept:impl FnMut(&Value)->bool)->Result<Option<Value>>{
+ let started=Instant::now();let done=std::cell::Cell::new(false);let mut last=None;
+ let result=spec.subscribe(conn,||done.get()||started.elapsed()>=timeout,||false,|item|{
+  if let Some(v)=item{if accept(&v){done.set(true)}last=Some(v);}
+  Ok(())
+ });
+ match (last,result){(Some(v),_)=>Ok(Some(v)),(None,Err(e))=>Err(e),(None,Ok(()))=>Ok(None)}
+}
 /// What a subscription worker sees, one level finer than `subscribe`'s `Option<Value>`
 /// (where both `ChunkEnd` and `Idle` arrive as `None`).
 pub(crate) enum Tick {

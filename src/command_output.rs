@@ -77,7 +77,7 @@ impl Watch {
                 let mut emitted = Instant::now() - Duration::from_secs(1);
                 let mut dirty = false;
                 let cancel = || current.load(Ordering::Relaxed) != generation;
-                c.subscribe("orchestration.subscribeCommandOutput", json!({"threadId":thread,"itemId":item}), cancel, |frame| {
+                protocol::api::streams::subscribe_command_output(&c, &thread, &item, cancel, || false, |frame| {
                     if let Some(f) = frame {
                         let chunk = f["text"].as_str().unwrap_or("");
                         if f["kind"] == "replace" {

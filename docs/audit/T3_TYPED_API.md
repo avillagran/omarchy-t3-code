@@ -738,3 +738,30 @@ Todas con servidor WebSocket falso, sin servidor T3 real ni agentes de pago, com
 8. Streams: `*_spec` validado + `subscribe_*` con el callback actual. `ffi_stream.rs` necesita cuatro cambios: tope por ítem (hoy un snapshot de más de 8 MiB nunca llega), `boundaries`/`idle`, op `wake` y 8 suscripciones.
 9. Orden: tanda 1 (10 funciones de mayor uso + andamiaje, ≈ 1 350 líneas Rust), tanda 2 (87 unarios, ≈ 1 800), tanda 3 (13 streams, ≈ 960). Total ≈ 4 100 líneas Rust + ≈ 310 Kotlin a mano. Para Android conviene adelantar `subscribeShell`/`subscribeThread` y los cambios a-c de `ffi_stream`.
 10. Quedan fuera de la lib: elección de token, persistencia (outbox, recibos), backoff y reconexión (contradice el Lote 3 de la auditoría, que movía `Backoff`), enrutado entre entornos, login y almacenamiento de claves, generación de ids de comando, textos de interfaz.
+
+---
+
+## 8. ot3 sobre la API tipada (lib v0.3.1, lote 4 tanda 2)
+
+- Fecha: 2026-10-24. Vendor en `17d3cb7` (tag `v0.3.1`) con `tools/sync-vendor`.
+- Todo RPC unario de `src/` sale por `t3_protocol::api` (función tipada, o la fila del registro con `Function::call` / `api::call` cuando el tag y los argumentos vienen de un constructor de la lib: `pull_requests::request`/`payload`, `tool_inspector::request`, los pasos de `git_controls` y la relectura de `review_document`). `write::rpc` queda solo como despachador crudo (lo usa `tests/rpc_rejection.rs`).
+- Las 13 suscripciones usan `api::streams::subscribe_*`, o `streams::spec(...)?.subscribe(...)` cuando la lib arma el payload (`terminal::attach`, `git.runStackedAction`). Reconexión, backoff, sondeo y el sobre retenido siguen en ot3. `live.rs` y `shell_state.rs` mueven el cursor con `stream::advance` / `stream::cursor_of`.
+- Plazos: los del registro coinciden con los de ot3 (`device.*` 300/180/60/30/20 s, `server.updateProvider` 300 s, `preview.clearProfile` 60 s). El ciclo de vida de dispositivos pasa 300 s explícitos a `Function::call`, también para `server.updateSettings`.
+- Lecturas de un primer ítem (`provider.install/auth`, informe de limpieza, servidores locales) siguen con `subscribe_*` y el plazo de ot3, no con `install_state`/`auth_state`/`storage_cleanup_report`/`discovered_servers`: en ot3 «nada dentro del plazo» es `null` o lista vacía, no `stream_timeout`.
+
+### Ajustes de contrato
+
+| Sitio | Antes | Ahora | Motivo |
+|---|---|---|---|
+| `agent_sessions.rs` (importar una carpeta sin proyecto) | `projects.mutate` `project.create` sin `commandId` | con `commandId` `omarchy-<uuid>` | T3 `ProjectMutation` exige `commandId`; el servidor rechazaba la creación |
+| `main.rs` `report_activity` | `server.reportClientActivity` sin `observedAt` | `observedAt` en UTC (ms) | `ClientActivityReportInput.observedAt` es obligatorio; cada reporte se rechazaba en silencio |
+| `scheduled_tasks.rs` tarea nueva | `scheduledTasks.upsert` sin `commandId` ni `id` | `commandId` `omarchy-task-<uuid>` | T3 nombra la tarea `scheduled-task:<commandId>`; la lib lo exige para que un reenvío no cree otra |
+| `write::manage` `create-project` / `clone-project` | el `commandId` de `manage` también viajaba en `projects.createNew` / `projectClone.start` | no viaja; el sobre del outbox lo conserva igual | ninguno de los dos lo define (T3 lo ignoraba) |
+| `integration_devices.rs` `test-host` | `device.testHost` sin `kind` | `"kind":"ssh"` | el valor por defecto de T3; `label` ≤ 255 y `target` ≤ 1024 (antes 4096) |
+| `preview_actions.rs` | el payload se validaba solo con las reglas de ot3 | además con la función tipada, antes de reservar el `requestId` | un rechazo local sigue siendo `invalid_preview_command` y nunca un recibo «incierto» |
+| Validación local más estricta | ot3 dejaba pasar al servidor | `invalid_<campo>` sin abrir socket | ids de instancia (`slug`), `agentId` de ACP, editor de `shell.openInEditor` (lista `EDITORS`), `itemId`/`turnItemId` (`ids::id`), `searchThreads` 2..=200 y `limit` ≤ 50, `zoomFactor` de la lista de T3 |
+| `scheduled_tasks.rs` con «worktree» | T3 rechazaba `workspaceStrategy {type:"worktree"}` sin `baseRef` | se rechaza antes, `invalid_workspace_strategy` | ya fallaba; la interfaz no pide una rama base (pendiente) |
+
+Ningún test de servidor falso de `tests/` cambió: fijan tags y payloads que siguen iguales en los caminos que cubren.
+
+Verificación (2026-10-24): `cargo test --locked` 399 pasados, 0 fallos (igual que antes de la tanda); `cargo clippy --all-targets` con los mismos avisos que `main`; `node tools/test-upstream-drift.cjs` en verde. QML: 26 de 30 checks de la muestra pasan; `questions`, `keybindings-flow`, `project-picker` y `plan-flow` fallan igual en `main` (son de foco de teclado y de la página de preferencias, sin backend Rust).

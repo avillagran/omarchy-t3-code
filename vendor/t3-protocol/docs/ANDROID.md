@@ -96,7 +96,8 @@ server's one-line message, and `requiredScope` names the scope a
 decides whether another token is available; the library never chooses one.
 
 Each `describe` entry gives `fn`, `module`, `tag`, `kind`, `replay`, `scope` (or
-`"dynamic"` plus `scopes`), `timeoutMs` and typed `args`. After
+`"dynamic"` plus `scopes`), `timeoutMs`, `stream` and typed `args`; stream
+functions also appear under `streams` with their item shapes (see Typed streams). After
 `rpc_outcome_unknown`, `replay` tells the app what is safe: `free` repeat a read,
 `id` resend the identical payload with the same `commandId`, `set` repeating is
 harmless, `never` read the state back first. The library never retries.
@@ -107,20 +108,51 @@ generated [`T3Api.kt`](../bindings/android/tests/dev/avillagran/t3/T3Api.kt) is 
 fixture (`T3Api(client).vcs.refreshStatus(path)`); `cargo test --test api_describe`
 fails when the registry, the saved `describe` and the wrappers disagree.
 
-Functions in this release:
+The generator maps `integer` to `Long`, `number` to `Double`, `object` and
+`command` to `JSONObject`, `array` to `JSONArray` and the rest to `String`; a Kotlin
+keyword used as an argument is backquoted (`` `when` `` in the keybinding calls).
+Functions with `openArgs` (`dispatchCommand`, `projects.mutate`, `device.action`)
+take the whole variant as one `JSONObject`. `cargo test --test api_describe` checks
+`T3Api.kt` against `describe.json` byte for byte; `tools/test-kotlin-jni` compiles
+it, which needs a JDK and `kotlinc`.
 
-| `fn` | Kind · replay | Scope | Args |
-| --- | --- | --- | --- |
-| `server.getConfig` | read · free | `orchestration:read` | — |
-| `server.getSettings` | read · free | `orchestration:read` | — |
-| `server.updateSettings` | mutation · set | dynamic: `settings:write`, `providers:manage` | `patch`, `providerInstanceMutation?` |
-| `orchestration.dispatchCommand` | mutation · id | `orchestration:operate` | the command object (`type`, `commandId`, …) |
-| `orchestration.launchThread` | mutation · id | `orchestration:operate` | `commandId`, `projectId`, `title`, `modelSelection`, `runtimeMode`, `interactionMode`, `workspaceStrategy`, `creationSource?`, `threadId?`, `reuseExistingThread?`, `generateTitle?`, `initialMessage?` |
-| `preview.list` | read · free | `orchestration:read` | `threadId` |
-| `assets.createUrl` | read · free | dynamic: `filesystem:read`, `orchestration:read` | `resource` |
-| `vcs.refreshStatus` | read · free | `orchestration:read` | `cwd` |
-| `review.getDiffPreview` | read · free | `filesystem:read` | `cwd`, `baseRef?`, `ignoreWhitespace?`, `file?` |
-| `projects.readFile` | read · free | `filesystem:read` | `cwd`, `relativePath`, `allowMissing?` |
+Unary functions in this release (99; the README's Typed API section has each
+one's Rust signature, kind, scope, deadline and arguments; streams follow in
+[Typed streams](#typed-streams)). Kotlin method names camelCase the part after
+the module, so `provider.auth.start` is `T3Api(client).provider.authStart(…)`:
+
+| Kotlin (`T3Api(client).…`) | Functions |
+| --- | --- |
+| `server` (9) | `getConfig`, `getSettings`, `updateSettings`, `discoverSourceControl`, `reportClientActivity`, `upsertKeybinding`, `removeKeybinding`, `searchAcpRegistry`, `prepareAcpRegistryAgent` |
+| `orchestration` (10) | `dispatchCommand`, `launchThread`, `getThreadProjection`, `getTurnItem`, `getTurnDiff`, `getFullThreadDiff`, `getWorkflowScript`, `stopWorkflow`, `searchThreads`, `getArchivedShellSnapshot` |
+| `preview` (9) | `list`, `open`, `navigate`, `resize`, `adjust`, `refresh`, `close`, `clearProfile`, `reportStatus` |
+| `assets` (2) | `createUrl`, `delete` |
+| `vcs` (7) | `refreshStatus`, `listRefs`, `createRef`, `switchRef`, `pull`, `init`, `preparePullRequestThread` |
+| `review` (2) | `getDiffPreview`, `getDiffFileContents` |
+| `projects` (4) | `readFile`, `searchEntries`, `mutate`, `createNew` |
+| `diagnostics` (8) | `getHostResources`, `getProcessDiagnostics`, `getResourceTelemetryHistory`, `signalProcess`, `checkOtlpEndpoint`, `getUsageSummary`, `refreshUsageRates`, `runStorageCleanup` |
+| `provider` (9) | `refreshProviders`, `updateProvider`, `authStart`, `authRespond`, `authCancel`, `authLogout`, `installStart`, `installCancel`, `installRemove` |
+| `projectClone` (1) | `start` |
+| `filesystem` (2) | `browse`, `getMetadata` |
+| `pullRequests` (13) | `list`, `detail`, `checks`, `activity`, `routing`, `routingIdentity`, `reviewerCandidates`, `labelCandidates`, `comment`, `submitReview`, `runAction`, `requestReviewers`, `setLabels` |
+| `device` (7) | `list`, `configure`, `testHost`, `open`, `close`, `detail`, `action` |
+| `scheduledTasks` (5) | `list`, `upsert`, `setEnabled`, `delete`, `runNow` |
+| `agentSessions` (2) | `scan`, `import` |
+| `mcpApps` (3) | `callTool`, `readResource`, `updateModelContext` |
+| `shell` (1) | `openInEditor` |
+| `secrets` (1) | `answerRequest` |
+| `worktreeSetup` (1) | `cancel` |
+| `terminal` (3) | `open`, `write`, `resize` |
+
+A scope listed as `dynamic` depends on the payload. The rules, so the app can
+pick a token before calling: `assets.createUrl` needs `filesystem:read` for
+workspace and media files and `orchestration:read` for the rest;
+`server.updateSettings` needs `providers:manage` for provider keys or a
+`providerInstanceMutation`; `projects.mutate` adds `settings:write` when it sends
+`scripts`; `git.preparePullRequestThread` adds `orchestration:operate` for
+`mode: "worktree"` with a `threadId`; `device.list` needs `orchestration:operate`
+with `updateTool` or `retryHostId` (unless it is `inspectOnly` without
+`updateTool`).
 
 ## Events through the existing JSON ABI
 
@@ -136,12 +168,13 @@ Functions in this release:
 `maxSubscriptions` (8), `maxLargeSubscriptions` (2), `queueMaxItems` (64),
 `queueMaxBytes`/`itemMaxBytes` (8 MiB), `largeItemMaxBytes` (64 MiB),
 `largeQueueMaxBytes` (72 MiB), `maxPollMs` (1000), `probeTimeoutMs` (3000),
-`idleTimeoutMs` (20000) and `pollFields`. Boundaries, idle, the completion marker
-and `wakeSubscriptions` are additive, so `abiVersion` stays 3; a host can test
-for `"wakeSubscriptions"` in `operations` or `"boundaries"` in `pollFields`.
+`idleTimeoutMs` (20000), `pollFields` and `subscribeBy` (`["tag","fn"]`).
+Boundaries, idle, the completion marker, `wakeSubscriptions`, `cursor`, `start`
+and subscribing by `fn` are additive, so `abiVersion` stays 3; a host can test
+for `"wakeSubscriptions"` in `operations` or `"cursor"` in `pollFields`.
 Subscribe returns `subscriptionId`; poll returns `{items, boundaries, idle,
-completionMarker, closed, error, errorMessage}` inside the usual `{ok,data}`
-envelope. `error` is a stable code; `errorMessage` carries a reason when the
+completionMarker, closed, error, errorMessage, cursor, start}` inside the usual
+`{ok,data}` envelope. `error` is a stable code; `errorMessage` carries a reason when the
 failure had one. Items preserve T3's native snapshot/event/synchronized shapes.
 
 Poll returns as soon as something is new (items, a chunk end, `idle` turning
@@ -154,6 +187,8 @@ true, or the end of the stream), otherwise after `timeoutMs`:
 | `idle` | The last chunk is complete and no new frame completed during one 100 ms read tick: caught up for now. A large frame may still be in transit, and it can be `true` before the first item. Stays `true` until the next item; turning `true` wakes one waiting poll. Without `requestCompletionMarker` it is the only catch-up signal (the same rule ot3 uses); with it, wait for `completionMarker`. |
 | `completionMarker` | Only with `"requestCompletionMarker":true` in the payload: `true` from the batch that carries the server's `{"kind":"synchronized"}` item (left in `items` at its position) onward. The initial snapshot or replay is complete; paint it. |
 | `closed`, `error`, `errorMessage` | Once `closed` nothing more arrives. `error` is a stable code (`null` after cancel); `errorMessage` an optional one-line reason. |
+| `cursor` | Where to resume: the payload's `afterSequence`, advanced over every item polled so far by the library's rule (a snapshot sets it, any other item only moves it on; thread events this build cannot decode count too). Subscribe again with it as `afterSequence`. `null` until known; for `terminal.attach` and `subscribeWorktreeSetup` it only orders items. |
+| `start` | What the first polled item meant: `snapshot` (replace the held state), `resume` (continue from `afterSequence`) or `events`; `null` before the first item or for a tag the typed API does not know. |
 
 ```json
 {"items":[{"kind":"snapshot","snapshotSequence":41,"projection":{}},{"kind":"synchronized"},{"kind":"event","sequence":42,"event":{}}],
@@ -201,6 +236,75 @@ Cancellation wakes a blocked poll immediately; the network worker observes it on
 its next read tick. DNS/connect/TLS negotiation already in progress can take its
 normal timeout before the worker exits. No callbacks into the JVM occur from the
 stream worker. Server cursors, projections and retry/backoff remain host-owned.
+
+## Typed streams
+
+Open streams by typed function, not by raw tag: the arguments are validated in
+Rust before any socket, exactly like `call`, and the library computes the resume
+cursor. `describe` lists the 13 stream functions (`"stream": true`) and, under
+`streams`, how to read each one: `itemKey` and `items`, `starts`, `cursor`
+(`afterSequence` resumes; `sequence` only orders), the items that end it and the
+composed `firstItem` read, if any.
+
+```json
+{"op":"subscribe","fn":"orchestration.subscribeThread","args":{"threadId":"t-1","afterSequence":41,"acceptBoundedSnapshot":true,"acceptCompactTurnItems":true}}
+{"op":"subscribe","fn":"orchestration.subscribeShell","args":{"afterSequence":120}}
+{"op":"call","fn":"provider.installState","args":{"instanceId":"codex"}}
+```
+
+`subscribe` with `fn` fails locally with `unknown_function`, `not_a_stream` or
+`invalid_<field>` (`invalid_thread_id`, `invalid_after_sequence`, …); mixing
+`fn` with `tag` or `payload` is `invalid_input`. `call` on a stream function is
+`stream_function`. Streams read for their current state only have a unary form
+through `call`, with no queue and no poll: `provider.installState`,
+`provider.authState`, `diagnostics.storageCleanupReport` and
+`preview.discoveredServers`.
+
+In Kotlin, `T3Client.subscribeFn(fn, args)` returns the usual `T3Subscription`
+(it cannot overload `subscribe(tag, payload)`, which has the same JVM signature),
+`T3Batch` carries `cursor` and `start`, and the generated `T3Api` wrappers return
+subscriptions for stream functions (`T3Api(client).orchestration.subscribeThread(threadId, …)`).
+`ThreadStream` reads a thread or shell stream as snapshots, events and a cursor:
+
+```kotlin
+// Worker thread. `held` is the app's own copy of the projection, keyed by thread.
+val stream = ThreadStream.thread(client, threadId, afterSequence = held.cursor,
+    completionMarker = serverSupportsMarker)
+while (active) {
+    val update = stream.poll()
+    update.snapshot?.let { held.replace(it) }        // whole state: drop what was held
+    update.events.forEach { held.apply(it) }          // in order, after that snapshot
+    if (update.repaint) render(held)                  // chunk ended or caught up
+    held.cursor = update.cursor                       // the library's resume rule
+    if (update.closed) break                          // error says why
+}
+stream.close()
+```
+
+### Recommended Android flow
+
+1. On connect, open the shell stream (`ThreadStream.shell(client, afterSequence = shellCursor)`)
+   and keep it while the environment is in the foreground. Paint the sidebar from
+   its snapshot and `project.*`/`thread.*` items.
+2. When a thread opens, read its bounded window once (`boundedThread`), then open
+   `ThreadStream.thread(client, id, afterSequence = window.snapshotSequence)`
+   with `boundedSnapshot = true`. Close it when the thread view goes away; at most
+   two bounded thread streams fit per handle, eight streams in total.
+3. Persist `update.cursor` (or `stream.cursor`) per stream as you apply updates. On
+   a closed update with a transient error (`stream_timeout`, `disconnected`,
+   `rpc_connection_failed`), close the stream and, after the app's backoff, open a
+   new one with `afterSequence` = that cursor. `start == "snapshot"` means the
+   server sent a full state instead of resuming: replace, do not merge. On
+   `stream_closed` or a rejection, start without a cursor.
+4. On resume from background and on every `ConnectivityManager` network change,
+   call `client.wakeSubscriptions()`. Live sockets keep streaming; a dead one
+   closes with `stream_timeout` within about 3 s, and step 3 reopens it.
+5. Treat the view as current after `completionMarker` when the server supports
+   the marker, otherwise after `idle`. Repaint only on `repaint`, never in the
+   middle of a chunk.
+
+The library never reconnects, never retries and never stores a cursor; those
+stay with the app, so a background process restart resumes from what it persisted.
 
 ## Long-running RPCs
 

@@ -1,5 +1,5 @@
 //! Read-only native Pierre review snapshots. Documents receive data, never an RPC bridge.
-use crate::{json, text, Environment, Result};
+use crate::{json, protocol::{self, api::review}, text, Environment, Result};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
@@ -75,7 +75,7 @@ fn open_checkpoint(e: &Environment, input: &Value, snapshot: &Value) -> Result<V
         .and_then(|fs| fs.iter().find(|f| f["path"] == path))
         .ok_or("review_file_changed")?;
     let c = e.connection(false)?;
-    let fresh = c.rpc(text(snapshot, "tag"), snapshot["payload"].clone())?;
+    let fresh = protocol::api::call(&c, text(snapshot, "tag"), &snapshot["payload"], None)?;
     let scope = &snapshot["scope"];
     if fresh["threadId"] != scope["thread"]
         || fresh["fromTurnCount"] != scope["fromTurnCount"]
@@ -179,7 +179,8 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
     let mut full = None;
     let mut error = String::new();
     if !matches!(kind, "new" | "deleted") {
-        match c.rpc("review.getDiffFileContents",json!({"cwd":scope["cwd"],"sourceKind":source["kind"],"baseRef":source["baseRef"],"headRef":source["headRef"],"changeType":kind,"oldPath":file["oldPath"],"newPath":file["path"]})){
+        let query=json!({"cwd":scope["cwd"],"sourceKind":source["kind"],"baseRef":source["baseRef"],"headRef":source["headRef"],"changeType":kind,"oldPath":file["oldPath"],"newPath":file["path"]});
+        match review::FileContentsQuery::from_json(&query).and_then(|q|review::diff_file_contents(&c,&q)){
    Ok(v) if v["oldContents"].as_str().is_some_and(|s|s.len()<=1024*1024)&&v["newContents"].as_str().is_some_and(|s|s.len()<=1024*1024)=>full=Some(v),
    Ok(_)=>error="review_context_limit".into(),Err(e)=>error=e
   }

@@ -7,7 +7,6 @@ use std::{
     collections::{HashMap, HashSet},
     path::Path,
     sync::{Mutex, OnceLock},
-    time::Duration,
 };
 static VIEWS: OnceLock<Mutex<HashMap<String, Value>>> = OnceLock::new();
 pub(crate) static ACTION: Mutex<()> = Mutex::new(());
@@ -204,11 +203,7 @@ pub fn apply_with_at(
         let (server_state, server_error) = if !supports {
             ("skipped", "")
         } else {
-            match c.rpc_with_timeout(
-                "preview.clearProfile",
-                json!({"profileId":profile_id}),
-                Duration::from_secs(60),
-            ) {
+            match protocol::api::preview::clear_profile(&c, profile_id) {
                 Ok(_) => ("complete", ""),
                 Err(e) if protocol::error_code(&e) == "write_not_authorized" => ("failed", "permission_denied"),
                 Err(e) if protocol::error_code(&e) == "rpc_rejected" => ("failed", "browser_profile_clear_failed"),

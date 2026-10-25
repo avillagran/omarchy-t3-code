@@ -1,15 +1,16 @@
 //! Provider install and sign-in from T3's provider settings (provider.install.* and
 //! provider.auth.*). States are read from the server's subscriptions, first item only.
-use crate::{json, text, write::rpc, Environment, Result};
+use crate::{json, protocol::api::{provider::{self, AuthResponse}, streams::{self, StreamSpec}}, text, Environment, Result};
 use serde_json::Value;
 use std::{cell::Cell, time::{Duration, Instant}};
 
-fn first(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
+/// Like `streams::install_state`/`auth_state`, but a stream that ends without a state reads as `null`.
+fn first(e: &Environment, spec: StreamSpec) -> Result<Value> {
     let c = e.connection(true)?;
     let done = Cell::new(false);
     let started = Instant::now();
     let mut state = Value::Null;
-    let result = c.subscribe(tag, payload, || done.get() || started.elapsed() > Duration::from_secs(10), |item| {
+    let result = spec.subscribe(&c, || done.get() || started.elapsed() > Duration::from_secs(10), || false, |item| {
         if let Some(v) = item {
             state = v;
             done.set(true);
@@ -39,23 +40,21 @@ pub fn response(v: &Value) -> Result<Value> {
 }
 pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     let instance = op_id(input, "instanceId")?;
-    let id = json!({"instanceId":instance});
+    let c = || e.connection(true);
     let (kind, state) = match text(input, "action") {
-        "install" => ("install", rpc(e, "provider.install.start", id)?),
-        "remove" => ("install", rpc(e, "provider.install.remove", id)?),
-        "cancel-install" => ("install", rpc(e, "provider.install.cancel", json!({"instanceId":instance,"operationId":op_id(input,"operationId")?}))?),
-        "install-state" => ("install", first(e, "provider.install.subscribe", id)?),
-        "login" => {
-            let mut p = id.clone();
-            if let Ok(method) = op_id(input, "methodId") {
-                p["methodId"] = json!(method);
-            }
-            ("auth", rpc(e, "provider.auth.start", p)?)
+        "install" => ("install", provider::install_start(&c()?, &instance)?),
+        "remove" => ("install", provider::install_remove(&c()?, &instance)?),
+        "cancel-install" => ("install", provider::install_cancel(&c()?, &instance, &op_id(input, "operationId")?)?),
+        "install-state" => ("install", first(e, streams::provider_install_spec(&instance)?)?),
+        "login" => ("auth", provider::auth_start(&c()?, &instance, op_id(input, "methodId").ok().as_deref(), None, None)?),
+        "logout" => ("auth", provider::auth_logout(&c()?, &instance)?),
+        "cancel-login" => ("auth", provider::auth_cancel(&c()?, &instance, &op_id(input, "flowId")?)?),
+        "respond" => {
+            let (flow, interaction) = (op_id(input, "flowId")?, op_id(input, "interactionId")?);
+            let answer = AuthResponse::from_json(&response(&input["response"])?).map_err(|_| "invalid_provider_setup")?;
+            ("auth", provider::auth_respond(&c()?, &instance, &flow, &interaction, &answer)?)
         }
-        "logout" => ("auth", rpc(e, "provider.auth.logout", id)?),
-        "cancel-login" => ("auth", rpc(e, "provider.auth.cancel", json!({"instanceId":instance,"flowId":op_id(input,"flowId")?}))?),
-        "respond" => ("auth", rpc(e, "provider.auth.respond", json!({"instanceId":instance,"flowId":op_id(input,"flowId")?,"interactionId":op_id(input,"interactionId")?,"response":response(&input["response"])?}))?),
-        "auth-state" => ("auth", first(e, "provider.auth.subscribe", id)?),
+        "auth-state" => ("auth", first(e, streams::provider_auth_spec(&instance)?)?),
         "update" => {
             let driver = input["driver"].as_str().filter(|d| !d.is_empty() && d.len() <= 64).ok_or("invalid_provider_setup")?;
             ("update", crate::provider_updates::run_update(e, driver, &instance)?)

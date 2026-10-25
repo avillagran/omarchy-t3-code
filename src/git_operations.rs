@@ -2,6 +2,7 @@
 use crate::{
     git_controls, json, read_json, save_json, text, xdg, Client, Environment, Result,
 };
+use crate::protocol::api::{self, streams};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
@@ -192,14 +193,15 @@ pub fn action(e: &Environment, input: &Value) -> Result<Value> {
     let c = e.connection(true)?;
     let outcome = (|| -> Result<()> {
         for step in plan["steps"].as_array().ok_or("invalid_git_plan")? {
-            let tag = text(step, "tag");
+            // Each native step is a typed-registry function; the plan only names it.
+            let f = api::function(text(step, "tag")).ok_or("invalid_git_plan")?;
             let payload = &step["payload"];
-            if tag == "git.runStackedAction" {
+            if f.name == streams::RUN_STACKED_ACTION.name {
                 let finished = Cell::new(false);
-                let streamed = c.subscribe(
-                    tag,
-                    payload.clone(),
+                let streamed = streams::spec(f.name, payload)?.subscribe(
+                    &c,
                     || finished.get(),
+                    || false,
                     |event| {
                         if let Some(event) = event {
                             if event["actionId"] != id
@@ -239,8 +241,8 @@ pub fn action(e: &Environment, input: &Value) -> Result<Value> {
                     return Err(streamed.err().unwrap_or("stream_closed".into()));
                 }
             } else {
-                let result = c.rpc(tag, payload.clone())?;
-                if tag == "vcs.pull" {
+                let result = f.call(&c, payload, None)?;
+                if f.name == api::vcs::PULL.name {
                     if !matches!(
                         result["status"].as_str(),
                         Some("pulled" | "skipped_up_to_date")
@@ -250,11 +252,11 @@ pub fn action(e: &Environment, input: &Value) -> Result<Value> {
                     r["result"] = result;
                     r["state"] = json!("succeeded");
                 }
-                if tag == "terminal.open" {
+                if f.name == api::terminal::OPEN.name {
                     r["terminalId"] = payload["terminalId"].clone();
                     save(scope, &r)?;
                 }
-                if tag == "terminal.write" {
+                if f.name == api::terminal::WRITE.name {
                     r["state"] = json!("submitted");
                 }
             }

@@ -3,6 +3,8 @@ use crate::*;
 use serde_json::{json, Value};
 use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 
+/// Raw dispatcher by wire tag, with the write token. ot3 itself sends every RPC through
+/// `protocol::api`; this stays for tags a future server adds before the registry does.
 pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
     e.connection(true)?.rpc(tag,payload)
 }
@@ -23,6 +25,17 @@ pub fn update_settings(c: &protocol::Connection, payload: &Value) -> Result<Valu
 /// Outbox tags of `manage` sent through the typed API; the envelope keeps the tag as before.
 const DISPATCH: &str = protocol::api::orchestration::DISPATCH_COMMAND.name;
 const LAUNCH: &str = protocol::api::orchestration::LAUNCH_THREAD.name;
+const MUTATE: &str = protocol::api::projects::MUTATE.name;
+const CREATE_NEW: &str = protocol::api::projects::CREATE_NEW.name;
+const CLONE: &str = protocol::api::project_clone::START.name;
+/// What `manage` sends, typed before the outbox keeps it.
+enum Managed {
+    Dispatch(protocol::api::Command),
+    Launch(protocol::api::ThreadLaunch),
+    Mutate(protocol::api::projects::ProjectMutation),
+    CreateNew(String),
+    Clone(protocol::api::project_clone::CloneStart),
+}
 fn interaction_mode(input:&Value)->Result<&str>{
     match input.get("interactionMode"){None|Some(Value::Null)=>Ok("default"),Some(v)=>v.as_str().filter(|s|matches!(*s,"default"|"plan")).ok_or("invalid_interaction_mode".into())}
 }
@@ -48,7 +61,7 @@ pub fn catalog(e: &Environment) -> Result<Value> {
 }
 pub fn project_sources(e:&Environment)->Result<Value>{
     let config=protocol::api::server::config(&e.connection(true)?)?;
-    let discovery=rpc(e,"server.discoverSourceControl",json!({}))?;
+    let discovery=protocol::api::server::discover_source_control(&e.connection(true)?)?;
     let providers=discovery["sourceControlProviders"].as_array().into_iter().flatten().map(|p|json!({"kind":p["kind"],"status":p["status"],"auth":{"status":p["auth"]["status"]}})).collect::<Vec<_>>();
     Ok(json!({"newProjectsRoot":config["newProjectsRoot"],"baseDirectory":config["settings"]["addProjectBaseDirectory"],"cloneTracking":config["environment"]["capabilities"]["projectCloneTracking"]==true,"providers":providers}))
 }
@@ -198,7 +211,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
         "create-project" => {
             let name=text(input,"name").trim();
             if name.is_empty()||name.chars().count()>200||name.chars().any(char::is_control){return Err("invalid_title".into())}
-            ("projects.createNew",json!({"name":name}))
+            (CREATE_NEW,json!({"name":name}))
         },
         "clone-project" => {
             let destination=protocol::projects::folder_path(text(input,"workspaceRoot"))?;
@@ -210,7 +223,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
                 let url=if shorthand.len()==2&&shorthand.iter().all(|s|!s.is_empty()&&s.chars().all(|c|c.is_ascii_alphanumeric()||matches!(c,'-'|'_'|'.'))){format!("https://github.com/{repository}{}",if repository.ends_with(".git"){""}else{".git"})}else{repository.to_string()};
                 c["remoteUrl"]=json!(url)
             }else{let provider=text(input,"source");if provider.is_empty()||provider.len()>64||!provider.chars().all(|c|c.is_ascii_lowercase()||c.is_ascii_digit()||c=='-'){return Err("invalid_project".into())}c["provider"]=json!(provider);c["repository"]=json!(repository)}
-            ("projectClone.start",c)
+            (CLONE,c)
         },
         "new-thread" => {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
@@ -221,7 +234,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
         "add-project" => {
             let path=if input["workspaceRoot"].is_string(){
                 let path=protocol::projects::folder_path(text(input,"workspaceRoot"))?;
-                let meta=rpc(e,"filesystem.getMetadata",json!({"paths":[path]}))?;
+                let meta=protocol::api::filesystem::metadata(&e.connection(true)?,std::slice::from_ref(&path))?;
                 if meta["entries"][0]["kind"]!="directory"{return Err("invalid_folder".into())}path
             }else{
                 if e.id!="local"{return Err("local_folder_only".into())}
@@ -229,7 +242,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
                 if !path.is_dir(){return Err("invalid_folder".into())}path.to_str().ok_or("invalid_folder")?.to_string()
             };
             let title=path.trim_end_matches('/').rsplit('/').next().filter(|s|!s.is_empty()).unwrap_or("Project");
-            ("projects.mutate",json!({"type":"project.create","projectId":format!("omarchy-project-{id}"),"title":title,"workspaceRoot":path,"createWorkspaceRootIfMissing":false}))
+            (MUTATE,json!({"type":"project.create","projectId":format!("omarchy-project-{id}"),"title":title,"workspaceRoot":path,"createWorkspaceRootIfMissing":false}))
         },
         // Forks open as a new thread; merge-back carries a fork's finished run to its source.
         "fork" => {
@@ -252,7 +265,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
             (DISPATCH,json!({"type":"subagent.stop","threadId":thread,"runId":run,"subagentId":node}))
         },
         "thread-rename"|"regenerate-title"|"pin"|"unpin"|"mark-unread"|"auto-settle"|"archive"|"delete-thread" => {thread=text(input,"thread").to_string();(DISPATCH,protocol::sidebar::thread_action(input)?)},
-        "project-rename" | "project-settings" | "project-remove" => ("projects.mutate",protocol::projects::command(input)?),
+        "project-rename" | "project-settings" | "project-remove" => (MUTATE,protocol::projects::command(input)?),
         "settle" | "unsettle" | "snooze" | "unsnooze" => {
             thread=text(input,"thread").to_string(); if !valid_id(&thread) {return Err("invalid_id".into())}
             let c=protocol::sidebar::command(text(input,"action"),&thread,input["snoozedUntil"].as_str())?;
@@ -263,21 +276,32 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     if command["type"]=="thread.create" && (text(&command,"title").is_empty() || text(&command,"title").chars().count()>255) {return Err("invalid_title".into())}
     command["commandId"]=json!(format!("omarchy-{id}"));
     // Parsed before persisting: what the outbox keeps is what the typed API sends.
-    let typed=if tag==DISPATCH{Some(protocol::api::Command::from_json(&command)?)}else{None};
-    let launch=if tag==LAUNCH{Some(protocol::api::ThreadLaunch::from_json(&command)?)}else{None};
+    // createNew and clone.start take no commandId: the envelope keeps it, the wire does not.
+    let bare=||{let mut c=command.clone();if let Some(o)=c.as_object_mut(){o.remove("commandId");}c};
+    let typed=match tag{
+        DISPATCH=>Managed::Dispatch(protocol::api::Command::from_json(&command)?),
+        LAUNCH=>Managed::Launch(protocol::api::ThreadLaunch::from_json(&command)?),
+        MUTATE=>Managed::Mutate(protocol::api::projects::ProjectMutation::from_json(&command)?),
+        CREATE_NEW=>Managed::CreateNew(text(&command,"name").to_string()),
+        CLONE=>Managed::Clone(protocol::api::project_clone::CloneStart::from_json(&bare())?),
+        _=>return Err("invalid_command".into()),
+    };
     let path=xdg("XDG_STATE_HOME",".local/state").join("outbox").join(format!("{id}.json"));
     let envelope=json!({"environment":e.id,"command":command,"rpc":tag});
     let receipt=path.with_extension("receipt.json");
-    let non_replayable=matches!(tag,"projects.createNew"|"projectClone.start");
+    let non_replayable=tag==CREATE_NEW||tag==CLONE;
     if path.exists() {
         if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}
         if non_replayable {return if receipt.exists(){read_json(&receipt)}else{Err("rpc_outcome_unknown".into())}}
     } else {save_json(&path,&envelope)?;}
     let command_project=command["projectId"].clone();
-    let response=match (&typed,&launch) {
-        (Some(command),_)=>protocol::api::orchestration::dispatch(&e.connection(true)?,command)?,
-        (_,Some(launch))=>protocol::api::orchestration::launch_thread(&e.connection(true)?,launch)?,
-        _=>rpc(e,tag,command)?,
+    let c=e.connection(true)?;
+    let response=match &typed {
+        Managed::Dispatch(command)=>protocol::api::orchestration::dispatch(&c,command)?,
+        Managed::Launch(launch)=>protocol::api::orchestration::launch_thread(&c,launch)?,
+        Managed::Mutate(mutation)=>protocol::api::projects::mutate(&c,mutation)?,
+        Managed::CreateNew(name)=>protocol::api::projects::create_new(&c,name)?,
+        Managed::Clone(clone)=>protocol::api::project_clone::start(&c,clone)?,
     };
     let project=response.get("projectId").or_else(||response.get("id")).filter(|v|v.is_string()).unwrap_or(if command_project.is_string(){&command_project}else{&input["projectId"]});
     let result=json!({"threadId":thread,"projectId":project,"action":input["action"]});
@@ -329,7 +353,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "project-sources"=>project_sources(&e),
         "browse-folders"=>{
             let path=protocol::projects::folder_path(text(input,"path"))?;
-            protocol::projects::folders(&rpc(&e,"filesystem.browse",json!({"partialPath":path}))?)
+            protocol::projects::folders(&protocol::api::filesystem::browse(&e.connection(true)?,&path,None)?)
         },
         "history"=>history(&e,input),
         "model-favorite"=>{let desired=input["favorite"].as_bool().ok_or("invalid_model")?;let current=protocol::api::server::settings(&e.connection(true)?)?;if !current["favorites"].is_array(){return Err("model_preferences_uninitialized".into())}update_settings(&e.connection(true)?,&protocol::models::favorite_payload(text(input,"provider"),text(input,"model"),desired)?).map(|v|protocol::models::preferences(&v))},
@@ -364,11 +388,11 @@ pub fn execute(input:&Value) -> Result<Value> {
         "agent-sessions"=>crate::agent_sessions::run(&e,input),
         "process-diagnostics"=>crate::process_diagnostics::run(&e,input),
         "local-servers"=>crate::local_servers::read(&e),
-        "worktree-setup-cancel"=>rpc(&e,"worktreeSetup.cancel",json!({"threadId":input["thread"]})),
-        "otlp-check"=>{let signal=text(input,"signal");if !matches!(signal,"traces"|"metrics"|"logs"){return Err("invalid_command".into())}let url=input["url"].as_str().filter(|u|(u.starts_with("http://")||u.starts_with("https://"))&&u.len()<=2048).ok_or("invalid_settings")?;let r=rpc(&e,"server.checkOtlpEndpoint",json!({"signal":signal,"url":url}))?;Ok(json!({"signal":signal,"result":r}))},
-        "workflow-script"=>{let path=input["scriptPath"].as_str().filter(|p|p.starts_with('/')&&p.len()<=4096).ok_or("invalid_file")?;rpc(&e,"orchestration.getWorkflowScript",json!({"threadId":input["thread"],"scriptPath":path}))},
-        "workflow-stop"=>{let node=input["subagentId"].as_str().filter(|n|!n.is_empty()&&n.len()<=512).ok_or("invalid_id")?;rpc(&e,"orchestration.stopWorkflow",json!({"threadId":input["thread"],"subagentId":node}))?;Ok(json!({}))},
-        "git-init"=>{let cwd=input["cwd"].as_str().filter(|c|c.starts_with('/')&&c.len()<=4096).ok_or("invalid_folder")?;rpc(&e,"vcs.init",json!({"cwd":cwd}))},
+        "worktree-setup-cancel"=>protocol::api::worktree_setup::cancel(&e.connection(true)?,text(input,"thread")),
+        "otlp-check"=>{let signal=text(input,"signal");if !matches!(signal,"traces"|"metrics"|"logs"){return Err("invalid_command".into())}let url=input["url"].as_str().filter(|u|(u.starts_with("http://")||u.starts_with("https://"))&&u.len()<=2048).ok_or("invalid_settings")?;let r=protocol::api::diagnostics::check_otlp_endpoint(&e.connection(true)?,signal,url)?;Ok(json!({"signal":signal,"result":r}))},
+        "workflow-script"=>{let path=input["scriptPath"].as_str().filter(|p|p.starts_with('/')&&p.len()<=4096).ok_or("invalid_file")?;protocol::api::orchestration::workflow_script(&e.connection(true)?,text(input,"thread"),path)},
+        "workflow-stop"=>{let node=input["subagentId"].as_str().filter(|n|!n.is_empty()&&n.len()<=512).ok_or("invalid_id")?;protocol::api::orchestration::stop_workflow(&e.connection(true)?,text(input,"thread"),node)?;Ok(json!({}))},
+        "git-init"=>{let cwd=input["cwd"].as_str().filter(|c|c.starts_with('/')&&c.len()<=4096).ok_or("invalid_folder")?;protocol::api::vcs::init(&e.connection(true)?,cwd,None)},
         "acp-registry"=>crate::acp_registry::run(&e,input),
         "branch-switch"=>crate::branch_picker::switch(&e,input),
         "branch-check"=>crate::branch_picker::check(&e,input),
@@ -385,7 +409,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         // T3 ThreadVisitWatermark: the open thread is seen up to its updatedAt; Woke is cleared at wokeAt.
         "thread-visit"=>{let thread=text(input,"thread");let at=text(input,"visitedAt");if !valid_id(thread)||chrono::DateTime::parse_from_rfc3339(at).is_err(){return Err("invalid_command".into())}dispatch_command(&e,&json!({"type":"thread.visit","commandId":format!("omarchy-visit-{}",uuid::Uuid::new_v4()),"threadId":thread,"visitedAt":at}))},
         "upload"=>upload(&e,text(input,"url")),
-        "delete-upload"=>rpc(&e,"attachments.delete",json!({"attachmentId":input["attachmentId"]})),
+        "delete-upload"=>protocol::api::assets::delete_attachment(&e.connection(true)?,text(input,"attachmentId")),
         "approval"|"question"|"send"|"stop"|"queue"=>dispatch(&e,input),
         _=>Err("invalid_command".into())
     }
@@ -423,7 +447,8 @@ fn secret_answer(e:&Environment,input:&Value)->Result<Value>{
         "save"=>{let secret=text(&input["answer"],"secret").trim();if secret.is_empty()||secret.len()>64*1024{return Err("invalid_secret".into())}json!({"type":"save","secret":secret})},
         _=>return Err("invalid_secret".into()),
     };
-    rpc(e,"secrets.answerRequest",json!({"threadId":thread,"turnItemId":item,"answer":answer}))?;
+    let answer=protocol::api::secrets::SecretAnswer::from_json(&answer).map_err(|_|"invalid_secret")?;
+    protocol::api::secrets::answer(&e.connection(true)?,thread,item,&answer)?;
     Ok(json!({"turnItemId":item}))
 }
 /// New pin order keys for pinned threads (thread.pin.reorder), on each thread's environment.

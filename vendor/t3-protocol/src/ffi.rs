@@ -132,15 +132,11 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
             connection(handle)?.rpc_with_timeout(field(&request, "tag")?, request["payload"].clone(), timeout)
         }
         "subscribe" => {
+            let (tag, payload) = crate::ffi_stream::target(&request)?;
             let mut h = handle.lock().map_err(|_| "internal_error")?;
             let connection = h.connection.clone().ok_or("not_connected")?;
-            let tag = field(&request, "tag")?;
-            if tag.len() > 256 || tag.chars().any(char::is_control) {
-                return Err("invalid_input".into());
-            }
-            crate::ffi_stream::admit(&h.subscriptions, tag, &request["payload"])?;
-            let subscription =
-                Subscription::start(connection, tag.into(), request["payload"].clone())?;
+            crate::ffi_stream::admit(&h.subscriptions, &tag, &payload)?;
+            let subscription = Subscription::start(connection, tag, payload)?;
             let id = uuid::Uuid::new_v4().to_string();
             h.subscriptions.insert(id.clone(), Arc::new(subscription));
             Ok(json!({"subscriptionId":id}))

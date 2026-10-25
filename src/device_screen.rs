@@ -6,6 +6,7 @@
 //! it is installed, or periodic screenshots otherwise. Hiding the panel stops
 //! the view; only `device-screen-close` with `endSession` closes the session.
 use omarchy_t3_client::*;
+use protocol::api::device as device_api;
 use protocol::device_hub::{self, MjpegFrames, Platform};
 use serde_json::{json, Value};
 use std::{
@@ -84,13 +85,13 @@ impl Manager {
                         let env = crate::env_by_id(&target.environment)?;
                         let c = env.connection(true)?;
                         if detail {
-                            return c.rpc_with_timeout("device.detail", json!({"hostId":target.host_id,"deviceId":device}), Duration::from_secs(20));
+                            return device_api::detail(&c, &device, Some(&target.host_id));
                         }
                         let mut payload = action_payload(&action)?;
                         payload["hostId"] = json!(target.host_id);
                         payload["deviceId"] = json!(device);
-                        c.rpc_with_timeout("device.action", payload, Duration::from_secs(30))?;
-                        c.rpc_with_timeout("device.detail", json!({"hostId":target.host_id,"deviceId":device}), Duration::from_secs(20))
+                        device_api::action(&c, &device_api::DeviceAction::from_json(&payload).map_err(|_| "invalid_device_action")?)?;
+                        device_api::detail(&c, &device, Some(&target.host_id))
                     })();
                     match result {
                         Ok(detail) => surface(&target.request_id, json!({"kind":"detail","detail":detail})),
@@ -109,11 +110,7 @@ impl Manager {
                         let result = (|| -> Result<Value> {
                             let env = crate::env_by_id(&target.environment)?;
                             let c = env.connection(true)?;
-                            c.rpc_with_timeout(
-                                "device.close",
-                                json!({"threadId":target.thread,"hostId":target.host_id,"deviceId":target.device_id,"shutdown":shutdown}),
-                                Duration::from_secs(60),
-                            )
+                            device_api::close(&c, &target.thread, Some(&target.host_id), Some(&target.device_id), Some(shutdown))
                         })();
                         // Native T3 gives up waiting on a shutdown after 15 s while the
                         // device keeps powering off; report it as still shutting down.
@@ -277,11 +274,7 @@ fn run(target: &Target, open: bool, cancel: &Arc<AtomicBool>, inputs: mpsc::Rece
     let mut screen_device = target.device_id.clone();
     if open {
         surface(&target.request_id, json!({"kind":"status","stage":"opening"}));
-        let session = c.rpc_with_timeout(
-            "device.open",
-            json!({"threadId":target.thread,"hostId":target.host_id,"deviceId":target.device_id,"platform":platform,"boot":true}),
-            Duration::from_secs(180),
-        )?;
+        let session = device_api::open(&c, &target.thread, &target.device_id, platform, Some(&target.host_id), Some(true))?;
         surface(&target.request_id, json!({"kind":"session","session":session}));
         // A booted device is addressed by its session id (an emulator serial
         // such as emulator-5554), not by the AVD name it was listed under.

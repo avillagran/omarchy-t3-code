@@ -274,7 +274,7 @@ pub fn report_status(e: &Environment, scope: &Value, status: &Value) -> Result<(
     {
         return Err("preview_scope_changed".into());
     }
-    c.rpc("preview.reportStatus",json!({"threadId":thread,"tabId":tab,"navStatus":checked["navStatus"],"canGoBack":checked["canGoBack"],"canGoForward":checked["canGoForward"]}))?;
+    protocol::api::preview::report_status(&c,thread,tab,&checked["navStatus"],checked["canGoBack"]==true,checked["canGoForward"]==true)?;
     Ok(())
 }
 /// Subscribe first, then reconcile a list at the first stream boundary/idle
@@ -293,7 +293,7 @@ pub fn observe(
     let (c, base) = inspect(e)?;
     let mut refreshed = None::<Instant>;
     let mut epoch = String::new();
-    c.subscribe("subscribePreviewEvents", json!({}), &cancel, |item| {
+    protocol::api::streams::subscribe_preview_events(&c, &cancel, || false, |item| {
         if cancel() {
             return Ok(());
         }

@@ -9,7 +9,7 @@ pub fn execute(e: &Environment, input: &Value) -> Result<Value> {
     if input["environment"] != e.id {
         return Err("tool_scope_mismatch".into());
     }
-    let response = e.connection(false)?.rpc(method, payload)?;
+    let response = crate::protocol::api::call(&e.connection(false)?, method, &payload, None)?;
     parse(input, &response)
 }
 

@@ -19,11 +19,11 @@ pub fn query(e:&Environment,input:&Value)->Result<Value>{
  let cwd=text(&context,"cwd");
  if kind=="path"{
   if cwd.is_empty(){return Err("workspace_unavailable".into())}
-  let result=write::rpc(e,"projects.searchEntries",json!({"cwd":cwd,"query":query.trim(),"limit":40}))?;
+  let result=protocol::api::projects::search_entries(&e.connection(true)?,cwd,query,40,None,None)?;
   return Ok(json!({"items":protocol::composer::paths(&result),"truncated":result["truncated"]}));
  }
  let config=if context["config"].is_object(){context["config"].clone()}else{
-  let result=if !cwd.is_empty()&&!instance.is_empty(){write::rpc(e,"server.refreshProviders",json!({"instanceId":instance,"cwd":cwd}))?}else{protocol::api::server::config(&e.connection(true)?)?};
+  let result=if !cwd.is_empty()&&!instance.is_empty(){protocol::api::provider::refresh(&e.connection(true)?,Some(instance),Some(cwd),None,None)?}else{protocol::api::server::config(&e.connection(true)?)?};
   // Retain only provider metadata needed for composer suggestions; never auth/config secrets.
   let providers:Vec<Value>=result["providers"].as_array().into_iter().flatten().filter(|p|p["instanceId"]==instance).map(|p|{let scoped=p["workspaceSnapshots"].as_array().and_then(|a|a.iter().find(|s|s["cwd"]==cwd)).unwrap_or(p);json!({"instanceId":p["instanceId"],"enabled":p["enabled"],"skills":scoped["skills"],"slashCommands":scoped["slashCommands"]})}).collect();
   let value=json!({"providers":providers});let mut c=cache.lock().unwrap();let mut next=context.clone();next["config"]=value.clone();c.insert(key,(Instant::now(),next));value
