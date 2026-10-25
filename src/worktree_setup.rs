@@ -19,7 +19,7 @@ impl Watch {
             let Ok(e) = environments().and_then(|all| all.into_iter().find(|e| e.id == env).ok_or("unknown_environment".into())) else { return };
             let Ok(c) = e.connection(true) else { return };
             let cancel = || current.load(Ordering::Relaxed) != generation;
-            let _ = c.subscribe("subscribeWorktreeSetup", json!({"threadId":thread}), cancel, |item| {
+            let _ = protocol::api::streams::subscribe_worktree_setup(&c, &thread, cancel, || false, |item| {
                 if let Some(snapshot) = item {
                     if current.load(Ordering::Relaxed) == generation {
                         crate::emit("worktree-setup", json!({"environment":env,"thread":thread,"snapshot":snapshot}));

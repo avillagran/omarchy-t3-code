@@ -1,9 +1,13 @@
 //! Native terminal protocol shared by desktop hosts and Omi. Hosts own rendering and TTYs.
-use crate::{Result,Connection};
+//! `session`, `dimensions`, `write` and `resize` are built by `api::terminal` and keep
+//! their own error codes (`invalid_id`, `invalid_terminal`, `invalid_terminal_size`,
+//! `invalid_terminal_input`).
+use crate::{api,Result,Connection};
 use serde_json::{json,Value};
 fn id(s:&str)->Result<&str>{if s.is_empty()||s.len()>2048||s.chars().any(char::is_control){Err("invalid_id".into())}else{Ok(s)}}
-pub fn session(thread:&str,terminal:&str)->Result<Value>{id(thread)?;id(terminal)?;if terminal.len()>128{return Err("invalid_terminal".into())}Ok(json!({"threadId":thread,"terminalId":terminal}))}
-pub fn dimensions(cols:u16,rows:u16)->Result<Value>{if !(1..=1000).contains(&cols)||!(1..=500).contains(&rows){return Err("invalid_terminal_size".into())}Ok(json!({"cols":cols,"rows":rows}))}
+fn legacy(error:String)->String{match error.as_str(){"invalid_terminal_id"=>"invalid_terminal","invalid_cols"|"invalid_rows"=>"invalid_terminal_size","invalid_data"=>"invalid_terminal_input",_=>"invalid_id"}.into()}
+pub fn session(thread:&str,terminal:&str)->Result<Value>{api::terminal::session_payload(thread,terminal).map_err(legacy)}
+pub fn dimensions(cols:u16,rows:u16)->Result<Value>{let (cols,rows)=api::terminal::size(cols.into(),rows.into()).map_err(legacy)?;Ok(json!({"cols":cols,"rows":rows}))}
 /// Resolve paths on the selected server. Never check a remote path on the host filesystem.
 pub fn context(shell:&Value,thread:&str,fallback:&str)->Result<Value>{
  id(thread)?;let t=shell["threads"].as_array().and_then(|ts|ts.iter().find(|t|t["id"]==thread)).ok_or("thread_not_found")?;
@@ -24,8 +28,8 @@ pub fn attach(thread:&str,terminal:&str,context:&Value,cols:u16,rows:u16)->Resul
  // An exited shell stays exited until the user explicitly opens it again.
  p["restartIfNotRunning"]=json!(true);Ok(p)
 }
-pub fn write(thread:&str,terminal:&str,data:&str)->Result<Value>{if data.is_empty()||data.len()>65536{return Err("invalid_terminal_input".into())}let mut p=session(thread,terminal)?;p["data"]=json!(data);Ok(p)}
-pub fn resize(thread:&str,terminal:&str,cols:u16,rows:u16)->Result<Value>{let mut p=session(thread,terminal)?;let size=dimensions(cols,rows)?;p["cols"]=size["cols"].clone();p["rows"]=size["rows"].clone();Ok(p)}
+pub fn write(thread:&str,terminal:&str,data:&str)->Result<Value>{api::terminal::write_payload(thread,terminal,data).map_err(legacy)}
+pub fn resize(thread:&str,terminal:&str,cols:u16,rows:u16)->Result<Value>{api::terminal::resize_payload(thread,terminal,cols.into(),rows.into()).map_err(legacy)}
 /// A stream snapshot already contains history; ignore replayed output at/before its cursor.
 #[derive(Default)]pub struct Output{sequence:Option<u64>,pub finished:bool}
 impl Output{
@@ -41,8 +45,10 @@ impl Output{
  }
 }
 impl Connection{
- pub fn terminal_write(&self,thread:&str,terminal:&str,data:&str)->Result<Value>{self.rpc("terminal.write",write(thread,terminal,data)?)}
- pub fn terminal_resize(&self,thread:&str,terminal:&str,cols:u16,rows:u16)->Result<Value>{self.rpc("terminal.resize",resize(thread,terminal,cols,rows)?)}
+ /// `api::terminal::write` with this module's error codes.
+ pub fn terminal_write(&self,thread:&str,terminal:&str,data:&str)->Result<Value>{api::send(self,&api::terminal::WRITE,write(thread,terminal,data)?)}
+ /// `api::terminal::resize` with this module's error codes.
+ pub fn terminal_resize(&self,thread:&str,terminal:&str,cols:u16,rows:u16)->Result<Value>{api::send(self,&api::terminal::RESIZE,resize(thread,terminal,cols,rows)?)}
 }
 #[cfg(test)]mod tests{use super::*;
  #[test]fn native_context_and_input_stay_on_selected_server(){let shell=json!({"projects":[{"id":"p","workspaceRoot":"/remote/root"}],"threads":[{"id":"t","projectId":"p","worktreePath":"/remote/tree with spaces","modelSelection":{"instanceId":"provider"}}]});let c=context(&shell,"t","/scratch").unwrap();let a=attach("t","term-1",&c,80,24).unwrap();assert_eq!(a["cwd"],"/remote/tree with spaces");assert_eq!(a["worktreePath"],a["cwd"]);assert_eq!(a["providerInstanceId"],"provider");assert_eq!(a["restartIfNotRunning"],true);assert_eq!(write("t","term-1","\u{3}").unwrap()["data"],"\u{3}");assert!(write("t","term-1","").is_err());assert!(resize("t","term-1",1001,25).is_err());assert!(context(&shell,"missing","/scratch").is_err());}

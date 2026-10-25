@@ -1,6 +1,6 @@
 //! T3's usage page data (server.getUsageSummary), summed in Rust so the panel only
 //! draws totals, a daily series and the top models.
-use crate::{json, text, write::rpc, Environment, Result};
+use crate::{protocol::api::diagnostics::{self, UsageQuery}, text, Environment, Result};
 use chrono::Local;
 use serde_json::Value;
 pub use t3_protocol::usage_summary::{aggregate, request, window};
@@ -21,14 +21,17 @@ pub fn time_zone() -> String {
 pub fn read(e: &Environment, input: &Value) -> Result<Value> {
     // Model prices come from a public table the server caches; refresh it on request.
     if input["refreshRates"] == true {
-        rpc(e, "server.refreshUsageRates", json!({}))?;
+        diagnostics::refresh_usage_rates(&e.connection(true)?)?;
     }
     let (since, until) = window(text(input, "period"), Local::now().date_naive())?;
-    let summary = rpc(
-        e,
-        "server.getUsageSummary",
-        json!({"sinceDay":since.format("%Y-%m-%d").to_string(),"untilDay":until.format("%Y-%m-%d").to_string(),"timeZone":time_zone(),"resolution":"day"}),
-    )?;
+    let query = UsageQuery {
+        since_day: since.format("%Y-%m-%d").to_string(),
+        until_day: until.format("%Y-%m-%d").to_string(),
+        time_zone: time_zone(),
+        resolution: Some("day".into()),
+        ..Default::default()
+    };
+    let summary = diagnostics::usage_summary(&e.connection(true)?, &query)?;
     let mut out = aggregate(&summary, since, until);
     out["period"] = input["period"].clone();
     Ok(out)

@@ -19,10 +19,17 @@ pub fn window(period: &str, today: NaiveDate) -> Result<(NaiveDate, NaiveDate)> 
 }
 /// The window and `server.getUsageSummary` payload for a period ending `today`.
 /// `time_zone` is the host's IANA zone, as the server buckets days in it.
+/// Built by `api::diagnostics::UsageQuery` (`invalid_time_zone` when blank).
 pub fn request(period: &str, today: NaiveDate, time_zone: &str) -> Result<(NaiveDate, NaiveDate, Value)> {
     let (since, until) = window(period, today)?;
-    let payload = json!({"sinceDay":since.format("%Y-%m-%d").to_string(),"untilDay":until.format("%Y-%m-%d").to_string(),"timeZone":time_zone,"resolution":"day"});
-    Ok((since, until, payload))
+    let query = crate::api::diagnostics::UsageQuery {
+        since_day: since.format("%Y-%m-%d").to_string(),
+        until_day: until.format("%Y-%m-%d").to_string(),
+        time_zone: time_zone.into(),
+        resolution: Some("day".into()),
+        ..Default::default()
+    };
+    Ok((since, until, query.payload()?))
 }
 fn tokens(t: &Value) -> u64 {
     ["uncachedInputTokens", "cachedInputTokens", "cacheCreationTokens", "outputTokens", "reasoningTokens"]

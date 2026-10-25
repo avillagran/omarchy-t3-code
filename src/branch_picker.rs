@@ -1,7 +1,7 @@
 //! Thread branch picker: the composer's branch toolbar from T3 BranchToolbarBranchSelector.
 //! Lists refs for the thread's checkout, switches or creates a branch through the server,
 //! then records the branch (and worktree) on the thread.
-use crate::{json, protocol, text, write::{dispatch_command, rpc}, Environment, Result};
+use crate::{json, protocol::api::vcs, text, write::dispatch_command, Environment, Result};
 use serde_json::Value;
 pub use t3_protocol::branch_picker::{dedupe, derive_local, mismatch, sanitize, selection_target, temporary_branch};
 
@@ -30,11 +30,8 @@ pub fn refs(e: &Environment, input: &Value) -> Result<Value> {
         return Err("invalid_review_query".into());
     }
     let scope = thread_scope(e, thread)?;
-    let mut payload = json!({"cwd":scope["cwd"],"refKind":"all","includeMatchingRemoteRefs":true,"limit":100});
-    if !query.is_empty() {
-        payload["query"] = json!(query);
-    }
-    let raw = rpc(e, "vcs.listRefs", payload)?;
+    let refs = vcs::RefQuery { query: Some(query.clone()).filter(|q| !q.is_empty()), include_matching_remote_refs: Some(true), ref_kind: Some("all".into()), limit: Some(100), ..Default::default() };
+    let raw = vcs::list_refs(&e.connection(true)?, text(&scope, "cwd"), &refs)?;
     let refs = raw["refs"].as_array().ok_or("invalid_review_refs")?;
     Ok(json!({"refs":dedupe(refs),"isRepo":raw["isRepo"],"query":query,"branch":scope["branch"],"worktreePath":scope["worktreePath"],"projectCwd":scope["projectCwd"]}))
 }
@@ -55,7 +52,7 @@ pub fn switch(e: &Environment, input: &Value) -> Result<Value> {
         if name.is_empty() || name.len() > 512 {
             return Err("invalid_review_ref".into());
         }
-        let created = rpc(e, "vcs.createRef", json!({"cwd":scope["cwd"],"refName":name,"switchRef":true}))?;
+        let created = vcs::create_ref(&e.connection(true)?, text(&scope, "cwd"), &name, Some(true))?;
         (created["refName"].as_str().unwrap_or(&name).to_string(), worktree.map(str::to_string))
     } else {
         let r = &input["ref"];
@@ -64,7 +61,7 @@ pub fn switch(e: &Environment, input: &Value) -> Result<Value> {
         if reuse {
             (name.to_string(), next)
         } else {
-            let switched = rpc(e, "vcs.switchRef", json!({"cwd":checkout,"refName":name}))?;
+            let switched = vcs::switch_ref(&e.connection(true)?, &checkout, name)?;
             let local = if r["isRemote"] == true {
                 switched["refName"].as_str().unwrap_or(derive_local(name)).to_string()
             } else {
@@ -87,7 +84,7 @@ pub fn check(e: &Environment, input: &Value) -> Result<Value> {
         return Err("invalid_id".into());
     }
     let scope = thread_scope(e, thread)?;
-    let status = protocol::api::vcs::refresh_status(&e.connection(true)?, text(&scope, "cwd"))?;
+    let status = vcs::refresh_status(&e.connection(true)?, text(&scope, "cwd"))?;
     if status["isRepo"] == false {
         return Ok(json!({"mismatch":null}));
     }
@@ -100,7 +97,7 @@ pub fn resolve(e: &Environment, input: &Value) -> Result<Value> {
         return Err("invalid_id".into());
     }
     let scope = thread_scope(e, thread)?;
-    let status = protocol::api::vcs::refresh_status(&e.connection(true)?, text(&scope, "cwd"))?;
+    let status = vcs::refresh_status(&e.connection(true)?, text(&scope, "cwd"))?;
     let Some(found) = mismatch(scope["worktreePath"].as_str(), scope["branch"].as_str(), status["refName"].as_str()).as_object().cloned() else {
         return Ok(json!({"mismatch":null}));
     };
@@ -108,7 +105,7 @@ pub fn resolve(e: &Environment, input: &Value) -> Result<Value> {
         if found["canRestore"] != true {
             return Err("branch_restore_unavailable".into());
         }
-        let switched = rpc(e, "vcs.switchRef", json!({"cwd":scope["cwd"],"refName":found["threadBranch"]}))?;
+        let switched = vcs::switch_ref(&e.connection(true)?, text(&scope, "cwd"), found["threadBranch"].as_str().ok_or("branch_restore_unavailable")?)?;
         switched["refName"].as_str().unwrap_or(text(&Value::Object(found.clone()), "threadBranch")).to_string()
     } else {
         text(&Value::Object(found.clone()), "currentBranch").to_string()

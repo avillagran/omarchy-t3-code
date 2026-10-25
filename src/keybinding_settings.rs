@@ -36,7 +36,7 @@ pub fn subscribe_changes(
 ) -> Result<()> {
     let c = e.connection(false)?;
     authorize(&c, "orchestration:read")?;
-    c.subscribe("subscribeServerConfig", json!({}), &cancel, |event| {
+    protocol::api::streams::subscribe_server_config(&c, &Default::default(), &cancel, || false, |event| {
         if cancel() { return Ok(()); }
         if let Some(event) = event {
             if event["version"] == 1
@@ -229,12 +229,12 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
     {
         return Err("keybindings_snapshot_expired".into());
     }
-    let method = if input["action"] == "upsert" {
-        "server.upsertKeybinding"
+    let function = if input["action"] == "upsert" {
+        &protocol::api::server::UPSERT_KEYBINDING
     } else {
-        "server.removeKeybinding"
+        &protocol::api::server::REMOVE_KEYBINDING
     };
-    let result = c.rpc(method, payload).and_then(|ack| {
+    let result = function.call(&c, &payload, None).and_then(|ack| {
         let ack = present(&ack)?;
         let mut data = present(&protocol::api::server::config(&c)?)?;
         if data["keybindings"] != ack["keybindings"] {
@@ -275,9 +275,6 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
         editors.first()
     }
     .ok_or("editor_unavailable")?;
-    c.rpc(
-        "shell.openInEditor",
-        json!({"cwd":fresh["path"],"editor":editor["id"]}),
-    )?;
+    protocol::api::shell::open_in_editor(&c, text(&fresh, "path"), text(editor, "id"), None)?;
     Ok(json!({"environment":e.id,"opened":true}))
 }

@@ -7,7 +7,9 @@ use serde_json::{json, Value};
 pub use t3_protocol::failure_context::{candidates, detail, input_summary, present};
 
 fn read_item(e: &Environment, item: &Value) -> Value {
-    let full = write::rpc(e, "orchestration.getTurnItem", json!({"threadId":item["threadId"],"itemId":item["id"],"revision":item["updatedAt"]}))
+    let full = e
+        .connection(true)
+        .and_then(|c| protocol::api::orchestration::turn_item(&c, text(item, "threadId"), text(item, "id"), item["updatedAt"].as_str()))
         .ok()
         .map(|r| r["item"].clone())
         .filter(|f| f["id"] == item["id"]);
@@ -33,7 +35,7 @@ pub fn tool(e: &Environment, input: &Value) -> Result<Value> {
         return Err("tool_scope_mismatch".into());
     }
     let (method, payload) = tool_inspector::request(input)?;
-    let r = write::rpc(e, method, payload)?;
+    let r = protocol::api::call(&e.connection(true)?, method, &payload, None)?;
     let item = &r["item"];
     if item["id"] != input["sourceItemId"] {
         return Err("tool_scope_mismatch".into());

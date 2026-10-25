@@ -1,4 +1,5 @@
-//! `review.*`: working-tree and branch-range diffs.
+//! `review.*`: working-tree and branch-range diffs and the two sides of one file.
+use super::reader::{one_of, Reader};
 use super::{api_fn, ids, send, Function};
 use crate::{Connection, Result};
 use serde_json::{json, Value};
@@ -15,7 +16,19 @@ pub const GET_DIFF_PREVIEW: Function = api_fn! {
         diff_preview_payload(a.req("cwd")?, a.str("baseRef")?, a.bool("ignoreWhitespace")?, file.as_ref())
     },
 };
-pub const FUNCTIONS: &[Function] = &[GET_DIFF_PREVIEW];
+pub const GET_DIFF_FILE_CONTENTS: Function = api_fn! {
+    name: "review.getDiffFileContents", module: "review", tag: Some("review.getDiffFileContents"),
+    kind: Read, scope: Fixed("filesystem:read"),
+    args: [
+        (cwd, Path, required), (sourceKind, Enum(SOURCE_KINDS), required), (changeType, Enum(CHANGE_TYPES), required),
+        (oldPath, Path, required), (newPath, Path, required), (baseRef, Text, optional), (headRef, Text, optional),
+    ],
+    payload: |a| FileContentsQuery::from_json(a.all())?.payload(),
+};
+pub const FUNCTIONS: &[Function] = &[GET_DIFF_PREVIEW, GET_DIFF_FILE_CONTENTS];
+
+pub const SOURCE_KINDS: &[&str] = &["working-tree", "branch-range"];
+pub const CHANGE_TYPES: &[&str] = &["change", "rename-pure", "rename-changed", "new", "deleted"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SourceKind {
@@ -94,4 +107,58 @@ fn diff_preview_payload(
         payload["file"] = file.to_json()?;
     }
     Ok(payload)
+}
+
+/// `ReviewDiffFileContentsInput`. `base_ref`/`head_ref` are sent even when `None`
+/// (as `null`): T3 requires both keys.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileContentsQuery {
+    pub cwd: String,
+    pub source_kind: SourceKind,
+    /// `change`, `rename-pure`, `rename-changed`, `new` or `deleted`.
+    pub change_type: String,
+    pub base_ref: Option<String>,
+    pub head_ref: Option<String>,
+    pub old_path: String,
+    pub new_path: String,
+}
+impl FileContentsQuery {
+    pub fn payload(&self) -> Result<Value> {
+        let reference = |field: &str, r: &Option<String>| -> Result<Option<String>> {
+            r.as_deref().map(|r| ids::text(field, r, REF_MAX).map(str::to_string)).transpose()
+        };
+        Ok(json!({
+            "cwd":ids::path("cwd", &self.cwd)?,
+            "sourceKind":self.source_kind.as_str(),
+            "changeType":one_of("changeType", &self.change_type, CHANGE_TYPES)?,
+            "baseRef":reference("baseRef", &self.base_ref)?,
+            "headRef":reference("headRef", &self.head_ref)?,
+            "oldPath":ids::path("oldPath", &self.old_path)?,
+            "newPath":ids::path("newPath", &self.new_path)?,
+        }))
+    }
+    /// An absent `baseRef`/`headRef` is sent as `null`.
+    pub fn from_json(v: &Value) -> Result<Self> {
+        let mut r = Reader::new(v)?;
+        let nullable = |r: &mut Reader, k: &'static str| r.opt_str(k);
+        let query = Self {
+            cwd: r.req_str("cwd")?,
+            source_kind: match r.req_str("sourceKind")?.as_str() {
+                "working-tree" => SourceKind::WorkingTree,
+                "branch-range" => SourceKind::BranchRange,
+                _ => return Err(ids::invalid("sourceKind")),
+            },
+            change_type: r.req_str("changeType")?,
+            base_ref: nullable(&mut r, "baseRef")?,
+            head_ref: nullable(&mut r, "headRef")?,
+            old_path: r.req_str("oldPath")?,
+            new_path: r.req_str("newPath")?,
+        };
+        r.done()?;
+        Ok(query)
+    }
+}
+/// `review.getDiffFileContents`: `{oldContents, newContents}`.
+pub fn diff_file_contents(conn: &Connection, query: &FileContentsQuery) -> Result<Value> {
+    send(conn, &GET_DIFF_FILE_CONTENTS, query.payload()?)
 }
