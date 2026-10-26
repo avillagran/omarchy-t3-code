@@ -1,3 +1,5 @@
+mod memory_pressure;
+mod session_audit_cache;
 mod auto_compact;
 mod idle_release;
 mod server_update;
@@ -444,6 +446,7 @@ fn watch(client: Client) -> Result<()> {
     let mut visible = false;
     let mut selected: Option<(String, String, i64)> = None;
     let mut query = String::new();
+    let mut next_memory_sweep = Instant::now() + Duration::from_secs(30);
     let mut next_poll = Instant::now();
     let mut last_snapshot = Instant::now();
     let mut last_activity = Instant::now() - Duration::from_secs(3600);
@@ -456,6 +459,10 @@ fn watch(client: Client) -> Result<()> {
     let mut disk_threshold: Option<Value> = None;
     let mut vault_automation = journal_vault::Automation::default();
     loop {
+        if Instant::now() >= next_memory_sweep {
+            memory_pressure::release_unused();
+            next_memory_sweep = Instant::now() + Duration::from_secs(30);
+        }
         if Instant::now() >= next_disk {
             next_disk = Instant::now() + disk_space::CHECK_INTERVAL;
             let ui = disk_threshold.as_ref().map(|t| json!({"lowDiskThresholdGb":t})).unwrap_or_else(ui_state::load);
@@ -583,6 +590,7 @@ fn watch(client: Client) -> Result<()> {
                 query = text(&cmd, "query").chars().take(256).collect();
                 emit("snapshot", view(&state, &query));
             }
+            "memory-trim" => {memory_pressure::release_unused();}
             "clear-select" => {selected=None;message_cache=None;}
             "select" => {
                 let env = text(&cmd, "environment").to_string();

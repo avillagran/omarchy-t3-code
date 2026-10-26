@@ -2,6 +2,13 @@
 
 ## Pending
 
+- [ ] **2026-10-26 — Restore the desktop RAM budget.** Initial RSS: Qt UI
+  393 MiB, Rust worker 404 MiB. Worker reduced to approximately 61 MiB by
+  returning freed allocator pages, avoiding simultaneous history copies and
+  caching successful idle checks by metadata revision with a five-minute TTL.
+  UI remains near 400 MiB; full 50–100 MB target is not achieved. Serialized
+  thread/catalog/translation data alone does not account for UI RSS.
+
 - [ ] **2026-10-26 — Intermittent Spanish accents in text input.** User reports
   that typing accented letters sometimes works and sometimes fails despite a
   Spanish keyboard layout. Identify the affected input and reproduce with real
@@ -28,3 +35,9 @@
   Turning it off freezes decorative clocks and the bar, disables transition and
   effect controls, and makes transitions immediate. Individual choices remain
   stored and return when enabled. Default remains enabled for existing users.
+
+- [x] **2026-10-26 — Locate sidebar threads in the mosaic.**
+  Clicking a sidebar thread keeps the mosaic open, selects its page and adds
+  a 3.2-second accent border. Repeat clicks renew the emphasis. Works with
+  global animations disabled; manual pagination clears the temporary highlight.
+  Verified with real Qt test clicks and existing mosaic motion checks.

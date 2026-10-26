@@ -44,8 +44,15 @@ impl Control {
             let mut attempted: HashSet<String> =
                 ledger.as_object().unwrap().keys().cloned().collect();
             let mut cursor = 0;
+            let mut audit_cache = crate::session_audit_cache::Cache::default();
+            let mut settings_before = Value::Null;
             for snapshot in rx {
+                let _memory_sweep = crate::memory_pressure::Sweep;
                 let settings = crate::ui_state::load();
+                if settings != settings_before {
+                    audit_cache = crate::session_audit_cache::Cache::default();
+                    settings_before = settings.clone();
+                }
                 let enabled = settings["idleReleaseEnabled"] != false
                     && (std::env::var_os("OMARCHY_T3_FIXTURE_ENVIRONMENTS").is_none()
                         || settings["idleReleaseEnabled"] == true);
@@ -58,6 +65,7 @@ impl Control {
                 }
                 let mut reads = 0;
                 let threads = snapshot["threads"].as_array().cloned().unwrap_or_default();
+                audit_cache.retain(&threads);
                 let start = cursor;
                 cursor = if threads.is_empty() {
                     0
@@ -83,6 +91,9 @@ impl Control {
                     if at <= 0 || now < at.saturating_add(min as i64 * 60_000) {
                         continue;
                     }
+                    if !audit_cache.due(t, std::time::Instant::now()) {
+                        continue;
+                    }
                     if reads >= 2 {
                         break;
                     }
@@ -92,9 +103,10 @@ impl Control {
                             .into_iter()
                             .find(|e| e.id == env)
                             .ok_or("unknown_environment")?;
-                        let first = client.bounded_thread(&e, id)?;
-                        let plan =
-                            session_memory::candidate(&first["projection"], &settings, env, now);
+                        let plan = {
+                            let first = client.bounded_thread(&e, id)?;
+                            session_memory::candidate(&first["projection"], &settings, env, now)
+                        };
                         if plan["status"] != "due" {
                             return Ok(plan);
                         }
@@ -109,14 +121,16 @@ impl Control {
                         }
                         // Revalidate the complete thread, queue, requests and background
                         // roster immediately before releasing the exact native session.
-                        let fresh = client.bounded_thread(&e, id)?;
-                        let current = crate::ui_state::load();
-                        let checked = session_memory::candidate(
-                            &fresh["projection"],
-                            &current,
-                            env,
-                            chrono::Utc::now().timestamp_millis(),
-                        );
+                        let checked = {
+                            let fresh = client.bounded_thread(&e, id)?;
+                            let current = crate::ui_state::load();
+                            session_memory::candidate(
+                                &fresh["projection"],
+                                &current,
+                                env,
+                                chrono::Utc::now().timestamp_millis(),
+                            )
+                        };
                         if checked["status"] != "due" || checked["episode"] != plan["episode"] {
                             return Ok(checked);
                         }
@@ -141,6 +155,9 @@ impl Control {
                         save_json(&ledger_path, &ledger)?;
                         Ok(out)
                     })();
+                    if result.is_ok() {
+                        audit_cache.checked(t, std::time::Instant::now());
+                    }
                     let mut status =
                         result.unwrap_or_else(|error| json!({"status":"failed","error":error}));
                     status["key"] = json!(key);

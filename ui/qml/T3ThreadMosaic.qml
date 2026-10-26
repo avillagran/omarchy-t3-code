@@ -24,6 +24,25 @@ Item {
   readonly property color dim: Qt.rgba(fg.r,fg.g,fg.b,0.57)
   readonly property bool skyMoving: !!sky && sky.animated
   readonly property int count: Math.max(1,Math.min(8,bridge.viewState.mosaicCount || 4))
+  property string highlightedKey: ""
+  // Navigation is a brief static emphasis too when global motion is disabled.
+  Timer { id: highlightHold; interval: 3200; onTriggered: root.highlightedKey="" }
+  function revealThread(key) {
+    var index=threads.findIndex(function(t){return t.key===key})
+    if(index<0)return false
+    highlightedKey=key
+    var destination=Math.floor(index/count)
+    if(page!==destination){flipDir=destination>page?1:-1;page=destination;flipReset.restart()}
+    highlightHold.restart()
+    return true
+  }
+  function followHighlight() {
+    if(!highlightedKey)return
+    var index=threads.findIndex(function(t){return t.key===root.highlightedKey})
+    if(index<0){highlightedKey="";highlightHold.stop();return}
+    page=Math.floor(index/count)
+  }
+  onThreadsChanged: followHighlight()
   property int page: 0
   readonly property int pages: Math.max(1,Math.ceil(threads.length/count))
   readonly property var shown: threads.slice(Math.min(page,pages-1)*count,Math.min(page,pages-1)*count+count)
@@ -41,7 +60,7 @@ Item {
     if(next.join("\n")!==slotKeys.join("\n"))slotKeys=next
   }
   onTargetKeysChanged: {assignSlots();sync.restart()}
-  onCountChanged: {page=0;assignSlots()}
+  onCountChanged: {page=0;followHighlight();assignSlots()}
   onPagesChanged: if(page>=pages)page=pages-1
   Timer {id:sync;interval:50;onTriggered:root.bridge.watchMosaic(root.shown)}
 
@@ -184,7 +203,7 @@ Item {
   function ms(n){return motion?Math.round(n*T3Motion.pace):0}
   // Page turns flip the tiles toward the direction of travel.
   property int flipDir: 0
-  function turn(step){if(page+step<0||page+step>=pages)return;flipDir=step;page+=step;flipReset.restart()}
+  function turn(step){if(page+step<0||page+step>=pages)return;highlightedKey="";highlightHold.stop();flipDir=step;page+=step;flipReset.restart()}
   Timer {id:flipReset;interval:root.ms(900)+50;onTriggered:root.flipDir=0}
   // Closing plays the mosaic out before the chat comes back.
   function dismiss(){if(!motion){closed();return}if(!leave.running)leave.start()}
@@ -347,8 +366,10 @@ Item {
         Behavior on tone{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(root.ms(520))}}
         readonly property bool live:["think","read","edit","execute","respond","agent","work"].indexOf(phase)>=0
         readonly property bool attention:phase==="attention"
+        readonly property bool revealed:!!thread&&thread.key===root.highlightedKey
         readonly property bool selected:!!thread&&thread.key===root.bridge.selectedKey
         readonly property string identity:thread?thread.key:""
+        objectName:"t3MosaicTile_"+identity
         readonly property bool skyMoving:root.skyMoving
         readonly property int changeStyle:["star","flash"].indexOf(root.effects.change)
         function open(){if(!thread)return;root.bridge.selectThread(thread.environmentId,thread.id);root.dismiss()}
@@ -437,9 +458,9 @@ Item {
             id:card
             anchors.fill:parent;visible:!!tile.thread
             radius:Style.space(14)
-            color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,tileHover.hovered?0.065:0.045)
-            border.width:1
-            border.color:tile.selected?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.7):tile.live||tile.attention?Qt.rgba(tile.tone.r,tile.tone.g,tile.tone.b,0.38):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,tileHover.hovered?0.16:0.08)
+            color:tile.revealed?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.13):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,tileHover.hovered?0.065:0.045)
+            border.width:tile.revealed?Style.space(3):1
+            border.color:tile.revealed?Color.accent:tile.selected?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.7):tile.live||tile.attention?Qt.rgba(tile.tone.r,tile.tone.g,tile.tone.b,0.38):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,tileHover.hovered?0.16:0.08)
             Behavior on color{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(160)}}
             Behavior on border.color{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(root.ms(420))}}
             clip:true

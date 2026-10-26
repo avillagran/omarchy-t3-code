@@ -36,7 +36,7 @@ running() { [[ -e $run/shell.qml ]] && ipc ping >/dev/null; }
 unit=omarchy-t3-code
 # ot3's Qt Quick Controls style (ui/style/OmarchyT3): Fusion with Omarchy's
 # unified, themed tooltips. app/shell.qml respects it (RespectSystemStyle).
-style_env=(QT_QUICK_CONTROLS_STYLE=OmarchyT3 "QML_IMPORT_PATH=$run/ui/style${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}")
+style_env=(MALLOC_ARENA_MAX=2 MALLOC_TRIM_THRESHOLD_=131072 QT_QUICK_CONTROLS_STYLE=OmarchyT3 "QML_IMPORT_PATH=$run/ui/style${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}")
 # Its own user service when systemd is there: a shell restart, or a stuck bar
 # that launched it, never takes the app down with it.
 launch() {
