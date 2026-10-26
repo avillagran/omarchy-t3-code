@@ -6,6 +6,7 @@ pub fn sanitize(input: &Value) -> Value {
     let mut out = json!({"schemaVersion":1,"positions":{}});
     for key in [
         "autoCompactEnabled",
+        "idleReleaseEnabled",
         "quotaCollapsed",
         "usageExpanded",
         "queueExpanded",
@@ -23,7 +24,8 @@ pub fn sanitize(input: &Value) -> Value {
             out[key] = json!(v)
         }
     }
-    for (key,min,max) in [("autoCompactFallbackMinutes",1,1440),("autoCompactMinTokens",1000,1000000)] {if let Some(n)=input[key].as_u64().filter(|n|*n>=min&&*n<=max){out[key]=json!(n)}}
+    for (key,min,max) in [("idleReleaseMinutes",1,1440),("autoCompactFallbackMinutes",1,1440),("autoCompactMinTokens",1000,1000000)] {if let Some(n)=input[key].as_u64().filter(|n|*n>=min&&*n<=max){out[key]=json!(n)}}
+    if let Some(map)=input["idleReleaseProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if value.is_null()||value.as_u64().is_some_and(|n|(1..=1440).contains(&n)){clean.insert(key.clone(),value.clone());}}}out["idleReleaseProviderMinutes"]=Value::Object(clean);}
     if let Some(map)=input["autoCompactProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if valid_id(key)||key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if let Some(n)=value.as_u64().filter(|n|*n>=1&&*n<=1440){clean.insert(key.clone(),json!(n));}}}out["autoCompactProviderMinutes"]=Value::Object(clean);}
     if let Some(list)=input["autoCompactExcludedThreads"].as_array(){out["autoCompactExcludedThreads"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|s.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)))).take(1024).collect::<Vec<_>>());}
     // Provider update notices the user closed: "env=driver:version|…" keys.

@@ -8,12 +8,14 @@ Controls.Popup {
  parent:Controls.Overlay.overlay;anchors.centerIn:parent
  width:Style.space(420);padding:Style.space(18);modal:true
  readonly property var providerControl:providerSelect
- property var providers:[{id:"",title:T3I18n.tr("Default")}].concat((bridge.catalog.providers||[]).map(function(p){return {id:p.instanceId,title:p.name || p.instanceId}}))
+ property string environment:bridge.selectedEnvironment
+ property var providerCatalog:bridge.catalog || ({})
+ property var providers:[{id:"",title:T3I18n.tr("Default")}].concat((providerCatalog.providers||[]).map(function(p){return {id:p.instanceId,title:p.name || p.instanceId}}))
  readonly property string provider:providers[providerSelect.currentIndex] ? providers[providerSelect.currentIndex].id : ""
- readonly property string providerKey:bridge.selectedEnvironment+"/"+provider
+ readonly property string providerKey:environment+"/"+provider
  readonly property int minutes:provider ? (bridge.viewState.autoCompactProviderMinutes || {})[providerKey] || bridge.viewState.autoCompactFallbackMinutes || 60 : bridge.viewState.autoCompactFallbackMinutes || 60
  readonly property var status:bridge.compactionStates["@engine"] && bridge.compactionStates["@engine"].status==="error" ? bridge.compactionStates["@engine"] : (bridge.viewState.autoCompactExcludedThreads||[]).indexOf(bridge.selectedKey)>=0 ? ({status:"disabled"}) : bridge.compactionStates[bridge.selectedKey] || ({status:"unknown_context"})
- function statusText(code){var labels={scheduled:"Scheduled",due:"Scheduled",claimed:"Working",accepted:"Compaction requested",uncertain:"Outcome unknown",failed:"Failed",cancelled:"Cancelled",expired:"Cache expired",unknown_context:"Context unavailable",too_small:"Context too small",unsupported:"Provider does not support compaction",server:"Compacted by the T3 server",disabled:"Disabled",busy:"Working",blocked:"Waiting",provider_changed:"Context unavailable",error:"Failed"};return T3I18n.tr(labels[code]||"Context unavailable")}
+ function statusText(code){var labels={scheduled:"Scheduled",due:"Scheduled",claimed:"Working",accepted:"Compaction requested",uncertain:"Outcome unknown",failed:"Failed",cancelled:"Cancelled",expired:"Cache expired",unknown_context:"Context unavailable",too_small:"Context too small",unsupported:"Provider does not support compaction",server:"Compacted by the T3 server",disabled:"Disabled",busy:"Working",blocked:"Waiting",provider_changed:"Context unavailable",harness_managed:"Managed by the harness",error:"Failed"};return T3I18n.tr(labels[code]||"Context unavailable")}
  function setMinutes(value){if(provider){var all=Object.assign({},bridge.viewState.autoCompactProviderMinutes||{});all[providerKey]=value;bridge.configureCompaction({autoCompactProviderMinutes:all})}else bridge.configureCompaction({autoCompactFallbackMinutes:value})}
  function toggleThread(enabled){var keys=(bridge.viewState.autoCompactExcludedThreads||[]).filter(function(k){return k!==root.bridge.selectedKey});if(!enabled)keys.push(bridge.selectedKey);bridge.configureCompaction({autoCompactExcludedThreads:keys})}
  component Toggle:Controls.CheckBox{
@@ -35,6 +37,7 @@ Controls.Popup {
    Text{Layout.fillWidth:true;text:T3I18n.tr("Estimated cache lifetime");color:Color.popups.text;font.pixelSize:Style.font.caption}
    T3Select{objectName:"autoCompactMinutes";Layout.preferredWidth:Style.space(110);Layout.maximumWidth:Style.space(110);model:root.minuteChoices;textRole:"label";currentIndex:root.minuteChoices.findIndex(function(c){return c.minutes===root.minutes});onActivated:function(index){root.setMinutes(root.minuteChoices[index].minutes)}}
   }
+  Text{Layout.fillWidth:true;text:T3I18n.tr("Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime.");color:Color.popups.text;opacity:0.55;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   Text{objectName:"autoCompactPriority";Layout.fillWidth:true;Layout.minimumHeight:implicitHeight;text:T3I18n.tr("Reported provider lifetime takes priority.");color:Color.popups.text;opacity:0.55;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   RowLayout{
    Text{Layout.fillWidth:true;text:T3I18n.tr("Minimum context tokens");color:Color.popups.text;font.pixelSize:Style.font.caption}
