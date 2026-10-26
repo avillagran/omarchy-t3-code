@@ -1844,6 +1844,8 @@
     "Worktree path": "Worktree path",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.",
-    "The Android device list may be incomplete. Check the device host and try again.": "The Android device list may be incomplete. Check the device host and try again."
+    "The Android device list may be incomplete. Check the device host and try again.": "The Android device list may be incomplete. Check the device host and try again.",
+    "Needs approval": "Needs approval",
+    "Needs your input": "Needs your input"
   }
 }
