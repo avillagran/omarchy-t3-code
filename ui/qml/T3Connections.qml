@@ -30,6 +30,7 @@ ColumnLayout {
  }
  spacing:Style.space(14)
  Component.onCompleted:run("read")
+ T3ConnectionNotice{Layout.fillWidth:true;bridge:root.bridge;onSettingsRequested:root.run("read")}
  Text{Layout.fillWidth:true;Layout.margins:Style.space(12);visible:!!text;text:root.store.error?T3I18n.error(root.store.error):root.store.busy?T3I18n.tr("Loading…"):"";color:root.store.error?Color.urgent:root.muted;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
  Loader{Layout.fillWidth:true;active:root.environment!=="local";visible:active;sourceComponent:Component{T3PreferenceSection{title:"Local environment";icon:"laptop";body:Component{T3LocalConnection{width:parent.width;bridge:root.bridge}}}}}
  T3ConnectionAccess{Layout.fillWidth:true;bridge:root.bridge;environment:root.environment}

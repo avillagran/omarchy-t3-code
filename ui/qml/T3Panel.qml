@@ -597,11 +597,13 @@ Item {
   // Last seen state per thread and when it changed, so rows can celebrate a
   // transition even after moving to another sidebar section.
   readonly property var starfield: sky
-  Binding { target: T3Motion; property: "style"; value: root.bridge.viewState.transitionStyle || "nebula" }
+  Binding { target: T3Motion; property: "enabled"; value: root.bridge.viewState.animationsEnabled !== false }
+  Binding { target: T3Motion; property: "style"; value: T3Motion.enabled ? root.bridge.viewState.transitionStyle || "nebula" : "instant" }
   Binding { target: T3Motion; property: "pace"; value: ({slow: 1.6, fast: 0.6})[root.bridge.viewState.transitionSpeed] || 1 }
   // Preferences > Appearance > Animations, resolved once for every row.
   readonly property var threadEffects: {
     var v = bridge.viewState
+    if (!T3Motion.enabled) return {working:"off",input:"static",change:"off",intensity:0}
     return {working: v.threadWorkingEffect || "comet", input: v.threadInputEffect || "glints", change: v.threadChangeEffect || "star",
             intensity: ({subtle: 0.55, vivid: 1.6})[v.threadEffectIntensity] || 1}
   }
@@ -615,7 +617,7 @@ Item {
   ListModel { id: workingRowModel; dynamicRoles: true }
   ListModel { id: snoozedRowModel; dynamicRoles: true }
   ListModel { id: settledRowModel; dynamicRoles: true }
-  readonly property string rowMoveEffect: ["arc","glide","fade","off"].indexOf(bridge.viewState.threadMoveEffect) >= 0 ? bridge.viewState.threadMoveEffect : "arc"
+  readonly property string rowMoveEffect: !T3Motion.enabled ? "off" : ["arc","glide","fade","off"].indexOf(bridge.viewState.threadMoveEffect) >= 0 ? bridge.viewState.threadMoveEffect : "arc"
   readonly property int rowMoveMs: ({slow: 820, fast: 300})[bridge.viewState.threadMoveSpeed] || 520
   readonly property var sidebarSections: [activeRows, workingReveal.present ? workingRows : [], snoozedReveal.present ? snoozedRows : [], settledReveal.present ? settledRows : []]
   onSidebarSectionsChanged: Qt.callLater(syncSidebar)
@@ -689,14 +691,14 @@ Item {
       var key = item.thread.key || item.thread.id, from = leaving[key]
       if (!from) { item.flight = false; item.arrive(Math.round(rowMoveMs * 0.8)); return }
       landed[key] = true
-      rowFlight.createObject(flightLayer, {key: key, source: from.item, target: item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: rowMoveMs})
+      rowFlight.createObject(flightLayer, {key: key, source: from.item, target: item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: T3Motion.duration(rowMoveMs)})
     })
     // The destination row is not on screen (collapsed shelf or scrolled
     // away): the card sinks into its section instead.
     Object.keys(leaving).forEach(function(key) {
       if (landed[key]) return
       var from = leaving[key]
-      rowFlight.createObject(flightLayer, {key: key, source: from.item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: rowMoveMs})
+      rowFlight.createObject(flightLayer, {key: key, source: from.item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: T3Motion.duration(rowMoveMs)})
     })
   }
   Component { id: rowFlight; T3RowFlight {} }
@@ -780,14 +782,14 @@ Item {
   }
   // Rows around a moving one slide to open or close its gap; a leaving row
   // is kept alive while it fades or flies (see rowLeaving).
-  component RowRemove: Transition { enabled: root.rowMotion; PauseAnimation { duration: root.rowMoveMs + 60 } }
+  component RowRemove: Transition { enabled: root.rowMotion; PauseAnimation { duration: T3Motion.duration(root.rowMoveMs + 60)} }
   component RowDisplaced: Transition {
     enabled: root.rowMotion
-    NumberAnimation { properties: "x,y"; duration: root.rowMoveMs * 0.85; easing.type: Easing.OutCubic }
+    NumberAnimation { properties: "x,y"; duration: T3Motion.duration(root.rowMoveMs * 0.85); easing.type: Easing.OutCubic }
   }
   component RowMove: Transition {
     enabled: root.rowMotion
-    NumberAnimation { properties: "x,y"; duration: root.rowMoveMs; easing.type: Easing.InOutCubic }
+    NumberAnimation { properties: "x,y"; duration: T3Motion.duration(root.rowMoveMs); easing.type: Easing.InOutCubic }
   }
   Component {
     id: threadDelegate
@@ -876,7 +878,7 @@ Item {
       id:sky;objectName:"t3Starfield"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
       anchors.fill:parent;z:-1
-      mode:root.bridge.viewState.starfieldMode || "auto"
+      mode:T3Motion.enabled ? root.bridge.viewState.starfieldMode || "auto" : "off"
       // Any working chat counts, including runs started from another device.
       busy:!!root.bridge.selectedInfo.working||(root.bridge.state.working||0)>0
       paused:!root.opened
@@ -891,7 +893,7 @@ Item {
       objectName:"t3FpsMeter"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
       anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);z:100
-      active:root.opened&&root.bridge.viewState.fpsMeter===true
+      active:root.opened&&T3Motion.enabled&&root.bridge.viewState.fpsMeter===true
     }
     RowLayout {
       id:panelLayout;objectName:"t3PanelLayout"
@@ -1262,7 +1264,7 @@ Item {
                 text: root.searching ? T3I18n.tr("No threads match “{query}”",{query:String(root.bridge.query).trim()}) : root.bridge.stale ? T3I18n.tr("T3 is offline") : T3I18n.tr("No threads here")
                 color: root.dim; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
                 opacity: visible ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 220 } }
+                Behavior on opacity { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(220)} }
               }
             }
             T3ShelfResizer{objectName:"workingShelfResizer";label:"Working threads height";visible:workingReveal.shown&&!workingReveal.moving;value:root.workingShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("workingShelfHeight",h)}}
@@ -1423,13 +1425,11 @@ Item {
               objectName:"t3SidebarFooter"
               Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
               T3IconButton{objectName:"openPreferences";name:"settings";tooltipText:T3I18n.tr("Preferences");onClicked:root.preferencesOpen=!root.preferencesOpen}
-              T3Icon {
-                objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(18)
-                readonly property string statusText:root.bridge.stale?((root.bridge.state.environments || []).some(function(e){return e.state==="ready"})?T3I18n.tr("Partially connected"):T3I18n.tr("Offline")):T3I18n.tr("Direct connection")
-                tint:root.bridge.stale?Color.urgent:root.dim;Accessible.name:statusText
-                HoverHandler{id:connectionStatusHover}
-                Controls.ToolTip.visible:connectionStatusHover.hovered
-                Controls.ToolTip.text:statusText
+              T3IconButton {
+                objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(22)
+                tint:root.bridge.stale?Color.urgent:root.dim
+                tooltipText:T3I18n.tr(root.bridge.stale?"Connection problem":"Direct connection")
+                onClicked:root.openHosts(localBackendGuiIndicator.visible?localBackendGuiIndicator:localBackendControl)
               }
               Item{Layout.fillWidth:true}
               // The machine button lists every environment with its state and a reconnect.
@@ -1553,10 +1553,9 @@ Item {
             Controls.Button {text:"?";implicitWidth:Style.space(28);Accessible.name:T3I18n.tr("Keyboard shortcuts");onClicked:keyHelp.open()}
             T3IconButton {objectName:"t3CloseWindow";name:root.standalone?"minus":"x";tooltipText:T3I18n.tr(root.standalone?"Hide":"Close");onClicked:root.close()}
           }
-          RowLayout{
+          T3ConnectionNotice {
             Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14)
-            visible:(root.bridge.state.environments || []).some(function(e){return e.id==="local"&&e.state!=="ready"}) || !!root.bridge.backendStart.error
-            Text{Layout.fillWidth:true;text:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):T3I18n.tr("Local backend is offline");color:root.bridge.backendStart.error?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+            bridge:root.bridge;onSettingsRequested:root.openPreferencesPage("connections")
           }
           Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
           T3Reveal {
@@ -1676,7 +1675,7 @@ Item {
                 if(wheelCoastDelta!==0)conversationCoastStart.restart();else conversationCoastStart.stop()
                 wheelTarget=Math.max(minY(),Math.min(maxY(),from-delta))
                 root.followingTail=wheelTarget>=maxY()-1
-                if(!step.animate){contentY=wheelTarget;root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}else {conversationWheel.duration=Motion.duration(wheelTarget-contentY);conversationWheel.start()}
+                if(!step.animate){contentY=wheelTarget;root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}else {conversationWheel.duration=T3Motion.duration(Motion.duration(wheelTarget-contentY));conversationWheel.start()}
               }
               WheelHandler {
                 objectName:"t3ConversationWheel"
@@ -1688,11 +1687,11 @@ Item {
                 conversation.wheelCoasting=true;conversationWheel.stop()
                 conversation.wheelTarget=Math.max(conversation.minY(),Math.min(conversation.maxY(),conversation.wheelTarget-conversation.wheelCoastDelta))
                 root.followingTail=conversation.wheelTarget>=conversation.maxY()-1
-                conversationWheel.duration=Motion.glide.coasting;conversationWheel.start()
+                conversationWheel.duration=T3Motion.duration(Motion.glide.coasting);conversationWheel.start()
               }}
               NumberAnimation {
                 id:conversationWheel;target:conversation;property:"contentY";to:conversation.wheelTarget
-                duration:Motion.glide.coasting;easing.type:Easing.OutCubic
+                duration: T3Motion.duration(Motion.glide.coasting);easing.type:Easing.OutCubic
                 onFinished:{if(root.followingTail)root.settleSubmittedTail();else root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}
               }
               // Native timeline spacing belongs to each row kind; work rows

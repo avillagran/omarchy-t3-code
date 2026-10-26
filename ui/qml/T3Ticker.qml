@@ -16,6 +16,7 @@ Singleton {
   // Preferences > Animations > Animation smoothness: "adaptive" gives each
   // pace its own rate, "saver" caps everything at 30 fps and "max" runs every
   // pace at the display rate.
+  readonly property bool enabled: T3Motion.enabled
   property string mode: "adaptive"
   // slow: drift of an idle sky. ambient: the sky while work runs. smooth:
   // spinners, the working shimmer, comets and state icons. fast: meteors.
@@ -45,7 +46,7 @@ Singleton {
     id: timer
     property double last: 0
     interval: Math.max(8, root.interval)
-    repeat: true; running: root.interval > 0
+    repeat: true; running: root.enabled && root.interval > 0
     onRunningChanged: last = 0
     onTriggered: {
       var now = Date.now()

@@ -100,9 +100,9 @@ Item {
                 width: Style.space(24); height: Style.space(2)
                 property real stretch: distance === 0 ? 1 : distance === 1 ? 0.667 : distance === 2 ? 0.417 : 0.333
                 transform: Scale { xScale: mark.stretch }
-                Behavior on stretch { NumberAnimation { duration: 150 } }
+                Behavior on stretch { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(150)} }
                 Rectangle { anchors.fill: parent; radius: height/2; color: Color.popups.text; opacity: parent.distance === 0 ? 0.75 : 0.35 }
-                Rectangle { anchors.fill: parent; radius: height/2; color: Color.popups.text; opacity: entry && root.visibleMarkers[entry.id] ? 0.9 : 0; Behavior on opacity { NumberAnimation { duration: 150 } } }
+                Rectangle { anchors.fill: parent; radius: height/2; color: Color.popups.text; opacity: entry && root.visibleMarkers[entry.id] ? 0.9 : 0; Behavior on opacity { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(150)} } }
             }
         }
         MouseArea {

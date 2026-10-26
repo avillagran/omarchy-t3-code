@@ -191,18 +191,18 @@ Item {
   SequentialAnimation {
     id:leave
     ParallelAnimation {
-      NumberAnimation{target:board;property:"opacity";to:0;duration:root.ms(240);easing.type:Easing.InCubic}
-      NumberAnimation{target:board;property:"scale";to:0.96;duration:root.ms(260);easing.type:Easing.InCubic}
-      NumberAnimation{target:header;property:"opacity";to:0;duration:root.ms(200)}
-      NumberAnimation{target:headerShift;property:"y";to:-Style.space(14);duration:root.ms(220);easing.type:Easing.InCubic}
+      NumberAnimation{target:board;property:"opacity";to:0;duration: T3Motion.duration(root.ms(240));easing.type:Easing.InCubic}
+      NumberAnimation{target:board;property:"scale";to:0.96;duration: T3Motion.duration(root.ms(260));easing.type:Easing.InCubic}
+      NumberAnimation{target:header;property:"opacity";to:0;duration: T3Motion.duration(root.ms(200))}
+      NumberAnimation{target:headerShift;property:"y";to:-Style.space(14);duration: T3Motion.duration(root.ms(220));easing.type:Easing.InCubic}
     }
     ScriptAction{script:root.closed()}
   }
   Component.onCompleted: {assignSlots();sync.restart();if(motion)enter.start()}
   ParallelAnimation {
     id:enter
-    NumberAnimation{target:header;property:"opacity";from:0;to:1;duration:root.ms(380);easing.type:Easing.OutCubic}
-    NumberAnimation{target:headerShift;property:"y";from:-Style.space(16);to:0;duration:root.ms(520);easing.type:Easing.OutBack}
+    NumberAnimation{target:header;property:"opacity";from:0;to:1;duration: T3Motion.duration(root.ms(380));easing.type:Easing.OutCubic}
+    NumberAnimation{target:headerShift;property:"y";from:-Style.space(16);to:0;duration: T3Motion.duration(root.ms(520));easing.type:Easing.OutBack}
   }
 
   Item {
@@ -217,7 +217,7 @@ Item {
         name:"layout-grid";implicitWidth:Style.space(16);tint:Color.accent
         // The grid icon turns a quarter each time the layout changes.
         rotation:root.count*90
-        Behavior on rotation{NumberAnimation{duration:root.ms(620);easing.type:Easing.OutBack}}
+        Behavior on rotation{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(620));easing.type:Easing.OutBack}}
       }
       Text {text:T3I18n.tr("Thread mosaic");color:root.fg;font.pixelSize:Style.font.body;textFormat:Text.PlainText}
       // Live summary of everything that matches the filters; counts bump as they change.
@@ -231,13 +231,13 @@ Item {
             spacing:Style.space(5)
             Rectangle {
               anchors.verticalCenter:parent.verticalCenter;width:Style.space(6);height:width;radius:width/2;color:tallyItem.modelData.tone
-              SequentialAnimation on scale {running:tallyItem.modelData.live&&root.motion&&root.skyMoving;loops:Animation.Infinite;NumberAnimation{to:1.6;duration:700;easing.type:Easing.InOutSine}NumberAnimation{to:1;duration:700;easing.type:Easing.InOutSine}}
+              SequentialAnimation on scale {running:T3Motion.enabled && (tallyItem.modelData.live&&root.motion&&root.skyMoving);loops:Animation.Infinite;NumberAnimation{to:1.6;duration: T3Motion.duration(700);easing.type:Easing.InOutSine}NumberAnimation{to:1;duration: T3Motion.duration(700);easing.type:Easing.InOutSine}}
             }
             Text {
               id:tallyText;text:tallyItem.modelData.n+" "+T3I18n.tr(tallyItem.modelData.label);color:root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText
               property int n:tallyItem.modelData.n
               onNChanged:if(root.motion)bump.restart()
-              SequentialAnimation{id:bump;NumberAnimation{target:tallyText;property:"scale";to:1.25;duration:120;easing.type:Easing.OutCubic}NumberAnimation{target:tallyText;property:"scale";to:1;duration:380;easing.type:Easing.OutBack}}
+              SequentialAnimation{id:bump;NumberAnimation{target:tallyText;property:"scale";to:1.25;duration: T3Motion.duration(120);easing.type:Easing.OutCubic}NumberAnimation{target:tallyText;property:"scale";to:1;duration: T3Motion.duration(380);easing.type:Easing.OutBack}}
             }
           }
         }
@@ -254,7 +254,7 @@ Item {
           x:viewRow.x+(root.count-1)*(width+viewRow.spacing)
           color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.2)
           border.width:1;border.color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.35)
-          Behavior on x{enabled:root.motion;SpringAnimation{spring:5;damping:0.32;epsilon:0.25}}
+          Behavior on x{ enabled:T3Motion.enabled && (root.motion);SpringAnimation{spring:5;damping:0.32;epsilon:0.25}}
         }
         Row {
           id:viewRow;anchors.centerIn:parent;spacing:Style.space(2)
@@ -266,12 +266,12 @@ Item {
               readonly property bool current:root.count===index+1
               width:Style.space(22);height:Style.space(22);radius:Style.space(6)
               color:viewHover.hovered&&!current?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.07):"transparent"
-              Behavior on color{ColorAnimation{duration:140}}
+              Behavior on color{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(140)}}
               Text {
                 anchors.centerIn:parent;text:String(viewButton.index+1);color:viewButton.current?Color.accent:root.dim;font.pixelSize:Style.font.caption;font.weight:viewButton.current?Font.DemiBold:Font.Normal
                 scale:viewButton.current?1.15:viewHover.hovered?1.08:1
-                Behavior on scale{NumberAnimation{duration:root.ms(260);easing.type:Easing.OutBack}}
-                Behavior on color{ColorAnimation{duration:root.ms(200)}}
+                Behavior on scale{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(260));easing.type:Easing.OutBack}}
+                Behavior on color{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(root.ms(200))}}
               }
               HoverHandler{id:viewHover;cursorShape:Qt.PointingHandCursor}
               TapHandler{onTapped:root.bridge.rememberView({mosaicCount:viewButton.index+1})}
@@ -294,8 +294,8 @@ Item {
     anchors.centerIn:board;spacing:Style.space(10)
     opacity:root.shown.length?0:1;visible:opacity>0
     scale:root.shown.length?0.9:1
-    Behavior on opacity{NumberAnimation{duration:root.ms(320)}}
-    Behavior on scale{NumberAnimation{duration:root.ms(420);easing.type:Easing.OutBack}}
+    Behavior on opacity{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(320))}}
+    Behavior on scale{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(420));easing.type:Easing.OutBack}}
     T3Icon {anchors.horizontalCenter:parent.horizontalCenter;name:"layout-grid";implicitWidth:Style.space(28);tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.3)}
     Text {anchors.horizontalCenter:parent.horizontalCenter;text:T3I18n.tr("No threads match these filters");color:root.dim;font.pixelSize:Style.font.body}
   }
@@ -326,14 +326,14 @@ Item {
         readonly property alias messageList:messages
         readonly property rect slot:board.cell(index)
         x:slot.x;y:slot.y;width:slot.width;height:slot.height
-        Behavior on x{enabled:root.motion;NumberAnimation{duration:root.ms(560);easing.type:Easing.OutQuint}}
-        Behavior on y{enabled:root.motion;NumberAnimation{duration:root.ms(620);easing.type:Easing.OutQuint}}
-        Behavior on width{enabled:root.motion;NumberAnimation{duration:root.ms(560);easing.type:Easing.OutQuint}}
-        Behavior on height{enabled:root.motion;NumberAnimation{duration:root.ms(620);easing.type:Easing.OutQuint}}
+        Behavior on x{ enabled:T3Motion.enabled && (root.motion);NumberAnimation{duration: T3Motion.duration(root.ms(560));easing.type:Easing.OutQuint}}
+        Behavior on y{ enabled:T3Motion.enabled && (root.motion);NumberAnimation{duration: T3Motion.duration(root.ms(620));easing.type:Easing.OutQuint}}
+        Behavior on width{ enabled:T3Motion.enabled && (root.motion);NumberAnimation{duration: T3Motion.duration(root.ms(560));easing.type:Easing.OutQuint}}
+        Behavior on height{ enabled:T3Motion.enabled && (root.motion);NumberAnimation{duration: T3Motion.duration(root.ms(620));easing.type:Easing.OutQuint}}
         opacity:present?1:0;visible:opacity>0.01
         scale:present?1:0.9
-        Behavior on opacity{NumberAnimation{duration:root.ms(present?420:260);easing.type:Easing.OutCubic}}
-        Behavior on scale{NumberAnimation{duration:root.ms(520);easing.type:Easing.OutBack}}
+        Behavior on opacity{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(present?420:260));easing.type:Easing.OutCubic}}
+        Behavior on scale{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(520));easing.type:Easing.OutBack}}
         // A leaving slot keeps its thread until it has faded.
         readonly property var current:present&&root.slotKeys[index]?(root.byKey[root.slotKeys[index]] || null):null
         property var thread:null
@@ -344,7 +344,7 @@ Item {
         readonly property var rows:(snapshot.messages || []).filter(function(r){return r.role==="user"||r.role==="assistant"||r.role==="activity"}).slice(-40)
         readonly property string phase:root.phaseOf(thread,snapshot)
         property color tone:root.toneOf(phase)
-        Behavior on tone{ColorAnimation{duration:root.ms(520)}}
+        Behavior on tone{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(root.ms(520))}}
         readonly property bool live:["think","read","edit","execute","respond","agent","work"].indexOf(phase)>=0
         readonly property bool attention:phase==="attention"
         readonly property bool selected:!!thread&&thread.key===root.bridge.selectedKey
@@ -364,12 +364,12 @@ Item {
           PropertyAction{target:flip;property:"angle";value:arrive.dir*-75}
           PropertyAction{target:rise;property:"y";value:arrive.dir?0:Style.space(26)}
           PropertyAction{target:body;property:"scale";value:arrive.dir?1:0.94}
-          PauseAnimation{duration:arrive.delay}
+          PauseAnimation{duration: T3Motion.duration(arrive.delay)}
           ParallelAnimation {
-            NumberAnimation{target:body;property:"opacity";to:1;duration:root.ms(320);easing.type:Easing.OutCubic}
-            NumberAnimation{target:flip;property:"angle";to:0;duration:root.ms(620);easing.type:Easing.OutBack;easing.overshoot:1.1}
-            NumberAnimation{target:rise;property:"y";to:0;duration:root.ms(560);easing.type:Easing.OutQuint}
-            NumberAnimation{target:body;property:"scale";to:1;duration:root.ms(560);easing.type:Easing.OutBack;easing.overshoot:1.3}
+            NumberAnimation{target:body;property:"opacity";to:1;duration: T3Motion.duration(root.ms(320));easing.type:Easing.OutCubic}
+            NumberAnimation{target:flip;property:"angle";to:0;duration: T3Motion.duration(root.ms(620));easing.type:Easing.OutBack;easing.overshoot:1.1}
+            NumberAnimation{target:rise;property:"y";to:0;duration: T3Motion.duration(root.ms(560));easing.type:Easing.OutQuint}
+            NumberAnimation{target:body;property:"scale";to:1;duration: T3Motion.duration(root.ms(560));easing.type:Easing.OutBack;easing.overshoot:1.3}
           }
         }
         // Finishing, failing or asking for input plays the row's state burst
@@ -378,10 +378,10 @@ Item {
           if(skyMoving&&changeStyle>=0&&(phase==="done"||phase==="attention"||phase==="failed")){burstAnimation.stop();burstAnimation.from=0;burstAnimation.start()}
           if(root.motion&&thread){phasePop.restart();if(phase==="done"||phase==="attention"||phase==="failed")nudge.restart()}
         }
-        SequentialAnimation{id:nudge;NumberAnimation{target:card;property:"scale";to:1.025;duration:root.ms(160);easing.type:Easing.OutCubic}NumberAnimation{target:card;property:"scale";to:1;duration:root.ms(520);easing.type:Easing.OutBack;easing.overshoot:2}}
+        SequentialAnimation{id:nudge;NumberAnimation{target:card;property:"scale";to:1.025;duration: T3Motion.duration(root.ms(160));easing.type:Easing.OutCubic}NumberAnimation{target:card;property:"scale";to:1;duration: T3Motion.duration(root.ms(520));easing.type:Easing.OutBack;easing.overshoot:2}}
         // A new message lights the border, like a notification in place.
         function ping(){if(!root.motion)return;pingAnimation.restart()}
-        SequentialAnimation{id:pingAnimation;NumberAnimation{target:pingRing;property:"opacity";from:0;to:0.9;duration:root.ms(120)}NumberAnimation{target:pingRing;property:"opacity";to:0;duration:root.ms(900);easing.type:Easing.OutCubic}}
+        SequentialAnimation{id:pingAnimation;NumberAnimation{target:pingRing;property:"opacity";from:0;to:0.9;duration: T3Motion.duration(root.ms(120))}NumberAnimation{target:pingRing;property:"opacity";to:0;duration: T3Motion.duration(root.ms(900));easing.type:Easing.OutCubic}}
 
         // Rows are a keyed model so streaming updates edit in place and only
         // new rows animate in.
@@ -440,15 +440,15 @@ Item {
             color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,tileHover.hovered?0.065:0.045)
             border.width:1
             border.color:tile.selected?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.7):tile.live||tile.attention?Qt.rgba(tile.tone.r,tile.tone.g,tile.tone.b,0.38):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,tileHover.hovered?0.16:0.08)
-            Behavior on color{ColorAnimation{duration:160}}
-            Behavior on border.color{ColorAnimation{duration:root.ms(420)}}
+            Behavior on color{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(160)}}
+            Behavior on border.color{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(root.ms(420))}}
             clip:true
             // The phase colour washes the top of the card and drifts while it works.
             Rectangle {
               anchors{left:parent.left;right:parent.right;top:parent.top}
               height:Math.min(parent.height,Style.space(110));radius:parent.radius
               opacity:tile.live||tile.attention?1:tile.phase==="failed"?0.8:0
-              Behavior on opacity{NumberAnimation{duration:root.ms(600)}}
+              Behavior on opacity{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(600))}}
               gradient:Gradient{
                 GradientStop{position:0;color:Qt.rgba(tile.tone.r,tile.tone.g,tile.tone.b,0.15)}
                 GradientStop{position:1;color:Qt.rgba(tile.tone.r,tile.tone.g,tile.tone.b,0)}
@@ -467,8 +467,8 @@ Item {
               property real workingStyle:Math.max(0,workingStyleIndex)
               property real attentionStyle:Math.max(0,inputStyleIndex)
               property real burstStyle:Math.max(0,tile.changeStyle)
-              Behavior on working{NumberAnimation{duration:600}}
-              Behavior on attention{NumberAnimation{duration:600}}
+              Behavior on working{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(600)}}
+              Behavior on attention{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(600)}}
               visible:working>0||attention>0||bursting
               property real clock:visible&&root.sky?root.sky.clock:1.2
               property real radius:card.radius
@@ -479,7 +479,7 @@ Item {
               property color flash:tile.tone
               blending:true
               fragmentShader:Qt.resolvedUrl("../assets/shaders/threadaura.frag.qsb")
-              NumberAnimation{id:burstAnimation;target:aura;property:"burst";to:1;duration:1300}
+              NumberAnimation{id:burstAnimation;target:aura;property:"burst";to:1;duration: T3Motion.duration(1300)}
               T3Tick{running:aura.visible&&(aura.working>0||aura.attention>0)&&tile.skyMoving;pace:"smooth"}
             }
             TapHandler{onDoubleTapped:tile.open()}
@@ -499,8 +499,8 @@ Item {
                 T3IconButton {
                   name:"maximize";implicitWidth:Style.space(24);implicitHeight:implicitWidth;tint:root.dim;tooltipText:T3I18n.tr("Open thread");onClicked:tile.open()
                   opacity:tileHover.hovered||activeFocus?1:0.45;scale:tileHover.hovered?1.08:1
-                  Behavior on opacity{NumberAnimation{duration:root.ms(180)}}
-                  Behavior on scale{NumberAnimation{duration:root.ms(260);easing.type:Easing.OutBack}}
+                  Behavior on opacity{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(180))}}
+                  Behavior on scale{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(260));easing.type:Easing.OutBack}}
                 }
               }
               // The phase line: its glyph pops and its words slide in whenever the agent moves on.
@@ -519,16 +519,16 @@ Item {
               }
               ParallelAnimation {
                 id:phasePop
-                NumberAnimation{target:phaseGlyph;property:"scale";from:0.3;to:1;duration:root.ms(560);easing.type:Easing.OutBack;easing.overshoot:2.4}
-                NumberAnimation{target:phaseText;property:"opacity";from:0;to:1;duration:root.ms(360);easing.type:Easing.OutCubic}
-                NumberAnimation{target:phaseSlide;property:"x";from:-Style.space(10);to:0;duration:root.ms(420);easing.type:Easing.OutCubic}
+                NumberAnimation{target:phaseGlyph;property:"scale";from:0.3;to:1;duration: T3Motion.duration(root.ms(560));easing.type:Easing.OutBack;easing.overshoot:2.4}
+                NumberAnimation{target:phaseText;property:"opacity";from:0;to:1;duration: T3Motion.duration(root.ms(360));easing.type:Easing.OutCubic}
+                NumberAnimation{target:phaseSlide;property:"x";from:-Style.space(10);to:0;duration: T3Motion.duration(root.ms(420));easing.type:Easing.OutCubic}
               }
               PhaseStrip {Layout.fillWidth:true;phase:tile.phase;tint:tile.tone;live:tile.live||tile.attention}
               Text {
                 Layout.fillWidth:true;visible:!!tile.thread&&(!tile.snapshot.connected||!!tile.snapshot.error)&&!tile.rows.length
                 text:tile.snapshot.error?T3I18n.error(tile.snapshot.error):T3I18n.tr(tile.snapshot.loaded?"Reconnecting…":"Loading…")
                 color:root.dim;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption
-                SequentialAnimation on opacity{running:parent.visible&&root.motion&&!tile.snapshot.error;loops:Animation.Infinite;NumberAnimation{to:0.4;duration:700;easing.type:Easing.InOutSine}NumberAnimation{to:1;duration:700;easing.type:Easing.InOutSine}}
+                SequentialAnimation on opacity{running:T3Motion.enabled && (parent.visible&&root.motion&&!tile.snapshot.error);loops:Animation.Infinite;NumberAnimation{to:0.4;duration: T3Motion.duration(700);easing.type:Easing.InOutSine}NumberAnimation{to:1;duration: T3Motion.duration(700);easing.type:Easing.InOutSine}}
               }
               Item {
                 Layout.fillWidth:true;Layout.fillHeight:true
@@ -549,7 +549,7 @@ Item {
                   // Rich text and new rows settle their height a frame later.
                   Timer{id:settle;interval:60;onTriggered:if(messages.follow&&!messages.nearEnd)messages.positionViewAtEnd()}
                   model:rowModel
-                  displaced:Transition{NumberAnimation{properties:"y";duration:root.ms(280);easing.type:Easing.OutCubic}}
+                  displaced:Transition{NumberAnimation{properties:"y";duration: T3Motion.duration(root.ms(280));easing.type:Easing.OutCubic}}
                   Controls.ScrollBar.vertical:Controls.ScrollBar{id:messageBar;policy:Controls.ScrollBar.AsNeeded}
                   T3Wheel {id:messageWheel;flickable:messages;onUserScrolled:{messages.follow=false;wheelSettle.restart()}}
                   // Once the wheel stops, following resumes only at the end.
@@ -569,9 +569,9 @@ Item {
                     Component.onCompleted:{var born=tile.fresh[rowId];if(born&&Date.now()-born<1500){delete tile.fresh[rowId];entryIn.start()}}
                     ParallelAnimation {
                       id:entryIn
-                      NumberAnimation{target:entry;property:"opacity";from:0;to:1;duration:root.ms(320);easing.type:Easing.OutCubic}
-                      NumberAnimation{target:entryShift;property:"y";from:Style.space(16);to:0;duration:root.ms(460);easing.type:Easing.OutBack}
-                      NumberAnimation{target:entryShift;property:"x";from:entry.user?Style.space(24):0;to:0;duration:root.ms(420);easing.type:Easing.OutCubic}
+                      NumberAnimation{target:entry;property:"opacity";from:0;to:1;duration: T3Motion.duration(root.ms(320));easing.type:Easing.OutCubic}
+                      NumberAnimation{target:entryShift;property:"y";from:Style.space(16);to:0;duration: T3Motion.duration(root.ms(460));easing.type:Easing.OutBack}
+                      NumberAnimation{target:entryShift;property:"x";from:entry.user?Style.space(24):0;to:0;duration: T3Motion.duration(root.ms(420));easing.type:Easing.OutCubic}
                     }
                     // The user's prompt: the chat's bubble, right-aligned.
                     Rectangle {
@@ -609,7 +609,7 @@ Item {
                         readonly property rect at:answer.positionToRectangle(answer.length)
                         x:at.x+Style.space(2);y:at.y+at.height*0.12;width:Math.max(2,Style.spaceReal(2));height:at.height*0.8;radius:width/2
                         color:tile.tone
-                        SequentialAnimation on opacity{running:entry.streaming;loops:Animation.Infinite;NumberAnimation{to:0.15;duration:420;easing.type:Easing.InOutSine}NumberAnimation{to:1;duration:420;easing.type:Easing.InOutSine}}
+                        SequentialAnimation on opacity{running:T3Motion.enabled && (entry.streaming);loops:Animation.Infinite;NumberAnimation{to:0.15;duration: T3Motion.duration(420);easing.type:Easing.InOutSine}NumberAnimation{to:1;duration: T3Motion.duration(420);easing.type:Easing.InOutSine}}
                       }
                     }
                   }
@@ -619,21 +619,21 @@ Item {
               Item {
                 Layout.fillWidth:true
                 Layout.preferredHeight:tile.attention?Style.space(34):0
-                Behavior on Layout.preferredHeight{NumberAnimation{duration:root.ms(420);easing.type:Easing.OutBack}}
+                Behavior on Layout.preferredHeight{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(420));easing.type:Easing.OutBack}}
                 visible:Layout.preferredHeight>0.5;clip:true
                 Rectangle {
                   objectName:"t3MosaicAttention_"+tile.index
                   anchors{left:parent.left;right:parent.right;bottom:parent.bottom}
                   height:Style.space(34);radius:Style.space(10)
                   opacity:tile.attention?1:0
-                  Behavior on opacity{NumberAnimation{duration:root.ms(300)}}
+                  Behavior on opacity{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(root.ms(300))}}
                   color:Qt.rgba(T3Palette.waiting.r,T3Palette.waiting.g,T3Palette.waiting.b,0.1)
                   border.width:1;border.color:Qt.rgba(T3Palette.waiting.r,T3Palette.waiting.g,T3Palette.waiting.b,0.35)
                   RowLayout {
                     anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(4);spacing:Style.space(8)
                     T3Icon {
                       name:"message-circle-question";implicitWidth:Style.space(14);tint:T3Palette.waiting
-                      SequentialAnimation on rotation{running:tile.attention&&root.motion&&root.skyMoving;loops:Animation.Infinite;NumberAnimation{to:-12;duration:120}NumberAnimation{to:12;duration:160}NumberAnimation{to:0;duration:120}PauseAnimation{duration:2200}}
+                      SequentialAnimation on rotation{running:T3Motion.enabled && (tile.attention&&root.motion&&root.skyMoving);loops:Animation.Infinite;NumberAnimation{to:-12;duration: T3Motion.duration(120)}NumberAnimation{to:12;duration: T3Motion.duration(160)}NumberAnimation{to:0;duration: T3Motion.duration(120)}PauseAnimation{duration: T3Motion.duration(2200)}}
                     }
                     Text {Layout.fillWidth:true;text:root.labelOf("attention",tile.thread,tile.snapshot);color:root.fg;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
                     T3PickerButton {primary:false;implicitHeight:Style.space(26);leftPadding:Style.space(10);rightPadding:Style.space(10);text:T3I18n.tr("Open thread");onClicked:tile.open()}

@@ -20,6 +20,6 @@ Controls.TextField {
     color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.04)
     border.width: 1
     border.color: root.activeFocus ? Color.accent : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.14)
-    Behavior on border.color { ColorAnimation { duration: 140 } }
+    Behavior on border.color { enabled:T3Motion.enabled;ColorAnimation { duration: T3Motion.duration(140)} }
   }
 }

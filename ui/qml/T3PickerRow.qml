@@ -15,7 +15,7 @@ Controls.ItemDelegate {
   radius:Style.space(7)
   color:root.down?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.14):root.hovered||root.highlighted?Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.065):"transparent"
   border.width:root.activeFocus?1:0;border.color:Color.accent
-  Behavior on color{ColorAnimation{duration:100}}
+  Behavior on color{ enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(100)}}
  }
  contentItem:RowLayout {
   spacing:Style.space(12)
