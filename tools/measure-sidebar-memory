@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Compare fixed sidebar delegates; reports process RSS/PSS/swap, not app totals.
+--revision HEAD loads that revision of T3ThreadRow (and T3Panel with --panel).
+Other files stay current. No servers are connected in the panel workload.
+"""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--revision')
+parser.add_argument('--panel', action='store_true', help='measure the complete cold panel instead of individual rows')
+parser.add_argument('--rows', type=int, default=24)
+args = parser.parse_args()
+if not 0 <= args.rows <= 100:
+    parser.error('--rows must be between 0 and 100')
+repo = Path(__file__).resolve().parent.parent
+with tempfile.TemporaryDirectory(prefix='ot3-sidebar-memory-') as directory:
+    root = Path(directory)
+    for name in ('Commons', 'Ui', 'plugins', 'services'):
+        (root / name).symlink_to(Path('/usr/share/omarchy/shell') / name)
+    qml = root / 'UnderTest/ui/qml'
+    qml.mkdir(parents=True)
+    for path in (repo / 'ui/qml').iterdir():
+        if path.name in (('T3ThreadRow.qml', 'T3Panel.qml') if args.panel else ('T3ThreadRow.qml',)) and args.revision:
+            (qml / path.name).write_bytes(subprocess.check_output(
+                ['git', 'show', f'{args.revision}:ui/qml/{path.name}'], cwd=repo))
+        else:
+            (qml / path.name).symlink_to(path)
+    for name in ('js', 'assets', 'style'):
+        (root / 'UnderTest/ui' / name).symlink_to(repo / 'ui' / name)
+    (root / 'shell.qml').write_text('//@ pragma OmarchyLoadPatch\n//@ pragma RespectSystemStyle\n' +
+                                  (repo / 'tests/qml' / ('panel-memory.qml' if args.panel else 'sidebar-memory.qml')).read_text())
+    (root / 'environments.json').write_text('{"environments":[]}')
+    if args.panel:
+        (root / 'UnderTest/bin').symlink_to(repo / 'bin')
+    env = dict(os.environ, T3CODE_HOME=str(root / 'native'), OMARCHY_T3_FIXTURE_ENVIRONMENTS=str(root / 'environments.json'), MALLOC_ARENA_MAX='2', MALLOC_TRIM_THRESHOLD_='131072',
+               OT3_BENCH_ROWS=str(args.rows), QT_QUICK_CONTROLS_STYLE='OmarchyT3',
+               QML_IMPORT_PATH=str(root / 'UnderTest/ui/style'),
+               HOME=str(root / 'home'), XDG_CONFIG_HOME=str(root / 'config'),
+               XDG_STATE_HOME=str(root / 'state'), XDG_DATA_HOME=str(root / 'data'))
+    result = None
+    with subprocess.Popen(['timeout', '12', 'quickshell', '-p', str(root / 'shell.qml')],
+                          env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          text=True) as process:
+        # timeout's child is the actual Quickshell PID; never match another app.
+        log = []
+        for line in process.stdout:
+            log.append(line)
+            if 'SIDEBAR_MEMORY_READY' in line:
+                children = Path(f'/proc/{process.pid}/task/{process.pid}/children').read_text().split()
+                pid = int(children[0])
+                values = {}
+                for entry in Path(f'/proc/{pid}/smaps_rollup').read_text().splitlines():
+                    parts = entry.split()
+                    if parts[0] in ('Rss:', 'Pss:', 'SwapPss:'):
+                        values[parts[0][:-1] + 'KiB'] = int(parts[1])
+                result = dict(component='T3Panel' if args.panel else 'T3ThreadRow', revision=args.revision or 'working-tree', rows=args.rows, **values)
+        code = process.wait()
+    if code or result is None or any('TypeError' in line or 'ReferenceError' in line for line in log):
+        raise SystemExit(''.join(log))
+    print(json.dumps(result))

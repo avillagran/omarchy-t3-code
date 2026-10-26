@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import Quickshell
 import QtTest
 import "UnderTest/ui/qml" as Test
@@ -12,7 +13,7 @@ ShellRoot {
  function check(ok,msg){if(!ok){console.error("T3_MOSAIC_SIDEBAR_QML_FAIL: "+msg);Qt.exit(1)}}
  function mosaic(){return keys.findChild(panel,"t3ThreadMosaic")}
  function highlighted(){var board=keys.findChild(panel,"t3MosaicBoard");for(var i=0;i<board.children.length;i++){var c=board.children[i];if(c.thread&&c.thread.key===target)return c}return null}
- function clickTarget(){var v=panel.sidebarView;for(var i=0;i<v.count;i++){var r=v.itemAtIndex(i);if(r&&r.thread&&r.thread.key===target){keys.mouseClick(r,r.width/2,r.height/2);return true}}return false}
+ function clickTarget(){var v=panel.sidebarView;for(var i=0;i<v.count;i++){var r=v.itemAtIndex(i);if(r&&r.thread&&r.thread.key===target){if(!r.Window.window||!r.Window.window.visible||!keys.waitForRendering(r,1000))return false;try{keys.mouseClick(r,r.width/2,r.height/2)}catch(e){check(false,"click failed: opened="+panel.opened+", visible="+r.visible+", window="+r.Window.window+", size="+r.width+"x"+r.height+", y="+r.y+", scroll="+v.contentY+", viewport="+v.height)};return true}}return false}
  Timer{interval:120;running:true;repeat:true;onTriggered:{
   var b=Test.T3Backend,m=mosaic()
   if(phase===0){

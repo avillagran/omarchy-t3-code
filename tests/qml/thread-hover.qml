@@ -9,7 +9,7 @@ ShellRoot {
  property bool finished:false
  Timer{interval:450;running:true;onTriggered:test.runChecks()}
  Timer{interval:200;running:root.finished;onTriggered:Qt.quit()}
- function check(ok,msg){if(!ok){console.error("T3_THREAD_HOVER_QML_FAIL: "+msg);Qt.exit(1)}}
+ function check(ok,msg){if(!ok){console.error("T3_THREAD_HOVER_QML_FAIL: "+msg);Qt.callLater(function(){Qt.exit(1)});throw new Error(msg)}}
  QtObject{
   id:fixture
   property var state:({projects:[{key:"fixture/project"}]})

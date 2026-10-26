@@ -79,7 +79,21 @@ Item {
   property string editError:""
   readonly property bool canSettle: canOperate && !child && !!catalog.capabilities && catalog.capabilities.threadSettlement === true
   readonly property bool canSnooze: canOperate && !child && !!catalog.capabilities && catalog.capabilities.threadSnooze === true && thread.canSnooze === true
-  readonly property bool showActions: rowHover.hovered || keyboardCurrent || snoozeMenu.visible || rowMenu.visible || settleButton.activeFocus || snoozeButton.activeFocus || discardButton.activeFocus
+  readonly property var snoozeMenu: actionUi.item ? actionUi.item.snoozePopup : null
+  readonly property var rowMenu: actionUi.item ? actionUi.item.contextMenu : null
+  readonly property var customSnooze: actionUi.item ? actionUi.item.customPopup : null
+  readonly property var threadTitle: actionUi.item ? actionUi.item.titleField : null
+  readonly property var editPopup: actionUi.item ? actionUi.item.editDialog : null
+  readonly property var copyField: actionUi.item ? actionUi.item.clipboardField : null
+  readonly property bool actionsLoaded: actionUi.active
+  function ensureActions(){actionUi.active=true;actionExpiry.restart()}
+  function releaseActions(){
+    if(!actionUi.item || (rowMenu && rowMenu.visible) || (snoozeMenu && snoozeMenu.visible) || (customSnooze && customSnooze.visible) || (editPopup && editPopup.visible) || root.busy)return false
+    actionUi.active=false
+    return true
+  }
+  Timer{id:actionExpiry;interval:30000;repeat:true;running:actionUi.active;onTriggered:root.releaseActions()}
+  readonly property bool showActions: rowHover.hovered || keyboardCurrent || (!!snoozeMenu && snoozeMenu.visible) || (!!rowMenu && rowMenu.visible) || settleButton.activeFocus || snoozeButton.activeFocus || discardButton.activeFocus
   readonly property bool hovered: rowHover.hovered
   readonly property bool previewVisible: preview.visible
   readonly property var previewPopup: preview
@@ -93,13 +107,13 @@ Item {
   Accessible.role: Accessible.Button
   Accessible.name: [thread.title,thread.project,stateLabel].filter(Boolean).join(" · ")
   function hidePreview(){openDelay.stop();closeDelay.stop();preview.close()}
-  function dismiss(){if(threadPRBadge)threadPRBadge.closePreview();if(slimPRBadge)slimPRBadge.closePreview();projectContextDismissed();hidePreview();snoozeMenu.close();rowMenu.close();customSnooze.close()}
+  function dismiss(){if(threadPRBadge)threadPRBadge.closePreview();if(slimPRBadge)slimPRBadge.closePreview();projectContextDismissed();hidePreview();if(snoozeMenu)snoozeMenu.close();if(rowMenu)rowMenu.close();if(customSnooze)customSnooze.close()}
   function manage(action,extra){hidePreview();bridge.manage(Object.assign({action:action,environment:thread.environmentId,thread:thread.id},extra || {}))}
   function snoozeManage(action,extra){if(snoozeContext)contextManage(action,extra);else manage(action,extra)}
   function contextManage(action,extra){var t=actionThread;bridge.manage(Object.assign({action:action,environment:t.environmentId,thread:t.id},extra || {}))}
   function menuIcon(name){return "data:image/svg+xml,"+encodeURIComponent(Icons.svg(name).replace(/currentColor/g,String(root.fg)))}
-  function copyValue(value){copyField.text=String(value || "");copyField.selectAll();copyField.copy();copyField.deselect()}
-  function confirmAction(action){if(!contextThread)contextThread=Object.assign({},thread);editAction=action;editError="";editRequest="";threadTitle.text=actionThread.title || "";editPopup.open();if(action==="thread-rename")Qt.callLater(function(){threadTitle.forceActiveFocus();threadTitle.selectAll()})}
+  function copyValue(value){ensureActions();copyField.text=String(value || "");copyField.selectAll();copyField.copy();copyField.deselect()}
+  function confirmAction(action){ensureActions();if(!contextThread)contextThread=Object.assign({},thread);editAction=action;editError="";editRequest="";threadTitle.text=actionThread.title || "";editPopup.open();if(action==="thread-rename")Qt.callLater(function(){threadTitle.forceActiveFocus();threadTitle.selectAll()})}
   function submitAction(){var extra=editAction==="thread-rename"?{title:threadTitle.text.trim()}:editAction==="delete-thread"?{confirmed:true}:{working:!!actionThread.working};contextManage(editAction,extra);editRequest=bridge.managementRequest?bridge.managementRequest.requestId:""}
   function presets(now) {
     var d=now || new Date(),h=3600000,result=[{label:"In 1 hour",date:new Date(d.getTime()+h)},{label:"In 3 hours",date:new Date(d.getTime()+3*h)}]
@@ -108,7 +122,7 @@ Item {
     var monday=new Date(d);monday.setDate(monday.getDate()+((1-d.getDay()+7)%7 || 7));monday.setHours(9,0,0,0);if(monday.getTime()!==tomorrow.getTime())result.push({label:"Next week",date:monday})
     return result
   }
-  function openSnooze(context){snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
+  function openSnooze(context){ensureActions();snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
   onPanelVisibleChanged: if(!panelVisible)dismiss()
   onPooledChanged: {resetMotion();statePop.complete();if(pooled){dismiss();burstAnimation.stop();aura.burst=0}}
   // Sidebar motion (T3Panel.syncSidebar): rows entering or leaving a section
@@ -167,7 +181,7 @@ Item {
       else {openDelay.stop();closeDelay.restart()}
     }
   }
-  Timer { id:openDelay;interval:500;onTriggered:if(root.hovered && !actionsHover.hovered && !snoozeMenu.visible && !rowMenu.visible && root.panelVisible && !root.pooled)preview.open() }
+  Timer { id:openDelay;interval:500;onTriggered:if(root.hovered && !actionsHover.hovered && (!snoozeMenu || !snoozeMenu.visible) && (!rowMenu || !rowMenu.visible) && root.panelVisible && !root.pooled)preview.open() }
   Timer { id:closeDelay;interval:140;onTriggered:if(!root.hovered && !previewHover.hovered)preview.close() }
   Repeater {
     model:root.depth
@@ -212,7 +226,7 @@ Item {
     }
     MouseArea {
       anchors.fill:parent;cursorShape:Qt.PointingHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton
-      onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
+      onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.ensureActions();root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
     }
     ColumnLayout {
       anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(root.slim?0:8);anchors.bottomMargin:Style.space(root.slim?0:8);spacing:Style.space(2)
@@ -340,6 +354,15 @@ Item {
       }
     }
   }
+  Loader {
+    id:actionUi;active:false
+    sourceComponent:Item {
+      property alias snoozePopup:snoozeMenu
+      property alias contextMenu:rowMenu
+      property alias customPopup:customSnooze
+      property alias titleField:threadTitle
+      property alias editDialog:editPopup
+      property alias clipboardField:copyField
   Controls.Menu {
     width:Style.space(280)
     id:snoozeMenu;property var choices:[];objectName:"threadSnoozeMenu"
@@ -425,5 +448,7 @@ Item {
       }
     }
   }
-  Connections{target:root.bridge;function onManagementFinished(data){if(!root.editRequest||data.requestId!==root.editRequest)return;root.editError=data.error || "";if(!data.error)editPopup.close()}}
+    }
+  }
+  Connections{target:root.bridge;function onManagementFinished(data){if(!root.editRequest||data.requestId!==root.editRequest)return;root.editError=data.error || "";if(!data.error && editPopup)editPopup.close()}}
 }
