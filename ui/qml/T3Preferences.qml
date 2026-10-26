@@ -67,7 +67,7 @@ Rectangle {
   {page:"source-control",title:"Text generation",icon:"square-pen",keys:["branchNamingMode","branchNamePrefix","branchNameInstructions","sourceControlWritingStyle.mode","sourceControlWritingStyle.customInstructions","sourceControlWritingStyle.followChangeRequestTemplates","sourceControlWriterModelSelection"]},
   {page:"source-control",title:"Review guides",icon:"git-pull-request",keys:["reviewGuidesEnabled","reviewGuideModelSelection","reviewGuideInstructions"]}]
  // Sections that filter themselves (not in `groups`) still count as search results.
- readonly property bool sectionSearchMatch:["Time format","T3 Code compatibility","Follow-up behavior","Steer","Plan mode (legacy)","Legacy features","Notifications","Thread notifications","HTML renders","Language"].some(function(t){return root.matches(t)})
+ readonly property bool sectionSearchMatch:["Agent memory","Release idle agents","Automatic compaction","Time format","T3 Code compatibility","Follow-up behavior","Steer","Plan mode (legacy)","Legacy features","Notifications","Thread notifications","HTML renders","Language"].some(function(t){return root.matches(t)})
  function matches(text){return !query.trim() || (T3I18n.tr(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0 || String(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0)}
  readonly property var groups:sections.filter(function(s){return root.query.trim() || s.page===root.page || root.page==="projects"&&root.projectScope}).map(function(s){return Object.assign({},s,{fields:s.keys.map(function(key){return (root.result.fields || []).find(function(f){return f.key===key})}).filter(function(f){return f&&(root.matches(s.title)||root.matches(f.label)||root.matches(f.description || ""))})})}).filter(function(s){return s.fields.length>0})
  onQueryChanged:if(settingsScroll.contentItem)settingsScroll.contentItem.contentY=0
@@ -135,6 +135,9 @@ Rectangle {
        Text{required property var modelData;Layout.fillWidth:true;text:(modelData.target.environment || "")+": "+T3I18n.error(modelData.error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
       }
       WorkIndicator{visible:["archived","shortcuts","licenses"].indexOf(root.page)<0&&root.result.busy;active:visible}
+      T3PreferenceSection{objectName:"agentMemorySection";visible:root.query.trim()?(root.matches("Agent memory")||root.matches("Release idle agents")||root.matches("Automatic compaction")):root.page==="general";Layout.fillWidth:true;title:"Agent memory";icon:"cpu"
+       body:Component{Item{implicitHeight:memory.implicitHeight+Style.space(28);T3AgentMemorySettings{id:memory;width:parent.width-Style.space(28);x:Style.space(14);y:Style.space(14);bridge:root.bridge;environment:root.representativeEnvironment}}}
+      }
       Repeater {model:root.groups
        T3PreferenceSection{required property var modelData;Layout.fillWidth:true;title:modelData.title;icon:modelData.icon
         body:Component{Column{width:parent.width;Repeater{model:modelData.fields

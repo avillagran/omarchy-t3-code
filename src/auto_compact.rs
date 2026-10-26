@@ -212,7 +212,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
                     .find(|e| e.id == env)
                     .ok_or("unknown_environment")?;
                 let envelope = bounded(&client, &e, id)?;
-                let mut plan = policy::candidate(
+                let mut plan = session_memory::compaction_candidate(
                     &envelope["projection"],
                     &settings,
                     chrono::Utc::now().timestamp_millis(),
@@ -233,7 +233,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
                 if plan["status"] == "due" {
                     // Re-read immediately before claiming. Native state may have advanced while reading the catalog.
                     let fresh = bounded(&client, &e, id)?;
-                    let checked_plan = policy::candidate(
+                    let checked_plan = session_memory::compaction_candidate(
                         &fresh["projection"],
                         &settings,
                         chrono::Utc::now().timestamp_millis(),
@@ -253,7 +253,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
                     {
                         return Ok(json!({"status":"disabled"}));
                     }
-                    let current_plan = policy::candidate(
+                    let current_plan = session_memory::compaction_candidate(
                         &fresh["projection"],
                         &current,
                         chrono::Utc::now().timestamp_millis(),

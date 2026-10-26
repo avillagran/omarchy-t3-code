@@ -1,4 +1,5 @@
 mod auto_compact;
+mod idle_release;
 mod server_update;
 mod document_session;
 mod live;
@@ -248,6 +249,7 @@ fn watch(client: Client) -> Result<()> {
     emit("ui-state",ui_state::load());
     let (tx, rx) = mpsc::channel::<Value>();
     let compactor=auto_compact::Control::new(tx.clone());
+    let idle_releaser=idle_release::Control::new(tx.clone());
     let updater=server_update::Control::new();
     let (action_tx, action_rx) = mpsc::channel::<Value>();
     let input_action_tx=action_tx.clone();
@@ -480,6 +482,7 @@ fn watch(client: Client) -> Result<()> {
                     let _ = shell_environments.send(d["environments"].as_array().into_iter().flatten().map(|e|text(e,"id").to_string()).collect());
                     let _ = notify(&d);
                     compactor.observe(&d);
+                    idle_releaser.observe(&d);
                     updater.observe(&d);
                     let mut before = state.clone();
                     let mut after = d.clone();
