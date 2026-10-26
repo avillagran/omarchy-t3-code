@@ -8,6 +8,9 @@
   caching successful idle checks by metadata revision with a five-minute TTL.
   UI remains near 400 MiB; full 50–100 MB target is not achieved. Serialized
   thread/catalog/translation data alone does not account for UI RSS.
+  Follow-up: lazy sidebar actions, utility popups and multimedia are installed;
+  the fixed 24-thread panel saves 37–51 MiB PSS+SwapPSS. The live UI still
+  sampled ~409 MiB RSS on a long chat; the target remains open. See `UI_MEMORY.md`.
 
 - [ ] **2026-10-26 — Intermittent Spanish accents in text input.** User reports
   that typing accented letters sometimes works and sometimes fails despite a
@@ -41,3 +44,10 @@
   a 3.2-second accent border. Repeat clicks renew the emphasis. Works with
   global animations disabled; manual pagination clears the temporary highlight.
   Verified with real Qt test clicks and existing mosaic motion checks.
+
+- [x] **2026-10-26 — Separate sidebar visibility and keyboard focus.**
+  Ctrl+B toggles the sidebar. Super+B opens it and focuses/reveals the current
+  chat row, expanding its section and ancestors. If filters exclude that row,
+  this explicit reveal clears them. Arrows continue from that row; selection
+  and drafts are retained. Native duplicate bindings are suppressed, and the
+  rich-text composer routes these keys without applying text formatting.

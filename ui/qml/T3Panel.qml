@@ -1,6 +1,5 @@
 import QtQuick 6.11
 import QtQuick.Window 6.11
-import QtMultimedia
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import Quickshell
@@ -53,7 +52,8 @@ Item {
     add("parent-thread","Open parent thread","corner-left-up",b.subthread&&!!b.parentThread,function(){b.openParentThread()})
     add("next-subagent","Next subagent","chevron-right",b.siblingThreads.length>1,function(){b.openSibling(1)})
     add("previous-subagent","Previous subagent","chevron-left",b.siblingThreads.length>1,function(){b.openSibling(-1)})
-    add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Meta+B")
+    add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Ctrl+B")
+    add("focus-sidebar","Chat list","panel-left",true,function(){revealSidebarSelection()},"Super+B")
     add("copy-reference","Copy thread reference","copy",thread,function(){var badge=b.selectedInfo.pullRequestBadge || {};b.copyText((badge.current || {}).url || b.selectedThread)})
     // Prompt links open a new thread with this draft on the hosted T3 app (T3 promptLinks).
     var draftText=String(b.draft.text||"").trim()
@@ -249,8 +249,30 @@ Item {
     var items=sidebarFocusItems(),choice=items.find(function(r){return r.key===root.bridge.selectedKey})
     if(!choice){var groups=[{rows:workingRows,header:workingToggle},{rows:snoozedRows,header:snoozedToggle},{rows:settledRows,header:settledToggle}];var group=groups.find(function(g){return g.rows.some(function(t){return t.key===root.bridge.selectedKey})});if(group)choice={item:group.header,index:-1}}
     choice=choice||items[0]||{item:threads,index:0};choice.item.forceActiveFocus()
-    if(choice.index>=0){choice.item.currentIndex=choice.index;choice.item.positionViewAtIndex(choice.index,ListView.Contain)}
+    if(choice.index>=0){choice.item.forceLayout();choice.item.currentIndex=choice.index;choice.item.positionViewAtIndex(choice.index,ListView.Contain)}
   }
+  function revealSidebarSelection() {
+    if(composerExpanded)expandComposer(false)
+    if(sidebarCollapsed)toggleSidebar(false)
+    var all=bridge.state.threads || [],target=all.find(function(t){return t.key===root.bridge.selectedKey})
+    // Reveal a selected child even when its parent was explicitly folded.
+    var expanded=Object.assign({},bridge.viewState.subthreadsExpanded || {}),child=target,changed=false
+    for(var depth=0;child&&child.parentThreadId&&depth<8;depth++){
+      var parentKey=child.environmentId+"/"+child.parentThreadId
+      if(expanded[parentKey]!==true){expanded[parentKey]=true;changed=true}
+      child=all.find(function(t){return t.key===parentKey})
+    }
+    if(changed)bridge.rememberView({subthreadsExpanded:expanded})
+    var rows=activeRows.concat(workingRows,snoozedRows,settledRows)
+    if(target&&!rows.some(function(t){return t.key===root.bridge.selectedKey})){
+      hostFilter="";projectFilter="";statusFilter="all";bridge.query=""
+    }
+    if(workingRows.some(function(t){return t.key===root.bridge.selectedKey}))workingExpanded=true
+    if(snoozedRows.some(function(t){return t.key===root.bridge.selectedKey}))snoozedExpanded=true
+    if(settledRows.some(function(t){return t.key===root.bridge.selectedKey}))settledExpanded=true
+    syncSidebar();focusSidebar();sidebarRefocus.restart()
+  }
+  Timer{id:sidebarRefocus;interval:0;onTriggered:if(root.opened)root.focusSidebar()}
   // One focus order across cards and shelf headers, matching the native sidebar.
   function sidebarFocusItems(){
     var out=[]
@@ -324,8 +346,8 @@ Item {
     if(!nativeKeysActive||!supportsNativeShortcut(command))return
     if(command==="commandPalette.toggle")toggleCommandPalette()
     else if(command==="usage.open"){if(usagePage.opened)usagePage.close();else usagePage.show()}
-    else if(command==="usage.cost"||command==="usage.tokens")usagePage.metric=command.slice(6)
-    else if(command.indexOf("usage.period.")===0)usagePage.setPeriod(command.slice(13))
+    else if(command==="usage.cost"||command==="usage.tokens")usagePage.item.metric=command.slice(6)
+    else if(command.indexOf("usage.period.")===0)usagePage.item.setPeriod(command.slice(13))
     else if(command==="sidebar.toggle")toggleSidebar()
     else if(command==="chat.find")openFind()
     else if(command==="chat.new"||command==="chat.newLocal")sidebarActions.newThread(command==="chat.newLocal"?{type:"root"}:null)
@@ -783,7 +805,7 @@ Item {
     var shortcuts=[],tr=function(key){return T3I18n.tr(key)}
     if(nativeKeybindingsEnabled)nativeShortcuts.routes.forEach(function(r){shortcuts.push([Native.nativeKeys.formatShortcutLabel(r.shortcut,"Linux"),KeyLabels.command(r.command,tr)])})
     else [["Ctrl+F","Find in conversation"],["Ctrl+J","Open native terminal"],["Ctrl+S","Save draft"]].forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
-    var local=[["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Meta+B","Chat list"],["Meta+E","Expand / return to chat"],["Meta+PgUp","Switch chat"],["Meta+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+Alt+Left","Resize"],["Ctrl+Alt+Right","Resize"],["Ctrl+Alt+Up","Resize"],["Ctrl+Alt+Down","Resize"]]
+    var local=[["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Ctrl+B","Toggle sidebar"],["Meta+B","Chat list"],["Meta+E","Expand / return to chat"],["Meta+PgUp","Switch chat"],["Meta+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+Alt+Left","Resize"],["Ctrl+Alt+Right","Resize"],["Ctrl+Alt+Up","Resize"],["Ctrl+Alt+Down","Resize"]]
     local.filter(function(p){return root.localShortcutAvailable(p[0])}).forEach(function(p){shortcuts.push([p[0].replace("Meta+","Super+"),tr(p[1])])})
     var fixed=[["Tab / Shift+Tab","Navigate controls"],["Super+A / Super+Z / Super+Shift+Z","Edit"],[root.composerExpanded?"Ctrl+Enter":"Enter / Ctrl+Enter","Send"],[root.composerExpanded?"Enter / Shift+Enter":"Shift+Enter","New line"],["Ctrl+Shift+Enter","Send and start new thread"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Esc","Return / close"]]
     fixed.forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
@@ -919,9 +941,10 @@ Item {
       LayoutMirroring.enabled:T3I18n.rtl;LayoutMirroring.childrenInherit:true
       anchors.fill: parent; spacing: 0
       palette.window:root.themeSurface;palette.windowText:root.fg;palette.base:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05));palette.alternateBase:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.text:root.fg;palette.button:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.buttonText:root.fg;palette.highlight:Color.accent;palette.highlightedText:root.themeSurface;palette.placeholderText:root.dim;palette.toolTipBase:root.themeSurface;palette.toolTipText:root.fg;palette.link:Color.accent;palette.light:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.16));palette.midlight:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12));palette.mid:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.2));palette.dark:Qt.darker(root.themeSurface,1.4);palette.shadow:Qt.rgba(0,0,0,0.5)
-      T3ShortcutRouter{id:nativeShortcuts;active:root.nativeKeybindingsEnabled&&root.nativeKeysActive;primary:root.nativePrimaryKeys;scripts:root.nativeScriptKeys;context:root.nativeShortcutContext;localOverrides:root.findOpen?["Ctrl+G","Ctrl+Shift+G"]:[];supports:function(command){return root.supportsNativeShortcut(command)};onTriggered:function(command){root.triggerNativeShortcut(command)}}
+      T3ShortcutRouter{id:nativeShortcuts;active:root.nativeKeybindingsEnabled&&root.nativeKeysActive;primary:root.nativePrimaryKeys;scripts:root.nativeScriptKeys;context:root.nativeShortcutContext;localOverrides:["Ctrl+B","Meta+B"].concat(root.findOpen?["Ctrl+G","Ctrl+Shift+G"]:[]);supports:function(command){return root.supportsNativeShortcut(command)};onTriggered:function(command){root.triggerNativeShortcut(command)}}
       Shortcut { sequence:"Ctrl+Shift+B";enabled:root.opened&&!!root.bridge.selectedThread&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+B");onActivated:root.toggleThreadDetails() }
-      Shortcut { sequence:"Meta+B";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+B");onActivated:root.toggleSidebar() }
+      Shortcut { sequence:"Ctrl+B";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+B");onActivated:root.toggleSidebar() }
+      Shortcut { sequence:"Meta+B";enabled:root.opened&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+B");onActivated:root.revealSidebarSelection() }
       Shortcut { sequence:"Ctrl+F";enabled:!root.nativeKeybindingsEnabled&&(root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+F");onActivated:root.openFind() }
       Shortcut { sequence:"Ctrl+Shift+F";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+F");onActivated:{if(root.composerExpanded)root.expandComposer(false);if(root.sidebarCollapsed)root.toggleSidebar(false);searchField.forceActiveFocus();searchField.selectAll()} }
       Shortcut { sequence:"Ctrl+G";enabled:(root.opened&&root.findOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+G");onActivated:root.navigateFind(1) }
@@ -942,10 +965,10 @@ Item {
       Shortcut { sequence:"Ctrl+Alt+Up";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Up");onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
       Shortcut { sequence:"Ctrl+Alt+Down";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Down");onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
       Shortcut { sequence:"F1";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
-      T3UsagePage{id:usagePage;bridge:root.bridge}
-      T3ScheduledTasks{id:scheduledTasksPage;bridge:root.bridge}
-      T3AgentSessions{id:agentSessionsPage;bridge:root.bridge}
-      T3ProcessDiagnostics{id:processDiagnosticsPage;bridge:root.bridge}
+      T3DeferredPopup{parent:panelLayout.parent;id:usagePage;objectName:"usagePageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3UsagePage.qml");releaseWhenClosed:true;savedProperties:["period","metric"]}
+      T3DeferredPopup{parent:panelLayout.parent;id:scheduledTasksPage;objectName:"scheduledTasksPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3ScheduledTasks.qml");}
+      T3DeferredPopup{parent:panelLayout.parent;id:agentSessionsPage;objectName:"agentSessionsPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3AgentSessions.qml");}
+      T3DeferredPopup{parent:panelLayout.parent;id:processDiagnosticsPage;objectName:"processDiagnosticsPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3ProcessDiagnostics.qml");releaseWhenClosed:true}
       // A workflow's script, read-only (orchestration.getWorkflowScript).
       Controls.Popup{
         id:workflowScriptPopup;objectName:"t3WorkflowScriptPopup";modal:true;focus:true;padding:Style.space(16)
@@ -981,27 +1004,18 @@ Item {
         readonly property bool video:!!videoKey
         x:Style.space(20);y:Style.space(20);width:Math.max(100,parent.width-Style.space(40));height:Math.max(100,parent.height-Style.space(40));padding:Style.space(14)
         modal:true;focus:true
-        onClosed:{assetKey="";videoKey="";attachment=({});videoPlayer.stop()}
+        onClosed:{assetKey="";videoKey="";attachment=({})}
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
         ColumnLayout {
           objectName:"t3ImageContents"
           anchors.fill:parent
           RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:imagePopup.attachment.name || "";color:root.fg;elide:Text.ElideMiddle;font.pixelSize:Style.font.body;textFormat:Text.PlainText}T3CopyButton{objectName:"copyFullImage";bridge:root.bridge;attachment:imagePopup.attachment}T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:imagePopup.close()}}
           Image{objectName:"t3FullImage";visible:!imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true;source:imagePopup.visible&&!imagePopup.video?imagePopup.imageState.url || "":"";asynchronous:true;cache:false;sourceSize:Qt.size(1920,1080);fillMode:Image.PreserveAspectFit}
-          Item{visible:imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true
-            VideoOutput{id:videoOutput;objectName:"t3VideoOutput";anchors.fill:parent;fillMode:VideoOutput.PreserveAspectFit}
-            MediaPlayer{
-              id:videoPlayer;videoOutput:videoOutput
-              audioOutput:AudioOutput{}
-              source:imagePopup.visible&&imagePopup.video?imagePopup.imageState.url || "":""
-              onSourceChanged:if(source!="")play()
-            }
-            MouseArea{anchors.fill:parent;onClicked:videoPlayer.playbackState===MediaPlayer.PlayingState?videoPlayer.pause():videoPlayer.play()}
-            RowLayout{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);spacing:Style.space(8);visible:videoPlayer.duration>0
-              T3IconButton{name:videoPlayer.playbackState===MediaPlayer.PlayingState?"pause":"play";implicitWidth:Style.space(22);implicitHeight:implicitWidth;onClicked:videoPlayer.playbackState===MediaPlayer.PlayingState?videoPlayer.pause():videoPlayer.play()}
-              Controls.Slider{Layout.fillWidth:true;from:0;to:Math.max(1,videoPlayer.duration);value:videoPlayer.position;onMoved:videoPlayer.position=value}
-              Text{text:Math.floor(videoPlayer.position/60000)+":"+("0"+Math.floor(videoPlayer.position/1000%60)).slice(-2)+" / "+Math.floor(videoPlayer.duration/60000)+":"+("0"+Math.floor(videoPlayer.duration/1000%60)).slice(-2);color:root.dim;font.pixelSize:Style.font.caption}
-            }
+          Loader {
+            id:videoLoader;objectName:"t3VideoLoader"
+            visible:imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true
+            active:imagePopup.visible&&imagePopup.video
+            onActiveChanged:if(active)setSource(Qt.resolvedUrl("T3VideoViewer.qml"),{source:Qt.binding(function(){return imagePopup.imageState.url || ""}),foreground:Qt.binding(function(){return root.fg}),muted:Qt.binding(function(){return root.dim})});else source=""
           }
           WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:!!imagePopup.imageState.loading;active:visible&&imagePopup.visible}
           Text{Layout.fillWidth:true;visible:!!imagePopup.imageState.error;text:T3I18n.error(imagePopup.imageState.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
@@ -2114,6 +2128,7 @@ Item {
             Layout.preferredHeight:composerPanel.implicitHeight+Style.space(18)
             visible:!!root.bridge.selectedThread && root.bridge.providerSubagent!==true && !(root.bridge.questions || []).length
           T3Composer {
+            onSidebarShortcutRequested:function(focusSelected){if(root.opened){if(focusSelected)root.revealSidebarSelection();else root.toggleSidebar()}}
             id: composerPanel
             anchors.horizontalCenter:parent.horizontalCenter
             width:root.composerExpanded?parent.width-Style.space(48):Math.min(parent.width-Style.space(48),root.chatContentMaxWidth)
