@@ -171,8 +171,15 @@ Item {
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
   onPullRequestsOpenChanged:{if(!pullRequestsOpen)prTarget=null;if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}}
   function submitCurrent(){if(!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
-  function selectSidebarThread(env,id){pullRequestsOpen=false;bridge.selectThread(env,id)}
+  property string mosaicRevealKey: ""
+  function revealSidebarThread(env,id) {
+    if(!mosaicOpen)return
+    mosaicRevealKey=env+"/"+id
+    if(mosaicLoader.item)mosaicLoader.item.revealThread(mosaicRevealKey)
+  }
+  function selectSidebarThread(env,id){pullRequestsOpen=false;revealSidebarThread(env,id);bridge.selectThread(env,id)}
   property bool initialized: false
+  readonly property var mosaicView: mosaicLoader.item
   readonly property var conversationView: conversation
   // Native comfortable lane: 46rem, shared by timeline and composer.
   readonly property real chatContentMaxWidth:Style.space(736)
@@ -393,6 +400,17 @@ Item {
   readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))
   onHostFilterChanged: if(initialized && bridge.viewState.hostFilter!==hostFilter)bridge.rememberView({hostFilter:hostFilter})
   readonly property bool mosaicOpen: bridge.viewState.mosaicOpen===true
+  onMosaicOpenChanged: if(!mosaicOpen)mosaicRevealKey=""
+  readonly property var mosaicRows: {
+    var rows=Sidebar.rows(root.hostThreads,root.statusFilter,root.projectScope,true,root.bridge.query,root.searchContext).filter(function(t){return !t.sectionHeader})
+    // An expanded sidebar child can be visible through its parent even when it
+    // does not match the parent's filter. Explicit navigation must still work.
+    if(mosaicRevealKey&&!rows.some(function(t){return t.key===root.mosaicRevealKey})) {
+      var target=root.bridge.state.threads.find(function(t){return t.key===root.mosaicRevealKey})
+      if(target)rows=rows.concat([target])
+    }
+    return rows
+  }
   property string statusFilter: bridge.viewState.statusFilter || "all"
   property string projectFilter: bridge.viewState.projectFilter || ""
   Connections{target:root.bridge;function onProjectOpened(environment,projectId,error){if(!error){root.statusFilter="all";root.projectFilter="";root.bridge.query=""}}}
@@ -808,7 +826,7 @@ Item {
       timeLabel:modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
-      onThreadActivated:{root.pullRequestsOpen=false;root.preferencesOpen=false}
+      onThreadActivated:function(source){root.pullRequestsOpen=false;root.preferencesOpen=false;root.revealSidebarThread(source.environmentId,source.id)}
       onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
       onProjectSettingsRequested:function(key){root.openProjectSettings(key)}
       onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
@@ -1521,7 +1539,8 @@ Item {
         Loader {
           id:mosaicLoader
           anchors.fill:parent;active:root.opened&&root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
-          sourceComponent:T3ThreadMosaic {bridge:root.bridge;sky:root.starfield;motion:root.rowMoveEffect!=="off"&&T3Motion.style!=="instant";effects:root.threadEffects;renderer:function(message,width){return root.renderMessage(message,width)};threads:Sidebar.rows(root.hostThreads,root.statusFilter,root.projectScope,true,root.bridge.query,root.searchContext).filter(function(t){return !t.sectionHeader});onClosed:root.bridge.rememberView({mosaicOpen:false});onFiltersRequested:root.showFilters()}
+          onLoaded:if(root.mosaicRevealKey)item.revealThread(root.mosaicRevealKey)
+          sourceComponent:T3ThreadMosaic {bridge:root.bridge;sky:root.starfield;motion:root.rowMoveEffect!=="off"&&T3Motion.style!=="instant";effects:root.threadEffects;renderer:function(message,width){return root.renderMessage(message,width)};threads:root.mosaicRows;onClosed:root.bridge.rememberView({mosaicOpen:false});onFiltersRequested:root.showFilters()}
         }
         ColumnLayout {
           visible:!root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen

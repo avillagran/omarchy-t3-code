@@ -1971,6 +1971,7 @@ Singleton {
   signal messagesUpdated()
   signal messagesAboutToChange()
   signal threadWillChange()
+  function releaseUnusedMemory() { if(typeof gc === "function")gc(); send({op:"memory-trim"}) }
   function send(data) { if (worker.running) worker.write(JSON.stringify(data) + "\n") }
   function setPanelVisible(value) { visiblePanels = Math.max(0, visiblePanels + (value ? 1 : -1)) }
   onPanelVisibleChanged: {
