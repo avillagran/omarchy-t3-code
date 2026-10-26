@@ -2,6 +2,7 @@ import QtQuick 6.11
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import qs.Commons
+import "../js/ConnectionStatus.js" as Status
 // The environments this app talks to, from the sidebar's machine button: each
 // with its state and the one fix that applies (reconnect a remote host,
 // restart the local backend when ot3 runs it). A host stuck "connected" in T3
@@ -37,7 +38,7 @@ Controls.Popup {
  }}
  // A reconnect that never changes the state stops spinning after a while.
  Timer{interval:45000;running:Object.keys(root.reconnecting).length>0;onTriggered:root.reconnecting=({})}
- width:Style.space(330)
+ width:Style.space(390)
  padding:Style.space(8)
  modal:false;focus:true
  closePolicy:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
@@ -71,6 +72,7 @@ Controls.Popup {
       Rectangle{width:Style.space(7);height:width;radius:width/2;color:row.ready?T3Palette.done:row.busy?T3Palette.working:Color.urgent}
       Text{Layout.fillWidth:true;text:root.restarting===row.modelData.id?T3I18n.tr("Restarting server…"):row.confirming?T3I18n.tr("Kill and restart T3 on this host? Runs there stop."):root.restartErrorFor===row.modelData.id&&root.restartError?T3I18n.error(root.restartError):row.busy?T3I18n.tr("Reconnecting…"):row.ready?T3I18n.tr("Connected"):T3I18n.error(row.modelData.state);color:row.confirming||(root.restartErrorFor===row.modelData.id&&root.restartError)?Color.urgent:row.ready||row.busy?root.faint:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:row.confirming?Text.Wrap:Text.NoWrap;elide:row.confirming?Text.ElideNone:Text.ElideRight;textFormat:Text.PlainText}
      }
+     Text{objectName:"t3HostFailure_"+row.modelData.id;Layout.fillWidth:true;visible:!row.ready;text:(Status.reason(row.modelData.state)?T3I18n.tr(Status.reason(row.modelData.state)):T3I18n.error(row.modelData.state))+" ("+row.modelData.state+")";color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
     }
     WorkIndicator{visible:row.busy;active:visible&&root.visible;implicitWidth:Style.space(14);tint:root.faint}
     T3PickerButton{objectName:"t3HostRestartCancel_"+row.modelData.id;visible:row.confirming;primary:false;implicitHeight:Style.space(24);leftPadding:Style.space(8);pixelSize:Style.font.caption;text:T3I18n.tr("Cancel");onClicked:root.confirmRestart=""}

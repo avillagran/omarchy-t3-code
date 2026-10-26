@@ -25,7 +25,7 @@ ShaderEffect {
     : mode === "light" || mode === "auto" && degraded ? "light" : "full"
   readonly property bool animated: effectiveMode !== "off"
   property real energy: busy && animated ? 1 : 0
-  Behavior on energy { NumberAnimation { duration: 1600; easing.type: Easing.InOutSine } }
+  Behavior on energy { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(1600); easing.type: Easing.InOutSine } }
   property real idleSpeed: 5
   // User preferences, read from the leader: motion speed and meteor amount.
   property real speedScale: 1
@@ -42,7 +42,7 @@ ShaderEffect {
   function follow(y) {
     var d = y - lastScrollY
     lastScrollY = y
-    if (Math.abs(d) < 400) scroll += d
+    if (T3Motion.enabled && Math.abs(d) < 400) scroll += d
   }
   readonly property real meteors: effectiveMode === "full" || header && effectiveMode === "light"
     ? Math.min(1, meteorRate * (leader ? leader.meteorScale : meteorScale)) * (leader ? leader.energy : energy) : 0

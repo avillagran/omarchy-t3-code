@@ -397,14 +397,13 @@ PanelWindow {
     radius: Style.cornerRadius
     opacity: root.open || root.popoutSwitching ? 1.0 : 0
 
-    Behavior on x { enabled: !root.resizing; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
-    Behavior on y { enabled: !root.resizing; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
-    Behavior on width { enabled: !root.resizing; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
-    Behavior on height { enabled: !root.resizing; NumberAnimation { duration: 190; easing.type: Easing.OutCubic } }
+    Behavior on x { enabled:T3Motion.enabled && (!root.resizing); NumberAnimation { duration: T3Motion.duration(190); easing.type: Easing.OutCubic } }
+    Behavior on y { enabled:T3Motion.enabled && (!root.resizing); NumberAnimation { duration: T3Motion.duration(190); easing.type: Easing.OutCubic } }
+    Behavior on width { enabled:T3Motion.enabled && (!root.resizing); NumberAnimation { duration: T3Motion.duration(190); easing.type: Easing.OutCubic } }
+    Behavior on height { enabled:T3Motion.enabled && (!root.resizing); NumberAnimation { duration: T3Motion.duration(190); easing.type: Easing.OutCubic } }
 
-    Behavior on opacity {
-      enabled: !root.popoutSwitching && !root.popoutSwitchClosing
-      NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+    Behavior on opacity { enabled:T3Motion.enabled && (!root.popoutSwitching && !root.popoutSwitchClosing)
+      NumberAnimation { duration: T3Motion.duration(140); easing.type: Easing.OutCubic }
     }
 
     // Swallow clicks on the card so they don't bubble to the dismissal
@@ -423,9 +422,8 @@ PanelWindow {
       anchors.leftMargin: card.contentLeftInset
       opacity: root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
 
-      Behavior on opacity {
-        enabled: root.popoutSwitching
-        NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+      Behavior on opacity { enabled:T3Motion.enabled && (root.popoutSwitching)
+        NumberAnimation { duration: T3Motion.duration(140); easing.type: Easing.OutCubic }
       }
     }
     Repeater {

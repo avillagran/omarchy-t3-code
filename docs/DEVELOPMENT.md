@@ -595,3 +595,18 @@ host-specific performance gate.
 
 Subscription account discovery, original T3 pooling, host ownership and focused
 checks are documented in [SUBSCRIPTIONS.md](SUBSCRIPTIONS.md).
+
+### Connection feedback and global motion
+
+`ui/js/ConnectionStatus.js` maps known transport errors to explanations without
+inferring an authentication failure from generic SSH unavailability. The chat,
+Connections, host popup and published bar tooltip share these descriptions.
+`T3ConnectionNotice` retains the exact error through retries and disappears on
+recovery; unknown errors still show their code.
+
+`animationsEnabled` is a local presentation preference, enabled when absent.
+`T3Motion.enabled` gates finite transitions and infinite effects; `T3Tick` releases
+its clock requests while disabled. The published status carries the flag to the
+bar widget, which uses a static state indicator. Saved per-effect options are
+never overwritten by the master switch. `connection-feedback-motion` covers
+failure feedback, retry/recovery and off/on behavior with preserved choices.

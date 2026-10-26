@@ -13,6 +13,7 @@ import Quickshell.Hyprland
 import qs.Commons
 import "ui/qml"
 import "ui/js/SidebarModel.js" as Sidebar
+import "ui/js/ConnectionStatus.js" as ConnectionStatus
 
 ShellRoot {
   id: app
@@ -115,8 +116,8 @@ ShellRoot {
   // treats a status older than 90 s as a stopped app.
   readonly property var statusValue: ({
     running: true, pid: Quickshell.processId, opened: app.opened, counts: app.counts,
-    stale: backend.stale, indicatorStyle: backend.viewState.barIndicator || "orbit",
-    tooltip: T3I18n.tr("Working: {working} · Ready: {ready} · Waiting for input: {waiting}", { working: app.counts.working, ready: app.counts.done, waiting: app.counts.waiting }) + (backend.stale ? " · " + T3I18n.tr("Offline") : ""),
+    stale: backend.stale, animationsEnabled: backend.viewState.animationsEnabled !== false, indicatorStyle: backend.viewState.barIndicator || "orbit",
+    tooltip: T3I18n.tr("Working: {working} · Ready: {ready} · Waiting for input: {waiting}", { working: app.counts.working, ready: app.counts.done, waiting: app.counts.waiting }) + ConnectionStatus.failures(backend).map(function(e){return "\n"+(e.name || e.id)+": "+(ConnectionStatus.reason(e.state)?T3I18n.tr(ConnectionStatus.reason(e.state)):T3I18n.error(e.state))+" ("+e.state+")"}).join(""),
     omabridge: app.bridgeIndicator ? bridgeStatus.value : null
   })
   onStatusValueChanged: publish.restart()
@@ -155,6 +156,8 @@ ShellRoot {
         case "details": p.toggleThreadDetails(); break
         case "working": p.workingExpanded = value === "true"; break
         case "settled": p.settledExpanded = value === "true"; break
+        case "capturePreferences": if(!p.preferencesView || !value.startsWith("/"))return "not-ready"; p.preferencesView.grabToImage(function(image){image.saveToFile(value)}); return "requested"
+        case "animations": b.rememberView({animationsEnabled:value!=="false"}); break
         case "hosts": p.openHosts(p.hostsAnchor()); break
         case "closeHosts": p.hostsPopup.close(); break
         case "usage": p.usageCollapsed = value === "true"; break
@@ -231,6 +234,7 @@ ShellRoot {
     // Memory/Obsidian host detection, for diagnosis from a terminal.
     function vaultDiscover(): void { app.backend.discoverVaults() }
     function vaultHosts(): string { return JSON.stringify(app.backend.vaultHosts) }
+    function animationState(): string { return JSON.stringify({enabled:T3Motion.enabled,ticking:T3Ticker.enabled&&T3Ticker.interval>0,style:T3Motion.style,sky:panel.starfield.animated,rowMoveEffect:panel.rowMoveEffect}) }
     function memoryState(): string { var b=app.backend,s=b.viewState || {},states=b.idleReleaseStates || {};return JSON.stringify({enabled:s.idleReleaseEnabled!==false,minutes:s.idleReleaseMinutes===undefined?5:s.idleReleaseMinutes,engine:states["@engine"] || null,released:Object.keys(states).filter(function(k){return states[k].status==="released"}).length,failed:Object.keys(states).filter(function(k){return states[k].status==="failed"}).length,selected:states[b.selectedKey] || null}) }
     function preferences(page: string): void { app.show(); Qt.callLater(function() { panel.openPreferencesPage(page || "general") }) }
     function openProject(environment: string, projectId: string): void { app.show(); app.backend.openProject(environment, projectId) }

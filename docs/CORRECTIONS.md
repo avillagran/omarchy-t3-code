@@ -18,3 +18,13 @@
   Omarchy with backup; both environments ready, `stale=false`, 231 threads.
   Existing QML process retained. Removed 101 abandoned forwards while retaining
   the shared SSH master. No remote server restart or version change.
+
+- [x] **2026-10-26 — Explain connection failures without agent assistance.**
+  Persistent notice in the chat and Connections shows the affected host, a
+  readable reason, a selectable error code and Reconnect/Connections actions.
+  Retrying retains the cause; recovery clears it. The hosts popup and bar tooltip
+  also expose the reason. Unknown codes remain visible rather than guessed.
+- [x] **2026-10-26 — Global animation switch at the start of Appearance.**
+  Turning it off freezes decorative clocks and the bar, disables transition and
+  effect controls, and makes transitions immediate. Individual choices remain
+  stored and return when enabled. Default remains enabled for existing users.

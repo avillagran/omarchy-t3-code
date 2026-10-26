@@ -23,7 +23,7 @@ Rectangle {
   radius: Style.space(6)
   color: mouse.containsMouse && enabled ? Qt.rgba(Color.popups.text.r, Color.popups.text.g, Color.popups.text.b, 0.07) : "transparent"
   opacity: enabled ? 1 : 0.3
-  Behavior on color { ColorAnimation { duration: 130 } }
+  Behavior on color { enabled:T3Motion.enabled;ColorAnimation { duration: T3Motion.duration(130)} }
   T3Icon { anchors.centerIn: parent; visible: !root.glyph; name: root.name; tint: root.tint }
   Text { anchors.centerIn: parent; visible: !!root.glyph; text: root.glyph; color: root.tint; font.family: root.glyphFont; font.pixelSize: Style.space(16); scale:root.glyphScale; textFormat: Text.PlainText }
   MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor; onClicked: root.clicked() }
