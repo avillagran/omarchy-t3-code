@@ -66,10 +66,13 @@ fn watch(env: String, stop: Arc<AtomicBool>, tx: mpsc::Sender<Value>) {
                 .find(|e| e.id == env)
                 .ok_or("unknown_environment")?;
             let c = e.connection(true)?;
-            let request_marker = server_capabilities::get(&env, &c)?.shell_completion_marker;
+            let caps=server_capabilities::get(&env,&c)?;
+            let request_marker=caps.shell_completion_marker;
             let sub = protocol::api::streams::ShellSub {
                 after_sequence: shell_state::cursor(&env),
                 request_completion_marker: request_marker.then_some(true),
+                omit_idle_subagents: caps.shell_thread_families.then_some(true),
+                omit_older_settled: caps.shell_older_settled.then_some(true),
             };
             let mut changed = false;
             let mut caught_up = false;

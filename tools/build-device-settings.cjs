@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),source=path.resolve(process.argv[2]||'..
 const file='apps/web/src/components/device/DeviceSetup.tsx';
 if(cp.execFileSync('git',['-C',source,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin)throw Error('Wrong reference pin');
 const input=fs.readFileSync(path.join(source,file),'utf8');if(cp.execFileSync('git',['-C',source,'show',pin+':'+file],{encoding:'utf8'})!==input)throw Error('Dirty reference');
-const selected=input.slice(input.indexOf('const platformName ='),input.indexOf('export function DeviceSetup('));
+const selected=input.slice(input.indexOf('const platformName ='),input.indexOf('export const isAndroidDiscoveryUncertain'))+input.slice(input.indexOf('export const isAndroidDiscoveryUncertain'),input.indexOf('/**',input.indexOf('export const isAndroidDiscoveryUncertain')))+input.slice(input.indexOf('export function platformSetupStatus('),input.indexOf('export function DeviceSetup('));
 if(!selected.includes('export function platformSetupStatus'))throw Error('Native helper missing');
 const erased=require('node:module').stripTypeScriptTypes(selected,{mode:'strip'}).replace(/^export /gm,'').replace('state.hosts\n    .flatMap((host) => host.platforms)', 'Array.prototype.concat.apply([], state.hosts.map((host) => host.platforms))')
  // Qt's engine has neither flatMap nor object spread.

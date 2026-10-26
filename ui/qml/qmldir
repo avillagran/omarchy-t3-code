@@ -144,3 +144,8 @@ T3ThreadErrorBanner 1.0 T3ThreadErrorBanner.qml
 T3HostsPopup 1.0 T3HostsPopup.qml
 
 T3ThreadMosaic 1.0 T3ThreadMosaic.qml
+
+T3AudioAttachment 1.0 T3AudioAttachment.qml
+T3GuestShare 1.0 T3GuestShare.qml
+T3EasHosts 1.0 T3EasHosts.qml
+T3UsageRecovery 1.0 T3UsageRecovery.qml

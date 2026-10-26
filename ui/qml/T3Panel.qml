@@ -285,7 +285,8 @@ Item {
     if(!nativeKeybindingsEnabled)return false
     if(workingPopup.visible)return command==="diff.toggle"
     if(composerPanel.modelPickerOpen)return command.indexOf("modelPicker.")===0
-    if(["sidebar.toggle","chat.find"].indexOf(command)>=0)return command!=="chat.find"||!!bridge.selectedThread
+    if(command==="sidebar.toggle")return !nativeFocusItem||!String(nativeFocusItem.selectedText||"").trim();
+    if(command==="chat.find")return !!bridge.selectedThread
     if(command==="chat.new"||command==="chat.newLocal")return (bridge.state.projects || []).length>0&&!bridge.managementBusy&&!bridge.managementRequest
     if(command==="thread.previous"||command==="thread.next")return nativeThreadRows().length>1
     var jump=/^thread\.jump\.([1-9])$/.exec(command);if(jump)return nativeThreadRows().length>=Number(jump[1])
@@ -301,6 +302,7 @@ Item {
     if(command==="commandPalette.toggle"||command==="usage.open")return true
     if(/^usage\.(cost|tokens|period\.(day|week|month|quarter))$/.test(command))return usagePage.opened
     if(command==="composer.branch")return !!bridge.selectedThread&&!!bridge.selectedInfo.projectId&&bridge.selectedInfo.projectIsScratch!==true&&!bridge.selectedInfo.working&&!composerPanel.locked
+    if(command==="thread.undo"&&bridge.threadUndoNotice&&Date.now()<bridge.threadUndoNotice.expiresAt)return true
     if(command==="thread.undo")return bridge.canRewind===true&&!bridge.rewindPending&&!((bridge.rewindPreview || {}).busy)&&!!lastUserMessage&&lastUserMessage.canRewindMessage===true
     if(command==="thread.stop")return !!bridge.selectedInfo.activeRunId&&!bridge.draft.stopping&&!bridge.providerSubagent
     if(command==="thread.copyReference")return !!bridge.selectedThread
@@ -329,7 +331,7 @@ Item {
     else if(command==="terminal.toggle")bridge.openTerminal()
     else if(command==="diff.toggle"){if(workingPopup.visible)workingPopup.close();else{bridge.requestWorkingReview("working-tree","",bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}}
     else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort"||command==="composer.branch")composerPanel.nativeModelControl(command)
-    else if(command==="thread.undo")bridge.requestRewindPreview(lastUserMessage.id)
+    else if(command==="thread.undo"){if(!bridge.undoThreadAction||!bridge.undoThreadAction())bridge.requestRewindPreview(lastUserMessage.id)}
     else if(command==="thread.stop")bridge.stop()
     else if(command==="thread.copyReference"){var badge=bridge.selectedInfo.pullRequestBadge || {};bridge.copyText((badge.current || {}).url || bridge.selectedThread)}
     else if(command==="composer.stash")bridge.requestProjectDrafts("stash")
@@ -422,7 +424,10 @@ Item {
     restoringSettled=true;restorePosition(settledThreads,visibleSettledRows,"@settled",false,function(){root.restoringSettled=false})
   }
   property bool settledExpanded: !!bridge.viewState.settledExpanded
-  onSettledExpandedChanged: if (initialized && bridge.viewState.settledExpanded !== settledExpanded) bridge.rememberView({settledExpanded:settledExpanded})
+  onSettledExpandedChanged: {
+    if (initialized && bridge.viewState.settledExpanded !== settledExpanded) bridge.rememberView({settledExpanded:settledExpanded})
+    if(settledExpanded)(bridge.state.environments||[]).forEach(function(e){if((!root.hostFilter||root.hostFilter===e.id)&&bridge.loadOlderSettled)bridge.loadOlderSettled(e.id)})
+  }
   property bool restoringConversation: true
   property bool restoringSidebar: true
   property bool restoringSettled: true
@@ -573,6 +578,18 @@ Item {
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
   readonly property var visibleSettledRows:settledShown ? settledRows : []
+  readonly property int olderSettledMissing: {
+    if(root.statusFilter!=="all"&&root.statusFilter!=="settled"||String(root.bridge.query||"").trim())return 0
+    var missing=0
+    ;(bridge.state.environments||[]).forEach(function(e){
+      if(root.hostFilter&&root.hostFilter!==e.id)return
+      var meta=e.olderSettled;if(!meta)return
+      ;(meta.counts||[]).forEach(function(c){var project=e.id+"/"+c.projectId;if(root.projectScope&&(Array.isArray(root.projectScope)?root.projectScope.indexOf(project)<0:root.projectScope!==project))return
+        var loaded=(bridge.state.threads||[]).filter(function(t){return t.environmentId===e.id&&t.projectKey===project&&t.settled&&t.settledSortAt<Date.parse(meta.before)&&t.relationshipToParent!=="subagent"}).length
+        missing+=Math.max(0,c.count-loaded)
+      })
+    });return missing
+  }
   readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(Sidebar.compareSettled))
   readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
@@ -1338,8 +1355,17 @@ Item {
               }
             }
             T3ShelfResizer{objectName:"settledShelfResizer";label:"Settled threads height";visible:settledReveal.shown&&!settledReveal.moving;value:root.settledShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("settledShelfHeight",h)}}
+            T3PickerButton {
+              objectName:"loadOlderSettled";Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              visible:root.settledShown&&root.olderSettledMissing>0;primary:false;text:T3I18n.tr("Load older settled threads")
+              onClicked:(root.bridge.state.environments||[]).forEach(function(e){if(!root.hostFilter||root.hostFilter===e.id)root.bridge.loadOlderSettled(e.id)})
+            }
+            Text {
+              Layout.fillWidth:true;visible:root.settledShown&&!!text;color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText
+              text:root.bridge.nightlyState?(root.bridge.state.environments||[]).filter(function(e){return !root.hostFilter||root.hostFilter===e.id}).map(function(e){return root.bridge.nightlyState("older-settled",e.id,"").error||""}).filter(function(e){return !!e}).join(" · "):""
+            }
             T3Reveal {
-              objectName:"settledShelfHeader";shown:root.settledRows.length>0
+              objectName:"settledShelfHeader";shown:root.settledRows.length>0||root.olderSettledMissing>0
               Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
               Rectangle {
                 width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
@@ -1347,7 +1373,7 @@ Item {
                 Accessible.role: Accessible.Button
                 id:settledToggle;objectName:"settledShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-                Accessible.name: T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)})
+                Accessible.name: T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)+root.olderSettledMissing})
                 Keys.onReturnPressed: root.settledExpanded = !root.settledExpanded
                 Keys.onSpacePressed: root.settledExpanded = !root.settledExpanded
                 Keys.onUpPressed:root.moveSidebarFocus(settledToggle,-1)
@@ -1357,7 +1383,7 @@ Item {
                 color: "transparent"
                 RowLayout {
                   anchors.fill: parent; anchors.leftMargin: Style.space(5); anchors.rightMargin: Style.space(5)
-                  Text { text:T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)}); color: root.dim; font.pixelSize: Style.font.caption }
+                  Text { text:T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)+root.olderSettledMissing}); color: root.dim; font.pixelSize: Style.font.caption }
                   Rectangle {objectName:"settledShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}
                   T3Icon { name: root.settledShown ? "chevron-down" : "chevron-up"; tint: root.dim; implicitWidth: Style.space(12) }
                 }
@@ -1878,7 +1904,7 @@ Item {
                         }
                       }
                       Repeater {
-                        model:(modelData.attachments || []).filter(function(a){return a.type!=="image"&&a.mimeType!=="text/html"})
+                        model:(modelData.attachments || []).filter(function(a){return a.type!=="image"&&a.mimeType!=="text/html"&&!(root.bridge.isAudio&&root.bridge.isAudio(a))})
                         T3FileReference {
                           required property var modelData
                           fileName:modelData.name || "HTML"
@@ -1886,6 +1912,10 @@ Item {
                           onClicked:{if(root.bridge.isVideo(modelData))root.openVideo(modelData);else root.bridge.openReference("",modelData)}
                         }
                       }
+                    }
+                    Repeater {
+                      model:(modelData.attachments||[]).filter(function(a){return root.bridge.isAudio&&root.bridge.isAudio(a)})
+                      T3AudioAttachment{required property var modelData;width:Math.min(parent.width,Style.space(440));attachment:modelData;bridge:root.bridge;active:root.opened}
                     }
                     // Each row builds only the card for its own role. Hidden cards
                     // in every message made each row ~3x slower to create, and
@@ -2017,6 +2047,18 @@ Item {
             onModeRequested:function(mode){root.bridge.chooseInteractionMode(mode)}
             onRetryRequested:root.bridge.retryPlanOperation()
             onCancelRequested:root.bridge.cancelPlanOperation()
+          }
+          T3PickerButton {
+            objectName:"undoThreadSettle";Layout.alignment:Qt.AlignHCenter;primary:false
+            visible:!!root.bridge.threadUndoNotice;text:T3I18n.tr("Undo settle");onClicked:root.bridge.undoThreadAction()
+          }
+          T3UsageRecovery {
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter
+            bridge:root.bridge
+          }
+          T3GuestShare {
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter
+            bridge:root.bridge
           }
           T3Queue {
             objectName:"t3QueueControl"

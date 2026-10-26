@@ -24,8 +24,8 @@ ShellRoot {
         b.selectThread("fixture","two");b.receive(JSON.stringify({type:"draft-loaded",data:{key:"fixture/two",draft:{},error:null}}));b.edit("draft two")
         b.selectThread("fixture","one")
         root.check(b.draft.text === "draft one\nline two", "per-thread draft restoration")
-        b.submit(); var attempt=b.draft.attempt
-        root.check(!!attempt && b.draft.busy,"submission locks draft");root.check(attempt.delivery==="queue","active execution dispatches to queue");root.check(b.dispatchMode(true)==="steer","Ctrl does the opposite: steer");var savedClient=b.clientSettings;b.clientSettings=Object.assign({},savedClient,{data:Object.assign({},savedClient.data,{followUpBehavior:"steer"})});root.check(b.dispatchMode(false)==="steer"&&b.dispatchMode(true)==="queue","follow-up preference steer, Ctrl queues");b.clientSettings=savedClient
+        b.clientSettings=Object.assign({},b.clientSettings,{data:Object.assign({},b.clientSettings.data,{followUpBehavior:"queue"})});b.submit(); var attempt=b.draft.attempt
+        root.check(!!attempt && b.draft.busy,"submission locks draft");root.check(attempt.delivery==="queue","explicit queue preference dispatches to queue");root.check(b.dispatchMode(true)==="steer","Ctrl does the opposite: steer");var savedClient=b.clientSettings;b.clientSettings=Object.assign({},savedClient,{data:Object.assign({},savedClient.data,{followUpBehavior:"steer"})});root.check(b.dispatchMode(false)==="steer"&&b.dispatchMode(true)==="queue","follow-up preference steer, Ctrl queues");b.clientSettings=savedClient
         b.action({op:"send",environment:"fixture",thread:"one",requestId:attempt.requestId,error:"rpc_outcome_unknown"})
         root.check(!b.draft.busy && b.draft.attempt.requestId===attempt.requestId,"uncertain preserves retry identity")
         b.edit("changed"); root.check(b.draft.text === attempt.text,"uncertain draft immutable")

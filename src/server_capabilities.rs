@@ -9,17 +9,24 @@ use std::{collections::HashMap, sync::Mutex};
 pub struct Capabilities {
     pub shell_completion_marker: bool,
     pub thread_completion_marker: bool,
+    pub shell_thread_families: bool,
+    pub shell_older_settled: bool,
 }
 impl Capabilities {
     pub fn from_config(config: &Value) -> Self {
         Self {
             shell_completion_marker: config["shellResumeCompletionMarker"] == true,
             thread_completion_marker: config["threadResumeCompletionMarker"] == true,
+            shell_thread_families: config["shellThreadFamilies"] == true,
+            shell_older_settled: config["shellOlderSettled"] == true,
         }
     }
 }
 static CACHE: Mutex<Option<HashMap<String, Capabilities>>> = Mutex::new(None);
 
+pub fn cached(env:&str)->Capabilities {
+    CACHE.lock().unwrap_or_else(|e|e.into_inner()).as_ref().and_then(|m|m.get(env).copied()).unwrap_or_default()
+}
 pub fn get(env: &str, c: &protocol::Connection) -> Result<Capabilities> {
     if let Some(found) = CACHE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(env).copied()) {
         return Ok(found);

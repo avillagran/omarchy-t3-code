@@ -19,6 +19,9 @@ pub fn request(v: &Value) -> Result<(String, Value)> {
         let mut query = ListQuery::new(v["state"].as_str().unwrap_or("open"));
         query.involvement = Some(v["involvement"].as_str().unwrap_or("all").into());
         query.limit = Some(50);
+        query.filters=v.get("filters").filter(|v|!v.is_null()).cloned();
+        query.project_id=v["projectId"].as_str().map(str::to_string);
+        query.host=v["host"].as_str().map(str::to_string);
         let text = v["query"].as_str().unwrap_or("");
         if text.len() > 256 {
             return Err("invalid_filter".into());
@@ -27,10 +30,16 @@ pub fn request(v: &Value) -> Result<(String, Value)> {
         query.cursors = v["cursors"].as_object().filter(|_| v["cursors"].to_string().len() < 64000).cloned();
         return Ok(("pullRequests.list".into(), query.payload().map_err(|_| "invalid_filter")?));
     }
+    if action=="filter-options" {
+        let mut args=json!({"kind":v["kind"]});
+        for key in ["projectId","projectIds","host","query"] {if let Some(value)=v.get(key).filter(|v|!v.is_null()&&**v!=""){args[key]=value.clone();}}
+        return Ok(("pullRequests.filterOptions".into(),crate::api::pull_requests::FILTER_OPTIONS.payload(&args)?));
+    }
     let tag = match action {
         "detail" => "pullRequests.detail",
         "checks" => "pullRequests.checks",
         "activity" => "pullRequests.activity",
+        "change-breakdown" => "pullRequests.changeBreakdown",
         "diff" => "diff",
         _ => return Err("invalid_command".into()),
     };

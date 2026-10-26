@@ -1,13 +1,13 @@
 {
-  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
+  "commit": "3f9448747bb8848050dc2cacf83affa6f94a66a1",
   "files": {
-    "packages/contracts/src/keybindings.ts": "0c5f5f9f0e60279d0c69403a8c1270796be44d28a7525ec1accfd2a340818312",
+    "packages/contracts/src/keybindings.ts": "4e5019fdf1b37f219f8773ed338a4e428996ff7adb26cab09be036cea77bf669",
     "packages/shared/src/keybindings.ts": "d63028a6ca0d62b330dffef2239e03fb5be191262f597d17bcd2830282a2b849",
-    "apps/web/src/components/usage/usageShortcuts.ts": "81213edf6c6fc7c3bc16cfc382a532c3261a5c87805f64b964bdc81e5425d888",
-    "apps/web/src/components/settings/KeybindingsSettings.logic.ts": "104074933bb1c0fa17bd50b12f604fa2eb2f6d74f2bccffcdf02eec429441fbb",
-    "apps/web/src/components/settings/KeybindingsSettings.tsx": "d809ce3759816f534694f5557c2f762fb0dedb3b42976ff6f2ca88fcff845f5c",
-    "apps/web/src/keybindings.ts": "91551e4bb4860093756d41c67bb7ac7d6c46a2cc545f6ff3c2c8f1752f463a6b",
-    "packages/contracts/src/editor.ts": "d247859a5c1770c3299ee347307572ca1cd74cc1c81fa7f1552266e8426a4e6a",
+    "apps/web/src/components/usage/usageShortcuts.ts": "53f144a9b7a0b949406554419a909adf2d5b9df2274bf47bee8a41db43b88c9d",
+    "apps/web/src/components/settings/KeybindingsSettings.logic.ts": "3867646a7954e54bd17a180ad4d5f259cdecae822f73e2ad79386745574356de",
+    "apps/web/src/components/settings/KeybindingsSettings.tsx": "10019364d544b8e167558ffc8e1a968aed2b00d076566095130c9b1a834c4964",
+    "apps/web/src/keybindings.ts": "afebe78e5057e18f44d8f4edf1129684f2c9b3d616ba7528654e926a5247db29",
+    "packages/contracts/src/editor.ts": "73f8c8435af496ff8a3e1e6d6627efe8f044a179e8093739dfaf1661cc71be99",
     "apps/web/src/projectScripts.ts": "51bb356d9fd61c9db2db0f6577f555660b299cf4ae576cf0a213dc024103566b"
   },
   "adaptations": [
@@ -17,5 +17,5 @@
     "Native context object spread becomes Object.assign for Qt JS compatibility",
     "Qt desktop supplies the native desktop context default; script command schema predicate uses the pinned literal/id constraint without the Effect runtime"
   ],
-  "outputSha256": "0ace9d03d0dcdce150bd06c36a23a13a60287f574368d87492b3afa266679bed"
+  "outputSha256": "1dc5f3e1fdacea4ca65e45bc64d3cf3b2c47cdb0d145bafa1b25203e05a9caea"
 }

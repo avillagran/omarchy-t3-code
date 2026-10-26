@@ -266,6 +266,13 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "client-setting:redesignEnabled": {
+   "status": "ignored",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md",
+   "note": "Native presentation or server/public-guest authority; see integration notes."
+  },
   "client-setting:sendShortcut": {
    "status": "missing",
    "reviewed": false,
@@ -342,9 +349,10 @@
    "since": "v0.1.1-nightly.20261020.3386"
   },
   "client-setting:timestampFormat": {
-   "status": "missing",
-   "reviewed": false,
-   "since": "v0.1.1-nightly.20261020.3386"
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.1-nightly.20261020.3386",
+   "evidence": "tests/connection_preferences.rs; tests/qml/nightly.qml"
   },
   "client-setting:wordWrap": {
    "status": "supported",
@@ -396,6 +404,13 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "http:/api/auth/websocket-ticket/*": {
+   "status": "ignored",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md",
+   "note": "Native presentation or server/public-guest authority; see integration notes."
+  },
   "http:/api/connect/link-proof": {
    "status": "missing",
    "reviewed": false,
@@ -415,6 +430,12 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "http:/api/connect/reachability": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
   },
   "http:/api/connect/relay-config": {
    "status": "missing",
@@ -1031,6 +1052,39 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "orchestration:thread.guest-message.dismiss": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
+  "orchestration:thread.guest-message.submit": {
+   "status": "ignored",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md",
+   "note": "Native presentation or server/public-guest authority; see integration notes."
+  },
+  "orchestration:thread.guest-share.close": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
+  "orchestration:thread.guest-share.open": {
+   "status": "ignored",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md",
+   "note": "Native presentation or server/public-guest authority; see integration notes."
+  },
+  "orchestration:thread.guest-share.redeem": {
+   "status": "ignored",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md",
+   "note": "Native presentation or server/public-guest authority; see integration notes."
+  },
   "orchestration:thread.interaction-mode.set": {
    "status": "supported",
    "reviewed": false,
@@ -1216,6 +1270,12 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:device.easAccount": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
   "rpc:device.list": {
    "status": "supported",
    "reviewed": false,
@@ -1261,6 +1321,12 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:guestShare.create": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
   "rpc:mcpApps.callTool": {
    "status": "supported",
    "reviewed": false,
@@ -1296,6 +1362,18 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:orchestration.getOlderSettledThreads": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
+  "rpc:orchestration.getThreadFamily": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
   "rpc:orchestration.getThreadProjection": {
    "status": "supported",
    "reviewed": false,
@@ -1315,6 +1393,12 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getWorktreeThreadIds": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
   },
   "rpc:orchestration.launchThread": {
    "status": "supported",
@@ -1451,6 +1535,12 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:projects.listIgnoredFiles": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
   "rpc:projects.mutate": {
    "status": "supported",
    "reviewed": false,
@@ -1551,6 +1641,12 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:pullRequests.changeBreakdown": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
   "rpc:pullRequests.checks": {
    "status": "supported",
    "reviewed": false,
@@ -1575,6 +1671,12 @@
    "status": "missing",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:pullRequests.filterOptions": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
   },
   "rpc:pullRequests.generateReviewGuide": {
    "status": "missing",
@@ -2106,6 +2208,12 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "server-setting:compactIdleThreads": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
   "server-setting:continueThreadsAfterServerUpdate": {
    "status": "supported",
    "reviewed": false,
@@ -2161,6 +2269,12 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "server-setting:easDeviceHosts": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
   "server-setting:enableAgentBrowserAccess": {
    "status": "supported",
    "reviewed": false,
@@ -2190,6 +2304,18 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:guestSharingEnabled": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
+  },
+  "server-setting:idleCompaction": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
   },
   "server-setting:newWorktreesStartFromOrigin": {
    "status": "supported",
@@ -2320,6 +2446,12 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:threadTitleInstructions": {
+   "status": "supported",
+   "reviewed": true,
+   "since": "v0.1.3-nightly.20261026.3726",
+   "evidence": "docs/NIGHTLY_3726.md"
   },
   "server-setting:usageLimitSources": {
    "status": "supported",

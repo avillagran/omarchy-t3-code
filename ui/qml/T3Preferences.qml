@@ -59,6 +59,7 @@ Rectangle {
   {page:"general",title:"New threads",icon:"square-pen",keys:["defaultModelSelection","defaultRuntimeMode","defaultThreadEnvMode","worktreeSubmodules"]},
   {page:"general",title:"Organization",icon:"list-todo",keys:["autoResumeLimitedThreads","snoozeLimitedThreads","sidebarAutoSettleOnMerge","sidebarAutoSettleAfterDays","sidebarAutoSettleKeepPullRequests"]},
   {page:"general",title:"Behavior",icon:"settings",keys:["responseStreamingMode","idleCompaction","enableProviderUpdateChecks","continueThreadsAfterServerUpdate","backgroundActivityProfile"]},
+  {page:"general",title:"Guest links",icon:"link",keys:["guestSharingEnabled"]},
   {page:"general",title:"Projects & threads",icon:"folder-git-2",keys:["newWorktreesStartFromOrigin"]},
   {page:"general",title:"Text generation",icon:"star",keys:["textGenerationModelSelection","threadTitleInstructions"]},
   {page:"general",title:"Telemetry export",icon:"server",keys:["observability.otlpTracesUrl","observability.otlpMetricsUrl","observability.otlpLogsUrl"]},
@@ -66,7 +67,7 @@ Rectangle {
   {page:"source-control",title:"Text generation",icon:"square-pen",keys:["branchNamingMode","branchNamePrefix","branchNameInstructions","sourceControlWritingStyle.mode","sourceControlWritingStyle.customInstructions","sourceControlWritingStyle.followChangeRequestTemplates","sourceControlWriterModelSelection"]},
   {page:"source-control",title:"Review guides",icon:"git-pull-request",keys:["reviewGuidesEnabled","reviewGuideModelSelection","reviewGuideInstructions"]}]
  // Sections that filter themselves (not in `groups`) still count as search results.
- readonly property bool sectionSearchMatch:["T3 Code compatibility","Follow-up behavior","Steer","Plan mode (legacy)","Legacy features","Notifications","Thread notifications","HTML renders","Language"].some(function(t){return root.matches(t)})
+ readonly property bool sectionSearchMatch:["Time format","T3 Code compatibility","Follow-up behavior","Steer","Plan mode (legacy)","Legacy features","Notifications","Thread notifications","HTML renders","Language"].some(function(t){return root.matches(t)})
  function matches(text){return !query.trim() || (T3I18n.tr(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0 || String(text).toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase())>=0)}
  readonly property var groups:sections.filter(function(s){return root.query.trim() || s.page===root.page || root.page==="projects"&&root.projectScope}).map(function(s){return Object.assign({},s,{fields:s.keys.map(function(key){return (root.result.fields || []).find(function(f){return f.key===key})}).filter(function(f){return f&&(root.matches(s.title)||root.matches(f.label)||root.matches(f.description || ""))})})}).filter(function(s){return s.fields.length>0})
  onQueryChanged:if(settingsScroll.contentItem)settingsScroll.contentItem.contentY=0
@@ -202,6 +203,11 @@ Rectangle {
           }
          }
         }
+       }}
+      }
+      T3PreferenceSection{visible:root.page==="general"&&(!root.query.trim()||root.matches("Time format"));Layout.fillWidth:true;title:"Time format";icon:"clock"
+       body:Component{Column{width:parent.width
+        T3PreferenceField{width:parent.width;controlName:"preferenceTimestampFormat";field:({key:"timestampFormat",label:"Time format",kind:"choice",value:((root.bridge.clientSettings||{}).data||{}).timestampFormat||"locale",choices:[{id:"locale",name:"Locale"},{id:"12-hour",name:"12-hour"},{id:"24-hour",name:"24-hour"}]});writable:!!((root.bridge.clientSettings||{}).data||{}).revision&&!(root.bridge.clientSettings||{}).busy;onChanged:function(value){root.bridge.requestClientSettings({timestampFormat:value})}}
        }}
       }
       // T3 followUpBehavior, shared with T3 through its client settings.

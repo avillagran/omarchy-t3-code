@@ -41,6 +41,9 @@ ColumnLayout {
    T3BrowserDefaults{width:parent.width;bridge:root.bridge}
   }}
  }
+ T3PreferenceSection{Layout.fillWidth:true;title:"Cloud simulators";icon:"smartphone"
+  body:Component{T3EasHosts{width:parent.width;bridge:root.bridge;environments:root.environments;projectScope:root.projectScope}}
+ }
  T3PreferenceSection{Layout.fillWidth:true;title:"Devices";icon:"smartphone"
   body:Component{Column{width:parent.width
    T3PreferenceField{width:parent.width;field:root.hubField();writable:!root.projectScope&&root.scopeAllowed("hub");onChanged:function(v){root.bridge.deviceAction("hub",{enabled:v})}}

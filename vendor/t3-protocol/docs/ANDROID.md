@@ -3,17 +3,19 @@
 `lib-t3-rust` keeps the Cargo package/import names `t3-protocol` / `t3_protocol`
 and the static archive `libt3_protocol.a`. ABI v2 and v3 are additive: the original
 four C symbols and synchronous JSON operations remain available to existing adapters.
-ABI v3 adds the typed API ops `call` and `describe` (see [Typed API](#typed-api)).
+ABI v3 adds the typed API ops `call` and `describe` (see [Typed API](#typed-api)) and
+`domain`, the library's pure functions (see [Domain operations](#domain-operations)).
 
 ## Using the Android package
 
 The Android release provides an AAR with the canonical Kotlin adapter and JNI
-libraries for **arm64-v8a, armeabi-v7a, x86 and x86_64**, targeting API 24+.
-It has no UI, account configuration or background service. Add the verified AAR
+libraries for **arm64-v8a, armeabi-v7a, x86 and x86_64**, targeting API 24+,
+and ot3's string catalog as the asset `lib-t3-rust/i18n.json` (see Domain
+operations, Strings). It has no UI, account configuration or background service. Add the verified AAR
 to the Android application's dependencies:
 
 ```kotlin
-implementation(files("libs/lib-t3-rust-android-v0.3.0.aar"))
+implementation(files("libs/lib-t3-rust-android-v0.3.5.aar"))
 ```
 
 The application supplies its existing INTERNET permission and Kotlin standard
@@ -103,18 +105,20 @@ functions also appear under `streams` with their item shapes (see Typed streams)
 harmless, `never` read the state back first. The library never retries.
 
 Typed Kotlin wrappers are generated from the saved `describe`
-([`bindings/android/describe.json`](../bindings/android/describe.json)). Today the
-generated [`T3Api.kt`](../bindings/android/tests/dev/avillagran/t3/T3Api.kt) is a test
-fixture (`T3Api(client).vcs.refreshStatus(path)`); `cargo test --test api_describe`
-fails when the registry, the saved `describe` and the wrappers disagree.
+([`bindings/android/describe.json`](../bindings/android/describe.json)). The
+generated [`T3Api.kt`](../bindings/android/kotlin/dev/avillagran/t3/T3Api.kt) sits
+next to `T3Client.kt` and ships in the AAR (`T3Api(client).vcs.refreshStatus(path)`);
+`cargo test --test api_describe` fails when the registry, the saved `describe` and
+the wrappers disagree.
 
 The generator maps `integer` to `Long`, `number` to `Double`, `object` and
 `command` to `JSONObject`, `array` to `JSONArray` and the rest to `String`; a Kotlin
 keyword used as an argument is backquoted (`` `when` `` in the keybinding calls).
 Functions with `openArgs` (`dispatchCommand`, `projects.mutate`, `device.action`)
 take the whole variant as one `JSONObject`. `cargo test --test api_describe` checks
-`T3Api.kt` against `describe.json` byte for byte; `tools/test-kotlin-jni` compiles
-it, which needs a JDK and `kotlinc`.
+`T3Api.kt` against `describe.json` byte for byte; `tools/compile-android-kotlin`
+compiles it with `T3Client.kt` against `android.jar` (as `tools/package-android`
+does) and `tools/test-kotlin-jni` runs it through JNI, which needs a JDK and `kotlinc`.
 
 Unary functions in this release (99; the README's Typed API section has each
 one's Rust signature, kind, scope, deadline and arguments; streams follow in
@@ -153,6 +157,213 @@ workspace and media files and `orchestration:read` for the rest;
 `mode: "worktree"` with a `threadId`; `device.list` needs `orchestration:operate`
 with `updateTool` or `retryHostId` (unless it is `inspectOnly` without
 `updateTool`).
+
+## Domain operations
+
+What the app derives from T3's JSON comes from the library too, so Kotlin holds
+no protocol rules: `T3Client.domain(fn, args)` runs one pure function by name,
+with no connection and no network (it works before `connectBearer` and while
+offline), and `T3Api(client).domain.<module>.<function>(…)` wraps each one. Call
+them on a worker like everything else: they are CPU work over JSON that can be
+a few MiB.
+
+```kotlin
+val api = T3Api(client)
+// Home: every saved environment's shell in one sidebar.
+val environments = JSONArray().apply {
+    for (e in saved) put(JSONObject().put("id", e.id).put("name", e.name)
+        .put("shell", e.shell /* last shell snapshot or stream state, or null */)
+        .put("state", e.connectionState /* null when connected */))
+}
+var returns: JSONObject? = null
+val sidebar = api.domain.sidebar.view(environments, System.currentTimeMillis(),
+    filter = "all", query = search, grouped = groupShelves, returns = returns,
+    selectedKey = selected, colors = theme.colors) as JSONObject
+returns = sidebar.getJSONObject("returns") // keep it for the next call
+val active = sidebar.getJSONObject("sections").getJSONArray("active")
+
+// Thread: keep the projection current, then derive the timeline.
+projection = (api.domain.projection.apply(projection, events = batch) as JSONObject).getJSONObject("projection")
+val view = api.domain.timeline.view(projection, mathRenderingEnabled = settings.math) as JSONObject
+val rows = view.getJSONArray("timeline") // each row has "rev": redraw only when it changes
+```
+
+```json
+{"op":"domain","fn":"markdown.blocks","args":{"markdown":"See [docs](./README.md)"}}
+```
+
+Arguments are validated before the function runs, as for `call`:
+`T3Exception("unknown_function")`, `"invalid_input"` (an unknown member) or
+`"invalid_<field>"` (missing or of the wrong JSON type), then the function's own
+codes. `describe().getJSONArray("domain")` lists each function's `args` and a
+one-line `returns`; the README's Domain operations table has them all. A
+`domain` request may be up to 72 MiB (a bounded thread snapshot and its
+envelope); other operations keep 8 MiB.
+
+- **Sidebar.** `sidebar.view` returns the sections (`active`, `working`,
+  `snoozed`, `settled`), `sectionCounts`, the header `counts`, the
+  `filterCounts`, `projectGroups`, `projectIdentities` (monogram, label, colour
+  slot and, given the theme's `colors`, the colour) and `returns`. Rows carry
+  `detail`, `state`, `statusLabel` (English source string for the catalog),
+  `statusRole` (working, done, failed, warning, input, waiting or muted) and
+  `time` (`kind` elapsed, countdown or age, `at` and the `label` for `now`;
+  recompute between views with the same rule). Shelf expansion stays app state;
+  the lists are always complete.
+- **Thread.** `timeline.view` returns `timeline`, `threadState` (working,
+  run clock, sort anchors, context window, subagents, merge-back target),
+  `activity` (the working pill), `approvals`, `questions`, `tasks`, `queue`,
+  `planView`, `historyCursor` and `hasMoreHistory`. Message rows are the user and
+  assistant rows of `timeline`; assistant rows and plans carry `blocks`.
+- **Markdown blocks.** Each block has a `type`: `paragraph` and `heading`
+  (`level`) with `spans`; `list` (`ordered`, `start`, `items[].blocks`); `quote`
+  (`blocks`); `code` (`index`, `language`, `code`, `runnable`, `command`);
+  `table` (`alignments`, `header`, `rows` of span arrays, `markdown`, `csv`);
+  `image` (`id` matching the row's `markdownImages`, `url`, `alt`, `title`);
+  `math` (`tex`, `display`); `rule`. Spans are flat: `text` with optional
+  `strong`, `emphasis`, `strikethrough` and `link`; `code` (a path in inline code
+  links to the file); `break` (`hard`); `image`; `math`. A `link` is `{href, kind}`
+  with kind `github`, `web`, `thread`, `file` (plus `fileType`) or `anchor`;
+  links ot3 would not follow have no `link` at all.
+- **Diff and Git.** Parse `orchestration.getTurnDiff` (and `review.getDiffPreview`)
+  results with `diffReview.present`, using `changes.summaries` for the ranges and
+  `diffReview.scopedResult` to drop a late answer. The Git & changes sheet is
+  `gitControls.scope` (from the shell snapshot), `vcs.refreshStatus`,
+  `gitControls.present` and, after the user confirms, `gitControls.buildVerifiedAction`
+  with a fresh read: run its `steps` in order (`git.runStackedAction` is a stream,
+  `vcs.pull` and `terminal.*` are calls) and never retry them automatically.
+- **Branches and pull requests.** `branchPicker.dedupe` over `vcs.listRefs`,
+  `selectionTarget` for where to switch and `mismatch` for the composer's notice.
+  `pullRequests.request` / `payload` give `{method, payload}` for `call`;
+  `pullRequests.sidebarBadge` is the row badge (also in `sidebar.metadata`).
+- **Plans, rewind and the inspector.** `planWorkflow.view` (the `planView` of
+  `timeline.view`, plans with `blocks`), `followUp` for the banner's actions and
+  `attachSourceRef` on the `message.dispatch`. Rewind: `checkpointRevert.canPreview`
+  on a user row, `reference` on the raw projection, `safety` for the gate,
+  `command` to persist in the outbox before dispatch, `observation` on each
+  read-back. The inspector: `toolInspector.request(row.inspector, environment,
+  threadId)` → `call(method, payload)` → `toolInspector.parse(…, response)`.
+- **Settings and usage.** `nativeSettings.snapshot` / `patch` for an environment;
+  for a project scope over several environments, per target
+  `scopedSettings.targetView` (after the reads) and `writePatch` (before
+  `server.updateSettings`, then `writeWasDropped` on the read-back), and
+  `scopedSettings.page` over all of them. Usage: `usageSummary.request(period,
+  today, timeZone)` with the device's local date and IANA zone, then `aggregate`;
+  the quota strip folds `server.subscribeServerConfig` events with
+  `quotaSources.apply`.
+- **Minimap and subagents.** `timeline.minimap(rows, visibleRowIds, atEnd)` on
+  scroll (debounced) gives the markers and the current one;
+  `timeline.minimapIndex` maps a touch on the rail. `subagents.cards(row.subagents,
+  now, threadState.subagents)` per subagents row (refresh `now` each second while
+  `anyLive`).
+- **Theme.** `theme.tokens(colorsToml, id)` returns every ot3 role as an opaque
+  colour (`roles`, `statusColors`, `projectPalette`/`projectFills`, `sky`,
+  `document`), the same values ot3 draws, so the app needs no blending. The
+  `appearance` rule is the sky's (Rec.709 luminance of the background > 0.5).
+- **Strings.** `i18n.t(locale, key, args)` is ot3's lookup with its placeholders;
+  the key is the English source. Two ways to use the catalog: at run time,
+  `i18n.catalog(locale)` once per locale change (pass the app language or the
+  device locales joined by `:`) and look strings up in memory, so the app needs
+  no generated `strings_ot3.xml`; or at build time, a generator reads
+  `assets/lib-t3-rust/i18n.json` from the AAR (the same file, pinned to the lib
+  version) instead of an ot3 checkout and keeps writing `strings_ot3.xml`. The
+  first one also translates the English sources other functions return
+  (`statusLabel`, subagent labels, summary parts) without a name table.
+
+- **Notifications.** `awareness.view` turns the followed environments' shells
+  into the ongoing card, its chip, alerts and summaries, with T3's phases and
+  lifetimes and ot3's alert key; see [Following threads](#following-threads-notifications-and-live-updates).
+
+Kotlin wrappers under `T3Api(client).domain` (109):
+
+| Module | Functions |
+| --- | --- |
+| `projection` (1) | `apply` |
+| `sidebar` (8) | `status`, `metadata`, `sortTimestamps`, `command`, `threadAction`, `snapshot`, `view`, `detail` |
+| `awareness` (1) | `view` |
+| `projects` (2) | `identity`, `monogram` |
+| `timeline` (4) | `view`, `liveActivity`, `minimap`, `minimapIndex` |
+| `activity` (1) | `describe` |
+| `changes` (1) | `summaries` |
+| `markdown` (2) | `blocks`, `link` |
+| `queue` (2) | `derive`, `command` |
+| `approvals` (2) | `pending`, `command` |
+| `questions` (2) | `pending`, `command` |
+| `models` (4) | `catalog`, `preferences`, `favoritePayload`, `runtimeModeCommand` |
+| `composer` (4) | `paths`, `catalog`, `fileLink`, `attachmentReference` |
+| `history` (2) | `path`, `envelope` |
+| `connectionCatalog` (1) | `pairingTarget` |
+| `codeBlocks` (1) | `parse` |
+| `i18n` (6) | `translate`, `normalize`, `t`, `catalog`, `resolve`, `languages` |
+| `diffReview` (2) | `present`, `scopedResult` |
+| `toolInspector` (4) | `compactReference`, `scope`, `request`, `parse` |
+| `planWorkflow` (5) | `view`, `followUp`, `attachSourceRef`, `implementationTitle`, `mode` |
+| `checkpointRevert` (8) | `canPreview`, `reference`, `safety`, `command`, `confirmedCommand`, `observation`, `recoveryMessage`, `appendPrompt` |
+| `usageSummary` (3) | `window`, `request`, `aggregate` |
+| `quotaSources` (4) | `limits`, `providers`, `sources`, `apply` |
+| `pullRequests` (4) | `sidebarBadge`, `request`, `payload`, `threadCommand` |
+| `branchPicker` (6) | `dedupe`, `deriveLocal`, `sanitize`, `selectionTarget`, `mismatch`, `temporaryBranch` |
+| `gitControls` (7) | `scope`, `resolveScripts`, `actions`, `present`, `scopedResult`, `buildAction`, `buildVerifiedAction` |
+| `nativeSettings` (7) | `snapshot`, `patch`, `description`, `modelSelection`, `idleCompaction`, `idleCompactionPatch`, `threadDefaults` |
+| `scopedSettings` (10) | `effective`, `projectPatch`, `projectFile`, `validatedTargets`, `writePatch`, `writeWasDropped`, `targetView`, `aggregate`, `page`, `projectCatalogConfig` |
+| `subagents` (4) | `buckets`, `describe`, `cards`, `fromThread` |
+| `theme` (1) | `tokens` |
+
+### Following threads: notifications and Live Updates
+
+The follow service (a foreground service whose notification is the ongoing
+card) keeps no rule of its own: one `awareness.view` call per change gives it
+everything it posts. Shapes are in the README's Domain operations; `card` and
+`alerts` are what ot3-Android's `NotificationContract` parses.
+
+```kotlin
+// On a worker, after every shell change, at nextDeadline and when the screen changes.
+fun refresh(now: Long = System.currentTimeMillis()) {
+    val environments = JSONArray().apply {
+        for (e in followed) put(JSONObject().put("id", e.id).put("name", e.name)
+            .put("shell", e.shell /* the supervisor's shell state */)
+            .put("state", e.connectionState /* null when connected */))
+    }
+    val view = api.domain.awareness.view(environments, now,
+        baseline = baselineStore.load(),               // null the first time
+        onScreen = visibleThread?.let { JSONObject().put("environmentId", it.environmentId).put("threadId", it.threadId) },
+        preferences = JSONObject().put("approval", true).put("input", true).put("completion", true).put("failure", true),
+        lifecycle = lifecycle, locale = appLocales /* "es-CL:en" */) as JSONObject
+    lifecycle = "running"
+    postCard(view.optJSONObject("card"))               // null: cancel the card
+    postAlerts(view.getJSONArray("alerts"), view.getJSONArray("summaries"))
+    baselineStore.save(view.getJSONObject("baseline")) // after posting
+    scheduleTick(if (view.isNull("nextDeadline")) null else view.getLong("nextDeadline"))
+}
+```
+
+1. **Environments.** The same objects as `sidebar.view`, only for environments
+   the service follows and is authorised for. While one is not connected, pass
+   its last shell with a non-null `state`: its live rows read `stale` (status
+   Waiting), it raises nothing and its baseline entry is kept. Leave out a
+   revoked or forgotten environment: its rows and baseline entry go, with no
+   Done alert.
+2. **When.** After each shell change (at the stream's `repaint`), when the
+   thread on screen changes, when preferences change and at `nextDeadline`
+   (one delayed tick, rescheduled by every call; none when null). No polling.
+3. **`lifecycle`.** `cold` on the first call after Follow is switched on (or
+   after the user resets notifications): nothing alerts and the baseline is
+   rebuilt. `resumed` on the first call after the process restarted with its
+   stored baseline, or after Doze or a network loss; `running` otherwise. Both
+   use the baseline, so a request that arrived meanwhile alerts and a result
+   older than two minutes does not.
+4. **Posting.** `card` is the foreground notification; `card.expiresAt` its
+   `setTimeoutAfter`; `chip` (only while `active`) its short critical text,
+   worded by the app (`working` → Working, `live` → "N live", `approve`,
+   `answer`). Post each alert with its `id` as the tag, so posting the same alert
+   again replaces it; a finished alert's `expiresAt` is its timeout. Post one
+   summary per entry of `summaries`, in the alert group of its `group`.
+5. **Baseline.** Store the returned `baseline` (DataStore) after the alerts are
+   posted. If the process dies first, the next call with the old baseline returns
+   the same alerts with the same ids, which replace rather than repeat. A lib
+   upgrade that changes its `version` resets it silently (no alerts once).
+6. **Stopping.** When `card` is null or not `active` for the idle period, post
+   the last card (it expires by itself) and stop; nothing needs to run until the
+   app is opened again.
 
 ## Events through the existing JSON ABI
 
@@ -330,6 +541,12 @@ path. There is no full-file byte-array copy. A nonresponsive provider read has a
 bounded native deadline. Limits follow the core: 50 MiB/file, 10 MiB/image; the
 host must also honor any stricter current provider/server policy.
 
+Every adapter failure with a stable code is a `T3Exception`, including the ones the
+JNI layer raises before Rust runs: `host_file_unavailable` (a descriptor it cannot
+duplicate, e.g. `-1` or one already closed), `invalid_input` (a request over 8 MiB),
+`native_error` and `native_allocation_failed`. `IllegalStateException` remains only
+for misuse of the Kotlin objects (`client_closed`, `subscription_closed`).
+
 `T3Client.image(id, name, mimeType)` returns validated image bytes through
 `assets.createUrl` and its signed same-origin GET, with a 10 MiB bound. Kotlin
 owns the returned byte array and supplies decoding/cache/UI. Images do not pass
@@ -356,7 +573,10 @@ All of this is additive to ABI v2; `capabilities` lists it in `operations`,
 {"op":"requestOk","method":"POST","path":"/api/auth/clients/revoke","body":{"sessionId":"s-1"},"protocol":false}
 ```
 
-`options` is optional on `connectBearer` and `connectRelay`. Unknown keys,
+`options` is optional on `connectBearer` and `connectRelay`; in Kotlin it is the
+last parameter of both (`client.connectBearer(baseUrl, token, JSONObject().put("requestTimeoutMs", 8000))`),
+and `connectRelay(relayUrl, cloudJwt, environmentId, clientId = "t3-mobile", options = null)`
+lets the host name its relay client. Unknown keys,
 non-numeric values, a zero timeout, a timeout over 300 s or `maxBytes` outside
 1 byte to 64 MiB fail with `invalid_connection_options`; `null` clears the
 connect or pool-idle timeout. Options govern HTTP. Streams and RPC keep their
@@ -370,8 +590,19 @@ With `"connect":true` the handle switches to the new session after the exchange
 succeeds, cancelling its streams; a failed pairing leaves the old one in place.
 `boundedThread` returns the restored bounded snapshot (up to 64 MiB).
 
-Signed assets use the binary path, never Base64 JSON. Pass the metadata to the
-JNI `image` native (`t3_client_image`), which forwards it unchanged:
+Signed assets use the binary path, never Base64 JSON. From Kotlin:
+
+```kotlin
+val clip = client.assetBytes(resource, maxBytes = 50L * 1024 * 1024, timeoutMs = 120_000)
+// clip.status = {sizeBytes, mimeType}; clip.bytes is owned by the caller
+val icon = client.projectFavicon(cwd = "/repo", path = "favicon.svg") // path is optional
+if (icon.found) showIcon(icon.bytes!!, icon.mimeType)
+```
+
+`T3Asset` carries `status` (the JSON data), `bytes` (null when `found` is false),
+`found` and `mimeType`. `maxBytes` defaults to `T3Client.MAX_ASSET_BYTES` (64 MiB).
+Both wrappers pass this metadata to the JNI `image` native (`t3_client_image`), which
+forwards it unchanged:
 
 ```json
 {"op":"assetBytes","resource":{"_tag":"attachment","attachmentId":"a","fileName":"clip.mp4","mimeType":"video/mp4","disposition":"inline"},"maxBytes":52428800,"timeoutMs":120000}
@@ -381,9 +612,8 @@ JNI `image` native (`t3_client_image`), which forwards it unchanged:
 The status is `{sizeBytes, mimeType}`, or `{found:false, sizeBytes:0}` with no
 bytes for a project without a favicon. Errors are `asset_*`,
 `invalid_asset_url`, `invalid_asset_limit` and `invalid_asset_timeout`; through
-`t3_client_call` these two operations fail with `binary_operation`. The Kotlin
-`T3Client` has no typed wrapper for them yet. A wrapper is a one-line
-`T3Native.image` call with this metadata; the C++ adapter needs no change.
+`t3_client_call` these two operations fail with `binary_operation`. In Kotlin they
+throw `T3Exception` with that code, like every other operation.
 
 ## Building from source
 
@@ -401,11 +631,32 @@ configuration for offline builds. ELF libraries use 16 KiB maximum page alignmen
 Outputs live under `dist/android/<abi>/libt3_jni.so`. Desktop Linux libraries are
 not Android libraries, even when the CPU matches.
 
-`tools/package-android` compiles the Kotlin wrapper and assembles an AAR. It needs
+`tools/package-android` compiles the Kotlin adapter (`T3Client.kt` and `T3Api.kt`,
+through `tools/compile-android-kotlin`) and assembles an AAR. It needs
 `JAVA_HOME`, `ANDROID_JAR`, `KOTLIN_STDLIB` and `KOTLIN_COMPILER_CLASSPATH` pointing
 to explicitly installed/cached tools. Run it in the clean, committed release
 checkout after building all four ABIs. It produces the versioned AAR and SHA-256
 checksum in `dist/`; it does not sign or publish an Android application.
+
+### Releases
+
+Pushing a `v*` tag runs [`.github/workflows/android-release.yml`](../.github/workflows/android-release.yml)
+on `ubuntu-24.04`: it checks that the tag matches the `Cargo.toml` version, installs
+the four Rust Android targets, NDK 28.2.13676358 and the `android-36` platform
+through the runner's `sdkmanager`, JDK 21 and the Kotlin 2.3.21 compiler (the
+compiler and org.json downloads are pinned by SHA-256 in
+[`.github/actions/android-toolchain`](../.github/actions/android-toolchain/action.yml)),
+runs `tools/build-android arm64-v8a x86_64 armeabi-v7a x86` and
+`tools/package-android`, verifies the checksum and publishes
+`lib-t3-rust-android-v<version>.aar` and its `.sha256` as a GitHub release. A manual
+run (`workflow_dispatch`), or a pull request that touches the Android bindings or
+the release tools, builds and packages the same way and only uploads both files as a
+workflow artifact, which is how the workflow is checked before a tag.
+
+Every push and pull request also runs the `kotlin` job of
+[`test.yml`](../.github/workflows/test.yml): `tools/compile-android-kotlin` against
+`android.jar`, then `tools/test-jni` and `tools/test-kotlin-jni` on x86_64, so no
+Kotlin change is tagged without compiling.
 
 ## Validation
 
@@ -416,10 +667,11 @@ checksum in `dist/`; it does not sign or publish an Android application.
 - `tools/test-c-abi`: a real C caller links the static Rust archive.
 - `JAVA_HOME=... tools/test-jni`: real JNI/JVM calls, Unicode, error paths and ownership.
 - `tools/test-kotlin-jni`: canonical Kotlin adapter, typed errors, `call`/`describe`
-  through the generated wrappers, and concurrent close against a real native
+  and `domain` (sidebar, timeline, Markdown blocks, project chips, queue) through
+  the generated wrappers, and concurrent close against a real native
   request; `StreamFixture` drives streams through a JDK-only fake WebSocket (chunk
   boundaries, completion marker, idle, wake probe and error reasons). Supply the cached compiler variables above
-  and `JSON_JAR` for the host's org.json implementation.
+  and `JSON_JAR` for the host's org.json implementation; CI runs it in the `kotlin` job.
 - Android cross-build/link checks cover all four ABIs. These are not Android
   device/UI/lifecycle E2E checks, which remain consumer work.
 

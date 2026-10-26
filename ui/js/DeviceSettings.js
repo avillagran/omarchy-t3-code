@@ -35,7 +35,7 @@ function allowed(b,environment,action){
  var d=s.data,p=d.permissions,project=s.target.projectId!==null,state=d.state;
  if(["inspect","refresh","update-tool"].indexOf(action)<0&&project)return false
  if(["installing","starting"].indexOf(state.hostStatus)>=0&&action!=="test-host")return false
- if(["hub","agent","host-upsert","host-remove","test-host"].indexOf(action)>=0&&!p.configure)return false
+ if(["hub","agent","host-upsert","host-remove","eas-upsert","eas-remove","test-host"].indexOf(action)>=0&&!p.configure)return false
  if(["update-tool","retry-host"].indexOf(action)>=0&&!p.operate)return false
  if(action==="inspect"&&!state.supportsToolInspection||action==="update-tool"&&!state.supportsToolUpdate||action==="retry-host"&&!state.supportsHostRetry)return false
  return true

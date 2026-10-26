@@ -85,7 +85,13 @@ pub const ACTION: Function = api_fn! {
     payload: |a| DeviceAction::from_json(a.all())?.payload(),
     timeout_ms: 30_000, open_args: true, variants: ACTION_TYPES,
 };
-pub const FUNCTIONS: &[Function] = &[LIST, CONFIGURE, TEST_HOST, OPEN, CLOSE, DETAIL, ACTION];
+pub const EAS_ACCOUNT: Function = api_fn! {
+ name: "device.easAccount", module: "device", tag: Some("device.easAccount"),
+ kind: Read, scope: Fixed("settings:write"), args: [(hostId, Token, optional),(accessToken, Text, optional)],
+ payload: |a| {if let Some(id)=a.str("hostId")? {host_id(id)?;} Ok(a.all().clone())},
+};
+pub const FUNCTIONS: &[Function] = &[
+    EAS_ACCOUNT,LIST, CONFIGURE, TEST_HOST, OPEN, CLOSE, DETAIL, ACTION];
 
 fn host_id(value: &str) -> Result<&str> {
     ids::token("hostId", value, HOST_ID_MAX)
@@ -310,4 +316,8 @@ impl DeviceAction {
 /// `device.action`: the device's `DeviceDetail` after the action.
 pub fn action(conn: &Connection, action: &DeviceAction) -> Result<Value> {
     send(conn, &ACTION, action.payload()?)
+}
+pub fn eas_account(conn: &Connection, host: Option<&str>, token: Option<&str>) -> Result<Value> {
+    let mut args=json!({});put(&mut args,"hostId",host);put(&mut args,"accessToken",token);
+    EAS_ACCOUNT.call(conn,&args,None)
 }

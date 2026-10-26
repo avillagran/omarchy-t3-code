@@ -1,5 +1,6 @@
 //! Portable sidebar metadata and native thread lifecycle commands.
 use super::*;
+pub mod view;
 fn stamp(v:&Value)->i64 { v.as_str().and_then(|s|chrono::DateTime::parse_from_rfc3339(s).ok()).map(|d|d.timestamp_millis()).or_else(||v.as_i64()).unwrap_or(0) }
 /// Native inbox/working/history anchors, matching client-runtime/state/threadInbox.ts
 /// and threadSort.ts. Shells use flat run stamps; bounded projections use latestRun.
@@ -16,11 +17,14 @@ pub fn sort_timestamps(t:&Value)->Value {
 }
 /// T3 resolveSidebarThreadStatus over presentThreadShell's runtime (client-runtime models.ts):
 /// approval, input, waiting, working, goal, limited, failed or ready.
+pub fn background_work_holds(tasks: &Value) -> bool {
+ tasks.as_array().is_some_and(|tasks|tasks.iter().any(|task|task["awaited"]==true||matches!(task["kind"].as_str(),Some("subagent"|"background_task"))))
+}
 pub fn sidebar_status(t:&Value)->&'static str {
  let req=&t["pendingRuntimeRequest"];let kind=req["kind"].as_str().unwrap_or("");
  let sub=t["pendingSubagentRequest"].as_str().or(t["pendingSubagentRequest"]["kind"].as_str()).unwrap_or("");
  // Work that wakes the agent parks the thread at idle; a command left running holds nothing.
- let park=t["pendingBackgroundTasks"].as_array().is_some_and(|a|a.iter().any(|task|task["kind"]!="command"))&&t["status"]!="failed";
+ let park=(background_work_holds(&t["pendingBackgroundTasks"])||t["pendingBackgroundTasks"].as_array().is_some_and(|a|a.iter().any(|task|task.get("kind").is_none())))&&t["status"]!="failed";
  let legacy=if t["runtime"].is_object(){&t["runtime"]}else{&t["session"]};
  let status=if park{"idle"}else{legacy["status"].as_str().or(t["activityRunStatus"].as_str()).or(t["status"].as_str()).unwrap_or("")};
  let has_runtime=legacy.is_object()||!t["latestRunId"].is_null()&&t.get("latestRunId").is_some()||!t["activeProviderThreadId"].is_null()&&t.get("activeProviderThreadId").is_some()||park;

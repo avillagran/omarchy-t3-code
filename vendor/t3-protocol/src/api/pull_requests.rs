@@ -119,7 +119,20 @@ pub const SET_LABELS: Function = api_fn! {
     ],
     payload: |a| set_labels_payload(&PrRef::from_args(a)?, &strings("labels", a.req_array("labels")?)?, a.bool("applied")?.unwrap_or_default()),
 };
+pub const CHANGE_BREAKDOWN: Function = api_fn! {
+ name: "pullRequests.changeBreakdown", module: "pullRequests", tag: Some("pullRequests.changeBreakdown"),
+ kind: Read, scope: Fixed("orchestration:read"),
+ args: [(projectId, Id, required),(repository, Text, required),(number, Integer, required),(host, Text, optional),(expectedAccountId, Text, optional),(allowStale, Bool, optional)],
+ payload: |a| PrRef::from_args(a)?.to_json(),
+};
+pub const FILTER_OPTIONS: Function = api_fn! {
+ name: "pullRequests.filterOptions", module: "pullRequests", tag: Some("pullRequests.filterOptions"),
+ kind: Read, scope: Fixed("orchestration:read"),
+ args: [(kind, Enum(&["labels","authors"]), required),(projectId, Id, optional),(projectIds, Array, optional),(host, Text, optional),(query, Text, optional)],
+ payload: |a| { if let Some(list)=a.array("projectIds")? {if list.len()>100{return Err("invalid_project_ids".into())} for id in list {ids::id("projectId",id.as_str().ok_or("invalid_project_id")?)?;}} if a.str("query")?.is_some_and(|q|q.encode_utf16().count()>100||q.trim().is_empty()){return Err("invalid_query".into())} Ok(a.all().clone()) },
+};
 pub const FUNCTIONS: &[Function] = &[
+    CHANGE_BREAKDOWN, FILTER_OPTIONS,
     LIST, DETAIL, CHECKS, ACTIVITY, ROUTING, ROUTING_IDENTITY, REVIEWER_CANDIDATES, LABEL_CANDIDATES,
     COMMENT, SUBMIT_REVIEW, RUN_ACTION, REQUEST_REVIEWERS, SET_LABELS,
 ];
@@ -447,4 +460,11 @@ pub(crate) fn set_labels_payload(pr: &PrRef, labels: &[String], applied: bool) -
     v["labels"] = json!(labels);
     v["applied"] = json!(applied);
     Ok(v)
+}
+pub fn change_breakdown(conn: &Connection, pr: &PrRef) -> Result<Value> {
+    CHANGE_BREAKDOWN.call(conn,&pr.to_json()?,None)
+}
+pub fn filter_options(conn: &Connection, kind: &str, project: Option<&str>, host: Option<&str>, query: Option<&str>) -> Result<Value> {
+    let mut args=json!({"kind":kind});put(&mut args,"projectId",project);put(&mut args,"host",host);put(&mut args,"query",query);
+    FILTER_OPTIONS.call(conn,&args,None)
 }

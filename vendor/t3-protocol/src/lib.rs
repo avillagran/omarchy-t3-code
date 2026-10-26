@@ -24,6 +24,7 @@ pub mod models;
 pub mod terminal;
 pub mod code_blocks;
 pub mod sidebar;
+pub mod awareness;
 pub mod compaction;
 pub mod changes;
 pub mod composer;
@@ -44,6 +45,7 @@ pub mod checkpoint_revert;
 pub mod plan_workflow;
 pub mod prompt_recall;
 pub mod latex;
+pub mod markdown;
 pub mod message_text;
 pub mod storage_settings;
 pub mod diff_review;
@@ -59,18 +61,24 @@ pub mod failure_context;
 pub mod usage_summary;
 pub mod server_updates;
 pub mod reconnect;
+pub mod timeline;
+pub mod subagents;
+pub mod theme;
+mod js;
 mod options;
 pub use options::ConnectionOptions;
 pub mod assets;
 pub use assets::{AssetBytes, AssetOptions};
 pub mod pairing;
 pub mod bounded_snapshot;
+pub mod wire;
 pub use pairing::{
     fetch_descriptor, fetch_descriptor_with, pair_bearer, verify_environment, PairedBearer,
     PairingClient,
 };
 use options::valid_limit;
 pub mod api;
+pub mod domain;
 pub mod errors;
 mod ffi_call;
 
@@ -440,7 +448,7 @@ impl Connection {
         } else {
             self.max_bytes
         };
-        decode_with_limit(response, limit)
+        { let mut value = decode_with_limit(response, limit)?; if protocol && (path.split('?').next().unwrap_or("").ends_with("/bounded") || path.split('?').next().unwrap_or("").ends_with("/history")) && path.starts_with("/api/orchestration/threads/") { crate::wire::expand_ids(&mut value)?; } Ok(value) }
     }
     /// `request_json` with an explicit response limit (1 byte to 64 MiB) for this call.
     pub fn request_json_with_limit(
@@ -454,7 +462,7 @@ impl Connection {
         if !valid_limit(max_bytes) {
             return Err("invalid_max_bytes".into());
         }
-        decode_with_limit(self.send(method, path, body, protocol)?.0, max_bytes)
+        { let mut value = decode_with_limit(self.send(method, path, body, protocol)?.0, max_bytes)?; if protocol && (path.split('?').next().unwrap_or("").ends_with("/bounded") || path.split('?').next().unwrap_or("").ends_with("/history")) && path.starts_with("/api/orchestration/threads/") { crate::wire::expand_ids(&mut value)?; } Ok(value) }
     }
     /// A request whose only result is its status: any 2xx is `Ok`, whatever the
     /// body (empty, 204, not JSON). The body is not read.

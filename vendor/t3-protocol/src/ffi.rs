@@ -38,6 +38,7 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
         ))),
         "call" => crate::ffi_call::call(&request, || connection(handle)),
         "describe" => Ok(crate::ffi_call::describe()),
+        "domain" => crate::ffi_call::domain(&request),
         "connectBearer" => {
             let options = options(&request)?;
             let mut h = handle.lock().map_err(|_| "internal_error")?;
@@ -241,8 +242,12 @@ impl Drop for Handle {
         }
     }
 }
+/// Largest `domain` request: a bounded thread snapshot plus its envelope. Every
+/// other operation keeps the 8 MiB input limit.
+pub const DOMAIN_MAX_BYTES: u64 = THREAD_SNAPSHOT_MAX_BYTES + MAX_BYTES;
 /// # Safety
-/// `handle` is a live t3_client_new result; input addresses `len` readable bytes.
+/// `handle` is a live t3_client_new result; input addresses `len` readable bytes
+/// (at most 8 MiB, or `DOMAIN_MAX_BYTES` for `{"op":"domain"}`).
 /// The UTF-8 response is owned by Rust and must be freed with t3_string_free.
 /// Calls may run concurrently; poll never holds the connection lock while waiting.
 /// Do not free a handle while a call is active.
@@ -253,11 +258,15 @@ pub unsafe extern "C" fn t3_client_call(
     len: usize,
 ) -> *mut c_char {
     let result = std::panic::catch_unwind(|| {
-        if handle.is_null() || input.is_null() || len > MAX_BYTES as usize {
+        if handle.is_null() || input.is_null() || len > DOMAIN_MAX_BYTES as usize {
             return Err("invalid_input".into());
         }
         let bytes = std::slice::from_raw_parts(input, len);
-        let request = serde_json::from_slice(bytes).map_err(|_| "malformed")?;
+        let request: Value = serde_json::from_slice(bytes).map_err(|_| "malformed")?;
+        // Only the pure domain functions take thread-sized input (a bounded projection).
+        if len > MAX_BYTES as usize && request["op"] != "domain" {
+            return Err("invalid_input".into());
+        }
         call(&*handle.cast::<Mutex<Handle>>(), request)
     })
     .unwrap_or_else(|_| Err("internal_error".into()));

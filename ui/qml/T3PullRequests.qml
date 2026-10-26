@@ -11,6 +11,9 @@ Rectangle{
  readonly property bool threadScoped:!!initialEntry&&Array.isArray(initialEntry.references)
  property string stateFilter:threadScoped?"all":"open"
  property string involvement:"all"
+ property string labelFilter:""
+ property string authorFilter:""
+ property string filterKind:"labels"
  property var selected:null
  readonly property bool narrow:width<Style.space(650)
  property int tab:0
@@ -42,8 +45,8 @@ Rectangle{
  function statusLabel(state){return T3I18n.tr(({"approved":"Approved","changes-requested":"Changes requested","review-required":"Review required","pending":"Pending","action-required":"Action required","success":"Done","failure":"Failed","skipped":"Skipped","cancelled":"Cancelled","neutral":"Done"})[state] || state)}
  function tint(state){return ["failure","failing","closed","changes-requested"].indexOf(state)>=0?T3Palette.failed:["success","passing","open","approved"].indexOf(state)>=0?T3Palette.done:state==="merged"?Color.accent:dim}
  function reference(){return selected?{projectId:selected.projectId,host:selected.host,repository:selected.repository,number:selected.number}:null}
- function loadList(more){if(threadScoped){var needle=search.text.toLowerCase();entries=initialEntry.references.map(function(e){return Object.assign({},e,e.snapshot || {},{title:e.snapshot&&e.snapshot.title || "#"+e.number,state:e.snapshot&&e.snapshot.state || "unknown"})}).filter(function(e){return (stateFilter==="all"||e.state===stateFilter)&&(!needle||(e.title+" "+e.repository+" "+e.number).toLowerCase().indexOf(needle)>=0)});return}appending=!!more;bridge.requestPullRequests("list",{environment:environment,state:stateFilter,involvement:involvement,query:search.text,cursors:more&&listResult.data?listResult.data.nextCursors:undefined})}
- function openEntry(entry){selected=entry;tab=0;patch="";bridge.requestPullRequests("detail",{environment:environment,reference:reference()})}
+ function loadList(more){if(threadScoped){var needle=search.text.toLowerCase();entries=initialEntry.references.map(function(e){return Object.assign({},e,e.snapshot || {},{title:e.snapshot&&e.snapshot.title || "#"+e.number,state:e.snapshot&&e.snapshot.state || "unknown"})}).filter(function(e){return (stateFilter==="all"||e.state===stateFilter)&&(!needle||(e.title+" "+e.repository+" "+e.number).toLowerCase().indexOf(needle)>=0)});return}appending=!!more;bridge.requestPullRequests("list",{environment:environment,state:stateFilter,involvement:involvement,query:search.text,filters:{labels:labelFilter?[labelFilter]:[],author:authorFilter||undefined},cursors:more&&listResult.data?listResult.data.nextCursors:undefined})}
+ function openEntry(entry){selected=entry;tab=0;patch="";bridge.requestPullRequests("detail",{environment:environment,reference:reference()});bridge.requestPullRequests("change-breakdown",{environment:environment,reference:reference()})}
  function loadTab(index){tab=index;if(!selected||index===0)return;appendPatch=false;bridge.requestPullRequests(index===1?"checks":index===2?"activity":"diff",{environment:environment,reference:reference()})}
  onListResultChanged:if(!threadScoped&&listResult.data){var next=appending?entries.slice():[];(listResult.data.entries || []).forEach(function(e){var i=next.findIndex(function(x){return x.host===e.host&&x.repository===e.repository&&x.number===e.number});if(i<0)next.push(e);else next[i]=e});entries=next.sort(function(a,b){return Date.parse(b.updatedAt)-Date.parse(a.updatedAt)})}
  onTabResultChanged:if(tab===3&&tabResult.data)patch=(appendPatch?patch:"")+(tabResult.data.patch || "")
@@ -66,6 +69,16 @@ Rectangle{
    T3Select{enabled:!root.threadScoped;Layout.preferredWidth:Style.space(115);translateLabels:true;model:["All","Authored","Reviewing"];onActivated:function(i){root.involvement=["all","authored","reviewing"][i];root.loadList(false)}}
   }
   Text{Layout.fillWidth:true;visible:!!root.listResult.error;text:T3I18n.error(root.listResult.error || "");color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+  RowLayout {
+   Layout.fillWidth:true;visible:!root.threadScoped
+   T3PickerButton{objectName:"prLabelFilter";primary:false;text:root.labelFilter||T3I18n.tr("Labels");onClicked:{root.filterKind="labels";filterSearch.text="";root.bridge.requestPullRequests("filter-options",{environment:root.environment,kind:"labels"});filterPopup.open()}}
+   T3PickerButton{objectName:"prAuthorFilter";primary:false;text:root.authorFilter||T3I18n.tr("Author");onClicked:{root.filterKind="authors";filterSearch.text="";root.bridge.requestPullRequests("filter-options",{environment:root.environment,kind:"authors"});filterPopup.open()}}
+   T3IconButton{visible:!!root.labelFilter||!!root.authorFilter;name:"x";tooltipText:T3I18n.tr("Clear filters");onClicked:{root.labelFilter="";root.authorFilter="";root.loadList(false)}}
+  }
+  Flow {
+   Layout.fillWidth:true;visible:!!root.selected&&!!((root.bridge.prOperations["change-breakdown"]||{}).data);spacing:Style.space(10)
+   Repeater{model:["code","tests","mocks","generated","docs"];delegate:Text{required property string modelData;readonly property var counts:((root.bridge.prOperations["change-breakdown"]||{}).data||{})[modelData]||({});text:T3I18n.tr(({code:"Code",tests:"Tests",mocks:"Mocks",generated:"Generated",docs:"Documentation"})[modelData])+" +"+(counts.additions||0)+" −"+(counts.deletions||0);textFormat:Text.PlainText;color:root.dim;font.pixelSize:Style.font.caption}}
+  }
   Text{Layout.fillWidth:true;visible:!!root.listResult.data&&(root.listResult.data.errors || []).length>0;text:root.listResult.data?(root.listResult.data.errors || []).map(function(e){return e.projectTitle+": "+e.message}).join("\n"):"";color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText;font.pixelSize:Style.font.caption}
   RowLayout{
    Layout.fillWidth:true;Layout.fillHeight:true;spacing:Style.space(12)
@@ -156,6 +169,20 @@ Rectangle{
   }
  }
  Timer{id:searchDelay;interval:300;onTriggered:root.loadList(false)}
+ Controls.Popup {
+  id:filterPopup;width:Math.min(root.width-Style.space(24),Style.space(360));height:Style.space(340);anchors.centerIn:parent;modal:true
+  ColumnLayout{
+   anchors.fill:parent
+   T3TextField{id:filterSearch;Layout.fillWidth:true;placeholderText:T3I18n.tr("Search");onTextChanged:filterTimer.restart()}
+   Timer{id:filterTimer;interval:250;onTriggered:root.bridge.requestPullRequests("filter-options",{environment:root.environment,kind:root.filterKind,query:filterSearch.text})}
+   Text{Layout.fillWidth:true;text:(root.bridge.prOperations["filter-options"]||{}).error||"";color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+   ListView{
+    Layout.fillWidth:true;Layout.fillHeight:true;clip:true
+    model:(((root.bridge.prOperations["filter-options"]||{}).data||{})[root.filterKind])||[]
+    delegate:T3PickerButton{required property var modelData;width:ListView.view.width;primary:false;text:modelData.login||modelData.name||"";onClicked:{if(root.filterKind==="labels")root.labelFilter=modelData.name;else root.authorFilter=modelData.login;filterPopup.close();root.loadList(false)}}
+   }
+  }
+ }
  // Reviewers or labels to toggle, from the host's candidates.
  Controls.Popup{
   id:people;objectName:"pullRequestPeople";property string mode:"reviewers";property var candidates:[]

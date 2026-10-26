@@ -48,7 +48,7 @@ fn production_http_keeps_generic_limit_and_accepts_large_compact_thread_snapshot
                 &legacy
             } else {
                 assert!(h.starts_with(
-                    "GET /api/orchestration/threads/t/bounded?compactTurnItems=1 HTTP"
+                    "GET /api/orchestration/threads/t/bounded?compactTurnItems=1&dedupeBodies=1&compactIds=1 HTTP"
                 ));
                 &compact
             };
