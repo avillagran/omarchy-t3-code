@@ -23,7 +23,7 @@ pub const SUBSCRIBE_SHELL: Function = Function {
     ..api_fn! {
         name: "orchestration.subscribeShell", module: "orchestration", tag: Some("orchestration.subscribeShell"),
         kind: Read, scope: Fixed("orchestration:read"),
-        args: [(afterSequence, Integer, optional), (requestCompletionMarker, Bool, optional)],
+        args: [(afterSequence, Integer, optional), (requestCompletionMarker, Bool, optional), (omitIdleSubagents, Bool, optional), (omitOlderSettled, Bool, optional)],
         payload: |a| ShellSub::from_args(a)?.payload(),
     }
 };
@@ -35,6 +35,7 @@ pub const SUBSCRIBE_THREAD: Function = Function {
         args: [
             (threadId, Id, required), (afterSequence, Integer, optional), (requestCompletionMarker, Bool, optional),
             (acceptBoundedSnapshot, Bool, optional), (acceptCompactTurnItems, Bool, optional),
+            (acceptDedupedBodies, Bool, optional), (acceptCompactIds, Bool, optional),
         ],
         payload: |a| ThreadSub::from_args(a)?.payload(),
     }
@@ -362,6 +363,8 @@ pub fn spec(name: &str, args: &Value) -> Result<StreamSpec> {
 /// `orchestration.subscribeShell` arguments.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ShellSub {
+    pub omit_idle_subagents: Option<bool>,
+    pub omit_older_settled: Option<bool>,
     /// The host's cursor: the largest `sequence` (or `snapshot.snapshotSequence`) applied.
     pub after_sequence: Option<u64>,
     /// Ask for a `{"kind":"synchronized"}` item once the replay is complete.
@@ -372,10 +375,12 @@ impl ShellSub {
         let mut p = json!({});
         put_sequence(&mut p, self.after_sequence)?;
         put(&mut p, "requestCompletionMarker", self.request_completion_marker);
+        put(&mut p, "omitIdleSubagents", self.omit_idle_subagents);
+        put(&mut p, "omitOlderSettled", self.omit_older_settled);
         Ok(p)
     }
     fn from_args(a: &Args) -> Result<Self> {
-        Ok(Self { after_sequence: uint(a, "afterSequence")?, request_completion_marker: a.bool("requestCompletionMarker")? })
+        Ok(Self { after_sequence: uint(a, "afterSequence")?, request_completion_marker: a.bool("requestCompletionMarker")?, omit_idle_subagents: a.bool("omitIdleSubagents")?, omit_older_settled: a.bool("omitOlderSettled")? })
     }
 }
 /// `orchestration.subscribeThread` arguments.
@@ -388,6 +393,8 @@ pub struct ThreadSub {
     /// Lets the first `snapshot` be a bounded window of up to 64 MiB.
     pub accept_bounded_snapshot: Option<bool>,
     pub accept_compact_turn_items: Option<bool>,
+    pub accept_deduped_bodies: Option<bool>,
+    pub accept_compact_ids: Option<bool>,
 }
 impl ThreadSub {
     pub fn new(thread_id: &str) -> Self {
@@ -399,6 +406,8 @@ impl ThreadSub {
         put(&mut p, "requestCompletionMarker", self.request_completion_marker);
         put(&mut p, "acceptBoundedSnapshot", self.accept_bounded_snapshot);
         put(&mut p, "acceptCompactTurnItems", self.accept_compact_turn_items);
+        put(&mut p, "acceptDedupedBodies", self.accept_deduped_bodies);
+        put(&mut p, "acceptCompactIds", self.accept_compact_ids);
         Ok(p)
     }
     fn from_args(a: &Args) -> Result<Self> {
@@ -408,6 +417,8 @@ impl ThreadSub {
             request_completion_marker: a.bool("requestCompletionMarker")?,
             accept_bounded_snapshot: a.bool("acceptBoundedSnapshot")?,
             accept_compact_turn_items: a.bool("acceptCompactTurnItems")?,
+            accept_deduped_bodies: a.bool("acceptDedupedBodies")?,
+            accept_compact_ids: a.bool("acceptCompactIds")?,
         })
     }
 }

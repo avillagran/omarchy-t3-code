@@ -175,3 +175,91 @@ copies unchanged, except:
 `bounded_snapshot` is in batch 2. Everything that needs `Environment`, `Client`,
 `write::rpc`, `std::fs`, processes or other global state is in batches 4 and 5.
 `markdown_render` and the rest of `lib.rs:144-825` are batch 5.
+
+## 6. Sidebar, timeline and Markdown facts (0.3.3)
+
+These parts of ot3 `main` at `7b5b1de` now live in the lib with the same output:
+a temporary harness compiled ot3's own functions next to the lib and compared
+them byte for byte (rows and enrichment on the shell vectors, the timeline on
+ot3's test projections and 600 random variants, both math settings).
+
+In `src/lib.rs`, the pure halves become re-exports or thin wrappers:
+
+```rust
+pub use t3_protocol::markdown::{file_references, inline_code_path, search_text as markdown_search_text, tables as markdown_tables};
+pub use t3_protocol::projects::monogram as project_identity;
+pub use t3_protocol::sidebar::view::{is_settled, rows as normalize};
+pub use t3_protocol::timeline::{active_run_id, context_window, live_activity, subagent_summary, subagent_title, thread_workflows};
+
+pub fn conversation_timeline(projection: &Value, messages: &[Value]) -> Vec<Value> {
+    t3_protocol::timeline::conversation(projection, messages, &rendered_markdown)
+}
+pub fn normalize_messages(d: &Value) -> Result<Value> {
+    let render = |text: &str, blocks: &[Value], math: bool| markdown_render(text, Some(blocks), math);
+    let math = math_enabled();
+    t3_protocol::timeline::view(&d["projection"], d, &t3_protocol::timeline::Render { math, message: Some(&render), plan: &rendered_markdown, blocks: false })
+}
+```
+
+`markdown_images::descriptors` is `t3_protocol::markdown::images`. The enrichment
+loop of `snapshot` (`lib.rs:379-404`) is `t3_protocol::sidebar::view::environment(&d,
+&e.id, &e.name, now)`, which also returns the environment's project rows.
+`normalize_messages_cached` and its `RenderCache` stay in ot3 (they only avoid
+re-rendering unchanged messages), as do `markdown_render`, `rendered_markdown`,
+`math_enabled`, `native_project_grouping` and the rest of `snapshot`. ot3's
+`SidebarModel.js`, `ProjectModel.js` and `T3Palette.projectColor` have Rust
+equivalents in `sidebar::view` and `projects::identities` for hosts without QML;
+ot3 can keep its JavaScript.
+
+## 7. Settings executor, minimap, subagents, theme and strings (0.3.4)
+
+Checked against ot3 `main` at `7b5b1de` with temporary harnesses outside both
+repos: ot3's JavaScript run in node, ot3's QML run under quickshell with Omarchy's
+`Color.qml` (pixels read back from Qt), ot3's Rust pasted next to the lib, all
+compared with the lib through `{"op":"domain"}`.
+
+The pure halves of `scoped_settings::execute_in` (`src/scoped_settings.rs`) are now
+`t3_protocol::scoped_settings::{write_patch, target_view, page}`: ot3 keeps the
+reads (session, `server.getConfig`, `server.getSettings`, the shell, `t3.json`)
+and the write, and calls them in the same order:
+
+```rust
+// For each target, after the permission check and the reads:
+if action != "read" {
+    let patch = write_patch(input, config, &raw, project.as_ref(), write_allowed)?;
+    // update_settings, re-read, write_was_dropped, as today
+}
+views.push(target_view(target, config, &raw, project.as_ref(), file.as_ref(), write_allowed));
+// After the loop:
+let result = page(&input["scope"], &views, &errors, &saved, requested.len());
+```
+
+The rest are ports for hosts without QML; ot3 keeps its JavaScript and QML:
+`timeline::minimap` (`ui/js/TimelineModel.js` and the marker rules of
+`T3TimelineMinimap.qml`), `subagents` (`ui/js/Subagents.js` and the header of
+`T3SubagentCards.qml`), `theme` (`T3Palette.qml`, the layers of `T3Panel.qml`,
+`T3ThreadRow.qml`, `T3Approvals.qml`, `T3Changes.qml`, `T3TextField.qml`,
+`T3Switch.qml` and `T3Composer.qml`, `DocumentTheme.js` and `T3Starfield.qml`)
+and `i18n::t` (`T3I18n.tr`). `data/i18n.json` is a copy of ot3's
+`translations/i18n.json` plus the eight strings `awareness.view` adds (0.3.5,
+section 8); when ot3's catalog changes, copy it again and keep those eight
+unless ot3 has them by then.
+
+## 8. Thread awareness (0.3.5)
+
+`t3_protocol::awareness` is new, not a move: it joins ot3's alert key with T3's
+awareness rules for hosts that notify (ot3-Android's follow service first).
+`awareness::phase` is T3's `projectThreadAwarenessV2`
+(`packages/shared/src/agentAwareness.ts`, T3 nightly `680152e27`), checked with a
+temporary node harness outside both repos against T3's own TypeScript on ot3's
+`docs/protocol/fixtures/shell.json`, the lib's sidebar fixtures and a cross
+product of every field it reads: 116,470 threads, no difference.
+
+The alert decision is ot3's `notify` (`src/main.rs:54-144`) with T3's groups,
+2-minute freshness for results, subagents excluded and the thread on screen
+consumed, over a `baseline` the host stores instead of `seen-rust.json`. ot3
+can keep `notify` as it is; to share the rule, call `awareness::view` with the
+snapshot's environments and post `alerts` (and `summaries`) instead of diffing
+`seen-rust.json`, keeping its sound choice (a question outranks a completion)
+and its retry on a failed delivery (save the returned baseline only after
+`notify-send` succeeds).

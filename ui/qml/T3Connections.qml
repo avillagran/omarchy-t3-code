@@ -13,6 +13,7 @@ ColumnLayout {
  property var route:null
  property string form:""
  property string kind:"ssh"
+ readonly property var reachability:bridge.nightlyState?bridge.nightlyState("connect-reachability",environment,""):({})
  function run(action,values){bridge.manageConnections(action,values || {})}
  function edit(environment,route){
   selected=environment || null;root.route=route || null;form="route";kind=route&&route.kind==="BearerConnectionTarget"?"bearer":"ssh"
@@ -32,6 +33,12 @@ ColumnLayout {
  Text{Layout.fillWidth:true;Layout.margins:Style.space(12);visible:!!text;text:root.store.error?T3I18n.error(root.store.error):root.store.busy?T3I18n.tr("Loading…"):"";color:root.store.error?Color.urgent:root.muted;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
  Loader{Layout.fillWidth:true;active:root.environment!=="local";visible:active;sourceComponent:Component{T3PreferenceSection{title:"Local environment";icon:"laptop";body:Component{T3LocalConnection{width:parent.width;bridge:root.bridge}}}}}
  T3ConnectionAccess{Layout.fillWidth:true;bridge:root.bridge;environment:root.environment}
+ ColumnLayout{
+  Layout.fillWidth:true
+  T3PickerButton{objectName:"connectionReachability";primary:false;text:T3I18n.tr("Check T3 Connect reachability");enabled:!root.reachability.busy;onClicked:root.bridge.requestNightly("connect-reachability",{},root.environment,"")}
+  Text{Layout.fillWidth:true;visible:!!root.reachability.data||!!root.reachability.error;text:root.reachability.error||((root.reachability.data||{}).reason||(root.reachability.data||{}).status||"");color:root.muted;wrapMode:Text.Wrap;textFormat:Text.PlainText;font.pixelSize:Style.font.caption}
+  Text{Layout.fillWidth:true;visible:!!((root.reachability.data||{}).fix);text:(root.reachability.data||{}).fix||"";color:root.muted;wrapMode:Text.Wrap;textFormat:Text.PlainText;font.pixelSize:Style.font.caption}
+ }
  T3ConnectionCloud{Layout.fillWidth:true;bridge:root.bridge;environment:root.environment}
  T3PickerButton{primary:false;Layout.alignment:Qt.AlignRight;visible:root.environment==="local"&&!!((root.bridge.connectionCloud || {}).status || {}).desired&&!!(root.bridge.localBackend || {}).canControl;text:T3I18n.tr("Restart local backend");enabled:!(root.bridge.backendStart || {}).busy;onClicked:cloudRestartConfirm.open()}
  Controls.Popup{id:cloudRestartConfirm;parent:Controls.Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(Style.space(500),parent?parent.width-Style.space(32):Style.space(500));padding:Style.space(20)

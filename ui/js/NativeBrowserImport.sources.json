@@ -1,14 +1,14 @@
 {
-  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
+  "commit": "3f9448747bb8848050dc2cacf83affa6f94a66a1",
   "files": {
     "apps/web/src/components/settings/browserImportWizard.logic.ts": "b936259b129c063d7efe4ab3ada383a6da78b4def43947d25ffffeb04dda4b12",
-    "packages/contracts/src/browserImport.ts": "8d321d899b39e9781506e3bd01e352aeb297ee3069b01fc7ed84cd683c25e358",
-    "apps/web/src/components/BranchToolbar.logic.ts": "74225b9a4ab113386f3e3c2a92eaf545d29b18396953ebdfe0cfee04416bf23c"
+    "packages/contracts/src/browserImport.ts": "6b67409b749cac6522ff945c759d0ab79abb2ffa14d1ef22de6bc75eb819b87f",
+    "apps/web/src/components/BranchToolbar.logic.ts": "e78c8eae8e17efe57df4389c281f0131f7fa4f64ae6e307a1839aca8bf5db3a0"
   },
   "adaptations": [
     "TypeScript erasure/import and export removal; trailing erasure whitespace removed",
     "Object spread becomes Object.assign, Array.at(-1) becomes final-index lookup for Qt",
     "Failure dictionary spread merged with Object.assign"
   ],
-  "outputSha256": "f2029d641ac5180c3ad6394c3a700ae56ef6898a0f314f8dcf2dcf27fca5fa91"
+  "outputSha256": "c3bf0cc2e1808dba3b9b2545721a125c6b504ee0ac1a9a361a8f1b3546baac65"
 }

@@ -31,8 +31,9 @@ fn preferences(value: &Value, rev: String) -> Value {
     let settings = fields(value);
     let mut out=json!({"revision":rev,"loadBalancingEnabled":settings["loadBalancingEnabled"] == true,
         "planModeEnabled":settings["planModeEnabled"]==true,
-        // T3 followUpBehavior: what a message sent during a run does (queue by default).
-        "followUpBehavior":if settings["followUpBehavior"]=="steer"{"steer"}else{"queue"},
+        "timestampFormat":settings["timestampFormat"].as_str().filter(|f|matches!(*f,"12-hour"|"24-hour")).unwrap_or("locale"),
+        // T3 followUpBehavior: what a message sent during a run does (steer by default).
+        "followUpBehavior":if settings["followUpBehavior"]=="queue"{"queue"}else{"steer"},
         "mathRenderingEnabled":settings["mathRenderingEnabled"]==true,
         "confirmThreadDelete":settings["confirmThreadDelete"]!=false,
         "diffLayout":if settings["diffLayout"]=="split"{"split"}else{"stacked"},
@@ -69,11 +70,12 @@ pub fn update_client_preferences_at(path: &Path, expected: &str, patch: &Value) 
     let raw = bytes(&destination)?;
     if revision(&raw) != expected { return Err("client_settings_changed_reload".into()); }
     let mut value = document(&raw)?;
-    if !patch.is_object() || patch.as_object().is_some_and(|o| o.is_empty() || o.keys().any(|k| !crate::browser_preferences::KEYS.contains(&k.as_str()) && k != "diffLayout" && k != "planModeEnabled" && k != "followUpBehavior" && k != "mathRenderingEnabled" && k != "loadBalancingEnabled" && k != "environmentId" && k != "weight")) {
+    if !patch.is_object() || patch.as_object().is_some_and(|o| o.is_empty() || o.keys().any(|k| !crate::browser_preferences::KEYS.contains(&k.as_str()) && k != "timestampFormat" && k != "diffLayout" && k != "planModeEnabled" && k != "followUpBehavior" && k != "mathRenderingEnabled" && k != "loadBalancingEnabled" && k != "environmentId" && k != "weight")) {
         return Err("invalid_client_preference".into());
     }
     let target = fields_mut(&mut value);
     for key in crate::browser_preferences::KEYS {if let Some(next)=patch.get(*key){target[*key]=crate::browser_preferences::validate(key,next)?;}}
+    if let Some(format)=patch.get("timestampFormat"){if !matches!(format.as_str(),Some("locale"|"12-hour"|"24-hour")){return Err("invalid_client_preference".into())}target["timestampFormat"]=format.clone();}
     if let Some(layout)=patch.get("diffLayout"){
         if !matches!(layout.as_str(),Some("stacked"|"split")){return Err("invalid_client_preference".into());}
         target["diffLayout"]=layout.clone();

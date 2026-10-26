@@ -107,7 +107,7 @@ pub fn idle_compaction_patch(raw: &Value, patch: &Value) -> Result<Value> {
 pub fn snapshot(raw: &Value) -> Value {
     let mut view=crate::settings::snapshot(raw);
     let fields=view["fields"].as_array_mut().unwrap();
-    for (key,label,default) in [("enableAgentBrowserAccess","Agent browser access",true),("enableAgentDeviceAccess","Agent device access",false)] {
+    for (key,label,default) in [("enableAgentBrowserAccess","Agent browser access",true),("enableAgentDeviceAccess","Agent device access",false),("guestSharingEnabled","Guest links",false)] {
         if let Some(value)=raw[key].as_bool() {
             fields.push(json!({"key":key,"label":label,"section":"integrations","kind":"bool","value":value,"resetValue":default}));
         }
@@ -193,7 +193,7 @@ pub fn patch(input:&Value,config:Option<&Value>)->Result<Value> {
         return Ok(json!({"patch":{key:text.trim()}}))
     }
     let valid=match key {
-        "enableAgentBrowserAccess"|"enableAgentDeviceAccess"=>value.is_boolean(),
+        "enableAgentBrowserAccess"|"enableAgentDeviceAccess"|"guestSharingEnabled"=>value.is_boolean(),
         "defaultRuntimeMode"=>value.as_str().is_some_and(crate::models::valid_runtime_mode),
         "defaultThreadEnvMode"=>value.is_null()||matches!(value.as_str(),Some("local"|"worktree")),
         _=>return crate::settings::patch(input),

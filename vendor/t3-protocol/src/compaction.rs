@@ -258,3 +258,33 @@ mod tests {
         assert!(consumed(&json!({"status":"uncertain"})));
     }
 }
+
+/// Server-started idle compactions are quiet maintenance, separate from manual `/compact`.
+pub fn idle_run(projection: &Value, id: &str) -> bool {
+    !id.is_empty() && rows(projection,"messages").any(|m| text(m,"runId")==id && matches!(text(m,"idleCompaction"),"beforeCacheExpires"|"onReturn"))
+}
+/// Replace an automatic compaction's prompt, response and tool log with one work row.
+/// Failures remain visible; unrelated human messages are never collapsed.
+pub fn timeline(projection: &Value, timeline: &mut Vec<Value>) {
+    let mut runs=std::collections::BTreeMap::new();
+    for message in rows(projection,"messages") {
+        if matches!(text(message,"idleCompaction"),"beforeCacheExpires"|"onReturn") && !text(message,"runId").is_empty() {
+            runs.insert(text(message,"runId"),message);
+        }
+    }
+    if runs.is_empty(){return}
+    let message_runs=rows(projection,"messages").map(|m|(text(m,"id"),text(m,"runId"))).collect::<std::collections::HashMap<_,_>>();
+    timeline.retain(|row| {
+        if row["role"]=="error" {return true}
+        let run=message_runs.get(text(row,"id")).copied().unwrap_or_else(||text(&row["activity"],"runId"));
+        !runs.contains_key(run)
+    });
+    for (run_id,message) in runs {
+        let run=rows(projection,"runs").find(|r|text(r,"id")==run_id);
+        let status=run.map(|r|text(r,"status")).unwrap_or("completed");
+        let active=matches!(status,"preparing"|"starting"|"running"|"waiting");
+        let activity=json!({"id":format!("compact/{run_id}"),"type":"compaction","category":"compact","runId":run_id,"status":status,"active":active,"failed":status=="failed","count":1,"entries":[]});
+        timeline.push(json!({"id":format!("compact/{run_id}"),"role":"activity","createdAt":crate::util::epoch(&message["createdAt"]),"text":"","activity":activity}));
+    }
+    timeline.sort_by_key(|row|crate::util::epoch(&row["createdAt"]));
+}

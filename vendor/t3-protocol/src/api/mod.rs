@@ -12,6 +12,7 @@ pub mod ids;
 pub(crate) mod reader;
 pub mod assets;
 pub mod orchestration;
+pub mod guest_share;
 pub mod preview;
 pub mod projects;
 pub mod review;
@@ -37,7 +38,7 @@ pub mod streams;
 pub use orchestration::{Command, ThreadLaunch};
 
 /// T3 checkout the registry was verified against (`tests/fixtures/t3-contract.json`).
-pub const CONTRACT: &str = "t3code@680152e27";
+pub const CONTRACT: &str = "t3code@3f9448747";
 /// Version of the `describe` document.
 pub const API_VERSION: u64 = 1;
 /// Deadline of `Connection::rpc`; functions with another deadline declare it.
@@ -180,16 +181,7 @@ impl Function {
     /// The validated wire payload for JSON `args`, without any network.
     /// Unknown members are `invalid_input`; a missing or malformed one is `invalid_<field>`.
     pub fn payload(&self, args: &Value) -> Result<Value> {
-        let map = args.as_object().ok_or("invalid_input")?;
-        if !self.open_args && map.keys().any(|k| !self.args.iter().any(|a| a.name == k)) {
-            return Err("invalid_input".into());
-        }
-        for arg in self.args.iter().filter(|a| a.required) {
-            if map.get(arg.name).is_none_or(Value::is_null) {
-                return Err(ids::invalid(arg.name));
-            }
-        }
-        (self.payload)(&Args { value: args, map })
+        (self.payload)(&Args::checked(args, self.args, self.open_args)?)
     }
     /// Validate, then send once with this function's deadline (or `timeout`).
     pub fn call(&self, conn: &Connection, args: &Value, timeout: Option<Duration>) -> Result<Value> {
@@ -273,6 +265,20 @@ pub struct Args<'a> {
     map: &'a Map<String, Value>,
 }
 impl<'a> Args<'a> {
+    /// `args` checked against the declared members: an object, without unknown
+    /// members unless `open`, and with every required one present and not null.
+    pub(crate) fn checked(args: &'a Value, declared: &[Arg], open: bool) -> Result<Args<'a>> {
+        let map = args.as_object().ok_or("invalid_input")?;
+        if !open && map.keys().any(|k| !declared.iter().any(|a| a.name == k)) {
+            return Err("invalid_input".into());
+        }
+        for arg in declared.iter().filter(|a| a.required) {
+            if map.get(arg.name).is_none_or(Value::is_null) {
+                return Err(ids::invalid(arg.name));
+            }
+        }
+        Ok(Args { value: args, map })
+    }
     /// The whole argument object (for functions with `open_args`).
     pub fn all(&self) -> &'a Value {
         self.value
@@ -314,6 +320,12 @@ impl<'a> Args<'a> {
     pub fn req_u64(&self, name: &str) -> Result<u64> {
         self.u64(name)?.ok_or_else(|| ids::invalid(name))
     }
+    /// An optional integer that may be negative (a timestamp in milliseconds).
+    pub fn i64(&self, name: &str) -> Result<Option<i64>> {
+        self.get(name)
+            .map(|v| v.as_i64().ok_or_else(|| ids::invalid(name)))
+            .transpose()
+    }
     /// An optional number (fractions allowed).
     pub fn f64(&self, name: &str) -> Result<Option<f64>> {
         self.get(name)
@@ -332,7 +344,7 @@ impl<'a> Args<'a> {
 
 const MODULES: &[&[Function]] = &[
     server::FUNCTIONS,
-    orchestration::FUNCTIONS,
+    orchestration::FUNCTIONS, guest_share::FUNCTIONS,
     preview::FUNCTIONS,
     assets::FUNCTIONS,
     vcs::FUNCTIONS,
@@ -366,7 +378,7 @@ pub fn function(name: &str) -> Option<&'static Function> {
 pub fn describe() -> Value {
     json!({"apiVersion":API_VERSION,"contract":CONTRACT,
         "functions":functions().map(Function::describe).collect::<Vec<_>>(),
-        "streams":streams::describe()})
+        "streams":streams::describe(),"domain":crate::domain::describe()})
 }
 /// `timeoutMs` of a call: 1..=300 000, else `invalid_rpc_timeout`.
 pub fn timeout(ms: Option<&Value>) -> Result<Option<Duration>> {

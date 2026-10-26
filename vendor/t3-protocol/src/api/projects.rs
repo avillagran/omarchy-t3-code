@@ -22,6 +22,10 @@ pub const ICON_COLORS: &[&str] = &[
     "violet", "purple", "fuchsia", "pink", "rose",
 ];
 
+pub const LIST_IGNORED_FILES: Function = api_fn! {
+ name: "projects.listIgnoredFiles", module: "projects", tag: Some("projects.listIgnoredFiles"),
+ kind: Read, scope: Fixed("filesystem:read"), args: [(cwd, Path, required)], payload: |a| Ok(json!({"cwd":a.req("cwd")?})),
+};
 pub const READ_FILE: Function = api_fn! {
     name: "projects.readFile", module: "projects", tag: Some("projects.readFile"),
     kind: Read, scope: Fixed("filesystem:read"),
@@ -48,7 +52,8 @@ pub const CREATE_NEW: Function = api_fn! {
     args: [(name, Text, required)],
     payload: |a| create_new_payload(a.req("name")?),
 };
-pub const FUNCTIONS: &[Function] = &[READ_FILE, SEARCH_ENTRIES, MUTATE, CREATE_NEW];
+pub const FUNCTIONS: &[Function] = &[
+    LIST_IGNORED_FILES,READ_FILE, SEARCH_ENTRIES, MUTATE, CREATE_NEW];
 
 /// `projects.readFile`: `{relativePath, contents, byteLength, truncated, exists?}`.
 /// `relative_path` is workspace-relative or an absolute host path.
@@ -287,4 +292,7 @@ pub fn create_new(conn: &Connection, name: &str) -> Result<Value> {
 }
 fn create_new_payload(name: &str) -> Result<Value> {
     Ok(json!({"name":ids::text("name", name, 200)?}))
+}
+pub fn list_ignored_files(conn: &Connection, cwd: &str) -> Result<Value> {
+    LIST_IGNORED_FILES.call(conn,&json!({"cwd":cwd}),None)
 }

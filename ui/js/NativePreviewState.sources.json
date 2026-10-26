@@ -1,7 +1,7 @@
 {
-  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
+  "commit": "3f9448747bb8848050dc2cacf83affa6f94a66a1",
   "files": {
-    "apps/web/src/previewStateStore.ts": "4c8619cd57321c6eca986e46d396bb986467895507b5ffe3c44d53fc0b0e1d9a",
+    "apps/web/src/previewStateStore.ts": "0ee70805c5cda97c351577ce3716d915da2013da8c27dbe0f7f5f9f561cbc3b8",
     "apps/web/src/components/preview/previewConstants.ts": "87ee86b5c8be79cc137f5125c50335f2f0385aaf37ef3165bfb18194721fda02"
   },
   "adaptations": [
@@ -10,5 +10,5 @@
     "Qt object spread/rest becomes own-key Object.assign copies; toSorted/at become copying sort/slice; Object.fromEntries becomes own-property entries construction",
     "React hooks, active-thread aggregate and timer-based whenPreviewTabKnown excluded; no transport or runtime-support claims"
   ],
-  "outputSha256": "160dc9c9f3b275028b47ec2d3cc9c9956b4a6a4effe525844f7632d80a428c5a"
+  "outputSha256": "935c9b369d3d35aef2762ca6f1c390672c2b0eaf2dbbc8334f7c6ddcb963fb01"
 }

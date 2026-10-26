@@ -12,7 +12,7 @@ pub fn path(thread: &str, cursor: &str) -> Result<String, String> {
     url.path_segments_mut()
         .unwrap()
         .extend(["api", "orchestration", "threads", thread, "history"]);
-    url.query_pairs_mut().append_pair("cursor", cursor);
+    url.query_pairs_mut().append_pair("cursor", cursor).append_pair("compactIds", "1");
     Ok(format!("{}?{}", url.path(), url.query().unwrap()))
 }
 /// Only presentation data is reconstructed. Historical rows never replace live
@@ -66,7 +66,7 @@ mod tests {
     fn native_page_preserves_refs_attachments_and_source_identity() {
         assert_eq!(
             path("chat", "opaque+/=?&").unwrap(),
-            "/api/orchestration/threads/chat/history?cursor=opaque%2B%2F%3D%3F%26"
+            "/api/orchestration/threads/chat/history?cursor=opaque%2B%2F%3D%3F%26&compactIds=1"
         );
         let row = json!({"sourceThreadId":"parent","sourceItemId":"one","item":{"id":"one","type":"user_message","messageId":"m","text":"hello","startedAt":"2026-01-01T00:00:00Z","attachments":[{"id":"img"}]}});
         let e = envelope(

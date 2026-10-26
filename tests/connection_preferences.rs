@@ -149,12 +149,22 @@ fn native_thread_delete_confirmation_defaults_and_explicit_false_are_read_only()
 }
 
 #[test]
-fn follow_up_behavior_reads_queue_by_default_and_writes_only_queue_or_steer(){
+fn follow_up_behavior_reads_steer_by_default_and_writes_only_queue_or_steer(){
  let dir=temp_dir();let path=dir.join("settings.json");let raw=b"{\"settings\":{\"fontSizeInterface\":14}}";fs::write(&path,raw).unwrap();
- assert_eq!(read_client_preferences_at(&path).unwrap()["followUpBehavior"],"queue");
+ assert_eq!(read_client_preferences_at(&path).unwrap()["followUpBehavior"],"steer");
  let rev=format!("{:x}",Sha256::digest(raw));
  assert_eq!(update_client_preferences_at(&path,&rev,&json!({"followUpBehavior":"restart"})).unwrap_err(),"invalid_client_preference");
  let view=update_client_preferences_at(&path,&rev,&json!({"followUpBehavior":"steer"})).unwrap();assert_eq!(view["followUpBehavior"],"steer");
- let saved:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(saved["settings"]["followUpBehavior"],"steer");assert_eq!(saved["settings"]["fontSizeInterface"],14);
+ let queued=update_client_preferences_at(&path,view["revision"].as_str().unwrap(),&json!({"followUpBehavior":"queue"})).unwrap();assert_eq!(queued["followUpBehavior"],"queue");
+ let saved:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(saved["settings"]["followUpBehavior"],"queue");assert_eq!(saved["settings"]["fontSizeInterface"],14);
  fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn timestamp_format_uses_native_settings_cas_and_preserves_siblings() {
+ let dir=temp_dir();let path=dir.join("settings.json");fs::write(&path,b"{\"settings\":{\"fontSizeInterface\":14}}").unwrap();
+ let before=read_client_preferences_at(&path).unwrap();assert_eq!(before["timestampFormat"],"locale");
+ let next=update_client_preferences_at(&path,before["revision"].as_str().unwrap(),&json!({"timestampFormat":"24-hour"})).unwrap();assert_eq!(next["timestampFormat"],"24-hour");
+ assert_eq!(update_client_preferences_at(&path,next["revision"].as_str().unwrap(),&json!({"timestampFormat":"13-hour"})).unwrap_err(),"invalid_client_preference");
+ let raw:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(raw["settings"]["fontSizeInterface"],14);fs::remove_dir_all(dir).unwrap();
 }

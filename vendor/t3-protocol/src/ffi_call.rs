@@ -1,4 +1,5 @@
-//! JSON ABI 3: `call` and `describe` over the typed API registry (`api`).
+//! JSON ABI 3: `call` and `describe` over the typed API registry (`api`), and
+//! `domain` over the pure functions (`domain`), which needs no connection.
 //! Stream functions go through `subscribe` with `fn` (`ffi_stream::target`).
 //! `ffi.rs` only dispatches here. Every check that needs no network (function
 //! name, `timeoutMs`, `args`) runs before a connection is even looked up.
@@ -23,21 +24,33 @@ pub(crate) fn call(request: &Value, connection: impl FnOnce() -> Result<Connecti
     let payload = function.payload(&args)?;
     api::send_with(&connection()?, function, payload, timeout.unwrap_or(function.timeout()))
 }
+/// `{"op":"domain","fn":"queue.derive","args":{"projection":{…}}}`: one pure
+/// function, offline. Same error envelope as `call`.
+pub(crate) fn domain(request: &Value) -> Result<Value> {
+    let name = request["fn"].as_str().filter(|s| !s.is_empty()).ok_or("invalid_input")?;
+    let function = crate::domain::function(name).ok_or("unknown_function")?;
+    match request.get("args") {
+        None | Some(Value::Null) => function.call(&json!({})),
+        Some(args) => function.call(args),
+    }
+}
 /// `{"op":"describe"}`: the registry, without a connection.
 pub(crate) fn describe() -> Value {
     api::describe()
 }
-/// Adds ABI 3 to the existing capabilities document; every earlier op stays listed.
+/// Adds ABI 3 (`call`, `describe`, `domain`) to the existing capabilities document;
+/// every earlier op stays listed.
 pub(crate) fn capabilities(mut base: Value) -> Value {
     base["abiVersion"] = json!(ABI_VERSION);
     if let Some(ops) = base["operations"].as_array_mut() {
-        for op in ["call", "describe"] {
+        for op in ["call", "describe", "domain"] {
             if !ops.iter().any(|o| o == op) {
                 ops.push(json!(op));
             }
         }
     }
     base["functions"] = json!(api::functions().count());
+    base["domainFunctions"] = json!(crate::domain::functions().count());
     base["apiVersion"] = json!(api::API_VERSION);
     base["contract"] = json!(api::CONTRACT);
     base
