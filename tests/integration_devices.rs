@@ -194,7 +194,7 @@ impl Server {
       },
       "device.list"=>{if payload.get("updateTool").is_some()||payload.get("retryHostId").is_some(){assert!(oo.load(Ordering::Relaxed));}dd.lock().unwrap().clone()},
       "device.testHost"=>{assert!(ww.load(Ordering::Relaxed));let mut h=summary();h["id"]=payload["id"].clone();h["kind"]=json!("ssh");h},
-      "server.updateSettings"=>{assert!(ww.load(Ordering::Relaxed));if cc.lock().unwrap()["fixtureDeny"]==true{ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":[{"_tag":"Fail","error":{"_tag":"EnvironmentAuthorizationError","message":"The authenticated token is missing required scope: settings:write.","requiredScope":"settings:write"}}]}}).to_string().into())).unwrap();return}let mut s=cc.lock().unwrap();s["deviceHosts"]=payload["patch"]["deviceHosts"].clone();s.clone()},
+      "server.updateSettings"=>{assert!(ww.load(Ordering::Relaxed));if cc.lock().unwrap()["fixtureDeny"]==true{ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":[{"_tag":"Fail","error":{"_tag":"EnvironmentAuthorizationError","message":"The authenticated token is missing required scope: settings:write.","requiredScope":"settings:write"}}]}}).to_string().into())).unwrap();return}let mut s=cc.lock().unwrap();for (key,value) in payload["patch"].as_object().unwrap(){s[key]=value.clone();}s.clone()},
       // Background subscriptions the worker opens on its own; this fixture does not model them.
       "orchestration.subscribeShell"|"subscribeServerConfig"=>return,
       method=>panic!("unexpected native method {method}")
@@ -630,4 +630,30 @@ fn enabled_state_with_null_optional_fields_is_accepted() {
     let mut host = raw["hosts"][0].clone();
     host["toolInspectionError"] = Value::Null;
     assert!(devices::present_host(&host).unwrap().get("toolInspectionError").is_none());
+}
+
+#[test]
+fn eas_wire_hosts_and_bounded_settings_keep_credentials_private() {
+ let mut native=state();let mut cloud=summary();cloud["kind"]=json!("eas");cloud["id"]=json!("eas1");native["easHosts"]=json!([cloud]);
+ native["hostStatuses"]=json!({"eas1":{"status":"ready","androidDiscoveryIncomplete":true}});
+ let view=devices::present_state(&native).unwrap();assert_eq!(view["hosts"].as_array().unwrap().len(),2);assert_eq!(view["hosts"][1]["kind"],"eas");assert_eq!(view["hostStatuses"]["eas1"]["androidDiscoveryIncomplete"],true);assert!(!view.to_string().contains("PRIVATE"));
+ let host=devices::eas_host(&json!({"id":"cloud","label":"Expo","accessToken":"PRIVATE","maxSessionMinutes":30,"idleMinutes":10,"maxConcurrentSessions":2})).unwrap();assert!(!host.to_string().contains("PRIVATE"));
+ assert!(devices::eas_host(&json!({"id":"cloud","label":"Expo","maxSessionMinutes":30,"idleMinutes":30})).is_err());
+ assert!(devices::eas_host(&json!({"id":"local","label":"Expo"})).is_err());
+}
+
+#[test]
+fn eas_host_edits_preserve_private_credentials_and_unrelated_hosts() {
+ let s=Server::new();
+ s.settings.lock().unwrap()["easDeviceHosts"]=json!([
+  {"id":"cloud","kind":"eas","label":"Cloud","accessToken":"PRIVATE_REFERENCE","maxSessionMinutes":30,"idleMinutes":10,"maxConcurrentSessions":2},
+  {"id":"other","kind":"eas","label":"Other","accessToken":"PRIVATE_OTHER","maxSessionMinutes":40,"idleMinutes":5,"maxConcurrentSessions":1}]);
+ let view=devices::read(&s.environment).unwrap();assert!(!view.to_string().contains("PRIVATE"));
+ let mut host=view["settings"]["easDeviceHosts"][0].clone();host["label"]=json!("Renamed");
+ let done=devices::apply(&s.environment,&json!({"viewId":view["viewId"],"action":"eas-upsert","host":host})).unwrap();
+ assert_eq!(done["state"],"complete","{done}");assert!(!done.to_string().contains("PRIVATE"));
+ let patch=s.mutations().last().unwrap()["payload"]["patch"].clone();
+ assert_eq!(patch["easDeviceHosts"][0]["accessToken"],"PRIVATE_REFERENCE");
+ assert_eq!(patch["easDeviceHosts"][1]["accessToken"],"PRIVATE_OTHER");
+ assert!(patch.get("deviceHosts").is_none());
 }

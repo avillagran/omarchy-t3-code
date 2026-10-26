@@ -438,6 +438,53 @@ Singleton {
     var backup=draft.queueEdit.backup
     patchDraft(selectedKey,Object.assign({},backup,{queueEdit:null,error:"",attempt:null,busy:false}));flushDraft(selectedKey)
   }
+  // Pending Nightly operations are keyed by scope; navigation never retargets a reply.
+  property var guestShares:({})
+  readonly property var guestShare:guestShares[selectedKey]||null
+  property var nightlyOperations:({})
+  function nightlyKey(action,environment,thread){return environment+"/"+(thread||"")+"/"+action}
+  function nightlyState(action,environment,thread){return nightlyOperations[nightlyKey(action,environment,thread)]||({})}
+  function requestNightly(action,args,environment,thread){
+    environment=environment||selectedEnvironment;thread=thread===undefined?selectedThread:thread
+    var key=nightlyKey(action,environment,thread),old=nightlyOperations[key]||({})
+    if(!environment||old.busy)return
+    if(old.error==="rpc_outcome_unknown"&&old.command&&JSON.stringify(old.command.args)!==JSON.stringify(args||{}))return
+    var command=old.error==="rpc_outcome_unknown"&&old.command&&action!=="guest-create"?old.command:{op:"nightly",action:action,environment:environment,thread:thread,args:args||{},requestId:uuid()}
+    if(action==="guest-create"&&old.error==="rpc_outcome_unknown")return
+    if(action==="older-settled"){var info=(state.environments||[]).find(function(e){return e.id===environment});command.cut=info&&info.olderSettled?info.olderSettled.before:"";command.shellGeneration=info?info.shellGeneration:0}
+    var all=Object.assign({},nightlyOperations);all[key]={busy:true,command:command,requestId:command.requestId,data:old.data};nightlyOperations=all;send(command)
+  }
+  readonly property bool shellThreadFamilies:catalog.shellThreadFamilies===true||(state.environments||[]).some(function(e){return e.id===root.selectedEnvironment&&e.shellThreadFamilies===true})
+  property var familyEpochs:({})
+  function ensureThreadFamily(){
+    if(!selectedThread||!shellThreadFamilies)return
+    var info=(state.environments||[]).find(function(e){return e.id===root.selectedEnvironment}),epoch=info?info.shellGeneration:0
+    if(familyEpochs[selectedKey]===epoch||nightlyState("family",selectedEnvironment,selectedThread).busy)return
+    var epochs=Object.assign({},familyEpochs);epochs[selectedKey]=epoch;familyEpochs=epochs
+    requestNightly("family",{},selectedEnvironment,selectedThread)
+  }
+  property var olderPages:({})
+  function loadOlderSettled(environment){
+    var info=(state.environments||[]).find(function(e){return e.id===environment}),meta=info&&info.olderSettled,page=olderPages[environment]||({})
+    if(meta&&(page.cut!==meta.before||page.generation!==info.shellGeneration))page={};
+    if(!meta||!meta.before||nightlyState("older-settled",environment,"").busy)return
+    if(page.done){requestNightly("older-counts",{before:{settledAt:meta.before},limit:0},environment,"");return}
+    requestNightly("older-settled",{before:page.before||{settledAt:meta.before},limit:50},environment,"")
+  }
+  function handleNightly(data){
+    var key=Object.keys(nightlyOperations).find(function(k){return root.nightlyOperations[k].requestId===data.requestId});if(!key)return
+    var old=nightlyOperations[key],command=old.command,all=Object.assign({},nightlyOperations)
+    all[key]={busy:false,error:data.error||"",requestId:data.requestId,command:command,data:data.error?old.data:data.result};nightlyOperations=all
+    if(data.error){if(command.action==="family"){var epochs=Object.assign({},familyEpochs);delete epochs[data.environment+"/"+data.thread];familyEpochs=epochs}return}
+    if(command.action==="older-settled"){
+      var rows=data.result.threads||[],last=rows[rows.length-1],pages=Object.assign({},olderPages)
+      pages[data.environment]={generation:command.shellGeneration,cut:command.cut,before:last?{settledAt:last.settledAt,threadId:last.id}:command.args.before,done:rows.length<50};olderPages=pages;refresh();if(rows.length<50)requestNightly("older-counts",{before:{settledAt:command.cut},limit:0},data.environment,"")
+    }
+    if(command.action==="family"||command.action==="older-counts")refresh()
+    if(command.action==="guest-create"&&data.result.share){var shares=Object.assign({},guestShares);shares[data.environment+"/"+data.thread]=data.result.share;guestShares=shares}
+    if(command.action==="guest-close"){var closed=Object.assign({},guestShares);closed[data.environment+"/"+data.thread]=null;guestShares=closed;var cleared=Object.assign({},nightlyOperations);delete cleared[nightlyKey("guest-create",data.environment,data.thread)];nightlyOperations=cleared}
+    if(/^guest-/.test(command.action)||command.action==="limit-recovery"){refresh();if(selectedKey===data.environment+"/"+data.thread)fetchMessages()}
+  }
   property var compactionStates: ({})
   function configureCompaction(patch){rememberView(patch);persistViewNow();refresh()}
   // T3 server updates (server_update.rs): per environment {current,channel,latest,canUpdate,reason,state,error}.
@@ -467,7 +514,14 @@ Singleton {
   // Capture sidebar order before Settle changes grouping. A selection epoch also
   // prevents an away-and-back navigation during the RPC from being overridden.
   property int selectionEpoch:0
-  onSelectedKeyChanged:selectionEpoch++
+  onSelectedKeyChanged:{selectionEpoch++;ensureThreadFamily()}
+  property var threadUndoNotice:null
+  function releaseThreadUndoShortcut(){if(threadUndoNotice&&threadUndoNotice.shortcut)threadUndoNotice=Object.assign({},threadUndoNotice,{shortcut:false})}
+  function undoThreadAction(){
+    var notice=threadUndoNotice;if(!notice||Date.now()>notice.expiresAt||managementBusy||managementRequest)return false
+    threadUndoNotice=null;manage({action:notice.action,environment:notice.environment,thread:notice.thread});return true
+  }
+  Timer{interval:500;repeat:true;running:!!root.threadUndoNotice;onTriggered:if(root.threadUndoNotice&&Date.now()>root.threadUndoNotice.expiresAt)root.threadUndoNotice=null}
   property var settleNavigation:null
   property var settleNavigationOrder:[]
   signal settleNavigationPlanning()
@@ -737,6 +791,7 @@ Singleton {
     draftUndo=all
   }
   function undoDraft(redo){
+    if(!redo&&threadUndoNotice&&threadUndoNotice.shortcut&&undoThreadAction())return true
     if(draft.loading||draft.loadError||draft.busy||draft.attempt||draft.attachments.some(function(f){return f.uploading}))return false
     var h=draftUndo[selectedKey];if(!h)return false;var from=(redo?h.future:h.past).slice();if(!from.length)return false
     var restored=from.pop(),current=editSnapshot(selectedKey,draft),all=Object.assign({},draftUndo)
@@ -755,7 +810,7 @@ Singleton {
       var updated=Object.assign({},drafts);updated[key]=Object.assign({},updated[key],{saveState:"saving",saveRevision:""});drafts=updated
     }
   }
-  function edit(value,typing) { if (selectedKey && !draft.busy && !draft.attempt) patchDraft(selectedKey, {text: value, error: ""},typing?"typing":"edit") }
+  function edit(value,typing) { releaseThreadUndoShortcut();if (selectedKey && !draft.busy && !draft.attempt) patchDraft(selectedKey, {text: value, error: ""},typing?"typing":"edit") }
   function chooseModel(index) {
     var m = catalog.models[index]; if (!m) return
     patchDraft(selectedKey, {modelSelection: {instanceId: m.instanceId, model: m.model, options: []}})
@@ -984,7 +1039,7 @@ Singleton {
   // T3 followUpBehavior (client settings): a message sent during a run is queued
   // or steers the run; the alternate (Ctrl) does the other. Pending approvals
   // shown here make it steer, as in T3.
-  readonly property string followUpBehavior:(clientSettings.data || {}).followUpBehavior==="steer"?"steer":"queue"
+  readonly property string followUpBehavior:(clientSettings.data || {}).followUpBehavior==="queue"?"queue":"steer"
   function dispatchMode(alternate){
     if(!selectedInfo.activeRunId)return "auto"
     var preferred=approvals.length>0?"steer":followUpBehavior
@@ -1072,6 +1127,7 @@ Singleton {
   function imageKey(a){return selectedEnvironment+"/"+(a.source?selectedThread+"/":"")+a.id}
   // T3 videoMimeType: video/* or a generic type with a video extension.
   function videoMime(a){var m=String((a||{}).mimeType||"").split(";")[0].trim().toLowerCase();if(m.indexOf("video/")===0)return m;if(m&&m!=="application/octet-stream"&&m!=="binary/octet-stream")return "";var n=String((a||{}).name||""),ext=n.slice(n.lastIndexOf(".")+1).toLowerCase();return ({mp4:"video/mp4",m4v:"video/mp4",webm:"video/webm",mov:"video/quicktime",mkv:"video/x-matroska",ogv:"video/ogg",avi:"video/x-msvideo"})[ext]||""}
+  function isAudio(a){var m=String((a||{}).mimeType||"").split(";")[0].trim().toLowerCase();return !!a&&a.type==="file"&&(/^audio\//.test(m)||(["","application/octet-stream","binary/octet-stream"].indexOf(m)>=0&&/\.(mp3|m4a|wav|ogg|oga|opus|flac|aac)$/i.test(a.name||"")))}
   function isVideo(a){return !!a&&a.type==="file"&&!!videoMime(a)}
   property var videoStates:({})
   function videoKey(a){return selectedEnvironment+"/"+a.id}
@@ -1582,7 +1638,7 @@ Singleton {
     if(data.op==="scheduled-tasks"){if(data.requestId!==scheduledTasks.requestId)return;scheduledTasks=Object.assign({},scheduledTasks,{busy:false,error:data.error||"",tasks:data.error?scheduledTasks.tasks:(data.result.tasks||[])});return}
     if(data.op==="usage-summary"){if(data.requestId!==usage.requestId)return;usage=Object.assign({},usage,{busy:false,error:data.error||"",data:data.error?usage.data:data.result});return}
     if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
-    if(data.op==="thread-search"){if(data.requestId&&data.requestId===sidebarSearch.requestId){sidebarSearch=Object.assign({},sidebarSearch,{matches:data.error?[]:((data.result||{}).matches||[])});return}if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
+    if(data.op==="thread-search"){if(!data.error)refresh();if(data.requestId&&data.requestId===sidebarSearch.requestId){sidebarSearch=Object.assign({},sidebarSearch,{matches:data.error?[]:((data.result||{}).matches||[])});return}if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
     if(data.op==="branch-check"||data.op==="branch-resolve"){if(data.requestId!==branchMismatch.requestId)return;var m=data.error?null:(data.result||{}).mismatch||null;var same=!!m&&!!branchMismatch.value&&m.currentBranch===branchMismatch.value.currentBranch&&m.threadBranch===branchMismatch.value.threadBranch;branchMismatch=Object.assign({},branchMismatch,{busy:false,error:data.error||"",value:m,dismissed:same&&!!branchMismatch.dismissed});if(data.op==="branch-resolve")refresh();return}
     if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}
     if(data.op==="branch-switch"){if(data.requestId!==branchRefs.switchRequestId)return;branchRefs=Object.assign({},branchRefs,{switching:false,pendingBranch:data.error?"":(data.result.branch||""),error:data.error||""});if(data.error)branchSwitchFailed(data.error);refresh();branchCheckDelay.restart();return}
@@ -1776,6 +1832,7 @@ Singleton {
     if(data.op==="copy"){copyFinished(data.requestId,data.error || "");return}
     if(data.op==="document-open"){if(inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{busy:false,error:data.error || "",data:data.result || null});return}if(data.requestId===documentOpen.requestId){if(data.error==="opened_externally"){documentOpen={busy:false,error:"",requestId:"",data:null,frameUrl:"",frameRevision:0};documentOpenedExternally();return}documentOpen=Object.assign({},documentOpen,{busy:false,error:({file_not_found:"File not found.",binary_file:"This file is binary and can't be previewed."})[data.error] || data.error || "",requestId:data.requestId,data:data.result || null})}return}
     if(data.op==="backend-start"||data.op==="backend-control"){backendStart={busy:false,error:data.error || "",status:data.result?data.result.status:""};if(data.result&&data.result.local)acceptBackendStatus(data.result.local);if(!data.error&&data.result&&data.result.status!=="stopped")recoverLocalBackend();refreshBackendStatus();refresh();return}
+    if(data.op==="nightly"){handleNightly(data);return}
     if(data.op==="pull-requests"){var name=Object.keys(prOperations).find(function(k){return root.prOperations[k].requestId===data.requestId});if(!name)return;var all=Object.assign({},prOperations);all[name]={busy:false,requestId:data.requestId,error:data.error || "",data:data.result};prOperations=all;return}
     if(data.op==="question"){
       var key=Object.keys(questionOperations).find(function(k){return root.questionOperations[k].requestId===data.requestId})
@@ -1852,7 +1909,7 @@ Singleton {
         if(data.result.action==="project-remove" && selectedInfo.projectKey===data.environment+"/"+data.result.projectId){var next=state.threads.find(function(t){return t.projectKey!==root.selectedInfo.projectKey});if(next)selectThread(next.environmentId,next.id);else clearSelection()}
         if(["archive","delete-thread"].indexOf(data.result.action)>=0&&data.result.threadId)forgetDictationRecordings(data.environment+"/"+data.result.threadId)
         if(["archive","delete-thread"].indexOf(data.result.action)>=0 && selectedKey===data.environment+"/"+data.result.threadId){var nextThread=state.threads.find(function(t){return t.key!==root.selectedKey});if(nextThread)selectThread(nextThread.environmentId,nextThread.id);else clearSelection()}
-        if(data.result.action==="settle")finishSettleNavigation(parked)
+        if(data.result.action==="settle"){threadUndoNotice={environment:data.environment,thread:creation.thread,action:"unsettle",expiresAt:Date.now()+5000,shortcut:true};finishSettleNavigation(parked)}
         refresh(); if(data.result.action==="fork"||data.result.action==="merge-back")selectThread(data.environment,data.result.threadId)
         if (data.result.action === "new-thread"&&creation.planFollowUp!==true&&(!moving||selectedKey===sourceKey)) selectThread(data.environment,data.result.threadId)
       }
@@ -1866,7 +1923,11 @@ Singleton {
       var edit=drafts[key]
       if(edit && edit.attempt && edit.attempt.op==="queue" && edit.attempt.requestId===data.requestId){
         if(data.error)patchDraft(key,{busy:false,error:data.error,attempt:data.error==="rpc_outcome_unknown"?edit.attempt:null})
-        else {patchDraft(key,Object.assign({},edit.queueEdit.backup,{queueEdit:null,attempt:null,busy:false,error:""}));flushDraft(key);refresh()}
+        else {
+          // A late save acknowledges its submitted revision, preserving newer edits.
+          var unchanged=edit.text===edit.attempt.text&&JSON.stringify((edit.attachments||[]).map(function(f){return f.attachment}))===JSON.stringify(edit.attempt.attachments)
+          patchDraft(key,unchanged?Object.assign({},edit.queueEdit.backup,{queueEdit:null,attempt:null,busy:false,error:""}):{attempt:null,busy:false,error:""});flushDraft(key);refresh()
+        }
         return
       }
       var operation=queueOperations[key];if(!operation || !operation.command || operation.command.requestId!==data.requestId)return
@@ -1876,7 +1937,7 @@ Singleton {
 
     if (data.op === "catalog") {
       var loading=Object.assign({},catalogLoading);delete loading[data.environment];catalogLoading=loading
-      var all = Object.assign({}, catalogs); all[data.environment] = data.result || Object.assign({},all[data.environment] || {models:[],providers:[],favorites:[]},{favoritesReady:false,error:data.error}); catalogs = all;finishProjectOpen(); return
+      var all = Object.assign({}, catalogs); all[data.environment] = data.result || Object.assign({},all[data.environment] || {models:[],providers:[],favorites:[]},{favoritesReady:false,error:data.error}); catalogs = all;if(data.environment===selectedEnvironment)ensureThreadFamily();finishProjectOpen(); return
     }
     var d = drafts[key]; if (!d) return
     if (data.op === "upload") {
@@ -1917,11 +1978,17 @@ Singleton {
     else if (selectedThread) fetchMessages()
   }
   function activityLabel(){return activity.length?activity.map(function(a){return root.activityText(a)}).join(" · "):T3I18n.tr("Thinking")}
+  function formatTimestamp(value){
+    var d=new Date(value);if(!isFinite(d.getTime()))return ""
+    var format=(clientSettings.data||{}).timestampFormat||"locale"
+    if(format==="locale")return d.toLocaleString(Qt.locale(),Locale.ShortFormat)
+    return d.toLocaleDateString(Qt.locale(),Locale.ShortFormat)+" "+d.toLocaleTimeString(Qt.locale(),format==="12-hour"?"h:mm AP":"HH:mm")
+  }
   function activityText(a){
     var category=a.category || ({reasoning:"think",command_execution:"execute",file_change:"edit",file_search:"search",web_search:"web",subagent:"agent"})[a.type] || "tool";var live=a.active!==false
     var labels={compact:live?"Compacting context":"Context compacted",think:"Thinking",execute:live?"Running commands":"Ran commands",read:live?"Reading files":"Read files",edit:live?"Editing files":"Edited files",search:live?"Searching files":"File search",web:live?"Searching the web":"Web search",agent:"Delegated work",tool:live?"Calling tool":"Tool"}
     var failedEntries=(a.entries || []).filter(function(e){return e.failed}).length
-    if(a.failed&&!live&&!(a.count>1)){var failedLabels={execute:"Command failed",read:"Read failed",edit:"Edit failed",search:"Search failed",web:"Web search failed",agent:"Delegated work failed",tool:"Tool failed"}
+    if(a.failed&&!live&&!(a.count>1)){var failedLabels={execute:"Command failed",read:"Read failed",edit:"Edit failed",search:"Search failed",web:"Web search failed",agent:"Delegated work failed",tool:"Tool failed",compact:"Compaction failed"}
       var what=a.command || a.title;var head=T3I18n.tr(failedLabels[category] || "Tool failed");return what?T3I18n.tr("{activity} · {title}",{activity:head,title:what}):head}
     if(a.command && (live || !(a.count>1)))return T3I18n.tr(live?"Running {command}":"Ran {command}",{command:a.command})
     var label=T3I18n.tr(labels[category]);if(a.title)label=T3I18n.tr("{activity} · {title}",{activity:label,title:a.title});else if(live)label+="…"
@@ -2065,11 +2132,12 @@ Singleton {
       else if (event.type === "snapshot") { snapshotAboutToChange(); state = data; stale = data.stale; error = "";ensureSidebarCatalogs()
         if(data.clientPreferences&&!clientSettings.busy)clientSettings=Object.assign({},clientSettings,{data:data.clientPreferences,error:""})
         var current = state.threads.find(function(t) { return t.key === root.selectedKey })
-        if (current) { selectedTitle = current.title; selectedProject = current.project }
+        if (current) { selectedTitle = current.title; selectedProject = current.project }ensureThreadFamily()
         finishLocalRecovery();snapshotUpdated() }
       else if (event.type === "quotas") { quotaSnapshot=data;presentQuotas();quotaError = "" }
       else if (event.type === "messages" && data.serial === requestedSerial && panelVisible) {
         loadingMessages = false; messageError = data.result.error || ""
+        if(data.result.threadState){var shares=Object.assign({},guestShares);shares[selectedKey]=data.result.threadState.guestShare||null;guestShares=shares}
         if(data.result.threadState){var subs=data.result.threadState.subagents||[];if(JSON.stringify(subs)!==JSON.stringify(threadSubagents))threadSubagents=subs}
         if(data.result.threadState){var ts=data.result.threadState;if(ts.mergeBackTargetThreadId!==selectedWorkflow.target||ts.mergeBackRunId!==selectedWorkflow.runId||selectedWorkflow.key!==selectedKey)selectedWorkflow={key:selectedKey,target:ts.mergeBackTargetThreadId||"",runId:ts.mergeBackRunId||""};var cw=ts.contextWindow||null;if(JSON.stringify(cw)!==JSON.stringify(contextWindow))contextWindow=cw}
         if(data.result.threadState){var currentKey=selectedKey,current=state.threads.find(function(t){return t.key===currentKey}),delta=Object.assign({},data.result.threadState);delete delta.contextWindow;delete delta.subagents;if(current && Object.keys(delta).some(function(k){return current[k]!==delta[k]})){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===currentKey?Object.assign({},t,delta):t})});snapshotUpdated()}}

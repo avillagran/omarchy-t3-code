@@ -35,6 +35,7 @@ pub mod git_controls;
 pub mod branch_picker;
 pub use t3_protocol::latex;
 pub mod thread_search;
+pub mod nightly;
 pub mod pull_request_actions;
 pub mod usage_summary;
 pub mod scheduled_tasks;
@@ -450,6 +451,9 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
         for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
         thread_state["contextWindow"]=context_window(p);
+        thread_state["guestShare"]=p["thread"]["guestShare"].clone();
+        thread_state["limitRecovery"]=p["thread"]["limitRecovery"].clone();
+        thread_state["snoozedUntil"]=p["thread"]["snoozedUntil"].clone();
         // This thread's subagents, newest first: the composer bar shows the live
         // ones, the conversation cards and the Agents panel all of them.
         thread_state["subagents"]=json!(p["subagents"].as_array().into_iter().flatten().rev().take(48).map(subagent_summary).collect::<Vec<_>>());
@@ -523,7 +527,7 @@ pub fn is_settled(t: &Value) -> bool {
         || (t["settledOverride"] != "active" && truth(&t["settledAt"]))
 }
 /// Summaries of real in-flight turn items; never expose tool inputs or reasoning bodies.
-pub fn active_run_id(p:&Value)->&str {p["runs"].as_array().into_iter().flatten().rev().find(|r|matches!(text(r,"status"),"preparing"|"starting"|"running"|"waiting")).map(|r|text(r,"id")).unwrap_or_else(||if p["runs"].as_array().is_some_and(|r|!r.is_empty()){""}else{text(&p["thread"],"activeRunId")} )}
+pub fn active_run_id(p:&Value)->&str {p["runs"].as_array().into_iter().flatten().rev().find(|r|matches!(text(r,"status"),"preparing"|"starting"|"running"|"waiting")&&!protocol::compaction::idle_run(p,text(r,"id"))).map(|r|text(r,"id")).unwrap_or_else(||if p["runs"].as_array().is_some_and(|r|!r.is_empty()){""}else{text(&p["thread"],"activeRunId")} )}
 fn inspectable_activity(row:&Value)->Option<Value>{
     let mut activity=protocol::activity::describe(row)?;
     if let Ok(reference)=tool_inspector::compact_reference(row){activity["inspector"]=reference;}
@@ -611,6 +615,7 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
    }
   }grouped.push(row)
  }
+ protocol::compaction::timeline(projection,&mut grouped);
  // A content fingerprint per row lets the panel skip unchanged rows on each
  // streamed update without serialising the whole transcript on the UI thread.
  for row in grouped.iter_mut(){row["rev"]=json!(revision(row))}
@@ -652,7 +657,7 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         let blocked_on_wait = t["blockedOnThreadWait"] == true;
         let working = run_active && !blocked_on_wait;
         let background = status != "failed"
-            && t["pendingBackgroundTasks"].as_array().is_some_and(|tasks| tasks.iter().any(|task| task["kind"] != "command"));
+            && t["pendingBackgroundTasks"].as_array().is_some_and(|tasks| tasks.iter().any(|task| task["awaited"] == true || matches!(task["kind"].as_str(),Some("subagent"|"background_task")|None)));
         // An async question (blocking:false) does not stop a working run.
         let request = !t["pendingRuntimeRequest"].is_null()
             && !(t["pendingRuntimeRequest"]["blocking"] == false && run_active);
@@ -761,10 +766,12 @@ pub fn snapshot(client: &Client) -> Result<Value> {
         // A live shell stream already holds this environment's shell; HTTP is the fallback.
         let shell = match shell_state::live(&e.id) {
             Some(d) => Ok(d),
-            None => client.get(&e, "/api/orchestration/shell", true),
+            None => nightly::shell(client,&e),
         };
-        match shell
+        let mut older=Value::Null;
+        match shell.map(|d|shell_state::enriched(&e.id,d))
             .and_then(|d| {
+                older=d["olderSettled"].clone();
                 for p in d["projects"].as_array().into_iter().flatten() {
                     projects.push(json!({"id":p["id"],"environmentId":e.id,"key":format!("{}/{}",e.id,text(p,"id")),"title":p["title"],"workspaceRoot":p["workspaceRoot"],"repositoryIdentity":p["repositoryIdentity"],"faviconPath":p["faviconPath"],"projectIcon":p["projectIcon"],"defaultThreadEnvMode":p["defaultThreadEnvMode"],"autoPull":p["autoPull"],"isScratch":p["isScratch"],"defaultModelSelection":p["defaultModelSelection"]}));
                 }
@@ -797,7 +804,7 @@ pub fn snapshot(client: &Client) -> Result<Value> {
                         item["provider"] = t["providerInstanceId"].clone();
                         item["branch"] = t["branch"].clone();
                         item["model"] = t["modelSelection"]["model"].clone();
-                        for field in ["modelSelection", "runtimeMode", "interactionMode", "activeRunId","worktreePath","pinnedAt","pinOrderKey","activeOrderKey","autoSettleDisabledAt","titleRegeneration"] { item[field] = t[field].clone(); }
+                        for field in ["modelSelection", "runtimeMode", "interactionMode", "activeRunId","worktreePath","pinnedAt","pinOrderKey","activeOrderKey","limitRecovery","latestRunId","autoSettleDisabledAt","titleRegeneration"] { item[field] = t[field].clone(); }
                         let monogram = project_identity(text(item, "project"));
                         item["projectMonogram"] = json!(monogram);
                     }
@@ -806,7 +813,7 @@ pub fn snapshot(client: &Client) -> Result<Value> {
             }) {
             Ok(mut items) => {
                 threads.append(&mut items);
-                states.push(json!({"id":e.id,"name":e.name,"state":"ready"}));
+                states.push(json!({"id":e.id,"name":e.name,"state":"ready","olderSettled":older,"shellGeneration":shell_state::generation(&e.id),"shellThreadFamilies":server_capabilities::cached(&e.id).shell_thread_families}));
             }
             Err(err) => {
                 if ["unreachable","unauthorized"].contains(&err.as_str()) { connections::connection_failed(&e.id); }

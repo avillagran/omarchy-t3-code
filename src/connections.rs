@@ -119,6 +119,15 @@ fn ssh_args(target:&Value)->Result<Vec<String>> {
     let destination=if text(target,"alias").trim().is_empty(){text(target,"hostname")}else{text(target,"alias")}.trim();
     if destination.is_empty() || destination.len()>255 || !destination.bytes().all(|b|b.is_ascii_alphanumeric()||b".@_-:[]".contains(&b)) || destination.starts_with('-'){return Err("invalid_t3_ssh_profile".into())}
     let mut args=vec!["-o".into(),"BatchMode=yes".into(),"-o".into(),"ConnectTimeout=5".into()];
+    // A private OpenSSH master keeps an explicitly authenticated session reusable.
+    use std::os::unix::fs::{DirBuilderExt,MetadataExt};
+    let runtime=std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap_or_else(||PathBuf::from(format!("/run/user/{}",unsafe{libc::geteuid()})));
+    let control=runtime.join("ot3-ssh");
+    match fs::DirBuilder::new().mode(0o700).create(&control){Ok(())=>{},Err(error) if error.kind()==std::io::ErrorKind::AlreadyExists=>{},Err(_)=>return Err("ssh_runtime_unavailable".into())}
+    let metadata=fs::symlink_metadata(&control).map_err(|_|"ssh_runtime_unavailable")?;
+    if !metadata.is_dir()||metadata.uid()!=unsafe{libc::geteuid()}||metadata.mode()&0o077!=0{return Err("ssh_runtime_unavailable".into())}
+    let path=control.join("%C");if path.as_os_str().len()+38>100{return Err("ssh_runtime_unavailable".into())}
+    args.extend(["-o".into(),"ControlMaster=auto".into(),"-o".into(),"ControlPersist=600".into(),"-o".into(),format!("ControlPath={}",path.display())]);
     if let Some(port)=target["port"].as_u64(){if port==0||port>65535{return Err("invalid_t3_ssh_profile".into())}args.extend(["-p".into(),port.to_string()]);}
     if let Some(user)=target["username"].as_str(){if user.is_empty()||!user.bytes().all(|b|b.is_ascii_alphanumeric()||b"._-".contains(&b)){return Err("invalid_t3_ssh_profile".into())}args.extend(["-l".into(),user.into()]);}
     args.extend(["--".into(),destination.into()]);Ok(args)

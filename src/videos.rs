@@ -8,14 +8,14 @@ const LIMIT:u64=50*1024*1024;
 /// T3 videoMimeType: a video/* type, or a generic type with a known extension.
 pub fn mime(name:&str,mime:&str)->Option<&'static str>{
  let m=mime.split(';').next().unwrap_or("").trim().to_ascii_lowercase();
- let by_ext=|| name.rsplit_once('.').and_then(|(_,e)|match e.to_ascii_lowercase().as_str(){"mp4"|"m4v"=>Some("video/mp4"),"webm"=>Some("video/webm"),"mov"=>Some("video/quicktime"),"mkv"=>Some("video/x-matroska"),"ogv"=>Some("video/ogg"),"avi"=>Some("video/x-msvideo"),_=>None});
- match m.as_str(){"video/mp4"=>Some("video/mp4"),"video/webm"=>Some("video/webm"),"video/quicktime"=>Some("video/quicktime"),"video/x-matroska"=>Some("video/x-matroska"),"video/ogg"=>Some("video/ogg"),"video/x-msvideo"=>Some("video/x-msvideo"),""|"application/octet-stream"|"binary/octet-stream"=>by_ext(),_ if m.starts_with("video/")=>None,_=>None}
+ let by_ext=|| name.rsplit_once('.').and_then(|(_,e)|match e.to_ascii_lowercase().as_str(){"mp4"|"m4v"=>Some("video/mp4"),"webm"=>Some("video/webm"),"mov"=>Some("video/quicktime"),"mkv"=>Some("video/x-matroska"),"ogv"=>Some("video/ogg"),"avi"=>Some("video/x-msvideo"),"mp3"=>Some("audio/mpeg"),"m4a"=>Some("audio/mp4"),"wav"=>Some("audio/wav"),"ogg"|"oga"|"opus"=>Some("audio/ogg"),"flac"=>Some("audio/flac"),"aac"=>Some("audio/aac"),_=>None});
+ match m.as_str(){"audio/mpeg"=>Some("audio/mpeg"),"audio/mp4"|"audio/x-m4a"=>Some("audio/mp4"),"audio/wav"|"audio/x-wav"=>Some("audio/wav"),"audio/ogg"=>Some("audio/ogg"),"audio/webm"=>Some("audio/webm"),"audio/flac"=>Some("audio/flac"),"audio/aac"=>Some("audio/aac"),"video/mp4"=>Some("video/mp4"),"video/webm"=>Some("video/webm"),"video/quicktime"=>Some("video/quicktime"),"video/x-matroska"=>Some("video/x-matroska"),"video/ogg"=>Some("video/ogg"),"video/x-msvideo"=>Some("video/x-msvideo"),""|"application/octet-stream"|"binary/octet-stream"=>by_ext(),_ if m.starts_with("video/")=>None,_=>None}
 }
 pub fn load(input:&Value)->Result<Value>{
  let a=&input["attachment"];let env=text(input,"environment");let id=text(a,"id");let name=text(a,"name");
  if !valid_id(env)||!valid_id(id){return Err("invalid_video".into())}
  let kind=mime(name,text(a,"mimeType")).ok_or("invalid_video")?;
- let ext=match kind{"video/mp4"=>"mp4","video/webm"=>"webm","video/quicktime"=>"mov","video/x-matroska"=>"mkv","video/ogg"=>"ogv",_=>"avi"};
+ let ext=match kind{"audio/mpeg"=>"mp3","audio/mp4"=>"m4a","audio/wav"=>"wav","audio/ogg"=>"ogg","audio/webm"=>"webm","audio/flac"=>"flac","audio/aac"=>"aac","video/mp4"=>"mp4","video/webm"=>"webm","video/quicktime"=>"mov","video/x-matroska"=>"mkv","video/ogg"=>"ogv",_=>"avi"};
  let root=xdg("XDG_CACHE_HOME",".cache").join("videos");std::fs::create_dir_all(&root).map_err(|_|"video_cache_failed")?;std::fs::set_permissions(&root,std::fs::Permissions::from_mode(0o700)).map_err(|_|"video_cache_failed")?;
  let file=root.join(format!("{:x}.{ext}",Sha256::digest(format!("{env}/{id}").as_bytes())));
  let cached=std::fs::symlink_metadata(&file).is_ok_and(|m|m.is_file()&&m.uid()==unsafe{libc::geteuid()}&&m.mode()&0o077==0&&m.len()>0&&m.len()<=LIMIT);

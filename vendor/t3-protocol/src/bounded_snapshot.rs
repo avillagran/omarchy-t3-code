@@ -21,13 +21,14 @@ pub fn path(thread_id: &str) -> Result<String> {
         .map_err(|_| "invalid_endpoint")?
         .pop_if_empty()
         .extend(["api", "orchestration", "threads", thread_id, "bounded"]);
-    u.query_pairs_mut().append_pair("compactTurnItems", "1");
+    u.query_pairs_mut().append_pair("compactTurnItems", "1").append_pair("dedupeBodies", "1").append_pair("compactIds", "1");
     Ok(format!("{}?{}", u.path(), u.query().unwrap_or("")))
 }
 /// Puts the omitted local items back in front of `turnItems`. A snapshot without
 /// `turnItemsOmitLocalVisible` is returned unchanged; one with any other value
 /// than `true`, or without a thread ID or rows, is `invalid_compact_snapshot`.
 pub fn restore(mut snapshot: Value) -> Result<Value> {
+    crate::wire::restore_snapshot(&mut snapshot)?;
     match snapshot.get("turnItemsOmitLocalVisible") {
         None => return Ok(snapshot),
         Some(Value::Bool(true)) => {}

@@ -1,5 +1,5 @@
 .pragma library
-// Generated from pinned T3 Code fb990765a49414a5bfbdc73365455fc8b5fbe691. MIT, see licenses/T3-Code-MIT.txt.
+// Generated from pinned T3 Code 3f9448747bb8848050dc2cacf83affa6f94a66a1. MIT, see licenses/T3-Code-MIT.txt.
 // Regenerate: node tools/build-keybindings.cjs <native-checkout>
 var nativeKeys=(function(){
 "use strict";
@@ -8,7 +8,6 @@ const scriptIdLimit=24;
 const SCRIPT_RUN_COMMAND_PATTERN={parts:[{literal:"script."},null,{literal:".run"}]};
 function isScriptRunCommand(command){const id=command.slice(7,-4);return command.startsWith("script.")&&command.endsWith(".run")&&id.length>0&&id.length<=scriptIdLimit&&/^[a-z0-9][a-z0-9-]*$/.test(id); }
 function flattenNativeGroups(groups,mapper){return [].concat.apply([],groups.map(mapper));}
-const MAX_KEYBINDING_VALUE_LENGTH = 64;
 const MAX_WHEN_EXPRESSION_DEPTH = 64;
 const MAX_SCRIPT_ID_LENGTH = 24;
 const MAX_KEYBINDINGS_COUNT = 256;
@@ -602,7 +601,9 @@ function resolveUsageShortcut(
       target.tagName === "TEXTAREA" ||
       target.tagName === "SELECT" ||
       target.isContentEditable ||
-      target.closest('[role="dialog"], [aria-modal="true"], [data-slot$="popup"]'))
+      target.closest(
+        '[role="dialog"]:not([data-app-modal]), [aria-modal="true"]:not([data-app-modal]), [data-slot$="popup"]:not([data-app-modal])',
+      ))
   ) {
     return null;
   }
@@ -616,9 +617,7 @@ function resolveUsageShortcut(
 
 
 
-// Every usage.* command needs a rank. An unranked one falls back to the
-// alphabetical compare, which makes the comparator inconsistent and the order
-// depend on the input order.
+// Rank every usage command; mixing rank and alphabetical comparisons makes order input-dependent.
 const usageCommandOrder = new Map                           (
   [
     "usage.open"         ,
@@ -885,8 +884,6 @@ function buildKeybindingRows(
   return rowsWithConflicts;
 }
 
-// Filtering keeps the row objects so rows that stay visible while the query
-// changes receive the same props and skip rendering.
 function filterKeybindingRows(
   rows                              ,
   query        ,
@@ -964,7 +961,7 @@ function commandLabel(command                   )         {
   if (command === "composer.sendAlternate") return "Composer: Opposite Queue or Steer Action";
   if (command === "composer.sendBackground") return "Composer: Start in Background";
   if (command === "composer.sendAndNewThread") return "Composer: Send and Start New Thread";
-  if (command === "thread.steerQueuedMessage") return "Queue: Send First Queued Message as Steer";
+  if (command === "thread.steerQueuedMessage") return "Queue: Send First Queued Message";
   if (command === "thread.editQueuedMessage") return "Queue: Edit Last Queued Message";
   if (command === "thread.copyReference") return "Pull Request: Copy Link or Thread ID";
   const usageMetric = METRIC_OPTIONS.find((option) => option.command === command);
@@ -1199,8 +1196,7 @@ const EDITORS = [
   {
     id: "antigravity",
     label: "Antigravity",
-    // `agy` is the standalone Antigravity CLI, not the IDE. The IDE bundle
-    // ships `antigravity-ide`, so it comes first for install-folder lookups.
+    // The IDE ships antigravity-ide; agy is the standalone CLI.
     commands: ["antigravity-ide", "agy-ide"],
     launchStyle: "goto",
   },
@@ -1349,8 +1345,7 @@ function shortcutConflictKey(
 
 function shortcutForContext(binding                        , context                      ) {
   const shortcut = binding.shortcut;
-  // Existing installs persist Mod+Enter. Resolve its alternate chord against
-  // the send preference without rewriting saved or remapped shortcuts.
+  // Resolve persisted Mod+Enter against send preference without rewriting saved shortcuts.
   if (
     context.composerRequiresModifier &&
     binding.command === "composer.sendAlternate" &&

@@ -14,6 +14,11 @@ use std::{collections::HashMap, sync::Mutex};
 struct Entry {
     shell: Option<Value>,
     live: bool,
+    generation:u64,
+    snapshot_sequence:u64,
+    older_counts:Option<(String,Value)>,
+    supplemental: HashMap<String, (u64, Value)>,
+    versions: HashMap<String, u64>,
 }
 static SHELLS: Mutex<Option<HashMap<String, Entry>>> = Mutex::new(None);
 
@@ -30,6 +35,7 @@ pub fn live(env: &str) -> Option<Value> {
 pub fn cursor(env: &str) -> Option<u64> {
     with(env, |e| e.shell.as_ref().and_then(|s| s["snapshotSequence"].as_u64()))
 }
+pub fn generation(env:&str)->u64{with(env,|e|e.generation)}
 pub fn is_live(env: &str) -> bool {
     with(env, |e| e.live)
 }
@@ -41,11 +47,51 @@ pub fn set_live(env: &str, live: bool) {
 }
 /// Applies one stream item; true when the visible shell changed.
 pub fn apply(env: &str, item: &Value) -> bool {
-    with(env, |e| reduce(&mut e.shell, item))
+    with(env, |e| {
+        let sequence=crate::protocol::stream::cursor_of(crate::protocol::api::streams::SUBSCRIBE_SHELL.name,item).unwrap_or(0);
+        if item["kind"]=="snapshot" && item.get("resolvedRepositoryIdentityRoots").is_none() { e.snapshot_sequence=sequence;e.generation=e.generation.wrapping_add(1);e.supplemental.clear(); e.versions.clear();e.older_counts=None; }
+        let id=item["thread"]["id"].as_str().or(item["threadId"].as_str());
+        if let Some(id)=id {
+            e.versions.entry(id.to_string()).and_modify(|n|*n=(*n).max(sequence)).or_insert(sequence);
+            if e.supplemental.get(id).is_some_and(|(at,_)|*at<=sequence){e.supplemental.remove(id);}
+        }
+        reduce(&mut e.shell,item)
+    })
+}
+/// Merge a read page without advancing the stream cursor or overwriting a newer delta.
+pub fn supplement(env: &str, page: &Value) -> crate::Result<()> {
+    let sequence=page["snapshotSequence"].as_u64().ok_or("missing_sequence")?;
+    let rows=page["threads"].as_array().ok_or("malformed_shell_page")?;
+    if rows.iter().any(|r|!r["id"].as_str().is_some_and(crate::valid_id)){return Err("malformed_shell_page".into())}
+    with(env,|e| {
+        let floor=e.snapshot_sequence;
+        if sequence<floor{return Err("stale_shell_page".into())}
+        for row in rows {
+            let id=row["id"].as_str().unwrap();
+            if sequence<floor || e.versions.get(id).is_some_and(|n|*n>sequence) {continue}
+            if e.supplemental.get(id).is_none_or(|(n,_)|*n<=sequence){e.supplemental.insert(id.into(),(sequence,row.clone()));}
+        }
+        Ok(())
+    })
+}
+pub fn update_older_counts(env:&str,before:&str,page:&Value)->crate::Result<()> {
+    let sequence=page["snapshotSequence"].as_u64().ok_or("missing_sequence")?;
+    let counts=page["counts"].as_array().ok_or("malformed_shell_page")?;
+    if counts.iter().any(|c|!c["projectId"].as_str().is_some_and(crate::valid_id)||c["count"].as_u64().is_none()){return Err("malformed_shell_page".into())}
+    with(env,|e|{
+        if e.snapshot_sequence>sequence{return Err("stale_shell_page".into())}
+        e.older_counts=Some((before.to_string(),json!({"before":before,"asOfSequence":sequence,"counts":counts})));Ok(())
+    })
+}
+pub fn enriched(env: &str, mut shell: Value) -> Value {
+    with(env,|e| {
+        if let Some((before,counts))=&e.older_counts{if shell["olderSettled"]["before"]==*before&&shell["olderSettled"]["asOfSequence"].as_u64().unwrap_or(0)<=counts["asOfSequence"].as_u64().unwrap_or(0){shell["olderSettled"]=counts.clone();}}
+        if let Some(rows)=shell["threads"].as_array_mut(){for (_,row) in e.supplemental.values(){upsert(rows,row.clone());}}
+    });shell
 }
 /// Drops the held shell so the next subscription starts from a full snapshot.
 pub fn reset(env: &str) {
-    with(env, |e| *e = Entry::default())
+    with(env, |e| {let generation=e.generation.wrapping_add(1);*e = Entry{generation,..Default::default()}})
 }
 pub fn forget(env: &str) {
     let mut guard = SHELLS.lock().unwrap_or_else(|e| e.into_inner());
@@ -242,4 +288,23 @@ mod tests {
         assert_eq!(shell["projects"][0]["repositoryIdentity"]["key"], "r");
         assert_eq!(shell["projects"][0]["title"], "P");
     }
+}
+
+#[cfg(test)]
+mod nightly_tests {
+ use super::*;
+ #[test]
+ fn loaded_pages_never_resurrect_newer_removed_or_archived_threads() {
+  let env="nightly-page-test";
+  reset(env);
+  apply(env,&json!({"kind":"snapshot","snapshot":{"snapshotSequence":10,"threads":[{"id":"t","title":"base"}],"projects":[]}}));
+  supplement(env,&json!({"snapshotSequence":12,"threads":[{"id":"t","title":"page"},{"id":"other","title":"other"}]})).unwrap();
+  apply(env,&json!({"kind":"thread.updated","sequence":11,"location":"active","thread":{"id":"t","title":"older delta"}}));
+  let base=with(env,|e|e.shell.clone().unwrap());assert_eq!(enriched(env,base)["threads"][0]["title"],"page");
+  apply(env,&json!({"kind":"thread.removed","sequence":13,"threadId":"t"}));
+  supplement(env,&json!({"snapshotSequence":12,"threads":[{"id":"t","title":"stale"}]})).unwrap();
+  assert_eq!(supplement(env,&json!({"snapshotSequence":9,"threads":[{"id":"t","title":"before snapshot"}]})).unwrap_err(),"stale_shell_page");
+  let base=with(env,|e|e.shell.clone().unwrap());assert!(enriched(env,base)["threads"].as_array().unwrap().iter().all(|t|t["id"]!="t"));
+  forget(env);
+ }
 }

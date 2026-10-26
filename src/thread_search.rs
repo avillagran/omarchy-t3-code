@@ -13,7 +13,15 @@ pub fn search(input: &Value) -> Result<Value> {
         .map(|e| {
             let query = query.clone();
             std::thread::spawn(move || {
-                let found = e.connection(true).and_then(|c| orchestration::search_threads(&c, &query, Some(20)));
+                let found = e.connection(true).and_then(|c| {
+                    let mut args=json!({"query":query,"limit":20});
+                    if crate::server_capabilities::get(&e.id,&c)?.shell_older_settled {
+                        let shell=crate::shell_state::live(&e.id).map(Ok).unwrap_or_else(||crate::nightly::shell(&crate::Client::shared()?,&e))?;
+                        if let Some(before)=shell["olderSettled"]["before"].as_str(){args["olderSettledBefore"]=json!(before);args["environmentLabel"]=json!(e.name);}
+                    }
+                    let result=orchestration::SEARCH_THREADS.call(&c,&args,None)?;
+                    if result["threads"].is_array(){crate::shell_state::supplement(&e.id,&result)?;}Ok(result)
+                });
                 (e.id, found)
             })
         })
@@ -33,7 +41,6 @@ pub fn search(input: &Value) -> Result<Value> {
             Err(error) => errors[environment] = json!(error),
         }
     }
-    // Newest message matches first; title matches (no message time) keep server order.
-    matches.sort_by(|a, b| text(b, "messageCreatedAt").cmp(text(a, "messageCreatedAt")));
+
     Ok(json!({"query":query,"matches":matches,"errors":errors}))
 }

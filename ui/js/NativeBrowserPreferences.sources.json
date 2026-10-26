@@ -1,16 +1,16 @@
 {
-  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
+  "commit": "3f9448747bb8848050dc2cacf83affa6f94a66a1",
   "files": {
-    "packages/contracts/src/preview.ts": "081b4ce2923dfc6c6852e74109191cf12e5aee08c1847dca7fd5e09f63c4cd26",
-    "packages/contracts/src/settings.ts": "667c67995165e116b811d56ac220aaa436ae6041779a434c77b5eae52dafd1d1",
-    "packages/contracts/src/browserProfile.ts": "aca2ff87d0ca1ad8d6c008e478b5281080dd2ec4ee19e9cd8ff8452bb28a6de5",
-    "packages/shared/src/previewViewport.ts": "2c79b4eae4a1bf0fe7526c2d4134988ddfe13ee71d175ea29742efc9c959183d",
-    "apps/web/src/components/settings/IntegrationsSettings.tsx": "d51d9bdbab48cecb2ef72ba8fd7329871aef6de4ccdbd3c7b78fdc087ec7035f"
+    "packages/contracts/src/preview.ts": "0c69b202fd950ccd521d61158ba023cdf4a40cf9320686d65084606127a30bf5",
+    "packages/contracts/src/settings.ts": "6bb56d909f974c4eb8808e893b8a5a3758eb97e72ed8c09989bd21d586e6882d",
+    "packages/contracts/src/browserProfile.ts": "a8995cb24686afddd7dc66a85b2c61019d1ffbd551dac26864fffbc13e9f10e2",
+    "packages/shared/src/previewViewport.ts": "49faf672fe93df20f6bbd124fc9ea7012699284d9d2f2df3db12a6fe839711a0",
+    "apps/web/src/components/settings/IntegrationsSettings.tsx": "05ac656b5cdc5e97f040862e2fe2ab7f1c57e2d765c1ba8fce34b78f518e6135"
   },
   "adaptations": [
     "Original helper/constant excerpts, TypeScript erasure and export removal",
     "Qt object spreads become Object.assign; algorithm unchanged"
   ],
-  "outputSha256": "e38bcec294bedc575485b0fcd7fdaee326e9c38f6d6960ad39f69f42061e02ec",
-  "contractSha256": "0d8cf2d21f95e0498593622b4100a852c0255393d065764b5f70135711f1fce5"
+  "outputSha256": "d67595a55f8684d1d9de011307d6034f07bd4f2ada49eba1c161420da5689d53",
+  "contractSha256": "6e45324734977f0c273357eb490098d8d0966ed28ea11ad547d3b91bbde0cf0d"
 }

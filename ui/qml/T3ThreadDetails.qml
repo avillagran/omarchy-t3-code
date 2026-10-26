@@ -11,6 +11,7 @@ Rectangle {
  id:root
  objectName:"t3ThreadDetails"
  required property var bridge
+ function nightly(action){return bridge.nightlyState?bridge.nightlyState(action,bridge.selectedEnvironment,bridge.selectedThread):({})}
  signal closed()
  signal gitRequested()
  signal changesRequested()
@@ -79,6 +80,28 @@ Rectangle {
     Layout.fillWidth:true;Layout.leftMargin:Style.space(6);spacing:Style.space(6)
     Text{Layout.fillWidth:true;text:T3I18n.tr("Thread details");color:root.fg;font.pixelSize:Style.font.body;font.weight:Font.Medium;textFormat:Text.PlainText}
     T3IconButton{objectName:"t3ThreadDetailsClose";name:"x";implicitWidth:Style.space(22);implicitHeight:implicitWidth;tooltipText:T3I18n.tr("Close");onClicked:root.closed()}
+   }
+   T3PickerButton {
+    objectName:"shareThreadWithGuest";Layout.fillWidth:true;primary:false
+    visible:root.catalog.guestSharingEnabled===true&&root.catalog.canShareGuest===true
+    text:T3I18n.tr("Share with guest");onClicked:root.bridge.requestNightly("guest-create",{})
+   }
+   T3PickerButton {
+    objectName:"listIgnoredFiles";Layout.fillWidth:true;primary:false;visible:!!root.details.cwd
+    text:T3I18n.tr("Ignored files");onClicked:root.bridge.requestNightly("ignored-files",{cwd:root.details.cwd})
+   }
+   Text{Layout.fillWidth:true;visible:!!root.nightly("ignored-files").error;text:root.nightly("ignored-files").error||"";color:Color.urgent;wrapMode:Text.Wrap;textFormat:Text.PlainText;font.pixelSize:Style.font.caption}
+   Repeater {
+    model:((root.nightly("ignored-files").data||{}).files)||[]
+    delegate:T3PickerButton{required property var modelData;Layout.fillWidth:true;primary:false;text:modelData.path+" · "+modelData.byteLength+" B";onClicked:root.bridge.copyText(modelData.path)}
+   }
+   T3PickerButton {
+    objectName:"worktreeThreadIds";Layout.fillWidth:true;primary:false;visible:!!root.info.worktreePath&&root.bridge.shellThreadFamilies===true
+    text:T3I18n.tr("Threads using this worktree");onClicked:root.bridge.requestNightly("worktree-threads",{worktreePath:root.info.worktreePath})
+   }
+   Repeater {
+    model:((root.nightly("worktree-threads").data||{}).threadIds)||[]
+    delegate:T3PickerButton{required property var modelData;Layout.fillWidth:true;primary:false;text:((root.bridge.state.threads||[]).find(function(t){return t.environmentId===root.bridge.selectedEnvironment&&t.id===modelData})||{}).title||modelData;onClicked:root.bridge.selectThread(root.bridge.selectedEnvironment,modelData)}
    }
    // Where it runs: the environment's machine, its workspace and the environment.
    Rectangle {

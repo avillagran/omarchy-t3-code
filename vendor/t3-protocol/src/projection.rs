@@ -5,8 +5,17 @@ fn upsert(p:&mut Value,key:&str,v:&Value,cap:usize){
  if !p[key].is_array(){p[key]=json!([])}let list=p[key].as_array_mut().unwrap();
  if let Some(i)=list.iter().position(|a|a["id"]==v["id"]){list[i]=v.clone()}else{list.push(v.clone());if list.len()>cap{list.drain(..list.len()-cap);}}
 }
+pub fn try_apply(p: &mut Value, e: &Value) -> crate::Result<bool> {
+ let mut event=e.clone();
+ if event["type"]=="turn-item.updated" {crate::wire::restore_item(&mut event["payload"],p)?;}
+ if event["type"]=="subagent.updated" {let prior=p["subagents"].as_array().and_then(|l|l.iter().rev().find(|r|r["id"]==event["payload"]["id"])).cloned();crate::wire::restore_subagent(&mut event["payload"],prior.as_ref())?;}
+ Ok(apply(p,&event))
+}
 pub fn apply(p:&mut Value,e:&Value)->bool{
- let typ=text(e,"type");let v=&e["payload"];if !v.is_object(){return false}
+ let typ=text(e,"type");let mut restored=e["payload"].clone();
+ if typ=="turn-item.updated" && crate::wire::restore_item(&mut restored,p).is_err(){return false}
+ if typ=="subagent.updated" {let previous=p["subagents"].as_array().and_then(|l|l.iter().rev().find(|r|r["id"]==restored["id"]));if crate::wire::restore_subagent(&mut restored,previous).is_err(){return false}}
+ let v=&restored;if !v.is_object(){return false}
  match typ{
   // Payloads that are not whole rows: apply them to the row they name.
   "thread.pull-request-link-updated"=>{let same=|l:&Value|l["host"]==v["host"]&&l["repository"]==v["repository"]&&l["number"]==v["number"];match p["thread"]["pullRequests"].as_array_mut(){Some(links)=>{for l in links.iter_mut().filter(|l|same(l)){*l=v.clone()}}None=>return false}return true}

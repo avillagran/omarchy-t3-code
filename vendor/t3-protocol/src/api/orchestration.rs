@@ -24,7 +24,7 @@ pub const COMMAND_TYPES: &[&str] = &[
     "thread.runtime-mode.set", "thread.interaction-mode.set", "thread.fork", "thread.merge_back",
     "thread.archive", "thread.unarchive", "thread.delete", "thread.settle", "thread.unsettle",
     "thread.snooze", "thread.unsnooze", "thread.auto-settle", "thread.auto-settle.set", "thread.pin",
-    "thread.unpin", "thread.pin.reorder", "thread.mark-unread", "thread.visit", "queued-run.cancel",
+    "thread.guest-share.close", "thread.guest-message.dismiss", "thread.unpin", "thread.pin.reorder", "thread.mark-unread", "thread.visit", "queued-run.cancel",
     "queued-run.reorder", "queued-run.edit", "queued-message.promote-to-steer", "queue.resume",
     "runtime-request.respond", "thread.user-input.dismiss", "checkpoint.rollback",
     "thread.pull-request.link", "thread.pull-request.unlink", "thread.pull-request.watch",
@@ -98,8 +98,30 @@ pub const STOP_WORKFLOW: Function = api_fn! {
 pub const SEARCH_THREADS: Function = api_fn! {
     name: "orchestration.searchThreads", module: "orchestration", tag: Some("orchestration.searchThreads"),
     kind: Read, scope: Fixed("orchestration:read"),
-    args: [(query, Text, required), (limit, Integer, optional)],
-    payload: |a| search_threads_payload(a.req("query")?, a.u64("limit")?),
+    args: [(query, Text, required), (limit, Integer, optional), (olderSettledBefore, Text, optional), (projectIds, Array, optional), (environmentLabel, Text, optional), (titlesOnly, Bool, optional)],
+    payload: |a| {
+        let mut p=search_threads_payload(a.req("query")?,a.u64("limit")?)?;
+        if let Some(before)=a.str("olderSettledBefore")? {p["olderSettledBefore"]=json!(timestamp("olderSettledBefore",before)?);}
+        if let Some(ids_)=a.array("projectIds")? {for id in ids_ {ids::id("projectId",id.as_str().ok_or("invalid_project_id")?)?;}p["projectIds"]=json!(ids_);}
+        put(&mut p,"environmentLabel",a.str("environmentLabel")?);put(&mut p,"titlesOnly",a.bool("titlesOnly")?);Ok(p)
+    },
+};
+pub const GET_THREAD_FAMILY: Function = api_fn! {
+ name: "orchestration.getThreadFamily", module: "orchestration", tag: Some("orchestration.getThreadFamily"),
+ kind: Read, scope: Fixed("orchestration:read"), args: [(threadId, Id, required)], payload: |a| thread_payload(a.req("threadId")?),
+};
+pub const GET_WORKTREE_THREAD_IDS: Function = api_fn! {
+ name: "orchestration.getWorktreeThreadIds", module: "orchestration", tag: Some("orchestration.getWorktreeThreadIds"),
+ kind: Read, scope: Fixed("orchestration:read"), args: [(worktreePath, Path, required)], payload: |a| Ok(json!({"worktreePath":a.req("worktreePath")?})),
+};
+pub const GET_OLDER_SETTLED_THREADS: Function = api_fn! {
+ name: "orchestration.getOlderSettledThreads", module: "orchestration", tag: Some("orchestration.getOlderSettledThreads"),
+ kind: Read, scope: Fixed("orchestration:read"), args: [(before, Object, required), (projectIds, Array, optional), (limit, Integer, required)],
+ payload: |a| { let mut p=json!({"before":a.object("before")?.ok_or("invalid_before")?,"limit":a.req_u64("limit")?});
+   if p["limit"].as_u64().unwrap()>50 { return Err("invalid_limit".into()) }
+   let mut cursor=Reader::new(&p["before"])?; timestamp("settledAt", &cursor.req_str("settledAt")?)?;
+   if let Some(id)=cursor.opt_str("threadId")? { ids::id("threadId", &id)?; } cursor.done()?;
+   if let Some(list)=a.array("projectIds")? { for id in list { ids::id("projectId", id.as_str().ok_or("invalid_project_id")?)?; } p["projectIds"]=json!(list); } Ok(p) },
 };
 pub const GET_ARCHIVED_SHELL_SNAPSHOT: Function = api_fn! {
     name: "orchestration.getArchivedShellSnapshot", module: "orchestration", tag: Some("orchestration.getArchivedShellSnapshot"),
@@ -107,6 +129,7 @@ pub const GET_ARCHIVED_SHELL_SNAPSHOT: Function = api_fn! {
     args: [], payload: |_| Ok(json!({})),
 };
 pub const FUNCTIONS: &[Function] = &[
+    GET_THREAD_FAMILY, GET_WORKTREE_THREAD_IDS, GET_OLDER_SETTLED_THREADS,
     DISPATCH_COMMAND, LAUNCH_THREAD, GET_THREAD_PROJECTION, GET_TURN_ITEM, GET_TURN_DIFF, GET_FULL_THREAD_DIFF,
     GET_WORKFLOW_SCRIPT, STOP_WORKFLOW, SEARCH_THREADS, GET_ARCHIVED_SHELL_SNAPSHOT,
 ];
@@ -361,6 +384,7 @@ pub struct MessageDispatch {
     pub manual_continuation_of_run_id: Option<String>,
     pub usage_limit_recovery_request_id: Option<String>,
     pub delivery_intent: Option<String>,
+    pub guest_message_id: Option<String>,
 }
 impl MessageDispatch {
     /// A user message that starts immediately, with no attachments.
@@ -383,6 +407,7 @@ impl MessageDispatch {
             manual_continuation_of_run_id: None,
             usage_limit_recovery_request_id: None,
             delivery_intent: None,
+            guest_message_id: None,
         }
     }
 }
@@ -444,6 +469,8 @@ pub enum RuntimeResponse {
 /// carries the host's `commandId`; the library validates it and never mints one.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Command {
+    GuestShareClose { command_id: String, thread_id: String },
+    GuestMessageDismiss { command_id: String, thread_id: String, guest_message_id: String },
     ThreadCreate(ThreadCreate),
     MessageDispatch(MessageDispatch),
     RunInterrupt { command_id: String, thread_id: String, run_id: String, reason: Option<String>, hold_queue: Option<bool> },
@@ -543,7 +570,9 @@ impl Command {
             Self::ThreadCreate(c) => Some(&c.command_id),
             Self::MessageDispatch(m) => Some(&m.command_id),
             Self::Raw(v) => v["commandId"].as_str(),
-            Self::RunInterrupt { command_id, .. }
+            Self::GuestShareClose { command_id, .. }
+            | Self::GuestMessageDismiss { command_id, .. }
+            | Self::RunInterrupt { command_id, .. }
             | Self::SubagentStop { command_id, .. }
             | Self::ThreadMetadataUpdate { command_id, .. }
             | Self::RuntimeModeSet { command_id, .. }
@@ -591,6 +620,11 @@ impl Command {
             Ok(v)
         };
         Ok(match self {
+            Self::GuestShareClose { command_id, thread_id } => simple("thread.guest-share.close", command_id, thread_id)?,
+            Self::GuestMessageDismiss { command_id, thread_id, guest_message_id } => {
+                let mut p=simple("thread.guest-message.dismiss",command_id,thread_id)?;
+                p["guestMessageId"]=json!(ids::id("guestMessageId",guest_message_id)?); p
+            },
             Self::ThreadCreate(c) => {
                 let mut v = json!({"type":"thread.create","commandId":cid(&c.command_id)?,"threadId":tid(&c.thread_id)?,
                     "projectId":ids::id("projectId", &c.project_id)?,"title":ids::text("title", &c.title, TITLE_MAX)?,
@@ -624,7 +658,7 @@ impl Command {
                     DispatchMode::StartImmediately => json!({"type":"start_immediately"}),
                 };
                 let mut v = json!({"type":"message.dispatch","commandId":cid(&m.command_id)?,"threadId":tid(&m.thread_id)?,
-                    "messageId":ids::id("messageId", &m.message_id)?,"text":message_text("text", &m.text, &m.attachments)?,
+                    "messageId":ids::id("messageId", &m.message_id)?,"text":if m.guest_message_id.is_some() && m.text.is_empty() { String::new() } else { message_text("text", &m.text, &m.attachments)? },
                     "attachments":attachments("attachments", &m.attachments)?,"createdBy":one_of("createdBy", &m.created_by, ACTORS)?,
                     "creationSource":one_of("creationSource", &m.creation_source, CREATION_SOURCES)?,"dispatchMode":mode});
                 if let Some(c) = &m.context {
@@ -647,6 +681,7 @@ impl Command {
                     v["sourcePlanRef"] = plan;
                 }
                 for (key, value) in [
+                    ("guestMessageId", &m.guest_message_id),
                     ("restartContinuationOfRunId", &m.restart_continuation_of_run_id),
                     ("usageLimitContinuationOfRunId", &m.usage_limit_continuation_of_run_id),
                     ("manualContinuationOfRunId", &m.manual_continuation_of_run_id),
@@ -881,6 +916,8 @@ impl Command {
         }
         let c = r.req_str("commandId")?;
         let command = match kind.as_str() {
+            "thread.guest-share.close" => Self::GuestShareClose {command_id:c,thread_id:r.req_str("threadId")?},
+            "thread.guest-message.dismiss" => Self::GuestMessageDismiss {command_id:c,thread_id:r.req_str("threadId")?,guest_message_id:r.req_str("guestMessageId")?},
             "thread.create" => Self::ThreadCreate(ThreadCreate {
                 command_id: c,
                 thread_id: r.req_str("threadId")?,
@@ -909,6 +946,7 @@ impl Command {
                 m.manual_continuation_of_run_id = r.opt_str("manualContinuationOfRunId")?;
                 m.usage_limit_recovery_request_id = r.opt_str("usageLimitRecoveryRequestId")?;
                 m.delivery_intent = r.opt_str("deliveryIntent")?;
+                m.guest_message_id = r.opt_str("guestMessageId")?;
                 Self::MessageDispatch(m)
             }
             "run.interrupt" => Self::RunInterrupt {
@@ -1159,4 +1197,15 @@ fn message_text(field: &str, text: &str, files: &[Value]) -> Result<String> {
         return Err(ids::invalid(field));
     }
     Ok(crate::composer::legacy_attachment_text(text, files))
+}
+
+pub fn get_thread_family(conn: &Connection, thread: &str) -> Result<Value> {
+    GET_THREAD_FAMILY.call(conn,&json!({"threadId":thread}),None)
+}
+pub fn get_worktree_thread_ids(conn: &Connection, path: &str) -> Result<Value> {
+    GET_WORKTREE_THREAD_IDS.call(conn,&json!({"worktreePath":path}),None)
+}
+pub fn get_older_settled_threads(conn: &Connection, before: &Value, projects: Option<&[String]>, limit: u64) -> Result<Value> {
+    let mut args=json!({"before":before,"limit":limit});if let Some(ids)=projects{args["projectIds"]=json!(ids);}
+    GET_OLDER_SETTLED_THREADS.call(conn,&args,None)
 }

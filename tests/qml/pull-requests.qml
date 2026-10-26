@@ -32,7 +32,7 @@ ShellRoot{
     view.loadTab(2);root.check(view.tabResult.data.comments[0].author.login==="reviewer","conversation data")
     view.loadTab(3);wait(80);root.check(view.patch.indexOf("+new")>=0,"native HTTP patch data")
     view.grabToImage(function(r){r.saveToFile("/tmp/t3-pull-requests.png")});wait(150)
-    root.check(fixture.calls.every(function(c){return ["list","detail","checks","activity","diff"].indexOf(c.action)>=0}),"view emits only PR reads")
+    root.check(fixture.calls.every(function(c){return ["list","detail","checks","activity","diff","filter-options","change-breakdown"].indexOf(c.action)>=0}),"view emits only PR reads")
     win.visible=false;root.done=true;console.log("T3_PULL_REQUESTS_QML_PASS: list, detail, checks, conversation, diff and native read-only actions")
    }
   }
