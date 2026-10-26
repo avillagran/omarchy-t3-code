@@ -82,7 +82,7 @@ pub(crate) fn asset_error(error:String,prefix:&str)->String{
 
 
 pub use t3_protocol as protocol;
-pub use connections::{read_catalog, t3_home, refresh_connections, stale_ot3_sessions};
+pub use connections::{read_catalog, t3_home, refresh_connections, stale_ot3_sessions, run_ssh_forward};
 pub use desktop_cloud::{check_native_session,check_native_environment};
 use chrono::{DateTime, Utc};
 // Root imports that modules receive through `use crate::*`.

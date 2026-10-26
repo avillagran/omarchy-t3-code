@@ -47,13 +47,59 @@ fn validate_catalog(c:Value)->Result<Value>{
     Ok(c)
 }
 
-use std::{net::{TcpListener,TcpStream},process::{Child,Stdio},sync::{Mutex,OnceLock},time::{Duration,Instant},io::Write,os::unix::process::CommandExt};
+use std::{net::{TcpListener,TcpStream},process::{Child,Stdio},sync::{Mutex,OnceLock},time::{Duration,Instant},io::Write};
 /// A local route: the SSH/OmaBridge child plus, for SSH carried over OmaBridge, its forward.
-struct Tunnel(Child,Option<Child>);
-impl Tunnel{fn alive(&mut self)->bool{self.0.try_wait().ok()==Some(None)&&self.1.as_mut().is_none_or(|c|c.try_wait().ok()==Some(None))}}
+enum Tunnel {
+    Process(Child),
+    Ssh { child: Child, bridge: Option<Child> },
+}
+impl Tunnel {
+    fn alive(&mut self)->bool {
+        match self {
+            Self::Process(child)=>child.try_wait().ok()==Some(None),
+            Self::Ssh { child, bridge }=>child.try_wait().ok()==Some(None) && bridge.as_mut().is_none_or(|c|c.try_wait().ok()==Some(None)),
+        }
+    }
+}
 struct ChildGuard(Option<Child>);
 impl Drop for ChildGuard {fn drop(&mut self){if let Some(c)=self.0.as_mut(){let _=c.kill();let _=c.wait();}}}
-impl Drop for Tunnel {fn drop(&mut self){let _=self.0.kill();let _=self.0.wait();if let Some(c)=self.1.as_mut(){let _=c.kill();let _=c.wait();}}}
+impl Drop for Tunnel {
+    fn drop(&mut self) {
+        match self {
+            Self::Process(child)=>{let _=child.kill();let _=child.wait();},
+            Self::Ssh { child, bridge }=>{
+                // EOF asks the guardian to cancel only its own listener.
+                drop(child.stdin.take());
+                let _=child.wait();
+                if let Some(child)=bridge {let _=child.kill();let _=child.wait();}
+            }
+        }
+    }
+}
+fn ssh_forward_command(action:&str,forward:&str,args:&[String])->Command {
+    let mut command=Command::new("timeout");
+    command.args(["4s","ssh","-O",action,"-L",forward,"-o","ExitOnForwardFailure=yes"])
+        .args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    command
+}
+/// Internal guardian process: its private stdin pipe closes even if the owner
+/// crashes or is terminated. The shared master and other routes remain intact.
+pub fn run_ssh_forward(args:&[String])->Result<()> {
+    use std::io::Read;
+    let (forward,args)=args.split_first().ok_or("invalid_command")?;
+    if !ssh_forward_command("forward",forward,args).status().map_err(|_|"ssh_unavailable")?.success(){return Err("ssh_unavailable".into())}
+    let mut buffer=[0u8;256];
+    loop {
+        match std::io::stdin().read(&mut buffer) {
+            Ok(0)=>break,
+            Ok(_)=>{},
+            Err(error) if error.kind()==std::io::ErrorKind::Interrupted=>continue,
+            Err(_)=>break,
+        }
+    }
+    let _=ssh_forward_command("cancel",forward,args).status();
+    Ok(())
+}
 /// `retry`: failed environments, with the next attempt, the failures in a row
 /// and the route that failed.
 struct Cache { signature:String, remote_signature:String, cloud_signature:String, until:Instant, environments:Vec<Environment>, routes:HashMap<String,String>, tunnels:HashMap<String,Tunnel>, catalog:Result<Value>, retry:HashMap<String,(Instant,u32,String)> }
@@ -127,7 +173,7 @@ fn ssh_args(target:&Value)->Result<Vec<String>> {
     let metadata=fs::symlink_metadata(&control).map_err(|_|"ssh_runtime_unavailable")?;
     if !metadata.is_dir()||metadata.uid()!=unsafe{libc::geteuid()}||metadata.mode()&0o077!=0{return Err("ssh_runtime_unavailable".into())}
     let path=control.join("%C");if path.as_os_str().len()+38>100{return Err("ssh_runtime_unavailable".into())}
-    args.extend(["-o".into(),"ControlMaster=auto".into(),"-o".into(),"ControlPersist=600".into(),"-o".into(),format!("ControlPath={}",path.display())]);
+    args.extend(["-o".into(),"ControlMaster=auto".into(),"-o".into(),"ControlPersist=600".into(),"-o".into(),format!("ControlPath={}",path.display()),"-o".into(),"ServerAliveInterval=30".into(),"-o".into(),"ServerAliveCountMax=2".into()]);
     if let Some(port)=target["port"].as_u64(){if port==0||port>65535{return Err("invalid_t3_ssh_profile".into())}args.extend(["-p".into(),port.to_string()]);}
     if let Some(user)=target["username"].as_str(){if user.is_empty()||!user.bytes().all(|b|b.is_ascii_alphanumeric()||b"._-".contains(&b)){return Err("invalid_t3_ssh_profile".into())}args.extend(["-l".into(),user.into()]);}
     args.extend(["--".into(),destination.into()]);Ok(args)
@@ -225,11 +271,17 @@ fn connect_ssh_via(profile:&Value, env:&mut Environment, bridge:Option<&crate::o
     let token=token.trim();if !fresh_token(token){return Err("t3_auth_unavailable".into())}
     let listener=TcpListener::bind("127.0.0.1:0").map_err(|_|"local_error")?;
     let port=listener.local_addr().map_err(|_|"local_error")?.port();drop(listener);
-    let mut command=Command::new("ssh");
-    command.args(["-N","-L",&format!("127.0.0.1:{port}:127.0.0.1:{remote_port}"),"-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30","-o","ServerAliveCountMax=2"]).args(&args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
-    let parent=unsafe{libc::getpid()};
-    unsafe{command.pre_exec(move ||{if libc::prctl(libc::PR_SET_PDEATHSIG,libc::SIGTERM)!=0{return Err(std::io::Error::last_os_error())}if libc::getppid()!=parent{libc::raise(libc::SIGTERM);}Ok(())});}
-    let mut tunnel=Tunnel(command.spawn().map_err(|_|"ssh_unavailable")?,guard.0.take());
+    // Discovery established/reused the private master. A mux `ssh -N -L`
+    // can exit successfully while its listener remains in that master.
+    let forward=format!("127.0.0.1:{port}:127.0.0.1:{remote_port}");
+    let mut executable=std::env::current_exe().map_err(|_|"ssh_unavailable")?;
+    // Cargo examples/tests use the companion client built in the profile root.
+    if executable.parent().and_then(|p|p.file_name()).is_some_and(|n|n=="examples"||n=="deps") {
+        executable=executable.parent().and_then(|p|p.parent()).ok_or("ssh_unavailable")?.join("omarchy-t3-client");
+    }
+    let child=Command::new(executable).arg("__ssh-forward").arg(forward).args(args)
+        .stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(|_|"ssh_unavailable")?;
+    let mut tunnel=Tunnel::Ssh{child,bridge:guard.0.take()};
     let deadline=Instant::now()+Duration::from_secs(6);
     while Instant::now()<deadline {
         if !tunnel.alive(){return Err("ssh_unavailable".into())}
@@ -339,7 +391,7 @@ fn build_environments()->Result<Vec<Environment>> {
                             for (route,auto) in &candidates{
                                 let attempt=crate::omabridge_route::connect(route,Duration::from_secs(15)).and_then(|(child,url)|{let mut guard=ChildGuard(Some(child));crate::omabridge_route::verify_environment(&url,&e.id)?;Ok((guard.0.take().ok_or("omabridge_route_failed")?,url))});
                                 match attempt{
-                                    Ok((child,url))=>{e.base_url=url;tunnels.insert(e.id.clone(),Tunnel(child,None));carried=Some((route.clone(),*auto));return Ok(())},
+                                    Ok((child,url))=>{e.base_url=url;tunnels.insert(e.id.clone(),Tunnel::Process(child));carried=Some((route.clone(),*auto));return Ok(())},
                                     Err(error) if route.only=>return Err(error),
                                     Err(_)=>{},
                                 }
