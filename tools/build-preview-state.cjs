@@ -11,7 +11,7 @@ const limit=constants.match(/export const PREVIEW_RECENT_URL_LIMIT = (\d+);/)[1]
 function between(start,end){const a=original.indexOf(start),b=original.indexOf(end,a);if(a<0||b<0)throw Error('Native extraction boundary changed');return original.slice(a,b);}
 let extracted=between('const EMPTY_THREAD_PREVIEW_STATE:', 'const emptyPreviewStateAtom')+
  between('const dedupeRecentUrls =','export function useThreadPreviewState')+
- between('export function applyPreviewServerEvent(', '/**\n * Runs `action`')+
+ between('export function applyPreviewServerEvent(', '/** Runs once the tab is known;')+
  between('export function rememberPreviewUrl(', 'export function isPreviewSupportedInRuntime(')+
  between('export function clearThreadPreviewState(', 'export function resetPreviewStateForTests(');
 extracted=require('node:module').stripTypeScriptTypes(extracted,{mode:'strip'}).replace(/^export /gm,'').replace(/\.toSorted\(/g,'.slice().sort(').replace(/\.at\(-1\)/g,'.slice(-1)[0]');

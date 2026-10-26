@@ -107,15 +107,19 @@ fn persist(c: &Value, expected: &str) -> Result<()> {
     save_json(&catalog_path(), &encrypted)
 }
 fn discover_ssh(target: &Value) -> Result<String> {
-    let args = ssh_args(target)?;
+    let mut args = ssh_args(target)?;
+    // Only an explicit Add/Edit connection may ask for a password or verification code.
+    for arg in &mut args {if arg=="BatchMode=yes"{*arg="BatchMode=no".into();}}
+    let executable=std::env::current_exe().map_err(|_|"ssh_unavailable")?;
+    let installed=executable.parent().ok_or("ssh_unavailable")?.join("ot3-ssh-askpass");
+    let helper=if installed.is_file(){installed}else{PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("bin/ot3-ssh-askpass")};
     let output = Command::new("timeout")
-        .args(["12s", "ssh"])
+        .args(["120s", "ssh"])
         .args(args)
         .arg("cat \"$HOME/.t3/userdata/environment-id\"")
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .map_err(|_| "ssh_unavailable")?;
+        .env("SSH_ASKPASS",helper).env("SSH_ASKPASS_REQUIRE","force")
+        .stdin(Stdio::null()).stderr(Stdio::null())
+        .output().map_err(|_| "ssh_unavailable")?;
     if !output.status.success() {
         return Err("ssh_unavailable".into());
     }

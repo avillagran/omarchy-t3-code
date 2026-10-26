@@ -124,6 +124,46 @@ pub fn project_catalog_config(config:&Value,raw:&Value,project:Option<&Value>)->
     }}}
     adjusted
 }
+/// The patch a scoped write sends for one target: the write half of ot3's settings
+/// executor, without I/O. `input` is `{key, action: update|clear, value}`, `config`
+/// the target environment's server.getConfig, `raw` its server.getSettings and
+/// `project` the shell's project for a project target (None for the environment).
+pub fn write_patch(input:&Value,config:&Value,raw:&Value,project:Option<&Value>,write_allowed:bool)->Result<Value>{
+    let key=text(input,"key");let action=text(input,"action");
+    if !matches!(action,"update"|"clear"){return Err("invalid_settings".into())}
+    if !write_allowed{return Err("settings_write_forbidden".into())}
+    let project_capable=config["environment"]["capabilities"]["projectSettingsOverrides"]==true;
+    if project.is_none()&&key=="enableAgentDeviceAccess" {return Err("device_configuration_required".into())}
+    if project.is_some()&&(!project_capable||key=="worktreeCleanup"&&(config["environment"]["capabilities"]["projectWorktreeCleanup"]!=true||config["environment"]["capabilities"]["storageCleanup"]!=true)){return Err("project_settings_unsupported".into())}
+    let validation_config=project_catalog_config(config,raw,project);
+    let validated=if action=="clear"{json!({})}else{crate::native_settings::patch(input,Some(&validation_config))?};
+    if let Some(p)=project{return project_patch(raw,p,key,&validated,action=="clear")}
+    if action=="clear"{return Err("invalid_settings".into())}
+    if key=="idleCompaction"{crate::native_settings::idle_compaction_patch(raw,&validated)}else{crate::storage_settings::environment_patch(raw,key,&validated)}
+}
+/// One target's settings page: the read half of ot3's settings executor, without
+/// I/O. `file` is the project's parsed t3.json (`project_file`), when readable.
+pub fn target_view(target:&Value,config:&Value,raw:&Value,project:Option<&Value>,file:Option<&Value>,write_allowed:bool)->Value{
+    let project_capable=config["environment"]["capabilities"]["projectSettingsOverrides"]==true;
+    let (effective,sources,overrides)=if project.is_some(){effective(raw,project,file)}else{(raw.clone(),json!({}),json!({}))};
+    let mut view=crate::native_settings::snapshot(&effective);
+    view["fields"].as_array_mut().unwrap().retain(|f| f.get("capability").and_then(Value::as_str).is_none_or(|cap| config["environment"]["capabilities"][cap]==true));
+    for field in view["fields"].as_array_mut().unwrap(){let base=base_key(text(field,"key")).to_string();let scopable=PROJECT_KEYS.contains(&base.as_str());
+        field["source"]=if project.is_some(){sources[&base].clone()}else{json!("environment")};
+        field["scopeWritable"]=json!(write_allowed&&(project.is_none()||(scopable&&project_capable)));
+        if project.is_none()&&base=="enableAgentDeviceAccess" {field["scopeWritable"]=json!(false);}
+        field["overridden"]=json!(project.is_some()&&overrides.get(&base).is_some());
+        field["projectScoped"]=json!(project.is_some());
+    }
+    json!({"target":target,"fields":view["fields"],"writeAllowed":write_allowed,"storageCapabilities":crate::storage_settings::capabilities(config),"catalog":crate::models::catalog(&project_catalog_config(config,raw,project))})
+}
+/// The settings page over every selected target, as ot3's settings executor
+/// returns it: `views` from `target_view`, `errors` as `{target, error}`, `saved`
+/// the targets a write reached and `requested` how many targets were asked for.
+pub fn page(scope:&Value,views:&[Value],errors:&[Value],saved:&[Value],requested:usize)->Value{
+    let mut result=aggregate(views);result["storageScopes"]=json!(views.iter().map(|v|json!({"target":v["target"],"capabilities":v["storageCapabilities"]})).collect::<Vec<_>>());result["scope"]=scope.clone();result["modelCatalog"]=views.first().map(|v|v["catalog"].clone()).unwrap_or(Value::Null);result["targets"]=json!(views.iter().map(|v|v["target"].clone()).collect::<Vec<_>>());result["errors"]=json!(errors);result["savedTargets"]=json!(saved);result["complete"]=json!(errors.is_empty()&&views.len()==requested);result["writable"]=json!(errors.is_empty()&&!views.is_empty()&&views.iter().all(|v|v["writeAllowed"]==true));
+    result
+}
 #[cfg(test)]
 mod dropped_tests {
     use super::write_was_dropped;

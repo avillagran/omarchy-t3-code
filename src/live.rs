@@ -31,7 +31,7 @@ impl Control{
      let envelope=held.as_mut().ok_or("missing_snapshot")?;
      let c=e.connection(true)?;
      let marker=server_capabilities::get(&env,&c)?.thread_completion_marker;
-     let sub=streams::ThreadSub{after_sequence:Some(sequence),request_completion_marker:marker.then_some(true),accept_bounded_snapshot:Some(true),accept_compact_turn_items:Some(true),..streams::ThreadSub::new(&thread)};
+     let sub=streams::ThreadSub{after_sequence:Some(sequence),request_completion_marker:marker.then_some(true),accept_bounded_snapshot:Some(true),accept_compact_turn_items:Some(true),accept_deduped_bodies:Some(true),accept_compact_ids:Some(true),..streams::ThreadSub::new(&thread)};
      let tag=streams::SUBSCRIBE_THREAD.name;
      let mut dirty=false;let mut emitted=Instant::now();
      // A wakeup checks the open socket instead of trusting it.
@@ -45,7 +45,7 @@ impl Control{
        match text(&item,"kind"){
         // The cursor follows `stream::advance`: a snapshot sets it, any other item only moves it on.
         "snapshot"=>{*envelope=bounded_snapshot::restore(item.clone())?;sequence=advance(tag,Some(sequence),&item).unwrap_or(sequence);dirty=true;},
-        "event"=>{let next=advance(tag,Some(sequence),&item).unwrap_or(sequence);if next>sequence{dirty|=protocol::projection::apply(&mut envelope["projection"],&item["event"]);sequence=next;}},
+        "event"=>{let next=advance(tag,Some(sequence),&item).unwrap_or(sequence);if next>sequence{dirty|=protocol::projection::try_apply(&mut envelope["projection"],&item["event"])?;sequence=next;}},
         // Events this build cannot decode still move the resume cursor (T3 contracts).
         "unknown-event"=>{sequence=advance(tag,Some(sequence),&item).unwrap_or(sequence);},
         _=>{}

@@ -31,6 +31,12 @@ extern "C" {
  *   describe also lists "streams":[{"fn","tag","itemKey","items","starts",
  *     "cursor","ends","firstItem"}], one per function with "stream":true.
  *   A stream function is "stream_function" through call; open it with subscribe.
+ *   {"op":"domain","fn":"queue.derive","args":{"projection":{...}}} runs one
+ *     pure library function (projection, sidebar, timeline, markdown, queue,
+ *     approvals, models...) with no connection and no network, validated like
+ *     call; describe lists them under "domain":[{"fn","module","args","returns"}]
+ *     and capabilities counts them in "domainFunctions". Input is at most 8 MiB,
+ *     or 72 MiB for domain (a bounded thread snapshot and its envelope).
  */
 /* Streams (wake, boundaries, idle and completionMarker are additive to ABI 3).
  * {"op":"subscribe","tag":T,"payload":{...}} -> {subscriptionId}, or by

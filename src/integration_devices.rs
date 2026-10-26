@@ -67,7 +67,7 @@ fn present<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
     v.get(key).filter(|value| !value.is_null())
 }
 pub fn present_host(v: &Value) -> Result<Value> {
-    if !matches!(text(v, "kind"), "local" | "ssh") {
+    if !matches!(text(v, "kind"), "local" | "ssh" | "eas") {
         return Err("invalid_device_state".into());
     }
     let platforms = list(&v["platforms"], 8)?
@@ -114,7 +114,10 @@ fn device(v: &Value, session: bool) -> Result<Value> {
 }
 /// Strict bounded projection: no endpoint credentials, raw config or extra tool data.
 pub fn present_state(v: &Value) -> Result<Value> {
-    let hosts = list(&v["hosts"], 512)?
+    let mut all_hosts=list(&v["hosts"],512)?.clone();
+    if let Some(eas)=v.get("easHosts"){all_hosts.extend(list(eas,512)?.iter().cloned());}
+    if all_hosts.len()>512{return Err("invalid_device_state".into())}
+    let hosts = all_hosts
         .iter()
         .map(present_host)
         .collect::<Result<Vec<_>>>()?;
@@ -133,6 +136,7 @@ pub fn present_state(v: &Value) -> Result<Value> {
             return Err("invalid_device_state".into());
         }
         let mut out = json!({"status":status(&s["status"])?});
+        if let Some(incomplete)=s.get("androidDiscoveryIncomplete"){out["androidDiscoveryIncomplete"]=json!(boolean(incomplete)?);}
         if let Some(detail) = present(s, "detail") {
             out["detail"] = json!(string(detail, 4096)?);
         }
@@ -230,6 +234,17 @@ pub fn host(v: &Value) -> Result<Value> {
     }
     Ok(out)
 }
+/// EAS host form contains no credential. The server's saved credential stays private.
+pub fn eas_host(v: &Value) -> Result<Value> {
+    let id=required(v,"id",128)?;let label=required(v,"label",4096)?;
+    if id=="local"||id.is_empty()||!id.as_bytes()[0].is_ascii_alphanumeric()||!id.bytes().all(|c|c.is_ascii_alphanumeric()||b"_-".contains(&c))||label.trim().is_empty(){return Err("invalid_device_host".into())}
+    let limit=|key:&str,default:u64,max:u64| -> Result<u64>{match v.get(key){None=>Ok(default),Some(n)=>n.as_u64().filter(|n|*n>=1&&*n<=max).ok_or("invalid_device_host".into())}};
+    let session=limit("maxSessionMinutes",30,115)?;let idle=limit("idleMinutes",10,60)?;
+    if idle>=session{return Err("invalid_device_host".into())}
+    let mut out=json!({"kind":"eas","id":id,"label":label.trim(),"maxSessionMinutes":session,"idleMinutes":idle,"maxConcurrentSessions":limit("maxConcurrentSessions",2,20)?});
+    if let Some(app)=v["appId"].as_str().filter(|s|!s.trim().is_empty()){if app.len()>4096{return Err("invalid_device_host".into())}out["appId"]=json!(app.trim());}
+    Ok(out)
+}
 fn settings(raw: &Value) -> Result<Value> {
     let mut ids = HashSet::new();
     let hosts = list(&raw["deviceHosts"], 512)?
@@ -242,8 +257,10 @@ fn settings(raw: &Value) -> Result<Value> {
             Ok(h)
         })
         .collect::<Result<Vec<_>>>()?;
+    let mut eas=Vec::new();
+    for h in raw["easDeviceHosts"].as_array().into_iter().flatten(){let mut safe=eas_host(h)?;safe["hasAccessToken"]=json!(!text(h,"accessToken").is_empty());eas.push(safe);}
     Ok(
-        json!({"enableDeviceSupport":boolean(&raw["enableDeviceSupport"])?,"enableAgentDeviceAccess":boolean(&raw["enableAgentDeviceAccess"])?,"deviceOnboardingCompleted":boolean(&raw["deviceOnboardingCompleted"])?,"deviceHosts":hosts}),
+        json!({"easDeviceHosts":eas,"easSupported":raw.get("easDeviceHosts").is_some(),"enableDeviceSupport":boolean(&raw["enableDeviceSupport"])?,"enableAgentDeviceAccess":boolean(&raw["enableAgentDeviceAccess"])?,"deviceOnboardingCompleted":boolean(&raw["deviceOnboardingCompleted"])?,"deviceHosts":hosts}),
     )
 }
 fn digest(value: &Value) -> String {
@@ -368,7 +385,8 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
     let _guard = lock.try_lock().map_err(|_| "device_busy")?;
     let c = e.connection(true)?;
     let permissions = roles(&c)?;
-    let raw = settings(&protocol::api::server::settings(&c)?)?;
+    let native_settings=protocol::api::server::settings(&c)?;
+    let raw = settings(&native_settings)?;
     if expected["settingsDigest"] != digest(&raw) {
         return Err("device_settings_changed_reload".into());
     }
@@ -438,6 +456,15 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
             }
             (&dev::TEST_HOST, host(&input["host"])?)
         }
+        "eas-upsert" | "eas-remove" => {
+            if permissions["configure"]!=true||raw["easSupported"]!=true{return Err("permission_denied".into())}
+            let mut host=eas_host(&input["host"])?;
+            if raw["deviceHosts"].as_array().into_iter().flatten().any(|h|h["id"]==host["id"]){return Err("invalid_device_host".into())}
+            let mut hosts=native_settings["easDeviceHosts"].as_array().cloned().ok_or("invalid_device_host")?;
+            if let Some(prior)=hosts.iter().find(|h|h["id"]==host["id"]){if let Some(token)=prior.get("accessToken"){host["accessToken"]=token.clone();}}
+            if action=="eas-remove"{hosts.retain(|h|h["id"]!=host["id"]);}else if let Some(slot)=hosts.iter_mut().find(|h|h["id"]==host["id"]){*slot=host;}else{hosts.push(host);}
+            (&protocol::api::server::UPDATE_SETTINGS,json!({"patch":{"easDeviceHosts":hosts}}))
+        }
         "host-upsert" | "host-remove" => {
             if permissions["configure"] != true {
                 return Err("permission_denied".into());
@@ -492,10 +519,12 @@ pub fn apply(e: &Environment, input: &Value) -> Result<Value> {
                 }
             }
         }
-        if tag.name == protocol::api::server::UPDATE_SETTINGS.name
-            && fresh["settings"]["deviceHosts"] != payload["patch"]["deviceHosts"]
-        {
-            return Err("device_settings_changed_reload".into());
+        if tag.name == protocol::api::server::UPDATE_SETTINGS.name {
+            if let Some(expected)=payload["patch"].get("deviceHosts") {if fresh["settings"]["deviceHosts"]!=*expected{return Err("device_settings_changed_reload".into())}}
+            if let Some(expected)=payload["patch"]["easDeviceHosts"].as_array(){
+                let projected=expected.iter().map(|h|{let mut safe=eas_host(h)?;safe["hasAccessToken"]=json!(!text(h,"accessToken").is_empty());Ok(safe)}).collect::<Result<Vec<_>>>()?;
+                if fresh["settings"]["easDeviceHosts"]!=json!(projected){return Err("device_settings_changed_reload".into())}
+            }
         }
         Ok(json!({"data":fresh}))
     })();

@@ -20,7 +20,7 @@ Rectangle {
  // Recovered retries read as success, running ones and usage limits as a warning.
  readonly property color tone:retry&&failure.status==="completed"?T3Palette.done:(retry&&failure.status==="running")||limit?T3Palette.warning:Color.urgent
  readonly property var provider:(bridge.catalog.providers || []).find(function(p){return p.instanceId===root.failure.providerInstanceId}) || null
- readonly property string resetText:failure.resetAt?new Date(failure.resetAt).toLocaleString(Qt.locale(),Locale.ShortFormat):""
+ readonly property string resetText:failure.resetAt?(bridge.formatTimestamp?bridge.formatTimestamp(failure.resetAt):new Date(failure.resetAt).toLocaleString(Qt.locale(),Locale.ShortFormat)):""
  readonly property string detail:limit?(resetText?T3I18n.tr("Retry after {time}.",{time:resetText}):""):String(failure.message || "")
  objectName:"t3RunError"
  implicitHeight:content.implicitHeight+Style.space(16)+(causesBlock.visible?causesBlock.implicitHeight+Style.space(8):0)

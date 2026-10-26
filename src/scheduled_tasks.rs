@@ -44,8 +44,10 @@ pub fn upsert_payload(input: &Value) -> Result<Value> {
     if !crate::valid_id(project) || !input["modelSelection"].is_object() {
         return Err("invalid_project".into());
     }
+    let strategy=input.get("workspaceStrategy").cloned().unwrap_or_else(||if input["worktree"]==true{json!({"type":"worktree","baseRef":input["baseRef"]})}else{json!({"type":"root"})});
+    let workspace=crate::protocol::api::orchestration::WorkspaceStrategy::from_json(&strategy)?.to_json()?;
     let mode = text(input, "runtimeMode");
-    let mut p = json!({"title":title,"prompt":prompt,"enabled":input["enabled"]!=false,"schedule":schedule(input)?,"projectId":project,"threadId":null,"workspaceStrategy":{"type":if input["worktree"]==true{"worktree"}else{"root"}},"modelSelection":input["modelSelection"],"runtimeMode":if mode.is_empty(){"approval-required"}else{mode},"interactionMode":"default","createdBy":"user","creationSource":"web"});
+    let mut p = json!({"title":title,"prompt":prompt,"enabled":input["enabled"]!=false,"schedule":schedule(input)?,"projectId":project,"threadId":input.get("threadId").unwrap_or(&Value::Null),"workspaceStrategy":workspace,"modelSelection":input["modelSelection"],"runtimeMode":if mode.is_empty(){"approval-required"}else{mode},"interactionMode":input["interactionMode"].as_str().unwrap_or("default"),"createdBy":"user","creationSource":"web"});
     if input["id"].is_string() {
         p["id"] = json!(id(input)?);
         p["requireExisting"] = json!(true);
@@ -88,4 +90,11 @@ mod tests {
         assert_eq!(p["requireExisting"], true);
         assert!(upsert_payload(&json!({"title":"","prompt":"y","projectId":"p","modelSelection":{},"schedule":{"type":"webhook"}})).is_err());
     }
+    #[test]
+    fn task_edits_preserve_workspace_and_require_a_worktree_base() {
+        let mut input=json!({"title":"Daily","prompt":"Review","projectId":"p","modelSelection":{"instanceId":"codex","model":"m"},"schedule":{"type":"interval","minutes":60},"workspaceStrategy":{"type":"worktree","baseRef":"develop","startFromOrigin":true},"interactionMode":"plan","threadId":"t"});
+        let p=upsert_payload(&input).unwrap();assert_eq!(p["workspaceStrategy"],input["workspaceStrategy"]);assert_eq!(p["interactionMode"],"plan");assert_eq!(p["threadId"],"t");
+        input["workspaceStrategy"]=json!({"type":"worktree","baseRef":""});assert!(upsert_payload(&input).is_err());
+    }
+
 }

@@ -53,9 +53,12 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     const MACHINES:[&str;7]=["server","cloud","linux","desktop","laptop","mac-mini","mac-studio"];
     result["machine"]=json!([&config["settings"]["environmentIcon"],&config["environment"]["platform"]["machine"]].into_iter().filter_map(Value::as_str).find(|k|MACHINES.contains(k)).unwrap_or("server"));
     // The server's own version (environment.serverVersion), shown against the T3 revision ot3 is validated with.
+    result["shellThreadFamilies"]=json!(config["shellThreadFamilies"]==true);
+    result["guestSharingEnabled"]=json!(config["settings"]["guestSharingEnabled"]==true);
     result["serverVersion"]=json!(config["environment"]["serverVersion"].as_str().filter(|v|v.len()<=80&&v.chars().all(|c|c.is_ascii_alphanumeric()||".-+_".contains(c))));
     let permission=Client::shared()?.get(e,"/api/auth/session",false);
     result["canWrite"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="orchestration:operate"))));
+    result["canShareGuest"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="access:write"))));
     if let Err(error)=permission{result["permissionError"]=json!(error);}
     Ok(result)
 }
@@ -367,6 +370,7 @@ pub fn execute(input:&Value) -> Result<Value> {
         "provider-update"=>crate::provider_updates::update(&e,input),
         "failure-context"=>crate::failure_context::run(&e,input),
         "tool-failure"=>crate::failure_context::tool(&e,input),
+        "nightly"=>crate::nightly::execute(&e,input),
         "thread-details-read"=>crate::thread_details::read(&e,input),
         "thread-details-open-editor"=>crate::thread_details::open(&e,input),
         "keybindings-read"=>crate::keybinding_settings::read(&e),

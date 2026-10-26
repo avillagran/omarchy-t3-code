@@ -29,3 +29,7 @@ are preserved. New T3 releases can change contracts: update the shared library
 and consumers at explicit revisions after checking source and fixtures again.
 
 This is an independent community library, not an official T3 SDK.
+
+Nightly 3726 additions and decoding/host responsibilities are documented in
+[NIGHTLY_3726.md](NIGHTLY_3726.md). Their source of truth is the clean T3
+`3f9448747` contract fixture, including authorization scopes.

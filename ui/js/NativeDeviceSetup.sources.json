@@ -1,10 +1,10 @@
 {
-  "commit": "fb990765a49414a5bfbdc73365455fc8b5fbe691",
+  "commit": "3f9448747bb8848050dc2cacf83affa6f94a66a1",
   "files": {
-    "apps/web/src/components/device/DeviceSetup.tsx": "30b41e40b7b5532e310a1e5863df044a89254f62d0a33549701a7e5785db5b1f"
+    "apps/web/src/components/device/DeviceSetup.tsx": "3af0258782f59fd3f9099497022039001d7bc7388a1a7fc24c3e8968f8eeec68"
   },
   "adaptations": [
     "Exact platformName, descriptions and platformSetupStatus excerpt; TypeScript erasure/export removal; Qt lacks flatMap so original one-level flatten uses concat.apply over map"
   ],
-  "outputSha256": "d9f170ca745b343633ab9a433c36bf85cc7dd3be99d5116228cf497e1ba5d505"
+  "outputSha256": "0ba1a78cac9fc279f07616f369814ade572c811c43f1f9b59c641c78008446cf"
 }

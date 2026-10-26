@@ -92,7 +92,30 @@ pub struct Safety {
     pub rewinding: bool,
 }
 
+/// `Safety`'s members as JSON, camelCase.
+const SAFETY_KEYS: [&str; 8] = ["canOperate", "connected", "supportsConversationRollback", "working", "sendBusy", "connecting", "pendingAttachments", "rewinding"];
+
 impl Safety {
+    /// From `{canOperate, connected, supportsConversationRollback, working,
+    /// sendBusy, connecting, pendingAttachments, rewinding}`; anything but `true`
+    /// is false, so an unknown capability never enables a rewind.
+    pub fn from_json(v: &Value) -> Safety {
+        let on = |key: &str| v[key] == true;
+        Safety {
+            can_operate: on(SAFETY_KEYS[0]),
+            connected: on(SAFETY_KEYS[1]),
+            supports_conversation_rollback: on(SAFETY_KEYS[2]),
+            working: on(SAFETY_KEYS[3]),
+            send_busy: on(SAFETY_KEYS[4]),
+            connecting: on(SAFETY_KEYS[5]),
+            pending_attachments: on(SAFETY_KEYS[6]),
+            rewinding: on(SAFETY_KEYS[7]),
+        }
+    }
+    pub fn to_json(&self) -> Value {
+        let values = [self.can_operate, self.connected, self.supports_conversation_rollback, self.working, self.send_busy, self.connecting, self.pending_attachments, self.rewinding];
+        Value::Object(SAFETY_KEYS.iter().zip(values).map(|(k, v)| (k.to_string(), json!(v))).collect())
+    }
     pub fn check(&self) -> Result<()> {
         if !self.can_operate {
             return Err("revert_operate_required".into());
