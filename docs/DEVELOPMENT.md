@@ -148,6 +148,15 @@ restart. Healthy SSH tunnels survive local runtime changes; failed connections
 expire early for the next refresh. This requires an installed native T3 CLI and
 working noninteractive SSH authentication on the inherited target.
 
+SSH discovery reuses a private authenticated OpenSSH master. The route guardian
+opens the listener with `ssh -O forward` and cancels that exact listener with
+`ssh -O cancel`; a successful multiplex client exit is not a disconnection.
+The guardian watches a private stdin pipe, so normal exit, termination and a
+crash of the owning client all release its forward without closing the shared
+master. Keepalive settings belong to the master established during discovery.
+`cargo test --test ssh_forward_lifecycle` covers reuse, reconnect, replacement
+failure and abrupt owner exit.
+
 ### Live synchronization
 
 Each environment has one `orchestration.subscribeShell` stream. Its items are

@@ -688,6 +688,10 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
+    if std::env::args().nth(1).as_deref()==Some("__ssh-forward") {
+        if run_ssh_forward(&std::env::args().skip(2).collect::<Vec<_>>()).is_err(){std::process::exit(1)}
+        return
+    }
     if matches!(std::env::args().nth(1).as_deref(),Some("--version"|"-V")){println!("omarchy-t3-client {}",env!("CARGO_PKG_VERSION"));return}
     if std::env::args().nth(1).as_deref()==Some("browser-render"){if let Err(error)=browser_runtime::renderer(){eprintln!("{error}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("terminal-session"){let args:Vec<_>=std::env::args().skip(2).collect();let result=if args.len()==3{env_by_id(&args[0]).and_then(|e|terminal::run_session(&e,&args[1],&args[2]))}else{Err("invalid_command".into())};if let Err(e)=result{eprintln!("T3 terminal: {e}");std::process::exit(1)}return}
