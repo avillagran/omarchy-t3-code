@@ -5,6 +5,7 @@ import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root
  property int phase:0
+ property int layoutChecks:0
  property var fixture:null
  property real frozen:0
  property real barFrozen:0
@@ -42,7 +43,9 @@ ShellRoot {
   }else if(phase===3){
    var view=panel.preferencesView,master=keys.findChild(view,"preferenceAnimationsEnabled"),choice=keys.findChild(view,"preferenceChoice_starfieldMode")
    check(master&&master.visible&&master.checked,"master defaults on at the beginning of Appearance")
-   check(master.mapToItem(view,0,0).y<keys.findChild(view,"preferenceUsage").mapToItem(view,0,0).y,"master precedes other appearance options")
+   var ordered=master.mapToItem(view,0,0).y<keys.findChild(view,"preferenceUsage").mapToItem(view,0,0).y
+   if(!ordered&&++layoutChecks<10)return
+   check(ordered,"master precedes other appearance options after layout")
    check(choice.enabled,"animation options enabled initially")
    master.checked=false;master.toggled();phase=4
   }else if(phase===4){
