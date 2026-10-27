@@ -104,7 +104,7 @@ with tempfile.TemporaryDirectory(prefix='ot3-sidebar-memory-') as directory:
                 values = {}
                 for entry in Path(f'/proc/{pid}/smaps_rollup').read_text().splitlines():
                     parts = entry.split()
-                    if parts[0] in ('Rss:', 'Pss:', 'SwapPss:'):
+                    if parts[0] in ('Rss:', 'Pss:', 'SwapPss:', 'Pss_Anon:', 'Pss_File:', 'Pss_Shmem:'):
                         values[parts[0][:-1] + 'KiB'] = int(parts[1])
                 mappings = {}
                 name = 'anonymous'

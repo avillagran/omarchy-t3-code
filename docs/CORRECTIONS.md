@@ -2,6 +2,12 @@
 
 ## Pending
 
+- [ ] **2026-10-26 — Git confirmation text lifecycle.** Closing/refetching Git
+  invalidates the native scope and T3GitControls clears its message through
+  cancel(). Keeping the controls mounted does not preserve that text. Retain
+  unsent text by checkout separately from invalidated mutation confirmations;
+  do not restore stale intents or capability checks. Found during memory tests.
+
 - [ ] **2026-10-26 — Restore the desktop RAM budget.** Initial RSS: Qt UI
   393 MiB, Rust worker 404 MiB. Worker reduced to approximately 61 MiB by
   returning freed allocator pages, avoiding simultaneous history copies and
@@ -15,6 +21,8 @@
   tuning is installed. Fixed long-chat fixture saves 3–36 MiB PSS+SwapPSS in
   two comparisons under varying system pressure. UI still exceeds the budget;
   restart snapshots are not treated as a controlled before/after measurement.
+  Deferred review/Git/inspection controls save another 4.5–5.6 MiB in paired
+  250-message fixtures; read-only views unload 30 seconds after closing.
 
 - [ ] **2026-10-26 — Intermittent Spanish accents in text input.** User reports
   that typing accented letters sometimes works and sometimes fails despite a

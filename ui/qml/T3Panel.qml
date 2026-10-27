@@ -1025,20 +1025,33 @@ Item {
         id:diffPopup;objectName:"t3DiffPopup"
         property string initialPath:""
         onClosed:root.bridge.dismissDiff()
-        onOpened:diffReview.forceActiveFocus()
+        property bool contentCreated:false
+        onAboutToShow:contentCreated=true
+        property var savedPresentation:({})
+        function releaseContent(){
+          if(visible||!diffReviewLoader.item)return false
+          savedPresentation={showContext:diffReviewLoader.item.showContext,treeOpen:diffReviewLoader.item.treeOpen}
+          contentCreated=false;return true
+        }
+        Timer{interval:30000;running:diffPopup.contentCreated&&!diffPopup.visible;onTriggered:diffPopup.releaseContent()}
+        onOpened:if(diffReviewLoader.item)diffReviewLoader.item.forceActiveFocus()
         focus:true;modal:true
         x:Style.space(24);y:Style.space(24)
         width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
-        T3DiffReview {
-          id:diffReview;objectName:"t3DiffContents";anchors.fill:parent;rendererBridge:root.bridge
-          diffLayout:root.bridge.diffPreferences.layout;wordWrap:root.bridge.diffPreferences.wordWrap
-          view:root.bridge.diffView;summary:root.bridge.diffView.summary || {};initialPath:diffPopup.initialPath
-          ignoreWhitespace:root.bridge.diffView.ignoreWhitespace!==false
-          onClosed:diffPopup.close()
-          onRetryRequested:{if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,ignoreWhitespace)}
-          onWhitespaceChanged:function(value){if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,value)}
-          onFileRequested:function(path){diffPopup.initialPath=path;root.bridge.requestDiff(summary,ignoreWhitespace)}
+        Loader {
+          id:diffReviewLoader;objectName:"t3DiffLoader";anchors.fill:parent;active:diffPopup.contentCreated
+          onLoaded:{if(diffPopup.savedPresentation.showContext!==undefined)item.showContext=diffPopup.savedPresentation.showContext;if(diffPopup.savedPresentation.treeOpen!==undefined)item.treeOpen=diffPopup.savedPresentation.treeOpen}
+          sourceComponent:T3DiffReview {
+            id:diffReview;objectName:"t3DiffContents";anchors.fill:parent;rendererBridge:root.bridge
+            diffLayout:root.bridge.diffPreferences.layout;wordWrap:root.bridge.diffPreferences.wordWrap
+            view:root.bridge.diffView;summary:root.bridge.diffView.summary || {};initialPath:diffPopup.initialPath
+            ignoreWhitespace:root.bridge.diffView.ignoreWhitespace!==false
+            onClosed:diffPopup.close()
+            onRetryRequested:{if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,ignoreWhitespace)}
+            onWhitespaceChanged:function(value){if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,value)}
+            onFileRequested:function(path){diffPopup.initialPath=path;root.bridge.requestDiff(summary,ignoreWhitespace)}
+          }
         }
       }
       Controls.Popup {
@@ -1046,13 +1059,19 @@ Item {
         x:Style.space(24);y:Style.space(24);width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
         onClosed:root.bridge.dismissWorkingReview()
-        onOpened:workingContents.forceActiveFocus()
-        T3WorkingReview {
-          id:workingContents;anchors.fill:parent;rendererBridge:root.bridge;view:root.bridge.workingReview;refs:root.bridge.reviewRefs
-          onClosed:workingPopup.close()
-          onRequested:function(kind,base,whitespace,path){root.bridge.requestWorkingReview(kind,base,whitespace,path)}
-          onRefsRequested:function(query,kind,cursor){root.bridge.requestReviewRefs(query,kind,cursor)}
-          onRefsDismissed:root.bridge.dismissReviewRefs()
+        property bool contentCreated:false
+        onAboutToShow:contentCreated=true
+        onOpened:if(workingReviewLoader.item)workingReviewLoader.item.forceActiveFocus()
+        Timer{interval:30000;running:workingPopup.contentCreated&&!workingPopup.visible;onTriggered:workingPopup.contentCreated=false}
+        Loader {
+          id:workingReviewLoader;objectName:"t3WorkingReviewLoader";anchors.fill:parent;active:workingPopup.contentCreated
+          sourceComponent:T3WorkingReview {
+            id:workingContents;anchors.fill:parent;rendererBridge:root.bridge;view:root.bridge.workingReview;refs:root.bridge.reviewRefs
+            onClosed:workingPopup.close()
+            onRequested:function(kind,base,whitespace,path){root.bridge.requestWorkingReview(kind,base,whitespace,path)}
+            onRefsRequested:function(query,kind,cursor){root.bridge.requestReviewRefs(query,kind,cursor)}
+            onRefsDismissed:root.bridge.dismissReviewRefs()
+          }
         }
       }
       T3CheckpointRevert {
@@ -1081,38 +1100,51 @@ Item {
         width:Math.min(Style.space(700),parent.width-Style.space(40));height:Math.max(100,parent.height-Style.space(90));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
         onClosed:if(root.bridge.dismissGit)root.bridge.dismissGit()
-        T3GitControls {
-          anchors.fill:parent;scope:(root.bridge.gitView || {}).scope || {};view:root.bridge.gitView || {loading:false,error:"",data:null}
-          canSourceControlWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.sourceControlWrite)
-          canReviewChanges:!!(snapshot && snapshot.permissions && snapshot.permissions.filesystemRead)
-          canTerminalWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.terminalWrite)
-          busy:root.bridge.gitBusy || false
-          operationState:((root.bridge.gitView || {}).operation || {}).state || ""
-          operationError:(root.bridge.gitView || {}).operationError || ((root.bridge.gitView || {}).operation || {}).error || ""
-          operation:(root.bridge.gitView || {}).operation || {}
-          onClosed:gitPopup.close()
-          onRefreshRequested:root.bridge.requestGit()
-          onInitRequested:root.bridge.initializeRepository()
-          onChangesRequested:function(path){gitPopup.close();root.bridge.requestWorkingReview("working-tree","",root.bridge.diffPreferences.ignoreWhitespace,path);workingPopup.open()}
-          onActionRequested:function(intent){root.bridge.requestGitAction(intent)}
-          onTerminalRequested:root.bridge.openGitTerminal()
-          onReconcileRequested:root.bridge.reconcileGitOperation()
-          onNativeRequested:root.bridge.openThread(root.bridge.selectedEnvironment,root.bridge.selectedThread)
-          onPullRequestRequested:function(pr){var entry=snapshot.pullRequestReference;if(!entry)return;root.prTarget=entry;gitPopup.close();root.pullRequestsOpen=true}
+        property bool contentCreated:false
+        onAboutToShow:contentCreated=true
+        Loader {
+          id:gitControlsLoader;objectName:"t3GitControlsLoader";anchors.fill:parent;active:gitPopup.contentCreated
+          sourceComponent:T3GitControls {
+            anchors.fill:parent;scope:(root.bridge.gitView || {}).scope || {};view:root.bridge.gitView || {loading:false,error:"",data:null}
+            canSourceControlWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.sourceControlWrite)
+            canReviewChanges:!!(snapshot && snapshot.permissions && snapshot.permissions.filesystemRead)
+            canTerminalWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.terminalWrite)
+            busy:root.bridge.gitBusy || false
+            operationState:((root.bridge.gitView || {}).operation || {}).state || ""
+            operationError:(root.bridge.gitView || {}).operationError || ((root.bridge.gitView || {}).operation || {}).error || ""
+            operation:(root.bridge.gitView || {}).operation || {}
+            onClosed:gitPopup.close()
+            onRefreshRequested:root.bridge.requestGit()
+            onInitRequested:root.bridge.initializeRepository()
+            onChangesRequested:function(path){gitPopup.close();root.bridge.requestWorkingReview("working-tree","",root.bridge.diffPreferences.ignoreWhitespace,path);workingPopup.open()}
+            onActionRequested:function(intent){root.bridge.requestGitAction(intent)}
+            onTerminalRequested:root.bridge.openGitTerminal()
+            onReconcileRequested:root.bridge.reconcileGitOperation()
+            onNativeRequested:root.bridge.openThread(root.bridge.selectedEnvironment,root.bridge.selectedThread)
+            onPullRequestRequested:function(pr){var entry=snapshot.pullRequestReference;if(!entry)return;root.prTarget=entry;gitPopup.close();root.pullRequestsOpen=true}
+          }
         }
       }
       Controls.Popup {
         id:toolPopup;objectName:"t3ToolPopup";focus:true;modal:true
         x:Style.space(24);y:Style.space(24);width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
-        onClosed:toolInspector.dismiss(false)
-        onOpened:toolInspector.forceActiveFocus()
-        T3ToolInspector {
-          id:toolInspector;anchors.fill:parent;bridge:root.bridge;environment:root.bridge.selectedEnvironment;threadId:root.bridge.selectedThread
-          onRequested:function(token,scope){root.bridge.send(Object.assign({op:"tool-inspector",thread:scope.threadId,requestId:token},scope))}
-          onClosed:toolPopup.close()
+        property bool contentCreated:false
+        function inspect(reference){contentCreated=true;open();if(toolInspectorLoader.item)toolInspectorLoader.item.openItem(reference)}
+        onAboutToShow:contentCreated=true
+        onClosed:if(toolInspectorLoader.item)toolInspectorLoader.item.dismiss(false)
+        onOpened:if(toolInspectorLoader.item)toolInspectorLoader.item.forceActiveFocus()
+        function releaseContent(){if(visible||!toolInspectorLoader.item)return false;contentCreated=false;return true}
+        Timer{interval:30000;running:toolPopup.contentCreated&&!toolPopup.visible;onTriggered:toolPopup.releaseContent()}
+        Loader {
+          id:toolInspectorLoader;objectName:"t3ToolInspectorLoader";anchors.fill:parent;active:toolPopup.contentCreated
+          sourceComponent:T3ToolInspector {
+            id:toolInspector;anchors.fill:parent;bridge:root.bridge;environment:root.bridge.selectedEnvironment;threadId:root.bridge.selectedThread
+            onRequested:function(token,scope){root.bridge.send(Object.assign({op:"tool-inspector",thread:scope.threadId,requestId:token},scope))}
+            onClosed:toolPopup.close()
+          }
         }
-        Connections {target:root.bridge;function onToolInspectorFinished(requestId,result,error){toolInspector.accept(requestId,result,error)}}
+        Connections {target:root.bridge;function onToolInspectorFinished(requestId,result,error){if(toolInspectorLoader.item)toolInspectorLoader.item.accept(requestId,result,error)}}
       }
       Controls.Popup {
         id:documentPopup;objectName:"t3EmbeddedDocumentPopup";focus:true;modal:true
@@ -1962,7 +1994,7 @@ Item {
                     }
                     Loader{
                       width:parent.width;active:message.modelData.role==="activity";visible:active
-                      sourceComponent:T3ActivityBlock{bridge:root.bridge;activity:message.modelData.activity || {};onInspectRequested:function(reference){toolPopup.open();toolInspector.openItem(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
+                      sourceComponent:T3ActivityBlock{bridge:root.bridge;activity:message.modelData.activity || {};onInspectRequested:function(reference){toolPopup.inspect(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     }
                     Loader{
                       width:Math.min(parent.width,Style.space(640));active:message.modelData.role==="subagents";visible:active
