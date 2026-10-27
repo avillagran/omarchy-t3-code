@@ -27,6 +27,9 @@
   model picker, and a one-shot collection after quiet navigation away from
   large histories. Final three-cycle comparisons save 33.7–34.6 MiB PSS+SwapPSS
   against `3f70242`; live UI sample ~307 MiB RSS, total target still open.
+  2026-10-27: scoped 512×512 atlas installed. Isolated Asahi GEM requests show
+  the specific atlas buffer falls 32.25→1.02 MiB; this is graphics storage,
+  not an equivalent RSS reduction. Whole-app target remains pending.
 
 - [ ] **2026-10-26 — Intermittent Spanish accents in text input.** User reports
   that typing accented letters sometimes works and sometimes fails despite a
