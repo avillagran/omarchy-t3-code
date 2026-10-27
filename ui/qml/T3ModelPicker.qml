@@ -9,6 +9,9 @@ Controls.Button {
  property var selection:({})
  property string emptyText:T3I18n.tr("Loading models…")
  property alias popup:menu
+ readonly property var results:pickerContent.item?pickerContent.item.resultsView:null
+ readonly property var railView:pickerContent.item?pickerContent.item.providerView:null
+ readonly property var search:pickerContent.item?pickerContent.item.searchField:null
  readonly property var models:bridge.catalog.models || []
  readonly property var providers:bridge.catalog.providers || fallbackProviders()
  readonly property var favorites:bridge.catalog.favorites || []
@@ -27,16 +30,17 @@ Controls.Button {
  function pending(m){return !!(bridge.favoritePending || {})[bridge.selectedEnvironment+"/"+JSON.stringify([m.instanceId,m.model])]}
  function score(m){var text=[m.displayName || m.name,m.model,m.providerName,m.subProvider].join(" ").toLowerCase(),words=query.trim().toLowerCase().split(/\s+/),sum=0;for(var i=0;i<words.length;i++){var w=words[i],at=text.indexOf(w);if(at>=0){sum+=500-at;continue}var p=0;for(var j=0;j<text.length&&p<w.length;j++)if(text[j]===w[p])p++;if(p<w.length)return -1;sum+=100}return sum}
  readonly property var rows:{
+   if(!menu.visible)return []
    var searching=!!query.trim(),out=models.map(function(m,i){return {model:m,index:i,score:searching?root.score(m):0,favorite:root.favorite(m)}}).filter(function(r){return r.model.available!==false && (root.provider==="favorites"?r.favorite:searching || r.model.instanceId===root.provider) && (!searching || r.score>=0) && (searching || root.provider==="favorites" || root.legacyExpanded || !r.model.isLegacy)})
    out.sort(function(a,b){return b.score-a.score || (root.provider==="favorites"?0:Number(b.favorite)-Number(a.favorite)) || a.index-b.index});return out
  }
  readonly property var rail:[{instanceId:"favorites",name:T3I18n.tr("Favorites"),ready:true}].concat(providers)
- onRowsChanged:if(menu.visible){results.currentIndex=Math.max(0,rows.findIndex(function(r){return r.model.instanceId===root.selection.instanceId&&r.model.model===root.selection.model}));Qt.callLater(function(){results.positionViewAtIndex(results.currentIndex,ListView.Contain)})}
- function selectProvider(id){provider=id;railView.currentIndex=rail.findIndex(function(p){return p.instanceId===id});legacyExpanded=models.some(function(m){return m.instanceId===id&&m.model===root.selection.model&&m.isLegacy});results.positionViewAtBeginning()}
+ onRowsChanged:if(menu.visible&&results){results.currentIndex=Math.max(0,rows.findIndex(function(r){return r.model.instanceId===root.selection.instanceId&&r.model.model===root.selection.model}));Qt.callLater(function(){if(root.results)root.results.positionViewAtIndex(root.results.currentIndex,ListView.Contain)})}
+ function selectProvider(id){provider=id;if(railView)railView.currentIndex=rail.findIndex(function(p){return p.instanceId===id});legacyExpanded=models.some(function(m){return m.instanceId===id&&m.model===root.selection.model&&m.isLegacy});if(results)results.positionViewAtBeginning()}
  // ModelPickerContent's adjacent provider behavior over the existing normalized
  // rail: favorites always participates, unavailable providers are skipped.
  function moveProvider(step){var available=rail.filter(function(p){return p.ready!==false}),index=available.findIndex(function(p){return p.instanceId===root.provider});query="";selectProvider(available[index<0?(step>0?0:available.length-1):(index+step+available.length)%available.length].instanceId)}
- function moveResult(step){if(!rows.length)return;results.currentIndex=(results.currentIndex+step+rows.length)%rows.length;results.positionViewAtIndex(results.currentIndex,ListView.Contain)}
+ function moveResult(step){if(!rows.length||!results)return;results.currentIndex=(results.currentIndex+step+rows.length)%rows.length;results.positionViewAtIndex(results.currentIndex,ListView.Contain)}
  function selectResult(index){var row=rows[index];if(!row || row.model.available===false)return;bridge.chooseModel(row.index);menu.close();picked()}
  contentItem:RowLayout {
   spacing:Style.space(6)
@@ -56,9 +60,14 @@ Controls.Button {
   x:0;y:-height-Style.space(6);width:Style.space(360);height:Style.space(346);padding:0;margins:Style.space(8)
   modal:true;focus:true;closePolicy:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
   background:Rectangle{radius:Style.space(9);color:Color.popups.background;border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.16)}
-  onOpened:{root.query="";var active=root.providers.find(function(p){return p.instanceId===root.selection.instanceId});root.selectProvider(root.favorites.length&&(!active || active.ready!==false)?"favorites":root.selection.instanceId || (root.providers[0] || {}).instanceId || "favorites");root.bridge.refreshCatalog();Qt.callLater(function(){search.forceActiveFocus()})}
+  onOpened:{root.query="";var active=root.providers.find(function(p){return p.instanceId===root.selection.instanceId});root.selectProvider(root.favorites.length&&(!active || active.ready!==false)?"favorites":root.selection.instanceId || (root.providers[0] || {}).instanceId || "favorites");root.bridge.refreshCatalog();Qt.callLater(function(){if(root.search)root.search.forceActiveFocus()})}
   onClosed:root.forceActiveFocus()
-  contentItem:Item {
+  contentItem:Loader {
+   id:pickerContent;objectName:"t3ModelPickerContentLoader";active:menu.visible
+   sourceComponent:Item {
+   property alias resultsView:results
+   property alias providerView:railView
+   property alias searchField:search
    Rectangle{anchors.fill:parent;color:Color.popups.background;radius:Style.space(9)}
    RowLayout {anchors.fill:parent
    spacing:0
@@ -149,6 +158,7 @@ Controls.Button {
      text:T3I18n.tr("Legacy models")+" "+(root.legacyExpanded?"⌃":"⌄");onClicked:root.legacyExpanded=!root.legacyExpanded
     }
    }
+  }
   }
   }
  }

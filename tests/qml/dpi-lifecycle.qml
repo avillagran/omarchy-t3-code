@@ -11,12 +11,14 @@ ShellRoot {
   WlrLayershell.namespace:"omarchy-t3-dpi-fixture";WlrLayershell.keyboardFocus:WlrKeyboardFocus.None
   color:"#101010"
   function sampleIcon(){return providers.itemAt(0)}
+  function sampleBuiltin(){return builtin}
+  Test.T3ProviderIcon{id:builtin;provider:({driverKind:"codex"});width:24;height:24}
   Grid{columns:10;spacing:4;Repeater{id:providers;model:30;delegate:Test.T3ProviderIcon{width:24;height:24;provider:({driverKind:"acpRegistry",registryIcon:root.emptySource?"":root.image})}}}
  }}}
  TestCase{id:probe;when:false}
  Timer{interval:35;running:true;repeat:true;onTriggered:{
   if(phase===0){root.emptySource=false;loaded.active=true;phase=1}
-  else if(phase===1){loaded.item.visible=true;phase=2}
+  else if(phase===1){if(probe.findChild(loaded.item.sampleBuiltin(),"t3ProviderRegistry")){console.error("DPI_LIFECYCLE_QML_FAIL builtin icon created registry effects");Qt.exit(1)}loaded.item.visible=true;phase=2}
   else if(phase===2){root.emptySource=true;phase=3}
   else if(phase===3){var image=probe.findChild(loaded.item.sampleIcon(),"t3ProviderRegistry");if(!image||!image.layer.enabled){console.error("DPI_LIFECYCLE_QML_FAIL texture layer destroyed during source reload");Qt.exit(1)}loaded.active=false;if(++cycles>=50){console.log("DPI_LIFECYCLE_QML_PASS: scaled Wayland window, stable texture layer across reloads and 50 load/map/unload cycles");Qt.quit()}phase=0}
  }}

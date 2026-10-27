@@ -190,3 +190,79 @@ announcements and recent-thread palette changes. Backup:
 `~/.cache/ot3-lazy-reviews-20261026-212042`.
 Both hosts ready and selected thread identical after restart. Desktop capture:
 `~/Pictures/ot3-evidence/deferred-reviews-20261026.png`.
+
+## Five further iterations — 2026-10-26
+
+1. **Translation retention (discarded).** Retained only English plus the active
+   locale after parsing, with live reload when the locale changed. All 20-language
+   checks passed, but cold PSS+SwapPSS was 195330→199948 KiB; even a diagnostic
+   collection gave 197129→198213 KiB. No repeatable memory reduction; the original
+   complete catalog remains in production. No language was removed.
+2. **Provider artwork (retained).** Built-in provider glyphs no longer create an
+   image layer/MultiEffect or import QtQuick.Effects for unused registry artwork.
+   A URL-loaded `T3TintedProviderIcon` is created on first registry artwork. Once
+   created it remains mounted across empty-source/async reloads, preserving the
+   previous DPR crash fix: never toggle an image's layer during DPR traversal.
+   Intermediate paired PSS+SwapPSS: 198229→195339 KiB (~2.8 MiB); other code was
+   identical in that pair. The combined repeat below is the final comparison.
+3. **Model picker (retained).** Search, provider rail and model-list controls
+   exist only while its popup is visible. Derived filtered rows are empty while
+   closed. Favorites, provider identity, current selection, catalog refresh and
+   original model indices remain bridge-owned. Paired PSS: 207763→205709 KiB
+   (~2.0 MiB). Keyboard, favorites, search, legacy expansion and reopening pass.
+4. **History lifecycle (retained).** Added repeated filled/cleared history
+   measurements in one process, preserving an unsent draft. A discarded large
+   history left dead QV4 data until later allocation pressure. After releasing
+   at least 262144 text/rendered characters, request one collection after two
+   quiet seconds. Subsequent navigation/message updates postpone the pending
+   collection. Small histories do not request it; there is no periodic GC loop,
+   history truncation or draft eviction. In the two-cycle control/candidate
+   comparison final PSS anonymous was 186176→161056 KiB (~24.5 MiB); final
+   PSS+SwapPSS 234703→216671 KiB (~17.6 MiB). Library sharing differs, so both
+   are recorded rather than treating RSS alone as allocation.
+5. **Combined repeat and installation.** Three filled/cleared cycles with 250
+   messages × 40 paragraphs, 24 threads, fixed 1200×900, no animations, same
+   jemalloc settings. Candidate ran first, then baseline `3f70242`. No other test
+   Quickshell ran during these measurements. The candidate had GC statistics
+   logging enabled; a further repeat without logging is recorded separately.
+
+| Version | First cleared PSS KiB | Final cleared RSS KiB | Final PSS KiB | Final PSS anon KiB | SwapPSS KiB | Cumulative CPU ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 223125 | 322752 | 248982 | 197424 | 0 | 2300 |
+| Combined candidate, GC logging | 217749 | 289008 | 213522 | 173552 | 0 | 2480 |
+| Candidate repeat, no logging | 216810 | 295408 | 210917 | 161888 | 3568 | 2660 |
+
+Final PSS difference: **34.6 MiB**, anonymous difference **23.3 MiB**. CPU cost
+was 180 ms higher across the whole lifecycle workload; no CPU speedup is claimed.
+The repeat without logging confirms **33.7 MiB** lower final PSS+SwapPSS
+(248982→214485 KiB); its cumulative CPU time was 360 ms above the control.
+These savings are not added to intermediate per-feature measurements. Current
+live UI after installation: 314400 KiB RSS / 247205 PSS / 0 SwapPSS. This is
+not a controlled comparison to a prior live chat. The total 50–100 MB budget
+remains unachieved.
+
+Reproduce (run separately, repeat in reverse order):
+
+```sh
+MALLOC_CONF='narenas:2,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000,tcache_max:8192' ./tools/measure-sidebar-memory --panel --messages 250 --paragraphs 40 --cycles 3
+MALLOC_CONF='narenas:2,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000,tcache_max:8192' ./tools/measure-sidebar-memory --panel --messages 250 --paragraphs 40 --cycles 3 --revision 3f70242 --revision-file T3Backend.qml --revision-file T3ProviderIcon.qml --revision-file T3ModelPicker.qml
+```
+
+`--cycles` reports every filled/cleared sample; `--collect` remains a diagnostic
+option and was not used for the final combined candidate. `--revision-file`
+adds explicitly selected QML files to the baseline. Fixture HOME/config/state
+and empty server environments remain isolated. It fails on draft loss or QML
+runtime errors.
+
+Eight final focused checks pass: model-picker (cold/closed controls absent),
+dpi-lifecycle (built-in glyph has no registry effects; 50 stable-layer cycles),
+composer, completion, sidebar-keybindings, scroll-stability, i18n, and
+history-reclaim (large-only threshold, quiet period, message/small-navigation
+postponement, one shot, current content and draft preservation). The separate
+keybindings-runtime fixture initially failed its startup sidebar action; its
+unchanged repeat passed. No Rust rebuild or global desktop settings changed.
+
+Installed by three-way merge to retain existing local edits. Backup:
+`~/.cache/ot3-five-memory-20261026-223941`. Both hosts ready, `stale=false`, same
+selected thread and open state after restart. Desktop capture (user task-manager
+panel overlaid): `~/Pictures/ot3-evidence/five-memory-iterations-20261026.png`.
