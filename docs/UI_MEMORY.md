@@ -266,3 +266,62 @@ Installed by three-way merge to retain existing local edits. Backup:
 `~/.cache/ot3-five-memory-20261026-223941`. Both hosts ready, `stale=false`, same
 selected thread and open state after restart. Desktop capture (user task-manager
 panel overlaid): `~/Pictures/ot3-evidence/five-memory-iterations-20261026.png`.
+
+## Compact texture atlas — 2026-10-27
+
+Further experiments were rejected before installation:
+
+- Loading Preferences/mosaic/PR/review types by URL passed focused interaction
+  checks, but did not repeatably reduce memory (second cold pair PSS anonymous
+  120800 baseline versus 121408 KiB candidate). The original components remain.
+- A basic render loop had only a small sample difference; threaded rendering
+  remains unchanged.
+- Jemalloc `slab_sizes` reduced allocator-active storage by about 8 MB at similar
+  allocated bytes. One post-GC cold pair saved ~5.8 MiB, but the representative
+  three-cycle PSS+SwapPSS result worsened 216224→222721 KiB. Not shipped. Bin
+  sharding experiments were also discarded. Existing allocator defaults remain.
+
+QSG_INFO showed hardware OpenGL on Apple M2 Pro and a **4096×2048** image/icon
+atlas in the fixed 1200×900 workload. This is a separate graphics allocation;
+RSS/PSS does not account for all GPU buffer backing. Smaller atlases passed
+functional checks but their RSS differences were inconsistent. A temporary
+ioctl probe in the isolated fixture then recorded successful Asahi GEM_CREATE
+requests (only handle/size metadata; no frame or user content). This identified
+an allocation that scales exactly with the atlas setting:
+
+| Atlas dimensions | Matching GPU buffer bytes | MiB |
+| --- | ---: | ---: |
+| Automatic: 4096×2048 | 33816576 | 32.25 |
+| 2048×1024 | 8454144 | 8.0625 |
+| 1024×1024 | 4227072 | 4.03125 |
+| 512×512 | 1064960 | 1.015625 |
+
+Each size appeared once in its corresponding run and not in the other runs.
+The difference for this specific allocation is **31.23 MiB**. This measures
+requested graphics-buffer storage, not process-RSS savings, total GPU residency
+or whole-application savings; framebuffer queues and other buffers also vary.
+Qt's source uses a 512-pixel minimum dimension and falls back to standalone
+textures when an image does not fit. Image resolution is unchanged. More
+standalone textures can increase draw calls; the scoped launcher defaults can
+be overridden through QSG_ATLAS_WIDTH/HEIGHT.
+
+`bin/ot3` now defaults both dimensions to 512, preserving explicit environment
+values and the existing threaded render loop/effects. No graphics change is
+applied outside ot3. The benchmark records graphics environment settings.
+Qt implementation: [RHI atlas manager](https://github.com/qt/qtdeclarative/blob/dev/src/quick/scenegraph/util/qsgrhiatlastexture.cpp).
+Probe ABI: installed `/usr/include/drm/asahi_drm.h`. Temporary probe source and
+library remain under `~/.cache/ot3-heaptrack/gem_probe.{c,so}`; neither is shipped
+or preloaded in the real app.
+
+Validation with 512×512: upward-scroll (522 frames; comparable to the prior 521),
+dpi-lifecycle (50 map/unmap cycles), mosaic-sidebar, live-media (image growth,
+thumbnail/full viewer and manual reading), video-lifecycle (load/play/pause/
+seek/teardown/reopen) and i18n (20 locales). Bash/Python syntax and explicit
+user-override checks pass. No Rust rebuild.
+
+Launcher installed with a three-way merge and backup:
+`~/.cache/ot3-compact-atlas-20261027-060501`. Live process environment confirms
+both dimensions are 512. Both hosts ready/stale=false, window open. Selected
+thread differed at recheck during concurrent use; no navigation was forced.
+Live sample: RSS339824/PSS268354/SwapPSS0 KiB. This is not a controlled
+before/after comparison. The total 50–100 MB budget remains open.

@@ -131,6 +131,7 @@ with tempfile.TemporaryDirectory(prefix='ot3-sidebar-memory-') as directory:
                 values['cpuMs'] = round((int(fields[11]) + int(fields[12])) * 1000 / os.sysconf('SC_CLK_TCK'))
                 values['elapsedMs'] = round((time.monotonic() - started) * 1000)
                 values['allocatorConf'] = env.get('MALLOC_CONF', '')
+                values['graphicsConf'] = {key: env.get(key, '') for key in ('QSG_ATLAS_WIDTH', 'QSG_ATLAS_HEIGHT', 'QSG_RENDER_LOOP')}
                 phase = re.search(r'phase=([a-z-]+)', ready_line)
                 values['phase'] = phase.group(1) if phase else 'cold'
                 samples.append(dict(values))

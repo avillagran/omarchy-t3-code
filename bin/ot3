@@ -40,7 +40,11 @@ unit=omarchy-t3-code
 # constrain the UI. Bound its arenas/cache and return unused pages in the
 # background. Append explicit user settings last so they can override defaults.
 # Keep the glibc knobs for the native helper, without changing the desktop.
-style_env=("MALLOC_CONF=narenas:2,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000,tcache_max:8192${MALLOC_CONF:+,$MALLOC_CONF}" MALLOC_ARENA_MAX=2 MALLOC_TRIM_THRESHOLD_=131072 QT_QUICK_CONTROLS_STYLE=OmarchyT3 "QML_IMPORT_PATH=$run/ui/style${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}")
+# Qt otherwise sizes its icon/image atlas from the window's pixel dimensions
+# (32 MiB for a 4096x2048 HiDPI surface). Use its minimum 512-square atlas;
+# overflow remains full-resolution standalone textures. Scope this to ot3 and
+# honor explicit user dimensions, without changing the render loop or effects.
+style_env=("QSG_ATLAS_WIDTH=${QSG_ATLAS_WIDTH:-512}" "QSG_ATLAS_HEIGHT=${QSG_ATLAS_HEIGHT:-512}" "MALLOC_CONF=narenas:2,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000,tcache_max:8192${MALLOC_CONF:+,$MALLOC_CONF}" MALLOC_ARENA_MAX=2 MALLOC_TRIM_THRESHOLD_=131072 QT_QUICK_CONTROLS_STYLE=OmarchyT3 "QML_IMPORT_PATH=$run/ui/style${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}")
 # Its own user service when systemd is there: a shell restart, or a stuck bar
 # that launched it, never takes the app down with it.
 launch() {
