@@ -231,6 +231,7 @@ ShellRoot {
     // Memory/Obsidian host detection, for diagnosis from a terminal.
     function vaultDiscover(): void { app.backend.discoverVaults() }
     function vaultHosts(): string { return JSON.stringify(app.backend.vaultHosts) }
+    function memoryState(): string { var b=app.backend,s=b.viewState || {},states=b.idleReleaseStates || {};return JSON.stringify({enabled:s.idleReleaseEnabled!==false,minutes:s.idleReleaseMinutes===undefined?5:s.idleReleaseMinutes,engine:states["@engine"] || null,released:Object.keys(states).filter(function(k){return states[k].status==="released"}).length,failed:Object.keys(states).filter(function(k){return states[k].status==="failed"}).length,selected:states[b.selectedKey] || null}) }
     function preferences(page: string): void { app.show(); Qt.callLater(function() { panel.openPreferencesPage(page || "general") }) }
     function openProject(environment: string, projectId: string): void { app.show(); app.backend.openProject(environment, projectId) }
   }

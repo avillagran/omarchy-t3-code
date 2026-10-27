@@ -24,6 +24,9 @@ impl Harness {
         let root = std::env::temp_dir().join(format!("t3-auto-compact-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(root.join("state/omarchy-t3-code")).unwrap();
         fs::write(root.join("state/omarchy-t3-code/ui-state.json"),json!({"schemaVersion":1,"autoCompactEnabled":true,"autoCompactProviderMinutes":{"codex":1}}).to_string()).unwrap();
+        if mode.starts_with("memory") {
+            fs::write(root.join("state/omarchy-t3-code/ui-state.json"), json!({"schemaVersion":1,"autoCompactEnabled":false,"idleReleaseEnabled":true,"idleReleaseMinutes":1}).to_string()).unwrap();
+        }
         let token = root.join("token");
         fs::write(&token, "synthetic-token").unwrap();
         fs::set_permissions(&token, fs::Permissions::from_mode(0o600)).unwrap();
@@ -41,7 +44,17 @@ impl Harness {
             raw["settledOverride"] = json!("settled");
             raw["settledAt"] = json!(iso(now - 40000));
         }
-        let projection = json!({"thread":raw,"messages":[{"id":"human","role":"user","createdBy":"user","text":"synthetic task","createdAt":iso(now-if mode=="expired"{120000}else{60000})}],"providerThreads":[{"id":"pt","appThreadId":"thread","providerInstanceId":"codex"}],"providerTurns":[{"id":"turn","providerThreadId":"pt","tokenUsage":{"usedTokens":50000,"updatedAt":iso(now-if mode=="scheduled"{43000}else if mode=="expired"{61000}else{50000})}}],"runs":[{"id":"r","providerThreadId":"pt","status":"completed","completedAt":iso(now-50000)}],"runtimeRequests":[],"plans":[],"subagents":[]});
+        let mut projection = json!({"thread":raw,"messages":[{"id":"human","role":"user","createdBy":"user","text":"synthetic task","createdAt":iso(now-if mode=="expired"{120000}else{60000})}],"providerThreads":[{"id":"pt","appThreadId":"thread","providerInstanceId":"codex"}],"providerTurns":[{"id":"turn","providerThreadId":"pt","tokenUsage":{"usedTokens":50000,"updatedAt":iso(now-if mode=="scheduled"{43000}else if mode=="expired"{61000}else{50000})}}],"runs":[{"id":"r","providerThreadId":"pt","status":"completed","completedAt":iso(now-50000)}],"runtimeRequests":[],"plans":[],"subagents":[]});
+        if mode.starts_with("memory") {
+            projection["thread"]["latestRunCompletedAt"] = json!(iso(now - 180000));
+            projection["thread"]["latestUserAuthoredMessageAt"] = json!(iso(now - 190000));
+            projection["runs"][0]["completedAt"] = json!(iso(now - 180000));
+            projection["providerThreads"][0]["driver"] = json!("codex");
+            projection["providerThreads"][0]["providerSessionId"] = json!("native-session");
+            projection["providerThreads"][0]["nativeThreadRef"] =
+                json!({"driver":"codex","nativeId":"saved-conversation"});
+            projection["providerSessions"] = json!([{"id":"native-session","driver":"codex","providerInstanceId":"codex","status":"ready","createdAt":iso(now-200000)}]);
+        }
         let stop = Arc::new(AtomicBool::new(false));
         let stopper = stop.clone();
         let commands = Arc::new(Mutex::new(vec![]));
@@ -68,6 +81,10 @@ impl Harness {
                             let req: Value =
                                 serde_json::from_str(ws.read().unwrap().to_text().unwrap())
                                     .unwrap();
+                            if req["tag"] == "orchestration.subscribeShell" {
+                                let _ = ws.close(None);
+                                return;
+                            }
                             let result = match req["tag"].as_str().unwrap() {
                                 "server.getConfig" => {
                                     json!({"providers":[{"instanceId":"codex","enabled":true,"slashCommands":[{"name":"compact"}]}]})
@@ -80,7 +97,11 @@ impl Harness {
                                     let command = req["payload"].clone();
                                     assert!(matches!(
                                         command["type"].as_str(),
-                                        Some("message.dispatch" | "queued-run.cancel")
+                                        Some(
+                                            "message.dispatch"
+                                                | "queued-run.cancel"
+                                                | "provider-session.detach"
+                                        )
                                     ));
                                     if command["type"] == "message.dispatch" {
                                         assert_eq!(command["text"], "/compact");
@@ -101,11 +122,11 @@ impl Harness {
                                     }
                                     json!({"sequence":10})
                                 }
-                                _ => panic!("unexpected RPC"),
+                                _ => panic!("unexpected RPC: {}", req["tag"]),
                             };
                             let _=ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":result}}).to_string().into()));
                         } else {
-                            let body = if first.contains("/bounded?compactTurnItems=1 ") {
+                            let body = if first.contains("/bounded?compactTurnItems=1") {
                                 let mut p = p.clone();
                                 let mut count = reads.lock().unwrap();
                                 *count += 1;
@@ -114,7 +135,7 @@ impl Harness {
                                     p["thread"]["settledAt"] =
                                         json!(chrono::Utc::now().to_rfc3339());
                                 }
-                                if mode == "busy" && *count >= 2 {
+                                if (mode == "busy" || mode == "memory-busy") && *count >= 2 {
                                     p["thread"]["activeRunId"] = json!("other");
                                 }
                                 if mode == "queued" {
@@ -327,4 +348,47 @@ fn freshly_settled_thread_cannot_be_awakened_by_compaction() {
     assert_eq!(*h.reads.lock().unwrap(), 2);
     assert!(h.commands.lock().unwrap().is_empty());
     Harness::end(c, input);
+}
+
+fn memory_event(rx: &mpsc::Receiver<Value>, expected: &str) -> bool {
+    let deadline = std::time::Instant::now() + Duration::from_secs(6);
+    while let Some(left) = deadline.checked_duration_since(std::time::Instant::now()) {
+        match rx.recv_timeout(left) {
+            Ok(v) => {
+                if v["type"] == "idle-release" && v["data"]["key"] == "fixture/thread" {
+                    return v["data"]["status"] == expected;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    false
+}
+
+#[test]
+fn idle_memory_releases_native_session_without_compacting_and_deduplicates_restart() {
+    let h = Harness::new("memory");
+    let (c, i, rx) = h.start();
+    let released = memory_event(&rx, "released");
+    Harness::end(c, i);
+    assert!(released);
+    let commands = h.commands.lock().unwrap().clone();
+    assert_eq!(commands.len(), 1);
+    assert_eq!(commands[0]["type"], "provider-session.detach");
+    assert_eq!(commands[0]["providerSessionId"], "native-session");
+    assert!(commands[0].get("text").is_none());
+    let (c, i, rx) = h.start();
+    let released = memory_event(&rx, "released");
+    Harness::end(c, i);
+    assert!(released);
+    assert_eq!(h.commands.lock().unwrap().len(), 1);
+}
+#[test]
+fn idle_memory_rechecks_new_work_before_releasing() {
+    let h = Harness::new("memory-busy");
+    let (c, i, rx) = h.start();
+    let busy = memory_event(&rx, "busy");
+    Harness::end(c, i);
+    assert!(busy);
+    assert!(h.commands.lock().unwrap().is_empty());
 }
