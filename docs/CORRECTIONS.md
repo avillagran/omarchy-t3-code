@@ -11,6 +11,10 @@
   Follow-up: lazy sidebar actions, utility popups and multimedia are installed;
   the fixed 24-thread panel saves 37–51 MiB PSS+SwapPSS. The live UI still
   sampled ~409 MiB RSS on a long chat; the target remains open. See `UI_MEMORY.md`.
+  Allocator follow-up: Quickshell uses jemalloc, so app-local arena/cache/decay
+  tuning is installed. Fixed long-chat fixture saves 3–36 MiB PSS+SwapPSS in
+  two comparisons under varying system pressure. UI still exceeds the budget;
+  restart snapshots are not treated as a controlled before/after measurement.
 
 - [ ] **2026-10-26 — Intermittent Spanish accents in text input.** User reports
   that typing accented letters sometimes works and sometimes fails despite a
