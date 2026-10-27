@@ -1844,6 +1844,12 @@
     "Worktree path": "Worktree path",
     "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.": "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.",
     "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.": "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.",
-    "The Android device list may be incomplete. Check the device host and try again.": "The Android device list may be incomplete. Check the device host and try again."
+    "The Android device list may be incomplete. Check the device host and try again.": "The Android device list may be incomplete. Check the device host and try again.",
+    "Agent memory": "Agent memory",
+    "Release idle agents": "Release idle agents",
+    "Managed by the harness": "Managed by the harness",
+    "OT3 frees idle agent memory and resumes the saved conversation when you send a message.": "OT3 frees idle agent memory and resumes the saved conversation when you send a message.",
+    "Running tasks, questions and approvals keep the session open. OT3 must remain running.": "Running tasks, questions and approvals keep the session open. OT3 must remain running.",
+    "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime.": "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime."
   }
 }

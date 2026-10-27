@@ -486,6 +486,7 @@ Singleton {
     if(/^guest-/.test(command.action)||command.action==="limit-recovery"){refresh();if(selectedKey===data.environment+"/"+data.thread)fetchMessages()}
   }
   property var compactionStates: ({})
+  property var idleReleaseStates: ({})
   function configureCompaction(patch){rememberView(patch);persistViewNow();refresh()}
   // T3 server updates (server_update.rs): per environment {current,channel,latest,canUpdate,reason,state,error}.
   property var serverUpdates:({mode:"auto",environments:{}})
@@ -2115,6 +2116,7 @@ Singleton {
       else if (event.type === "ui-state-error") { console.warn("T3 presentation state could not be saved: " + data.error) }
       else if(event.type==="live-state" && data.serial===requestedSerial && panelVisible){liveConnected=!!data.connected;if(data.error&&!transcript.length){loadingMessages=false;messageError=data.error}}
       else if(event.type==="server-updates"){serverUpdates=data}
+      else if(event.type === "idle-release"){var released=Object.assign({},idleReleaseStates);released[data.key]=data;idleReleaseStates=released}
       else if(event.type === "compaction"){var states=Object.assign({},compactionStates);states[data.key]=data;compactionStates=states}
       else if(event.type==="document-clipboard"&&(data.requestId===documentOpen.requestId||inlineDocuments[data.requestId])){documentClipboardBuffer.text=data.text || "";documentClipboardBuffer.selectAll();documentClipboardBuffer.copy();documentClipboardBuffer.deselect()}
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}

@@ -38,6 +38,7 @@ T3ProviderIcon 1.0 T3ProviderIcon.qml
 T3ThreadRow 1.0 T3ThreadRow.qml
 
 T3CompactionSettings 1.0 T3CompactionSettings.qml
+T3AgentMemorySettings 1.0 T3AgentMemorySettings.qml
 
 T3Questions 1.0 T3Questions.qml
 T3Approvals 1.0 T3Approvals.qml
