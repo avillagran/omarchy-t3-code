@@ -9,14 +9,30 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import shlex
+import re
+import time
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--revision')
 parser.add_argument('--panel', action='store_true', help='measure the complete cold panel instead of individual rows')
+parser.add_argument('--messages', type=int, default=0)
+parser.add_argument('--paragraphs', type=int, default=10)
+parser.add_argument('--log-output', help='save diagnostics from the isolated workload')
+parser.add_argument('--preload', help='experimental allocator library for the isolated UI')
+parser.add_argument('--collect', action='store_true', help='collect JS garbage immediately before sampling')
+parser.add_argument('--heaptrack', help='path to heaptrack executable (isolated child profiling only)')
+parser.add_argument('--profile-output', help='heaptrack output prefix')
 parser.add_argument('--rows', type=int, default=24)
 args = parser.parse_args()
 if not 0 <= args.rows <= 100:
     parser.error('--rows must be between 0 and 100')
+if not 0 <= args.messages <= 300 or not 1 <= args.paragraphs <= 100:
+    parser.error('messages/paragraphs out of range')
+if args.heaptrack and args.preload:
+    parser.error('do not combine allocation tracing and allocator replacement')
+if args.heaptrack and not args.profile_output:
+    parser.error('--heaptrack requires --profile-output')
 repo = Path(__file__).resolve().parent.parent
 with tempfile.TemporaryDirectory(prefix='ot3-sidebar-memory-') as directory:
     root = Path(directory)
@@ -36,30 +52,77 @@ with tempfile.TemporaryDirectory(prefix='ot3-sidebar-memory-') as directory:
                                   (repo / 'tests/qml' / ('panel-memory.qml' if args.panel else 'sidebar-memory.qml')).read_text())
     (root / 'environments.json').write_text('{"environments":[]}')
     if args.panel:
-        (root / 'UnderTest/bin').symlink_to(repo / 'bin')
+        if args.heaptrack or args.preload:
+            bindir = root / 'UnderTest/bin'
+            bindir.mkdir()
+            for binary in (repo / 'bin').iterdir():
+                if binary.name in ('omarchy-t3-client', 'ot3-dictate'):
+                    wrapper = bindir / binary.name
+                    wrapper.write_text('#!/bin/sh\nexec env -u LD_PRELOAD -u DUMP_HEAPTRACK_OUTPUT ' + shlex.quote(str(binary)) + ' "$@"\n')
+                    wrapper.chmod(0o700)
+                else:
+                    (bindir / binary.name).symlink_to(binary)
+        else:
+            (root / 'UnderTest/bin').symlink_to(repo / 'bin')
     env = dict(os.environ, T3CODE_HOME=str(root / 'native'), OMARCHY_T3_FIXTURE_ENVIRONMENTS=str(root / 'environments.json'), MALLOC_ARENA_MAX='2', MALLOC_TRIM_THRESHOLD_='131072',
-               OT3_BENCH_ROWS=str(args.rows), QT_QUICK_CONTROLS_STYLE='OmarchyT3',
+               OT3_BENCH_COLLECT="1" if args.collect else "0", OT3_BENCH_ROWS=str(args.rows), OT3_BENCH_MESSAGES=str(args.messages), OT3_BENCH_PARAGRAPHS=str(args.paragraphs), QT_QUICK_CONTROLS_STYLE='OmarchyT3',
                QML_IMPORT_PATH=str(root / 'UnderTest/ui/style'),
                HOME=str(root / 'home'), XDG_CONFIG_HOME=str(root / 'config'),
                XDG_STATE_HOME=str(root / 'state'), XDG_DATA_HOME=str(root / 'data'))
+    if args.preload:
+        env["LD_PRELOAD"] = str(Path(args.preload).resolve())
     result = None
-    with subprocess.Popen(['timeout', '12', 'quickshell', '-p', str(root / 'shell.qml')],
+    command = ['quickshell', '-p', str(root / 'shell.qml')]
+    if args.heaptrack:
+        command = [args.heaptrack, '--record-only', '-o', str(Path(args.profile_output).resolve()), *command]
+    command = ['timeout', '60' if args.heaptrack else '12', *command]
+    def quickshell_pid(parent):
+        children = Path(f'/proc/{parent}/task/{parent}/children').read_text().split()
+        for child in children:
+            pid = int(child)
+            try:
+                if Path(f'/proc/{pid}/exe').resolve().name == 'quickshell':
+                    return pid
+                found = quickshell_pid(pid)
+                if found:
+                    return found
+            except FileNotFoundError:
+                continue
+        return None
+    started = time.monotonic()
+    with subprocess.Popen(command,
                           env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           text=True) as process:
-        # timeout's child is the actual Quickshell PID; never match another app.
+        # Follow only our timeout/profiler descendants; never match another app.
         log = []
         for line in process.stdout:
             log.append(line)
             if 'SIDEBAR_MEMORY_READY' in line:
-                children = Path(f'/proc/{process.pid}/task/{process.pid}/children').read_text().split()
-                pid = int(children[0])
+                pid = quickshell_pid(process.pid)
+                if pid is None:
+                    raise RuntimeError('Profiled Quickshell process not found')
                 values = {}
                 for entry in Path(f'/proc/{pid}/smaps_rollup').read_text().splitlines():
                     parts = entry.split()
                     if parts[0] in ('Rss:', 'Pss:', 'SwapPss:'):
                         values[parts[0][:-1] + 'KiB'] = int(parts[1])
-                result = dict(component='T3Panel' if args.panel else 'T3ThreadRow', revision=args.revision or 'working-tree', rows=args.rows, **values)
+                mappings = {}
+                name = 'anonymous'
+                for line in Path(f'/proc/{pid}/smaps').read_text().splitlines():
+                    if re.match(r'^[0-9a-f]+-[0-9a-f]+ ', line):
+                        fields = line.split(None, 5)
+                        name = fields[5] if len(fields) > 5 else 'anonymous'
+                    elif line.startswith('Rss:'):
+                        mappings[name] = mappings.get(name, 0) + int(line.split()[1])
+                stat = Path(f'/proc/{pid}/stat').read_text(); fields = stat[stat.rfind(')') + 2:].split()
+                values['cpuMs'] = round((int(fields[11]) + int(fields[12])) * 1000 / os.sysconf('SC_CLK_TCK'))
+                values['elapsedMs'] = round((time.monotonic() - started) * 1000)
+                values['allocatorConf'] = env.get('MALLOC_CONF', '')
+                values['topMappingsKiB'] = sorted(mappings.items(), key=lambda pair: pair[1], reverse=True)[:10]
+                result = dict(component='T3Panel' if args.panel else 'T3ThreadRow', revision=args.revision or 'working-tree', rows=args.rows, messages=args.messages, paragraphs=args.paragraphs, profiled=bool(args.heaptrack), **values)
         code = process.wait()
+    if args.log_output:
+        Path(args.log_output).write_text(''.join(log))
     if code or result is None or any('TypeError' in line or 'ReferenceError' in line for line in log):
         raise SystemExit(''.join(log))
     print(json.dumps(result))

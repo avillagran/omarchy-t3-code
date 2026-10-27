@@ -58,6 +58,63 @@ text-only startup. Live memory still reaches roughly 400 MiB on this chat.
 The original **50–100 MB total budget is not achieved**. Remaining work needs
 heap/object/render-resource profiling against realistic long chats and mosaics.
 
+## Allocator profiling and tuning
+
+The installed Quickshell links jemalloc 5.4. The existing glibc arena/trim
+settings therefore helped the Rust helper, but did not tune the Qt UI. A local
+mallctl probe measured about 98 MB allocated versus 198 MB allocator-resident
+memory. Qt's separate JS heap reserved about 13 MB; an explicit collection
+freed only about 1.4 MB, so no periodic full GC was added. A heaptrack sample
+reported a 57 MB peak tracked malloc heap; that excludes QV4 mmap storage and
+changes allocator behavior, so it is not a total-memory figure.
+
+`bin/ot3` now supplies app-local jemalloc defaults: two arenas, background page
+purging, one-second dirty/muzzy decay and an 8 KiB maximum thread-cache size.
+Explicit inherited `MALLOC_CONF` entries are appended last and override these
+defaults. No preload, allocator replacement or new runtime dependency is used.
+The existing glibc settings remain for the native helper. GTK platform-theme
+replacement was also measured, but was not shipped for its small extra gain.
+Allocator options: [jemalloc manual](https://jemalloc.net/jemalloc.3.html).
+JS accounting: [Qt memory management](https://doc.qt.io/qt-6/qtqml-javascript-memory.html).
+
+The benchmark now accepts a deterministic conversation and records CPU time,
+elapsed time and top RSS mappings. Run each command separately, repeat in reverse
+order, and compare PSS **plus** SwapPSS:
+
+```sh
+env -u MALLOC_CONF ./tools/measure-sidebar-memory --panel --messages 50
+MALLOC_CONF='narenas:2,background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000,tcache_max:8192' ./tools/measure-sidebar-memory --panel --messages 50
+```
+
+The fixture has 24 threads, 50 alternating messages, 10 paragraphs per message,
+disabled animations and a 1200×900 window. Launcher settings are intentionally
+not applied implicitly by the benchmark; `--revision` changes QML only.
+
+| Run | Allocator | RSS KiB | PSS KiB | SwapPSS KiB | CPU ms | Elapsed ms |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | Default | 285696 | 234330 | 0 | 1500 | 4971 |
+| 1 | Tuned | 249888 | 197701 | 0 | 1490 | 4996 |
+| 2 | Default | 242544 | 191370 | 11616 | 2200 | 5695 |
+| 2 | Tuned | 251024 | 199741 | 0 | 1620 | 5027 |
+
+Savings were **35.8 MiB** and **3.2 MiB** PSS+SwapPSS. System memory pressure
+caused substantial variance; these results support a modest allocator change,
+not a universal 36 MiB saving or a claim that RSS alone always falls.
+
+Installed runtime verified `MALLOC_CONF` in `/proc/PID/environ`, both hosts
+ready, `stale=false`, and the same selected thread immediately after restart.
+Before restart the UI sampled 268032 KiB RSS / 228770 PSS / 126448 SwapPSS;
+after restart 371184 RSS / 312538 PSS / 0 SwapPSS. This is **not a controlled
+allocator comparison**: restart, history pagination and warm-up differ. The
+current UI still exceeds the original budget substantially.
+
+Validation: Bash syntax, benchmark Python compilation, launcher defaults and
+explicit-user-override checks, QML sidebar-keybindings, mosaic-sidebar, and panel-reopen.
+The first panel-reopen run hit its known collapsed-state timing failure;
+an untuned control and a tuned repeat both passed all ten cycles.
+No Rust rebuild was needed. Local launcher backup:
+`~/.cache/ot3-jemalloc-20261026-210458`.
+
 ## Validation
 
 Focused QML checks: thread-menu (lazy creation, unload/recreate, open-editor
