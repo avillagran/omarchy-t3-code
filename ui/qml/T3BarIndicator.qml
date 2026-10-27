@@ -12,6 +12,7 @@ Item {
   property string style: "orbit"
   property var counts: ({})
   property bool stale: false
+  property bool motion: T3Motion.enabled
   readonly property bool working: (counts.working || 0) > 0
   readonly property string tone: (counts.failed || 0) > 0 ? "failed" : (counts.waiting || 0) > 0 ? "waiting" : working ? "working" : "idle"
   readonly property color toneColor: tone === "failed" ? T3Palette.failed : tone === "waiting" ? T3Palette.waiting : T3Palette.working
@@ -21,7 +22,7 @@ Item {
   width: Style.space(24); height: width
   property real t: 0
   Timer {
-    interval: 125; repeat: true; running: root.working && root.visible
+    interval: 125; repeat: true; running: root.motion && root.working && root.visible
     onTriggered: root.t = (root.t + 0.125) % 3600
     onRunningChanged: if (!running) root.t = 0.4
   }

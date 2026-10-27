@@ -14,7 +14,7 @@ Item {
   property rect start: Qt.rect(0, 0, 0, 0)
   property string key: ""
   property string path: "arc"
-  property int duration: 520
+  property int duration: T3Motion.duration(520)
   property real t: 0
   readonly property real bow: Math.sin(Math.PI * t)
   readonly property real blend: smooth(0.18, 0.82, t)
@@ -83,7 +83,7 @@ Item {
     }
   }
   NumberAnimation {
-    id: flight; target: root; property: "t"; from: 0; to: 1; duration: root.duration
+    id: flight; target: root; property: "t"; from: 0; to: 1; duration: T3Motion.duration(root.duration)
     easing.type: root.path === "arc" ? Easing.InOutQuart : Easing.InOutCubic
     onFinished: { if (root.target) root.target.flight = false; root.destroy() }
   }

@@ -9,7 +9,7 @@ Item {
   id: root
   property bool active: false
   property color tint: Color.accent
-  readonly property bool running: active && visible
+  readonly property bool running: active && visible && T3Motion.enabled
   implicitWidth: Style.space(12)
   implicitHeight: implicitWidth
   readonly property real size: Math.min(width, height)
@@ -47,9 +47,9 @@ Item {
     rotation: (tick.time * 225) % 360
   }
   ParallelAnimation {
-    running: root.running
-    NumberAnimation { target: spinner; property: "opacity"; from: 0; to: 1; duration: 220; easing.type: Easing.OutCubic }
-    NumberAnimation { target: spinner; property: "scale"; from: 0.6; to: 1; duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
+    running: T3Motion.enabled && (root.running)
+    NumberAnimation { target: spinner; property: "opacity"; from: 0; to: 1; duration: T3Motion.duration(220); easing.type: Easing.OutCubic }
+    NumberAnimation { target: spinner; property: "scale"; from: 0.6; to: 1; duration: T3Motion.duration(320); easing.type: Easing.OutBack; easing.overshoot: 1.6 }
   }
   // A still indicator (inactive but shown) keeps a calm partial ring.
   states: State {

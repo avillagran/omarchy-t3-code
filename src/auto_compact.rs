@@ -125,6 +125,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
     let mut statuses: HashMap<String, Value> = HashMap::new();
     let mut settings_before = Value::Null;
     for snapshot in rx {
+        let _memory_sweep = crate::memory_pressure::Sweep;
         let settings = crate::ui_state::load();
         // General integration fixtures must never acquire side effects by default.
         let enabled = policy::enabled(&settings)

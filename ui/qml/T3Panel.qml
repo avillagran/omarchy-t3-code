@@ -1,6 +1,5 @@
 import QtQuick 6.11
 import QtQuick.Window 6.11
-import QtMultimedia
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import Quickshell
@@ -53,7 +52,8 @@ Item {
     add("parent-thread","Open parent thread","corner-left-up",b.subthread&&!!b.parentThread,function(){b.openParentThread()})
     add("next-subagent","Next subagent","chevron-right",b.siblingThreads.length>1,function(){b.openSibling(1)})
     add("previous-subagent","Previous subagent","chevron-left",b.siblingThreads.length>1,function(){b.openSibling(-1)})
-    add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Meta+B")
+    add("sidebar","Toggle sidebar","panel-right",true,function(){toggleSidebar()},"Ctrl+B")
+    add("focus-sidebar","Chat list","panel-left",true,function(){revealSidebarSelection()},"Super+B")
     add("copy-reference","Copy thread reference","copy",thread,function(){var badge=b.selectedInfo.pullRequestBadge || {};b.copyText((badge.current || {}).url || b.selectedThread)})
     // Prompt links open a new thread with this draft on the hosted T3 app (T3 promptLinks).
     var draftText=String(b.draft.text||"").trim()
@@ -171,8 +171,15 @@ Item {
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
   onPullRequestsOpenChanged:{if(!pullRequestsOpen)prTarget=null;if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}}
   function submitCurrent(){if(!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
-  function selectSidebarThread(env,id){pullRequestsOpen=false;bridge.selectThread(env,id)}
+  property string mosaicRevealKey: ""
+  function revealSidebarThread(env,id) {
+    if(!mosaicOpen)return
+    mosaicRevealKey=env+"/"+id
+    if(mosaicLoader.item)mosaicLoader.item.revealThread(mosaicRevealKey)
+  }
+  function selectSidebarThread(env,id){pullRequestsOpen=false;revealSidebarThread(env,id);bridge.selectThread(env,id)}
   property bool initialized: false
+  readonly property var mosaicView: mosaicLoader.item
   readonly property var conversationView: conversation
   // Native comfortable lane: 46rem, shared by timeline and composer.
   readonly property real chatContentMaxWidth:Style.space(736)
@@ -242,8 +249,30 @@ Item {
     var items=sidebarFocusItems(),choice=items.find(function(r){return r.key===root.bridge.selectedKey})
     if(!choice){var groups=[{rows:workingRows,header:workingToggle},{rows:snoozedRows,header:snoozedToggle},{rows:settledRows,header:settledToggle}];var group=groups.find(function(g){return g.rows.some(function(t){return t.key===root.bridge.selectedKey})});if(group)choice={item:group.header,index:-1}}
     choice=choice||items[0]||{item:threads,index:0};choice.item.forceActiveFocus()
-    if(choice.index>=0){choice.item.currentIndex=choice.index;choice.item.positionViewAtIndex(choice.index,ListView.Contain)}
+    if(choice.index>=0){choice.item.forceLayout();choice.item.currentIndex=choice.index;choice.item.positionViewAtIndex(choice.index,ListView.Contain)}
   }
+  function revealSidebarSelection() {
+    if(composerExpanded)expandComposer(false)
+    if(sidebarCollapsed)toggleSidebar(false)
+    var all=bridge.state.threads || [],target=all.find(function(t){return t.key===root.bridge.selectedKey})
+    // Reveal a selected child even when its parent was explicitly folded.
+    var expanded=Object.assign({},bridge.viewState.subthreadsExpanded || {}),child=target,changed=false
+    for(var depth=0;child&&child.parentThreadId&&depth<8;depth++){
+      var parentKey=child.environmentId+"/"+child.parentThreadId
+      if(expanded[parentKey]!==true){expanded[parentKey]=true;changed=true}
+      child=all.find(function(t){return t.key===parentKey})
+    }
+    if(changed)bridge.rememberView({subthreadsExpanded:expanded})
+    var rows=activeRows.concat(workingRows,snoozedRows,settledRows)
+    if(target&&!rows.some(function(t){return t.key===root.bridge.selectedKey})){
+      hostFilter="";projectFilter="";statusFilter="all";bridge.query=""
+    }
+    if(workingRows.some(function(t){return t.key===root.bridge.selectedKey}))workingExpanded=true
+    if(snoozedRows.some(function(t){return t.key===root.bridge.selectedKey}))snoozedExpanded=true
+    if(settledRows.some(function(t){return t.key===root.bridge.selectedKey}))settledExpanded=true
+    syncSidebar();focusSidebar();sidebarRefocus.restart()
+  }
+  Timer{id:sidebarRefocus;interval:0;onTriggered:if(root.opened)root.focusSidebar()}
   // One focus order across cards and shelf headers, matching the native sidebar.
   function sidebarFocusItems(){
     var out=[]
@@ -317,8 +346,8 @@ Item {
     if(!nativeKeysActive||!supportsNativeShortcut(command))return
     if(command==="commandPalette.toggle")toggleCommandPalette()
     else if(command==="usage.open"){if(usagePage.opened)usagePage.close();else usagePage.show()}
-    else if(command==="usage.cost"||command==="usage.tokens")usagePage.metric=command.slice(6)
-    else if(command.indexOf("usage.period.")===0)usagePage.setPeriod(command.slice(13))
+    else if(command==="usage.cost"||command==="usage.tokens")usagePage.item.metric=command.slice(6)
+    else if(command.indexOf("usage.period.")===0)usagePage.item.setPeriod(command.slice(13))
     else if(command==="sidebar.toggle")toggleSidebar()
     else if(command==="chat.find")openFind()
     else if(command==="chat.new"||command==="chat.newLocal")sidebarActions.newThread(command==="chat.newLocal"?{type:"root"}:null)
@@ -393,6 +422,17 @@ Item {
   readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))
   onHostFilterChanged: if(initialized && bridge.viewState.hostFilter!==hostFilter)bridge.rememberView({hostFilter:hostFilter})
   readonly property bool mosaicOpen: bridge.viewState.mosaicOpen===true
+  onMosaicOpenChanged: if(!mosaicOpen)mosaicRevealKey=""
+  readonly property var mosaicRows: {
+    var rows=Sidebar.rows(root.hostThreads,root.statusFilter,root.projectScope,true,root.bridge.query,root.searchContext).filter(function(t){return !t.sectionHeader})
+    // An expanded sidebar child can be visible through its parent even when it
+    // does not match the parent's filter. Explicit navigation must still work.
+    if(mosaicRevealKey&&!rows.some(function(t){return t.key===root.mosaicRevealKey})) {
+      var target=root.bridge.state.threads.find(function(t){return t.key===root.mosaicRevealKey})
+      if(target)rows=rows.concat([target])
+    }
+    return rows
+  }
   property string statusFilter: bridge.viewState.statusFilter || "all"
   property string projectFilter: bridge.viewState.projectFilter || ""
   Connections{target:root.bridge;function onProjectOpened(environment,projectId,error){if(!error){root.statusFilter="all";root.projectFilter="";root.bridge.query=""}}}
@@ -597,11 +637,13 @@ Item {
   // Last seen state per thread and when it changed, so rows can celebrate a
   // transition even after moving to another sidebar section.
   readonly property var starfield: sky
-  Binding { target: T3Motion; property: "style"; value: root.bridge.viewState.transitionStyle || "nebula" }
+  Binding { target: T3Motion; property: "enabled"; value: root.bridge.viewState.animationsEnabled !== false }
+  Binding { target: T3Motion; property: "style"; value: T3Motion.enabled ? root.bridge.viewState.transitionStyle || "nebula" : "instant" }
   Binding { target: T3Motion; property: "pace"; value: ({slow: 1.6, fast: 0.6})[root.bridge.viewState.transitionSpeed] || 1 }
   // Preferences > Appearance > Animations, resolved once for every row.
   readonly property var threadEffects: {
     var v = bridge.viewState
+    if (!T3Motion.enabled) return {working:"off",input:"static",change:"off",intensity:0}
     return {working: v.threadWorkingEffect || "comet", input: v.threadInputEffect || "glints", change: v.threadChangeEffect || "star",
             intensity: ({subtle: 0.55, vivid: 1.6})[v.threadEffectIntensity] || 1}
   }
@@ -615,7 +657,7 @@ Item {
   ListModel { id: workingRowModel; dynamicRoles: true }
   ListModel { id: snoozedRowModel; dynamicRoles: true }
   ListModel { id: settledRowModel; dynamicRoles: true }
-  readonly property string rowMoveEffect: ["arc","glide","fade","off"].indexOf(bridge.viewState.threadMoveEffect) >= 0 ? bridge.viewState.threadMoveEffect : "arc"
+  readonly property string rowMoveEffect: !T3Motion.enabled ? "off" : ["arc","glide","fade","off"].indexOf(bridge.viewState.threadMoveEffect) >= 0 ? bridge.viewState.threadMoveEffect : "arc"
   readonly property int rowMoveMs: ({slow: 820, fast: 300})[bridge.viewState.threadMoveSpeed] || 520
   readonly property var sidebarSections: [activeRows, workingReveal.present ? workingRows : [], snoozedReveal.present ? snoozedRows : [], settledReveal.present ? settledRows : []]
   onSidebarSectionsChanged: Qt.callLater(syncSidebar)
@@ -689,14 +731,14 @@ Item {
       var key = item.thread.key || item.thread.id, from = leaving[key]
       if (!from) { item.flight = false; item.arrive(Math.round(rowMoveMs * 0.8)); return }
       landed[key] = true
-      rowFlight.createObject(flightLayer, {key: key, source: from.item, target: item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: rowMoveMs})
+      rowFlight.createObject(flightLayer, {key: key, source: from.item, target: item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: T3Motion.duration(rowMoveMs)})
     })
     // The destination row is not on screen (collapsed shelf or scrolled
     // away): the card sinks into its section instead.
     Object.keys(leaving).forEach(function(key) {
       if (landed[key]) return
       var from = leaving[key]
-      rowFlight.createObject(flightLayer, {key: key, source: from.item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: rowMoveMs})
+      rowFlight.createObject(flightLayer, {key: key, source: from.item, landing: sectionHeader(key), start: from.rect, path: rowMoveEffect, duration: T3Motion.duration(rowMoveMs)})
     })
   }
   Component { id: rowFlight; T3RowFlight {} }
@@ -763,7 +805,7 @@ Item {
     var shortcuts=[],tr=function(key){return T3I18n.tr(key)}
     if(nativeKeybindingsEnabled)nativeShortcuts.routes.forEach(function(r){shortcuts.push([Native.nativeKeys.formatShortcutLabel(r.shortcut,"Linux"),KeyLabels.command(r.command,tr)])})
     else [["Ctrl+F","Find in conversation"],["Ctrl+J","Open native terminal"],["Ctrl+S","Save draft"]].forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
-    var local=[["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Meta+B","Chat list"],["Meta+E","Expand / return to chat"],["Meta+PgUp","Switch chat"],["Meta+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+Alt+Left","Resize"],["Ctrl+Alt+Right","Resize"],["Ctrl+Alt+Up","Resize"],["Ctrl+Alt+Down","Resize"]]
+    var local=[["Ctrl+Shift+F","Search threads"],["Ctrl+K","Chat list"],["Ctrl+L","Write message"],["Ctrl+B","Toggle sidebar"],["Meta+B","Chat list"],["Meta+E","Expand / return to chat"],["Meta+PgUp","Switch chat"],["Meta+PgDown","Switch chat"],["Ctrl+Shift+A","Attach files"],["Ctrl+Alt+Left","Resize"],["Ctrl+Alt+Right","Resize"],["Ctrl+Alt+Up","Resize"],["Ctrl+Alt+Down","Resize"]]
     local.filter(function(p){return root.localShortcutAvailable(p[0])}).forEach(function(p){shortcuts.push([p[0].replace("Meta+","Super+"),tr(p[1])])})
     var fixed=[["Tab / Shift+Tab","Navigate controls"],["Super+A / Super+Z / Super+Shift+Z","Edit"],[root.composerExpanded?"Ctrl+Enter":"Enter / Ctrl+Enter","Send"],[root.composerExpanded?"Enter / Shift+Enter":"Shift+Enter","New line"],["Ctrl+Shift+Enter","Send and start new thread"],["↑ / ↓","Prompt history"],["PageUp / PageDown","Read conversation"],["Esc","Return / close"]]
     fixed.forEach(function(p){shortcuts.push([p[0],tr(p[1])])})
@@ -780,14 +822,14 @@ Item {
   }
   // Rows around a moving one slide to open or close its gap; a leaving row
   // is kept alive while it fades or flies (see rowLeaving).
-  component RowRemove: Transition { enabled: root.rowMotion; PauseAnimation { duration: root.rowMoveMs + 60 } }
+  component RowRemove: Transition { enabled: root.rowMotion; PauseAnimation { duration: T3Motion.duration(root.rowMoveMs + 60)} }
   component RowDisplaced: Transition {
     enabled: root.rowMotion
-    NumberAnimation { properties: "x,y"; duration: root.rowMoveMs * 0.85; easing.type: Easing.OutCubic }
+    NumberAnimation { properties: "x,y"; duration: T3Motion.duration(root.rowMoveMs * 0.85); easing.type: Easing.OutCubic }
   }
   component RowMove: Transition {
     enabled: root.rowMotion
-    NumberAnimation { properties: "x,y"; duration: root.rowMoveMs; easing.type: Easing.InOutCubic }
+    NumberAnimation { properties: "x,y"; duration: T3Motion.duration(root.rowMoveMs); easing.type: Easing.InOutCubic }
   }
   Component {
     id: threadDelegate
@@ -806,7 +848,7 @@ Item {
       timeLabel:modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
-      onThreadActivated:{root.pullRequestsOpen=false;root.preferencesOpen=false}
+      onThreadActivated:function(source){root.pullRequestsOpen=false;root.preferencesOpen=false;root.revealSidebarThread(source.environmentId,source.id)}
       onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
       onProjectSettingsRequested:function(key){root.openProjectSettings(key)}
       onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
@@ -876,7 +918,7 @@ Item {
       id:sky;objectName:"t3Starfield"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
       anchors.fill:parent;z:-1
-      mode:root.bridge.viewState.starfieldMode || "auto"
+      mode:T3Motion.enabled ? root.bridge.viewState.starfieldMode || "auto" : "off"
       // Any working chat counts, including runs started from another device.
       busy:!!root.bridge.selectedInfo.working||(root.bridge.state.working||0)>0
       paused:!root.opened
@@ -891,7 +933,7 @@ Item {
       objectName:"t3FpsMeter"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
       anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);z:100
-      active:root.opened&&root.bridge.viewState.fpsMeter===true
+      active:root.opened&&T3Motion.enabled&&root.bridge.viewState.fpsMeter===true
     }
     RowLayout {
       id:panelLayout;objectName:"t3PanelLayout"
@@ -899,9 +941,10 @@ Item {
       LayoutMirroring.enabled:T3I18n.rtl;LayoutMirroring.childrenInherit:true
       anchors.fill: parent; spacing: 0
       palette.window:root.themeSurface;palette.windowText:root.fg;palette.base:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05));palette.alternateBase:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.text:root.fg;palette.button:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08));palette.buttonText:root.fg;palette.highlight:Color.accent;palette.highlightedText:root.themeSurface;palette.placeholderText:root.dim;palette.toolTipBase:root.themeSurface;palette.toolTipText:root.fg;palette.link:Color.accent;palette.light:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.16));palette.midlight:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12));palette.mid:Qt.tint(root.themeSurface,Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.2));palette.dark:Qt.darker(root.themeSurface,1.4);palette.shadow:Qt.rgba(0,0,0,0.5)
-      T3ShortcutRouter{id:nativeShortcuts;active:root.nativeKeybindingsEnabled&&root.nativeKeysActive;primary:root.nativePrimaryKeys;scripts:root.nativeScriptKeys;context:root.nativeShortcutContext;localOverrides:root.findOpen?["Ctrl+G","Ctrl+Shift+G"]:[];supports:function(command){return root.supportsNativeShortcut(command)};onTriggered:function(command){root.triggerNativeShortcut(command)}}
+      T3ShortcutRouter{id:nativeShortcuts;active:root.nativeKeybindingsEnabled&&root.nativeKeysActive;primary:root.nativePrimaryKeys;scripts:root.nativeScriptKeys;context:root.nativeShortcutContext;localOverrides:["Ctrl+B","Meta+B"].concat(root.findOpen?["Ctrl+G","Ctrl+Shift+G"]:[]);supports:function(command){return root.supportsNativeShortcut(command)};onTriggered:function(command){root.triggerNativeShortcut(command)}}
       Shortcut { sequence:"Ctrl+Shift+B";enabled:root.opened&&!!root.bridge.selectedThread&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+B");onActivated:root.toggleThreadDetails() }
-      Shortcut { sequence:"Meta+B";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+B");onActivated:root.toggleSidebar() }
+      Shortcut { sequence:"Ctrl+B";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+B");onActivated:root.toggleSidebar() }
+      Shortcut { sequence:"Meta+B";enabled:root.opened&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+B");onActivated:root.revealSidebarSelection() }
       Shortcut { sequence:"Ctrl+F";enabled:!root.nativeKeybindingsEnabled&&(root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+F");onActivated:root.openFind() }
       Shortcut { sequence:"Ctrl+Shift+F";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+F");onActivated:{if(root.composerExpanded)root.expandComposer(false);if(root.sidebarCollapsed)root.toggleSidebar(false);searchField.forceActiveFocus();searchField.selectAll()} }
       Shortcut { sequence:"Ctrl+G";enabled:(root.opened&&root.findOpen)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+G");onActivated:root.navigateFind(1) }
@@ -922,10 +965,10 @@ Item {
       Shortcut { sequence:"Ctrl+Alt+Up";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Up");onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
       Shortcut { sequence:"Ctrl+Alt+Down";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Down");onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
       Shortcut { sequence:"F1";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
-      T3UsagePage{id:usagePage;bridge:root.bridge}
-      T3ScheduledTasks{id:scheduledTasksPage;bridge:root.bridge}
-      T3AgentSessions{id:agentSessionsPage;bridge:root.bridge}
-      T3ProcessDiagnostics{id:processDiagnosticsPage;bridge:root.bridge}
+      T3DeferredPopup{parent:panelLayout.parent;id:usagePage;objectName:"usagePageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3UsagePage.qml");releaseWhenClosed:true;savedProperties:["period","metric"]}
+      T3DeferredPopup{parent:panelLayout.parent;id:scheduledTasksPage;objectName:"scheduledTasksPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3ScheduledTasks.qml");}
+      T3DeferredPopup{parent:panelLayout.parent;id:agentSessionsPage;objectName:"agentSessionsPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3AgentSessions.qml");}
+      T3DeferredPopup{parent:panelLayout.parent;id:processDiagnosticsPage;objectName:"processDiagnosticsPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3ProcessDiagnostics.qml");releaseWhenClosed:true}
       // A workflow's script, read-only (orchestration.getWorkflowScript).
       Controls.Popup{
         id:workflowScriptPopup;objectName:"t3WorkflowScriptPopup";modal:true;focus:true;padding:Style.space(16)
@@ -961,27 +1004,18 @@ Item {
         readonly property bool video:!!videoKey
         x:Style.space(20);y:Style.space(20);width:Math.max(100,parent.width-Style.space(40));height:Math.max(100,parent.height-Style.space(40));padding:Style.space(14)
         modal:true;focus:true
-        onClosed:{assetKey="";videoKey="";attachment=({});videoPlayer.stop()}
+        onClosed:{assetKey="";videoKey="";attachment=({})}
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
         ColumnLayout {
           objectName:"t3ImageContents"
           anchors.fill:parent
           RowLayout{Layout.fillWidth:true;Text{Layout.fillWidth:true;text:imagePopup.attachment.name || "";color:root.fg;elide:Text.ElideMiddle;font.pixelSize:Style.font.body;textFormat:Text.PlainText}T3CopyButton{objectName:"copyFullImage";bridge:root.bridge;attachment:imagePopup.attachment}T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:imagePopup.close()}}
           Image{objectName:"t3FullImage";visible:!imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true;source:imagePopup.visible&&!imagePopup.video?imagePopup.imageState.url || "":"";asynchronous:true;cache:false;sourceSize:Qt.size(1920,1080);fillMode:Image.PreserveAspectFit}
-          Item{visible:imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true
-            VideoOutput{id:videoOutput;objectName:"t3VideoOutput";anchors.fill:parent;fillMode:VideoOutput.PreserveAspectFit}
-            MediaPlayer{
-              id:videoPlayer;videoOutput:videoOutput
-              audioOutput:AudioOutput{}
-              source:imagePopup.visible&&imagePopup.video?imagePopup.imageState.url || "":""
-              onSourceChanged:if(source!="")play()
-            }
-            MouseArea{anchors.fill:parent;onClicked:videoPlayer.playbackState===MediaPlayer.PlayingState?videoPlayer.pause():videoPlayer.play()}
-            RowLayout{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.margins:Style.space(8);spacing:Style.space(8);visible:videoPlayer.duration>0
-              T3IconButton{name:videoPlayer.playbackState===MediaPlayer.PlayingState?"pause":"play";implicitWidth:Style.space(22);implicitHeight:implicitWidth;onClicked:videoPlayer.playbackState===MediaPlayer.PlayingState?videoPlayer.pause():videoPlayer.play()}
-              Controls.Slider{Layout.fillWidth:true;from:0;to:Math.max(1,videoPlayer.duration);value:videoPlayer.position;onMoved:videoPlayer.position=value}
-              Text{text:Math.floor(videoPlayer.position/60000)+":"+("0"+Math.floor(videoPlayer.position/1000%60)).slice(-2)+" / "+Math.floor(videoPlayer.duration/60000)+":"+("0"+Math.floor(videoPlayer.duration/1000%60)).slice(-2);color:root.dim;font.pixelSize:Style.font.caption}
-            }
+          Loader {
+            id:videoLoader;objectName:"t3VideoLoader"
+            visible:imagePopup.video;Layout.fillWidth:true;Layout.fillHeight:true
+            active:imagePopup.visible&&imagePopup.video
+            onActiveChanged:if(active)setSource(Qt.resolvedUrl("T3VideoViewer.qml"),{source:Qt.binding(function(){return imagePopup.imageState.url || ""}),foreground:Qt.binding(function(){return root.fg}),muted:Qt.binding(function(){return root.dim})});else source=""
           }
           WorkIndicator{Layout.alignment:Qt.AlignHCenter;visible:!!imagePopup.imageState.loading;active:visible&&imagePopup.visible}
           Text{Layout.fillWidth:true;visible:!!imagePopup.imageState.error;text:T3I18n.error(imagePopup.imageState.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
@@ -991,20 +1025,33 @@ Item {
         id:diffPopup;objectName:"t3DiffPopup"
         property string initialPath:""
         onClosed:root.bridge.dismissDiff()
-        onOpened:diffReview.forceActiveFocus()
+        property bool contentCreated:false
+        onAboutToShow:contentCreated=true
+        property var savedPresentation:({})
+        function releaseContent(){
+          if(visible||!diffReviewLoader.item)return false
+          savedPresentation={showContext:diffReviewLoader.item.showContext,treeOpen:diffReviewLoader.item.treeOpen}
+          contentCreated=false;return true
+        }
+        Timer{interval:30000;running:diffPopup.contentCreated&&!diffPopup.visible;onTriggered:diffPopup.releaseContent()}
+        onOpened:if(diffReviewLoader.item)diffReviewLoader.item.forceActiveFocus()
         focus:true;modal:true
         x:Style.space(24);y:Style.space(24)
         width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
-        T3DiffReview {
-          id:diffReview;objectName:"t3DiffContents";anchors.fill:parent;rendererBridge:root.bridge
-          diffLayout:root.bridge.diffPreferences.layout;wordWrap:root.bridge.diffPreferences.wordWrap
-          view:root.bridge.diffView;summary:root.bridge.diffView.summary || {};initialPath:diffPopup.initialPath
-          ignoreWhitespace:root.bridge.diffView.ignoreWhitespace!==false
-          onClosed:diffPopup.close()
-          onRetryRequested:{if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,ignoreWhitespace)}
-          onWhitespaceChanged:function(value){if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,value)}
-          onFileRequested:function(path){diffPopup.initialPath=path;root.bridge.requestDiff(summary,ignoreWhitespace)}
+        Loader {
+          id:diffReviewLoader;objectName:"t3DiffLoader";anchors.fill:parent;active:diffPopup.contentCreated
+          onLoaded:{if(diffPopup.savedPresentation.showContext!==undefined)item.showContext=diffPopup.savedPresentation.showContext;if(diffPopup.savedPresentation.treeOpen!==undefined)item.treeOpen=diffPopup.savedPresentation.treeOpen}
+          sourceComponent:T3DiffReview {
+            id:diffReview;objectName:"t3DiffContents";anchors.fill:parent;rendererBridge:root.bridge
+            diffLayout:root.bridge.diffPreferences.layout;wordWrap:root.bridge.diffPreferences.wordWrap
+            view:root.bridge.diffView;summary:root.bridge.diffView.summary || {};initialPath:diffPopup.initialPath
+            ignoreWhitespace:root.bridge.diffView.ignoreWhitespace!==false
+            onClosed:diffPopup.close()
+            onRetryRequested:{if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,ignoreWhitespace)}
+            onWhitespaceChanged:function(value){if(selectedPath)diffPopup.initialPath=selectedPath;root.bridge.requestDiff(summary,value)}
+            onFileRequested:function(path){diffPopup.initialPath=path;root.bridge.requestDiff(summary,ignoreWhitespace)}
+          }
         }
       }
       Controls.Popup {
@@ -1012,13 +1059,19 @@ Item {
         x:Style.space(24);y:Style.space(24);width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
         onClosed:root.bridge.dismissWorkingReview()
-        onOpened:workingContents.forceActiveFocus()
-        T3WorkingReview {
-          id:workingContents;anchors.fill:parent;rendererBridge:root.bridge;view:root.bridge.workingReview;refs:root.bridge.reviewRefs
-          onClosed:workingPopup.close()
-          onRequested:function(kind,base,whitespace,path){root.bridge.requestWorkingReview(kind,base,whitespace,path)}
-          onRefsRequested:function(query,kind,cursor){root.bridge.requestReviewRefs(query,kind,cursor)}
-          onRefsDismissed:root.bridge.dismissReviewRefs()
+        property bool contentCreated:false
+        onAboutToShow:contentCreated=true
+        onOpened:if(workingReviewLoader.item)workingReviewLoader.item.forceActiveFocus()
+        Timer{interval:30000;running:workingPopup.contentCreated&&!workingPopup.visible;onTriggered:workingPopup.contentCreated=false}
+        Loader {
+          id:workingReviewLoader;objectName:"t3WorkingReviewLoader";anchors.fill:parent;active:workingPopup.contentCreated
+          sourceComponent:T3WorkingReview {
+            id:workingContents;anchors.fill:parent;rendererBridge:root.bridge;view:root.bridge.workingReview;refs:root.bridge.reviewRefs
+            onClosed:workingPopup.close()
+            onRequested:function(kind,base,whitespace,path){root.bridge.requestWorkingReview(kind,base,whitespace,path)}
+            onRefsRequested:function(query,kind,cursor){root.bridge.requestReviewRefs(query,kind,cursor)}
+            onRefsDismissed:root.bridge.dismissReviewRefs()
+          }
         }
       }
       T3CheckpointRevert {
@@ -1047,38 +1100,51 @@ Item {
         width:Math.min(Style.space(700),parent.width-Style.space(40));height:Math.max(100,parent.height-Style.space(90));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
         onClosed:if(root.bridge.dismissGit)root.bridge.dismissGit()
-        T3GitControls {
-          anchors.fill:parent;scope:(root.bridge.gitView || {}).scope || {};view:root.bridge.gitView || {loading:false,error:"",data:null}
-          canSourceControlWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.sourceControlWrite)
-          canReviewChanges:!!(snapshot && snapshot.permissions && snapshot.permissions.filesystemRead)
-          canTerminalWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.terminalWrite)
-          busy:root.bridge.gitBusy || false
-          operationState:((root.bridge.gitView || {}).operation || {}).state || ""
-          operationError:(root.bridge.gitView || {}).operationError || ((root.bridge.gitView || {}).operation || {}).error || ""
-          operation:(root.bridge.gitView || {}).operation || {}
-          onClosed:gitPopup.close()
-          onRefreshRequested:root.bridge.requestGit()
-          onInitRequested:root.bridge.initializeRepository()
-          onChangesRequested:function(path){gitPopup.close();root.bridge.requestWorkingReview("working-tree","",root.bridge.diffPreferences.ignoreWhitespace,path);workingPopup.open()}
-          onActionRequested:function(intent){root.bridge.requestGitAction(intent)}
-          onTerminalRequested:root.bridge.openGitTerminal()
-          onReconcileRequested:root.bridge.reconcileGitOperation()
-          onNativeRequested:root.bridge.openThread(root.bridge.selectedEnvironment,root.bridge.selectedThread)
-          onPullRequestRequested:function(pr){var entry=snapshot.pullRequestReference;if(!entry)return;root.prTarget=entry;gitPopup.close();root.pullRequestsOpen=true}
+        property bool contentCreated:false
+        onAboutToShow:contentCreated=true
+        Loader {
+          id:gitControlsLoader;objectName:"t3GitControlsLoader";anchors.fill:parent;active:gitPopup.contentCreated
+          sourceComponent:T3GitControls {
+            anchors.fill:parent;scope:(root.bridge.gitView || {}).scope || {};view:root.bridge.gitView || {loading:false,error:"",data:null}
+            canSourceControlWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.sourceControlWrite)
+            canReviewChanges:!!(snapshot && snapshot.permissions && snapshot.permissions.filesystemRead)
+            canTerminalWrite:!!(snapshot && snapshot.permissions && snapshot.permissions.terminalWrite)
+            busy:root.bridge.gitBusy || false
+            operationState:((root.bridge.gitView || {}).operation || {}).state || ""
+            operationError:(root.bridge.gitView || {}).operationError || ((root.bridge.gitView || {}).operation || {}).error || ""
+            operation:(root.bridge.gitView || {}).operation || {}
+            onClosed:gitPopup.close()
+            onRefreshRequested:root.bridge.requestGit()
+            onInitRequested:root.bridge.initializeRepository()
+            onChangesRequested:function(path){gitPopup.close();root.bridge.requestWorkingReview("working-tree","",root.bridge.diffPreferences.ignoreWhitespace,path);workingPopup.open()}
+            onActionRequested:function(intent){root.bridge.requestGitAction(intent)}
+            onTerminalRequested:root.bridge.openGitTerminal()
+            onReconcileRequested:root.bridge.reconcileGitOperation()
+            onNativeRequested:root.bridge.openThread(root.bridge.selectedEnvironment,root.bridge.selectedThread)
+            onPullRequestRequested:function(pr){var entry=snapshot.pullRequestReference;if(!entry)return;root.prTarget=entry;gitPopup.close();root.pullRequestsOpen=true}
+          }
         }
       }
       Controls.Popup {
         id:toolPopup;objectName:"t3ToolPopup";focus:true;modal:true
         x:Style.space(24);y:Style.space(24);width:Math.max(100,parent.width-Style.space(48));height:Math.max(100,parent.height-Style.space(48));padding:Style.space(14)
         background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.divider}
-        onClosed:toolInspector.dismiss(false)
-        onOpened:toolInspector.forceActiveFocus()
-        T3ToolInspector {
-          id:toolInspector;anchors.fill:parent;bridge:root.bridge;environment:root.bridge.selectedEnvironment;threadId:root.bridge.selectedThread
-          onRequested:function(token,scope){root.bridge.send(Object.assign({op:"tool-inspector",thread:scope.threadId,requestId:token},scope))}
-          onClosed:toolPopup.close()
+        property bool contentCreated:false
+        function inspect(reference){contentCreated=true;open();if(toolInspectorLoader.item)toolInspectorLoader.item.openItem(reference)}
+        onAboutToShow:contentCreated=true
+        onClosed:if(toolInspectorLoader.item)toolInspectorLoader.item.dismiss(false)
+        onOpened:if(toolInspectorLoader.item)toolInspectorLoader.item.forceActiveFocus()
+        function releaseContent(){if(visible||!toolInspectorLoader.item)return false;contentCreated=false;return true}
+        Timer{interval:30000;running:toolPopup.contentCreated&&!toolPopup.visible;onTriggered:toolPopup.releaseContent()}
+        Loader {
+          id:toolInspectorLoader;objectName:"t3ToolInspectorLoader";anchors.fill:parent;active:toolPopup.contentCreated
+          sourceComponent:T3ToolInspector {
+            id:toolInspector;anchors.fill:parent;bridge:root.bridge;environment:root.bridge.selectedEnvironment;threadId:root.bridge.selectedThread
+            onRequested:function(token,scope){root.bridge.send(Object.assign({op:"tool-inspector",thread:scope.threadId,requestId:token},scope))}
+            onClosed:toolPopup.close()
+          }
         }
-        Connections {target:root.bridge;function onToolInspectorFinished(requestId,result,error){toolInspector.accept(requestId,result,error)}}
+        Connections {target:root.bridge;function onToolInspectorFinished(requestId,result,error){if(toolInspectorLoader.item)toolInspectorLoader.item.accept(requestId,result,error)}}
       }
       Controls.Popup {
         id:documentPopup;objectName:"t3EmbeddedDocumentPopup";focus:true;modal:true
@@ -1262,7 +1328,7 @@ Item {
                 text: root.searching ? T3I18n.tr("No threads match “{query}”",{query:String(root.bridge.query).trim()}) : root.bridge.stale ? T3I18n.tr("T3 is offline") : T3I18n.tr("No threads here")
                 color: root.dim; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
                 opacity: visible ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 220 } }
+                Behavior on opacity { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(220)} }
               }
             }
             T3ShelfResizer{objectName:"workingShelfResizer";label:"Working threads height";visible:workingReveal.shown&&!workingReveal.moving;value:root.workingShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("workingShelfHeight",h)}}
@@ -1423,13 +1489,11 @@ Item {
               objectName:"t3SidebarFooter"
               Layout.fillWidth:true;Layout.margins:Style.space(10);spacing:Style.space(3)
               T3IconButton{objectName:"openPreferences";name:"settings";tooltipText:T3I18n.tr("Preferences");onClicked:root.preferencesOpen=!root.preferencesOpen}
-              T3Icon {
-                objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(18)
-                readonly property string statusText:root.bridge.stale?((root.bridge.state.environments || []).some(function(e){return e.state==="ready"})?T3I18n.tr("Partially connected"):T3I18n.tr("Offline")):T3I18n.tr("Direct connection")
-                tint:root.bridge.stale?Color.urgent:root.dim;Accessible.name:statusText
-                HoverHandler{id:connectionStatusHover}
-                Controls.ToolTip.visible:connectionStatusHover.hovered
-                Controls.ToolTip.text:statusText
+              T3IconButton {
+                objectName:"connectionStatusIcon";name:root.bridge.stale?"circle-alert":"cloud";implicitWidth:Style.space(22)
+                tint:root.bridge.stale?Color.urgent:root.dim
+                tooltipText:T3I18n.tr(root.bridge.stale?"Connection problem":"Direct connection")
+                onClicked:root.openHosts(localBackendGuiIndicator.visible?localBackendGuiIndicator:localBackendControl)
               }
               Item{Layout.fillWidth:true}
               // The machine button lists every environment with its state and a reconnect.
@@ -1521,7 +1585,8 @@ Item {
         Loader {
           id:mosaicLoader
           anchors.fill:parent;active:root.opened&&root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
-          sourceComponent:T3ThreadMosaic {bridge:root.bridge;sky:root.starfield;motion:root.rowMoveEffect!=="off"&&T3Motion.style!=="instant";effects:root.threadEffects;renderer:function(message,width){return root.renderMessage(message,width)};threads:Sidebar.rows(root.hostThreads,root.statusFilter,root.projectScope,true,root.bridge.query,root.searchContext).filter(function(t){return !t.sectionHeader});onClosed:root.bridge.rememberView({mosaicOpen:false});onFiltersRequested:root.showFilters()}
+          onLoaded:if(root.mosaicRevealKey)item.revealThread(root.mosaicRevealKey)
+          sourceComponent:T3ThreadMosaic {bridge:root.bridge;sky:root.starfield;motion:root.rowMoveEffect!=="off"&&T3Motion.style!=="instant";effects:root.threadEffects;renderer:function(message,width){return root.renderMessage(message,width)};threads:root.mosaicRows;onClosed:root.bridge.rememberView({mosaicOpen:false});onFiltersRequested:root.showFilters()}
         }
         ColumnLayout {
           visible:!root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
@@ -1553,10 +1618,9 @@ Item {
             Controls.Button {text:"?";implicitWidth:Style.space(28);Accessible.name:T3I18n.tr("Keyboard shortcuts");onClicked:keyHelp.open()}
             T3IconButton {objectName:"t3CloseWindow";name:root.standalone?"minus":"x";tooltipText:T3I18n.tr(root.standalone?"Hide":"Close");onClicked:root.close()}
           }
-          RowLayout{
+          T3ConnectionNotice {
             Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(14)
-            visible:(root.bridge.state.environments || []).some(function(e){return e.id==="local"&&e.state!=="ready"}) || !!root.bridge.backendStart.error
-            Text{Layout.fillWidth:true;text:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):T3I18n.tr("Local backend is offline");color:root.bridge.backendStart.error?Color.urgent:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+            bridge:root.bridge;onSettingsRequested:root.openPreferencesPage("connections")
           }
           Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
           T3Reveal {
@@ -1676,7 +1740,7 @@ Item {
                 if(wheelCoastDelta!==0)conversationCoastStart.restart();else conversationCoastStart.stop()
                 wheelTarget=Math.max(minY(),Math.min(maxY(),from-delta))
                 root.followingTail=wheelTarget>=maxY()-1
-                if(!step.animate){contentY=wheelTarget;root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}else {conversationWheel.duration=Motion.duration(wheelTarget-contentY);conversationWheel.start()}
+                if(!step.animate){contentY=wheelTarget;root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}else {conversationWheel.duration=T3Motion.duration(Motion.duration(wheelTarget-contentY));conversationWheel.start()}
               }
               WheelHandler {
                 objectName:"t3ConversationWheel"
@@ -1688,11 +1752,11 @@ Item {
                 conversation.wheelCoasting=true;conversationWheel.stop()
                 conversation.wheelTarget=Math.max(conversation.minY(),Math.min(conversation.maxY(),conversation.wheelTarget-conversation.wheelCoastDelta))
                 root.followingTail=conversation.wheelTarget>=conversation.maxY()-1
-                conversationWheel.duration=Motion.glide.coasting;conversationWheel.start()
+                conversationWheel.duration=T3Motion.duration(Motion.glide.coasting);conversationWheel.start()
               }}
               NumberAnimation {
                 id:conversationWheel;target:conversation;property:"contentY";to:conversation.wheelTarget
-                duration:Motion.glide.coasting;easing.type:Easing.OutCubic
+                duration: T3Motion.duration(Motion.glide.coasting);easing.type:Easing.OutCubic
                 onFinished:{if(root.followingTail)root.settleSubmittedTail();else root.capturePosition(conversation,root.bridge.transcript,root.bridge.selectedKey)}
               }
               // Native timeline spacing belongs to each row kind; work rows
@@ -1930,7 +1994,7 @@ Item {
                     }
                     Loader{
                       width:parent.width;active:message.modelData.role==="activity";visible:active
-                      sourceComponent:T3ActivityBlock{bridge:root.bridge;activity:message.modelData.activity || {};onInspectRequested:function(reference){toolPopup.open();toolInspector.openItem(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
+                      sourceComponent:T3ActivityBlock{bridge:root.bridge;activity:message.modelData.activity || {};onInspectRequested:function(reference){toolPopup.inspect(reference)};active:root.opened&&!message.pooled&&message.y<conversation.contentY+conversation.height&&message.y+message.height>conversation.contentY}
                     }
                     Loader{
                       width:Math.min(parent.width,Style.space(640));active:message.modelData.role==="subagents";visible:active
@@ -2096,6 +2160,7 @@ Item {
             Layout.preferredHeight:composerPanel.implicitHeight+Style.space(18)
             visible:!!root.bridge.selectedThread && root.bridge.providerSubagent!==true && !(root.bridge.questions || []).length
           T3Composer {
+            onSidebarShortcutRequested:function(focusSelected){if(root.opened){if(focusSelected)root.revealSidebarSelection();else root.toggleSidebar()}}
             id: composerPanel
             anchors.horizontalCenter:parent.horizontalCenter
             width:root.composerExpanded?parent.width-Style.space(48):Math.min(parent.width-Style.space(48),root.chatContentMaxWidth)

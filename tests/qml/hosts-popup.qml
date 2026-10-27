@@ -14,7 +14,7 @@ ShellRoot {
    if(!b.viewStateLoaded)return
    fixture={threads:[],projects:[],environments:[{id:"local",name:"T3 Code",state:"ready"},{id:"node",name:"node",state:"t3_remote_start_failed"}],working:0,pending:0}
    b.state=fixture;b.localBackend={owner:"gui",running:true,canControl:false,installed:true}
-   b.catalogs={node:{machine:"desktop",serverVersion:"0.1.2-nightly.20261021.3486"},local:{serverVersion:"0.1.1-nightly.20261020.3386"}};panel.open();phase=1
+   b.catalogs={node:{machine:"desktop",serverVersion:"9.0.0-nightly.20990101.99999"},local:{serverVersion:b.validatedT3.tag.replace(/^v/,"")}};panel.open();phase=1
   }else if(phase===1){
    var button=keys.findChild(panel,"localBackendGuiIndicator");check(button&&button.visible,"machine button shows while T3's GUI runs the server")
    button.clicked();phase=2
@@ -22,8 +22,8 @@ ShellRoot {
    var popup=keys.findChild(panel,"t3HostsPopup");check(popup&&popup.opened,"machine button opens the environment list")
    var node=keys.findChild(popup.contentItem,"t3Host_node");check(!!node,"each environment has a row")
    check(b.validatedT3.tag==="v0.1.1-nightly.20261020.3386"||!!b.validatedT3.tag,"validated T3 revision is read from upstream/t3code.json")
-   check(b.t3VersionNewer("0.1.2-nightly.20261021.3486")&&!b.t3VersionNewer(b.validatedT3.tag.replace(/^v/,""))&&!b.t3VersionNewer("0.1.1-nightly.20261019.3300"),"server versions compare by release, date and build")
-   var version=keys.findChild(popup.contentItem,"t3HostVersion_node");check(version&&version.visible&&version.text.indexOf("0.1.2")>=0&&version.text.indexOf("·")>=0,"a newer server is marked: "+(version&&version.text))
+   check(b.t3VersionNewer("9.0.0-nightly.20990101.99999")&&!b.t3VersionNewer(b.validatedT3.tag.replace(/^v/,""))&&!b.t3VersionNewer("0.1.1-nightly.20261019.3300"),"server versions compare by release, date and build")
+   var version=keys.findChild(popup.contentItem,"t3HostVersion_node");check(version&&version.visible&&version.text.indexOf("9.0.0")>=0&&version.text.indexOf("·")>=0,"a newer server is marked: "+(version&&version.text))
    check(keys.findChild(popup.contentItem,"t3HostVersion_local").text.indexOf("·")<0,"the validated version is not marked")
    var reconnect=keys.findChild(popup.contentItem,"t3HostReconnect_node");check(reconnect&&reconnect.visible,"remote hosts can be reconnected")
    check(!keys.findChild(popup.contentItem,"t3HostReconnect_local").visible,"the local server has no reconnect")
