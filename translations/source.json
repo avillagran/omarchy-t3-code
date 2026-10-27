@@ -1850,6 +1850,20 @@
     "Managed by the harness": "Managed by the harness",
     "OT3 frees idle agent memory and resumes the saved conversation when you send a message.": "OT3 frees idle agent memory and resumes the saved conversation when you send a message.",
     "Running tasks, questions and approvals keep the session open. OT3 must remain running.": "Running tasks, questions and approvals keep the session open. OT3 must remain running.",
-    "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime.": "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime."
+    "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime.": "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime.",
+    "Enable animations": "Enable animations",
+    "Turn off all motion and transitions. Your animation choices are kept.": "Turn off all motion and transitions. Your animation choices are kept.",
+    "Animation options": "Animation options",
+    "Connection problem": "Connection problem",
+    "Connection problem · {host}": "Connection problem · {host}",
+    "Error code": "Error code",
+    "Check the host, network and access in Connections. ot3 retries automatically.": "Check the host, network and access in Connections. ot3 retries automatically.",
+    "The SSH connection or tunnel could not be established.": "The SSH connection or tunnel could not be established.",
+    "The SSH connection timed out.": "The SSH connection timed out.",
+    "T3 access could not be authenticated.": "T3 access could not be authenticated.",
+    "The T3 server is not running or did not become ready.": "The T3 server is not running or did not become ready.",
+    "The host answered with a different T3 environment.": "The host answered with a different T3 environment.",
+    "The saved connections could not be unlocked.": "The saved connections could not be unlocked.",
+    "The connection to T3 was interrupted.": "The connection to T3 was interrupted."
   }
 }

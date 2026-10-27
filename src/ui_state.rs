@@ -16,7 +16,7 @@ pub fn sanitize(input: &Value) -> Value {
         "english",
         "composerExpanded","detached",
         "screenshotButton","screenshotHidePanel","dictationButton",
-        "fpsMeter","mosaicOpen","quickRepliesButton",
+        "animationsEnabled","fpsMeter","mosaicOpen","quickRepliesButton",
         "omabridgeIndicator",
         "threadDetailsOpen",
     ] {

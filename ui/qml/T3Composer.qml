@@ -26,6 +26,7 @@ Rectangle {
   required property var bridge
   property bool showOptions: false
   property bool expanded: false
+  signal sidebarShortcutRequested(bool focusSelected)
   signal toggleExpanded()
   signal previewAttachment(var attachment)
   property bool draftsOpen:false
@@ -264,7 +265,7 @@ Rectangle {
   implicitHeight: content.implicitHeight + Style.space(24)
   color: Color.popups.background; radius: Style.space(17)
   border.width: 1; border.color: editor.activeFocus ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45) : Qt.rgba(fg.r, fg.g, fg.b, 0.09)
-  Behavior on border.color { ColorAnimation { duration: 130 } }
+  Behavior on border.color { enabled:T3Motion.enabled;ColorAnimation { duration: T3Motion.duration(130)} }
   ColumnLayout {
     id: content
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(12) }
@@ -418,7 +419,7 @@ Rectangle {
         onCursorPositionChanged: {if(!root.draft.loading)root.bridge.rememberDraftCursor(root.sourcePosition(selectionStart),root.sourcePosition(selectionEnd));completionDelay.restart();Qt.callLater(editorViewport.revealCursor)}
         onCursorRectangleChanged:Qt.callLater(editorViewport.revealCursor)
         Keys.onReleased:function(event){if(event.key===Qt.Key_Control)root.editorCtrlHeld=false;if(root.dictationKey(event,false))event.accepted=true}
-        Keys.onPressed:function(event){if(root.bridge.releaseThreadUndoShortcut&&event.key!==Qt.Key_Z&&[Qt.Key_Control,Qt.Key_Meta,Qt.Key_Shift].indexOf(event.key)<0)root.bridge.releaseThreadUndoShortcut();if(event.key===Qt.Key_Control)root.editorCtrlHeld=true;if(root.dictationKey(event,true)){event.accepted=true;return}if(event.modifiers===Qt.ShiftModifier&&event.key===Qt.Key_Backtab&&root.bridge.interactionModeEnabled===true&&!root.locked){root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan");event.accepted=true;return}if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(root.sourcePosition(editor.selectionStart),root.sourcePosition(editor.selectionEnd))}}
+        Keys.onPressed:function(event){if(event.key===Qt.Key_B&&(event.modifiers===Qt.ControlModifier||event.modifiers===Qt.MetaModifier)&&!root.bridge.keybindingCaptureActive){root.sidebarShortcutRequested(event.modifiers===Qt.MetaModifier);event.accepted=true;return}if(root.bridge.releaseThreadUndoShortcut&&event.key!==Qt.Key_Z&&[Qt.Key_Control,Qt.Key_Meta,Qt.Key_Shift].indexOf(event.key)<0)root.bridge.releaseThreadUndoShortcut();if(event.key===Qt.Key_Control)root.editorCtrlHeld=true;if(root.dictationKey(event,true)){event.accepted=true;return}if(event.modifiers===Qt.ShiftModifier&&event.key===Qt.Key_Backtab&&root.bridge.interactionModeEnabled===true&&!root.locked){root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan");event.accepted=true;return}if(event.modifiers===Qt.MetaModifier && event.key===Qt.Key_A){editor.selectAll();event.accepted=true;return}if(event.matches(StandardKey.Undo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Z)){root.bridge.undoDraft(false);event.accepted=true;return}if(event.matches(StandardKey.Redo)||((event.modifiers===Qt.MetaModifier||event.modifiers===Qt.ControlModifier) && event.key===Qt.Key_Y)||((event.modifiers===(Qt.MetaModifier|Qt.ShiftModifier)||event.modifiers===(Qt.ControlModifier|Qt.ShiftModifier))&&event.key===Qt.Key_Z)){root.bridge.undoDraft(true);event.accepted=true;return}if(event.matches(StandardKey.Paste)){event.accepted=true;if(!root.locked)root.bridge.pasteClipboard(root.sourcePosition(editor.selectionStart),root.sourcePosition(editor.selectionEnd))}}
         onActiveFocusChanged: { if (!activeFocus) {root.editorCtrlHeld=false;root.bridge.flushDrafts()} else completionDelay.restart() }
         Keys.onUpPressed: function(event) { event.accepted = root.completionKey(event,-1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(-1)) }
         Keys.onDownPressed: function(event) { event.accepted = root.completionKey(event,1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(1)) }
@@ -467,11 +468,11 @@ Rectangle {
         readonly property var replies:QuickReplies.replies(language,root.bridge.viewState.quickReplies)
         tint:hovered||quickPopup.visible?Color.accent:root.fg
         scale:hovered?1.12:1
-        Behavior on scale {NumberAnimation{duration:180;easing.type:Easing.OutBack}}
+        Behavior on scale { enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(180);easing.type:Easing.OutBack}}
         Rectangle {
           anchors.fill:parent;anchors.margins:-Style.space(2);radius:Style.space(9);color:"transparent"
           border.width:1;border.color:Color.accent;visible:quickButton.hovered||quickPopup.visible
-          SequentialAnimation on opacity {running:quickButton.visible&&(quickButton.hovered||quickPopup.visible);loops:Animation.Infinite;NumberAnimation{from:0.15;to:0.65;duration:650} NumberAnimation{from:0.65;to:0.15;duration:650}}
+          SequentialAnimation on opacity {running:T3Motion.enabled && (quickButton.visible&&(quickButton.hovered||quickPopup.visible));loops:Animation.Infinite;NumberAnimation{from:0.15;to:0.65;duration: T3Motion.duration(650)} NumberAnimation{from:0.65;to:0.15;duration: T3Motion.duration(650)}}
         }
         Timer{interval:350;running:quickButton.hovered&&!quickPopup.visible;onTriggered:quickPopup.open()}
         Timer{interval:500;running:quickPopup.visible&&!quickPopup.activeFocus&&!quickButton.hovered&&!quickHover.hovered;onTriggered:quickPopup.close()}
@@ -481,7 +482,7 @@ Rectangle {
           width:Style.space(260);padding:Style.space(8);height:Math.min(implicitHeight,Style.space(350))
           closePolicy:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
           background:Rectangle{radius:Style.space(10);color:Color.popups.background;border.width:1;border.color:Color.accent}
-          enter:Transition{NumberAnimation{property:"opacity";from:0;to:1;duration:160}}
+          enter:Transition{NumberAnimation{property:"opacity";from:0;to:1;duration: T3Motion.duration(160)}}
           contentItem:ColumnLayout {
             HoverHandler{id:quickHover}
             Text{text:T3I18n.tr("Quick replies")+" · "+quickButton.language.toUpperCase();color:Color.popups.text;font.pixelSize:Style.font.caption}
@@ -578,7 +579,7 @@ Rectangle {
           width: parent.width * (0.75 + 0.45 * root.bridge.dictation.level); height: width; radius: width / 2
           color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.18)
           visible: dictateButton.listening
-          Behavior on width { NumberAnimation { duration: 70 } }
+          Behavior on width { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(70)} }
         }
         WorkIndicator { anchors.centerIn: parent; implicitWidth: Style.space(26); visible: dictateButton.mode === "transcribing" || dictateButton.mode === "downloading"; active: visible && root.visible; tint: Color.accent }
         // While it records, a bubble grows out of the microphone with the last two
@@ -604,7 +605,7 @@ Rectangle {
           Timer { interval: 250; repeat: true; running: dictationWave.shown; onTriggered: dictationWave.seconds = Math.floor((Date.now() - dictationWave.startedAt) / 1000) }
           // 0 → 1 drives the drops, then the bubble; it overshoots a little on the way in.
           property real grow: shown ? 1 : 0
-          Behavior on grow { NumberAnimation { duration: dictationWave.shown ? 520 : 220; easing.type: dictationWave.shown ? Easing.OutBack : Easing.InCubic; easing.overshoot: 1.6 } }
+          Behavior on grow { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(dictationWave.shown ? 520 : 220); easing.type: dictationWave.shown ? Easing.OutBack : Easing.InCubic; easing.overshoot: 1.6 } }
           readonly property real morph: Math.max(0, (grow - 0.3) / 0.7)
           readonly property real tone: 0.35 + 0.65 * root.bridge.dictation.level
           readonly property color red: Color.urgent
@@ -631,7 +632,7 @@ Rectangle {
             anchors.fill: waveBubble; anchors.margins: -Style.space(3)
             radius: height / 2; opacity: waveBubble.opacity
             color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.04 + 0.14 * root.bridge.dictation.level)
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { enabled:T3Motion.enabled;ColorAnimation { duration: T3Motion.duration(120)} }
           }
           Rectangle {
             id: waveBubble
@@ -645,7 +646,7 @@ Rectangle {
             opacity: dictationWave.clamp(m * 2.5)
             color: Color.popups.background
             border.width: 1; border.color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.3 + 0.4 * root.bridge.dictation.level)
-            Behavior on border.color { ColorAnimation { duration: 120 } }
+            Behavior on border.color { enabled:T3Motion.enabled;ColorAnimation { duration: T3Motion.duration(120)} }
             clip: true
             Text {
               id: noticeText
@@ -667,9 +668,9 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Style.space(7); height: width; radius: width / 2; color: dictationWave.red
                 SequentialAnimation on opacity {
-                  running: dictationWave.shown; loops: Animation.Infinite
-                  NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
-                  NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                  running: T3Motion.enabled && (dictationWave.shown); loops: Animation.Infinite
+                  NumberAnimation { to: 0.35; duration: T3Motion.duration(700); easing.type: Easing.InOutSine }
+                  NumberAnimation { to: 1; duration: T3Motion.duration(700); easing.type: Easing.InOutSine }
                 }
               }
               Row {
@@ -684,7 +685,7 @@ Rectangle {
                     width: Style.space(3); radius: width / 2
                     height: Math.max(width, parent.height * value)
                     color: Qt.rgba(dictationWave.red.r, dictationWave.red.g, dictationWave.red.b, 0.25 + 0.75 * value)
-                    Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                    Behavior on height { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(120); easing.type: Easing.OutQuad } }
                   }
                 }
               }
@@ -729,14 +730,14 @@ Rectangle {
           id:draftSavedIcon;anchors.centerIn:parent;name:draftStatus.failed?"circle-alert":"check";tint:draftStatus.failed?Color.urgent:root.dim;implicitWidth:Style.space(14)
           readonly property bool shown:!draftStatus.saving || draftStatus.failed
           opacity:shown?1:0;scale:shown?1:0.35;visible:opacity>0
-          Behavior on opacity{NumberAnimation{duration:draftSavedIcon.shown?240:140;easing.type:Easing.OutCubic}}
-          Behavior on scale{NumberAnimation{duration:draftSavedIcon.shown?420:140;easing.type:draftSavedIcon.shown?Easing.OutBack:Easing.InCubic;easing.overshoot:2.2}}
+          Behavior on opacity{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(draftSavedIcon.shown?240:140);easing.type:Easing.OutCubic}}
+          Behavior on scale{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(draftSavedIcon.shown?420:140);easing.type:draftSavedIcon.shown?Easing.OutBack:Easing.InCubic;easing.overshoot:2.2}}
         }
         WorkIndicator{
           id:draftSavingIcon;anchors.centerIn:parent;implicitWidth:Style.space(14);tint:root.dim
           readonly property bool shown:draftStatus.saving&&!draftStatus.failed
           opacity:shown?1:0;visible:opacity>0;active:visible&&root.visible
-          Behavior on opacity{NumberAnimation{duration:draftSavingIcon.shown?160:260;easing.type:Easing.InOutSine}}
+          Behavior on opacity{ enabled:T3Motion.enabled;NumberAnimation{duration: T3Motion.duration(draftSavingIcon.shown?160:260);easing.type:Easing.InOutSine}}
         }
         HoverHandler{id:draftStatusHover}
         Controls.ToolTip.visible:draftStatusHover.hovered
@@ -774,7 +775,7 @@ Rectangle {
         width: Style.space(32); height: width; radius: width / 2
         color: root.stopMode ? Color.urgent : Color.accent
         opacity: sendMouse.enabled ? 1 : 0.35
-        Behavior on color { ColorAnimation { duration: 130 } }
+        Behavior on color { enabled:T3Motion.enabled;ColorAnimation { duration: T3Motion.duration(130)} }
         WorkIndicator { anchors.centerIn: parent; visible: root.stopMode ? !!root.draft.stopping : root.draft.busy || root.uploading; active: visible && root.visible; tint: root.stopMode ? "white" : Color.popups.background }
         T3Icon { anchors.centerIn: parent; name: primaryAction.iconName; tint: root.stopMode ? "white" : Color.popups.background; visible: root.stopMode ? !root.draft.stopping : !root.draft.busy && !root.uploading }
         MouseArea {

@@ -5,6 +5,8 @@ import Quickshell
 // Show/hide transition chosen in Preferences > Animations, shared by every
 // T3Reveal. The panel binds these from the saved view state.
 Singleton {
+  property bool enabled: true
+  function duration(ms) { return enabled ? ms : 0 }
   // "nebula" | "warp" | "fold" | "spring" | "instant"
   property string style: "nebula"
   // Duration multiplier: slow 1.6, normal 1, fast 0.6.

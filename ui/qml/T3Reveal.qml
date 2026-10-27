@@ -27,11 +27,10 @@ Item {
   readonly property bool moving: motion.running
   // Visible from the moment it is asked to show, so focus can land at once.
   readonly property bool present: shown || progress > 0
-  Behavior on progress {
-    enabled: root.style !== "instant"
+  Behavior on progress { enabled:T3Motion.enabled && (root.style !== "instant")
     NumberAnimation {
       id: motion
-      duration: ({nebula: 560, warp: 460, fold: 500, spring: 520})[root.style] * T3Motion.pace
+      duration: T3Motion.duration(({nebula: 560, warp: 460, fold: 500, spring: 520})[root.style] * T3Motion.pace)
       easing.type: ({nebula: Easing.InOutCubic, warp: Easing.InOutQuart, fold: Easing.InOutSine, spring: Easing.OutBack})[root.style] || Easing.InOutCubic
       easing.overshoot: 1.3
     }

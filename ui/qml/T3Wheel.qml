@@ -30,7 +30,7 @@ Item {
   coasting=false;motionState=step.state;delta=step.delta;coastDelta=step.coast
   if(coastDelta!==0)coastStart.restart();else coastStart.stop()
   targetY=Math.max(lo,Math.min(hi,from-delta))
-  if(!step.animate)f.contentY=targetY;else {ease.duration=Motion.duration(targetY-f.contentY);ease.start()}
+  if(!step.animate)f.contentY=targetY;else {ease.duration=T3Motion.duration(Motion.duration(targetY-f.contentY));ease.start()}
   userScrolled()
   return true
  }
@@ -53,8 +53,8 @@ Item {
  Timer{id:coastStart;interval:80;onTriggered:{
   var f=root.flickable,lo=f.originY || 0,hi=lo+Math.max(0,f.contentHeight-f.height)
   root.coasting=true;ease.stop();root.targetY=Math.max(lo,Math.min(hi,root.targetY-root.coastDelta))
-  ease.duration=Motion.glide.coasting;ease.start()
+  ease.duration=T3Motion.duration(Motion.glide.coasting);ease.start()
  }}
- NumberAnimation{id:ease;target:root.flickable;property:"contentY";to:root.targetY;duration:root.coastingDuration;easing.type:Easing.OutCubic}
+ NumberAnimation{id:ease;target:root.flickable;property:"contentY";to:root.targetY;duration: T3Motion.duration(root.coastingDuration);easing.type:Easing.OutCubic}
  Connections{target:root.flickable;function onDraggingChanged(){if(root.flickable.dragging)root.stop()}function onVisibleChanged(){if(!root.flickable.visible)root.stop()}}
 }

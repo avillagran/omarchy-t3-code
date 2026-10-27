@@ -79,7 +79,21 @@ Item {
   property string editError:""
   readonly property bool canSettle: canOperate && !child && !!catalog.capabilities && catalog.capabilities.threadSettlement === true
   readonly property bool canSnooze: canOperate && !child && !!catalog.capabilities && catalog.capabilities.threadSnooze === true && thread.canSnooze === true
-  readonly property bool showActions: rowHover.hovered || keyboardCurrent || snoozeMenu.visible || rowMenu.visible || settleButton.activeFocus || snoozeButton.activeFocus || discardButton.activeFocus
+  readonly property var snoozeMenu: actionUi.item ? actionUi.item.snoozePopup : null
+  readonly property var rowMenu: actionUi.item ? actionUi.item.contextMenu : null
+  readonly property var customSnooze: actionUi.item ? actionUi.item.customPopup : null
+  readonly property var threadTitle: actionUi.item ? actionUi.item.titleField : null
+  readonly property var editPopup: actionUi.item ? actionUi.item.editDialog : null
+  readonly property var copyField: actionUi.item ? actionUi.item.clipboardField : null
+  readonly property bool actionsLoaded: actionUi.active
+  function ensureActions(){actionUi.active=true;actionExpiry.restart()}
+  function releaseActions(){
+    if(!actionUi.item || (rowMenu && rowMenu.visible) || (snoozeMenu && snoozeMenu.visible) || (customSnooze && customSnooze.visible) || (editPopup && editPopup.visible) || root.busy)return false
+    actionUi.active=false
+    return true
+  }
+  Timer{id:actionExpiry;interval:30000;repeat:true;running:actionUi.active;onTriggered:root.releaseActions()}
+  readonly property bool showActions: rowHover.hovered || keyboardCurrent || (!!snoozeMenu && snoozeMenu.visible) || (!!rowMenu && rowMenu.visible) || settleButton.activeFocus || snoozeButton.activeFocus || discardButton.activeFocus
   readonly property bool hovered: rowHover.hovered
   readonly property bool previewVisible: preview.visible
   readonly property var previewPopup: preview
@@ -93,13 +107,13 @@ Item {
   Accessible.role: Accessible.Button
   Accessible.name: [thread.title,thread.project,stateLabel].filter(Boolean).join(" · ")
   function hidePreview(){openDelay.stop();closeDelay.stop();preview.close()}
-  function dismiss(){if(threadPRBadge)threadPRBadge.closePreview();if(slimPRBadge)slimPRBadge.closePreview();projectContextDismissed();hidePreview();snoozeMenu.close();rowMenu.close();customSnooze.close()}
+  function dismiss(){if(threadPRBadge)threadPRBadge.closePreview();if(slimPRBadge)slimPRBadge.closePreview();projectContextDismissed();hidePreview();if(snoozeMenu)snoozeMenu.close();if(rowMenu)rowMenu.close();if(customSnooze)customSnooze.close()}
   function manage(action,extra){hidePreview();bridge.manage(Object.assign({action:action,environment:thread.environmentId,thread:thread.id},extra || {}))}
   function snoozeManage(action,extra){if(snoozeContext)contextManage(action,extra);else manage(action,extra)}
   function contextManage(action,extra){var t=actionThread;bridge.manage(Object.assign({action:action,environment:t.environmentId,thread:t.id},extra || {}))}
   function menuIcon(name){return "data:image/svg+xml,"+encodeURIComponent(Icons.svg(name).replace(/currentColor/g,String(root.fg)))}
-  function copyValue(value){copyField.text=String(value || "");copyField.selectAll();copyField.copy();copyField.deselect()}
-  function confirmAction(action){if(!contextThread)contextThread=Object.assign({},thread);editAction=action;editError="";editRequest="";threadTitle.text=actionThread.title || "";editPopup.open();if(action==="thread-rename")Qt.callLater(function(){threadTitle.forceActiveFocus();threadTitle.selectAll()})}
+  function copyValue(value){ensureActions();copyField.text=String(value || "");copyField.selectAll();copyField.copy();copyField.deselect()}
+  function confirmAction(action){ensureActions();if(!contextThread)contextThread=Object.assign({},thread);editAction=action;editError="";editRequest="";threadTitle.text=actionThread.title || "";editPopup.open();if(action==="thread-rename")Qt.callLater(function(){threadTitle.forceActiveFocus();threadTitle.selectAll()})}
   function submitAction(){var extra=editAction==="thread-rename"?{title:threadTitle.text.trim()}:editAction==="delete-thread"?{confirmed:true}:{working:!!actionThread.working};contextManage(editAction,extra);editRequest=bridge.managementRequest?bridge.managementRequest.requestId:""}
   function presets(now) {
     var d=now || new Date(),h=3600000,result=[{label:"In 1 hour",date:new Date(d.getTime()+h)},{label:"In 3 hours",date:new Date(d.getTime()+3*h)}]
@@ -108,7 +122,7 @@ Item {
     var monday=new Date(d);monday.setDate(monday.getDate()+((1-d.getDay()+7)%7 || 7));monday.setHours(9,0,0,0);if(monday.getTime()!==tomorrow.getTime())result.push({label:"Next week",date:monday})
     return result
   }
-  function openSnooze(context){snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
+  function openSnooze(context){ensureActions();snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
   onPanelVisibleChanged: if(!panelVisible)dismiss()
   onPooledChanged: {resetMotion();statePop.complete();if(pooled){dismiss();burstAnimation.stop();aura.burst=0}}
   // Sidebar motion (T3Panel.syncSidebar): rows entering or leaving a section
@@ -122,30 +136,30 @@ Item {
   visible: !pooled
   transform: Translate { x: root.drift }
   function resetMotion() { arriveMotion.stop(); departMotion.stop(); flight = false; opacity = 1; drift = 0 }
-  function arrive(ms) { departMotion.stop(); arriveMotion.duration = ms; arriveMotion.start() }
-  function depart(ms) { arriveMotion.stop(); departMotion.duration = ms; departMotion.start() }
+  function arrive(ms) { departMotion.stop(); arriveMotion.duration = T3Motion.duration(ms); arriveMotion.start() }
+  function depart(ms) { arriveMotion.stop(); departMotion.duration = T3Motion.duration(ms); departMotion.start() }
   SequentialAnimation {
     id: arriveMotion
-    property int duration: 360
+    property int duration: T3Motion.duration(360)
     PropertyAction { target: root; property: "opacity"; value: 0 }
     PropertyAction { target: root; property: "drift"; value: -Style.space(18) }
-    PauseAnimation { duration: arriveMotion.duration * 0.2 }
+    PauseAnimation { duration: T3Motion.duration(arriveMotion.duration * 0.2)}
     ParallelAnimation {
-      NumberAnimation { target: root; property: "opacity"; to: 1; duration: arriveMotion.duration * 0.8; easing.type: Easing.OutCubic }
-      NumberAnimation { target: root; property: "drift"; to: 0; duration: arriveMotion.duration * 0.8; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+      NumberAnimation { target: root; property: "opacity"; to: 1; duration: T3Motion.duration(arriveMotion.duration * 0.8); easing.type: Easing.OutCubic }
+      NumberAnimation { target: root; property: "drift"; to: 0; duration: T3Motion.duration(arriveMotion.duration * 0.8); easing.type: Easing.OutBack; easing.overshoot: 1.2 }
     }
   }
   ParallelAnimation {
     id: departMotion
-    property int duration: 300
-    NumberAnimation { target: root; property: "opacity"; to: 0; duration: departMotion.duration; easing.type: Easing.InCubic }
-    NumberAnimation { target: root; property: "drift"; to: Style.space(22); duration: departMotion.duration; easing.type: Easing.InCubic }
+    property int duration: T3Motion.duration(300)
+    NumberAnimation { target: root; property: "opacity"; to: 0; duration: T3Motion.duration(departMotion.duration); easing.type: Easing.InCubic }
+    NumberAnimation { target: root; property: "drift"; to: Style.space(22); duration: T3Motion.duration(departMotion.duration); easing.type: Easing.InCubic }
   }
   readonly property int burstMs: 1300
   function playBurst() {
     var age = Date.now() - stateChangedAt
     if (!stateChangedAt || !skyMoving || changeStyle < 0 || pooled || age < 0 || age > burstMs - 200) return
-    burstAnimation.stop(); burstAnimation.from = age / burstMs; burstAnimation.duration = burstMs - age; burstAnimation.start()
+    burstAnimation.stop(); burstAnimation.from = age / burstMs; burstAnimation.duration = T3Motion.duration(burstMs - age); burstAnimation.start()
   }
   onStateChangedAtChanged: playBurst()
   Component.onCompleted: { playBurst(); Qt.callLater(function() { root.motionReady = true }) }
@@ -167,7 +181,7 @@ Item {
       else {openDelay.stop();closeDelay.restart()}
     }
   }
-  Timer { id:openDelay;interval:500;onTriggered:if(root.hovered && !actionsHover.hovered && !snoozeMenu.visible && !rowMenu.visible && root.panelVisible && !root.pooled)preview.open() }
+  Timer { id:openDelay;interval:500;onTriggered:if(root.hovered && !actionsHover.hovered && (!snoozeMenu || !snoozeMenu.visible) && (!rowMenu || !rowMenu.visible) && root.panelVisible && !root.pooled)preview.open() }
   Timer { id:closeDelay;interval:140;onTriggered:if(!root.hovered && !previewHover.hovered)preview.close() }
   Repeater {
     model:root.depth
@@ -178,7 +192,7 @@ Item {
     radius:Style.space(6)
     color: root.selected ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.075) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.045) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
     border.width:root.keyboardCurrent?1:0;border.color:Color.accent
-    Behavior on color {ColorAnimation{duration:130}}
+    Behavior on color { enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(130)}}
     ShaderEffect {
       id: aura
       objectName: "threadAura"
@@ -191,8 +205,8 @@ Item {
       property real workingStyle: Math.max(0, root.workingStyle)
       property real attentionStyle: Math.max(0, root.inputStyle)
       property real burstStyle: Math.max(0, root.changeStyle)
-      Behavior on working { NumberAnimation { duration: 600 } }
-      Behavior on attention { NumberAnimation { duration: 600 } }
+      Behavior on working { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(600)} }
+      Behavior on attention { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(600)} }
       visible: root.panelVisible && !root.pooled && (working > 0 || attention > 0 || bursting)
       // Only visible auras read the clock, so idle rows add no bindings work.
       property real clock: visible && root.sky ? root.sky.clock : 1.2
@@ -212,7 +226,7 @@ Item {
     }
     MouseArea {
       anchors.fill:parent;cursorShape:Qt.PointingHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton
-      onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
+      onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.ensureActions();root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
     }
     ColumnLayout {
       anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(root.slim?0:8);anchors.bottomMargin:Style.space(root.slim?0:8);spacing:Style.space(2)
@@ -222,7 +236,7 @@ Item {
         T3Icon {
           id:draftMark;objectName:"threadDraftMark";name:"square-pen";implicitWidth:Style.space(13);tint:root.dim
           property real reveal:root.showDraft?1:0
-          Behavior on reveal{enabled:root.motionReady;NumberAnimation{duration:280;easing.type:Easing.OutCubic}}
+          Behavior on reveal{ enabled:T3Motion.enabled && (root.motionReady);NumberAnimation{duration: T3Motion.duration(280);easing.type:Easing.OutCubic}}
           Layout.preferredWidth:implicitWidth*reveal;Layout.rightMargin:-Style.space(6)*(1-reveal)
           opacity:reveal;scale:0.4+0.6*reveal;visible:reveal>0
         }
@@ -269,7 +283,7 @@ Item {
           T3Icon{
             id:stateIcon;objectName:"threadStateIcon"
             name:({approval:"shield-question",input:"message-circle-question",plan:"message-circle-question",waiting:"circle-dot-dashed",goal:"circle-dashed",working:"circle-dashed",limited:"circle-alert",failed:"circle-alert",done:"circle-check"})[root.stateKind] || "circle-alert";visible:!root.woke&&!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor
-            Behavior on tint{enabled:root.motionReady;ColorAnimation{duration:320}}
+            Behavior on tint{ enabled:T3Motion.enabled && (root.motionReady);ColorAnimation{duration: T3Motion.duration(320)}}
             // Working turns slowly on the sky clock, like the auras: its own
             // animation would repaint the whole panel at the display rate for
             // as long as any thread works. A still sky keeps it still.
@@ -280,8 +294,8 @@ Item {
             SequentialAnimation{
               id:statePop
               ParallelAnimation{
-                NumberAnimation{target:stateIcon;property:"scale";from:0.3;to:1;duration:460;easing.type:Easing.OutBack;easing.overshoot:2.4}
-                NumberAnimation{target:stateIcon;property:"opacity";from:0;to:1;duration:200;easing.type:Easing.OutCubic}
+                NumberAnimation{target:stateIcon;property:"scale";from:0.3;to:1;duration: T3Motion.duration(460);easing.type:Easing.OutBack;easing.overshoot:2.4}
+                NumberAnimation{target:stateIcon;property:"opacity";from:0;to:1;duration: T3Motion.duration(200);easing.type:Easing.OutCubic}
               }
             }
           }
@@ -340,6 +354,15 @@ Item {
       }
     }
   }
+  Loader {
+    id:actionUi;active:false
+    sourceComponent:Item {
+      property alias snoozePopup:snoozeMenu
+      property alias contextMenu:rowMenu
+      property alias customPopup:customSnooze
+      property alias titleField:threadTitle
+      property alias editDialog:editPopup
+      property alias clipboardField:copyField
   Controls.Menu {
     width:Style.space(280)
     id:snoozeMenu;property var choices:[];objectName:"threadSnoozeMenu"
@@ -425,5 +448,7 @@ Item {
       }
     }
   }
-  Connections{target:root.bridge;function onManagementFinished(data){if(!root.editRequest||data.requestId!==root.editRequest)return;root.editError=data.error || "";if(!data.error)editPopup.close()}}
+    }
+  }
+  Connections{target:root.bridge;function onManagementFinished(data){if(!root.editRequest||data.requestId!==root.editRequest)return;root.editError=data.error || "";if(!data.error && editPopup)editPopup.close()}}
 }

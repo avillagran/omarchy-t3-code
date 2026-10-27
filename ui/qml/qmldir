@@ -150,3 +150,8 @@ T3AudioAttachment 1.0 T3AudioAttachment.qml
 T3GuestShare 1.0 T3GuestShare.qml
 T3EasHosts 1.0 T3EasHosts.qml
 T3UsageRecovery 1.0 T3UsageRecovery.qml
+
+T3ConnectionNotice 1.0 T3ConnectionNotice.qml
+
+T3DeferredPopup 1.0 T3DeferredPopup.qml
+T3VideoViewer 1.0 T3VideoViewer.qml

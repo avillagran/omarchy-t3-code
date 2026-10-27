@@ -1,3 +1,5 @@
+mod memory_pressure;
+mod session_audit_cache;
 mod auto_compact;
 mod idle_release;
 mod server_update;
@@ -444,6 +446,7 @@ fn watch(client: Client) -> Result<()> {
     let mut visible = false;
     let mut selected: Option<(String, String, i64)> = None;
     let mut query = String::new();
+    let mut next_memory_sweep = Instant::now() + Duration::from_secs(30);
     let mut next_poll = Instant::now();
     let mut last_snapshot = Instant::now();
     let mut last_activity = Instant::now() - Duration::from_secs(3600);
@@ -456,6 +459,10 @@ fn watch(client: Client) -> Result<()> {
     let mut disk_threshold: Option<Value> = None;
     let mut vault_automation = journal_vault::Automation::default();
     loop {
+        if Instant::now() >= next_memory_sweep {
+            memory_pressure::release_unused();
+            next_memory_sweep = Instant::now() + Duration::from_secs(30);
+        }
         if Instant::now() >= next_disk {
             next_disk = Instant::now() + disk_space::CHECK_INTERVAL;
             let ui = disk_threshold.as_ref().map(|t| json!({"lowDiskThresholdGb":t})).unwrap_or_else(ui_state::load);
@@ -583,6 +590,7 @@ fn watch(client: Client) -> Result<()> {
                 query = text(&cmd, "query").chars().take(256).collect();
                 emit("snapshot", view(&state, &query));
             }
+            "memory-trim" => {memory_pressure::release_unused();}
             "clear-select" => {selected=None;message_cache=None;}
             "select" => {
                 let env = text(&cmd, "environment").to_string();
@@ -688,6 +696,10 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
+    if std::env::args().nth(1).as_deref()==Some("__ssh-forward") {
+        if run_ssh_forward(&std::env::args().skip(2).collect::<Vec<_>>()).is_err(){std::process::exit(1)}
+        return
+    }
     if matches!(std::env::args().nth(1).as_deref(),Some("--version"|"-V")){println!("omarchy-t3-client {}",env!("CARGO_PKG_VERSION"));return}
     if std::env::args().nth(1).as_deref()==Some("browser-render"){if let Err(error)=browser_runtime::renderer(){eprintln!("{error}");std::process::exit(1)}return}
     if std::env::args().nth(1).as_deref()==Some("terminal-session"){let args:Vec<_>=std::env::args().skip(2).collect();let result=if args.len()==3{env_by_id(&args[0]).and_then(|e|terminal::run_session(&e,&args[1],&args[2]))}else{Err("invalid_command".into())};if let Err(e)=result{eprintln!("T3 terminal: {e}");std::process::exit(1)}return}

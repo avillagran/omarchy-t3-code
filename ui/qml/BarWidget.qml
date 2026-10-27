@@ -93,7 +93,7 @@ BarWidget {
     // The app writes its tooltip already translated; the bar loads no translations.
     tooltipText: root.running ? (root.status.tooltip || "T3 Code") : "T3 Code"
     iconComponent: Component { Item {} }
-    T3StatusBadges { id: badges; anchors.centerIn: parent; counts: root.counts; stale: !root.running || root.status.stale === true; indicatorStyle: root.status.indicatorStyle || "orbit"; width: implicitWidth; height: Style.bar.statusSlot; scale: root.vertical ? Math.min(1, (root.barSize - Style.space(4)) / implicitWidth) : 1 }
+    T3StatusBadges { id: badges; anchors.centerIn: parent; counts: root.counts; stale: !root.running || root.status.stale === true; indicatorStyle: root.status.indicatorStyle || "orbit"; motion: root.status.animationsEnabled !== false; width: implicitWidth; height: Style.bar.statusSlot; scale: root.vertical ? Math.min(1, (root.barSize - Style.space(4)) / implicitWidth) : 1 }
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton) root.togglePanel()
       else if (mouseButton === Qt.MiddleButton) root.run(["call", "refresh"])
