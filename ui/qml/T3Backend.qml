@@ -1971,6 +1971,17 @@ Singleton {
   signal messagesUpdated()
   signal messagesAboutToChange()
   signal threadWillChange()
+  // A large discarded history can remain in QV4 until another allocation burst.
+  // Collect once after navigation settles, letting delegates finish teardown.
+  // Updates defer this work so it does not interrupt a streaming response.
+  onThreadWillChange: {
+    var characters=0
+    for(var i=0;i<transcript.length&&characters<262144;i++)characters+=(transcript[i].text||"").length+(transcript[i].rendered||"").length
+    if(releasedHistoryGc.running||characters>=262144)releasedHistoryGc.restart()
+  }
+  onMessagesUpdated:if(releasedHistoryGc.running)releasedHistoryGc.restart()
+  readonly property bool historyCollectionPending:releasedHistoryGc.running
+  Timer{id:releasedHistoryGc;interval:2000;onTriggered:if(typeof gc==="function")gc()}
   function releaseUnusedMemory() { if(typeof gc === "function")gc(); send({op:"memory-trim"}) }
   function send(data) { if (worker.running) worker.write(JSON.stringify(data) + "\n") }
   function setPanelVisible(value) { visiblePanels = Math.max(0, visiblePanels + (value ? 1 : -1)) }

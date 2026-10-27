@@ -23,6 +23,10 @@
   restart snapshots are not treated as a controlled before/after measurement.
   Deferred review/Git/inspection controls save another 4.5–5.6 MiB in paired
   250-message fixtures; read-only views unload 30 seconds after closing.
+  Five further iterations retained deferred registry effects, an unloadable
+  model picker, and a one-shot collection after quiet navigation away from
+  large histories. Final three-cycle comparisons save 33.7–34.6 MiB PSS+SwapPSS
+  against `3f70242`; live UI sample ~307 MiB RSS, total target still open.
 
 - [ ] **2026-10-26 — Intermittent Spanish accents in text input.** User reports
   that typing accented letters sometimes works and sometimes fails despite a
