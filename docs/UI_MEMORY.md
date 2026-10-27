@@ -143,3 +143,50 @@ are required for this QML-only change.
 - QML sidebar-keybindings covers real key events, selected text, scroll position,
   arrows, collapsed Working/Settled shelves, hidden sidebar and a filtered child.
   sidebar-navigation, keybindings-runtime, composer-enter and composer also pass.
+
+## Deferred review controls
+
+Diff review, working-tree review, Git controls and tool inspection now create
+controls only on first opening. Diff/working review and the tool inspector
+release their controls after 30 seconds closed. Open views cannot release;
+reopening reconstructs the current scope. Diff context/tree presentation choices
+survive unloading. Tool replies are forwarded only to a mounted inspector,
+which still validates its request and scope. Git controls remain mounted after
+first use, retaining the existing tab and lifecycle behavior. Existing native
+scope/readiness invalidation still clears pending Git confirmations and text;
+this change does not add another unload/discard path for that form.
+
+A proposed QObject-backed conversation-row model was discarded: the isolated
+comparison without overlapping test processes did not reduce anonymous memory
+(179824→180960 KiB). Initial apparent gains were not repeatable. The current
+conversation model, streaming behavior and delegate reuse policy remain intact.
+The measurement helper now also reports PSS anonymous/file/shared components.
+
+Final comparison: same 24-thread, 250-message, 40-paragraph fixture, jemalloc
+settings from the preceding section, baseline `216b025`. No concurrent test
+Quickshell process was run during these paired measurements.
+
+| Order | Version | RSS KiB | PSS KiB | SwapPSS KiB | PSS anon KiB | CPU ms |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Baseline first | Baseline | 315168 | 255533 | 0 | 179568 | 1840 |
+| Baseline first | Candidate | 309376 | 249829 | 0 | 173696 | 2070 |
+| Candidate first | Candidate | 309632 | 250254 | 0 | 173952 | 1750 |
+| Candidate first | Baseline | 315344 | 254917 | 0 | 179536 | 1790 |
+
+This saves **5.57 MiB** and **4.55 MiB** PSS+SwapPSS before those views are used.
+CPU samples vary; no general CPU improvement is claimed. Visited Git controls
+remain allocated; the other three views can return to their unloaded state.
+The live UI after installation sampled 369616 KiB RSS / 313098 PSS /
+2704 SwapPSS on the user's current chat. This is a state check, not a controlled
+before/after comparison; the total 50–100 MB target is still open.
+
+Focused checks passed: work-details (cold controls, guarded unload, diff reload,
+presentation restoration and late replies), activity-inspector (actual row
+click, scoped replies, close on thread switch, unload and recreation),
+tool-inspector, Git flow (same controls/tab after reopening), working-review
+flow, native-diff flow, sidebar-keybindings and scroll-stability. No Rust rebuild.
+Installed T3Panel was merged against its prior base to preserve local activity
+announcements and recent-thread palette changes. Backup:
+`~/.cache/ot3-lazy-reviews-20261026-212042`.
+Both hosts ready and selected thread identical after restart. Desktop capture:
+`~/Pictures/ot3-evidence/deferred-reviews-20261026.png`.
