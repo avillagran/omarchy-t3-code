@@ -80,6 +80,9 @@ ot3 bundles [OmaBridge](docs/CONNECTION_OMABRIDGE.md): once devices are paired, 
 connections go through them first, without a VPN, and fall back to the saved route. Pair, approve,
 revoke, publish and manage your devices in Preferences → Connections → OmaBridge or from the
 optional bar indicator: the same page as the Omarchy Control Panel, on the same device.
+**Sync this computer's setup**, on the same page, leaves a connected SSH host with your
+[working setup](docs/HOST_SYNC.md): the development vault, agent instructions, skills and
+harness settings, after a preview and without credentials.
 
 Some T3 features are still being ported, and the PR view is currently read-only.
 See the [feature parity checklist](docs/FEATURE_PARITY.md).

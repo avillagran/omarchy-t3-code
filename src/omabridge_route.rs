@@ -107,6 +107,10 @@ pub fn set_active(environment:&str,route:Option<(&Route,bool)>){
   match route{Some((r,auto))=>{map.insert(environment.into(),json!({"peer":r.peer,"service":r.service,"auto":auto}));},None=>{map.remove(environment);}}
  }
 }
+/// The peer carrying an environment's `service` right now, if OmaBridge does.
+pub fn active_peer(environment:&str,service:&str)->Option<String>{
+ ACTIVE.lock().ok()?.as_ref()?.get(environment).filter(|r|r["service"]==service).and_then(|r|r["peer"].as_str()).filter(|p|valid_peer(p)).map(str::to_owned)
+}
 fn active()->Value{ACTIVE.lock().ok().and_then(|a|a.clone()).map(|m|json!(m)).unwrap_or_else(||json!({}))}
 pub(crate) fn identity_ready(state_dir:&Path)->bool{
  fs::symlink_metadata(state_dir).is_ok_and(|m|m.is_dir()&&m.mode()&0o077==0)&&fs::symlink_metadata(state_dir.join("state.json")).is_ok_and(|m|m.is_file())

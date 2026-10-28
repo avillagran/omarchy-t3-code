@@ -723,6 +723,17 @@ Singleton {
   // Memory/Obsidian (journal_vault.rs): the development vault on this computer, and
   // what each connected host reports. Every write happens on this computer.
   property var vault:({busy:false,error:"",state:null,requestId:""})
+  // Sync this computer's setup to a host (host_sync): the shown preview and result,
+  // and the last result per host. "read" uses its own request id.
+  property var hostSync:({busy:false,action:"",environment:"",error:"",preview:null,result:null,last:({}),requestId:"",readRequestId:""})
+  function hostSyncAction(action,environment,values){
+    var id=uuid()
+    if(action==="read"){hostSync=Object.assign({},hostSync,{readRequestId:id});send({op:"host-sync",action:"read",requestId:id});return}
+    if(hostSync.busy)return
+    var next={busy:action!=="github-login",action:action,environment:environment,error:"",requestId:id}
+    if(action==="preview"){next.preview=null;next.result=null}
+    hostSync=Object.assign({},hostSync,next);send(Object.assign({op:"host-sync",action:action,environment:environment,requestId:id},values || {}))
+  }
   property var vaultHosts:({busy:false,error:"",hosts:[],vaults:[],requestId:"",loaded:false})
   property var vaultAction:({busy:false,error:"",action:"",result:null,requestId:""})
   function requestVault(){var id=uuid();vault=Object.assign({},vault,{busy:worker.running,error:worker.running?"":"disconnected",requestId:id});send({op:"vault-read",requestId:id})}
@@ -1658,6 +1669,14 @@ Singleton {
     if(data.op==="provider-login"){var lk=Object.keys(providerLogins).find(function(k){return providerLogins[k].requestId===data.requestId});if(lk&&data.error){var la=Object.assign({},providerLogins);la[lk]=Object.assign({},la[lk],{error:data.error});providerLogins=la}return}
     if(data.op==="provider-refresh"){if(!data.error)refreshCatalogIn(data.environment);return}
     if(data.op==="provider-setup"){var key=Object.keys(providerSetup).find(function(k){return providerSetup[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},providerSetup),r=data.result||{};all[key]=Object.assign({},all[key],{busy:false,error:data.error||"",kind:r.kind||all[key].kind,state:data.error?all[key].state:(r.kind==="update"?null:r.state)});providerSetup=all;if(r.kind==="update"&&all[key].environment){requestProviderInstances(all[key].environment,"read");return}var phase=r.state&&r.state.phase;if(phase==="succeeded"&&all[key].environment){requestProviderInstances(all[key].environment,"read");refreshCatalogIn(all[key].environment)}return}
+    if(data.op==="host-sync"){
+      if(data.requestId===hostSync.readRequestId){if(!data.error)hostSync=Object.assign({},hostSync,{last:(data.result || {}).last || {}});return}
+      if(data.requestId!==hostSync.requestId)return
+      var hs=Object.assign({},hostSync,{busy:false,error:data.error || ""}),hr=data.result || {}
+      if(!data.error&&hostSync.action==="preview")hs.preview=hr
+      if(!data.error&&hostSync.action==="apply"){hs.result=hr;var hl=Object.assign({},hs.last);hl[hostSync.environment]=hr;hs.last=hl}
+      hostSync=hs;return
+    }
     if(data.op==="vault-read"){if(data.requestId!==vault.requestId)return;vault=Object.assign({},vault,{busy:false,error:data.error||"",state:data.error?vault.state:data.result});return}
     if(data.op==="vault-discover"){if(data.requestId!==vaultHosts.requestId)return;var vd=data.result||{};vaultHosts=Object.assign({},vaultHosts,{busy:false,loaded:true,error:data.error||"",hosts:data.error?vaultHosts.hosts:vd.hosts||[],vaults:data.error?vaultHosts.vaults:vd.vaults||[]});return}
     if(data.op==="vault-action"&&data.action==="search"){if(data.requestId!==vaultSearch.requestId)return;vaultSearch=Object.assign({},vaultSearch,{hits:data.error?[]:((data.result||{}).hits||[])});return}

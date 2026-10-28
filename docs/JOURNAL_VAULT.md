@@ -14,10 +14,15 @@ Source brief: `~/Obsidian/Dev/Projects/omarchy-t3-code/Journal-Module-Brief.md`.
 **This computer** is the device the ot3 app runs on (for example mbp-m2), even when
 the selected environment runs its agents on another host (for example node). The
 clone, the agent instructions, the device entry and **Open in Obsidian** always act
-on this computer. Connected hosts are only *read*, through T3's own
-`projects.readFile` RPC; ot3 never writes, clones or runs git on them. The page keeps
-the two apart: **On this computer** (local state) and **On your hosts** (what each
-connected environment reports).
+on this computer. This page only *reads* connected hosts, through T3's own
+`projects.readFile` RPC, and never clones or runs git on them by itself. The page
+keeps the two apart: **On this computer** (local state) and **On your hosts** (what
+each connected environment reports).
+
+Writing to a host happens only when you ask for it, from two places: **Update
+<host>'s agents** (below) and Preferences → Connections → **Sync this computer's
+setup**, which clones or pulls this vault on an SSH host at the same place in its
+home, from the same remote, with that host's own git access ([host sync](HOST_SYNC.md)).
 
 ## Configuration
 

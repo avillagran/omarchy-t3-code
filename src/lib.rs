@@ -44,6 +44,7 @@ pub mod storage_cleanup;
 pub mod mcp_apps;
 pub mod provider_setup;
 pub mod provider_login;
+pub mod host_sync;
 pub mod agent_sessions;
 pub mod process_diagnostics;
 pub mod local_servers;
