@@ -291,6 +291,8 @@ fn watch(client: Client) -> Result<()> {
     // connections (SSH tunnels die with a suspend) and rebuild the sidebar now.
     let wake_tx=tx.clone();
     reconnect::watch_system(move||{let _=wake_tx.send(json!({"op":"refresh"}));});
+    // Peers that share T3 with this device appear in T3's catalog on their own.
+    omabridge_share::start();
     let command_watch=command_output::Watch::default();
     let setup_watch=worktree_setup::Watch::default();
     let input_live=live.clone();
@@ -417,7 +419,7 @@ fn watch(client: Client) -> Result<()> {
                 // A server update takes minutes and restarts that server.
                 if v["op"]=="server-update"{std::thread::spawn(move||{let result=server_update::update_now(text(&v,"environment"));emit("action",json!({"op":v["op"],"environment":v["environment"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 // SSH onboarding can take a minute; keep sends and draft saves responsive.
-                if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-omabridge"|"omabridge-manage"|"omabridge-install-prompt"|"omabridge-invite-handoff"|"connection-route"|"host-sync"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
+                if matches!(text(&v,"op"),"connections-manage"|"connection-access"|"connection-network"|"connection-omabridge"|"omabridge-share"|"omabridge-manage"|"omabridge-install-prompt"|"omabridge-invite-handoff"|"connection-route"|"host-sync"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"branch-refs"|"branch-switch"|"branch-check"|"branch-resolve"|"thread-search"|"secret-answer"|"pull-request-action"|"thread-pull-request"|"usage-summary"|"scheduled-tasks"|"storage-cleanup"|"mcp-app"|"provider-setup"|"provider-login"|"provider-refresh"|"agent-sessions"|"process-diagnostics"|"pin-reorder"|"local-servers"|"pull-request-thread"|"acp-registry"|"git-init"|"worktree-setup-cancel"|"otlp-check"|"workflow-script"|"workflow-stop"|"nightly"|"thread-details-read"|"thread-details-open-editor"|"provider-update"|"failure-context"|"tool-failure"){std::thread::spawn(move||{let result=write::execute(&v);emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));});continue}
                 if matches!(text(&v,"op"),"suggest"|"copy"|"client-settings"|"settings"|"provider-instances"|"window-layout"|"connections-manage"|"terminal-open"|"git-action"|"git-resolve"|"git-terminal") {let _=input_action_tx.send(v);continue}
                 if input_tx.send(v).is_err() {
@@ -672,6 +674,8 @@ fn run() -> Result<()> {
         "backend-status" => backend_service::status(),
         "server-updates" => {let ready:Vec<String>=environments()?.into_iter().filter(|e|e.connection_error.is_none()).map(|e|e.id).collect();let (rows,_)=server_update::check(&ready);json!({"mode":ui_state::load()["t3ServerUpdates"].as_str().unwrap_or("auto"),"environments":rows,"ledger":read_json(&xdg("XDG_STATE_HOME",".local/state").join("server-updates.json")).unwrap_or(Value::Null)})},
         "omabridge-read" => omabridge_route::snapshot()?,
+        // Automatic T3 sharing with paired peers: `read`, `run`, `enabled`, `retry` on stdin.
+        "omabridge-share" if args.len()==1 => {let mut raw=String::new();std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(),64*1024),&mut raw).map_err(|_|"invalid_command")?;let input:Value=serde_json::from_str(&raw).map_err(|_|"invalid_command")?;if !input.is_object(){return Err("invalid_command".into())}omabridge_share::execute(&input)?},
         // Same actions as Preferences, for other front ends; the request is read from stdin.
         "omabridge-manage" if args.len()==1 => {let mut raw=String::new();std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(),64*1024),&mut raw).map_err(|_|"invalid_command")?;let request:Value=serde_json::from_str(&raw).map_err(|_|"invalid_command")?;omabridge_device::execute(&json!({"request":request}))},
         "omabridge-action" if args.len()==1 => {let mut raw=String::new();std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(),64*1024),&mut raw).map_err(|_|"invalid_command")?;let input:Value=serde_json::from_str(&raw).map_err(|_|"invalid_command")?;if !input.is_object(){return Err("invalid_command".into())}omabridge_route::execute(&input)?},

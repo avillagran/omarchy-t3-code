@@ -336,6 +336,7 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="connection-route"{return crate::connection_route::choose(input)}
     if input["op"]=="connection-network"{return crate::connection_network::execute(input)}
     if input["op"]=="connection-omabridge"{return crate::omabridge_route::execute(input)}
+    if input["op"]=="omabridge-share"{return crate::omabridge_share::execute(input)}
     if input["op"]=="omabridge-manage"{return Ok(crate::omabridge_device::execute(input))}
     if input["op"]=="omabridge-install-prompt"{return Ok(json!({"prompt":crate::omabridge_install::prompt(input)?}))}
     if input["op"]=="host-sync"{return crate::host_sync::execute(input)}

@@ -354,7 +354,7 @@ impl Session {
 }
 /// SSH through the peer's OmaBridge `ssh` service, still checked against the
 /// profile's own host key.
-fn bridged(direct: &[String], alias: &str, bin: &Path, state_dir: &Path, peer: &str) -> Result<Vec<String>> {
+pub(crate) fn bridged(direct: &[String], alias: &str, bin: &Path, state_dir: &Path, peer: &str) -> Result<Vec<String>> {
     if !crate::omabridge_route::valid_peer(peer) {
         return Err("omabridge_route_failed".into());
     }

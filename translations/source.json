@@ -1931,6 +1931,20 @@
     "Could not reach the host over SSH.": "Could not reach the host over SSH.",
     "The host did not answer in time.": "The host did not answer in time.",
     "The host's answer could not be read.": "The host's answer could not be read.",
-    "The host could not apply the sync.": "The host could not apply the sync."
+    "The host could not apply the sync.": "The host could not apply the sync.",
+    "Add again": "Add again",
+    "Adding to your connections…": "Adding to your connections…",
+    "Could not add it ({code}). Trying again in a few minutes.": "Could not add it ({code}). Trying again in a few minutes.",
+    "Devices already added stay in your connections.": "Devices already added stay in your connections.",
+    "In your connections · {address}": "In your connections · {address}",
+    "Its SSH host key is not trusted yet. Connect to it once with ssh.": "Its SSH host key is not trusted yet. Connect to it once with ssh.",
+    "Not added": "Not added",
+    "Paired devices that share T3 Code with this one are added to your connections, for ot3 and T3's desktop app, with T3's own pairing.": "Paired devices that share T3 Code with this one are added to your connections, for ot3 and T3's desktop app, with T3's own pairing.",
+    "Removed by you": "Removed by you",
+    "Share T3 automatically": "Share T3 automatically",
+    "Share T3 automatically?": "Share T3 automatically?",
+    "Stop sharing T3 automatically?": "Stop sharing T3 automatically?",
+    "That device must also share SSH, so ot3 can pair with its T3 Code": "That device must also share SSH, so ot3 can pair with its T3 Code",
+    "This is this device's own T3 Code": "This is this device's own T3 Code"
   }
 }

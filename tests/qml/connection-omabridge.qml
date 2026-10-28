@@ -50,7 +50,23 @@ ShellRoot {
    var toggle=keys.findChild(view,"omabridgeDefault");toggle.checked=false;toggle.toggled();phase++
   }else if(phase===9){
    keys.findChild(view,"omabridgeConfirm").clicked();check(b.sent.action==="default"&&b.sent.value==="off"&&b.sent.confirmed===true,"global default payload");
-   console.log("CONNECTION_OMABRIDGE_QML_PASS: automatic default, eligible connections and services, confirmed pin/strict/automatic/saved-only/default, live status");Qt.quit()
+   b.connectionOmaBridgeFinished("default","");phase++
+  }else if(phase===10){
+   // Automatic sharing: on by default, one row per peer sharing T3, egress-only peers hidden.
+   var share=keys.findChild(view,"omabridgeShare");check(share.checked,"automatic sharing is on by default");
+   check(!!keys.findChild(view,"omabridgeShareStatus_"+root.peer)&&!keys.findChild(view,"omabridgeShareStatus_"+"a".repeat(64)),"only peers sharing T3 are listed");
+   check(!keys.findChild(view,"omabridgeShareRetry_"+root.peer).visible,"no retry while pending");
+   b.connectionOmaBridge=Object.assign({},b.connectionOmaBridge,{data:Object.assign({},b.connectionOmaBridge.data,{sharing:{enabled:true,peers:(function(){var p={};p[root.peer]={state:"shared",port:47329};return p})()}})});phase++
+  }else if(phase===11){
+   check(keys.findChild(view,"omabridgeShareStatus_"+root.peer).text.indexOf("127.0.0.1:47329")>=0,"shared status names the fixed forward");
+   b.connectionOmaBridge=Object.assign({},b.connectionOmaBridge,{data:Object.assign({},b.connectionOmaBridge.data,{sharing:{enabled:true,peers:(function(){var p={};p[root.peer]={state:"skipped"};return p})()}})});phase++
+  }else if(phase===12){
+   var retry=keys.findChild(view,"omabridgeShareRetry_"+root.peer);check(retry.visible,"a removed share can be added again");retry.clicked();
+   check(b.sent.action==="share-retry"&&b.sent.peer===root.peer&&b.sent.confirmed===true,"retry payload");
+   var share=keys.findChild(view,"omabridgeShare");share.checked=false;share.toggled();check(b.sent.action==="share-retry","turning sharing off waits for confirmation");phase++
+  }else if(phase===13){
+   keys.findChild(view,"omabridgeConfirm").clicked();check(b.sent.action==="share-enabled"&&b.sent.enabled===false&&b.sent.confirmed===true&&b.sent.label===undefined,"sharing switch payload");
+   console.log("CONNECTION_OMABRIDGE_QML_PASS: automatic default, eligible connections and services, confirmed pin/strict/automatic/saved-only/default, live status, automatic sharing");Qt.quit()
   }
  }}
 }
