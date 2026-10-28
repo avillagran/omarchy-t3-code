@@ -1,6 +1,7 @@
-//! Automatic T3 sharing end to end with fake OmaBridge, OpenSSH, systemd and T3:
-//! a peer that shares `t3` and `ssh` is paired natively and lands in T3's
-//! catalog behind a fixed loopback forward; withdrawal and user removal undo it.
+//! Automatic T3 sharing end to end with fake OmaBridge, systemd and T3: a peer
+//! that shares `t3` hands out a native one-use pairing over OmaBridge itself (no
+//! SSH), which lands in T3's catalog behind a fixed loopback forward; withdrawal
+//! and user removal undo it.
 use omarchy_t3_client::{omabridge_share as share,*};
 use serde_json::json;
 use std::{fs,os::unix::fs::PermissionsExt,path::Path};
@@ -35,30 +36,26 @@ fn shared_peers_join_the_catalog_and_leave_it_when_withdrawn(){
  let root=std::env::temp_dir().join(format!("ot3-share-{}",&uuid::Uuid::new_v4().to_string()[..8]));
  let _cleanup=Cleanup(root.clone());
  let (bin,host)=(root.join("bin"),root.join("host"));
- for d in [&bin,&host.join(".t3/userdata"),&host.join(".t3/bin"),&root.join("native/userdata"),&root.join("native/bin"),&root.join(".ssh"),&root.join("run")]{fs::create_dir_all(d).unwrap();}
+ for d in [&bin,&host.join(".t3/userdata"),&host.join(".t3/bin"),&root.join("native/userdata"),&root.join("native/bin"),&root.join("run")]{fs::create_dir_all(d).unwrap();}
  let state=root.join("data/omabridge");fs::create_dir_all(&state).unwrap();fs::set_permissions(&state,fs::Permissions::from_mode(0o700)).unwrap();fs::write(state.join("state.json"),"{}").unwrap();
  std::env::set_var("HOME",&root);std::env::set_var("T3CODE_HOME",root.join("native"));std::env::set_var("XDG_DATA_HOME",root.join("data"));std::env::set_var("XDG_CONFIG_HOME",root.join("config"));std::env::set_var("XDG_RUNTIME_DIR",root.join("run"));
  std::env::set_var("PATH",format!("{}:{}",bin.display(),std::env::var("PATH").unwrap_or_default()));
  let log=|name:&str|root.join(format!("{name}.log"));
  let read_log=|name:&str|fs::read_to_string(log(name)).unwrap_or_default();
- fs::write(root.join(".ssh/config"),"Host devbox\n  HostName 192.0.2.7\nHost *\n  ServerAliveInterval 30\n").unwrap();
  fs::write(root.join("server.py"),SERVER).unwrap();
- fs::write(root.join("grants"),"[\"t3\",\"ssh\"]").unwrap();
- // OmaBridge: one peer sharing what `grants` says, and this device's identity.
+ fs::write(root.join("grants"),"[\"t3\"]").unwrap();
+ // OmaBridge: one peer sharing what `grants` says. Its server issues a pairing
+ // from the host's T3 while `t3` is granted and the host has not refused.
  let omabridge=root.join("omabridge");
- script(&omabridge,&format!("case \"$*\" in\n *' peers') printf '{{\"peers\":[{{\"id\":\"{PEER}\",\"name\":\"devbox\",\"services\":[\"ssh\",\"t3\"],\"remote_services\":%s,\"address\":{{\"addrs\":[{{\"Ip\":\"192.0.2.7:4000\"}}]}}}}]}}\\n' \"$(cat '{grants}')\" ;;\n *manage*) cat >/dev/null; printf '{{\"device\":{{\"id\":\"{DEVICE}\"}}}}\\n' ;;\n *) exit 2 ;;\nesac\n",grants=root.join("grants").display()));
+ script(&omabridge,&format!("case \"$*\" in\n *' peers') printf '{{\"peers\":[{{\"id\":\"{PEER}\",\"name\":\"devbox\",\"services\":[\"ssh\",\"t3\"],\"remote_services\":%s}}]}}\\n' \"$(cat '{grants}')\" ;;\n *'t3-pair --peer {PEER}') printf '%s\\n' \"$*\" >> '{pairs}'\n  if [ -e '{refuse}' ] || ! grep -q t3 '{grants}'; then echo 'Error: omabridge_t3_pair_refused' >&2; exit 1; fi\n  HOME='{host}' '{host}/.t3/bin/t3' auth pairing create --base-dir '{host}/.t3' --ttl 2m --label omabridge:{DEVICE} --json >/dev/null\n  printf '{{\"environmentId\":\"{ENV}\",\"credential\":\"one-use-pairing\",\"label\":\"omabridge:{DEVICE}\"}}\\n' ;;\n *) exit 2 ;;\nesac\n",grants=root.join("grants").display(),pairs=log("omabridge-pair").display(),refuse=root.join("refuse").display(),host=host.display()));
  std::env::set_var("OT3_OMABRIDGE_BIN",&omabridge);
- // OpenSSH: `-G` resolves every alias to the peer's address; a session runs the
- // remote script in the host's home. Only that address is in known_hosts.
- script(&bin.join("ssh"),&format!("for a in \"$@\"; do last=$a; done\ncase \" $* \" in *' -G '*) printf 'hostname 192.0.2.7\\nport 22\\nuser u\\n'; exit 0 ;; esac\nprintf '%s\\n' \"$*\" >> '{}'\nHOME='{}' exec sh -c \"$last\"\n",log("ssh").display(),host.display()));
- script(&bin.join("ssh-keygen"),"[ \"$2\" = 192.0.2.7 ]\n");
  script(&bin.join("secret-tool"),"exit 1\n");
  // systemd: `enable --now` serves the fake T3 on the unit's port; `disable` stops it.
  script(&bin.join("systemctl"),&format!("printf '%s\\n' \"$*\" >> '{log}'\nunit=$(for a in \"$@\"; do last=$a; done; echo $last)\ncase \"$2\" in\n enable) port=$(sed -n 's/.*--listen 127.0.0.1:\\([0-9]*\\).*/\\1/p' \"$XDG_CONFIG_HOME/systemd/user/$unit\"); python3 '{py}' \"$port\" {ENV} '{oauth}' >/dev/null 2>&1 & echo $! > '{root}/'\"$unit\".pid ;;\n disable) [ -f '{root}/'\"$unit\".pid ] && kill $(cat '{root}/'\"$unit\".pid) && rm '{root}/'\"$unit\".pid && sleep 0.3 ;;\nesac\nexit 0\n",log=log("systemctl").display(),py=root.join("server.py").display(),oauth=log("oauth").display(),root=root.display()));
  // T3 on the host mints the pairing; T3 here lists one session per peer label.
  fs::write(host.join(".t3/userdata/environment-id"),ENV).unwrap();
  script(&host.join(".t3/bin/t3"),&format!("printf '%s\\n' \"$*\" >> '{}'\nprintf '{{\"id\":\"p\",\"credential\":\"one-use-pairing\"}}\\n'\n",log("host-t3").display()));
- script(&root.join("native/bin/t3"),&format!("case \"$*\" in\n *list*) printf '[{{\"sessionId\":\"keep-1\",\"client\":{{\"label\":\"ot3-share:{PEER}\"}}}},{{\"sessionId\":\"drop-1\",\"client\":{{\"label\":\"ot3-share:{GONE}\"}}}}]\\n' ;;\n *revoke*) printf '%s\\n' \"$*\" >> '{}' ;;\nesac\n",log("revoke").display()));
+ script(&root.join("native/bin/t3"),&format!("case \"$*\" in\n *list*) printf '[{{\"sessionId\":\"keep-1\",\"client\":{{\"label\":\"omabridge:{PEER}\"}}}},{{\"sessionId\":\"drop-1\",\"client\":{{\"label\":\"omabridge:{GONE}\"}}}}]\\n' ;;\n *revoke*) printf '%s\\n' \"$*\" >> '{}' ;;\nesac\n",log("revoke").display()));
 
  let first=run();
  let row=&first["peers"][0];
@@ -71,11 +68,10 @@ fn shared_peers_join_the_catalog_and_leave_it_when_withdrawn(){
  assert_eq!(catalog["targets"][0]["connectionId"],id.as_str());assert_eq!(catalog["targets"][0]["label"],"devbox");
  assert_eq!(catalog["profiles"][0]["httpBaseUrl"],format!("http://127.0.0.1:{port}"));
  assert_eq!(catalog["credentials"][0]["credential"]["token"],"shared-session");
- // The pairing came from the host's CLI over the bridged SSH, labelled for revocation.
- assert!(read_log("host-t3").contains(&format!("auth pairing create --base-dir {}/.t3 --ttl 2m --label ot3-share:{DEVICE} --json",host.display())));
- let ssh=read_log("ssh");
- assert!(ssh.contains("HostKeyAlias=192.0.2.7")&&ssh.contains(&format!("connect --peer {PEER} --service ssh"))&&ssh.contains("-- devbox"),"{ssh}");
- assert!(read_log("oauth").contains(&format!("\"client_label\": [\"ot3-share:{DEVICE}\"]")));
+ // The pairing came over OmaBridge itself, from the host's T3, labelled for revocation.
+ assert!(read_log("omabridge-pair").contains(&format!("--name ot3 t3-pair --peer {PEER}")));
+ assert!(read_log("host-t3").contains(&format!("auth pairing create --base-dir {}/.t3 --ttl 2m --label omabridge:{DEVICE} --json",host.display())));
+ assert!(read_log("oauth").contains(&format!("\"client_label\": [\"omabridge:{DEVICE}\"]")));
  let unit_body=fs::read_to_string(root.join("config/systemd/user").join(&unit)).unwrap();
  assert!(unit_body.contains(&format!("forward --peer {PEER} --service t3 --listen 127.0.0.1:{port}")));
  // Nothing secret outside T3's encrypted catalog.
@@ -113,11 +109,13 @@ fn shared_peers_join_the_catalog_and_leave_it_when_withdrawn(){
  let retried=run();assert_eq!(retried["peers"][0]["state"],"shared","{retried}");
  assert_eq!(targets().len(),1);
 
- // Without SSH there is no native way to pair: reported, nothing installed.
+ // The host refuses the pairing (for example, an outdated OmaBridge there):
+ // reported with its code, nothing installed.
  fs::write(root.join("grants"),"[\"ssh\"]").unwrap();run();
+ fs::write(root.join("refuse"),"").unwrap();
  fs::write(root.join("grants"),"[\"t3\"]").unwrap();
  let blocked=run();
- assert_eq!(blocked["peers"][0]["state"],"error");assert_eq!(blocked["peers"][0]["error"],"share_needs_ssh");
+ assert_eq!(blocked["peers"][0]["state"],"error");assert_eq!(blocked["peers"][0]["error"],"omabridge_t3_pair_refused");
  assert!(!root.join("config/systemd/user").join(&unit).exists());
 
 }

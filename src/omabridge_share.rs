@@ -2,10 +2,11 @@
 //!
 //! When a paired peer grants this device its `t3` service, ot3 adds that peer's
 //! T3 Code to T3's own connection catalog, which T3's desktop app on this device
-//! reads too. The credential is T3's native one: a one-use pairing created on the
-//! host with its own CLI (over the peer's OmaBridge `ssh` service, checked against
-//! the user's known_hosts) and exchanged here for a session, after the host's
-//! descriptor named the expected environment. The connection's address is a
+//! reads too. The credential is T3's native one: a one-use pairing that the peer's
+//! OmaBridge server issues with the peer's own T3 CLI (`omabridge t3-pair`, only
+//! for a device holding its `t3` grant, over the bridge itself: no SSH), exchanged
+//! here for a session after the host's descriptor named the same environment. The
+//! connection's address is a
 //! loopback OmaBridge forward on a fixed port, kept by a systemd user unit, so
 //! clients that cannot run OmaBridge reach the host as well.
 //!
@@ -16,9 +17,9 @@ use crate::*;
 use zeroize::Zeroizing;
 use std::{io::Write,net::TcpListener,os::unix::fs::OpenOptionsExt,process::{Command,Stdio},sync::Mutex,time::Instant};
 
-const PAIR_SCRIPT:&str=include_str!("remote-share-pair.sh");
-/// Session label prefix on the host; the suffix is the receiving device's OmaBridge id.
-pub const LABEL_PREFIX:&str="ot3-share:";
+/// Session label prefix on the host, set by OmaBridge; the suffix is the receiving
+/// device's OmaBridge id.
+pub const LABEL_PREFIX:&str="omabridge:";
 const RETRY_SECS:u64=600;
 const PORT_BASE:u16=47300;
 const PORT_SPAN:u16=500;
@@ -89,16 +90,14 @@ fn remove_unit(peer:&str){
  if fs::remove_file(unit_dir().join(&name)).is_ok(){systemctl(&["daemon-reload"]);}
 }
 
-/// Paired peers as OmaBridge lists them, with their known IP addresses (for
-/// matching an SSH config entry). Never returned to the UI.
+/// Paired peers as OmaBridge lists them.
 #[derive(Clone,Debug,PartialEq)]
-pub struct Peer{pub id:String,pub name:String,pub grants:Vec<String>,pub remote:Vec<String>,pub ips:Vec<String>}
+pub struct Peer{pub id:String,pub name:String,pub grants:Vec<String>,pub remote:Vec<String>}
 pub fn parse_peers(doc:&Value)->Vec<Peer>{
  let list=|v:&Value|v.as_array().into_iter().flatten().filter_map(|s|s.as_str()).filter(|s|omabridge_route::valid_service(s)).map(str::to_owned).collect::<Vec<_>>();
  doc["peers"].as_array().into_iter().flatten().filter(|p|omabridge_route::valid_peer(text(p,"id"))).map(|p|Peer{
   id:text(p,"id").into(),name:text(p,"name").chars().filter(|c|!c.is_control()).take(64).collect(),
   grants:list(&p["services"]),remote:list(&p["remote_services"]),
-  ips:p["address"]["addrs"].as_array().into_iter().flatten().filter_map(|a|a["Ip"].as_str()).filter_map(|a|a.parse::<std::net::SocketAddr>().ok()).map(|a|a.ip().to_string()).collect(),
  }).collect()
 }
 fn read_peers(bin:&Path,state_dir:&Path)->Result<Vec<Peer>>{
@@ -107,82 +106,23 @@ fn read_peers(bin:&Path,state_dir:&Path)->Result<Vec<Peer>>{
  if !out.status.success(){return Err("omabridge_unavailable".into())}
  Ok(parse_peers(&serde_json::from_slice(&out.stdout).map_err(|_|"omabridge_unavailable")?))
 }
-fn device_id()->Result<String>{
- let (doc,status)=omabridge_device::manage(&json!({"action":"read"}),20);
- let id=text(&doc["device"],"id");
- if status!=0||!omabridge_route::valid_peer(id){return Err("omabridge_identity_missing".into())}
- Ok(id.into())
-}
-
-/// `Host` names from an OpenSSH config, without patterns or negations.
-pub fn config_hosts(config:&str)->Vec<String>{
- let mut out=vec![];
- for line in config.lines(){
-  let line=line.trim();let mut words=line.split_whitespace();
-  let Some(key)=words.next() else {continue};
-  if !key.eq_ignore_ascii_case("host"){continue}
-  for w in words.take_while(|w|!w.starts_with('#')){
-   if !w.contains(['*','?','!'])&&!out.contains(&w.to_string()){out.push(w.into())}
-  }
+/// A one-use pairing from the peer over OmaBridge itself: its server checks this
+/// device's authenticated id against its `t3` grant and has its own T3 issue the
+/// pairing, labelled with that id so the host can revoke it. No SSH.
+fn mint(peer:&Peer,environment:&str,bin:&Path,state_dir:&Path)->Result<(Zeroizing<String>,String)>{
+ let out=Command::new("timeout").arg("70s").arg(bin).arg("--state-dir").arg(state_dir).args(["--name","ot3","t3-pair","--peer",&peer.id])
+  .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).output().map_err(|_|"omabridge_unavailable")?;
+ let stdout=Zeroizing::new(out.stdout);
+ if !out.status.success(){
+  let error=String::from_utf8_lossy(&out.stderr);
+  return Err(["omabridge_t3_pair_refused","omabridge_service_not_granted","omabridge_peer_unreachable","omabridge_peer_not_found"].into_iter().find(|c|error.contains(c)).unwrap_or("omabridge_t3_pair_unavailable").into())
  }
- out
-}
-/// Whether an SSH destination (resolved by `ssh -G`) is this peer: one of its
-/// addresses, or its OmaBridge name as the alias or host name.
-pub fn host_matches(alias:&str,hostname:&str,peer:&Peer)->bool{
- let name=peer.name.to_ascii_lowercase();
- let host=hostname.to_ascii_lowercase();
- peer.ips.iter().any(|ip|ip==hostname)||(!name.is_empty()&&(alias.eq_ignore_ascii_case(&name)||host==name||host.split('.').next()==Some(name.as_str())))
-}
-fn resolved_hostname(alias:&str)->Option<String>{
- let out=Command::new("timeout").args(["4s","ssh","-G","--",alias]).stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
- if !out.status.success(){return None}
- String::from_utf8(out.stdout).ok()?.lines().find_map(|l|l.strip_prefix("hostname ").map(|h|h.trim().to_string()))
-}
-fn known(alias:&str)->bool{
- Command::new("timeout").args(["4s","ssh-keygen","-F",alias]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s|s.success())
-}
-/// SSH targets that may reach the peer: the catalog's own SSH profiles for the
-/// environment first, then matching `~/.ssh/config` hosts. Each must already be
-/// trusted in known_hosts; ot3 never accepts a new host key on its own.
-fn ssh_targets(catalog:&Value,environment:&str,peer:&Peer)->Vec<Value>{
- let mut out=vec![];
- for t in catalog["targets"].as_array().into_iter().flatten().filter(|t|t["environmentId"]==environment&&t["_tag"]=="SshConnectionTarget"){
-  if let Some(p)=catalog["profiles"].as_array().into_iter().flatten().find(|p|p["connectionId"]==t["connectionId"]){out.push(p["target"].clone())}
- }
- let config=fs::read_to_string(home().join(".ssh/config")).unwrap_or_default();
- for alias in config_hosts(&config){
-  if alias.len()>255||alias.starts_with('-')||!alias.bytes().all(|b|b.is_ascii_alphanumeric()||b"._-".contains(&b)){continue}
-  if resolved_hostname(&alias).is_some_and(|h|host_matches(&alias,&h,peer)){out.push(json!({"alias":alias}))}
- }
- out
-}
-fn mint(peer:&Peer,environment:&str,label:&str,catalog:&Value,bin:&Path,state_dir:&Path)->Result<Zeroizing<String>>{
- if !peer.remote.iter().any(|s|s=="ssh"){return Err("share_needs_ssh".into())}
- let mut last="share_ssh_unknown_host".to_string();
- for target in ssh_targets(catalog,environment,peer){
-  let Ok(direct)=connections::ssh_args(&target) else {continue};
-  let Ok(alias)=connections::host_key_alias(&direct) else {continue};
-  if !known(&alias){last="share_ssh_unknown_host".into();continue}
-  let Ok(args)=host_sync::bridged(&direct,&alias,bin,state_dir,&peer.id) else {continue};
-  let mut child=Command::new("timeout").args(["45s","ssh"]).args(&args).arg(format!("sh -s -- '{environment}' '{label}'"))
-   .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"ssh_unavailable")?;
-  child.stdin.take().ok_or("ssh_unavailable")?.write_all(PAIR_SCRIPT.as_bytes()).map_err(|_|"ssh_unavailable")?;
-  let out=child.wait_with_output().map_err(|_|"ssh_unavailable")?;
-  let stdout=Zeroizing::new(out.stdout);
-  match out.status.code(){
-   Some(0)=>{
-    let doc:Value=serde_json::from_slice(&stdout).map_err(|_|"share_pairing_failed")?;
-    let credential=Zeroizing::new(text(&doc,"credential").to_string());
-    if credential.is_empty(){return Err("share_pairing_failed".into())}
-    return Ok(credential)
-   }
-   Some(7)=>last="t3_environment_mismatch".into(),
-   Some(127)=>last="t3_cli_unavailable".into(),
-   _=>last="ssh_unavailable".into(),
-  }
- }
- Err(last)
+ let doc:Value=serde_json::from_slice(&stdout).map_err(|_|"omabridge_t3_pair_unavailable")?;
+ if text(&doc,"environmentId")!=environment{return Err("t3_environment_mismatch".into())}
+ let label=text(&doc,"label");
+ let credential=Zeroizing::new(text(&doc,"credential").to_string());
+ if credential.is_empty()||!label.strip_prefix(LABEL_PREFIX).is_some_and(omabridge_route::valid_peer){return Err("omabridge_t3_pair_unavailable".into())}
+ Ok((credential,label.to_string()))
 }
 fn wait_descriptor(base:&str)->Result<Value>{
  let options=protocol::ConnectionOptions::default().with_request_timeout(Duration::from_secs(4));
@@ -204,7 +144,7 @@ fn catalog_routes(environment:&str)->Result<(String,Vec<Value>,String)>{
 pub fn connection_id(environment:&str,peer:&str)->String{format!("bearer:{environment}:omabridge-{}",&peer[..16])}
 
 /// Add one peer's T3 Code: forward, descriptor, native pairing, catalog.
-fn enroll(peer:&Peer,device:&str,taken:&[u16],bin:&Path,state_dir:&Path)->Result<Value>{
+fn enroll(peer:&Peer,taken:&[u16],bin:&Path,state_dir:&Path)->Result<Value>{
  let port=pick_port(&peer.id,taken)?;
  install_unit(&peer.id,&unit_text(bin,state_dir,&peer.id,&peer.name,port)?)?;
  let base=format!("http://127.0.0.1:{port}");
@@ -216,9 +156,7 @@ fn enroll(peer:&Peer,device:&str,taken:&[u16],bin:&Path,state_dir:&Path)->Result
   let id=connection_id(&environment,&peer.id);
   let (revision,routes,saved)=catalog_routes(&environment)?;
   if !routes.iter().any(|r|r["connectionId"]==id.as_str()){
-   let catalog=read_catalog().unwrap_or_else(|_|protocol::connection_catalog::empty());
-   let label=format!("{LABEL_PREFIX}{device}");
-   let code=mint(peer,&environment,&label,&catalog,bin,state_dir)?;
+   let (code,label)=mint(peer,&environment,bin,state_dir)?;
    // An environment already in the catalog keeps its name; this adds a route.
    let name=if !saved.is_empty(){saved}else if !peer.name.is_empty(){peer.name.clone()}else{text(&descriptor,"label").to_string()};
    connections::manage_connections(&json!({"action":"save-route","revision":revision,"kind":"bearer","url":base,"pairingCode":code.as_str(),
@@ -298,7 +236,6 @@ pub fn reconcile()->Result<Value>{
  let catalog=connections::manage_connections(&json!({"action":"read"})).ok();
  let in_catalog=|share:&Value|catalog.as_ref().is_none_or(|v|v["environments"].as_array().into_iter().flatten().flat_map(|e|e["routes"].as_array().cloned().unwrap_or_default()).any(|r|r["connectionId"]==share["connectionId"]));
  let steps=plan(&doc,&peers,&in_catalog,now());
- let mut device=None;
  for step in steps{
   match step{
    Step::Keep(id)=>{let unit=unit_name(&id);if !systemctl(&["is-active","--quiet",&unit]){systemctl(&["start",&unit]);}}
@@ -306,9 +243,8 @@ pub fn reconcile()->Result<Value>{
    Step::UserRemoved(id)=>{remove_unit(&id);doc["shares"].as_object_mut().unwrap().remove(&id);doc["skip"].as_array_mut().unwrap().push(json!(id));doc["status"][&id]=json!({"state":"removed","at":now()});}
    Step::Enroll(id)=>{
     let Some(peer)=peers.iter().find(|p|p.id==id) else {continue};
-    if device.is_none(){device=Some(device_id())}
     let taken:Vec<u16>=doc["shares"].as_object().into_iter().flatten().filter_map(|(_,s)|s["port"].as_u64()).map(|p|p as u16).collect();
-    let result=match device.as_ref().unwrap(){Ok(d)=>enroll(peer,d,&taken,&bin,&state_dir),Err(e)=>Err(e.clone())};
+    let result=enroll(peer,&taken,&bin,&state_dir);
     match result{
      Ok(share)=>{doc["status"][&id]=json!({"state":"shared","at":now(),"environmentId":share["environmentId"]});doc["shares"][&id]=share;}
      Err(e)=>{doc["status"][&id]=json!({"state":"error","error":e,"at":now(),"grants":peer.remote});}
@@ -325,7 +261,7 @@ pub fn snapshot(doc:&Value,peers:&[Peer])->Value{
   let share=&doc["shares"][&p.id];let status=&doc["status"][&p.id];
   json!({"peer":p.id,"name":p.name,"shared":share.is_object(),"port":share["port"],"environmentId":share["environmentId"],
    "state":if share.is_object(){"shared"}else if doc["skip"].as_array().is_some_and(|s|s.contains(&json!(p.id))){"skipped"}else{status["state"].as_str().unwrap_or("pending")},
-   "error":status["error"],"ssh":p.remote.iter().any(|s|s=="ssh")})
+   "error":status["error"]})
  }).collect::<Vec<_>>();
  json!({"enabled":doc["enabled"],"peers":rows})
 }
@@ -389,12 +325,12 @@ mod tests{
  use super::*;
  const A:&str="75ebf82c1c0f3c6df7c6ccab7ce79e0c5c957e2027d9ea8e144a6966b43fe764";
  const B:&str="0f6da8065c780e468ec60ecb8c9640717766692666135a81e934c246c7f42329";
- fn peer(id:&str,remote:&[&str],grants:&[&str])->Peer{Peer{id:id.into(),name:"NODE".into(),grants:grants.iter().map(|s|s.to_string()).collect(),remote:remote.iter().map(|s|s.to_string()).collect(),ips:vec!["192.0.2.7".into()]}}
+ fn peer(id:&str,remote:&[&str],grants:&[&str])->Peer{Peer{id:id.into(),name:"NODE".into(),grants:grants.iter().map(|s|s.to_string()).collect(),remote:remote.iter().map(|s|s.to_string()).collect()}}
  #[test]
- fn peers_keep_addresses_only_as_ips(){
+ fn peers_keep_valid_ids_names_and_services(){
   let doc=json!({"peers":[{"id":A,"name":"mbp\u{7}","services":["ssh","t3"],"remote_services":["t3","bad;x"],"address":{"addrs":[{"Relay":"https://relay.example/"},{"Ip":"192.0.2.7:48702"}]}},{"id":"short"}]});
   let peers=parse_peers(&doc);
-  assert_eq!(peers.len(),1);assert_eq!(peers[0].name,"mbp");assert_eq!(peers[0].remote,vec!["t3"]);assert_eq!(peers[0].ips,vec!["192.0.2.7"]);
+  assert_eq!(peers.len(),1);assert_eq!(peers[0].name,"mbp");assert_eq!(peers[0].remote,vec!["t3"]);
  }
  #[test]
  fn plan_enrolls_withdraws_and_respects_removal(){
@@ -426,16 +362,6 @@ mod tests{
    {"sessionId":"s;4","client":{"label":format!("{LABEL_PREFIX}{B}")}},
    {"sessionId":"s-5","client":{"label":format!("{LABEL_PREFIX}nothex")}}]);
   assert_eq!(revocable(&sessions,&[peer(A,&[],&["t3","ssh"]),peer(B,&[],&["ssh"])]),vec!["s-2"]);
- }
- #[test]
- fn ssh_config_hosts_and_matching(){
-  let hosts=config_hosts("Host node node.lan # x\n  HostName 192.0.2.7\nHost *.corp !x\nhost mbp\nMatch all\n");
-  assert_eq!(hosts,vec!["node","node.lan","mbp"]);
-  let p=peer(A,&[],&[]);
-  assert!(host_matches("other","192.0.2.7",&p));
-  assert!(host_matches("node","example.net",&p));
-  assert!(host_matches("x","node.lan",&p));
-  assert!(!host_matches("nodex","198.51.100.1",&p));
  }
  #[test]
  fn ports_and_units(){

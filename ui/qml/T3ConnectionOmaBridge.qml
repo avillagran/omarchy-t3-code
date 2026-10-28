@@ -41,8 +41,8 @@ ColumnLayout {
   var row=(sharing.peers || {})[peer.id] || {}
   if(row.state==="shared")return T3I18n.tr("In your connections · {address}",{address:"127.0.0.1:"+row.port})
   if(row.state==="skipped")return T3I18n.tr("Removed by you")
-  if(row.state==="error")return row.error==="share_needs_ssh"?T3I18n.tr("That device must also share SSH, so ot3 can pair with its T3 Code")
-   :row.error==="share_ssh_unknown_host"?T3I18n.tr("Its SSH host key is not trusted yet. Connect to it once with ssh.")
+  if(row.state==="error")return row.error==="omabridge_t3_pair_refused"?T3I18n.tr("That device refused the pairing. Check that it still shares T3 with this one.")
+   :row.error==="omabridge_t3_pair_unavailable"||row.error==="omabridge_peer_unreachable"?T3I18n.tr("That device can't be reached over OmaBridge, or its OmaBridge needs an update. Trying again in a few minutes.")
    :row.error==="share_is_this_device"?T3I18n.tr("This is this device's own T3 Code")
    :T3I18n.tr("Could not add it ({code}). Trying again in a few minutes.",{code:row.error || "unknown"})
   return sharingOn?T3I18n.tr("Adding to your connections…"):T3I18n.tr("Not added")
