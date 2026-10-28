@@ -141,7 +141,10 @@ fn local_environment()->Result<Environment> {
     if !matches!(url.host_str(),Some("127.0.0.1"|"localhost"|"[::1]"|"::1")) {return Err("invalid_t3_runtime".into())}
     if runtime["pid"].as_i64().is_none_or(|pid|pid<=0 || unsafe{libc::kill(pid as i32,0)}!=0) {return Err("t3_not_running".into())}
     let token=xdg("XDG_DATA_HOME",".local/share").join("local.write.token");
-    if private_token(&token).is_err() || (!fresh_token(&private_token(&token)?) || !has_filesystem_read(&private_token(&token)?) || !has_scope(&private_token(&token)?,"settings:write") || !has_scope(&private_token(&token)?,"terminal:read") || !has_scope(&private_token(&token)?,"terminal:operate")) {
+    // A token from before the profile's signing key (T3's profile was recreated) no longer verifies.
+    let signed_before_key=|| -> bool {let modified=|p:&Path|fs::metadata(p).and_then(|m|m.modified()).ok();
+        matches!((modified(&token),modified(&t3_home().join("userdata/secrets/server-signing-key.bin"))),(Some(t),Some(k)) if t<k)};
+    if private_token(&token).is_err() || signed_before_key() || (!fresh_token(&private_token(&token)?) || !has_filesystem_read(&private_token(&token)?) || !has_scope(&private_token(&token)?,"settings:write") || !has_scope(&private_token(&token)?,"terminal:read") || !has_scope(&private_token(&token)?,"terminal:operate")) {
         let cli=home().join(".t3/bin/t3");
         let mut cmd=Command::new("timeout");cmd.arg("12s").arg(if cli.exists(){cli.into_os_string()}else{"t3".into()});
         let out=cmd.args(["auth","session","issue","--base-dir"]).arg(t3_home()).args(["--scope","orchestration:read","--scope","orchestration:operate","--scope","filesystem:read","--scope","settings:write","--scope","terminal:read","--scope","terminal:operate","--ttl","30d","--label","omarchy-t3-code","--token-only"]).output().map_err(|_|"t3_auth_unavailable")?;
