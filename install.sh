@@ -2,14 +2,17 @@
 # Install/update Omarchy T3 Code: the desktop app (bin/ot3, its own process) and
 # its optional bar widget; reuse T3's existing profile and connections.
 set -euo pipefail
+# The brace group is parsed whole before it runs, so `curl | bash` never executes a partial download.
+{
 fail() { printf 'omarchy-t3-code: %s\n' "$*" >&2; exit 1; }
+# set -e would otherwise stop silently; name the step that failed.
+trap 'printf "omarchy-t3-code: step failed (line %s): %s\n" "$LINENO" "$BASH_COMMAND" >&2' ERR
 [[ $EUID -ne 0 ]] || fail 'Run as your desktop user, not root.'
 command -v omarchy >/dev/null || fail 'Omarchy with the Quickshell plugin manager is required.'
 command -v omarchy-shell >/dev/null || fail 'The Omarchy shell must be installed and running.'
 command -v pacman >/dev/null || fail 'This installer targets Omarchy on Arch Linux.'
 t3_base=${T3CODE_HOME:-$HOME/.t3}
 t3_base=${t3_base/#\~/$HOME}
-[[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] || fail 'Install and open T3 Code once before installing this plugin: https://t3.codes'
 
 source_build=${OT3_BUILD_FROM_SOURCE:-0}
 packages=(ttf-firacode-nerd git curl ripgrep jq libsecret sqlite openssh wl-clipboard librsvg qt6-declarative qt6-webengine)
@@ -22,6 +25,39 @@ if ((${#missing[@]})); then
   sudo pacman -S --needed --noconfirm "${missing[@]}"
 fi
 if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1; then rustup default stable; fi
+
+# ot3 is a client of T3 Code nightly: install it if absent, then open it once so it
+# writes its profile and the ~/.t3/bin/t3 CLI that ot3 drives.
+t3_package=t3code-nightly-bin
+t3_bootstrapped=0
+if [[ ! -x "$HOME/.t3/bin/t3" ]] && ! command -v t3code-nightly >/dev/null && ! command -v t3code >/dev/null; then
+  printf 'Installing T3 Code nightly (%s).\n' "$t3_package"
+  if pacman -Si "$t3_package" >/dev/null 2>&1; then sudo pacman -S --needed --noconfirm "$t3_package"
+  elif command -v yay >/dev/null; then yay -S --needed --noconfirm "$t3_package"
+  elif command -v paru >/dev/null; then paru -S --needed --noconfirm "$t3_package"
+  else fail "Install T3 Code nightly ($t3_package) and run this installer again: https://t3.codes"
+  fi
+fi
+if [[ ! -d "$t3_base/userdata" || ! -x "$HOME/.t3/bin/t3" ]]; then
+  [[ -n ${WAYLAND_DISPLAY:-} ]] || fail 'Open T3 Code once from your desktop session, then run this installer again.'
+  t3_app=$(command -v t3code-nightly || command -v t3code) || fail 'T3 Code is not on PATH; open it once, then run this installer again.'
+  printf '%s\n' 'Opening T3 Code once to create its profile.'
+  t3_bootstrapped=1
+  # Its own unit, so this bootstrap window closes again afterwards: the backend then
+  # runs as T3's native service and does not depend on a T3 window staying open.
+  t3_unit=''
+  if systemctl --user show-environment >/dev/null 2>&1 && systemd-run --user --quiet --collect --unit=ot3-t3-first-open -- "$t3_app" >/dev/null 2>&1; then
+    t3_unit=ot3-t3-first-open
+  else
+    setsid -f "$t3_app" >/dev/null 2>&1 </dev/null
+  fi
+  for _ in {1..90}; do [[ -f "$t3_base/userdata/server-runtime.json" && -x "$HOME/.t3/bin/t3" ]] && break; sleep 1; done
+  [[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] || fail 'T3 Code did not finish its first start; open it once, then run this installer again.'
+  if [[ -n $t3_unit ]]; then
+    systemctl --user stop "$t3_unit" >/dev/null 2>&1 || true
+    for _ in {1..20}; do [[ -f "$t3_base/userdata/server-runtime.json" ]] || break; sleep 0.5; done
+  fi
+fi
 
 release_ref=main
 if [[ $source_build != 1 ]]; then
@@ -47,7 +83,7 @@ if [[ -e "$plugin_dir" ]]; then
   case "$origin" in https://github.com/avillagran/omarchy-t3-code.git|git@github.com:avillagran/omarchy-t3-code.git) ;; *) fail 'Existing checkout has a different origin; refusing to update it.';; esac
   [[ -z $(git -C "$plugin_dir" status --porcelain) ]] || fail 'Existing checkout has local changes; commit or stash them before updating.'
   git -C "$plugin_dir" fetch origin "$release_ref"
-  expected_commit=$(git -C "$plugin_dir" rev-parse FETCH_HEAD)
+  expected_commit=$(git -C "$plugin_dir" rev-parse 'FETCH_HEAD^{commit}')
   # Verify the package before changing an existing installation.
   if ! git -C "$plugin_dir" merge-base --is-ancestor HEAD "$expected_commit"; then
     # Commit messages were rewritten once (trees unchanged). Move a clean checkout to the
@@ -144,4 +180,12 @@ if [[ ${OT3_BAR_WIDGET:-1} != 0 ]]; then
   omarchy plugin enable "$plugin_id"
   omarchy restart shell
 fi
+# The T3 window is optional (ot3 uses T3's service); offer it after a first-time setup.
+# stdin is the script under `curl | bash`, so ask on the terminal, and only when there is one.
+if [[ $t3_bootstrapped == 1 ]] && { : </dev/tty; } 2>/dev/null; then
+  read -r -p 'Open T3 Code now? [y/N] ' answer </dev/tty || answer=''
+  if [[ $answer == [yYsS]* ]]; then setsid -f "$t3_app" >/dev/null 2>&1 </dev/null; fi
+fi
 printf '%s\n' 'Installed. Press Super+Shift+A, open "Omarchy T3 Code" from the app launcher or click T3 in the bar. Local/remotes and model favorites are inherited from T3.'
+exit
+}
