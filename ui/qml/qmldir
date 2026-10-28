@@ -141,6 +141,7 @@ T3SubthreadBar 1.0 T3SubthreadBar.qml
 T3EnvironmentIcon 1.0 T3EnvironmentIcon.qml
 T3ThreadDetails 1.0 T3ThreadDetails.qml
 T3ProviderUpdateNotice 1.0 T3ProviderUpdateNotice.qml
+T3ProviderSignInNotice 1.0 T3ProviderSignInNotice.qml
 T3ThreadErrorBanner 1.0 T3ThreadErrorBanner.qml
 T3HostsPopup 1.0 T3HostsPopup.qml
 

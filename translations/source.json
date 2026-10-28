@@ -1867,6 +1867,13 @@
     "Connect existing…": "Connect existing…",
     "Start": "Start",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.",
+    "Sign in needed · {host}": "Sign in needed · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.",
+    "Not now": "Not now",
+    "Sign in to {provider}…": "Sign in to {provider}…",
+    "Waiting for {provider}…": "Waiting for {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.",
+    "Sign in on that host directly: this connection has no SSH.": "Sign in on that host directly: this connection has no SSH."
   }
 }
