@@ -164,7 +164,7 @@ fn local_environment()->Result<Environment> {
 fn remote_base(target:&Value)->Environment {
     Environment{id:text(target,"environmentId").into(),name:text(target,"label").into(),base_url:String::new(),token_file:PathBuf::new(),write_token_file:None,bearer:None,connection_error:None,connection:None}
 }
-fn ssh_args(target:&Value)->Result<Vec<String>> {
+pub(crate) fn ssh_args(target:&Value)->Result<Vec<String>> {
     let destination=if text(target,"alias").trim().is_empty(){text(target,"hostname")}else{text(target,"alias")}.trim();
     if destination.is_empty() || destination.len()>255 || !destination.bytes().all(|b|b.is_ascii_alphanumeric()||b".@_-:[]".contains(&b)) || destination.starts_with('-'){return Err("invalid_t3_ssh_profile".into())}
     let mut args=vec!["-o".into(),"BatchMode=yes".into(),"-o".into(),"ConnectTimeout=5".into()];

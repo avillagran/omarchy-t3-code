@@ -183,6 +183,7 @@ pub fn snapshot()->Result<Value>{
   "revision":revision_of(&raw),"available":bin.is_some(),"version":bundled_version(),"identity":identity_ready(&state_dir),"stateDir":state_dir.display().to_string(),
   "default":if parsed.as_ref().is_ok_and(|c|!c.auto){"off"}else{"auto"},
   "peers":peers.as_ref().cloned().unwrap_or_default(),"routes":routes,"active":active(),
+   "sharing":crate::omabridge_share::public_state(),
    "error":parsed.err().or(peers.err().filter(|e|e!="omabridge_identity_missing"&&e!="omabridge_unavailable")).unwrap_or_default(),
  }))
 }
@@ -199,6 +200,11 @@ pub fn execute(input:&Value)->Result<Value>{
  let action=text(input,"action");
  if action=="read"{return snapshot()}
  if let Some(result)=crate::omabridge_gateway::execute(action,input)?{return Ok(result)}
+ // Automatic T3 sharing (omabridge_share.rs): `share-enabled` and `share-retry`.
+ if let Some(share)=action.strip_prefix("share-").filter(|a|matches!(*a,"enabled"|"retry")){
+  let mut request=input.clone();request["action"]=json!(share);
+  crate::omabridge_share::execute(&request)?;return snapshot()
+ }
  if !matches!(action,"set"|"clear"|"default"){return Err("invalid_action".into())}
  if input["confirmed"]!=true{return Err("confirmation_required".into())}
  let path=config_path();let parent=path.parent().ok_or("local_error")?;fs::create_dir_all(parent).map_err(|_|"local_error")?;

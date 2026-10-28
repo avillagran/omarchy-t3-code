@@ -14,6 +14,10 @@ ColumnLayout {
  readonly property var routes:value.routes || ({})
  readonly property var active:value.active || ({})
  readonly property bool automatic:value.default!=="off"
+ // Automatic sharing: peers that share T3 Code with this device join T3's connections.
+ readonly property var sharing:value.sharing || ({})
+ readonly property bool sharingOn:sharing.enabled!==false
+ readonly property var sharingPeers:(value.peers || []).filter(function(p){return (p.remoteServices || []).indexOf("t3")>=0 || !!(sharing.peers || {})[p.id]})
  // Pairing links travel over a peer's "t3" service, SSH profiles over its "ssh" service.
  function servicesFor(environment){var kinds=(environment.routes || []).map(function(r){return r.kind});var out=[];if(kinds.indexOf("BearerConnectionTarget")>=0)out.push("t3");if(kinds.indexOf("SshConnectionTarget")>=0)out.push("ssh");return out}
  function optionsFor(environment){var wanted=servicesFor(environment),out=[];(value.peers || []).forEach(function(p){wanted.forEach(function(s){if((p.remoteServices || []).indexOf(s)>=0)out.push({peer:p.id,service:s,label:root.peerName(p.id)+" · "+(s==="ssh"?"SSH":"T3")})})});return out}
@@ -32,6 +36,17 @@ ColumnLayout {
    :{action:"set",environmentId:environment.id,label:environment.name,peer:option.peer,service:option.service,mode:only?"only":"prefer",confirmed:true}
   confirmation.open()
  }
+ function proposeSharing(on){pending={action:"share-enabled",enabled:on,label:"",confirmed:true};confirmation.open()}
+ function shareText(peer){
+  var row=(sharing.peers || {})[peer.id] || {}
+  if(row.state==="shared")return T3I18n.tr("In your connections · {address}",{address:"127.0.0.1:"+row.port})
+  if(row.state==="skipped")return T3I18n.tr("Removed by you")
+  if(row.state==="error")return row.error==="share_needs_ssh"?T3I18n.tr("That device must also share SSH, so ot3 can pair with its T3 Code")
+   :row.error==="share_ssh_unknown_host"?T3I18n.tr("Its SSH host key is not trusted yet. Connect to it once with ssh.")
+   :row.error==="share_is_this_device"?T3I18n.tr("This is this device's own T3 Code")
+   :T3I18n.tr("Could not add it ({code}). Trying again in a few minutes.",{code:row.error || "unknown"})
+  return sharingOn?T3I18n.tr("Adding to your connections…"):T3I18n.tr("Not added")
+ }
  function proposeDefault(on){pending={action:"default",value:on?"auto":"off",label:"",confirmed:true};confirmation.open()}
  // Selector entries: 0 automatic, 1 saved route only, then pinned peers.
  function selectedIndex(current,options){if(!current)return 0;if(current.mode==="off")return 1;return Math.max(0,options.findIndex(function(o){return o.peer===current.peer&&o.service===current.service})+2)}
@@ -45,12 +60,14 @@ ColumnLayout {
  function pendingTitle(){
   if(!pending)return ""
   if(pending.action==="default")return pending.value==="auto"?T3I18n.tr("Use OmaBridge for every connection?"):T3I18n.tr("Stop using OmaBridge by default?")
+  if(pending.action==="share-enabled")return pending.enabled?T3I18n.tr("Share T3 automatically?"):T3I18n.tr("Stop sharing T3 automatically?")
   var title=pending.action==="clear"?T3I18n.tr("Return this connection to automatic routing?"):pending.mode==="off"?T3I18n.tr("Stop using OmaBridge for this connection?"):T3I18n.tr("Route this connection through OmaBridge?")
   return title+" · "+pending.label
  }
  function pendingDetail(){
   if(!pending)return ""
   if(pending.action==="default")return pending.value==="auto"?T3I18n.tr("Paired devices are tried first, and each must prove it serves the connection. The saved route stays as fallback."):T3I18n.tr("The saved T3 route is used again.")
+  if(pending.action==="share-enabled")return pending.enabled?T3I18n.tr("Paired devices that share T3 Code with this one are added to your connections, for ot3 and T3's desktop app, with T3's own pairing."):T3I18n.tr("Devices already added stay in your connections.")
   if(pending.action==="clear")return T3I18n.tr("Paired devices are tried first, and each must prove it serves the connection. The saved route stays as fallback.")
   if(pending.mode==="off")return T3I18n.tr("The saved T3 route is used again.")
   return peerName(pending.peer)+" · "+(pending.service==="ssh"?"SSH":"T3")+" · "+(pending.mode==="only"?T3I18n.tr("Only through OmaBridge"):T3I18n.tr("OmaBridge first, then the saved route"))
@@ -71,6 +88,26 @@ ColumnLayout {
    Text{Layout.fillWidth:true;text:T3I18n.tr("Paired devices are tried first, and each must prove it serves the connection. The saved route stays as fallback.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   }
   T3Switch{id:defaultSwitch;objectName:"omabridgeDefault";checked:root.automatic;enabled:!root.store.busy;Accessible.name:T3I18n.tr("Use OmaBridge for every connection");onToggled:root.proposeDefault(checked)}
+ }
+ RowLayout{Layout.fillWidth:true;visible:!!root.value.identity
+  ColumnLayout{Layout.fillWidth:true
+   Text{Layout.fillWidth:true;text:T3I18n.tr("Share T3 automatically");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+   Text{Layout.fillWidth:true;text:T3I18n.tr("Paired devices that share T3 Code with this one are added to your connections, for ot3 and T3's desktop app, with T3's own pairing.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+  }
+  T3Switch{id:shareSwitch;objectName:"omabridgeShare";checked:root.sharingOn;enabled:!root.store.busy;Accessible.name:T3I18n.tr("Share T3 automatically");onToggled:root.proposeSharing(checked)}
+ }
+ Repeater{model:root.value.identity?root.sharingPeers:[]
+  delegate:RowLayout{
+   id:shareRow;required property var modelData
+   readonly property var state:(root.sharing.peers || {})[modelData.id] || ({})
+   Layout.fillWidth:true
+   T3Icon{name:"monitor";tint:shareRow.state.state==="shared"?T3Palette.done:root.muted}
+   ColumnLayout{Layout.fillWidth:true
+    Text{Layout.fillWidth:true;text:root.peerName(shareRow.modelData.id);color:root.fg;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+    Text{objectName:"omabridgeShareStatus_"+shareRow.modelData.id;Layout.fillWidth:true;text:root.shareText(shareRow.modelData);color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+   }
+   T3PickerButton{objectName:"omabridgeShareRetry_"+shareRow.modelData.id;primary:false;visible:shareRow.state.state==="skipped"||shareRow.state.state==="error";text:T3I18n.tr("Add again");enabled:!root.store.busy;onClicked:root.request("share-retry",{peer:shareRow.modelData.id,confirmed:true})}
+  }
  }
  Text{Layout.fillWidth:true;visible:!!root.store.data&&!root.value.available;text:T3I18n.tr("OmaBridge is not installed. Rerun the installer to add it.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
  Text{Layout.fillWidth:true;visible:!!root.value.available&&!root.value.identity;text:T3I18n.tr("No OmaBridge identity yet. Create one below to pair this device.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
@@ -104,12 +141,12 @@ ColumnLayout {
  Text{Layout.fillWidth:true;visible:!!root.store.error || !!root.value.error;text:T3I18n.error(root.store.error || root.value.error || "");color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
  Text{Layout.fillWidth:true;visible:!!root.store.busy;text:T3I18n.tr("Loading…");color:root.muted;font.pixelSize:Style.font.caption}
  Controls.Popup{id:confirmation;parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(480),parent?parent.width-Style.space(32):Style.space(480));padding:Style.space(20);modal:true;closePolicy:root.store.busy?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
-  onClosed:{root.pending=null;root.epoch++;defaultSwitch.checked=Qt.binding(function(){return root.automatic})}
+  onClosed:{root.pending=null;root.epoch++;defaultSwitch.checked=Qt.binding(function(){return root.automatic});shareSwitch.checked=Qt.binding(function(){return root.sharingOn})}
   background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.muted}
   contentItem:ColumnLayout{spacing:Style.space(14)
    Text{Layout.fillWidth:true;text:root.pendingTitle();color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
    Text{Layout.fillWidth:true;text:root.pendingDetail();color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
-   Text{Layout.fillWidth:true;text:root.pending&&root.pending.action==="default"?T3I18n.tr("Every connection reconnects. Threads and drafts are kept."):T3I18n.tr("This environment reconnects. Threads and drafts are kept.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+   Text{Layout.fillWidth:true;visible:!root.pending||root.pending.action!=="share-enabled";text:root.pending&&root.pending.action==="default"?T3I18n.tr("Every connection reconnects. Threads and drafts are kept."):T3I18n.tr("This environment reconnects. Threads and drafts are kept.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
    Text{Layout.fillWidth:true;visible:!!root.store.error;text:T3I18n.error(root.store.error || "");color:Color.urgent;wrapMode:Text.Wrap}
    RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}T3PickerButton{primary:false;text:T3I18n.tr("Cancel");enabled:!root.store.busy;onClicked:confirmation.close()}T3PickerButton{objectName:"omabridgeConfirm";text:T3I18n.tr("Apply");enabled:!root.store.busy;onClicked:root.confirm()}}
   }

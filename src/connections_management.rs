@@ -179,8 +179,10 @@ fn prepare(c: &Value, i: &Value) -> Result<Value> {
         let (descriptor, token) = if code.is_empty() {
             (protocol::fetch_descriptor_with(&base, &options).map_err(descriptor_error)?, None)
         } else {
+            // OmaBridge sharing labels its sessions so the host can revoke them.
+            let label = i["clientLabel"].as_str().filter(|l| l.starts_with(crate::omabridge_share::LABEL_PREFIX)).unwrap_or("ot3");
             let client = protocol::PairingClient::default()
-                .with_label("ot3")
+                .with_label(label)
                 .with_device_type("desktop")
                 .with_os("linux");
             let expected = Some(expected).filter(|e| !e.is_empty());

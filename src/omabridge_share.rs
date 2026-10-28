@@ -1,0 +1,451 @@
+//! Automatic T3 sharing between paired OmaBridge devices.
+//!
+//! When a paired peer grants this device its `t3` service, ot3 adds that peer's
+//! T3 Code to T3's own connection catalog, which T3's desktop app on this device
+//! reads too. The credential is T3's native one: a one-use pairing created on the
+//! host with its own CLI (over the peer's OmaBridge `ssh` service, checked against
+//! the user's known_hosts) and exchanged here for a session, after the host's
+//! descriptor named the expected environment. The connection's address is a
+//! loopback OmaBridge forward on a fixed port, kept by a systemd user unit, so
+//! clients that cannot run OmaBridge reach the host as well.
+//!
+//! Revocation runs both ways: when the peer stops sharing, its route and forward
+//! are removed here; on the host, sessions paired for a device it no longer
+//! shares T3 with are revoked. A route the user removes is not added again.
+use crate::*;
+use zeroize::Zeroizing;
+use std::{io::Write,net::TcpListener,os::unix::fs::OpenOptionsExt,process::{Command,Stdio},sync::Mutex,time::Instant};
+
+const PAIR_SCRIPT:&str=include_str!("remote-share-pair.sh");
+/// Session label prefix on the host; the suffix is the receiving device's OmaBridge id.
+pub const LABEL_PREFIX:&str="ot3-share:";
+const RETRY_SECS:u64=600;
+const PORT_BASE:u16=47300;
+const PORT_SPAN:u16=500;
+
+pub fn config_path()->PathBuf{xdg("XDG_CONFIG_HOME",".config").join("omabridge-shares.json")}
+fn unit_dir()->PathBuf{
+ std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).filter(|p|p.is_absolute()).unwrap_or_else(||home().join(".config")).join("systemd/user")
+}
+pub fn unit_name(peer:&str)->String{format!("ot3-omabridge-share-{}.service",&peer[..12])}
+fn now()->u64{std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d|d.as_secs()).unwrap_or(0)}
+
+/// `{"version":1,"enabled":true,"skip":[peer],"shares":{peer:{…}},"status":{peer:{…}}}`.
+/// A missing file means enabled with nothing shared yet.
+pub fn load()->Value{
+ let doc=read_json(&config_path()).unwrap_or_else(|_|json!({}));
+ normalize(doc)
+}
+pub fn normalize(mut doc:Value)->Value{
+ if !doc.is_object()||doc["version"]!=1{doc=json!({"version":1})}
+ if !doc["enabled"].is_boolean(){doc["enabled"]=json!(true)}
+ if !doc["skip"].is_array(){doc["skip"]=json!([])}
+ for key in ["shares","status"]{if !doc[key].is_object(){doc[key]=json!({})}}
+ let valid=|k:&String|omabridge_route::valid_peer(k);
+ for key in ["shares","status"]{doc[key].as_object_mut().unwrap().retain(|k,_|valid(k));}
+ doc["skip"].as_array_mut().unwrap().retain(|v|v.as_str().is_some_and(omabridge_route::valid_peer));
+ doc
+}
+fn save(doc:&Value)->Result<()>{save_json(&config_path(),doc)}
+
+/// The fixed loopback port for a peer: derived from its id, moved on if taken.
+pub fn preferred_port(peer:&str)->u16{
+ let digest=Sha256::digest(peer.as_bytes());
+ PORT_BASE+(u16::from_be_bytes([digest[0],digest[1]])%PORT_SPAN)
+}
+fn free(port:u16)->bool{TcpListener::bind(("127.0.0.1",port)).is_ok()}
+fn pick_port(peer:&str,taken:&[u16])->Result<u16>{
+ let start=preferred_port(peer);
+ (0..PORT_SPAN).map(|i|PORT_BASE+(start-PORT_BASE+i)%PORT_SPAN).find(|p|!taken.contains(p)&&free(*p)).ok_or_else(||"share_port_unavailable".into())
+}
+
+fn safe_path(p:&Path)->bool{let s=p.to_string_lossy();p.is_absolute()&&!s.is_empty()&&s.bytes().all(|b|b.is_ascii_alphanumeric()||b"/._-+@".contains(&b))}
+/// The forward unit: OmaBridge's own `forward`, through the running server when it
+/// has `forward-through-server`, restarted if the peer is briefly away.
+pub fn unit_text(bin:&Path,state_dir:&Path,peer:&str,name:&str,port:u16)->Result<String>{
+ if !omabridge_route::valid_peer(peer)||!safe_path(bin)||!safe_path(state_dir){return Err("share_invalid_unit".into())}
+ let name:String=name.chars().filter(|c|c.is_alphanumeric()||" ._-".contains(*c)).take(64).collect();
+ Ok(format!("[Unit]\nDescription=ot3: T3 Code of OmaBridge peer {name} on 127.0.0.1:{port}\nAfter=network-online.target omabridge-serve.service\n\n[Service]\nExecStart={} --state-dir {} --name ot3 forward --peer {peer} --service t3 --listen 127.0.0.1:{port}\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=default.target\n",bin.display(),state_dir.display()))
+}
+fn systemctl(args:&[&str])->bool{
+ Command::new("timeout").arg("20s").arg("systemctl").arg("--user").args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s|s.success())
+}
+fn install_unit(peer:&str,body:&str)->Result<()>{
+ let dir=unit_dir();fs::create_dir_all(&dir).map_err(|_|"share_unit_failed")?;
+ let path=dir.join(unit_name(peer));
+ if fs::read_to_string(&path).ok().as_deref()!=Some(body){
+  let tmp=dir.join(format!(".{}.tmp",unit_name(peer)));
+  let mut f=fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o644).custom_flags(libc::O_NOFOLLOW).open(&tmp).map_err(|_|"share_unit_failed")?;
+  f.write_all(body.as_bytes()).map_err(|_|"share_unit_failed")?;drop(f);
+  fs::rename(&tmp,&path).map_err(|_|"share_unit_failed")?;
+  systemctl(&["daemon-reload"]);
+ }
+ if !systemctl(&["enable","--now",&unit_name(peer)]){return Err("share_unit_failed".into())}
+ Ok(())
+}
+fn remove_unit(peer:&str){
+ let name=unit_name(peer);
+ systemctl(&["disable","--now",&name]);
+ if fs::remove_file(unit_dir().join(&name)).is_ok(){systemctl(&["daemon-reload"]);}
+}
+
+/// Paired peers as OmaBridge lists them, with their known IP addresses (for
+/// matching an SSH config entry). Never returned to the UI.
+#[derive(Clone,Debug,PartialEq)]
+pub struct Peer{pub id:String,pub name:String,pub grants:Vec<String>,pub remote:Vec<String>,pub ips:Vec<String>}
+pub fn parse_peers(doc:&Value)->Vec<Peer>{
+ let list=|v:&Value|v.as_array().into_iter().flatten().filter_map(|s|s.as_str()).filter(|s|omabridge_route::valid_service(s)).map(str::to_owned).collect::<Vec<_>>();
+ doc["peers"].as_array().into_iter().flatten().filter(|p|omabridge_route::valid_peer(text(p,"id"))).map(|p|Peer{
+  id:text(p,"id").into(),name:text(p,"name").chars().filter(|c|!c.is_control()).take(64).collect(),
+  grants:list(&p["services"]),remote:list(&p["remote_services"]),
+  ips:p["address"]["addrs"].as_array().into_iter().flatten().filter_map(|a|a["Ip"].as_str()).filter_map(|a|a.parse::<std::net::SocketAddr>().ok()).map(|a|a.ip().to_string()).collect(),
+ }).collect()
+}
+fn read_peers(bin:&Path,state_dir:&Path)->Result<Vec<Peer>>{
+ if !omabridge_route::identity_ready(state_dir){return Err("omabridge_identity_missing".into())}
+ let out=Command::new("timeout").arg("8s").arg(bin).arg("--state-dir").arg(state_dir).args(["--name","ot3","peers"]).stdin(Stdio::null()).stderr(Stdio::null()).output().map_err(|_|"omabridge_unavailable")?;
+ if !out.status.success(){return Err("omabridge_unavailable".into())}
+ Ok(parse_peers(&serde_json::from_slice(&out.stdout).map_err(|_|"omabridge_unavailable")?))
+}
+fn device_id()->Result<String>{
+ let (doc,status)=omabridge_device::manage(&json!({"action":"read"}),20);
+ let id=text(&doc["device"],"id");
+ if status!=0||!omabridge_route::valid_peer(id){return Err("omabridge_identity_missing".into())}
+ Ok(id.into())
+}
+
+/// `Host` names from an OpenSSH config, without patterns or negations.
+pub fn config_hosts(config:&str)->Vec<String>{
+ let mut out=vec![];
+ for line in config.lines(){
+  let line=line.trim();let mut words=line.split_whitespace();
+  let Some(key)=words.next() else {continue};
+  if !key.eq_ignore_ascii_case("host"){continue}
+  for w in words.take_while(|w|!w.starts_with('#')){
+   if !w.contains(['*','?','!'])&&!out.contains(&w.to_string()){out.push(w.into())}
+  }
+ }
+ out
+}
+/// Whether an SSH destination (resolved by `ssh -G`) is this peer: one of its
+/// addresses, or its OmaBridge name as the alias or host name.
+pub fn host_matches(alias:&str,hostname:&str,peer:&Peer)->bool{
+ let name=peer.name.to_ascii_lowercase();
+ let host=hostname.to_ascii_lowercase();
+ peer.ips.iter().any(|ip|ip==hostname)||(!name.is_empty()&&(alias.eq_ignore_ascii_case(&name)||host==name||host.split('.').next()==Some(name.as_str())))
+}
+fn resolved_hostname(alias:&str)->Option<String>{
+ let out=Command::new("timeout").args(["4s","ssh","-G","--",alias]).stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
+ if !out.status.success(){return None}
+ String::from_utf8(out.stdout).ok()?.lines().find_map(|l|l.strip_prefix("hostname ").map(|h|h.trim().to_string()))
+}
+fn known(alias:&str)->bool{
+ Command::new("timeout").args(["4s","ssh-keygen","-F",alias]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s|s.success())
+}
+/// SSH targets that may reach the peer: the catalog's own SSH profiles for the
+/// environment first, then matching `~/.ssh/config` hosts. Each must already be
+/// trusted in known_hosts; ot3 never accepts a new host key on its own.
+fn ssh_targets(catalog:&Value,environment:&str,peer:&Peer)->Vec<Value>{
+ let mut out=vec![];
+ for t in catalog["targets"].as_array().into_iter().flatten().filter(|t|t["environmentId"]==environment&&t["_tag"]=="SshConnectionTarget"){
+  if let Some(p)=catalog["profiles"].as_array().into_iter().flatten().find(|p|p["connectionId"]==t["connectionId"]){out.push(p["target"].clone())}
+ }
+ let config=fs::read_to_string(home().join(".ssh/config")).unwrap_or_default();
+ for alias in config_hosts(&config){
+  if alias.len()>255||alias.starts_with('-')||!alias.bytes().all(|b|b.is_ascii_alphanumeric()||b"._-".contains(&b)){continue}
+  if resolved_hostname(&alias).is_some_and(|h|host_matches(&alias,&h,peer)){out.push(json!({"alias":alias}))}
+ }
+ out
+}
+fn mint(peer:&Peer,environment:&str,label:&str,catalog:&Value,bin:&Path,state_dir:&Path)->Result<Zeroizing<String>>{
+ if !peer.remote.iter().any(|s|s=="ssh"){return Err("share_needs_ssh".into())}
+ let mut last="share_ssh_unknown_host".to_string();
+ for target in ssh_targets(catalog,environment,peer){
+  let Ok(direct)=connections::ssh_args(&target) else {continue};
+  let Ok(alias)=connections::host_key_alias(&direct) else {continue};
+  if !known(&alias){last="share_ssh_unknown_host".into();continue}
+  let Ok(args)=host_sync::bridged(&direct,&alias,bin,state_dir,&peer.id) else {continue};
+  let mut child=Command::new("timeout").args(["45s","ssh"]).args(&args).arg(format!("sh -s -- '{environment}' '{label}'"))
+   .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"ssh_unavailable")?;
+  child.stdin.take().ok_or("ssh_unavailable")?.write_all(PAIR_SCRIPT.as_bytes()).map_err(|_|"ssh_unavailable")?;
+  let out=child.wait_with_output().map_err(|_|"ssh_unavailable")?;
+  let stdout=Zeroizing::new(out.stdout);
+  match out.status.code(){
+   Some(0)=>{
+    let doc:Value=serde_json::from_slice(&stdout).map_err(|_|"share_pairing_failed")?;
+    let credential=Zeroizing::new(text(&doc,"credential").to_string());
+    if credential.is_empty(){return Err("share_pairing_failed".into())}
+    return Ok(credential)
+   }
+   Some(7)=>last="t3_environment_mismatch".into(),
+   Some(127)=>last="t3_cli_unavailable".into(),
+   _=>last="ssh_unavailable".into(),
+  }
+ }
+ Err(last)
+}
+fn wait_descriptor(base:&str)->Result<Value>{
+ let options=protocol::ConnectionOptions::default().with_request_timeout(Duration::from_secs(4));
+ let deadline=Instant::now()+Duration::from_secs(25);
+ loop{
+  match protocol::fetch_descriptor_with(base,&options){
+   Ok(d)=>return Ok(d),
+   Err(_) if Instant::now()<deadline=>std::thread::sleep(Duration::from_millis(500)),
+   Err(_)=>return Err("share_forward_unreachable".into()),
+  }
+ }
+}
+/// The catalog revision, an environment's routes and its saved name.
+fn catalog_routes(environment:&str)->Result<(String,Vec<Value>,String)>{
+ let view=connections::manage_connections(&json!({"action":"read"}))?;
+ let env=view["environments"].as_array().into_iter().flatten().find(|e|e["id"]==environment);
+ Ok((text(&view,"revision").into(),env.and_then(|e|e["routes"].as_array().cloned()).unwrap_or_default(),env.map(|e|text(e,"name").to_string()).unwrap_or_default()))
+}
+pub fn connection_id(environment:&str,peer:&str)->String{format!("bearer:{environment}:omabridge-{}",&peer[..16])}
+
+/// Add one peer's T3 Code: forward, descriptor, native pairing, catalog.
+fn enroll(peer:&Peer,device:&str,taken:&[u16],bin:&Path,state_dir:&Path)->Result<Value>{
+ let port=pick_port(&peer.id,taken)?;
+ install_unit(&peer.id,&unit_text(bin,state_dir,&peer.id,&peer.name,port)?)?;
+ let base=format!("http://127.0.0.1:{port}");
+ let result=(||{
+  let descriptor=wait_descriptor(&base)?;
+  let environment=text(&descriptor,"environmentId").to_string();
+  uuid::Uuid::parse_str(&environment).map_err(|_|"invalid_t3_environment_id")?;
+  if connections::native_primary().is_some_and(|p|p["environmentId"]==environment.as_str()){return Err("share_is_this_device".to_string())}
+  let id=connection_id(&environment,&peer.id);
+  let (revision,routes,saved)=catalog_routes(&environment)?;
+  if !routes.iter().any(|r|r["connectionId"]==id.as_str()){
+   let catalog=read_catalog().unwrap_or_else(|_|protocol::connection_catalog::empty());
+   let label=format!("{LABEL_PREFIX}{device}");
+   let code=mint(peer,&environment,&label,&catalog,bin,state_dir)?;
+   // An environment already in the catalog keeps its name; this adds a route.
+   let name=if !saved.is_empty(){saved}else if !peer.name.is_empty(){peer.name.clone()}else{text(&descriptor,"label").to_string()};
+   connections::manage_connections(&json!({"action":"save-route","revision":revision,"kind":"bearer","url":base,"pairingCode":code.as_str(),
+    "environmentId":environment,"label":name,"connectionId":id,"clientLabel":label}))?;
+  }
+  Ok(json!({"environmentId":environment,"connectionId":id,"port":port,"name":peer.name}))
+ })();
+ if result.is_err(){remove_unit(&peer.id)}
+ result
+}
+fn remove_route(share:&Value){
+ let (env,id)=(text(share,"environmentId"),text(share,"connectionId"));
+ for _ in 0..3{
+  let Ok((revision,routes,_))=catalog_routes(env) else {return};
+  if !routes.iter().any(|r|r["connectionId"]==id){return}
+  let action=if routes.len()==1{"remove"}else{"remove-route"};
+  match connections::manage_connections(&json!({"action":action,"revision":revision,"environmentId":env,"connectionId":id,"confirmed":true})){
+   Err(e) if e=="catalog_changed_reload"=>continue,_=>return,
+  }
+ }
+}
+
+/// What the receiving side should do for each peer, from OmaBridge's grants, the
+/// saved shares and which shared routes are still in the catalog.
+#[derive(Debug,PartialEq)]
+pub enum Step{Enroll(String),Keep(String),Withdraw(String),UserRemoved(String)}
+pub fn plan(doc:&Value,peers:&[Peer],in_catalog:&dyn Fn(&Value)->bool,now:u64)->Vec<Step>{
+ let mut out=vec![];
+ let skip=|id:&str|doc["skip"].as_array().is_some_and(|s|s.contains(&json!(id)));
+ for (id,share) in doc["shares"].as_object().into_iter().flatten(){
+  let shared=peers.iter().any(|p|&p.id==id&&p.remote.iter().any(|s|s=="t3"));
+  out.push(if !shared{Step::Withdraw(id.clone())}else if !in_catalog(share){Step::UserRemoved(id.clone())}else{Step::Keep(id.clone())});
+ }
+ if doc["enabled"]!=true{return out}
+ for p in peers.iter().filter(|p|p.remote.iter().any(|s|s=="t3")){
+  if doc["shares"].get(&p.id).is_some()||skip(&p.id){continue}
+  let last=&doc["status"][&p.id];
+  if last["state"]=="error"&&now.saturating_sub(last["at"].as_u64().unwrap_or(0))<RETRY_SECS&&last["grants"]==json!(p.remote){continue}
+  out.push(Step::Enroll(p.id.clone()));
+ }
+ out
+}
+
+/// Host side: sessions paired for a device this host no longer shares T3 with.
+pub fn revocable(sessions:&Value,peers:&[Peer])->Vec<String>{
+ sessions.as_array().into_iter().flatten().filter_map(|s|{
+  let device=text(&s["client"],"label").strip_prefix(LABEL_PREFIX)?;
+  if !omabridge_route::valid_peer(device){return None}
+  let shared=peers.iter().any(|p|p.id==device&&p.grants.iter().any(|g|g=="t3"));
+  let id=text(s,"sessionId");
+  (!shared&&!id.is_empty()&&id.len()<=128&&id.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-')).then(||id.to_string())
+ }).collect()
+}
+fn local_cli()->Option<PathBuf>{
+ [connections::t3_home().join("bin/t3"),home().join(".local/bin/t3")].into_iter().find(|p|p.is_file())
+}
+fn revoke_withdrawn(peers:&[Peer]){
+ let Some(cli)=local_cli() else {return};
+ let base=connections::t3_home();
+ let Ok(out)=Command::new("timeout").arg("15s").arg(&cli).args(["auth","session","list","--json","--base-dir"]).arg(&base).stdin(Stdio::null()).stderr(Stdio::null()).output() else {return};
+ if !out.status.success(){return}
+ let Ok(sessions)=serde_json::from_slice::<Value>(&out.stdout) else {return};
+ for id in revocable(&sessions,peers){
+  let _=Command::new("timeout").arg("15s").arg(&cli).args(["auth","session","revoke","--base-dir"]).arg(&base).arg(&id).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
+ }
+}
+
+static RUNNING:Mutex<()>=Mutex::new(());
+/// One reconciliation pass. Any OmaBridge read failure changes nothing.
+pub fn reconcile()->Result<Value>{
+ let _guard=RUNNING.lock().map_err(|_|"share_busy")?;
+ let bin=omabridge_route::binary().ok_or("omabridge_unavailable")?;
+ let state_dir=omabridge_route::config().map(|c|c.state_dir()).unwrap_or_else(|_|omabridge_route::default_state_dir());
+ let peers=read_peers(&bin,&state_dir)?;
+ revoke_withdrawn(&peers);
+ let mut doc=load();
+ let catalog=connections::manage_connections(&json!({"action":"read"})).ok();
+ let in_catalog=|share:&Value|catalog.as_ref().is_none_or(|v|v["environments"].as_array().into_iter().flatten().flat_map(|e|e["routes"].as_array().cloned().unwrap_or_default()).any(|r|r["connectionId"]==share["connectionId"]));
+ let steps=plan(&doc,&peers,&in_catalog,now());
+ let mut device=None;
+ for step in steps{
+  match step{
+   Step::Keep(id)=>{let unit=unit_name(&id);if !systemctl(&["is-active","--quiet",&unit]){systemctl(&["start",&unit]);}}
+   Step::Withdraw(id)=>{remove_route(&doc["shares"][&id]);remove_unit(&id);doc["shares"].as_object_mut().unwrap().remove(&id);doc["status"][&id]=json!({"state":"withdrawn","at":now()});}
+   Step::UserRemoved(id)=>{remove_unit(&id);doc["shares"].as_object_mut().unwrap().remove(&id);doc["skip"].as_array_mut().unwrap().push(json!(id));doc["status"][&id]=json!({"state":"removed","at":now()});}
+   Step::Enroll(id)=>{
+    let Some(peer)=peers.iter().find(|p|p.id==id) else {continue};
+    if device.is_none(){device=Some(device_id())}
+    let taken:Vec<u16>=doc["shares"].as_object().into_iter().flatten().filter_map(|(_,s)|s["port"].as_u64()).map(|p|p as u16).collect();
+    let result=match device.as_ref().unwrap(){Ok(d)=>enroll(peer,d,&taken,&bin,&state_dir),Err(e)=>Err(e.clone())};
+    match result{
+     Ok(share)=>{doc["status"][&id]=json!({"state":"shared","at":now(),"environmentId":share["environmentId"]});doc["shares"][&id]=share;}
+     Err(e)=>{doc["status"][&id]=json!({"state":"error","error":e,"at":now(),"grants":peer.remote});}
+    }
+   }
+  }
+ }
+ save(&doc)?;
+ Ok(snapshot(&doc,&peers))
+}
+/// Public view for the UI: names, states and error codes, never credentials.
+pub fn snapshot(doc:&Value,peers:&[Peer])->Value{
+ let rows=peers.iter().filter(|p|p.remote.iter().any(|s|s=="t3")||doc["shares"].get(&p.id).is_some()).map(|p|{
+  let share=&doc["shares"][&p.id];let status=&doc["status"][&p.id];
+  json!({"peer":p.id,"name":p.name,"shared":share.is_object(),"port":share["port"],"environmentId":share["environmentId"],
+   "state":if share.is_object(){"shared"}else if doc["skip"].as_array().is_some_and(|s|s.contains(&json!(p.id))){"skipped"}else{status["state"].as_str().unwrap_or("pending")},
+   "error":status["error"],"ssh":p.remote.iter().any(|s|s=="ssh")})
+ }).collect::<Vec<_>>();
+ json!({"enabled":doc["enabled"],"peers":rows})
+}
+/// Per-peer sharing state for Preferences, merged into the OmaBridge routing
+/// snapshot (which already lists the peers): no peer list of its own.
+pub fn public_state()->Value{
+ let doc=load();
+ let mut peers=serde_json::Map::new();
+ for (id,status) in doc["status"].as_object().into_iter().flatten(){peers.insert(id.clone(),json!({"state":status["state"],"error":status["error"]}));}
+ for id in doc["skip"].as_array().into_iter().flatten().filter_map(|v|v.as_str()){peers.insert(id.into(),json!({"state":"skipped"}));}
+ for (id,share) in doc["shares"].as_object().into_iter().flatten(){peers.insert(id.clone(),json!({"state":"shared","port":share["port"],"environmentId":share["environmentId"]}));}
+ json!({"enabled":doc["enabled"],"peers":peers})
+}
+pub fn read()->Result<Value>{
+ let doc=load();
+ let peers=omabridge_route::binary().and_then(|bin|{let state=omabridge_route::config().map(|c|c.state_dir()).unwrap_or_else(|_|omabridge_route::default_state_dir());read_peers(&bin,&state).ok()}).unwrap_or_default();
+ Ok(snapshot(&doc,&peers))
+}
+/// `read`, `run`, `enabled` (`{"enabled":bool}`) and `retry` (`{"peer"}`: share a
+/// skipped or failed peer again). Changes need `"confirmed":true`.
+pub fn execute(input:&Value)->Result<Value>{
+ match text(input,"action"){
+  "read"=>read(),
+  "run"=>reconcile(),
+  action@("enabled"|"retry")=>{
+   if input["confirmed"]!=true{return Err("confirmation_required".into())}
+   let mut doc=load();
+   if action=="enabled"{doc["enabled"]=json!(input["enabled"].as_bool().ok_or("invalid_command")?)}
+   else{
+    let peer=text(input,"peer");if !omabridge_route::valid_peer(peer){return Err("invalid_command".into())}
+    doc["skip"].as_array_mut().unwrap().retain(|v|v!=peer);
+    if let Some(s)=doc["status"].as_object_mut(){s.remove(peer);}
+   }
+   save(&doc)?;
+   std::thread::spawn(||{let _=reconcile();});
+   read()
+  }
+  _=>Err("invalid_action".into()),
+ }
+}
+/// Background loop for the running app: on OmaBridge or catalog changes, and
+/// every five minutes to restart forwards and retry failures.
+pub fn start(){
+ std::thread::spawn(||{
+  let mut last:Option<(String,Instant)>=None;
+  loop{
+   let signature=format!("{:x}",Sha256::digest([omabridge_route::config_bytes(),fs::read(config_path()).unwrap_or_default(),fs::read(connections::t3_home().join("userdata/connection-catalog.json")).unwrap_or_default()].concat()));
+   let due=last.as_ref().is_none_or(|(s,at)|*s!=signature||at.elapsed()>=Duration::from_secs(300));
+   if due{
+    let _=reconcile();
+    let after=format!("{:x}",Sha256::digest([omabridge_route::config_bytes(),fs::read(config_path()).unwrap_or_default(),fs::read(connections::t3_home().join("userdata/connection-catalog.json")).unwrap_or_default()].concat()));
+    last=Some((after,Instant::now()));
+   }
+   std::thread::sleep(Duration::from_secs(30));
+  }
+ });
+}
+
+#[cfg(test)]
+mod tests{
+ use super::*;
+ const A:&str="75ebf82c1c0f3c6df7c6ccab7ce79e0c5c957e2027d9ea8e144a6966b43fe764";
+ const B:&str="0f6da8065c780e468ec60ecb8c9640717766692666135a81e934c246c7f42329";
+ fn peer(id:&str,remote:&[&str],grants:&[&str])->Peer{Peer{id:id.into(),name:"NODE".into(),grants:grants.iter().map(|s|s.to_string()).collect(),remote:remote.iter().map(|s|s.to_string()).collect(),ips:vec!["192.0.2.7".into()]}}
+ #[test]
+ fn peers_keep_addresses_only_as_ips(){
+  let doc=json!({"peers":[{"id":A,"name":"mbp\u{7}","services":["ssh","t3"],"remote_services":["t3","bad;x"],"address":{"addrs":[{"Relay":"https://relay.example/"},{"Ip":"192.0.2.7:48702"}]}},{"id":"short"}]});
+  let peers=parse_peers(&doc);
+  assert_eq!(peers.len(),1);assert_eq!(peers[0].name,"mbp");assert_eq!(peers[0].remote,vec!["t3"]);assert_eq!(peers[0].ips,vec!["192.0.2.7"]);
+ }
+ #[test]
+ fn plan_enrolls_withdraws_and_respects_removal(){
+  let shared=json!({"connectionId":"c"});
+  let doc=normalize(json!({"version":1,"shares":{A:shared}}));
+  let yes=|_:&Value|true;let no=|_:&Value|false;
+  assert_eq!(plan(&doc,&[peer(A,&["t3"],&[])],&yes,0),vec![Step::Keep(A.into())]);
+  assert_eq!(plan(&doc,&[peer(A,&["ssh"],&[])],&yes,0),vec![Step::Withdraw(A.into())]);
+  assert_eq!(plan(&doc,&[],&yes,0),vec![Step::Withdraw(A.into())]);
+  assert_eq!(plan(&doc,&[peer(A,&["t3"],&[])],&no,0),vec![Step::UserRemoved(A.into())]);
+  let fresh=normalize(json!({}));
+  assert_eq!(plan(&fresh,&[peer(B,&["t3","ssh"],&[]),peer(A,&["ssh"],&[])],&yes,0),vec![Step::Enroll(B.into())]);
+  let skipped=normalize(json!({"version":1,"skip":[B]}));
+  assert!(plan(&skipped,&[peer(B,&["t3"],&[])],&yes,0).is_empty());
+  let off=normalize(json!({"version":1,"enabled":false,"shares":{A:shared}}));
+  assert_eq!(plan(&off,&[peer(A,&["t3"],&[]),peer(B,&["t3"],&[])],&yes,0),vec![Step::Keep(A.into())]);
+  // A failure waits before retrying, unless the peer's grants changed.
+  let failed=normalize(json!({"version":1,"status":{B:{"state":"error","at":1000,"grants":["t3"]}}}));
+  assert!(plan(&failed,&[peer(B,&["t3"],&[])],&yes,1000+RETRY_SECS-1).is_empty());
+  assert_eq!(plan(&failed,&[peer(B,&["t3","ssh"],&[])],&yes,1001),vec![Step::Enroll(B.into())]);
+  assert_eq!(plan(&failed,&[peer(B,&["t3"],&[])],&yes,1000+RETRY_SECS),vec![Step::Enroll(B.into())]);
+ }
+ #[test]
+ fn host_revokes_only_withdrawn_share_sessions(){
+  let sessions=json!([
+   {"sessionId":"s-1","client":{"label":format!("{LABEL_PREFIX}{A}")}},
+   {"sessionId":"s-2","client":{"label":format!("{LABEL_PREFIX}{B}")}},
+   {"sessionId":"s-3","client":{"label":"omarchy-t3-code"}},
+   {"sessionId":"s;4","client":{"label":format!("{LABEL_PREFIX}{B}")}},
+   {"sessionId":"s-5","client":{"label":format!("{LABEL_PREFIX}nothex")}}]);
+  assert_eq!(revocable(&sessions,&[peer(A,&[],&["t3","ssh"]),peer(B,&[],&["ssh"])]),vec!["s-2"]);
+ }
+ #[test]
+ fn ssh_config_hosts_and_matching(){
+  let hosts=config_hosts("Host node node.lan # x\n  HostName 192.0.2.7\nHost *.corp !x\nhost mbp\nMatch all\n");
+  assert_eq!(hosts,vec!["node","node.lan","mbp"]);
+  let p=peer(A,&[],&[]);
+  assert!(host_matches("other","192.0.2.7",&p));
+  assert!(host_matches("node","example.net",&p));
+  assert!(host_matches("x","node.lan",&p));
+  assert!(!host_matches("nodex","198.51.100.1",&p));
+ }
+ #[test]
+ fn ports_and_units(){
+  let p=preferred_port(A);assert!((PORT_BASE..PORT_BASE+PORT_SPAN).contains(&p));assert_eq!(p,preferred_port(A));
+  let unit=unit_text(Path::new("/opt/ot3/bin/omabridge"),Path::new("/home/u/.local/share/omabridge"),A,"mbp m2\n[Service]",p).unwrap();
+  assert!(unit.contains(&format!("forward --peer {A} --service t3 --listen 127.0.0.1:{p}")));
+  assert_eq!(unit.matches("[Service]").count(),1);
+  assert!(unit_text(Path::new("/opt/a b/omabridge"),Path::new("/s"),A,"x",p).is_err());
+  assert!(unit_text(Path::new("/opt/omabridge"),Path::new("/s"),"abc","x",p).is_err());
+  assert_eq!(unit_name(A),"ot3-omabridge-share-75ebf82c1c0f.service");
+  assert_eq!(connection_id("e",A),"bearer:e:omabridge-75ebf82c1c0f3c6d");
+ }
+}

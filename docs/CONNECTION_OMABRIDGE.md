@@ -65,6 +65,31 @@ When the agent runs on this device, the other host invites and this device claim
 
 When the agent runs on another host (for a new host only that one reaches), *Start* first makes this device write a one-use invitation that expires in an hour (asking to manage the new host when chosen); it is moved to that host over SSH, the prompt names it by path only, the new host claims it, and you approve it here.
 
+## Automatic T3 sharing
+
+When a paired device shares its T3 Code with this one (it grants this device its `t3` service), ot3 adds that T3 Code to T3's own connection catalog by itself. That catalog is the one T3's desktop app reads, so the host shows up in ot3 and, at its next start, in the desktop app on this device. Nothing to click: approving the pairing with T3 shared is the consent. *Share T3 automatically* in Preferences → Connections → OmaBridge turns it off (connections already added stay), and lists each sharing device with its state.
+
+For each such peer, ot3:
+
+1. Opens a fixed loopback forward to the peer's `t3` service, `127.0.0.1:<port>` (47300–47799, derived from the peer id), as the systemd user unit `ot3-omabridge-share-<peer>.service`. It runs `omabridge forward` through the running OmaBridge server and restarts if the peer is away, so clients that cannot run OmaBridge reach the host at that address.
+2. Reads the host's public descriptor through it. Its own T3 Code is never added.
+3. Creates a one-use T3 pairing on the host with T3's CLI (`t3 auth pairing create --ttl 2m`, label `ot3-share:<this device's OmaBridge id>`). It runs over the peer's OmaBridge `ssh` service and is checked against your known_hosts entry for that host: either the SSH profile already saved for that environment, or a `~/.ssh/config` host whose address or name matches the peer. ot3 never accepts a new host key.
+4. Exchanges the pairing here for T3's native session (the descriptor must still name the same environment) and saves it in the catalog as a pairing-link route. An environment already in the catalog keeps its name and other routes; this one is added as another route.
+
+The pairing never touches disk or the vault; the session lives only in T3's encrypted catalog. State without credentials is kept in `$XDG_CONFIG_HOME/omarchy-t3-code/omabridge-shares.json`.
+
+Sharing is undone the same way:
+
+- When the peer stops sharing T3 (or is revoked), its route, forward and unit are removed here.
+- On the host, every pass revokes the T3 sessions labelled `ot3-share:<device>` for devices it no longer shares T3 with.
+- If you remove a shared route yourself, it is not added again until you press *Add again*.
+
+A peer that shares `t3` without `ssh` is listed as needing SSH: T3 has no other way to issue its pairing remotely. A host key that is not trusted yet is reported too. Failures are retried every 10 minutes, or as soon as the peer's grants change. The app checks after every OmaBridge, catalog or setting change, and every five minutes restarts stopped forwards.
+
+T3's mobile app cannot run OmaBridge or read this catalog; reach a host from the phone through a public gateway and pair it there.
+
+`omarchy-t3-client omabridge-share` takes `{"action":"read"}`, `{"action":"run"}`, `{"action":"enabled","enabled":false,"confirmed":true}` or `{"action":"retry","peer":"<id>","confirmed":true}` on stdin.
+
 ## Names and sign-ins on each host
 
 This device's environment takes the name OmaBridge publishes for it (renamed in the OmaBridge section), else the host name T3 reports, else "T3 Code"; a rename shows on the next refresh. Other hosts keep the label of their connection.
@@ -93,6 +118,8 @@ Other front ends manage this device by calling `omabridge manage` themselves, as
 - `omarchy-t3-client omabridge-action`: one routing request on stdin. `set`, `clear` and `default` change routes (with `revision` and `"confirmed":true`). `gateways-read` and `gateway-check` read this device's public addresses from every device it manages, for the Access pairing dialog; `gateway-open` and `gateway-close` (confirmed) open or close one. On failure it prints `{"error":"<code>"}` and exits 1.
 
 ## Verification
+
+`cargo test --release --locked --test omabridge_share` runs automatic sharing end to end with fake OmaBridge, OpenSSH, systemd and T3: native pairing through the bridged SSH into the catalog behind the fixed forward, no second pairing on an unchanged pass, withdrawal, sharing again, a route removed by the user staying removed until retried, a peer without SSH, and host-side revocation of only the withdrawn device's session. `tools/test-qml connection-omabridge` also covers the sharing switch, rows and retry.
 
 `cargo test --release --locked --test omabridge_route` covers the following, using a fake `omabridge` binary and a loopback T3:
 
