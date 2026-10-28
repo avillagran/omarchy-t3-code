@@ -1474,10 +1474,8 @@
     "T3 Code and OmaBridge": "T3 Code and OmaBridge",
     "For a desktop without Omarchy where you code locally.": "For a desktop without Omarchy where you code locally.",
     "Use an SSH host, alias or user@host.": "Use an SSH host, alias or user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.",
     "Let this device manage it": "Let this device manage it",
     "Also let it reach this device's SSH": "Also let it reach this device's SSH",
-    "Open chat": "Open chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.",
     "Set up a new host with your AI": "Set up a new host with your AI",
     "Set up a new host…": "Set up a new host…",
@@ -1864,7 +1862,12 @@
     "The T3 server is not running or did not become ready.": "The T3 server is not running or did not become ready.",
     "The host answered with a different T3 environment.": "The host answered with a different T3 environment.",
     "The saved connections could not be unlocked.": "The saved connections could not be unlocked.",
-    "The connection to T3 was interrupted.": "The connection to T3 was interrupted."
+    "The connection to T3 was interrupted.": "The connection to T3 was interrupted.",
+    "Connection assistants": "Connection assistants",
+    "Connect existing…": "Connect existing…",
+    "Start": "Start",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3341,10 +3344,8 @@
     "T3 Code and OmaBridge": "T3 Code y OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Para un escritorio sin Omarchy donde programas en local.",
     "Use an SSH host, alias or user@host.": "Usa un host SSH, un alias o user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Se abre un chat nuevo con las instrucciones de configuración ya escritas. Revísalas y envíalas cuando quieras. El agente trabaja por SSH y empareja el dispositivo con este mediante una invitación de un solo uso que nunca aparece en el chat.",
     "Let this device manage it": "Permitir que este dispositivo lo gestione",
     "Also let it reach this device's SSH": "Permitirle también acceder al SSH de este dispositivo",
-    "Open chat": "Abrir chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configura otro dispositivo (un servidor, otro escritorio) y emparéjalo con este, guiado por tu IA en un chat nuevo.",
     "Set up a new host with your AI": "Configura un host nuevo con tu IA",
     "Set up a new host…": "Configurar host nuevo…",
@@ -3731,7 +3732,12 @@
     "The T3 server is not running or did not become ready.": "El servidor T3 no está en ejecución o no quedó listo.",
     "The host answered with a different T3 environment.": "El equipo respondió con un entorno T3 distinto.",
     "The saved connections could not be unlocked.": "No se pudieron desbloquear las conexiones guardadas.",
-    "The connection to T3 was interrupted.": "Se interrumpió la conexión con T3."
+    "The connection to T3 was interrupted.": "Se interrumpió la conexión con T3.",
+    "Connection assistants": "Asistentes de conexión",
+    "Connect existing…": "Conectar existente…",
+    "Start": "Iniciar",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "El agente empieza de inmediato en un chat nuevo y empareja ese host con este por SSH, sin cambiar su instalación ni sus servicios publicados.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "El agente empieza de inmediato en un chat nuevo, hace toda la instalación por SSH y empareja el dispositivo con este. Solo te pregunta antes de usar sudo o abrir un puerto."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5208,10 +5214,8 @@
     "T3 Code and OmaBridge": "T3 Code e OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Para um desktop sem Omarchy onde você programa localmente.",
     "Use an SSH host, alias or user@host.": "Use um host SSH, um alias ou user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Um novo chat é aberto com as instruções de configuração já digitadas. Revise-as e envie quando estiver pronto. O agente trabalha via SSH e pareia o dispositivo com este por meio de um convite de uso único que nunca aparece no chat.",
     "Let this device manage it": "Permitir que este dispositivo o gerencie",
     "Also let it reach this device's SSH": "Permitir também que ele acesse o SSH deste dispositivo",
-    "Open chat": "Abrir chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configure outro dispositivo (um servidor, outro desktop) e pareie-o com este, com a ajuda da sua IA em um novo chat.",
     "Set up a new host with your AI": "Configure um novo host com sua IA",
     "Set up a new host…": "Configurar novo host…",
@@ -5598,7 +5602,12 @@
     "The T3 server is not running or did not become ready.": "O servidor T3 não está em execução ou não ficou pronto.",
     "The host answered with a different T3 environment.": "O computador respondeu com outro ambiente T3.",
     "The saved connections could not be unlocked.": "Não foi possível desbloquear as conexões salvas.",
-    "The connection to T3 was interrupted.": "A conexão com o T3 foi interrompida."
+    "The connection to T3 was interrupted.": "A conexão com o T3 foi interrompida.",
+    "Connection assistants": "Assistentes de conexão",
+    "Connect existing…": "Conectar existente…",
+    "Start": "Iniciar",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "O agente começa imediatamente num novo chat e emparelha esse host com este por SSH, sem alterar sua instalação nem seus serviços publicados.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "O agente começa imediatamente num novo chat, faz toda a configuração por SSH e emparelha o dispositivo com este. Só pergunta antes de usar sudo ou abrir uma porta."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7075,10 +7084,8 @@
     "T3 Code and OmaBridge": "T3 Code et OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Pour un poste de travail sans Omarchy où vous codez en local.",
     "Use an SSH host, alias or user@host.": "Utilisez un hôte SSH, un alias ou user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Une nouvelle discussion s'ouvre avec les instructions de configuration déjà saisies. Relisez-les et envoyez-les quand vous êtes prêt. L'agent travaille via SSH et associe l'appareil à celui-ci grâce à une invitation à usage unique qui n'apparaît jamais dans la discussion.",
     "Let this device manage it": "Laisser cet appareil le gérer",
     "Also let it reach this device's SSH": "L'autoriser aussi à accéder au SSH de cet appareil",
-    "Open chat": "Ouvrir la discussion",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configurez un autre appareil (un serveur, un autre poste) et associez-le à celui-ci, guidé par votre IA dans une nouvelle discussion.",
     "Set up a new host with your AI": "Configurer un nouvel hôte avec votre IA",
     "Set up a new host…": "Configurer un nouvel hôte…",
@@ -7465,7 +7472,12 @@
     "The T3 server is not running or did not become ready.": "Le serveur T3 ne fonctionne pas ou n’est pas devenu disponible.",
     "The host answered with a different T3 environment.": "L’ordinateur a répondu avec un autre environnement T3.",
     "The saved connections could not be unlocked.": "Les connexions enregistrées n’ont pas pu être déverrouillées.",
-    "The connection to T3 was interrupted.": "La connexion à T3 a été interrompue."
+    "The connection to T3 was interrupted.": "La connexion à T3 a été interrompue.",
+    "Connection assistants": "Assistants de connexion",
+    "Connect existing…": "Connecter un appareil existant…",
+    "Start": "Démarrer",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "L'agent démarre aussitôt dans une nouvelle discussion et associe cet hôte à celui-ci via SSH, sans modifier son installation ni ses services publiés.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "L'agent démarre aussitôt dans une nouvelle discussion, effectue toute l'installation via SSH et associe l'appareil à celui-ci. Il ne vous demande qu'avant d'utiliser sudo ou d'ouvrir un port."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8942,10 +8954,8 @@
     "T3 Code and OmaBridge": "T3 Code und OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Für einen Desktop ohne Omarchy, auf dem Sie lokal programmieren.",
     "Use an SSH host, alias or user@host.": "Verwenden Sie einen SSH-Host, einen Alias oder user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Ein neuer Chat öffnet sich mit bereits eingetragenen Einrichtungsanweisungen. Prüfen Sie sie und senden Sie sie ab, wenn Sie bereit sind. Der Agent arbeitet über SSH und koppelt das Gerät mit diesem über eine Einmal-Einladung, die nie im Chat erscheint.",
     "Let this device manage it": "Von diesem Gerät verwalten lassen",
     "Also let it reach this device's SSH": "Ihm auch Zugriff auf SSH dieses Geräts erlauben",
-    "Open chat": "Chat öffnen",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Richten Sie ein weiteres Gerät (einen Server, einen anderen Desktop) ein und koppeln Sie es mit diesem – angeleitet von Ihrer KI in einem neuen Chat.",
     "Set up a new host with your AI": "Neuen Host mit Ihrer KI einrichten",
     "Set up a new host…": "Neuen Host einrichten…",
@@ -9332,7 +9342,12 @@
     "The T3 server is not running or did not become ready.": "Der T3-Server läuft nicht oder wurde nicht bereit.",
     "The host answered with a different T3 environment.": "Der Rechner antwortete mit einer anderen T3-Umgebung.",
     "The saved connections could not be unlocked.": "Die gespeicherten Verbindungen konnten nicht entsperrt werden.",
-    "The connection to T3 was interrupted.": "Die Verbindung zu T3 wurde unterbrochen."
+    "The connection to T3 was interrupted.": "Die Verbindung zu T3 wurde unterbrochen.",
+    "Connection assistants": "Verbindungsassistenten",
+    "Connect existing…": "Vorhandenes Gerät verbinden…",
+    "Start": "Starten",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Der Agent startet sofort in einem neuen Chat und koppelt diesen Host per SSH mit diesem Gerät, ohne seine Installation oder veröffentlichten Dienste zu ändern.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Der Agent startet sofort in einem neuen Chat, erledigt die gesamte Einrichtung per SSH und koppelt das Gerät mit diesem. Er fragt nur, bevor er sudo nutzt oder einen Port öffnet."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10809,10 +10824,8 @@
     "T3 Code and OmaBridge": "T3 Code e OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Per un desktop senza Omarchy su cui programmi in locale.",
     "Use an SSH host, alias or user@host.": "Usa un host SSH, un alias o user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Si apre una nuova chat con le istruzioni di configurazione già scritte. Controllale e inviale quando sei pronto. L'agente lavora tramite SSH e associa il dispositivo a questo con un invito monouso che non compare mai nella chat.",
     "Let this device manage it": "Consenti a questo dispositivo di gestirlo",
     "Also let it reach this device's SSH": "Consentigli anche di raggiungere l'SSH di questo dispositivo",
-    "Open chat": "Apri chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Configura un altro dispositivo (un server, un altro desktop) e associalo a questo, guidato dalla tua IA in una nuova chat.",
     "Set up a new host with your AI": "Configura un nuovo host con la tua IA",
     "Set up a new host…": "Configura nuovo host…",
@@ -11199,7 +11212,12 @@
     "The T3 server is not running or did not become ready.": "Il server T3 non è in esecuzione o non è diventato pronto.",
     "The host answered with a different T3 environment.": "Il computer ha risposto con un ambiente T3 diverso.",
     "The saved connections could not be unlocked.": "Non è stato possibile sbloccare le connessioni salvate.",
-    "The connection to T3 was interrupted.": "La connessione a T3 è stata interrotta."
+    "The connection to T3 was interrupted.": "La connessione a T3 è stata interrotta.",
+    "Connection assistants": "Assistenti di connessione",
+    "Connect existing…": "Connetti esistente…",
+    "Start": "Avvia",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "L'agente parte subito in una nuova chat e abbina quell'host a questo via SSH, senza modificarne l'installazione né i servizi pubblicati.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "L'agente parte subito in una nuova chat, esegue tutta la configurazione via SSH e abbina il dispositivo a questo. Ti chiede solo prima di usare sudo o aprire una porta."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12676,10 +12694,8 @@
     "T3 Code and OmaBridge": "T3 Code en OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Voor een desktop zonder Omarchy waarop je lokaal programmeert.",
     "Use an SSH host, alias or user@host.": "Gebruik een SSH-host, alias of user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Er opent een nieuwe chat met de installatie-instructies al ingevuld. Controleer ze en verstuur ze wanneer je klaar bent. De agent werkt via SSH en koppelt het apparaat aan dit apparaat met een eenmalige uitnodiging die nooit in de chat verschijnt.",
     "Let this device manage it": "Laat dit apparaat het beheren",
     "Also let it reach this device's SSH": "Laat het ook bij de SSH van dit apparaat",
-    "Open chat": "Chat openen",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Stel een ander apparaat in (een server, een andere desktop) en koppel het aan dit apparaat, begeleid door je AI in een nieuwe chat.",
     "Set up a new host with your AI": "Een nieuwe host instellen met je AI",
     "Set up a new host…": "Nieuwe host instellen…",
@@ -13066,7 +13082,12 @@
     "The T3 server is not running or did not become ready.": "De T3-server draait niet of is niet gereed gekomen.",
     "The host answered with a different T3 environment.": "De computer antwoordde met een andere T3-omgeving.",
     "The saved connections could not be unlocked.": "De opgeslagen verbindingen konden niet worden ontgrendeld.",
-    "The connection to T3 was interrupted.": "De verbinding met T3 is onderbroken."
+    "The connection to T3 was interrupted.": "De verbinding met T3 is onderbroken.",
+    "Connection assistants": "Verbindingsassistenten",
+    "Connect existing…": "Bestaand apparaat verbinden…",
+    "Start": "Starten",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "De agent begint meteen in een nieuwe chat en koppelt die host via SSH aan dit apparaat, zonder de installatie of gepubliceerde diensten te wijzigen.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "De agent begint meteen in een nieuwe chat, doet de hele installatie via SSH en koppelt het apparaat aan dit apparaat. Hij vraagt alleen iets voordat hij sudo gebruikt of een poort opent."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14543,10 +14564,8 @@
     "T3 Code and OmaBridge": "T3 Code i OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Dla komputera bez Omarchy, na którym programujesz lokalnie.",
     "Use an SSH host, alias or user@host.": "Użyj hosta SSH, aliasu lub user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Otworzy się nowy czat z wpisanymi instrukcjami konfiguracji. Przejrzyj je i wyślij, gdy będziesz gotowy. Agent działa przez SSH i paruje urządzenie z tym za pomocą jednorazowego zaproszenia, które nigdy nie pojawia się w czacie.",
     "Let this device manage it": "Pozwól temu urządzeniu nim zarządzać",
     "Also let it reach this device's SSH": "Pozwól mu też łączyć się z SSH tego urządzenia",
-    "Open chat": "Otwórz czat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Skonfiguruj inne urządzenie (serwer, inny komputer) i sparuj je z tym, z pomocą AI w nowym czacie.",
     "Set up a new host with your AI": "Skonfiguruj nowy host z pomocą AI",
     "Set up a new host…": "Skonfiguruj nowy host…",
@@ -14933,7 +14952,12 @@
     "The T3 server is not running or did not become ready.": "Serwer T3 nie działa lub nie osiągnął gotowości.",
     "The host answered with a different T3 environment.": "Komputer odpowiedział z innego środowiska T3.",
     "The saved connections could not be unlocked.": "Nie udało się odblokować zapisanych połączeń.",
-    "The connection to T3 was interrupted.": "Połączenie z T3 zostało przerwane."
+    "The connection to T3 was interrupted.": "Połączenie z T3 zostało przerwane.",
+    "Connection assistants": "Asystenci połączenia",
+    "Connect existing…": "Połącz istniejące urządzenie…",
+    "Start": "Rozpocznij",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agent od razu zaczyna w nowym czacie i paruje ten host z tym urządzeniem przez SSH, bez zmiany jego instalacji ani opublikowanych usług.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agent od razu zaczyna w nowym czacie, wykonuje całą konfigurację przez SSH i paruje urządzenie z tym. Pyta tylko przed użyciem sudo lub otwarciem portu."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16410,10 +16434,8 @@
     "T3 Code and OmaBridge": "T3 Code и OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Для компьютера без Omarchy, на котором вы программируете локально.",
     "Use an SSH host, alias or user@host.": "Укажите SSH-хост, псевдоним или user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Откроется новый чат с уже введёнными инструкциями по настройке. Проверьте их и отправьте, когда будете готовы. Агент работает через SSH и связывает устройство с этим с помощью одноразового приглашения, которое никогда не появляется в чате.",
     "Let this device manage it": "Разрешить этому устройству управлять им",
     "Also let it reach this device's SSH": "Также разрешить ему доступ к SSH этого устройства",
-    "Open chat": "Открыть чат",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Настройте другое устройство (сервер, другой компьютер) и свяжите его с этим под руководством ИИ в новом чате.",
     "Set up a new host with your AI": "Настроить новый хост с помощью ИИ",
     "Set up a new host…": "Настроить новый хост…",
@@ -16800,7 +16822,12 @@
     "The T3 server is not running or did not become ready.": "Сервер T3 не запущен или не перешёл в состояние готовности.",
     "The host answered with a different T3 environment.": "Компьютер ответил из другой среды T3.",
     "The saved connections could not be unlocked.": "Не удалось разблокировать сохранённые подключения.",
-    "The connection to T3 was interrupted.": "Подключение к T3 было прервано."
+    "The connection to T3 was interrupted.": "Подключение к T3 было прервано.",
+    "Connection assistants": "Помощники подключения",
+    "Connect existing…": "Подключить существующее…",
+    "Start": "Начать",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Агент сразу начинает работу в новом чате и связывает этот хост с этим устройством по SSH, не меняя его установку и опубликованные службы.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Агент сразу начинает работу в новом чате, выполняет всю настройку по SSH и связывает устройство с этим. Спрашивает только перед использованием sudo или открытием порта."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18277,10 +18304,8 @@
     "T3 Code and OmaBridge": "T3 Code і OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Для комп'ютера без Omarchy, на якому ви програмуєте локально.",
     "Use an SSH host, alias or user@host.": "Вкажіть SSH-хост, псевдонім або user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Відкриється новий чат із уже введеними інструкціями з налаштування. Перегляньте їх і надішліть, коли будете готові. Агент працює через SSH і з'єднує пристрій із цим за допомогою одноразового запрошення, яке ніколи не з'являється в чаті.",
     "Let this device manage it": "Дозволити цьому пристрою керувати ним",
     "Also let it reach this device's SSH": "Також дозволити йому доступ до SSH цього пристрою",
-    "Open chat": "Відкрити чат",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Налаштуйте інший пристрій (сервер, інший комп'ютер) і з'єднайте його з цим під керівництвом ШІ в новому чаті.",
     "Set up a new host with your AI": "Налаштувати новий хост за допомогою ШІ",
     "Set up a new host…": "Налаштувати новий хост…",
@@ -18667,7 +18692,12 @@
     "The T3 server is not running or did not become ready.": "Сервер T3 не працює або не став готовим.",
     "The host answered with a different T3 environment.": "Комп’ютер відповів з іншого середовища T3.",
     "The saved connections could not be unlocked.": "Не вдалося розблокувати збережені підключення.",
-    "The connection to T3 was interrupted.": "Підключення до T3 було перервано."
+    "The connection to T3 was interrupted.": "Підключення до T3 було перервано.",
+    "Connection assistants": "Помічники підключення",
+    "Connect existing…": "Підключити наявний пристрій…",
+    "Start": "Почати",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Агент одразу починає роботу в новому чаті й поєднує цей хост із цим пристроєм через SSH, не змінюючи його встановлення та опубліковані служби.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Агент одразу починає роботу в новому чаті, виконує все налаштування через SSH і поєднує пристрій із цим. Питає лише перед використанням sudo або відкриттям порту."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20144,10 +20174,8 @@
     "T3 Code and OmaBridge": "T3 Code と OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Omarchy のないデスクトップでローカルにコーディングする場合。",
     "Use an SSH host, alias or user@host.": "SSH ホスト、エイリアス、または user@host を指定します。",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "セットアップ手順が入力された状態で新しいチャットが開きます。内容を確認し、準備ができたら送信してください。エージェントは SSH 経由で作業し、チャットに表示されることのない一回限りの招待を使ってそのデバイスをこのデバイスとペアリングします。",
     "Let this device manage it": "このデバイスで管理する",
     "Also let it reach this device's SSH": "このデバイスの SSH へのアクセスも許可する",
-    "Open chat": "チャットを開く",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "別のデバイス（サーバーや別のデスクトップ）をセットアップし、このデバイスとペアリングします。新しいチャットで AI がガイドします。",
     "Set up a new host with your AI": "AI で新しいホストをセットアップ",
     "Set up a new host…": "新しいホストをセットアップ…",
@@ -20534,7 +20562,12 @@
     "The T3 server is not running or did not become ready.": "T3 サーバーが起動していないか、準備が完了していません。",
     "The host answered with a different T3 environment.": "ホストが別の T3 環境で応答しました。",
     "The saved connections could not be unlocked.": "保存済みの接続をロック解除できませんでした。",
-    "The connection to T3 was interrupted.": "T3 への接続が中断されました。"
+    "The connection to T3 was interrupted.": "T3 への接続が中断されました。",
+    "Connection assistants": "接続アシスタント",
+    "Connect existing…": "既存のデバイスに接続…",
+    "Start": "開始",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "エージェントが新しいチャットですぐに開始し、SSH 経由でそのホストをこのデバイスとペアリングします。インストールや公開中のサービスは変更しません。",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "エージェントが新しいチャットですぐに開始し、SSH 経由でセットアップをすべて行い、デバイスをこのデバイスとペアリングします。sudo の使用やポートを開く前にだけ確認します。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22011,10 +22044,8 @@
     "T3 Code and OmaBridge": "T3 Code 및 OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Omarchy 없이 로컬에서 코딩하는 데스크톱용.",
     "Use an SSH host, alias or user@host.": "SSH 호스트, 별칭 또는 user@host를 사용하세요.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "설정 안내가 입력된 새 채팅이 열립니다. 내용을 검토한 후 준비되면 보내세요. 에이전트는 SSH로 작업하며, 채팅에 절대 표시되지 않는 일회용 초대를 통해 해당 기기를 이 기기와 페어링합니다.",
     "Let this device manage it": "이 기기에서 관리하도록 허용",
     "Also let it reach this device's SSH": "이 기기의 SSH에도 접근하도록 허용",
-    "Open chat": "채팅 열기",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "다른 기기(서버, 다른 데스크톱)를 설정하고 이 기기와 페어링하세요. 새 채팅에서 AI가 안내합니다.",
     "Set up a new host with your AI": "AI로 새 호스트 설정",
     "Set up a new host…": "새 호스트 설정…",
@@ -22401,7 +22432,12 @@
     "The T3 server is not running or did not become ready.": "T3 서버가 실행 중이 아니거나 준비되지 않았습니다.",
     "The host answered with a different T3 environment.": "호스트가 다른 T3 환경으로 응답했습니다.",
     "The saved connections could not be unlocked.": "저장된 연결의 잠금을 해제할 수 없습니다.",
-    "The connection to T3 was interrupted.": "T3 연결이 중단되었습니다."
+    "The connection to T3 was interrupted.": "T3 연결이 중단되었습니다.",
+    "Connection assistants": "연결 도우미",
+    "Connect existing…": "기존 장치 연결…",
+    "Start": "시작",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "에이전트가 새 채팅에서 바로 시작해 SSH로 그 호스트를 이 기기와 페어링합니다. 설치나 게시된 서비스는 바꾸지 않습니다.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "에이전트가 새 채팅에서 바로 시작해 SSH로 설정을 모두 마치고 기기를 이 기기와 페어링합니다. sudo를 쓰거나 포트를 열기 전에만 묻습니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23878,10 +23914,8 @@
     "T3 Code and OmaBridge": "T3 Code 和 OmaBridge",
     "For a desktop without Omarchy where you code locally.": "适用于未安装 Omarchy、在本地编程的桌面电脑。",
     "Use an SSH host, alias or user@host.": "使用 SSH 主机、别名或 user@host。",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "将打开一个新聊天，并已填入设置说明。检查后准备好即可发送。代理通过 SSH 工作，并使用一次性邀请将该设备与本设备配对，该邀请绝不会出现在聊天中。",
     "Let this device manage it": "允许本设备管理它",
     "Also let it reach this device's SSH": "同时允许它访问本设备的 SSH",
-    "Open chat": "打开聊天",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "设置另一台设备（服务器或另一台桌面电脑）并将其与本设备配对，由 AI 在新聊天中引导完成。",
     "Set up a new host with your AI": "用 AI 设置新主机",
     "Set up a new host…": "设置新主机…",
@@ -24268,7 +24302,12 @@
     "The T3 server is not running or did not become ready.": "T3 服务器未运行或尚未就绪。",
     "The host answered with a different T3 environment.": "主机响应的是另一个 T3 环境。",
     "The saved connections could not be unlocked.": "无法解锁已保存的连接。",
-    "The connection to T3 was interrupted.": "与 T3 的连接已中断。"
+    "The connection to T3 was interrupted.": "与 T3 的连接已中断。",
+    "Connection assistants": "连接助手",
+    "Connect existing…": "连接现有设备…",
+    "Start": "开始",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "代理会立即在新聊天中开始，通过 SSH 将该主机与本设备配对，不更改其安装或已发布的服务。",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "代理会立即在新聊天中开始，通过 SSH 完成全部设置并将设备与本设备配对。仅在使用 sudo 或打开端口前询问你。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25745,10 +25784,8 @@
     "T3 Code and OmaBridge": "T3 Code وOmaBridge",
     "For a desktop without Omarchy where you code locally.": "لجهاز سطح مكتب بدون Omarchy تبرمج عليه محليًا.",
     "Use an SSH host, alias or user@host.": "استخدم مضيف SSH أو اسمًا مستعارًا أو user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "تُفتح دردشة جديدة وقد كُتبت فيها تعليمات الإعداد. راجعها وأرسلها عندما تكون جاهزًا. يعمل الوكيل عبر SSH ويقرن الجهاز بهذا الجهاز من خلال دعوة لمرة واحدة لا تظهر أبدًا في الدردشة.",
     "Let this device manage it": "السماح لهذا الجهاز بإدارته",
     "Also let it reach this device's SSH": "السماح له أيضًا بالوصول إلى SSH على هذا الجهاز",
-    "Open chat": "فتح الدردشة",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "أعدّ جهازًا آخر (خادمًا أو جهاز سطح مكتب آخر) واقرنه بهذا الجهاز، بإرشاد الذكاء الاصطناعي في دردشة جديدة.",
     "Set up a new host with your AI": "إعداد مضيف جديد بمساعدة الذكاء الاصطناعي",
     "Set up a new host…": "إعداد مضيف جديد…",
@@ -26135,7 +26172,12 @@
     "The T3 server is not running or did not become ready.": "خادم T3 لا يعمل أو لم يصبح جاهزًا.",
     "The host answered with a different T3 environment.": "استجاب الجهاز ببيئة T3 مختلفة.",
     "The saved connections could not be unlocked.": "تعذر فتح الاتصالات المحفوظة.",
-    "The connection to T3 was interrupted.": "انقطع الاتصال بخادم T3."
+    "The connection to T3 was interrupted.": "انقطع الاتصال بخادم T3.",
+    "Connection assistants": "مساعدو الاتصال",
+    "Connect existing…": "توصيل جهاز موجود…",
+    "Start": "بدء",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "يبدأ الوكيل فورًا في محادثة جديدة ويقرن ذلك المضيف بهذا الجهاز عبر SSH دون تغيير تثبيته أو خدماته المنشورة.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "يبدأ الوكيل فورًا في محادثة جديدة، وينجز الإعداد كاملًا عبر SSH ويقرن الجهاز بهذا الجهاز. لا يسألك إلا قبل استخدام sudo أو فتح منفذ."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27612,10 +27654,8 @@
     "T3 Code and OmaBridge": "T3 Code ve OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Yerel olarak kod yazdığınız, Omarchy olmayan bir masaüstü için.",
     "Use an SSH host, alias or user@host.": "Bir SSH ana bilgisayarı, takma ad veya user@host kullanın.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Kurulum talimatları yazılmış olarak yeni bir sohbet açılır. Talimatları gözden geçirin ve hazır olduğunuzda gönderin. Aracı SSH üzerinden çalışır ve cihazı, sohbette asla görünmeyen tek kullanımlık bir davetle bu cihazla eşleştirir.",
     "Let this device manage it": "Bu cihazın onu yönetmesine izin ver",
     "Also let it reach this device's SSH": "Bu cihazın SSH'ına erişmesine de izin ver",
-    "Open chat": "Sohbeti aç",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Başka bir cihazı (bir sunucu, başka bir masaüstü) kurun ve yeni bir sohbette yapay zekânızın rehberliğinde bu cihazla eşleştirin.",
     "Set up a new host with your AI": "Yapay zekânla yeni bir ana bilgisayar kur",
     "Set up a new host…": "Yeni ana bilgisayar kur…",
@@ -28002,7 +28042,12 @@
     "The T3 server is not running or did not become ready.": "T3 sunucusu çalışmıyor veya hazır duruma gelmedi.",
     "The host answered with a different T3 environment.": "Bilgisayar farklı bir T3 ortamıyla yanıt verdi.",
     "The saved connections could not be unlocked.": "Kaydedilen bağlantıların kilidi açılamadı.",
-    "The connection to T3 was interrupted.": "T3 bağlantısı kesildi."
+    "The connection to T3 was interrupted.": "T3 bağlantısı kesildi.",
+    "Connection assistants": "Bağlantı yardımcıları",
+    "Connect existing…": "Mevcut cihazı bağla…",
+    "Start": "Başlat",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Ajan hemen yeni bir sohbette başlar ve o ana makineyi SSH üzerinden bu cihazla eşler; kurulumunu ve yayımlanan hizmetlerini değiştirmez.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Ajan hemen yeni bir sohbette başlar, tüm kurulumu SSH üzerinden yapar ve cihazı bununla eşler. Yalnızca sudo kullanmadan veya bir port açmadan önce sorar."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29479,10 +29524,8 @@
     "T3 Code and OmaBridge": "T3 Code och OmaBridge",
     "For a desktop without Omarchy where you code locally.": "För en dator utan Omarchy där du kodar lokalt.",
     "Use an SSH host, alias or user@host.": "Ange en SSH-värd, ett alias eller user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "En ny chatt öppnas med installationsinstruktionerna redan inskrivna. Granska dem och skicka när du är redo. Agenten arbetar via SSH och parkopplar enheten med den här via en engångsinbjudan som aldrig visas i chatten.",
     "Let this device manage it": "Låt den här enheten hantera den",
     "Also let it reach this device's SSH": "Låt den även nå den här enhetens SSH",
-    "Open chat": "Öppna chatt",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Konfigurera en annan enhet (en server, en annan dator) och parkoppla den med den här, med hjälp av din AI i en ny chatt.",
     "Set up a new host with your AI": "Konfigurera en ny värd med din AI",
     "Set up a new host…": "Konfigurera ny värd…",
@@ -29869,7 +29912,12 @@
     "The T3 server is not running or did not become ready.": "T3-servern körs inte eller blev inte redo.",
     "The host answered with a different T3 environment.": "Datorn svarade med en annan T3-miljö.",
     "The saved connections could not be unlocked.": "De sparade anslutningarna kunde inte låsas upp.",
-    "The connection to T3 was interrupted.": "Anslutningen till T3 avbröts."
+    "The connection to T3 was interrupted.": "Anslutningen till T3 avbröts.",
+    "Connection assistants": "Anslutningsassistenter",
+    "Connect existing…": "Anslut befintlig…",
+    "Start": "Starta",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agenten startar direkt i en ny chatt och parkopplar värden med den här enheten över SSH, utan att ändra dess installation eller publicerade tjänster.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten startar direkt i en ny chatt, gör hela installationen över SSH och parkopplar enheten med den här. Den frågar bara innan den använder sudo eller öppnar en port."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31346,10 +31394,8 @@
     "T3 Code and OmaBridge": "T3 Code og OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Til en computer uden Omarchy, hvor du koder lokalt.",
     "Use an SSH host, alias or user@host.": "Brug en SSH-vært, et alias eller user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "En ny chat åbnes med opsætningsinstruktionerne allerede skrevet ind. Gennemse dem, og send, når du er klar. Agenten arbejder over SSH og parrer enheden med denne via en engangsinvitation, der aldrig vises i chatten.",
     "Let this device manage it": "Lad denne enhed administrere den",
     "Also let it reach this device's SSH": "Lad den også nå denne enheds SSH",
-    "Open chat": "Åbn chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Konfigurer en anden enhed (en server, en anden computer), og par den med denne, guidet af din AI i en ny chat.",
     "Set up a new host with your AI": "Opsæt en ny vært med din AI",
     "Set up a new host…": "Opsæt ny vært…",
@@ -31736,7 +31782,12 @@
     "The T3 server is not running or did not become ready.": "T3-serveren kører ikke eller blev ikke klar.",
     "The host answered with a different T3 environment.": "Computeren svarede med et andet T3-miljø.",
     "The saved connections could not be unlocked.": "De gemte forbindelser kunne ikke låses op.",
-    "The connection to T3 was interrupted.": "Forbindelsen til T3 blev afbrudt."
+    "The connection to T3 was interrupted.": "Forbindelsen til T3 blev afbrudt.",
+    "Connection assistants": "Forbindelsesassistenter",
+    "Connect existing…": "Tilslut eksisterende…",
+    "Start": "Start",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agenten starter med det samme i en ny chat og parrer værten med denne enhed over SSH uden at ændre dens installation eller publicerede tjenester.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten starter med det samme i en ny chat, klarer hele opsætningen over SSH og parrer enheden med denne. Den spørger kun, før den bruger sudo eller åbner en port."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33213,10 +33264,8 @@
     "T3 Code and OmaBridge": "T3 Code og OmaBridge",
     "For a desktop without Omarchy where you code locally.": "For en datamaskin uten Omarchy der du koder lokalt.",
     "Use an SSH host, alias or user@host.": "Bruk en SSH-vert, et alias eller user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "En ny chat åpnes med oppsettinstruksjonene allerede skrevet inn. Se gjennom dem og send når du er klar. Agenten jobber over SSH og parer enheten med denne via en engangsinvitasjon som aldri vises i chatten.",
     "Let this device manage it": "La denne enheten administrere den",
     "Also let it reach this device's SSH": "La den også nå SSH på denne enheten",
-    "Open chat": "Åpne chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Sett opp en annen enhet (en server, en annen datamaskin) og par den med denne, veiledet av din AI i en ny chat.",
     "Set up a new host with your AI": "Sett opp en ny vert med din AI",
     "Set up a new host…": "Sett opp ny vert…",
@@ -33603,7 +33652,12 @@
     "The T3 server is not running or did not become ready.": "T3-serveren kjører ikke eller ble ikke klar.",
     "The host answered with a different T3 environment.": "Datamaskinen svarte med et annet T3-miljø.",
     "The saved connections could not be unlocked.": "De lagrede tilkoblingene kunne ikke låses opp.",
-    "The connection to T3 was interrupted.": "Tilkoblingen til T3 ble avbrutt."
+    "The connection to T3 was interrupted.": "Tilkoblingen til T3 ble avbrutt.",
+    "Connection assistants": "Tilkoblingsassistenter",
+    "Connect existing…": "Koble til eksisterende…",
+    "Start": "Start",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agenten starter med en gang i en ny chat og parer verten med denne enheten over SSH, uten å endre installasjonen eller de publiserte tjenestene.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten starter med en gang i en ny chat, gjør hele oppsettet over SSH og parer enheten med denne. Den spør bare før den bruker sudo eller åpner en port."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35080,10 +35134,8 @@
     "T3 Code and OmaBridge": "T3 Code ja OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Tietokoneelle, jolla koodaat paikallisesti ja jossa Omarchy ei ole käytössä.",
     "Use an SSH host, alias or user@host.": "Anna SSH:n isäntänimi, alias tai user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Uusi keskustelu avautuu, ja asennusohjeet on jo kirjoitettu valmiiksi. Tarkista ne ja lähetä, kun olet valmis. Agentti toimii SSH:n kautta ja muodostaa laiteparin tämän laitteen kanssa kertakäyttöisellä kutsulla, joka ei koskaan näy keskustelussa.",
     "Let this device manage it": "Anna tämän laitteen hallita sitä",
     "Also let it reach this device's SSH": "Salli sen myös käyttää tämän laitteen SSH:ta",
-    "Open chat": "Avaa keskustelu",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Määritä toinen laite (palvelin tai toinen tietokone) ja muodosta laitepari tämän kanssa tekoälyn opastamana uudessa keskustelussa.",
     "Set up a new host with your AI": "Määritä uusi isäntä tekoälysi avulla",
     "Set up a new host…": "Määritä uusi isäntä…",
@@ -35470,7 +35522,12 @@
     "The T3 server is not running or did not become ready.": "T3-palvelin ei ole käynnissä tai ei tullut valmiiksi.",
     "The host answered with a different T3 environment.": "Tietokone vastasi eri T3-ympäristöllä.",
     "The saved connections could not be unlocked.": "Tallennettujen yhteyksien lukitusta ei voitu avata.",
-    "The connection to T3 was interrupted.": "Yhteys T3-palvelimeen katkesi."
+    "The connection to T3 was interrupted.": "Yhteys T3-palvelimeen katkesi.",
+    "Connection assistants": "Yhteysavustajat",
+    "Connect existing…": "Yhdistä olemassa oleva…",
+    "Start": "Aloita",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agentti aloittaa heti uudessa keskustelussa ja yhdistää isännän tähän laitteeseen SSH:n kautta muuttamatta sen asennusta tai julkaistuja palveluita.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agentti aloittaa heti uudessa keskustelussa, tekee koko asennuksen SSH:n kautta ja yhdistää laitteen tähän. Se kysyy vain ennen sudon käyttöä tai portin avaamista."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36947,10 +37004,8 @@
     "T3 Code and OmaBridge": "T3 Code a OmaBridge",
     "For a desktop without Omarchy where you code locally.": "Pro počítač bez Omarchy, na kterém programujete lokálně.",
     "Use an SSH host, alias or user@host.": "Použijte hostitele SSH, alias nebo user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "Otevře se nový chat s již zadanými pokyny k nastavení. Zkontrolujte je a odešlete, až budete připraveni. Agent pracuje přes SSH a spáruje zařízení s tímto pomocí jednorázové pozvánky, která se v chatu nikdy nezobrazí.",
     "Let this device manage it": "Povolit tomuto zařízení jej spravovat",
     "Also let it reach this device's SSH": "Povolit mu také přístup k SSH tohoto zařízení",
-    "Open chat": "Otevřít chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Nastavte jiné zařízení (server, jiný počítač) a spárujte ho s tímto za pomoci AI v novém chatu.",
     "Set up a new host with your AI": "Nastavit nového hostitele pomocí AI",
     "Set up a new host…": "Nastavit nového hostitele…",
@@ -37337,6 +37392,11 @@
     "The T3 server is not running or did not become ready.": "Server T3 není spuštěný nebo nebyl připraven.",
     "The host answered with a different T3 environment.": "Počítač odpověděl z jiného prostředí T3.",
     "The saved connections could not be unlocked.": "Nepodařilo se odemknout uložená připojení.",
-    "The connection to T3 was interrupted.": "Připojení k T3 bylo přerušeno."
+    "The connection to T3 was interrupted.": "Připojení k T3 bylo přerušeno.",
+    "Connection assistants": "Průvodci připojením",
+    "Connect existing…": "Připojit existující…",
+    "Start": "Spustit",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agent hned začne v novém chatu a spáruje ten hostitel s tímto zařízením přes SSH, aniž by měnil jeho instalaci nebo publikované služby.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agent hned začne v novém chatu, provede celé nastavení přes SSH a spáruje zařízení s tímto. Zeptá se jen před použitím sudo nebo otevřením portu."
   }
 }

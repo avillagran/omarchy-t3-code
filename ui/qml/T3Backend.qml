@@ -161,17 +161,18 @@ Singleton {
     var id=uuid();omabridgeInstallRequest=id
     send(Object.assign({},values || {},{op:op,requestId:id}));return id
   }
-  // A new chat with a prompt typed in but not sent, for the user to review.
+  // A new chat with a prompt typed in, for the user to review, or sent at once.
   signal promptedChatStarted()
   property var promptPrefill:null
-  function startPromptedChat(environment,projectId,text){
+  function startPromptedChat(environment,projectId,text,send){
     if(managementBusy || managementRequest || !String(text || "").trim())return false
-    promptPrefill={environment:environment,projectId:projectId,text:String(text),key:""}
+    promptPrefill={environment:environment,projectId:projectId,text:String(text),key:"",send:send===true}
     openProject(environment,projectId,true);promptedChatStarted();return true
   }
   function applyPromptPrefill(){
     var p=promptPrefill;if(!p || !p.key || p.key!==selectedKey || draft.loading)return
     promptPrefill=null;patchDraft(p.key,{text:p.text})
+    if(p.send)Qt.callLater(function(){if(root.selectedKey===p.key&&root.draft.text===p.text)root.submit(false)})
   }
   onProjectOpened:function(environment,projectId,error){
     var p=promptPrefill;if(!p || p.key || p.environment!==environment || p.projectId!==projectId)return
