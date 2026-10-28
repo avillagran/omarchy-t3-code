@@ -29,6 +29,7 @@ if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1; then rustup de
 # ot3 is a client of T3 Code nightly: install it if absent, then open it once so it
 # writes its profile and the ~/.t3/bin/t3 CLI that ot3 drives.
 t3_package=t3code-nightly-bin
+t3_bootstrapped=0
 if [[ ! -x "$HOME/.t3/bin/t3" ]] && ! command -v t3code-nightly >/dev/null && ! command -v t3code >/dev/null; then
   printf 'Installing T3 Code nightly (%s).\n' "$t3_package"
   if pacman -Si "$t3_package" >/dev/null 2>&1; then sudo pacman -S --needed --noconfirm "$t3_package"
@@ -41,9 +42,21 @@ if [[ ! -d "$t3_base/userdata" || ! -x "$HOME/.t3/bin/t3" ]]; then
   [[ -n ${WAYLAND_DISPLAY:-} ]] || fail 'Open T3 Code once from your desktop session, then run this installer again.'
   t3_app=$(command -v t3code-nightly || command -v t3code) || fail 'T3 Code is not on PATH; open it once, then run this installer again.'
   printf '%s\n' 'Opening T3 Code once to create its profile.'
-  setsid -f "$t3_app" >/dev/null 2>&1 </dev/null
-  for _ in {1..90}; do [[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] && break; sleep 1; done
+  t3_bootstrapped=1
+  # Its own unit, so this bootstrap window closes again afterwards: the backend then
+  # runs as T3's native service and does not depend on a T3 window staying open.
+  t3_unit=''
+  if systemctl --user show-environment >/dev/null 2>&1 && systemd-run --user --quiet --collect --unit=ot3-t3-first-open -- "$t3_app" >/dev/null 2>&1; then
+    t3_unit=ot3-t3-first-open
+  else
+    setsid -f "$t3_app" >/dev/null 2>&1 </dev/null
+  fi
+  for _ in {1..90}; do [[ -f "$t3_base/userdata/server-runtime.json" && -x "$HOME/.t3/bin/t3" ]] && break; sleep 1; done
   [[ -d "$t3_base/userdata" && -x "$HOME/.t3/bin/t3" ]] || fail 'T3 Code did not finish its first start; open it once, then run this installer again.'
+  if [[ -n $t3_unit ]]; then
+    systemctl --user stop "$t3_unit" >/dev/null 2>&1 || true
+    for _ in {1..20}; do [[ -f "$t3_base/userdata/server-runtime.json" ]] || break; sleep 0.5; done
+  fi
 fi
 
 release_ref=main
@@ -166,6 +179,12 @@ if [[ ${OT3_BAR_WIDGET:-1} != 0 ]]; then
   omarchy-shell shell rescanPlugins >/dev/null
   omarchy plugin enable "$plugin_id"
   omarchy restart shell
+fi
+# The T3 window is optional (ot3 uses T3's service); offer it after a first-time setup.
+# stdin is the script under `curl | bash`, so ask on the terminal, and only when there is one.
+if [[ $t3_bootstrapped == 1 ]] && { : </dev/tty; } 2>/dev/null; then
+  read -r -p 'Open T3 Code now? [y/N] ' answer </dev/tty || answer=''
+  if [[ $answer == [yYsS]* ]]; then setsid -f "$t3_app" >/dev/null 2>&1 </dev/null; fi
 fi
 printf '%s\n' 'Installed. Press Super+Shift+A, open "Omarchy T3 Code" from the app launcher or click T3 in the bar. Local/remotes and model favorites are inherited from T3.'
 exit
