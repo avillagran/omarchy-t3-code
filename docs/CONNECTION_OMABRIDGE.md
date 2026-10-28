@@ -76,6 +76,8 @@ Provider sign-ins belong to each host: a host just connected starts signed out, 
 
 No credentials are copied between hosts. *Not now* hides the card until another provider signs out there.
 
+![Sign in needed card for a host whose Codex and Claude are signed out](images/provider-sign-in-notice.png)
+
 ## Bar indicator
 
 *Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows the same OmaBridge page as Preferences. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
