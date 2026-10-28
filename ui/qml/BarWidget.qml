@@ -46,8 +46,17 @@ BarWidget {
     var w = button.QsWindow.window
     if (!w || !w.contentItem) return ""
     var p = button.mapToItem(w.contentItem, 0, 0)
-    return JSON.stringify({ screen: w.screen ? w.screen.name : "", position: root.bar && root.bar.position ? root.bar.position : "top",
-      barSize: root.barSize || Style.bar.statusSlot, windowWidth: w.width, windowHeight: w.height, x: p.x, y: p.y, width: button.width, height: button.height })
+    var position = root.bar && root.bar.position ? root.bar.position : "top"
+    var barSize = root.barSize || Style.bar.statusSlot
+    // Newer Omarchy bars span the whole screen (for dragging) and reserve only their
+    // strip through an explicit exclusive zone: report that strip, not the window.
+    var vertical = position === "left" || position === "right"
+    var full = vertical ? w.width : w.height
+    var strip = w.exclusionMode === ExclusionMode.Normal && w.exclusiveZone > 0 ? Math.min(full, w.exclusiveZone) : full
+    var x = position === "right" ? p.x - (full - strip) : p.x
+    var y = position === "bottom" ? p.y - (full - strip) : p.y
+    return JSON.stringify({ screen: w.screen ? w.screen.name : "", position: position, barSize: barSize,
+      windowWidth: vertical ? strip : w.width, windowHeight: vertical ? w.height : strip, x: x, y: y, width: button.width, height: button.height })
   }
   function anchored(command) { var a = anchor(); return a ? [command, a] : [command] }
   // Omarchy's summon (Super+Shift+A through the shell) and other plugins use these.

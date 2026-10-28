@@ -38,6 +38,12 @@ fn t3_is_authoritative_for_origin_credentials_disabled_routes_and_reload() {
     assert!(omarchy_t3_client::environments().unwrap().is_empty());
     fs::write(data.join("desktop-settings.json"),r#"{"localEnvironmentEnabled":true}"#).unwrap();
     assert_eq!(omarchy_t3_client::environments().unwrap().len(),1);
+    // A recreated T3 profile has a newer signing key: an unexpired token from before it is reissued.
+    fs::File::options().write(true).open(&token).unwrap().set_modified(std::time::SystemTime::now()-std::time::Duration::from_secs(60)).unwrap();
+    fs::create_dir_all(data.join("secrets")).unwrap();fs::write(data.join("secrets/server-signing-key.bin"),[0u8;32]).unwrap();
+    fs::write(data.join("server-runtime.json"),json!({"origin":origin,"pid":std::process::id(),"startedAt":"recreated"}).to_string()).unwrap();
+    let renewed=full.replace("synthetic-signature","renewed-signature");std::env::set_var("OT3_TEST_AUTH_TOKEN",&renewed);
+    omarchy_t3_client::environments().unwrap();assert_eq!(fs::read_to_string(&token).unwrap().trim(),renewed);
     fs::remove_dir_all(root).unwrap();
 }
 #[test]
