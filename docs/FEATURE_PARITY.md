@@ -51,9 +51,9 @@ Initialize repository.
 
 Still different by design: the terminal opens in an Omarchy terminal instead
 of an embedded drawer; the theme follows Omarchy instead of T3's theme editor;
-T3 Connect's relay client is installed through the `t3 connect` CLI flow ot3
+T3 Connect's relay client is installed through the `t3 connect` CLI flow O3
 already drives; and ChatGPT profile import (moving Codex credentials between
-environments) is left to the T3 desktop app, since ot3 never handles provider
+environments) is left to the T3 desktop app, since O3 never handles provider
 tokens. Workflows show their script (orchestration.getWorkflowScript) and can be
 stopped (orchestration.stopWorkflow) from the subagent bar.
 
@@ -198,7 +198,7 @@ Native sources above are relative to `apps/web/src/components/` in the nightly
 checkout. Plugin references: `T3Panel.qml`, `T3MessageImage.qml`,
 `T3CopyButton.qml`, `src/clipboard.rs`, and `tools/test-copy.cjs`.
 
-## ot3 interaction update
+## O3 interaction update
 
 - Existing-folder projects now use an embedded environment → source → folder
   picker based on native `filesystem.browse` and `filesystem.getMetadata`.
@@ -210,7 +210,7 @@ checkout. Plugin references: `T3Panel.qml`, `T3MessageImage.qml`,
   no longer unbinds or intercepts Omarchy’s Super+Enter terminal shortcut.
 - Window control cycles panel → floating → tiled → panel, preserving the same
   workspace/editor/draft/subscription. The close action is the rightmost header
-  control. Managed layout is scoped to ot3’s verified PID/title/address and
+  control. Managed layout is scoped to O3’s verified PID/title/address and
   compares current floating state before dispatching, so repeated application
   cannot toggle an already-correct window. Saved mode migrates old detached state.
 
@@ -292,7 +292,7 @@ providers are marked as requiring setup. Creation uses `projects.createNew`;
 cloning uses `projectClone.start` and requires clone tracking support. Native
 provider authentication and clone transport settings stay on the T3 server.
 The folder picker filters names immediately, debounces directory changes,
-and supports Enter and arrow-key navigation entirely inside the ot3 window.
+and supports Enter and arrow-key navigation entirely inside the O3 window.
 Acknowledged creation receipts are durable; an unacknowledged non-idempotent
 creation is not blindly replayed.
 

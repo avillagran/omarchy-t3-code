@@ -42,9 +42,9 @@ management; revoking other clients therefore keeps this client's grant. SSH
 bootstrap likewise requests the native administrative grant through the remote
 CLI, under the subject `omarchy-t3-code:<device id>` (a hash of the machine id
 and user, falling back to the generic subject on older T3 releases). Every SSH
-(re)connection issues a session. Once the new one works, ot3 revokes this
+(re)connection issues a session. Once the new one works, O3 revokes this
 device's earlier sessions on that host that are disconnected and idle for over
-two minutes. It also revokes sessions from older ot3 releases (label
+two minutes. It also revokes sessions from older O3 releases (label
 `omarchy-t3-code`, generic subject) idle for over an hour. Live sessions, other
 devices and other clients are left alone. Bearer/relay pairing grants are never escalated: their actual scopes gate
 the controls. SSH onboarding and access requests run outside the send/draft queue.

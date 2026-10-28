@@ -4,15 +4,15 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// The bar side of Omarchy T3 Code. The app itself runs in its own process
-// (bin/ot3, app/shell.qml); this widget only shows the status the app
-// publishes and asks bin/ot3 to show or hide ("minimize to the bar") its
+// The bar side of O3 Code. The app itself runs in its own process
+// (bin/o3, app/shell.qml); this widget only shows the status the app
+// publishes and asks bin/o3 to show or hide ("minimize to the bar") its
 // window. Nothing here talks to T3, so a stuck bar never blocks the app and a
 // busy app never slows the bar.
 BarWidget {
   id: root
   moduleName: "io.github.avillagran.omarchy-t3-code"
-  readonly property string launcher: Qt.resolvedUrl("../../bin/ot3").toString().replace(/^file:\/\//, "")
+  readonly property string launcher: Qt.resolvedUrl("../../bin/o3").toString().replace(/^file:\/\//, "")
   readonly property string statusPath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/omarchy-t3-code/status.json"
   property var status: ({})
   property real now: Date.now()
@@ -102,7 +102,7 @@ BarWidget {
     // The app writes its tooltip already translated; the bar loads no translations.
     tooltipText: root.running ? (root.status.tooltip || "T3 Code") : "T3 Code"
     iconComponent: Component { Item {} }
-    T3StatusBadges { id: badges; anchors.centerIn: parent; counts: root.counts; stale: !root.running || root.status.stale === true; indicatorStyle: root.status.indicatorStyle || "orbit"; motion: root.status.animationsEnabled !== false; width: implicitWidth; height: Style.bar.statusSlot; scale: root.vertical ? Math.min(1, (root.barSize - Style.space(4)) / implicitWidth) : 1 }
+    T3StatusBadges { id: badges; anchors.centerIn: parent; counts: root.counts; stale: !root.running || root.status.stale === true; indicatorStyle: root.status.indicatorStyle || "orbit"; logoName: root.status.brandGlyph === "omarchy" ? "o3-omarchy-logo" : "o3-logo"; motion: root.status.animationsEnabled !== false; width: implicitWidth; height: Style.bar.statusSlot; scale: root.vertical ? Math.min(1, (root.barSize - Style.space(4)) / implicitWidth) : 1 }
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton) root.togglePanel()
       else if (mouseButton === Qt.MiddleButton) root.run(["call", "refresh"])

@@ -12,7 +12,7 @@ The component is local-only. Reject `environment != "local"` in the Rust dispatc
 
 `main.rs` keeps one asynchronous manager for the IPC worker lifetime and forwards allowlisted, request-correlated events. It rejects remote identities, handles cancel/install approval outside the message mutation queue, and cancels adapter-owned CLI work at EOF/shutdown. The CLI executable and native base directory are resolved by the backend.
 
-`T3Backend.qml` retains request state when preferences close, ignores late replies, clears device prompts at completion, and refreshes access state after account/link mutations. The registered `T3ConnectionCloud.qml` component sits in Connections; all visible strings use the shared catalog. `T3Connections.qml` offers a separate confirmed restart for a saved pending link when ot3 owns the local native service. Link configuration does not itself restart it.
+`T3Backend.qml` retains request state when preferences close, ignores late replies, clears device prompts at completion, and refreshes access state after account/link mutations. The registered `T3ConnectionCloud.qml` component sits in Connections; all visible strings use the shared catalog. `T3Connections.qml` offers a separate confirmed restart for a saved pending link when O3 owns the local native service. Link configuration does not itself restart it.
 
 ### Rust public API
 

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "io.github.avillagran.omarchy-t3-code",
-  "name": "Omarchy T3 Code",
+  "name": "O3 Code",
   "version": "0.2.24",
   "author": "Andr\u00e9s Villagr\u00e1n",
   "license": "MIT",
-  "description": "Native Rust T3 chats, writing, attachments, activity and subscription quotas.",
+  "description": "O3 Code: native Rust T3 chats, writing, attachments, activity and subscription quotas.",
   "kinds": [
     "bar-widget"
   ],
@@ -13,8 +13,8 @@
     "barWidget": "ui/qml/BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "T3 Code",
-    "description": "Work, ready and input badges for the Omarchy T3 Code app; click to show or minimize it.",
+    "displayName": "O3 Code",
+    "description": "Work, ready and input badges for the O3 Code app; click to show or minimize it.",
     "category": "System",
     "defaultSection": "right"
   }

@@ -29,7 +29,7 @@ ColumnLayout {
      Text{Layout.fillWidth:true;text:T3I18n.tr("Connection problem · {host}",{host:card.modelData.name || card.modelData.id});color:Color.popups.text;font.pixelSize:Style.font.body;font.weight:Font.Medium;wrapMode:Text.Wrap;textFormat:Text.PlainText}
     }
     Text{objectName:"connectionReason_"+card.modelData.id;Layout.fillWidth:true;text:Status.reason(card.modelData.state)?T3I18n.tr(Status.reason(card.modelData.state)):T3I18n.error(card.modelData.state);color:Color.popups.text;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
-    Text{Layout.fillWidth:true;text:T3I18n.tr("Check the host, network and access in Connections. ot3 retries automatically.");color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.65);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+    Text{Layout.fillWidth:true;text:T3I18n.tr("Check the host, network and access in Connections. O3 retries automatically.");color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.65);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
     TextEdit{objectName:"connectionCode_"+card.modelData.id;Layout.fillWidth:true;text:card.modelData.state;readOnly:true;selectByMouse:true;color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.65);font.pixelSize:Style.font.caption;wrapMode:TextEdit.Wrap;textFormat:TextEdit.PlainText;Accessible.name:T3I18n.tr("Error code")}
     RowLayout {
      Layout.fillWidth:true;spacing:Style.space(8)

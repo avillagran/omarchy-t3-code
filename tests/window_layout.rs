@@ -8,7 +8,7 @@ fn layout_targets_only_verified_ot3_window_and_repeated_modes_do_not_toggle() {
     let stub = root.join("hyprctl");
     let mark = root.join("calls");
     let clients = root.join("clients");
-    fs::write(&clients,"[{\"pid\":77,\"title\":\"Other window\",\"address\":\"0xaaa\"},{\"pid\":88,\"title\":\"Omarchy T3 Code\",\"address\":\"0xbbb\",\"floating\":false}]").unwrap();
+    fs::write(&clients,"[{\"pid\":77,\"title\":\"Other window\",\"address\":\"0xaaa\"},{\"pid\":88,\"title\":\"O3 Code\",\"address\":\"0xbbb\",\"floating\":false}]").unwrap();
     fs::write(&stub,"#!/bin/sh\nif [ \"$1\" = getoption ]; then echo '{\"option\":\"general:border_size\",\"int\":3}'; elif [ \"$1\" = --batch ]; then printf '%s\\n' \"$2\" >> \"$OT3_LAYOUT_CALLS\"; elif [ \"$1\" = -j ]; then cat \"$OT3_LAYOUT_CLIENTS\"; else printf '%s\\n' \"$2\" >> \"$OT3_LAYOUT_CALLS\"; if grep -q false \"$OT3_LAYOUT_CLIENTS\"; then sed -i 's/false/true/' \"$OT3_LAYOUT_CLIENTS\"; else sed -i 's/true/false/' \"$OT3_LAYOUT_CLIENTS\"; fi; echo ok; fi\n").unwrap();
     fs::set_permissions(&stub, fs::Permissions::from_mode(0o700)).unwrap();
     let old = std::env::var("PATH").unwrap();

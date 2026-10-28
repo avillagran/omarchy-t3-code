@@ -67,7 +67,7 @@ ColumnLayout {
  function pendingDetail(){
   if(!pending)return ""
   if(pending.action==="default")return pending.value==="auto"?T3I18n.tr("Paired devices are tried first, and each must prove it serves the connection. The saved route stays as fallback."):T3I18n.tr("The saved T3 route is used again.")
-  if(pending.action==="share-enabled")return pending.enabled?T3I18n.tr("Paired devices that share T3 Code with this one are added to your connections, for ot3 and T3's desktop app, with T3's own pairing."):T3I18n.tr("Devices already added stay in your connections.")
+  if(pending.action==="share-enabled")return pending.enabled?T3I18n.tr("Paired devices that share T3 Code with this one are added to your connections, for O3 and T3's desktop app, with T3's own pairing."):T3I18n.tr("Devices already added stay in your connections.")
   if(pending.action==="clear")return T3I18n.tr("Paired devices are tried first, and each must prove it serves the connection. The saved route stays as fallback.")
   if(pending.mode==="off")return T3I18n.tr("The saved T3 route is used again.")
   return peerName(pending.peer)+" · "+(pending.service==="ssh"?"SSH":"T3")+" · "+(pending.mode==="only"?T3I18n.tr("Only through OmaBridge"):T3I18n.tr("OmaBridge first, then the saved route"))
@@ -92,7 +92,7 @@ ColumnLayout {
  RowLayout{Layout.fillWidth:true;visible:!!root.value.identity
   ColumnLayout{Layout.fillWidth:true
    Text{Layout.fillWidth:true;text:T3I18n.tr("Share T3 automatically");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-   Text{Layout.fillWidth:true;text:T3I18n.tr("Paired devices that share T3 Code with this one are added to your connections, for ot3 and T3's desktop app, with T3's own pairing.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+   Text{Layout.fillWidth:true;text:T3I18n.tr("Paired devices that share T3 Code with this one are added to your connections, for O3 and T3's desktop app, with T3's own pairing.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   }
   T3Switch{id:shareSwitch;objectName:"omabridgeShare";checked:root.sharingOn;enabled:!root.store.busy;Accessible.name:T3I18n.tr("Share T3 automatically");onToggled:root.proposeSharing(checked)}
  }

@@ -65,7 +65,7 @@ Actions are `upsert` and `remove`. Remove accepts only the original
 `{command,key,when?}` target; reset uses upsert with the original helper's default
 key/condition and current replacement target. Native mutation RPCs are exactly
 `server.upsertKeybinding` / `server.removeKeybinding`. The server owns file parsing,
-merging, atomic persistence, cache updates and change emission; ot3 never writes
+merging, atomic persistence, cache updates and change emission; O3 never writes
 or downloads keybindings.json directly.
 
 Before dispatch, validate fresh read/write permissions and the cached origin and
@@ -106,7 +106,7 @@ uses the representative environment's view/path and actual native editor list.
 It checks fresh `orchestration:operate`, native configured path and availability,
 then calls `shell.openInEditor`; no local xdg fallback for a remote path. Default
 editor selection follows native definition order. Existing Electron browser-local
-favorite-editor selection has not been imported into ot3.
+favorite-editor selection has not been imported into O3.
 
 ## Runtime routing and native updates
 

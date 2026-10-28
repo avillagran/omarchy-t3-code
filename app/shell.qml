@@ -1,10 +1,10 @@
 //@ pragma OmarchyLoadPatch
 //@ pragma AppId io.github.avillagran.omarchy-t3-code
 //@ pragma RespectSystemStyle
-// Omarchy T3 Code as a desktop app, run by bin/ot3 in its own Quickshell
+// O3 Code as a desktop app, run by bin/o3 in its own Quickshell
 // process (never inside the Omarchy shell). The optional bar widget
 // (ui/qml/BarWidget.qml) only shows the status this app publishes and asks
-// bin/ot3 to show or hide the window, so a stuck bar cannot take the app down.
+// bin/o3 to show or hide the window, so a stuck bar cannot take the app down.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -17,7 +17,7 @@ import "ui/js/ConnectionStatus.js" as ConnectionStatus
 
 ShellRoot {
   id: app
-  // No hot reload: an update under a running app waits for `ot3 restart`.
+  // No hot reload: an update under a running app waits for `o3 restart`.
   settings.watchFiles: false
   readonly property var backend: T3Backend
   readonly property var counts: Sidebar.counts(backend.state.threads)
@@ -116,7 +116,7 @@ ShellRoot {
   // treats a status older than 90 s as a stopped app.
   readonly property var statusValue: ({
     running: true, pid: Quickshell.processId, opened: app.opened, counts: app.counts,
-    stale: backend.stale, animationsEnabled: backend.viewState.animationsEnabled !== false, indicatorStyle: backend.viewState.barIndicator || "orbit",
+    stale: backend.stale, animationsEnabled: backend.viewState.animationsEnabled !== false, indicatorStyle: backend.viewState.barIndicator || "orbit", brandGlyph: backend.viewState.brandGlyph || "o",
     tooltip: T3I18n.tr("Working: {working} · Ready: {ready} · Waiting for input: {waiting}", { working: app.counts.working, ready: app.counts.done, waiting: app.counts.waiting }) + ConnectionStatus.failures(backend).map(function(e){return "\n"+(e.name || e.id)+": "+(ConnectionStatus.reason(e.state)?T3I18n.tr(ConnectionStatus.reason(e.state)):T3I18n.error(e.state))+" ("+e.state+")"}).join(""),
     omabridge: app.bridgeIndicator ? bridgeStatus.value : null
   })

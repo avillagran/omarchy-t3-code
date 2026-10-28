@@ -1,6 +1,6 @@
 # OmaBridge connection routes
 
-[OmaBridge](https://github.com/avillagran/omabridge) provides private device-to-device links and ships with ot3. Once two devices are paired, ot3 carries inherited T3 connections over that link first and keeps the network address saved in the T3 catalog as the fallback. You don't need a VPN, an open port or a public endpoint. T3 still owns every credential and authenticates every session. Without the bundled binary, or without a paired identity, nothing changes.
+[OmaBridge](https://github.com/avillagran/omabridge) provides private device-to-device links and ships with O3. Once two devices are paired, O3 carries inherited T3 connections over that link first and keeps the network address saved in the T3 catalog as the fallback. You don't need a VPN, an open port or a public endpoint. T3 still owns every credential and authenticates every session. Without the bundled binary, or without a paired identity, nothing changes.
 
 ## What is routed
 
@@ -10,7 +10,7 @@
 | Pairing link | `t3` (peer's T3 port) | The catalog bearer session is sent to a loopback forward instead of `httpBaseUrl`. |
 | T3 Connect relay | — | Never routed. |
 
-For each attempt, ot3 spawns `omabridge --state-dir <dir> forward --peer <id> --service <s> --listen 127.0.0.1:0`. It reads the forward's readiness line, accepts only a loopback listener, and ties the child to the connection's lifetime with PDEATHSIG.
+For each attempt, O3 spawns `omabridge --state-dir <dir> forward --peer <id> --service <s> --listen 127.0.0.1:0`. It reads the forward's readiness line, accepts only a loopback listener, and ties the child to the connection's lifetime with PDEATHSIG.
 
 ## Choosing the peer
 
@@ -27,7 +27,7 @@ Each environment follows one of three plans:
 
 ## Bundled binary
 
-The installer (and every update, which reruns it) downloads the OmaBridge release pinned in `integrations/omabridge/release` for the device's architecture. `bin/fetch-omabridge` accepts the archive only when its SHA256 matches both the pinned hash and the release's `SHA256SUMS`, checks that it loads on this system (it needs glibc 2.39 or newer), and installs `bin/omabridge` next to `bin/omarchy-t3-client`. An already-current copy is not downloaded again. If any step fails, the installer reports it and continues: ot3 works as before, with saved routes only. To bump OmaBridge, change the version and both hashes in that one file.
+The installer (and every update, which reruns it) downloads the OmaBridge release pinned in `integrations/omabridge/release` for the device's architecture. `bin/fetch-omabridge` accepts the archive only when its SHA256 matches both the pinned hash and the release's `SHA256SUMS`, checks that it loads on this system (it needs glibc 2.39 or newer), and installs `bin/omabridge` next to `bin/omarchy-t3-client`. An already-current copy is not downloaded again. If any step fails, the installer reports it and continues: O3 works as before, with saved routes only. To bump OmaBridge, change the version and both hashes in that one file.
 
 ## Configuration
 
@@ -39,13 +39,13 @@ The installer (and every update, which reruns it) downloads the OmaBridge releas
   "<directEnvironmentId>":{"mode":"off"}}}
 ```
 
-`stateDir` (optional) defaults to OmaBridge's own `$XDG_DATA_HOME/omabridge`, the device's identity. `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. ot3 runs the same OmaBridge binary as the Control Panel: `OT3_OMABRIDGE_BIN`, `omabridge` on `PATH`, `~/.local/bin/omabridge`, then the copy bundled next to the client.
+`stateDir` (optional) defaults to OmaBridge's own `$XDG_DATA_HOME/omabridge`, the device's identity. `relayUrl` must be HTTPS. A malformed document disables every OmaBridge route instead of guessing. O3 runs the same OmaBridge binary as the Control Panel: `OT3_OMABRIDGE_BIN`, `omabridge` on `PATH`, `~/.local/bin/omabridge`, then the copy bundled next to the client.
 
 Diagnostics: `omarchy-t3-client omabridge-read` prints the public snapshot (peer ids, names, granted services, routes). `omarchy-t3-client omabridge-status` also connects every environment and reports which ones OmaBridge carries (`active`) and any connection error. `connections-view` prints the credential-free catalog view.
 
 ## Managing this device
 
-Preferences → Connections → OmaBridge shows the same OmaBridge page as the Omarchy Control Panel, on the same device: ot3 sends each request unchanged to `omabridge manage`, with OmaBridge's own state directory and publishing unit (`omabridge-serve.service`). Both front ends therefore show the same identity, peers and state, and offer the same management. OmaBridge validates every request, requires `"confirmed":true` for changes (sent only from a dialog's confirm button), and keeps keys and invitation tokens. The binary is found as the Control Panel finds it: `OT3_OMABRIDGE_BIN`, `omabridge` on `PATH`, `~/.local/bin/omabridge`, then the copy bundled with ot3. An OmaBridge without `manage` is reported as outdated.
+Preferences → Connections → OmaBridge shows the same OmaBridge page as the Omarchy Control Panel, on the same device: O3 sends each request unchanged to `omabridge manage`, with OmaBridge's own state directory and publishing unit (`omabridge-serve.service`). Both front ends therefore show the same identity, peers and state, and offer the same management. OmaBridge validates every request, requires `"confirmed":true` for changes (sent only from a dialog's confirm button), and keeps keys and invitation tokens. The binary is found as the Control Panel finds it: `OT3_OMABRIDGE_BIN`, `omabridge` on `PATH`, `~/.local/bin/omabridge`, then the copy bundled with O3. An OmaBridge without `manage` is reported as outdated.
 
 The page covers this device's identity and name, publishing T3 Code and SSH, the relay (public, a custom HTTPS relay or direct only), one-use invitations (optionally asking to manage the device that accepts, with a QR shown once), pairing from an invitation file (inspected first; one that asks to manage this device needs explicit consent), approvals, revocation, letting a paired device manage this one, and managing paired devices that allow it: rename, publish, relay, a hosted relay, approvals, revocation and public gateways. *Refresh* also asks paired devices for their current names.
 
@@ -57,19 +57,19 @@ Per-connection routes use the same device and binary. While this device is publi
 
 Expand *Connection assistants* to choose where the agent runs and either *Set up a new host…* or *Connect existing…*. Both open a new chat in the host's scratch project and send the prompt at once: the agent works over SSH from start to end, and the user only watches.
 
-*Set up a new host…* installs another host and pairs it with this one. Choose the SSH host, what it should run (OmaBridge only for its SSH, a headless server with T3 Code as a background service and OmaBridge, Omarchy with ot3, or T3 Code and OmaBridge on another desktop), whether this device may manage it, and whether it may also reach this device's SSH. The prompt pins the OmaBridge release and its hashes, uses `omabridge manage` on the new host, and asks only before sudo, firewall or port changes.
+*Set up a new host…* installs another host and pairs it with this one. Choose the SSH host, what it should run (OmaBridge only for its SSH, a headless server with T3 Code as a background service and OmaBridge, Omarchy with O3, or T3 Code and OmaBridge on another desktop), whether this device may manage it, and whether it may also reach this device's SSH. The prompt pins the OmaBridge release and its hashes, uses `omabridge manage` on the new host, and asks only before sudo, firewall or port changes.
 
 *Connect existing…* pairs a host whose OmaBridge already has an identity and publishes T3 and/or SSH. It never installs, updates, recreates the identity, publishes services or changes T3, SSH or firewall configuration, and it keeps the host's peers and grants; a missing prerequisite stops it. It always runs on this device.
 
-When the agent runs on this device, the other host invites and this device claims: the agent writes the invitation on the host into a private directory, copies it here over SSH without printing it, pairs here with `omabridge manage`, and approves this device's identity on the host (starting from ot3 is the approval). If management was chosen, it sets this device as the host's admin (`admin-set`); if SSH sharing was chosen, it grants the host this device's SSH. This device only dials out, so pairing works even when this device uses a private relay that admits only its paired devices, or a firewall drops inbound traffic. The agent verifies by peer ID, since an older identity of the same device can share its name, and quotes OmaBridge's error codes when a step fails. Finally, when the host runs T3 Code, it adds it to ot3's connections over SSH with `omarchy-t3-client connections-manage`.
+When the agent runs on this device, the other host invites and this device claims: the agent writes the invitation on the host into a private directory, copies it here over SSH without printing it, pairs here with `omabridge manage`, and approves this device's identity on the host (starting from O3 is the approval). If management was chosen, it sets this device as the host's admin (`admin-set`); if SSH sharing was chosen, it grants the host this device's SSH. This device only dials out, so pairing works even when this device uses a private relay that admits only its paired devices, or a firewall drops inbound traffic. The agent verifies by peer ID, since an older identity of the same device can share its name, and quotes OmaBridge's error codes when a step fails. Finally, when the host runs T3 Code, it adds it to O3's connections over SSH with `omarchy-t3-client connections-manage`.
 
 When the agent runs on another host (for a new host only that one reaches), *Start* first makes this device write a one-use invitation that expires in an hour (asking to manage the new host when chosen); it is moved to that host over SSH, the prompt names it by path only, the new host claims it, and you approve it here.
 
 ## Automatic T3 sharing
 
-When a paired device shares its T3 Code with this one (it grants this device its `t3` service), ot3 adds that T3 Code to T3's own connection catalog by itself, over OmaBridge alone, as T3 Connect does with an account's environments. No SSH, open port or known_hosts entry is needed. That catalog is the one T3's desktop app reads, so the host shows up in ot3 and, at its next start, in the desktop app on this device. Nothing to click: approving the pairing with T3 shared is the consent. *Share T3 automatically* in Preferences → Connections → OmaBridge turns it off (connections already added stay), and lists each sharing device with its state.
+When a paired device shares its T3 Code with this one (it grants this device its `t3` service), O3 adds that T3 Code to T3's own connection catalog by itself, over OmaBridge alone, as T3 Connect does with an account's environments. No SSH, open port or known_hosts entry is needed. That catalog is the one T3's desktop app reads, so the host shows up in O3 and, at its next start, in the desktop app on this device. Nothing to click: approving the pairing with T3 shared is the consent. *Share T3 automatically* in Preferences → Connections → OmaBridge turns it off (connections already added stay), and lists each sharing device with its state.
 
-For each such peer, ot3:
+For each such peer, O3:
 
 1. Opens a fixed loopback forward to the peer's `t3` service, `127.0.0.1:<port>` (47300–47799, derived from the peer id), as the systemd user unit `ot3-omabridge-share-<peer>.service`. It runs `omabridge forward` through the running OmaBridge server and restarts if the peer is away, so clients that cannot run OmaBridge reach the host at that address.
 2. Reads the host's public descriptor through it. Its own T3 Code is never added.
@@ -97,7 +97,7 @@ This device's environment takes the name OmaBridge publishes for it (renamed in 
 Provider sign-ins belong to each host: a host just connected starts signed out, and its agents cannot run until each provider signs in there. When a connected host has an enabled, installed provider that is signed out, a *Sign in needed* card names that host and has one button per provider:
 
 - A provider T3 signs in itself opens Preferences → Providers on that host, where T3 runs its sign-in.
-- Codex and Claude, which T3 does not sign in, open a terminal here running their CLI's login on that host (`codex login --device-auth`, `claude auth login`), over the connection's SSH for another host. The CLI shows its page and code. Meanwhile ot3 asks T3 on that host to re-check the provider every 5 seconds for up to 10 minutes, and the card closes once it is signed in. A connection without SSH cannot do this from here.
+- Codex and Claude, which T3 does not sign in, open a terminal here running their CLI's login on that host (`codex login --device-auth`, `claude auth login`), over the connection's SSH for another host. The CLI shows its page and code. Meanwhile O3 asks T3 on that host to re-check the provider every 5 seconds for up to 10 minutes, and the card closes once it is signed in. A connection without SSH cannot do this from here.
 
 No credentials are copied between hosts. *Not now* hides the card until another provider signs out there.
 
@@ -105,11 +105,11 @@ No credentials are copied between hosts. *Not now* hides the card until another 
 
 ## Bar indicator
 
-*Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows the same OmaBridge page as Preferences. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
+*Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in O3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows the same OmaBridge page as Preferences. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
 
 ## Other front ends
 
-Other front ends manage this device by calling `omabridge manage` themselves, as the Omarchy Control Panel does. ot3 adds:
+Other front ends manage this device by calling `omabridge manage` themselves, as the Omarchy Control Panel does. O3 adds:
 
 - `omarchy-t3-client omabridge-manage`: one `omabridge manage` request on stdin (at most 64 KiB), answered as `{"output":<OmaBridge's JSON>,"status":<exit code>}`, with the same binary lookup as Preferences.
 - `omabridge-install-prompt` (a backend operation): `{host, profile, existing, manage, shareSsh, invitation, device, deviceId, runsOn}` to that prompt; run here (`runsOn` empty) it needs this device's `deviceId` and no invitation.

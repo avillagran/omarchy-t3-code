@@ -24,7 +24,7 @@ pub fn apply(input: &Value) -> Result<Value> {
         .as_array()
         .into_iter()
         .flatten()
-        .find(|c| c["pid"].as_u64() == Some(pid) && c["title"] == "Omarchy T3 Code")
+        .find(|c| c["pid"].as_u64() == Some(pid) && c["title"] == "O3 Code")
         .ok_or("window_not_ready")?;
     let address = text(window, "address");
     if !address.starts_with("0x")

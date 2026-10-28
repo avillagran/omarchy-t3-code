@@ -1,6 +1,6 @@
-# T3 Code → ot3: complete screen and section audit
+# T3 Code → O3: complete screen and section audit
 
-Reviewed **2026-10-17**. **ot3 does not yet have full functional or visual parity.**
+Reviewed **2026-10-17**. **O3 does not yet have full functional or visual parity.**
 All **28 native route files** were inventoried, including layouts, redirects and conditional entry points. Detailed source review records **168 comparison rows**: 83 settings, 57 chat/sidebar/composer/workspace, 28 auxiliary/right-panel/PR. These are grouped comparisons, **not 168 independent screens** or a percentage score. Several rows intentionally discuss the same cross-cutting workflow from different surfaces.
 
 Native reference: local checkout `5a4e9980533705774dc3f45b35cacf76c3d78dbc`. Target: current working tree, including existing uncommitted changes. Installed native web assets identify as `0.0.46-nightly.20261013.3042`; screenshots illustrate that installed build and do not prove the pinned checkout has identical pixels. No upstream fetch was performed.
@@ -12,7 +12,7 @@ Native reference: local checkout `5a4e9980533705774dc3f45b35cacf76c3d78dbc`. Tar
 - [Other surfaces: 28 comparison rows](audit/SURFACES_PARITY.md): onboarding/auth, app coordinators, browser/file/device panels and PR workflows.
 - [Route inventory JSON](audit/routes.json), [native runtime observations](audit/native-runtime.json), [dark captures](audit/native-dark-captures.json).
 
-The settings tree has **14 leaf routes**. ot3 exposes **nine leaf-route counterparts** (eight navigation categories plus the licenses drill-down), with partial coverage; **five have no dedicated equivalent page**: Integrations, Scheduled Tasks, Storage, Diagnostics and SnapShots. Projects now has scoped settings, while full project-management sections remain partial. Native categories and controls can be conditional on platform, scope or capability; the audit does not assume all are visible in every installation.
+The settings tree has **14 leaf routes**. O3 exposes **nine leaf-route counterparts** (eight navigation categories plus the licenses drill-down), with partial coverage; **five have no dedicated equivalent page**: Integrations, Scheduled Tasks, Storage, Diagnostics and SnapShots. Projects now has scoped settings, while full project-management sections remain partial. Native categories and controls can be conditional on platform, scope or capability; the audit does not assume all are visible in every installation.
 
 ## Implementation follow-up
 
@@ -34,7 +34,7 @@ User-message checkpoint editing is installed with the native confirmation/keep-f
 
 1. **Complete coding workflows:** native multi-file diff layout/collapse/search/source selection, branch/setup and script administration still need implementation. Checkpoint editing is integrated, with real provider rollback still unverified. Plan/Default and ready-plan follow-up are now implemented; live provider verification remains. Tool inspection and per-file review now work through native read RPCs; richer tool-specific layouts/highlighting and review annotations remain partial. Native diff layout persistence and initial defaults are integrated.
 2. **Provider and project administration:** provider configuration/authentication, full project administration, source-control credentials, editable keybindings. Favorites/status and Add Project do not cover these pages.
-3. **PR authoring/review:** comment/review forms, inline annotations, merge/update/stack actions and full filtering. ot3 currently supplies native **read-only** PR views.
+3. **PR authoring/review:** comment/review forms, inline annotations, merge/update/stack actions and full filtering. O3 currently supplies native **read-only** PR views.
 4. **Application workspaces:** a native local-browser workspace is now mounted in the worktree (not installed): tabs, address/search, profiles, history controls, zoom and responsive inline/sheet presentation. Shared file/device surfaces, server streaming, automation, recording, full project browser history/discovery and complete menus remain pending. Interactive HTML documents remain separate.
 5. **Advanced administration:** schedules/webhooks, retention/cleanup, diagnostics and usage history. Existing per-provider quota bars are not a complete cost/token analytics page.
 
@@ -44,7 +44,7 @@ Already implemented and preserved: inline interactive HTML, fullscreen composer,
 
 Palette, fonts, scaling, desktop chrome, stronger shelf persistence and the requested Ctrl+Enter behavior are intentional Omarchy/user adaptations. They should remain. Missing interaction flows and layout differences are separate findings.
 
-| Surface | Native hierarchy / design | Current ot3 difference | Closest-design target |
+| Surface | Native hierarchy / design | Current O3 difference | Closest-design target |
 |---|---|---|---|
 | Settings navigation | Search in sidebar, complete ordered category tree, back at bottom | Search in sidebar; eight categories with incomplete content; back near top | Match information architecture, search placement and order as pages become implemented. Avoid empty imitation pages. |
 | Settings scope | Project/checkout and environment scope sentence, mixed/inherited/reset affordances | Explicit environment/project/checkout axes with mixed/source badges and inherit reset | Preserve scope and inheritance semantics before reproducing the chrome. |
@@ -56,12 +56,12 @@ Palette, fonts, scaling, desktop chrome, stronger shelf persistence and the requ
 | PR review | Dense scoped list and Summary/Guide/Timeline/Code workspace | Simpler list with Overview/Checks/Conversation/Code and read-only patch | Match content/interaction hierarchy, per-file Code and review forms before micro-spacing. |
 | Browser/files/devices | Shared tabs, persistent selected surfaces, resizing and actions | Source now has a native browser-only workspace with responsive presentation and core controls; file/device/mixed surfaces remain incomplete | Preserve the native shell and separate HTML renderer; finish the remaining workspace capabilities. |
 
-Captured comparisons (native vs ot3, both dark):
+Captured comparisons (native vs O3, both dark):
 
-- General: [native](audit/screenshots/native-settings-general-dark.png), [ot3](audit/screenshots/ot3-settings-general.png).
-- Appearance: [native](audit/screenshots/native-settings-appearance-dark.png), [ot3](audit/screenshots/ot3-settings-appearance.png).
-- Source Control: [native](audit/screenshots/native-settings-source-control-dark.png), [ot3](audit/screenshots/ot3-settings-source-control.png).
-- [ot3 chat](audit/screenshots/ot3-chat.png) and [narrow settings](audit/screenshots/ot3-settings-narrow.png).
+- General: [native](audit/screenshots/native-settings-general-dark.png), [O3](audit/screenshots/ot3-settings-general.png).
+- Appearance: [native](audit/screenshots/native-settings-appearance-dark.png), [O3](audit/screenshots/ot3-settings-appearance.png).
+- Source Control: [native](audit/screenshots/native-settings-source-control-dark.png), [O3](audit/screenshots/ot3-settings-source-control.png).
+- [O3 chat](audit/screenshots/ot3-chat.png) and [narrow settings](audit/screenshots/ot3-settings-narrow.png).
 
 Screenshots have different physical dimensions/DPR, languages, theme tokens and fixture data. These pairs are **structural visual evidence, not a pixel-diff benchmark**. The Source Control reference includes native loading skeletons; credential/discovery completion was not verified. Screenshots cover first viewports, not every scroll position/conditional dialog. All remaining subpanels were assessed from source, with that evidence level stated in the matrices.
 
@@ -77,7 +77,7 @@ Translation validation passed:20 locales × 524 keys, no warnings. Plugin valida
 
 Status below is a **route-level summary**; partial means reachable related functionality, not full parity. Layouts/redirects are included for inventory completeness and are not counted as distinct full screens.
 
-| Native route file | Route / entry | ot3 status | Finding |
+| Native route file | Route / entry | O3 status | Finding |
 |---|---|---|---|
 | `__root.tsx` | `__root (layout)` | Adapted/partial | Omarchy shell/window lifecycle; app-wide auth/notice/right-panel coordinators differ. |
 | `_chat.$environmentId.$threadId.tsx` | `/_chat/$environmentId/$threadId` | Partial | Main transcript/composer implemented; details/Plan/tool-output/diff gaps documented. |
@@ -89,7 +89,7 @@ Status below is a **route-level summary**; partial means reachable related funct
 | `connect-agent.tsx` | `/connect-agent` | Missing | No external-agent authorization landing; chat approvals are a different feature. |
 | `connect.tsx` | `/connect` | Adapted | Official browser device authorization delegated from native CLI; Electron Clerk is separate. |
 | `pair.tsx` | `/pair` | Adapted/partial | Embedded Add Connection native pairing rather than a standalone web landing. |
-| `projects.$projectKey.tsx` | `/projects/$projectKey` | Partial | Native redirect to project settings; ot3 project popup does not supply the full destination page. |
+| `projects.$projectKey.tsx` | `/projects/$projectKey` | Partial | Native redirect to project settings; O3 project popup does not supply the full destination page. |
 | `settings.appearance.tsx` | `/settings/appearance` | Adapted/partial | Omarchy theme/font; native layout, typography overrides and previews differ. |
 | `settings.archived.tsx` | `/settings/archived` | Implemented core | Native grouped archive query and scoped Unarchive/Delete, native confirmation preference and durable commands; live writes and exact native pixels unverified. |
 | `settings.connections.tsx` | `/settings/connections` | Partial | Native catalog/access/network/CLI Connect/balancing/sharing present; Electron discovery/auth and enrollment differ. |
@@ -118,7 +118,7 @@ Base-ref follow-up: upstream local/remote pairing/filtering is ported with MIT a
 Native renderer follow-up: checkout patches now use the actual pinned Pierre1.5.2 component in the existing sandboxed Qt renderer, with syntax tokens, native context expansion from authorized full-file snapshots and split/wrap changes on the same instance. No network or privileged RPC channel is exposed to the page; large HTML stays outside Quickshell's text model. Real Qt interaction and ordinary authored-HTML regressions pass. Native live added/modified file reads render correctly; modified-file full context and fresh hash/scope checks pass. Historical checkpoint rendering and native layout/defaults are integrated below. Full multi-file layout/collapse/search, annotations and full app/pixel comparison remain pending. See [renderer contract](GIT_CONTROLS.md).
 
 
-Historical renderer/preferences follow-up: native checkpoint ranges now share Pierre with exact thread/range/hash revalidation and orchestration-read admission. Native T3 supplies no checkout full-file loader for historical runs, and ot3 mirrors that behavior. A shared range token supports many files without per-file cache exhaustion; path-preserving refetch/expiry and binary/metadata fallback are tested. Native layout persists with fresh CAS while wrap/whitespace remain local, initialized from native defaults. Real Qt and actual13→14native checkpoint reads pass. Full multi-file/collapse/search/source selection, annotations, administration and full app/visual verification remain pending. See [historical contract](DIFF_REVIEW.md).
+Historical renderer/preferences follow-up: native checkpoint ranges now share Pierre with exact thread/range/hash revalidation and orchestration-read admission. Native T3 supplies no checkout full-file loader for historical runs, and O3 mirrors that behavior. A shared range token supports many files without per-file cache exhaustion; path-preserving refetch/expiry and binary/metadata fallback are tested. Native layout persists with fresh CAS while wrap/whitespace remain local, initialized from native defaults. Real Qt and actual13→14native checkpoint reads pass. Full multi-file/collapse/search/source selection, annotations, administration and full app/visual verification remain pending. See [historical contract](DIFF_REVIEW.md).
 
 Archive follow-up: [native archived-thread screen](ARCHIVE.md) now provides project grouping, relative dates, virtual rows, environment/project/checkout filtering, Unarchive and right-click Unarchive/Delete. Native deletion confirmation preference is respected. Commands are journaled before dispatch; ACK is not completion, uncertain actions use explicit same-command retry and read-only status observation. Release Rust and serial QML checks passed; live archive reads on local/node returned no archived rows. No live deletion/restoration was performed. The remaining five dedicated administration pages and full original-app visual comparison remain pending.
 

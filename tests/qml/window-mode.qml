@@ -7,7 +7,7 @@ import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int phase:0;property int cycles:0;property int changes:0;property var composer:null;property int serial:0;property string address:"";property bool inspected:false
  function check(ok,msg){if(!ok){console.error("WINDOW_MODE_QML_FAIL "+msg);Qt.exit(1)}}
- Process{id:inspect;command:["hyprctl","-j","clients"];stdout:StdioCollector{waitForEnd:true;onStreamFinished:{var client=JSON.parse(text).find(function(c){return c.pid===Quickshell.processId&&c.title==="Omarchy T3 Code"});root.check(!!client&&!client.xwayland,"Hyprland sees native managed window");if(client)root.address=client.address;root.inspected=true}}}
+ Process{id:inspect;command:["hyprctl","-j","clients"];stdout:StdioCollector{waitForEnd:true;onStreamFinished:{var client=JSON.parse(text).find(function(c){return c.pid===Quickshell.processId&&c.title==="O3 Code"});root.check(!!client&&!client.xwayland,"Hyprland sees native managed window");if(client)root.address=client.address;root.inspected=true}}}
  Process{id:wmClose;command:["hyprctl","dispatch",'hl.dsp.window.close({ window = "address:'+root.address+'" })']}
  FloatingWindow{id:other;title:"T3 keyboard test other";visible:false;implicitWidth:200;implicitHeight:100;TextInput{focus:true;text:"Other window"}}
  TestCase{id:keys;when:false}

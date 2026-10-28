@@ -25,7 +25,7 @@ Paths above are relative to the native T3 checkout, not this plugin.
 
 ## Chat
 
-| Area | Native behavior | ot3 result |
+| Area | Native behavior | O3 result |
 | --- | --- | --- |
 | Width | Centered 46rem comfortable lane; 72rem wide/full are client preferences | Default 736px lane now centered, shared with composer, scaled by Omarchy. Wide/full preference synchronization remains separate. |
 | User bubble | Right aligned, max 80%, content-sized, 12px padding | Corrected from fixed 88%; short prompts shrink and long ones cap at 80%. |
@@ -55,7 +55,7 @@ Paths above are relative to the native T3 checkout, not this plugin.
 
 ## Sidebar
 
-| Area | Native behavior | ot3 result |
+| Area | Native behavior | O3 result |
 | --- | --- | --- |
 | Active/Working | 78px card plus 4px wrapper | Retained 82px. |
 | Snoozed/Settled | Single 36px slim row | Corrected from 82px full cards; icon, title, PR and time/actions share the row. |
@@ -72,12 +72,12 @@ Paths above are relative to the native T3 checkout, not this plugin.
 | Settled time | Settlement/history timestamp | Corrected timestamp source. |
 | Surface | Hover/selected/focus; parked history recedes | Existing theme surfaces retained, with keyboard ring and revised emphasis. |
 | Shelves | 32px label, inline rule, chevron | Corrected geometry. User's stronger collapse persistence and hide-empty rules retained. |
-| Shelf counts | Native hides the count on expanded sections | ot3 continues showing counts in expanded headers; this small label difference remains. |
+| Shelf counts | Native hides the count on expanded sections | O3 continues showing counts in expanded headers; this small label difference remains. |
 | Keyboard | One traversal order including shelf markers | Existing Ctrl+K, arrows, expand/collapse retained and tested with slim rows. |
 | Hover details | Delayed, scoped detail; closes on scroll/pool/hide | Preserved; actual pointer/quick-action regression coverage included. |
 | Search | Search field and compact project/new controls | Clear button and Escape-to-clear added; existing filter/new actions retained. Native result snippets/inline rename are not all ported. |
 | Ordering | Native activity anchors and pinned precedence | Existing portable ordering retained. |
-| Scroll topology | One ordered list, bottom shelves via flex spacers | ot3 keeps separate virtualized shelf viewports. This is an architectural difference, not just spacing; no replacement of the persisted per-shelf anchors in this pass. |
+| Scroll topology | One ordered list, bottom shelves via flex spacers | O3 keeps separate virtualized shelf viewports. This is an architectural difference, not just spacing; no replacement of the persisted per-shelf anchors in this pass. |
 | Pointer workflows | Drag reorder, multiselect, sweep actions, file drops | Not all ported; context menus and safe individual actions remain. |
 | Wake/terminal/provider history | Woke indicators, live terminal controls, stacked provider history | Not all available in the plugin's current snapshot/presentation contract. |
 | Branding/footer | Native desktop chrome, update/account controls | Omarchy branding, connection controls, quotas and locale picker intentionally remain desktop-plugin specific. |

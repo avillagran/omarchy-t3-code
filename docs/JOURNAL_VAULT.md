@@ -1,6 +1,6 @@
 # Memory/Obsidian (development vault)
 
-ot3 only. T3 keeps threads, projects and decisions per environment (each server's
+O3 only. T3 keeps threads, projects and decisions per environment (each server's
 own SQLite) and shares none of them between machines. The development vault is a
 git repository of Obsidian notes that every machine clones: the shared record of
 state, decisions and progress per project, read and written by people and agents.
@@ -11,7 +11,7 @@ Source brief: `~/Obsidian/Dev/Projects/omarchy-t3-code/Journal-Module-Brief.md`.
 
 ## This computer vs. the environment
 
-**This computer** is the device the ot3 app runs on (for example mbp-m2), even when
+**This computer** is the device the O3 app runs on (for example mbp-m2), even when
 the selected environment runs its agents on another host (for example node). The
 clone, the agent instructions, the device entry and **Open in Obsidian** always act
 on this computer. This page only *reads* connected hosts, through T3's own
@@ -57,7 +57,7 @@ never holds credentials; unknown fields are kept.
 On opening the page, each connected environment other than this computer is asked,
 read-only and with `allowMissing`, for at most these files:
 
-1. `~/.config/omarchy-t3-code/vault.json` (an ot3 configured there);
+1. `~/.config/omarchy-t3-code/vault.json` (an O3 configured there);
 2. `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`, only the path inside the
    `<!-- dev-vault-journal:start/end -->` block, or a `~/…` path written next to
    "vault" in a "Dev Vault" heading (vaults set up by hand);
@@ -161,7 +161,7 @@ file is written through its target only when that target is a regular file.
 
 All on this computer, in the background, one git operation at a time:
 
-- **On opening ot3** (`pullOnOpen`) and when a thread starts working
+- **On opening O3** (`pullOnOpen`) and when a thread starts working
   (`pullOnThreadStart`, at most once a minute): `git pull --rebase --autostash`.
 - **When a thread settles** (`pushOnSettle`, a thread that was working stops,
   debounced 30 s): `add -A`, `commit -m "journal(<slug>): update from <device>"` if
@@ -179,7 +179,7 @@ validated slugs, and symlinks leaving the vault are refused.
 
 ## Thread registry
 
-When a thread settles, ot3 adds or updates its row in `Projects/<slug>/Threads.md`
+When a thread settles, O3 adds or updates its row in `Projects/<slug>/Threads.md`
 (**Record threads in the vault**, on by default), committed with the settle push:
 
 ```
@@ -192,18 +192,18 @@ When a thread settles, ot3 adds or updates its row in `Projects/<slug>/Threads.m
   computer's device name for its own server.
 - One row per thread, newest first, **at most 25** per project: agents search the
   file, they never load history whole. Older rows remain in its git history.
-- Every ot3 writes the same table. A rebase that stops only on these rows (or on the
+- Every O3 writes the same table. A rebase that stops only on these rows (or on the
   device table of `Machines.md`) is finished by merging the rows of both sides; any
   other conflict still stops the sync.
 
 Summaries and decisions stay with the agents (`MEMORY.md`, `Sessions/`), as the
-protocol asks: ot3 records only what it knows for certain.
+protocol asks: O3 records only what it knows for certain.
 
 ## Agents and search
 
 The agent block asks for targeted reads: pull, read the project's `MEMORY.md`, and
 search with `rg -n -i '<term>' <vault> --glob '*.md'` before opening anything, using
-`Threads.md` to find earlier threads. When ot3's protocol text changes, an existing
+`Threads.md` to find earlier threads. When O3's protocol text changes, an existing
 block on this computer is renewed (a removed one is not added back).
 
 **On your hosts** shows, for each host's vault, whether its agents' block is
@@ -249,5 +249,5 @@ occupied folder, missing local authentication, and a client (mbp-m2) whose
 environment is node: discovery only issues read RPCs to node and every write lands
 in this computer's HOME. `tools/test-qml journal-settings` checks the page.
 
-Out of scope (v1): a note editor in ot3, graphical conflict resolution, phone sync,
+Out of scope (v1): a note editor in O3, graphical conflict resolution, phone sync,
 automatic migration of old vaults.

@@ -16,8 +16,8 @@ request the same scopes within their existing grant; a restricted grant must
 be updated in T3 before it can operate a terminal.
 
 The native emulator supplies selection, copy/paste, scrollback, fonts and the
-Omarchy theme. When launched from the overlay panel, ot3 hides the panel so it
-does not cover the terminal; detached ot3 windows remain open. The chat draft
+Omarchy theme. When launched from the overlay panel, O3 hides the panel so it
+does not cover the terminal; detached O3 windows remain open. The chat draft
 is preserved in both cases. This terminal is independent of the agent's tool
 executions and permission selector. Project scripts and sending a terminal
 selection as structured prompt context remain separate parity work.

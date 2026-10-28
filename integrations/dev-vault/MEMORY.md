@@ -7,4 +7,4 @@
 - [[Memory/Rules]] — reglas de oro, no negociables
 
 ## Proyectos
-Cada proyecto vive en `Projects/<slug>/MEMORY.md`. Omarchy T3 Code añade aquí los proyectos nuevos.
+Cada proyecto vive en `Projects/<slug>/MEMORY.md`. O3 Code añade aquí los proyectos nuevos.

@@ -6,7 +6,7 @@ import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root;property int phase:0;property bool inspected:false;property bool floating:false;property var editor:null;property int serial:0
  function check(ok,msg){if(!ok){console.error("WINDOW_CYCLE_QML_FAIL "+msg);Qt.exit(1)}}
- Process{id:inspect;command:["hyprctl","-j","clients"];stdout:StdioCollector{onStreamFinished:{var w=JSON.parse(text).find(function(w){return w.pid===Quickshell.processId&&w.title==="Omarchy T3 Code"});check(!!w,"managed ot3 window exists");if(w)floating=w.floating;inspected=true}}}
+ Process{id:inspect;command:["hyprctl","-j","clients"];stdout:StdioCollector{onStreamFinished:{var w=JSON.parse(text).find(function(w){return w.pid===Quickshell.processId&&w.title==="O3 Code"});check(!!w,"managed ot3 window exists");if(w)floating=w.floating;inspected=true}}}
  TestCase{id:keys;when:false}
  Test.T3Panel{id:panel;bridge:Test.T3Backend}
  Timer{interval:250;repeat:true;running:true;onTriggered:{var b=Test.T3Backend

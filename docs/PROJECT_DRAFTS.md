@@ -2,7 +2,7 @@
 
 The drawer ports T3 Code's native `ComposerStashMenu.tsx`,
 `promptStashStore.ts` and `ChatComposer.tsx` stash/restore behavior. Those stores
-are GUI-local browser storage, not a server RPC. ot3 uses its existing private
+are GUI-local browser storage, not a server RPC. O3 uses its existing private
 Rust draft storage, with project scope and an adapter for pending composer
 prompts in existing threads. It does not read or alter the Electron GUI's browser
 storage.

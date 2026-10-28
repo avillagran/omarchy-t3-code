@@ -7,7 +7,7 @@ use std::{
     process::{Command, Stdio},
     time::{Duration, SystemTime},
 };
-const FALLBACK: &[u8] = include_bytes!("../ui/assets/notification-t3.png");
+const FALLBACK: &[u8] = include_bytes!("../ui/assets/notification-o3.png");
 
 fn decode(bytes: &[u8]) -> Option<DynamicImage> {
     let mut reader = image::ImageReader::new(Cursor::new(bytes))

@@ -36,4 +36,4 @@ compacting the context are independent actions.
 Other harnesses: OT3 checks the provider’s advertised compact command. A generic
 ACP implementation is not assumed to support compaction or durable recovery.
 
-Diagnostics: `ot3 call memoryState` reports the local policy and worker status.
+Diagnostics: `o3 call memoryState` reports the local policy and worker status.

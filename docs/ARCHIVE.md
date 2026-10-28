@@ -21,7 +21,7 @@ Unarchive and the right-click Unarchive/Delete menu dispatch exactly
 performs no worktree cleanup and never removes independent project drafts.
 The native canonical `confirmThreadDelete` preference is read with its default
 `true`; the explicit Delete click skips the dialog only if that preference is
-`false`. ot3 does not change that preference.
+`false`. O3 does not change that preference.
 
 ## Admission and completion
 

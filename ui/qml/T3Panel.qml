@@ -879,7 +879,7 @@ Item {
   T3CompactionSettings{id:compactionSettings;bridge:root.bridge}
   FloatingWindow {
     id:desktop
-    title:"Omarchy T3 Code"
+    title:"O3 Code"
     visible:root.panelOpen&&root.detached
     color:Color.popups.background
     // An opaque surface lets Hyprland skip drawing and blurring what lies

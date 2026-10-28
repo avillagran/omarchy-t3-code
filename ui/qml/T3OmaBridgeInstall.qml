@@ -27,7 +27,7 @@ Controls.Popup {
  readonly property var profiles:[
   {id:"bridge",title:T3I18n.tr("OmaBridge only (SSH)"),detail:T3I18n.tr("Only OmaBridge, publishing its SSH. No T3 Code and no AI run there; agents work on it from here through OmaBridge, with no port open.")},
   {id:"headless",title:T3I18n.tr("Headless server"),detail:T3I18n.tr("T3 Code as a background service and OmaBridge. For servers and VPSs without a desktop.")},
-  {id:"ot3",title:T3I18n.tr("Omarchy with ot3"),detail:T3I18n.tr("The full Omarchy T3 Code client, for coding on that device too.")},
+  {id:"ot3",title:T3I18n.tr("Omarchy with O3"),detail:T3I18n.tr("The full O3 Code client, for coding on that device too.")},
   {id:"t3code",title:T3I18n.tr("T3 Code and OmaBridge"),detail:T3I18n.tr("For a desktop without Omarchy where you code locally.")}]
  // Hosts the chat can run on: every connected environment.
  readonly property var environments:((bridge.state || {}).environments || []).filter(function(e){return e.state==="ready"})

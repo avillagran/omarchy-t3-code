@@ -6,10 +6,11 @@ Item{
  property bool stale:false
  property bool motion:T3Motion.enabled
  property string indicatorStyle:"orbit"
+ property string logoName:"o3-logo"
  readonly property real pillWidth:Style.space(Math.max(counts.working,counts.done)>99?23:Math.max(counts.working,counts.done)>9?18:14)
  implicitWidth:Style.space(25)+pillWidth+(counts.waiting>0?Style.space(3+ (counts.waiting>99?23:counts.waiting>9?18:14)):0)
  implicitHeight:Style.bar.statusSlot
- T3BarIndicator{x:0;anchors.verticalCenter:parent.verticalCenter;counts:root.counts;stale:root.stale;style:root.indicatorStyle;motion:root.motion}
+ T3BarIndicator{x:0;anchors.verticalCenter:parent.verticalCenter;counts:root.counts;stale:root.stale;style:root.indicatorStyle;logoName:root.logoName;motion:root.motion}
  Repeater{
   model:[{key:"working",count:root.counts.working,tint:T3Palette.working,top:true},{key:"done",count:root.counts.done,tint:T3Palette.done,top:false}]
   Rectangle{

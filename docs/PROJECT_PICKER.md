@@ -1,7 +1,7 @@
 # Project registration and navigation
 
 The sidebar represents projects through their threads. Registering a folder alone
-therefore leaves the project invisible. After Add Project succeeds, ot3 now waits
+therefore leaves the project invisible. After Add Project succeeds, O3 now waits
 for the environment's project snapshot and opens an existing active thread, or
 creates and selects its first empty thread. This does not send a prompt, start an
 agent or create a worktree. The destination environment supplies the model choice.

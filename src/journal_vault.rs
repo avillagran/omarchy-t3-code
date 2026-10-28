@@ -720,7 +720,7 @@ pub fn upsert_threads(doc: &str, slug: &str, rows: &[ThreadRow]) -> String {
     let doc = if doc.contains(THREADS_START) && doc.contains(THREADS_END) {
         doc.to_string()
     } else if doc.trim().is_empty() {
-        format!("---\nproject: {slug}\nmanaged-by: omarchy-t3-code\n---\n# Hilos — {slug}\n\nLos {MAX_THREADS} hilos más recientes de este proyecto en todas las máquinas, mantenidos por Omarchy T3 Code. \
+        format!("---\nproject: {slug}\nmanaged-by: omarchy-t3-code\n---\n# Hilos — {slug}\n\nLos {MAX_THREADS} hilos más recientes de este proyecto en todas las máquinas, mantenidos por O3 Code. \
 Cada enlace `t3-thread://` se abre en la máquina indicada. Hilos anteriores: `git log -p -- Projects/{slug}/Threads.md`.\n\n{THREADS_START}\n{THREADS_HEADER}\n{THREADS_END}\n")
     } else {
         format!("{}\n\n{THREADS_START}\n{THREADS_HEADER}\n{THREADS_END}\n", doc.trim_end())
@@ -1051,13 +1051,13 @@ compartida entre todas las máquinas. Protocolo completo: `{shown}/AGENTS.md`.\n
 - Para buscar historial, decisiones o un hilo anterior: `rg -n -i '<término>' {shown} --glob '*.md'` \
 y leer solo las notas encontradas. Nunca cargar el vault completo.\n\
 - Hilos anteriores del proyecto en todas las máquinas: `Projects/<slug>/Threads.md` \
-(lo mantiene Omarchy T3 Code; no editarlo).\n\
+(lo mantiene O3 Code; no editarlo).\n\
 - Al terminar o tras un avance significativo: actualizar ese MEMORY (estado, decisiones fechadas, pendientes, \
 hilos relevantes con máquina y enlace `t3-thread://`), una nota en `Sessions/` si hubo trabajo sustancial, \
 y commit y push.\n\
 - Nombres de archivos en inglés; sin secretos ni volcados de datos. Si el vault no existe en esta máquina, avisar \
 en lugar de improvisar otra memoria.\n\
-(Bloque mantenido por Omarchy T3 Code, Preferencias → Memoria/Obsidian.)\n{BLOCK_END}\n"
+(Bloque mantenido por O3 Code, Preferencias → Memoria/Obsidian.)\n{BLOCK_END}\n"
     )
 }
 /// Whether an instruction file holds the current block for `shown`.

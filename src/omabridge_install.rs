@@ -101,7 +101,7 @@ fn prompt_with(input:&Value,bin:&str,client:&str)->Result<String>{
  let what=match profile{
   "headless"=>"a headless server: T3 Code running as a background service, reachable only through OmaBridge",
   "bridge"=>"a device reached only through OmaBridge: OmaBridge alone, publishing its SSH server. Do not install T3 Code or any AI tool there; agents keep running elsewhere and work on it over SSH carried by OmaBridge",
-  "ot3"=>"an Omarchy desktop with Omarchy T3 Code (ot3), the full client, for coding on that device too",
+  "ot3"=>"an Omarchy desktop with O3 Code (o3), the full client, for coding on that device too",
   _=>"a desktop with T3 Code and OmaBridge, for coding locally on that device",
  };
  p.push_str(&format!("Set up the device `{host}` as {what}, and pair it through OmaBridge with {inviter}.\n\n"));
@@ -109,7 +109,7 @@ fn prompt_with(input:&Value,bin:&str,client:&str)->Result<String>{
  p.push_str("Work over SSH (`ssh "); p.push_str(host); p.push_str(&format!("`) and as that device's normal user, on your own from start to end. Ask me only before a command that needs sudo, changes the firewall, or opens a port. Never print, paste or log tokens, keys, invitation contents or pairing codes; refer to files by path only. Stop and tell me if a step fails instead of working around it. {codes}\n\n"));
  p.push_str("1. Check the device: `uname -m`, the glibc version (`ldd --version`; OmaBridge needs 2.39 or newer), the OS, and whether T3 Code (`t3`) and OmaBridge (`omabridge`) are already installed. Say what you find, then go on.\n");
  match profile{
-  "ot3"=>p.push_str("2. Install Omarchy T3 Code with its official installer, run as the desktop user: `curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/install.sh | bash`. It needs Omarchy and T3 Code opened at least once, and it installs the pinned OmaBridge as `~/.config/omarchy/plugins/omarchy-t3-code/bin/omabridge`; link it as `~/.local/bin/omabridge`.\n"),
+  "ot3"=>p.push_str("2. Install O3 Code with its official installer, run as the desktop user: `curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/install.sh | bash`. It needs Omarchy and T3 Code opened at least once, and it installs the pinned OmaBridge as `~/.config/omarchy/plugins/omarchy-t3-code/bin/omabridge`; link it as `~/.local/bin/omabridge`.\n"),
   "bridge"=>{
    p.push_str("2. Do not install T3 Code. Check that an SSH server listens on 127.0.0.1:22 (`ss -ltn`); if none does, ask me before installing or enabling one.\n");
    p.push_str(&format!("3. Install OmaBridge {version} as `~/.local/bin/omabridge`: download `omabridge-{version}-<arch>-linux.tar.gz` and `SHA256SUMS` from https://github.com/avillagran/omabridge/releases/download/{version}/ and accept the archive only if its SHA256 matches both `SHA256SUMS` and this pinned hash: aarch64 `{aarch64}`, x86_64 `{x86_64}`. Extract only `omabridge-{version}-<arch>-linux/omabridge`, check `omabridge --version`, and install it with mode 755.\n"));

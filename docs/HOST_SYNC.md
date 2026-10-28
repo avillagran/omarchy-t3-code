@@ -1,6 +1,6 @@
 # Sync this computer's setup
 
-ot3 only. **Preferences → Connections → Sync this computer's setup** leaves a connected
+O3 only. **Preferences → Connections → Sync this computer's setup** leaves a connected
 host with the same working setup as this computer, from the Obsidian vault to the
 harnesses' configuration. It writes to the host only when you press **Sync**, after a
 preview. It never deletes anything, and it backs up each file it replaces on the host first.
@@ -60,7 +60,7 @@ Binary files are copied unchanged. `~/` paths need no change.
    folder and its `origin`, `git ls-remote` access to the remote, and whether `gh` is
    installed and signed in. Each item shows how many files are new, to update, up to
    date, kept or not sent. Each file or skill that changes is listed.
-2. **Sync** asks for confirmation and names the items and the host. ot3 probes again and
+2. **Sync** asks for confirmation and names the items and the host. O3 probes again and
    then sends one tar archive to `host-sync-apply.sh`. That script writes a file only if
    the host still holds what the probe saw: a file changed meanwhile is reported as
    changed and kept. Before replacing a file, it copies it to
@@ -90,7 +90,7 @@ Only SSH environments are offered. Pairing-link hosts cannot be written to.
   rate-limits port 22 (for example, `ufw limit`) therefore sees a single connection,
   not one per file.
 - Or the same SSH through the paired peer's OmaBridge `ssh` service:
-  `ProxyCommand=omabridge --state-dir <dir> --name ot3 connect --peer <id> --service ssh`
+  `ProxyCommand=omabridge --state-dir <dir> --name O3 connect --peer <id> --service ssh`
   with `HostKeyAlias=<the profile's host>`. The host key is still checked against
   `known_hosts` for the host already verified (never for a stale alias, and host key
   checking is never disabled). The peer that OmaBridge uses for that environment right

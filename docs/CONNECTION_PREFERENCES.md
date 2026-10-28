@@ -10,7 +10,7 @@ Source parity: `apps/web/src/components/settings/{LoadBalancingSettings,GitHubRo
 
 `connection_github.rs` honors these permissions for PR details, checks and activity reads. Both endpoints must permit sharing, have trusted saved routes, and report the same account and GitHub host. Permissions and environment bindings are refreshed before dispatch. Credentials stay on the environment running the operation. Existing PR writes are not newly routed by this adapter.
 
-Client settings preserve unknown fields, legacy wrappers and symlinks. Electron does not take ot3's file lock: revision checks immediately before replacement detect stale writes but cannot guarantee an atomic cross-process CAS.
+Client settings preserve unknown fields, legacy wrappers and symlinks. Electron does not take O3's file lock: revision checks immediately before replacement detect stale writes but cannot guarantee an atomic cross-process CAS.
 
 ## Test boundary
 

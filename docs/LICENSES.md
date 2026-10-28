@@ -3,7 +3,7 @@
 The native T3 Code screen is `settings.open-source-licenses.tsx` and
 `components/settings/OpenSourceLicenses.tsx` at the pinned source revision
 `5a4e9980533705774dc3f45b35cacf76c3d78dbc`. It loads its own static web manifest,
-not server configuration for the selected environment. ot3 follows that ownership
+not server configuration for the selected environment. O3 follows that ownership
 with a compiled manifest of its own dependencies and supplied notices.
 
 ## Original behavior and adapted data
@@ -40,7 +40,7 @@ entry's text. IPC loss becomes an explicit retry state. No preference is mutated
 
 `node tools/build-licenses.cjs` uses locked, offline Cargo metadata for the native
 build target, exact crate notice files, the locked renderer's collected license
-files, both Lucide notices, copied T3 code/artwork attribution and ot3's own notice.
+files, both Lucide notices, copied T3 code/artwork attribution and O3's own notice.
 Build-only renderer dependencies are classified separately. The Rust standard
 library is not in Cargo metadata, so its compiler-provided copyright summary and
 license texts are collected separately. Python's standard HTML parser converts

@@ -64,7 +64,7 @@ main checkout) is never cleaned; the main checkout itself is skipped by T3.
 The root [installer](../install.sh) installs runtime dependencies and prebuilt binaries, enables the widget and starts the local service only if stopped.
 It adds the keyboard integration to an existing Lua bindings file after making
 a backup: Super+Shift+A replaces ChatGPT/earlier Ares bindings with this client,
-and Enter sends inside ot3 without changing the terminal shortcut. Repeated runs update a clean checkout; local changes are never reset.
+and Enter sends inside O3 without changing the terminal shortcut. Repeated runs update a clean checkout; local changes are never reset.
 T3 Code itself must already be installed and initialized. The installer is not
 run as root; only Pacman uses sudo.
 
@@ -83,7 +83,7 @@ omarchy plugin enable io.github.avillagran.omarchy-t3-code
 omarchy restart shell
 ```
 
-Press Super+Shift+A, run `bin/ot3` or click the T3 icon in the status bar to show the app. Configure local and remote
+Press Super+Shift+A, run `bin/o3` or click the T3 icon in the status bar to show the app. Configure local and remote
 connections in the official T3 client; this plugin inherits them. It does not
 maintain a separate server list or ask you to paste provider tokens.
 
@@ -109,7 +109,7 @@ dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-t3-code/integratio
 ```
 
 Reload your Hyprland configuration afterwards. Super+Shift+A opens this plugin
-in place of the default agent shortcut. Enter sends inside ot3; the
+in place of the default agent shortcut. Enter sends inside O3; the
 Super+Enter terminal binding is untouched. Review the
 binding file before enabling it if you already customize these shortcuts. With a
 manual installation, the binding is not installed automatically.
@@ -201,7 +201,7 @@ sets the narrow content viewport so compositor tiling cannot mask layout bugs.
 
 ## Everyday use
 
-- **Super+Shift+A** opens Omarchy T3 Code as the default agent.
+- **Super+Shift+A** opens O3 Code as the default agent.
 - **Enter** submits the prompt in the normal composer. **Shift+Enter** inserts a
   new line and continues supported lists. The expanded editor keeps Enter for
   new lines; **Ctrl+Enter** sends in either mode. Other shortcuts follow the panel's keyboard help; system
@@ -224,8 +224,8 @@ return to the thread. It requires the plugin and T3 server to remain running.
 
 ## Desktop app and bar widget
 
-Omarchy T3 Code runs as its own Quickshell instance, not inside the Omarchy
-shell. `bin/ot3` builds a small config folder in
+O3 Code runs as its own Quickshell instance, not inside the Omarchy
+shell. `bin/o3` builds a small config folder in
 `$XDG_STATE_HOME/omarchy-t3-code/app` (links to Omarchy's `Commons` and `Ui`
 and to this installation's `ui`, `bin`, `translations`, `licenses`, `data` and `upstream`,
 plus `app/shell.qml`) and starts it as the transient user service
@@ -233,21 +233,21 @@ plus `app/shell.qml`) and starts it as the transient user service
 The window has the app id `io.github.avillagran.omarchy-t3-code`.
 
 ```bash
-bin/ot3            # toggle: show, focus, or hide when focused
-bin/ot3 start      # start hidden (login autostart and the bar widget)
-bin/ot3 hide|quit|restart|status
-bin/ot3 install-desktop   # launcher entry, autostart, ~/.local/bin/ot3
+bin/o3            # toggle: show, focus, or hide when focused
+bin/o3 start      # start hidden (login autostart and the bar widget)
+bin/o3 hide|quit|restart|status
+bin/o3 install-desktop   # launcher entry, autostart, ~/.local/bin/o3
 ```
 
 The app writes its status (counts, shown, offline, OmaBridge, a translated
 tooltip) to `$XDG_RUNTIME_DIR/omarchy-t3-code/status.json`. The bar widget
 (`ui/qml/BarWidget.qml`, the plugin entry point) only reads that file and runs
-`bin/ot3`; it loads no backend or translations. A status older than 90 s reads
+`bin/o3`; it loads no backend or translations. A status older than 90 s reads
 as a stopped app.
 
 The header cycles panel → floating → tiled. Panel mode shows the app under the
 bar's T3 button as the in-shell popup did: the bar widget sends the button's
-place (`ot3 anchor JSON`, kept per screen in `$XDG_RUNTIME_DIR/omarchy-t3-code/anchors.json`)
+place (`o3 anchor JSON`, kept per screen in `$XDG_RUNTIME_DIR/omarchy-t3-code/anchors.json`)
 and the app draws a transparent, click-through twin of that bar to anchor the
 popup. Without the bar widget there is no panel mode, only windows. Closing through the
 compositor or the header's – button hides the window; the backend keeps
@@ -255,18 +255,18 @@ running, so subscriptions, notifications and drafts continue.
 
 ## Keeping up with T3 Code nightly
 
-ot3 is validated against one T3 Code revision, recorded in `upstream/t3code.json`;
+O3 is validated against one T3 Code revision, recorded in `upstream/t3code.json`;
 every generator in `tools/` reads it from there. `tools/upstream-drift.cjs`
 compares that revision with a newer checkout (default `../t3code-nightly`) and
-reports what ot3 does not cover: RPC methods, orchestration command/event types,
+reports what O3 does not cover: RPC methods, orchestration command/event types,
 HTTP endpoints, client/server settings and keybinding commands added or removed,
-removed items ot3 still uses (breaking), stale generated tables, and the commits
-grouped by the part of ot3 they touch.
+removed items O3 still uses (breaking), stale generated tables, and the commits
+grouped by the part of O3 they touch.
 
 ```bash
 git -C ../t3code-nightly pull --ff-only
 node tools/upstream-drift.cjs --write          # upstream/DRIFT.md
-node tools/upstream-drift.cjs --list rpc        # one surface with ot3's coverage
+node tools/upstream-drift.cjs --list rpc        # one surface with O3's coverage
 node tools/upstream-drift.cjs --check           # inventory covers the pin; supported items still referenced
 node tools/upstream-drift.cjs --sync            # add the new items to upstream/parity.json, unreviewed
 node tools/upstream-drift.cjs --pin             # move the pin once every item is in the inventory
@@ -337,10 +337,10 @@ To measure on a running panel, enable Preferences › Animations › Frame rate
 meter, or use the diagnostics IPC:
 
 ```bash
-bin/ot3 call profileScroll  # 4 s of touchpad-style scrolling
-bin/ot3 call profileResult  # fps and frame interval percentiles
-bin/ot3 call skyState       # sky mode, meteor and clock pace
-bin/ot3 call sidePanel devices  # side panel tab: browser, renders, devices ("" closes)
+bin/o3 call profileScroll  # 4 s of touchpad-style scrolling
+bin/o3 call profileResult  # fps and frame interval percentiles
+bin/o3 call skyState       # sky mode, meteor and clock pace
+bin/o3 call sidePanel devices  # side panel tab: browser, renders, devices ("" closes)
 ```
 
 Resource consumption depends on transcript size, attachments, the shell and
@@ -385,7 +385,7 @@ re-imports the latest QtQuick, so it is pinned to 6.11 as well.
 ```
 
 `manifest.json` points directly to `ui/qml/BarWidget.qml` (the bar widget);
-the app's entry point is `app/shell.qml`, started by `bin/ot3`. Rust follows the
+the app's entry point is `app/shell.qml`, started by `bin/o3`. Rust follows the
 standard Cargo layout; the portable crate is a pinned Git dependency on
 lib-t3-rust, shared with Omi. Update its full revision in Cargo.toml and commit
 Cargo.lock after validating both repositories. To develop locally without changing

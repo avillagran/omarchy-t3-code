@@ -68,7 +68,7 @@ freed only about 1.4 MB, so no periodic full GC was added. A heaptrack sample
 reported a 57 MB peak tracked malloc heap; that excludes QV4 mmap storage and
 changes allocator behavior, so it is not a total-memory figure.
 
-`bin/ot3` now supplies app-local jemalloc defaults: two arenas, background page
+`bin/o3` now supplies app-local jemalloc defaults: two arenas, background page
 purging, one-second dirty/muzzy decay and an 8 KiB maximum thread-cache size.
 Explicit inherited `MALLOC_CONF` entries are appended last and override these
 defaults. No preload, allocator replacement or new runtime dependency is used.
@@ -305,9 +305,9 @@ textures when an image does not fit. Image resolution is unchanged. More
 standalone textures can increase draw calls; the scoped launcher defaults can
 be overridden through QSG_ATLAS_WIDTH/HEIGHT.
 
-`bin/ot3` now defaults both dimensions to 512, preserving explicit environment
+`bin/o3` now defaults both dimensions to 512, preserving explicit environment
 values and the existing threaded render loop/effects. No graphics change is
-applied outside ot3. The benchmark records graphics environment settings.
+applied outside O3. The benchmark records graphics environment settings.
 Qt implementation: [RHI atlas manager](https://github.com/qt/qtdeclarative/blob/dev/src/quick/scenegraph/util/qsgrhiatlastexture.cpp).
 Probe ABI: installed `/usr/include/drm/asahi_drm.h`. Temporary probe source and
 library remain under `~/.cache/ot3-heaptrack/gem_probe.{c,so}`; neither is shipped

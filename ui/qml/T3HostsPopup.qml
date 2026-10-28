@@ -83,10 +83,10 @@ Controls.Popup {
      Layout.fillWidth:true;spacing:Style.space(1)
      Text{Layout.fillWidth:true;text:row.modelData.name || row.modelData.id;color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
      // The server's T3 version; newer than the one ot3 is validated with is marked.
-     Text{objectName:"t3HostVersion_"+row.modelData.id;Layout.fillWidth:true;visible:!!row.version;text:"T3 "+row.version+(row.newer?" · "+T3I18n.tr("newer than ot3 knows"):"");color:row.newer?T3Palette.waiting:root.faint;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText
+     Text{objectName:"t3HostVersion_"+row.modelData.id;Layout.fillWidth:true;visible:!!row.version;text:"T3 "+row.version+(row.newer?" · "+T3I18n.tr("newer than O3 knows"):"");color:row.newer?T3Palette.waiting:root.faint;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText
       HoverHandler{id:versionHover}
       Controls.ToolTip.visible:versionHover.hovered&&row.newer;Controls.ToolTip.delay:300
-      Controls.ToolTip.text:T3I18n.tr("ot3 is validated with T3 Code {version}. Features added since then may be missing or behave differently.",{version:(root.bridge.validatedT3 || {}).tag || ""})}
+      Controls.ToolTip.text:T3I18n.tr("O3 is validated with T3 Code {version}. Features added since then may be missing or behave differently.",{version:(root.bridge.validatedT3 || {}).tag || ""})}
      RowLayout{spacing:Style.space(5)
       Rectangle{width:Style.space(7);height:width;radius:width/2;color:row.ready?T3Palette.done:row.busy?T3Palette.working:Color.urgent}
       Text{Layout.fillWidth:true;text:root.restarting===row.modelData.id?T3I18n.tr("Restarting server…"):row.confirming?T3I18n.tr("Kill and restart T3 on this host? Runs there stop."):root.restartErrorFor===row.modelData.id&&root.restartError?T3I18n.error(root.restartError):row.busy?T3I18n.tr("Reconnecting…"):row.ready?T3I18n.tr("Connected"):T3I18n.error(row.modelData.state);color:row.confirming||(root.restartErrorFor===row.modelData.id&&root.restartError)?Color.urgent:row.ready||row.busy?root.faint:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:row.confirming?Text.Wrap:Text.NoWrap;elide:row.confirming?Text.ElideNone:Text.ElideRight;textFormat:Text.PlainText}

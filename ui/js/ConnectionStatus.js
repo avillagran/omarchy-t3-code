@@ -16,6 +16,6 @@ function reason(code) {
 function failures(bridge) {
     var rows = ((bridge.state || {}).environments || []).filter(function(e) { return e.state && e.state !== "ready" })
     if ((bridge.backendStart || {}).error && !rows.some(function(e) { return e.id === "local" })) rows.push({id:"local",name:"T3 Code",state:bridge.backendStart.error})
-    if (!rows.length && bridge.stale && bridge.error) rows = [{id:"client",name:"ot3",state:bridge.error}]
+    if (!rows.length && bridge.stale && bridge.error) rows = [{id:"client",name:"O3",state:bridge.error}]
     return rows
 }

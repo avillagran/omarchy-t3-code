@@ -14,7 +14,7 @@ Este vault es un repositorio git compartido entre todas las máquinas de desarro
 ## Consultar el vault sin cargarlo entero
 
 - Buscar antes de leer: `rg -n -i '<término>' ~/Obsidian/Dev --glob '*.md'` y abrir solo las notas encontradas.
-- Hilos anteriores de un proyecto, en todas las máquinas: `Projects/<slug>/Threads.md` (lo mantiene Omarchy T3 Code: los 25 más recientes con máquina y enlace `t3-thread://`; no editarlo). Más antiguos: `git log -p -- Projects/<slug>/Threads.md`.
+- Hilos anteriores de un proyecto, en todas las máquinas: `Projects/<slug>/Threads.md` (lo mantiene O3 Code: los 25 más recientes con máquina y enlace `t3-thread://`; no editarlo). Más antiguos: `git log -p -- Projects/<slug>/Threads.md`.
 - Decisiones y estado: `Projects/<slug>/MEMORY.md`; detalle de una sesión: `Projects/<slug>/Sessions/`.
 
 ## Al terminar, o tras un avance significativo

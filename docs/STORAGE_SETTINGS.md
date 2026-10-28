@@ -14,10 +14,10 @@ Writes require the advertised native capability, with project overrides also req
 
 Next: mount the complete native Storage page with the original section/order/conditional visibility, project policy chooser and scope notices. Implement native `server.getStorageCleanupReport` and `server.runStorageCleanup` via the existing worker administration queues, using original permissions and per-environment single-flight behavior. The original report includes trigger/timestamps, removed/kept/failed counts, byte totals, omitted count and worktree/browser-artifact/log entries. Preserve partial/unknown outcomes and do not retry uncertain deletion. Then complete locale coverage and inspect native rendering against the original.
 
-## Low disk space notice (ot3 only)
+## Low disk space notice (O3 only)
 
 T3 does not warn about low free space, and its servers do not report it (neither
-0.0.46 nor 0.1.2 exposes a free-space reading). ot3 therefore checks **this
+0.0.46 nor 0.1.2 exposes a free-space reading). O3 therefore checks **this
 computer only**: every 5 minutes `src/disk_space.rs` runs one `statvfs` on
 `$T3CODE_HOME/worktrees` (or the T3 home). Below the threshold (15 GB by default;
 Storage → This computer, stored as `lowDiskThresholdGb` in the panel state, Off
@@ -33,7 +33,7 @@ disables it) a dismissible card appears above the chat with:
 `omarchy-t3-client disk-report` prints the same report. Remote environments are
 not checked.
 
-## Automatic build output cleanup (ot3 only)
+## Automatic build output cleanup (O3 only)
 
 `src/build_cleanup.rs` removes regenerable build output on **this computer**,
 for any project kind, without touching code, branches or uncommitted changes.

@@ -53,7 +53,7 @@ Rectangle {
  property string query:""
  readonly property bool compact:width<Style.space(780)
  readonly property var pages:[{id:"general",name:"General",icon:"settings"},{id:"appearance",name:"Appearance",icon:"layers"},{id:"projects",name:"Projects",icon:"folder-git-2"},{id:"shortcuts",name:"Keyboard shortcuts",icon:"keyboard"},{id:"providers",name:"Providers",icon:"acp"},{id:"integrations",name:"Integrations",icon:"plug"},{id:"source-control",name:"Source control",icon:"git-branch"},{id:"connections",name:"Connections",icon:"server"},{id:"storage",name:"Storage",icon:"hard-drive"},{id:"memory",name:"Memory/Obsidian",icon:"book-open"},{id:"archived",name:"Archive",icon:"archive"},{id:"licenses",name:"Open-source licenses",icon:"file-text",nav:false}]
- readonly property bool licenseSearchMatch:matches("Open-source licenses")||matches("Third-party notices")||matches("Notices for dependencies, assets, and tools used by ot3.")
+ readonly property bool licenseSearchMatch:matches("Open-source licenses")||matches("Third-party notices")||matches("Notices for dependencies, assets, and tools used by O3.")
  readonly property var currentPage:pages.find(function(p){return p.id===root.page}) || pages[0]
  readonly property var sections:[
   {page:"general",title:"New threads",icon:"square-pen",keys:["defaultModelSelection","defaultRuntimeMode","defaultThreadEnvMode","worktreeSubmodules"]},
@@ -150,7 +150,7 @@ Rectangle {
        body:Component{RowLayout{width:parent.width;spacing:Style.space(14)
         ColumnLayout{Layout.fillWidth:true;Layout.margins:Style.space(14);spacing:Style.space(5)
          Text{text:T3I18n.tr("Open-source licenses");color:root.fg;font.pixelSize:Style.font.caption}
-         Text{Layout.fillWidth:true;text:T3I18n.tr("Notices for dependencies, assets, and tools used by ot3.");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+         Text{Layout.fillWidth:true;text:T3I18n.tr("Notices for dependencies, assets, and tools used by O3.");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
         }
         T3PickerButton{objectName:"preferencesOpenLicenses";Layout.rightMargin:Style.space(14);text:T3I18n.tr("View licenses");primary:false;onClicked:{root.query="";root.page="licenses"}}
        }}
@@ -177,7 +177,7 @@ Rectangle {
       // The T3 Code revision ot3 is validated with, and each connected server's version.
       T3PreferenceSection{objectName:"preferencesT3Compatibility";visible:root.page==="general"&&(!root.query.trim()||root.matches("T3 Code compatibility")||root.matches("T3 server updates"));Layout.fillWidth:true;title:"T3 Code compatibility";icon:"server"
        body:Component{Column{width:parent.width;spacing:Style.space(6)
-        Text{width:parent.width;text:T3I18n.tr("ot3 is validated with T3 Code {version} ({date}).",{version:(root.bridge.validatedT3 || {}).tag || "—",date:(root.bridge.validatedT3 || {}).date || "—"});color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+        Text{width:parent.width;text:T3I18n.tr("O3 is validated with T3 Code {version} ({date}).",{version:(root.bridge.validatedT3 || {}).tag || "—",date:(root.bridge.validatedT3 || {}).date || "—"});color:root.fg;font.pixelSize:Style.font.body;wrapMode:Text.Wrap;textFormat:Text.PlainText}
         // T3 server updates: the native `t3 update`, run by ot3 when the server is idle.
         T3PreferenceField{width:parent.width;controlName:"preferenceT3ServerUpdates";writable:!!root.bridge.setServerUpdateMode
          field:({key:"t3ServerUpdates",label:"T3 server updates",description:"Keep each connected T3 server on the newest release of its channel. Automatic updates wait until no agent has worked on that server for ten minutes, because the update restarts it.",kind:"choice",value:root.bridge.serverUpdateMode || "auto",choices:[{id:"auto",name:"Automatically when idle"},{id:"notify",name:"Only show available updates"},{id:"off",name:"Off"}]})
@@ -196,7 +196,7 @@ Rectangle {
             readonly property string failure:parent.parent.failure
             text:update.state==="running"?T3I18n.tr("Updating to T3 {version}… The server restarts when it finishes.",{version:update.latest || ""})
              :failure?T3I18n.tr("The update failed: {reason}",{reason:root.serverUpdateReason(failure)})
-             :!update.canUpdate?T3I18n.tr("T3 {version} is available. ot3 cannot update it: {reason}",{version:update.latest,reason:root.serverUpdateReason(update.reason)})
+             :!update.canUpdate?T3I18n.tr("T3 {version} is available. O3 cannot update it: {reason}",{version:update.latest,reason:root.serverUpdateReason(update.reason)})
              :root.bridge.serverUpdateMode==="auto"?T3I18n.tr("T3 {version} is available. It installs once the server has been idle for ten minutes.",{version:update.latest})
              :T3I18n.tr("T3 {version} is available.",{version:update.latest})
             color:failure?Color.urgent:update.state==="running"?T3Palette.working:root.fg}
@@ -267,7 +267,7 @@ Rectangle {
         readonly property var catalog:b.dictationCatalog || ({loaded:false,models:[],recorder:false})
         readonly property var modelInfo:b.dictationModelInfo || ({})
         Text{width:parent.width;bottomPadding:Style.space(8);wrapMode:Text.Wrap;textFormat:Text.PlainText;color:Color.popups.text;opacity:0.75;font.pixelSize:Style.font.caption
-         text:!catalog.loaded?T3I18n.tr("The dictation helper is not installed. Build ot3 with CMake available to include it."):!catalog.recorder?T3I18n.tr("Dictation needs PipeWire's pw-record to use the microphone."):T3I18n.tr("Speech is turned into text on this computer with whisper.cpp; no audio leaves it. The helper runs only while you dictate.")}
+         text:!catalog.loaded?T3I18n.tr("The dictation helper is not installed. Build O3 with CMake available to include it."):!catalog.recorder?T3I18n.tr("Dictation needs PipeWire's pw-record to use the microphone."):T3I18n.tr("Speech is turned into text on this computer with whisper.cpp; no audio leaves it. The helper runs only while you dictate.")}
         T3PreferenceField{width:parent.width;controlName:"preferenceDictationButton";field:({key:"dictationButton",label:"Dictation button",description:"Show a microphone next to Attach. Ctrl+Space in the composer: hold to talk, or tap to start and tap again to insert the text. Esc cancels.",kind:"bool",value:b.viewState.dictationButton!==false});writable:b.dictationAvailable;onChanged:function(value){b.rememberView({dictationButton:value})}}
         T3PreferenceField{width:parent.width;divided:true;controlName:"preferenceDictationModel";field:({key:"dictationModel",label:"Dictation model",description:"Fast suits short prompts on any computer; Accurate writes names and punctuation better and takes about a second for ten seconds of speech on recent processors.",kind:"choice",value:b.dictationModel,choices:catalog.models.map(function(m){return {id:m.id,name:T3I18n.tr(m.id==="base"?"Fast":"Accurate")+" · "+Math.round(m.sizeBytes/1048576)+" MB"+(m.installed?" ✓":"")}})});writable:b.dictationAvailable&&!download.busy;onChanged:function(value){b.rememberView({dictationModel:value})}}
         Row{width:parent.width;spacing:Style.space(8);topPadding:Style.space(4);bottomPadding:Style.space(8);visible:b.dictationAvailable

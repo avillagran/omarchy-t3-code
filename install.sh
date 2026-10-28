@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install/update Omarchy T3 Code: the desktop app (bin/ot3, its own process) and
+# Install/update O3 Code: the desktop app (bin/o3, its own process) and
 # its optional bar widget; reuse T3's existing profile and connections.
 set -euo pipefail
 # The brace group is parsed whole before it runs, so `curl | bash` never executes a partial download.
@@ -156,7 +156,7 @@ bindings=$HOME/.config/hypr/bindings.lua
 if [[ -f "$bindings" ]] && ! rg -q '(omarchy-t3-code|io.github.avillagran.omarchy-t3-code)/(integrations/hyprland/bindings|hypr-bindings)\.lua' "$bindings"; then
   cp -p -- "$bindings" "$bindings.t3-backup-$(date +%Y%m%d%H%M%S)"
   lua_path=$(printf '%s' "$plugin_dir/integrations/hyprland/bindings.lua" | sed 's/\\/\\\\/g; s/"/\\"/g')
-  printf '\n-- Omarchy T3 Code: Super+Shift+A agent; Ctrl+Enter sends inside ot3.\ndofile("%s")\n' "$lua_path" >> "$bindings"
+  printf '\n-- O3 Code: Super+Shift+A agent; Ctrl+Enter sends inside O3.\ndofile("%s")\n' "$lua_path" >> "$bindings"
 elif [[ ! -f "$bindings" ]]; then
   printf '%s\n' 'Lua bindings.lua not found; use the Send button. See docs/DEVELOPMENT.md for agent/send shortcuts.'
 fi
@@ -171,9 +171,9 @@ if [[ $(jq -r '.owner' <<< "$status") == stopped ]]; then
   result=$("$plugin_dir/bin/omarchy-t3-client" backend-control start)
   [[ $(jq -r '.error // empty' <<< "$result") == '' ]] || fail "Could not start T3's local backend: $(jq -r '.error' <<< "$result")"
 fi
-# The app: launcher entry, hidden start at login and `ot3` on the PATH.
-"$plugin_dir/bin/ot3" install-desktop
-"$plugin_dir/bin/ot3" restart >/dev/null
+# The app: launcher entry, hidden start at login and `o3` (and the old `ot3`) on the PATH.
+"$plugin_dir/bin/o3" install-desktop
+"$plugin_dir/bin/o3" restart >/dev/null
 # The bar widget is optional: OT3_BAR_WIDGET=0 installs only the desktop app.
 if [[ ${OT3_BAR_WIDGET:-1} != 0 ]]; then
   omarchy-shell shell rescanPlugins >/dev/null
@@ -186,6 +186,6 @@ if [[ $t3_bootstrapped == 1 ]] && { : </dev/tty; } 2>/dev/null; then
   read -r -p 'Open T3 Code now? [y/N] ' answer </dev/tty || answer=''
   if [[ $answer == [yYsS]* ]]; then setsid -f "$t3_app" >/dev/null 2>&1 </dev/null; fi
 fi
-printf '%s\n' 'Installed. Press Super+Shift+A, open "Omarchy T3 Code" from the app launcher or click T3 in the bar. Local/remotes and model favorites are inherited from T3.'
+printf '%s\n' 'Installed. Press Super+Shift+A, open "O3 Code" from the app launcher or click O3 in the bar. Local/remotes and model favorites are inherited from T3.'
 exit
 }

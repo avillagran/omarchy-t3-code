@@ -8,6 +8,8 @@ import qs.Commons
 // frame, so it never runs a display-rate animation.
 Item {
   id: root
+  // The O3 mark: "o3-logo", or "o3-omarchy-logo" when the app uses Omarchy's logo.
+  property string logoName: "o3-logo"
   // "orbit" | "scanner" | "equalizer" | "heartbeat" | "ticks" | "logo"
   property string style: "orbit"
   property var counts: ({})
@@ -29,7 +31,7 @@ Item {
 
   // Mark. The living logo style tints it; every other style keeps it neutral.
   T3Icon {
-    id: logo; objectName: "t3BarLogo"; name: "t3-logo"; tint: root.style === "logo" && root.shown ? root.toneColor : root.mark
+    id: logo; objectName: "t3BarLogo"; name: root.logoName; tint: root.style === "logo" && root.shown ? root.toneColor : root.mark
     implicitWidth: Style.space(root.style === "logo" ? 19 : root.style === "equalizer" ? 14 : 15)
     x: root.style === "equalizer" ? Style.space(1) : (root.width - width) / 2
     y: (root.height - height) / 2 - (root.style === "scanner" ? Style.space(1.5) : 0)
@@ -103,6 +105,6 @@ Item {
     readonly property real sweep: ((root.t / 2.2) % 1) * 1.6 - 0.3
     x: logo.x + logo.width * sweep - width / 2; y: logo.y; width: logo.width * 0.24; height: logo.height
     clip: true
-    T3Icon { name: "t3-logo"; tint: "white"; implicitWidth: logo.width; x: logo.x - parent.x; opacity: 0.85 }
+    T3Icon { name: root.logoName; tint: "white"; implicitWidth: logo.width; x: logo.x - parent.x; opacity: 0.85 }
   }
 }
