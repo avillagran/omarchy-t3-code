@@ -1867,7 +1867,14 @@
     "Connect existing…": "Connect existing…",
     "Start": "Start",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.",
+    "Sign in needed · {host}": "Sign in needed · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.",
+    "Not now": "Not now",
+    "Sign in to {provider}…": "Sign in to {provider}…",
+    "Waiting for {provider}…": "Waiting for {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.",
+    "Sign in on that host directly: this connection has no SSH.": "Sign in on that host directly: this connection has no SSH."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3737,7 +3744,14 @@
     "Connect existing…": "Conectar existente…",
     "Start": "Iniciar",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "El agente empieza de inmediato en un chat nuevo y empareja ese host con este por SSH, sin cambiar su instalación ni sus servicios publicados.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "El agente empieza de inmediato en un chat nuevo, hace toda la instalación por SSH y empareja el dispositivo con este. Solo te pregunta antes de usar sudo o abrir un puerto."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "El agente empieza de inmediato en un chat nuevo, hace toda la instalación por SSH y empareja el dispositivo con este. Solo te pregunta antes de usar sudo o abrir un puerto.",
+    "Sign in needed · {host}": "Inicio de sesión necesario · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} no puede ejecutar agentes en este host hasta que inicies sesión allí. Cada host guarda su propio inicio de sesión.",
+    "Not now": "Ahora no",
+    "Sign in to {provider}…": "Iniciar sesión en {provider}…",
+    "Waiting for {provider}…": "Esperando a {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Termina el inicio de sesión en la terminal que se abrió. Este aviso se cierra solo cuando termine.",
+    "Sign in on that host directly: this connection has no SSH.": "Inicia sesión directamente en ese host: esta conexión no tiene SSH."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5607,7 +5621,14 @@
     "Connect existing…": "Conectar existente…",
     "Start": "Iniciar",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "O agente começa imediatamente num novo chat e emparelha esse host com este por SSH, sem alterar sua instalação nem seus serviços publicados.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "O agente começa imediatamente num novo chat, faz toda a configuração por SSH e emparelha o dispositivo com este. Só pergunta antes de usar sudo ou abrir uma porta."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "O agente começa imediatamente num novo chat, faz toda a configuração por SSH e emparelha o dispositivo com este. Só pergunta antes de usar sudo ou abrir uma porta.",
+    "Sign in needed · {host}": "Início de sessão necessário · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} não pode executar agentes neste host até você iniciar sessão nele. Cada host mantém o próprio início de sessão.",
+    "Not now": "Agora não",
+    "Sign in to {provider}…": "Iniciar sessão no {provider}…",
+    "Waiting for {provider}…": "Aguardando {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Conclua o início de sessão no terminal que abriu. Este aviso fecha sozinho quando terminar.",
+    "Sign in on that host directly: this connection has no SSH.": "Inicie sessão diretamente nesse host: esta conexão não tem SSH."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7477,7 +7498,14 @@
     "Connect existing…": "Connecter un appareil existant…",
     "Start": "Démarrer",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "L'agent démarre aussitôt dans une nouvelle discussion et associe cet hôte à celui-ci via SSH, sans modifier son installation ni ses services publiés.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "L'agent démarre aussitôt dans une nouvelle discussion, effectue toute l'installation via SSH et associe l'appareil à celui-ci. Il ne vous demande qu'avant d'utiliser sudo ou d'ouvrir un port."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "L'agent démarre aussitôt dans une nouvelle discussion, effectue toute l'installation via SSH et associe l'appareil à celui-ci. Il ne vous demande qu'avant d'utiliser sudo ou d'ouvrir un port.",
+    "Sign in needed · {host}": "Connexion requise · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} ne peut pas exécuter d'agents sur cet hôte tant que vous ne vous y êtes pas connecté. Chaque hôte garde sa propre connexion.",
+    "Not now": "Pas maintenant",
+    "Sign in to {provider}…": "Se connecter à {provider}…",
+    "Waiting for {provider}…": "En attente de {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Terminez la connexion dans le terminal qui s'est ouvert. Cette carte se ferme d'elle-même une fois terminé.",
+    "Sign in on that host directly: this connection has no SSH.": "Connectez-vous directement sur cet hôte : cette connexion n'a pas de SSH."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9347,7 +9375,14 @@
     "Connect existing…": "Vorhandenes Gerät verbinden…",
     "Start": "Starten",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Der Agent startet sofort in einem neuen Chat und koppelt diesen Host per SSH mit diesem Gerät, ohne seine Installation oder veröffentlichten Dienste zu ändern.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Der Agent startet sofort in einem neuen Chat, erledigt die gesamte Einrichtung per SSH und koppelt das Gerät mit diesem. Er fragt nur, bevor er sudo nutzt oder einen Port öffnet."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Der Agent startet sofort in einem neuen Chat, erledigt die gesamte Einrichtung per SSH und koppelt das Gerät mit diesem. Er fragt nur, bevor er sudo nutzt oder einen Port öffnet.",
+    "Sign in needed · {host}": "Anmeldung erforderlich · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} kann auf diesem Host erst Agenten ausführen, wenn du dich dort anmeldest. Jeder Host hat seine eigene Anmeldung.",
+    "Not now": "Nicht jetzt",
+    "Sign in to {provider}…": "Bei {provider} anmelden…",
+    "Waiting for {provider}…": "Warte auf {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Schließe die Anmeldung im geöffneten Terminal ab. Diese Karte schließt sich danach von selbst.",
+    "Sign in on that host directly: this connection has no SSH.": "Melde dich direkt auf diesem Host an: Diese Verbindung hat kein SSH."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11217,7 +11252,14 @@
     "Connect existing…": "Connetti esistente…",
     "Start": "Avvia",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "L'agente parte subito in una nuova chat e abbina quell'host a questo via SSH, senza modificarne l'installazione né i servizi pubblicati.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "L'agente parte subito in una nuova chat, esegue tutta la configurazione via SSH e abbina il dispositivo a questo. Ti chiede solo prima di usare sudo o aprire una porta."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "L'agente parte subito in una nuova chat, esegue tutta la configurazione via SSH e abbina il dispositivo a questo. Ti chiede solo prima di usare sudo o aprire una porta.",
+    "Sign in needed · {host}": "Accesso necessario · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} non può eseguire agenti su questo host finché non accedi lì. Ogni host mantiene il proprio accesso.",
+    "Not now": "Non ora",
+    "Sign in to {provider}…": "Accedi a {provider}…",
+    "Waiting for {provider}…": "In attesa di {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Completa l'accesso nel terminale che si è aperto. Questa scheda si chiude da sola al termine.",
+    "Sign in on that host directly: this connection has no SSH.": "Accedi direttamente su quell'host: questa connessione non ha SSH."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13087,7 +13129,14 @@
     "Connect existing…": "Bestaand apparaat verbinden…",
     "Start": "Starten",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "De agent begint meteen in een nieuwe chat en koppelt die host via SSH aan dit apparaat, zonder de installatie of gepubliceerde diensten te wijzigen.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "De agent begint meteen in een nieuwe chat, doet de hele installatie via SSH en koppelt het apparaat aan dit apparaat. Hij vraagt alleen iets voordat hij sudo gebruikt of een poort opent."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "De agent begint meteen in een nieuwe chat, doet de hele installatie via SSH en koppelt het apparaat aan dit apparaat. Hij vraagt alleen iets voordat hij sudo gebruikt of een poort opent.",
+    "Sign in needed · {host}": "Aanmelden nodig · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} kan op deze host geen agents uitvoeren totdat je je daar aanmeldt. Elke host heeft zijn eigen aanmelding.",
+    "Not now": "Niet nu",
+    "Sign in to {provider}…": "Aanmelden bij {provider}…",
+    "Waiting for {provider}…": "Wachten op {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Rond de aanmelding af in de terminal die is geopend. Deze kaart sluit vanzelf zodra het klaar is.",
+    "Sign in on that host directly: this connection has no SSH.": "Meld je direct aan op die host: deze verbinding heeft geen SSH."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14957,7 +15006,14 @@
     "Connect existing…": "Połącz istniejące urządzenie…",
     "Start": "Rozpocznij",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agent od razu zaczyna w nowym czacie i paruje ten host z tym urządzeniem przez SSH, bez zmiany jego instalacji ani opublikowanych usług.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agent od razu zaczyna w nowym czacie, wykonuje całą konfigurację przez SSH i paruje urządzenie z tym. Pyta tylko przed użyciem sudo lub otwarciem portu."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agent od razu zaczyna w nowym czacie, wykonuje całą konfigurację przez SSH i paruje urządzenie z tym. Pyta tylko przed użyciem sudo lub otwarciem portu.",
+    "Sign in needed · {host}": "Wymagane logowanie · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} nie może uruchamiać agentów na tym hoście, dopóki się na nim nie zalogujesz. Każdy host ma własne logowanie.",
+    "Not now": "Nie teraz",
+    "Sign in to {provider}…": "Zaloguj się do {provider}…",
+    "Waiting for {provider}…": "Oczekiwanie na {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Dokończ logowanie w terminalu, który się otworzył. Ta karta zamknie się sama po zakończeniu.",
+    "Sign in on that host directly: this connection has no SSH.": "Zaloguj się bezpośrednio na tym hoście: to połączenie nie ma SSH."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16827,7 +16883,14 @@
     "Connect existing…": "Подключить существующее…",
     "Start": "Начать",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Агент сразу начинает работу в новом чате и связывает этот хост с этим устройством по SSH, не меняя его установку и опубликованные службы.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Агент сразу начинает работу в новом чате, выполняет всю настройку по SSH и связывает устройство с этим. Спрашивает только перед использованием sudo или открытием порта."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Агент сразу начинает работу в новом чате, выполняет всю настройку по SSH и связывает устройство с этим. Спрашивает только перед использованием sudo или открытием порта.",
+    "Sign in needed · {host}": "Нужен вход · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} не может запускать агентов на этом хосте, пока вы не войдёте на нём. У каждого хоста свой вход.",
+    "Not now": "Не сейчас",
+    "Sign in to {provider}…": "Войти в {provider}…",
+    "Waiting for {provider}…": "Ожидание {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Завершите вход в открывшемся терминале. Карточка закроется сама, когда всё будет готово.",
+    "Sign in on that host directly: this connection has no SSH.": "Войдите прямо на этом хосте: у этого подключения нет SSH."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18697,7 +18760,14 @@
     "Connect existing…": "Підключити наявний пристрій…",
     "Start": "Почати",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Агент одразу починає роботу в новому чаті й поєднує цей хост із цим пристроєм через SSH, не змінюючи його встановлення та опубліковані служби.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Агент одразу починає роботу в новому чаті, виконує все налаштування через SSH і поєднує пристрій із цим. Питає лише перед використанням sudo або відкриттям порту."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Агент одразу починає роботу в новому чаті, виконує все налаштування через SSH і поєднує пристрій із цим. Питає лише перед використанням sudo або відкриттям порту.",
+    "Sign in needed · {host}": "Потрібен вхід · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} не може запускати агентів на цьому хості, доки ви не ввійдете на ньому. Кожен хост має власний вхід.",
+    "Not now": "Не зараз",
+    "Sign in to {provider}…": "Увійти в {provider}…",
+    "Waiting for {provider}…": "Очікування {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Завершіть вхід у терміналі, що відкрився. Картка закриється сама, коли все буде готово.",
+    "Sign in on that host directly: this connection has no SSH.": "Увійдіть безпосередньо на цьому хості: це підключення не має SSH."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20567,7 +20637,14 @@
     "Connect existing…": "既存のデバイスに接続…",
     "Start": "開始",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "エージェントが新しいチャットですぐに開始し、SSH 経由でそのホストをこのデバイスとペアリングします。インストールや公開中のサービスは変更しません。",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "エージェントが新しいチャットですぐに開始し、SSH 経由でセットアップをすべて行い、デバイスをこのデバイスとペアリングします。sudo の使用やポートを開く前にだけ確認します。"
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "エージェントが新しいチャットですぐに開始し、SSH 経由でセットアップをすべて行い、デバイスをこのデバイスとペアリングします。sudo の使用やポートを開く前にだけ確認します。",
+    "Sign in needed · {host}": "サインインが必要 · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} は、このホストでサインインするまでエージェントを実行できません。サインインはホストごとに保持されます。",
+    "Not now": "今はしない",
+    "Sign in to {provider}…": "{provider} にサインイン…",
+    "Waiting for {provider}…": "{provider} を待っています…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "開いたターミナルでサインインを完了してください。完了するとこのカードは自動で閉じます。",
+    "Sign in on that host directly: this connection has no SSH.": "そのホストで直接サインインしてください。この接続には SSH がありません。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22437,7 +22514,14 @@
     "Connect existing…": "기존 장치 연결…",
     "Start": "시작",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "에이전트가 새 채팅에서 바로 시작해 SSH로 그 호스트를 이 기기와 페어링합니다. 설치나 게시된 서비스는 바꾸지 않습니다.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "에이전트가 새 채팅에서 바로 시작해 SSH로 설정을 모두 마치고 기기를 이 기기와 페어링합니다. sudo를 쓰거나 포트를 열기 전에만 묻습니다."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "에이전트가 새 채팅에서 바로 시작해 SSH로 설정을 모두 마치고 기기를 이 기기와 페어링합니다. sudo를 쓰거나 포트를 열기 전에만 묻습니다.",
+    "Sign in needed · {host}": "로그인 필요 · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers}은(는) 이 호스트에서 로그인하기 전까지 에이전트를 실행할 수 없습니다. 로그인은 호스트마다 따로 유지됩니다.",
+    "Not now": "나중에",
+    "Sign in to {provider}…": "{provider}에 로그인…",
+    "Waiting for {provider}…": "{provider} 기다리는 중…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "열린 터미널에서 로그인을 마치세요. 완료되면 이 카드는 자동으로 닫힙니다.",
+    "Sign in on that host directly: this connection has no SSH.": "그 호스트에서 직접 로그인하세요. 이 연결에는 SSH가 없습니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24307,7 +24391,14 @@
     "Connect existing…": "连接现有设备…",
     "Start": "开始",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "代理会立即在新聊天中开始，通过 SSH 将该主机与本设备配对，不更改其安装或已发布的服务。",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "代理会立即在新聊天中开始，通过 SSH 完成全部设置并将设备与本设备配对。仅在使用 sudo 或打开端口前询问你。"
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "代理会立即在新聊天中开始，通过 SSH 完成全部设置并将设备与本设备配对。仅在使用 sudo 或打开端口前询问你。",
+    "Sign in needed · {host}": "需要登录 · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "在此主机上登录之前，{providers} 无法运行代理。每台主机各自保存登录状态。",
+    "Not now": "暂不",
+    "Sign in to {provider}…": "登录 {provider}…",
+    "Waiting for {provider}…": "正在等待 {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "请在打开的终端中完成登录。完成后此卡片会自动关闭。",
+    "Sign in on that host directly: this connection has no SSH.": "请直接在该主机上登录：此连接没有 SSH。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26177,7 +26268,14 @@
     "Connect existing…": "توصيل جهاز موجود…",
     "Start": "بدء",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "يبدأ الوكيل فورًا في محادثة جديدة ويقرن ذلك المضيف بهذا الجهاز عبر SSH دون تغيير تثبيته أو خدماته المنشورة.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "يبدأ الوكيل فورًا في محادثة جديدة، وينجز الإعداد كاملًا عبر SSH ويقرن الجهاز بهذا الجهاز. لا يسألك إلا قبل استخدام sudo أو فتح منفذ."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "يبدأ الوكيل فورًا في محادثة جديدة، وينجز الإعداد كاملًا عبر SSH ويقرن الجهاز بهذا الجهاز. لا يسألك إلا قبل استخدام sudo أو فتح منفذ.",
+    "Sign in needed · {host}": "يلزم تسجيل الدخول · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "لا يمكن لـ {providers} تشغيل الوكلاء على هذا المضيف حتى تسجّل الدخول فيه. لكل مضيف تسجيل دخول خاص به.",
+    "Not now": "ليس الآن",
+    "Sign in to {provider}…": "تسجيل الدخول إلى {provider}…",
+    "Waiting for {provider}…": "بانتظار {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "أكمل تسجيل الدخول في الطرفية التي فُتحت. تُغلق هذه البطاقة تلقائيًا عند الانتهاء.",
+    "Sign in on that host directly: this connection has no SSH.": "سجّل الدخول مباشرة على ذلك المضيف: هذا الاتصال لا يتضمن SSH."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28047,7 +28145,14 @@
     "Connect existing…": "Mevcut cihazı bağla…",
     "Start": "Başlat",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Ajan hemen yeni bir sohbette başlar ve o ana makineyi SSH üzerinden bu cihazla eşler; kurulumunu ve yayımlanan hizmetlerini değiştirmez.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Ajan hemen yeni bir sohbette başlar, tüm kurulumu SSH üzerinden yapar ve cihazı bununla eşler. Yalnızca sudo kullanmadan veya bir port açmadan önce sorar."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Ajan hemen yeni bir sohbette başlar, tüm kurulumu SSH üzerinden yapar ve cihazı bununla eşler. Yalnızca sudo kullanmadan veya bir port açmadan önce sorar.",
+    "Sign in needed · {host}": "Oturum açılması gerekiyor · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers}, siz bu ana makinede oturum açana kadar ajan çalıştıramaz. Her ana makine kendi oturumunu tutar.",
+    "Not now": "Şimdi değil",
+    "Sign in to {provider}…": "{provider} oturumu aç…",
+    "Waiting for {provider}…": "{provider} bekleniyor…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Oturum açmayı açılan terminalde tamamlayın. İşlem bitince bu kart kendiliğinden kapanır.",
+    "Sign in on that host directly: this connection has no SSH.": "O ana makinede doğrudan oturum açın: bu bağlantıda SSH yok."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29917,7 +30022,14 @@
     "Connect existing…": "Anslut befintlig…",
     "Start": "Starta",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agenten startar direkt i en ny chatt och parkopplar värden med den här enheten över SSH, utan att ändra dess installation eller publicerade tjänster.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten startar direkt i en ny chatt, gör hela installationen över SSH och parkopplar enheten med den här. Den frågar bara innan den använder sudo eller öppnar en port."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten startar direkt i en ny chatt, gör hela installationen över SSH och parkopplar enheten med den här. Den frågar bara innan den använder sudo eller öppnar en port.",
+    "Sign in needed · {host}": "Inloggning krävs · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} kan inte köra agenter på den här värden förrän du loggar in där. Varje värd har sin egen inloggning.",
+    "Not now": "Inte nu",
+    "Sign in to {provider}…": "Logga in på {provider}…",
+    "Waiting for {provider}…": "Väntar på {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Slutför inloggningen i terminalen som öppnades. Kortet stängs av sig självt när det är klart.",
+    "Sign in on that host directly: this connection has no SSH.": "Logga in direkt på den värden: anslutningen har ingen SSH."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31787,7 +31899,14 @@
     "Connect existing…": "Tilslut eksisterende…",
     "Start": "Start",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agenten starter med det samme i en ny chat og parrer værten med denne enhed over SSH uden at ændre dens installation eller publicerede tjenester.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten starter med det samme i en ny chat, klarer hele opsætningen over SSH og parrer enheden med denne. Den spørger kun, før den bruger sudo eller åbner en port."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten starter med det samme i en ny chat, klarer hele opsætningen over SSH og parrer enheden med denne. Den spørger kun, før den bruger sudo eller åbner en port.",
+    "Sign in needed · {host}": "Log ind påkrævet · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} kan ikke køre agenter på denne vært, før du logger ind der. Hver vært har sit eget login.",
+    "Not now": "Ikke nu",
+    "Sign in to {provider}…": "Log ind på {provider}…",
+    "Waiting for {provider}…": "Venter på {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Afslut login i den terminal, der åbnede. Kortet lukker af sig selv, når det er færdigt.",
+    "Sign in on that host directly: this connection has no SSH.": "Log ind direkte på den vært: forbindelsen har ingen SSH."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33657,7 +33776,14 @@
     "Connect existing…": "Koble til eksisterende…",
     "Start": "Start",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agenten starter med en gang i en ny chat og parer verten med denne enheten over SSH, uten å endre installasjonen eller de publiserte tjenestene.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten starter med en gang i en ny chat, gjør hele oppsettet over SSH og parer enheten med denne. Den spør bare før den bruker sudo eller åpner en port."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agenten starter med en gang i en ny chat, gjør hele oppsettet over SSH og parer enheten med denne. Den spør bare før den bruker sudo eller åpner en port.",
+    "Sign in needed · {host}": "Innlogging kreves · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} kan ikke kjøre agenter på denne verten før du logger inn der. Hver vert har sin egen innlogging.",
+    "Not now": "Ikke nå",
+    "Sign in to {provider}…": "Logg inn på {provider}…",
+    "Waiting for {provider}…": "Venter på {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Fullfør innloggingen i terminalen som åpnet seg. Kortet lukkes av seg selv når det er ferdig.",
+    "Sign in on that host directly: this connection has no SSH.": "Logg inn direkte på den verten: tilkoblingen har ikke SSH."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35527,7 +35653,14 @@
     "Connect existing…": "Yhdistä olemassa oleva…",
     "Start": "Aloita",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agentti aloittaa heti uudessa keskustelussa ja yhdistää isännän tähän laitteeseen SSH:n kautta muuttamatta sen asennusta tai julkaistuja palveluita.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agentti aloittaa heti uudessa keskustelussa, tekee koko asennuksen SSH:n kautta ja yhdistää laitteen tähän. Se kysyy vain ennen sudon käyttöä tai portin avaamista."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agentti aloittaa heti uudessa keskustelussa, tekee koko asennuksen SSH:n kautta ja yhdistää laitteen tähän. Se kysyy vain ennen sudon käyttöä tai portin avaamista.",
+    "Sign in needed · {host}": "Kirjautuminen tarvitaan · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} ei voi ajaa agentteja tällä isännällä ennen kuin kirjaudut sinne. Jokaisella isännällä on oma kirjautumisensa.",
+    "Not now": "Ei nyt",
+    "Sign in to {provider}…": "Kirjaudu palveluun {provider}…",
+    "Waiting for {provider}…": "Odotetaan: {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Viimeistele kirjautuminen avautuneessa päätteessä. Kortti sulkeutuu itsestään, kun se on valmis.",
+    "Sign in on that host directly: this connection has no SSH.": "Kirjaudu suoraan sillä isännällä: tässä yhteydessä ei ole SSH:ta."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37397,6 +37530,13 @@
     "Connect existing…": "Připojit existující…",
     "Start": "Spustit",
     "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "Agent hned začne v novém chatu a spáruje ten hostitel s tímto zařízením přes SSH, aniž by měnil jeho instalaci nebo publikované služby.",
-    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agent hned začne v novém chatu, provede celé nastavení přes SSH a spáruje zařízení s tímto. Zeptá se jen před použitím sudo nebo otevřením portu."
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "Agent hned začne v novém chatu, provede celé nastavení přes SSH a spáruje zařízení s tímto. Zeptá se jen před použitím sudo nebo otevřením portu.",
+    "Sign in needed · {host}": "Je nutné přihlášení · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} nemůže na tomto hostiteli spouštět agenty, dokud se na něm nepřihlásíte. Každý hostitel má vlastní přihlášení.",
+    "Not now": "Teď ne",
+    "Sign in to {provider}…": "Přihlásit se k {provider}…",
+    "Waiting for {provider}…": "Čeká se na {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Dokončete přihlášení v terminálu, který se otevřel. Karta se po dokončení zavře sama.",
+    "Sign in on that host directly: this connection has no SSH.": "Přihlaste se přímo na tom hostiteli: toto připojení nemá SSH."
   }
 }

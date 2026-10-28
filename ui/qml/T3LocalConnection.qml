@@ -9,7 +9,7 @@ ColumnLayout{
  spacing:Style.space(6)
   RowLayout{Layout.fillWidth:true
    T3Icon{name:"laptop";tint:root.fg}
-   Text{Layout.fillWidth:true;text:"T3 Code · "+T3I18n.tr("Local");color:root.fg;font.pixelSize:Style.font.body}
+   Text{Layout.fillWidth:true;text:((((root.bridge.state || {}).environments || []).find(function(e){return e.id==="local"}) || {}).name || "T3 Code")+" · "+T3I18n.tr("Local");color:root.fg;font.pixelSize:Style.font.body}
    T3Switch{objectName:"connectionLocalEnabled";checked:(root.bridge.connectionSettings || {}).localEnabled!==false;enabled:!(root.bridge.connectionSettings || {}).busy&&!!(root.bridge.connectionSettings || {}).revision;onToggled:root.bridge.manageConnections("local-enabled",{enabled:checked})}
   }
   RowLayout{Layout.fillWidth:true

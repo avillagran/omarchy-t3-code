@@ -65,6 +65,17 @@ When the agent runs on this device, the other host invites and this device claim
 
 When the agent runs on another host (for a new host only that one reaches), *Start* first makes this device write a one-use invitation that expires in an hour (asking to manage the new host when chosen); it is moved to that host over SSH, the prompt names it by path only, the new host claims it, and you approve it here.
 
+## Names and sign-ins on each host
+
+This device's environment takes the name OmaBridge publishes for it (renamed in the OmaBridge section), else the host name T3 reports, else "T3 Code"; a rename shows on the next refresh. Other hosts keep the label of their connection.
+
+Provider sign-ins belong to each host: a host just connected starts signed out, and its agents cannot run until each provider signs in there. When a connected host has an enabled, installed provider that is signed out, a *Sign in needed* card names that host and has one button per provider:
+
+- A provider T3 signs in itself opens Preferences → Providers on that host, where T3 runs its sign-in.
+- Codex and Claude, which T3 does not sign in, open a terminal here running their CLI's login on that host (`codex login --device-auth`, `claude auth login`), over the connection's SSH for another host. The CLI shows its page and code. Meanwhile ot3 asks T3 on that host to re-check the provider every 5 seconds for up to 10 minutes, and the card closes once it is signed in. A connection without SSH cannot do this from here.
+
+No credentials are copied between hosts. *Not now* hides the card until another provider signs out there.
+
 ## Bar indicator
 
 *Show OmaBridge in the bar* (in the same section, off by default) adds a small indicator after the T3 status in ot3's bar widget. It refreshes the snapshot every minute and when opened. A red dot means requests are waiting for your approval. Its popup shows the same OmaBridge page as Preferences. Closing the popup closes any open dialog and forgets a shown invitation. *OmaBridge settings…* opens Preferences → Connections, where per-connection routes and the bar toggle live. Middle click refreshes.
