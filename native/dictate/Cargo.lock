@@ -209,7 +209,7 @@ dependencies = [
 
 [[package]]
 name = "ot3-dictate"
-version = "0.2.23"
+version = "0.2.24"
 dependencies = [
  "libc",
  "sha2",
