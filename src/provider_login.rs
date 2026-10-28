@@ -20,8 +20,11 @@ fn quote(arg: &str) -> String {
 }
 /// The terminal's script: the login on that host (a login shell, so the CLI is
 /// on PATH as it is for T3 there), then a pause to read how it ended.
+#[cfg(test)]
 fn script(driver: &str, ssh: Option<&[String]>) -> Result<String> {
-    let login = login_command(driver).ok_or("provider_login_unsupported")?;
+    Ok(terminal_script(login_command(driver).ok_or("provider_login_unsupported")?, ssh))
+}
+fn terminal_script(login: &str, ssh: Option<&[String]>) -> String {
     let remote = format!("exec \"${{SHELL:-/bin/sh}}\" -lc {}", quote(login));
     let run = match ssh {
         None => remote,
@@ -32,17 +35,22 @@ fn script(driver: &str, ssh: Option<&[String]>) -> Result<String> {
             line.join(" ")
         }
     };
-    Ok(format!("{run}; printf '\\n%s' 'Press Enter to close.'; read -r _"))
+    format!("{run}; printf '\\n%s' 'Press Enter to close.'; read -r _")
+}
+/// Opens a terminal here running `command` in a login shell, here or over SSH.
+pub(crate) fn open_terminal(command: &str, ssh: Option<&[String]>) -> Result<()> {
+    let script = terminal_script(command, ssh);
+    let mut child = Command::new("omarchy-launch-terminal").args(["sh", "-c", &script])
+        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+        .spawn().map_err(|_| "terminal_launch_failed")?;
+    std::thread::spawn(move || { let _ = child.wait(); });
+    Ok(())
 }
 /// `{environment, instanceId, driver}`: opens the terminal. Local or SSH only.
 pub fn launch(e: &Environment, input: &Value) -> Result<Value> {
     let driver = text(input, "driver");
     let ssh = if e.id == "local" { None } else { Some(crate::connections::ssh_args_for(&e.id)?) };
-    let script = script(driver, ssh.as_deref())?;
-    let mut child = Command::new("omarchy-launch-terminal").args(["sh", "-c", &script])
-        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
-        .spawn().map_err(|_| "terminal_launch_failed")?;
-    std::thread::spawn(move || { let _ = child.wait(); });
+    open_terminal(login_command(driver).ok_or("provider_login_unsupported")?, ssh.as_deref())?;
     Ok(json!({"opened": true}))
 }
 /// Asks T3 on that host to probe the provider again, so a finished login shows.

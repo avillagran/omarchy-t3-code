@@ -231,7 +231,7 @@ fn prune_sessions(base:&str,token:&str){
 fn connect_ssh(profile:&Value, env:&mut Environment)->Result<Tunnel> {connect_ssh_via(profile,env,None)}
 /// Resolve the host key name OpenSSH would use for this profile, so a bridged
 /// connection is still verified against the user's existing known_hosts entry.
-fn host_key_alias(args:&[String])->Result<String>{
+pub(crate) fn host_key_alias(args:&[String])->Result<String>{
     let out=Command::new("timeout").args(["4s","ssh","-G"]).args(args).stdin(Stdio::null()).stderr(Stdio::null()).output().map_err(|_|"ssh_unavailable")?;
     if !out.status.success(){return Err("ssh_unavailable".into())}
     let config=String::from_utf8(out.stdout).map_err(|_|"ssh_unavailable")?;

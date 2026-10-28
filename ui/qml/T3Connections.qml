@@ -119,6 +119,7 @@ ColumnLayout {
   }}
  }
  T3ConnectionPreferences{Layout.fillWidth:true;bridge:root.bridge}
+ T3HostSync{Layout.fillWidth:true;bridge:root.bridge}
  Controls.Popup {
   id:editor;parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(520),parent?parent.width-Style.space(32):Style.space(520));padding:Style.space(20);modal:true
   background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.18)}
