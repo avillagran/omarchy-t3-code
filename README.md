@@ -31,15 +31,17 @@ your Omarchy theme and inherits T3's connections, models and favorites.
 
 ## Install
 
-Requires **Omarchy's Quickshell shell/plugin manager** and **T3 Code installed
-and opened at least once**. Run as your desktop user:
+Requires **Omarchy's Quickshell shell/plugin manager**. Run as your desktop user, from your
+desktop session:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/install.sh | bash
 ```
 
 The [installer](install.sh) installs runtime dependencies through
-Pacman, downloads verified **aarch64 / x86_64** binaries and installs Omarchy T3 Code as a **desktop
+Pacman and, when T3 Code is missing, **T3 Code nightly** (`t3code-nightly-bin`, from Omarchy's
+repository or the AUR through `yay`/`paru`). If T3 has never been opened it opens it once, so T3
+creates its profile and `t3` CLI. It then downloads verified **aarch64 / x86_64** binaries and installs Omarchy T3 Code as a **desktop
 app**: an "Omarchy T3 Code" entry in the app launcher, `ot3` on your PATH, a hidden start at login and
 **Super+Shift+A** as your default agent on Omarchy's Lua configuration. It also enables the optional
 **bar widget**, which shows work/ready/input badges and minimizes the window to the bar
