@@ -53,11 +53,17 @@ Public gateways let T3 Code's own apps, which cannot run OmaBridge, reach this d
 
 Per-connection routes use the same device and binary. While this device is published, an OmaBridge with the `forward-through-server` feature (listed in `omabridge manage`'s `features`) opens each route's forward inside its running server, so the device's identity never connects twice. An older OmaBridge needs a separate identity for routes, set with `stateDir` in the routes file.
 
-## Installing on another device with your AI
+## Connection assistants
 
-*Install on another device with your AI…* (in the same section) sets up another host and pairs it with this one, guided by an agent in a new chat. Choose the SSH host, what it should run (a headless server with T3 Code as a background service and OmaBridge, Omarchy with ot3, or T3 Code and OmaBridge on another desktop), whether this device may manage it, whether it may also reach this device's SSH, and the project for the chat (this device's scratch project by default).
+Expand *Connection assistants* to choose where the agent runs and either *Set up a new host…* or *Connect existing…*. Both open a new chat in the host's scratch project and send the prompt at once: the agent works over SSH from start to end, and the user only watches.
 
-*Open chat* is the confirmation: OmaBridge writes a one-use invitation that expires in an hour (asking to manage the new device when chosen), then a new chat opens with the setup prompt typed in and nothing sent. The prompt pins the OmaBridge release and its hashes, uses `omabridge manage` on the new device, names the invitation by its path only (the agent copies it with `scp`, so it never enters the chat), and asks before sudo, firewall or port changes. You still approve the new device here.
+*Set up a new host…* installs another host and pairs it with this one. Choose the SSH host, what it should run (OmaBridge only for its SSH, a headless server with T3 Code as a background service and OmaBridge, Omarchy with ot3, or T3 Code and OmaBridge on another desktop), whether this device may manage it, and whether it may also reach this device's SSH. The prompt pins the OmaBridge release and its hashes, uses `omabridge manage` on the new host, and asks only before sudo, firewall or port changes.
+
+*Connect existing…* pairs a host whose OmaBridge already has an identity and publishes T3 and/or SSH. It never installs, updates, recreates the identity, publishes services or changes T3, SSH or firewall configuration, and it keeps the host's peers and grants; a missing prerequisite stops it. It always runs on this device.
+
+When the agent runs on this device, the other host invites and this device claims: the agent writes the invitation on the host into a private directory, copies it here over SSH without printing it, pairs here with `omabridge manage`, and approves this device's identity on the host (starting from ot3 is the approval). If management was chosen, it sets this device as the host's admin (`admin-set`); if SSH sharing was chosen, it grants the host this device's SSH. This device only dials out, so pairing works even when this device uses a private relay that admits only its paired devices, or a firewall drops inbound traffic. The agent verifies by peer ID, since an older identity of the same device can share its name, and quotes OmaBridge's error codes when a step fails. Finally, when the host runs T3 Code, it adds it to ot3's connections over SSH with `omarchy-t3-client connections-manage`.
+
+When the agent runs on another host (for a new host only that one reaches), *Start* first makes this device write a one-use invitation that expires in an hour (asking to manage the new host when chosen); it is moved to that host over SSH, the prompt names it by path only, the new host claims it, and you approve it here.
 
 ## Bar indicator
 
@@ -68,7 +74,8 @@ Per-connection routes use the same device and binary. While this device is publi
 Other front ends manage this device by calling `omabridge manage` themselves, as the Omarchy Control Panel does. ot3 adds:
 
 - `omarchy-t3-client omabridge-manage`: one `omabridge manage` request on stdin (at most 64 KiB), answered as `{"output":<OmaBridge's JSON>,"status":<exit code>}`, with the same binary lookup as Preferences.
-- `omabridge-install-prompt` (a backend operation): `{host, profile, manage, invitation, device}` to that prompt.
+- `omabridge-install-prompt` (a backend operation): `{host, profile, existing, manage, shareSsh, invitation, device, deviceId, runsOn}` to that prompt; run here (`runsOn` empty) it needs this device's `deviceId` and no invitation.
+- `omarchy-t3-client connections-manage`: one connections request on stdin, as Preferences sends it (`save-route`, `rename`, `enabled`, `remove`, with the `revision` from `connections-view`), answered with the saved connections or `{"error":<code>}`. The assistants use it to add the paired host's T3 Code; the running app notices the change by itself.
 - `omarchy-t3-client omabridge-read`: the routing snapshot (`available`, `version`, `identity`, `peers`, `default`, `routes`, `active`, `revision`, `error`).
 - `omarchy-t3-client omabridge-action`: one routing request on stdin. `set`, `clear` and `default` change routes (with `revision` and `"confirmed":true`). `gateways-read` and `gateway-check` read this device's public addresses from every device it manages, for the Access pairing dialog; `gateway-open` and `gateway-close` (confirmed) open or close one. On failure it prints `{"error":"<code>"}` and exits 1.
 
