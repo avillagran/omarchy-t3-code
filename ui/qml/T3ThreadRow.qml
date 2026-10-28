@@ -2,6 +2,7 @@ import QtQuick 6.11
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
+import "../js/HostStyle.js" as HostStyle
 import "../js/IconAssets.js" as Icons
 import "../js/SidebarModel.js" as Sidebar
 
@@ -56,7 +57,26 @@ Item {
   readonly property bool child:depth>0
   readonly property real indent:Style.space(16)*depth
   readonly property var subthreads:thread.subthreads || null
-  readonly property bool slim:!!thread.settled||!!thread.snoozed||child
+  // Shelved rows (settled, snoozed, subagents) are always one line; compact
+  // rows (Appearance > Thread rows) put active threads on one line too.
+  readonly property bool shelved:!!thread.settled||!!thread.snoozed||child
+  property bool compactRows:false
+  readonly property bool slim:shelved||compactRows
+  // Compact active rows keep a second line: the project, under the title.
+  readonly property bool subtitled:compactRows&&!shelved
+  // Titles that do not fit slide on hover or selection when set to marquee.
+  property bool marquee:false
+  readonly property bool titleSliding:marquee&&(showActions||selected||keyboardCurrent)
+  // The host: its icon, optional colour (an edge strip) and optional name.
+  property var hostStyles:({})
+  property bool manyHosts:false
+  readonly property var hostLook:HostStyle.of(hostStyles,thread.environmentId,catalog.machine)
+  readonly property bool showHost:!!hostLook.color||hostLook.showName||manyHosts&&thread.environmentId!=="local"
+  // A wash of the project's colour behind the row (Appearance > Project colours).
+  property bool projectWash:true
+  // The project group's shared colour; falls back to the project's own.
+  property color projectTint:"transparent"
+  readonly property color washTint:projectTint.a>0?projectTint:projectIcon.tint
   readonly property bool selected:bridge.selectedKey===thread.key
   readonly property bool receding:!selected&&!showActions&&((!!thread.working&&!(thread.pending&&["request","plan","waiting"].indexOf(thread.reason)>=0))||!!thread.settled)
   readonly property bool busy: !!bridge.managementBusy || !!bridge.managementRequest
@@ -103,7 +123,7 @@ Item {
   readonly property var discardControl: discardButton
   readonly property color fg: Color.popups.text
   readonly property color dim: Qt.rgba(fg.r,fg.g,fg.b,0.57)
-  height: Style.space(slim?36:82)
+  height: Style.space(subtitled?43:slim?36:82)
   Accessible.role: Accessible.Button
   Accessible.name: [thread.title,thread.project,stateLabel].filter(Boolean).join(" · ")
   function hidePreview(){openDelay.stop();closeDelay.stop();preview.close()}
@@ -193,14 +213,31 @@ Item {
     color: root.selected ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.075) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.045) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
     border.width:root.keyboardCurrent?1:0;border.color:Color.accent
     Behavior on color { enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(130)}}
+    Rectangle {
+      objectName:"threadProjectWash"
+      anchors.fill:parent;radius:parent.radius
+      visible:root.projectWash&&!root.child
+      opacity:root.thread.settled||root.thread.snoozed?0.5:1
+      gradient:Gradient{orientation:Gradient.Horizontal
+        GradientStop{position:0;color:Qt.rgba(root.washTint.r,root.washTint.g,root.washTint.b,0.13)}
+        GradientStop{position:0.55;color:Qt.rgba(root.washTint.r,root.washTint.g,root.washTint.b,0.02)}
+        GradientStop{position:1;color:"transparent"}}
+    }
+    Rectangle {
+      objectName:"threadHostStrip"
+      visible:!!root.hostLook.color
+      x:0;width:Style.space(3);radius:width/2
+      anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.topMargin:Style.space(root.slim?6:8);anchors.bottomMargin:Style.space(root.slim?6:8)
+      color:root.hostLook.color || "transparent"
+    }
     ShaderEffect {
       id: aura
       objectName: "threadAura"
       anchors.fill: parent
       property real burst: 0
       readonly property bool bursting: burst > 0 && burst < 1
-      property real working: !root.slim && !root.needsInput && !!root.thread.working && root.skyMoving && root.workingStyle >= 0 ? 1 : 0
-      property real attention: !root.slim && root.needsInput && root.inputStyle >= 0 ? 1 : 0
+      property real working: !root.shelved && !root.needsInput && !!root.thread.working && root.skyMoving && root.workingStyle >= 0 ? 1 : 0
+      property real attention: !root.shelved && root.needsInput && root.inputStyle >= 0 ? 1 : 0
       property real intensity: root.effects.intensity || 1
       property real workingStyle: Math.max(0, root.workingStyle)
       property real attentionStyle: Math.max(0, root.inputStyle)
@@ -229,7 +266,7 @@ Item {
       onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.ensureActions();root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
     }
     ColumnLayout {
-      anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(root.slim?0:8);anchors.bottomMargin:Style.space(root.slim?0:8);spacing:Style.space(2)
+      anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(root.subtitled?6:root.slim?0:8);anchors.bottomMargin:Style.space(root.subtitled?6:root.slim?0:8);spacing:Style.space(root.subtitled?0:2)
       opacity:root.receding&&root.thread.working?0.7:1
       RowLayout {
         Layout.fillWidth:true;Layout.preferredHeight:Style.space(20);spacing:Style.space(6)
@@ -242,18 +279,24 @@ Item {
         }
         T3Icon{objectName:"threadSubagentIcon";visible:root.child;name:root.thread.working?"loader-circle":"bot";implicitWidth:Style.space(14);tint:root.stateLabel?root.stateColor:root.dim}
         T3ProjectIcon {
+          id:projectIcon
           visible:!root.child
           project:root.projectInfo;projects:root.bridge.state.projects || [];monogram:root.thread.projectMonogram || "PR";projectKey:root.thread.projectKey || ""
           width:Style.space(16);height:width;radius:Style.space(4)
-          opacity:root.slim&&!root.showActions?0.4:1
+          opacity:root.shelved&&!root.showActions?0.4:1
           MouseArea{objectName:"projectIconContext";anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
         }
-        Text{objectName:"threadProjectOrTitle";Layout.fillWidth:true;text:root.slim?root.thread.title || "":root.thread.project || root.thread.environmentName || "";color:root.slim?(root.receding?root.dim:root.fg):root.dim;font.pixelSize:root.slim?Style.font.body:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText
+        T3MarqueeText{objectName:"threadProjectOrTitle";Layout.fillWidth:true;active:root.slim&&root.titleSliding;text:root.slim?root.thread.title || "":root.thread.project || root.thread.environmentName || "";color:root.slim?(root.receding?root.dim:root.fg):root.dim;pixelSize:root.slim?Style.font.body:Style.font.caption
           activeFocusOnTab:!root.slim
           Keys.onPressed:function(event){if(event.key===Qt.Key_Menu || (event.key===Qt.Key_F10&&event.modifiers===Qt.ShiftModifier)){root.hidePreview();root.projectContextRequested(this,width/2,height/2);event.accepted=true}}
           MouseArea{objectName:"projectNameContext";anchors.fill:parent;enabled:!root.slim;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
         }
         T3IconButton{objectName:"threadPinIndicator";visible:!!root.thread.pinned;name:root.canPin&&root.hovered?"pin-off":"pin";implicitWidth:Style.space(18);implicitHeight:Style.space(18);tooltipText:T3I18n.tr("Unpin thread");opacity:root.canPin?1:0.65;enabled:root.canPin&&!root.busy;onClicked:root.manage("unpin")}
+        // One-line rows: the host's icon in its colour, and its name when asked.
+        RowLayout{objectName:"threadSlimHost";visible:root.slim&&root.showHost;spacing:Style.space(3)
+          T3Icon{name:root.hostLook.icon;tint:root.hostLook.color || root.dim;implicitWidth:Style.space(12);opacity:root.shelved&&!root.hostLook.color?0.7:1}
+          Text{visible:root.hostLook.showName;text:root.thread.environmentName || "";color:root.hostLook.color || root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
+        }
         T3PullRequestBadge{id:slimPRBadge;objectName:root.slim?"threadPullRequestBadge":"slimThreadPullRequestBadge";active:root.slim&&root.panelVisible&&!root.pooled;badge:root.thread.pullRequestBadge || null;visible:root.slim&&!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
         Controls.Button {
           id:subthreadToggle;objectName:"threadSubthreadsToggle";visible:!!root.subthreads
@@ -318,10 +361,16 @@ Item {
           }
         }
       }
+      Text{
+        objectName:"threadCompactProject";visible:root.subtitled
+        Layout.fillWidth:true;Layout.leftMargin:Style.space(22);Layout.topMargin:-Style.space(6)
+        text:root.thread.project || root.thread.environmentName || ""
+        color:root.dim;font.family:"monospace";font.pixelSize:Style.font.caption-Style.space(1.5);elide:Text.ElideRight;textFormat:Text.PlainText
+      }
       RowLayout{
         visible:!root.slim
         Layout.fillWidth:true;Layout.topMargin:Style.space(2);spacing:Style.space(6)
-        Text{objectName:"threadCardTitle";Layout.fillWidth:true;text:root.thread.title || "";color:root.receding?root.dim:root.fg;font.weight:root.receding?Font.Normal:Font.Medium;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
+        T3MarqueeText{objectName:"threadCardTitle";Layout.fillWidth:true;active:root.titleSliding;text:root.thread.title || "";color:root.receding?root.dim:root.fg;weight:root.receding?Font.Normal:Font.Medium;pixelSize:Style.font.body}
         // Under "Done": how long ago the thread finished, muted.
         Text{objectName:"threadDoneAge";visible:root.stateLabel===T3I18n.tr("Done")&&!!root.timeLabel;text:root.timeLabel;color:root.dim;font.pixelSize:Style.font.caption}
       }
@@ -331,7 +380,8 @@ Item {
         T3Icon{objectName:"threadWorkspaceIcon";name:root.thread.branch?"folder-git-2":root.machineIcon;visible:root.thread.branch?!!root.thread.worktreePath:root.showScratchMachine;tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);implicitWidth:Style.space(12)}
         Text{objectName:"threadBranch";Layout.fillWidth:true;text:root.thread.branch||(root.showScratchMachine?root.thread.environmentName || "":"");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
         T3PullRequestBadge{id:threadPRBadge;active:!root.slim&&root.panelVisible&&!root.pooled;objectName:root.slim?"cardThreadPullRequestBadge":"threadPullRequestBadge";badge:root.thread.pullRequestBadge || null;visible:!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
-        T3Icon{objectName:"threadRemoteIcon";name:root.machineIcon;tint:root.dim;implicitWidth:Style.space(12);visible:root.thread.environmentId!=="local"&&!root.showScratchMachine}
+        T3Icon{objectName:"threadRemoteIcon";name:root.hostLook.icon;tint:root.hostLook.color || root.dim;implicitWidth:Style.space(12);visible:(root.showHost||root.thread.environmentId!=="local")&&!root.showScratchMachine}
+        Text{objectName:"threadHostName";visible:root.hostLook.showName&&!root.showScratchMachine;text:root.thread.environmentName || "";color:root.hostLook.color || root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
         T3ProviderIcon{provider:root.modelInfo.instanceId?root.modelInfo:({driverKind:root.thread.provider,registryIcon:""});tint:root.dim;Layout.preferredWidth:Style.space(12);Layout.preferredHeight:Style.space(12)}
       }
     }

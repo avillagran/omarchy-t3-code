@@ -14,7 +14,7 @@ ShellRoot{
  TestCase{id:keys;when:false}
  Connections{target:Test.T3Backend;function onSnapshotUpdated(){if(root.fixture)Test.T3Backend.state=root.fixture}function onNewThreadWorkspaceRequested(request){root.launched=request}}
  Timer{interval:150;running:true;repeat:true;onTriggered:{var b=Test.T3Backend
-  if(phase===0){if(!b.viewStateLoaded)return;b.rememberView({sidebarCompact:true,workingExpanded:true,settledExpanded:true,threadMoveEffect:"arc",threadMoveSpeed:"slow",fpsMeter:true});fixture={threads:threads([],[]),projects:[{key:"fixture/p",id:"p",title:"Project",environmentId:"fixture"}],environments:[]};b.state=fixture;panel.open();phase=1
+  if(phase===0){if(!b.viewStateLoaded)return;b.rememberView({threadRowSize:"large",sidebarCompact:true,workingExpanded:true,settledExpanded:true,threadMoveEffect:"arc",threadMoveSpeed:"slow",fpsMeter:true});fixture={threads:threads([],[]),projects:[{key:"fixture/p",id:"p",title:"Project",environmentId:"fixture"}],environments:[]};b.state=fixture;panel.open();phase=1
   }else if(phase===1){if(panel.restoringSidebar)return;check(!!row("workingThreadList","w"),"working row starts in the Working shelf");check(!!row("threadList","a"),"ready row in the inbox");check(flights()===0,"no motion for plain state");
    push(threads(["w"],[]));phase=2
   }else if(phase===2){check(panel.rowMotion,"a snapshot that moves a thread animates");check(flights()===1,"the thread flies between sections, got "+flights());

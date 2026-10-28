@@ -12,7 +12,7 @@ ShellRoot{
  TestCase{id:keys;when:false}
  Connections{target:Test.T3Backend;function onSnapshotUpdated(){if(root.fixture)Test.T3Backend.state=root.fixture}}
  Timer{interval:350;running:true;repeat:true;onTriggered:{var b=Test.T3Backend,list=keys.findChild(panel,"threadList")
-  if(phase===0){if(!b.viewStateLoaded)return;b.rememberView({sidebarCompact:false,settledExpanded:false});b.state={threads:rows(30),projects:[],environments:[]};fixture=b.state;panel.open();phase=1
+  if(phase===0){if(!b.viewStateLoaded)return;b.rememberView({sidebarCompact:false,settledExpanded:false,threadOrder:"t3"});b.state={threads:rows(30),projects:[],environments:[]};fixture=b.state;panel.open();phase=1
   }else if(phase===1){list.contentY=list.originY+Style.space(400);phase=2
   }else if(phase===2){var a=firstVisible(list);anchorId=a.id;anchorY=a.y;check(anchorId!=="t0","list scrolled away from the top");
    // A thread above the viewport moves into the inbox (e.g. finished elsewhere).

@@ -157,3 +157,5 @@ T3ConnectionNotice 1.0 T3ConnectionNotice.qml
 
 T3DeferredPopup 1.0 T3DeferredPopup.qml
 T3VideoViewer 1.0 T3VideoViewer.qml
+T3BrandMark 1.0 T3BrandMark.qml
+T3MarqueeText 1.0 T3MarqueeText.qml

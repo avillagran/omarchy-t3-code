@@ -17,6 +17,7 @@ ShellRoot {
   var b=Test.T3Backend,layout=keys.findChild(panel,"t3PanelLayout")
   if(phase===0){
    if(!b.viewStateLoaded)return
+   b.rememberView({threadRowSize:"large"})
    b.state={environments:[{id:"a",name:"omarchy"}],projects:[{key:"a/p",name:"omarchy-t3-code"}],threads:root.threads(["one","two","three"])}
    panel.open();phase=1
   } else if(phase===1){

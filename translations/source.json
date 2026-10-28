@@ -1945,6 +1945,27 @@
     "Stop sharing T3 automatically?": "Stop sharing T3 automatically?",
     "This is this device's own T3 Code": "This is this device's own T3 Code",
     "That device refused the pairing. Check that it still shares T3 with this one.": "That device refused the pairing. Check that it still shares T3 with this one.",
-    "That device can't be reached over OmaBridge, or its OmaBridge needs an update. Trying again in a few minutes.": "That device can't be reached over OmaBridge, or its OmaBridge needs an update. Trying again in a few minutes."
+    "That device can't be reached over OmaBridge, or its OmaBridge needs an update. Trying again in a few minutes.": "That device can't be reached over OmaBridge, or its OmaBridge needs an update. Trying again in a few minutes.",
+    "Logo": "Logo",
+    "The mark in the sidebar header. Every few seconds it turns into the T of T3 and spells Omarchy.": "The mark in the sidebar header. Every few seconds it turns into the T of T3 and spells Omarchy.",
+    "Letter O": "Letter O",
+    "Omarchy logo": "Omarchy logo",
+    "Thread rows": "Thread rows",
+    "Compact puts each thread on one line. Large adds the project, branch, host and model.": "Compact puts each thread on one line. Large adds the project, branch, host and model.",
+    "Large": "Large",
+    "Long titles": "Long titles",
+    "Cut with an ellipsis": "Cut with an ellipsis",
+    "Slide on hover": "Slide on hover",
+    "Thread order": "Thread order",
+    "Pinned threads always stay on top.": "Pinned threads always stay on top.",
+    "Latest reply first": "Latest reply first",
+    "T3's order": "T3's order",
+    "Project colours": "Project colours",
+    "Tint each thread with its project's colour. Projects grouped together share it.": "Tint each thread with its project's colour. Projects grouped together share it.",
+    "Icon and colour for {host}": "Icon and colour for {host}",
+    "No colour": "No colour",
+    "Show the host's name on threads": "Show the host's name on threads",
+    "Group chips": "Group chips",
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "A chip per project group above the threads, with its open thread count. Click one to show only that group."
   }
 }

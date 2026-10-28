@@ -3,26 +3,26 @@
 Format: [omarchy-i18n](https://github.com/avillagran/omarchy-i18n/tree/5df6970583f9987369d11f15bec1b6f573025fb1).
 English source keys are stable, with named placeholders and full/base/English fallback.
 
-- en: 1946/1946 keys
-- es: 1946/1946 keys
-- pt: 1946/1946 keys
-- fr: 1946/1946 keys
-- de: 1946/1946 keys
-- it: 1946/1946 keys
-- nl: 1946/1946 keys
-- pl: 1946/1946 keys
-- ru: 1946/1946 keys
-- uk: 1946/1946 keys
-- ja: 1946/1946 keys
-- ko: 1946/1946 keys
-- zh: 1946/1946 keys
-- ar: 1946/1946 keys
-- tr: 1946/1946 keys
-- sv: 1946/1946 keys
-- da: 1946/1946 keys
-- no: 1946/1946 keys
-- fi: 1946/1946 keys
-- cs: 1946/1946 keys
+- en: 1967/1967 keys
+- es: 1967/1967 keys
+- pt: 1967/1967 keys
+- fr: 1967/1967 keys
+- de: 1967/1967 keys
+- it: 1967/1967 keys
+- nl: 1967/1967 keys
+- pl: 1967/1967 keys
+- ru: 1967/1967 keys
+- uk: 1967/1967 keys
+- ja: 1967/1967 keys
+- ko: 1967/1967 keys
+- zh: 1967/1967 keys
+- ar: 1967/1967 keys
+- tr: 1967/1967 keys
+- sv: 1967/1967 keys
+- da: 1967/1967 keys
+- no: 1967/1967 keys
+- fi: 1967/1967 keys
+- cs: 1967/1967 keys
 
 All non-English values are machine-authored drafts, not human-approved translations.
 Intentional identical values include placeholder-only templates, the technical 5H window,

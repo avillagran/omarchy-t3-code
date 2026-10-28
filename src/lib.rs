@@ -453,6 +453,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         if sorting["latestRun"].is_object()&&sorting["latestRun"].get("requestedAt").is_none(){sorting["latestRun"]["requestedAt"]=sorting["latestRun"]["createdAt"].clone();}
         let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status,"providerInstanceId":p["thread"]["providerInstanceId"],"interactionMode":p["thread"]["interactionMode"],"latestRunSettled":plan_workflow::latest_run_settled(p)});
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
+        let replied=replied_at(&sorting);if replied>0{thread_state["repliedAt"]=json!(replied);}
         for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
         thread_state["contextWindow"]=context_window(p);
         thread_state["guestShare"]=p["thread"]["guestShare"].clone();
@@ -797,6 +798,7 @@ pub fn snapshot(client: &Client) -> Result<Value> {
                         if last_error.is_some(){item["hasRuntimeError"]=json!(true);if item["runtimeErrorClass"].is_null(){item["runtimeErrorClass"]=t["lastErrorClass"].clone();}}
                         item["compactActivityAt"]=json!(epoch(&t["latestUserAuthoredMessageAt"]).max(epoch(&t["latestRunCompletedAt"])));
                         item["compactRunId"]=t["latestRunId"].clone();
+                        item["repliedAt"]=json!(replied_at(t));
                         item["lastSentAt"]=json!(epoch(t.get("latestUserAuthoredMessageAt").unwrap_or(&t["latestRunRequestedAt"])).max(epoch(&t["createdAt"])));
                         item["environmentName"] = json!(e.name);
                         item["projectIsScratch"]=json!(d["projects"].as_array().into_iter().flatten().find(|p|p["id"]==t["projectId"]).is_some_and(|p|p["isScratch"]==true));
@@ -1057,3 +1059,7 @@ mod table_tests {
         assert!(super::markdown_render(md, Some(&[]), false).contains("ot3-table-copy://0/csv"));
     }
 }
+
+/// When the agent last answered: its latest finished run, else when the thread
+/// was created or brought back. The sidebar's default order.
+fn replied_at(t:&Value)->i64{epoch(&t["latestRunCompletedAt"]).max(epoch(&t["latestRun"]["completedAt"])).max(epoch(&t["createdAt"])).max(epoch(&t["unsettledAt"]))}

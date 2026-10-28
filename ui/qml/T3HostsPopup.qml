@@ -3,6 +3,7 @@ import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import qs.Commons
 import "../js/ConnectionStatus.js" as Status
+import "../js/HostStyle.js" as HostStyle
 // The environments this app talks to, from the sidebar's machine button: each
 // with its state and the one fix that applies (reconnect a remote host,
 // restart the local backend when ot3 runs it). A host stuck "connected" in T3
@@ -22,11 +23,15 @@ Controls.Popup {
  readonly property var store:bridge.connectionSettings || ({})
  readonly property string restarting:store.busy&&bridge.connectionSettingsCommand&&bridge.connectionSettingsCommand.action==="restart-server"?bridge.connectionSettingsCommand.environmentId || "":""
  property string restartError:""
+ // The host whose look (icon, colour, name on threads) is being edited.
+ property string styling:""
+ readonly property var hostStyles:bridge.viewState.hostStyles || ({})
+ function restyle(id,patch){bridge.rememberView({hostStyles:HostStyle.update(hostStyles,id,patch)})}
  property string restartErrorFor:""
  function ssh(id){return (store.environments || []).some(function(e){return e.id===id&&(e.routes || []).some(function(r){return r.kind==="SshConnectionTarget"})})}
  function restart(id){confirmRestart="";restartError="";restartErrorFor=id;bridge.manageConnections("restart-server",{environmentId:id,confirmed:true})}
  Connections{target:root.bridge;function onConnectionsManaged(action,error){if(action==="restart-server"){root.restartError=error || "";if(!error){root.bridge.refresh()}}}}
- onOpened:{confirmRestart="";if(!store.busy)bridge.manageConnections("read")}
+ onOpened:{confirmRestart="";styling="";if(!store.busy)bridge.manageConnections("read")}
  function reconnect(id){
   var next=Object.assign({},reconnecting);next[id]=environments.find(function(e){return e.id===id}).state;reconnecting=next
   bridge.manageConnections("reconnect",{environmentId:id});bridge.refresh()
@@ -48,9 +53,14 @@ Controls.Popup {
   Text{Layout.fillWidth:true;Layout.margins:Style.space(6);text:T3I18n.tr("Environments");color:root.faint;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
   Repeater {
    model:root.environments
+   ColumnLayout {
+   id:hostBlock
+   required property var modelData
+   readonly property var look:HostStyle.of(root.hostStyles,modelData.id,((root.bridge.catalogs || {})[modelData.id] || {}).machine)
+   Layout.fillWidth:true;spacing:Style.space(4)
    RowLayout {
     id:row
-    required property var modelData
+    readonly property var modelData:hostBlock.modelData
     readonly property bool local:modelData.id==="local"
     readonly property bool ready:modelData.state==="ready"
     readonly property bool busy:root.reconnecting[modelData.id]!==undefined||root.restarting===modelData.id
@@ -59,7 +69,16 @@ Controls.Popup {
     readonly property bool newer:!!version&&root.bridge.t3VersionNewer(version)
     objectName:"t3Host_"+modelData.id
     Layout.fillWidth:true;Layout.leftMargin:Style.space(6);Layout.rightMargin:Style.space(2);spacing:Style.space(10)
-    T3EnvironmentIcon{kind:((root.bridge.catalogs || {})[row.modelData.id] || {}).machine || (row.local?"desktop":"server");implicitWidth:Style.space(16);tint:root.fg;opacity:0.75}
+    // The icon is the button that edits how this host is marked on threads.
+    Controls.AbstractButton {
+     objectName:"t3HostStyle_"+row.modelData.id
+     implicitWidth:Style.space(28);implicitHeight:Style.space(28)
+     hoverEnabled:true;Accessible.name:T3I18n.tr("Icon and colour for {host}",{host:row.modelData.name || row.modelData.id})
+     Controls.ToolTip.visible:hovered;Controls.ToolTip.delay:400;Controls.ToolTip.text:Accessible.name
+     onClicked:root.styling=root.styling===row.modelData.id?"":row.modelData.id
+     background:Rectangle{radius:Style.space(7);color:hostBlock.look.color?Qt.rgba(Qt.color(hostBlock.look.color).r,Qt.color(hostBlock.look.color).g,Qt.color(hostBlock.look.color).b,0.16):parent.hovered||root.styling===row.modelData.id?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08):"transparent";border.width:root.styling===row.modelData.id?1:0;border.color:Color.accent}
+     contentItem:Item{T3Icon{anchors.centerIn:parent;name:hostBlock.look.icon;implicitWidth:Style.space(16);tint:hostBlock.look.color || root.fg;opacity:hostBlock.look.color?1:0.75}}
+    }
     ColumnLayout {
      Layout.fillWidth:true;spacing:Style.space(1)
      Text{Layout.fillWidth:true;text:row.modelData.name || row.modelData.id;color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
@@ -83,6 +102,42 @@ Controls.Popup {
     T3Icon{visible:row.local&&root.bridge.localBackend.owner==="gui";name:"monitor";implicitWidth:Style.space(14);tint:root.faint
      HoverHandler{id:guiHover}
      Controls.ToolTip.visible:guiHover.hovered;Controls.ToolTip.text:T3I18n.tr("Managed by T3 Code GUI")}
+   }
+   // Icon, colour (none by default) and whether threads show the host's name.
+   ColumnLayout {
+    objectName:"t3HostStyleEditor_"+hostBlock.modelData.id
+    visible:root.styling===hostBlock.modelData.id
+    Layout.fillWidth:true;Layout.leftMargin:Style.space(44);Layout.rightMargin:Style.space(8);Layout.bottomMargin:Style.space(6);spacing:Style.space(6)
+    Flow {
+     Layout.fillWidth:true;spacing:Style.space(4)
+     Repeater {
+      model:HostStyle.KINDS
+      T3IconButton{required property string modelData;objectName:"t3HostIcon_"+modelData;name:HostStyle.ICONS[modelData];implicitWidth:Style.space(26);implicitHeight:Style.space(26);tint:hostBlock.look.kind===modelData?Color.accent:root.faint;tooltipText:T3I18n.tr(({server:"Server",cloud:"Cloud VM",linux:"Linux/WSL",desktop:"Desktop",laptop:"Laptop","mac-mini":"Mini PC","mac-studio":"Workstation"})[modelData]);onClicked:root.restyle(hostBlock.modelData.id,{icon:modelData})}
+     }
+    }
+    Flow {
+     Layout.fillWidth:true;spacing:Style.space(6)
+     Repeater {
+      model:[""].concat(HostStyle.COLORS)
+      Controls.AbstractButton {
+       required property string modelData
+       objectName:"t3HostColor_"+(modelData || "none")
+       implicitWidth:Style.space(20);implicitHeight:Style.space(20)
+       Accessible.name:modelData?modelData:T3I18n.tr("No colour")
+       hoverEnabled:true;Controls.ToolTip.visible:hovered&&!modelData;Controls.ToolTip.delay:400;Controls.ToolTip.text:Accessible.name
+       onClicked:root.restyle(hostBlock.modelData.id,{color:modelData})
+       background:Rectangle{radius:width/2;color:parent.modelData || "transparent";border.width:hostBlock.look.color===parent.modelData?2:1;border.color:hostBlock.look.color===parent.modelData?root.fg:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.3)
+        Rectangle{visible:!parent.parent.modelData;anchors.centerIn:parent;width:parent.width*0.7;height:1.5;rotation:-45;color:root.faint}}
+      }
+     }
+    }
+    Controls.CheckBox {
+     objectName:"t3HostShowName_"+hostBlock.modelData.id
+     checked:hostBlock.look.showName
+     text:T3I18n.tr("Show the host's name on threads");palette.windowText:root.fg;palette.text:root.fg
+     onToggled:root.restyle(hostBlock.modelData.id,{showName:checked})
+    }
+   }
    }
   }
   Rectangle{Layout.fillWidth:true;Layout.topMargin:Style.space(4);implicitHeight:1;color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.1)}

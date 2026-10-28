@@ -448,6 +448,12 @@ Item {
   function showFilters() { if(sidebarCollapsed){toggleSidebar();Qt.callLater(function(){filterMenu.open()})}else filterMenu.open() }
   function hideFilters() { filterMenu.close() }
   property bool sidebarCompact: !!bridge.viewState.sidebarCompact
+  // O3 orders threads by the agent's latest answer; "t3" keeps T3's own order.
+  // Appearance > Thread rows: one-line rows (default), marquee titles, project colours.
+  readonly property bool compactRows: (bridge.viewState.threadRowSize || "compact") === "compact"
+  readonly property bool titleMarquee: bridge.viewState.threadTitleOverflow === "marquee"
+  readonly property bool projectWash: bridge.viewState.projectColors !== false
+  readonly property bool orderByReply: (bridge.viewState.threadOrder || "reply") === "reply"
   property bool workingExpanded: !!bridge.viewState.workingExpanded
   onSidebarCompactChanged:if(initialized && bridge.viewState.sidebarCompact!==sidebarCompact)bridge.rememberView({sidebarCompact:sidebarCompact})
   onWorkingExpandedChanged:if(initialized && bridge.viewState.workingExpanded!==workingExpanded)bridge.rememberView({workingExpanded:workingExpanded})
@@ -613,7 +619,7 @@ Item {
   function nestRows(rows){return Sidebar.nest(rows,bridge.state.threads,bridge.viewState.subthreadsExpanded,bridge.selectedKey)}
   function topCount(rows){return rows.filter(function(r){return !r.depth}).length}
   function toggleSubthreads(row){var all=Object.assign({},bridge.viewState.subthreadsExpanded || {});all[row.key]=!row.subthreadsExpanded;var keys=Object.keys(all);while(keys.length>512)delete all[keys.shift()];bridge.rememberView({subthreadsExpanded:all})}
-  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.sidebarCompact || !Sidebar.inWorkingShelf(t)}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned)}))
+  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.sidebarCompact || !Sidebar.inWorkingShelf(t)}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
   readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(function(a,b){return (b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)})) : []
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
@@ -633,6 +639,12 @@ Item {
   readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(Sidebar.compareSettled))
   readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
+  // A project group's colour is its first project's, so grouped projects share it.
+  function groupTint(g){var first=g.members[0] || {};return T3Palette.pick((first.projectIcon || {}).color || "",T3Palette.projectColor(first.key,bridge.state.projects || []))}
+  readonly property var groupTints:{var map={};projectGroups.forEach(function(g){var tint=root.groupTint(g);g.members.forEach(function(p){map[p.key]=tint})});return map}
+  // One chip per group with open threads on the shown hosts, busiest first: a click filters by it.
+  readonly property bool projectChips: bridge.viewState.projectChips !== false
+  readonly property var groupChips: projectGroups.map(function(g){var keys=g.members.map(function(p){return p.key});var count=hostThreads.filter(function(t){return !t.settled&&t.relationshipToParent!=="subagent"&&keys.indexOf(t.projectKey)>=0}).length;return {key:g.key,title:g.title,count:count,tint:root.groupTints[keys[0]] || root.dim}}).filter(function(c){return c.count>0||c.key===root.projectFilter}).sort(function(a,b){return b.count-a.count || String(a.title).localeCompare(String(b.title))})
   function kind(t) { return Sidebar.state(t) }
   // Last seen state per thread and when it changed, so rows can celebrate a
   // transition even after moving to another sidebar section.
@@ -840,6 +852,8 @@ Item {
       readonly property var modelData: row
       thread: modelData; bridge: root.bridge
       width: ListView.view ? ListView.view.width : 0
+      compactRows:root.compactRows;marquee:root.titleMarquee;projectWash:root.projectWash;projectTint:root.groupTints[modelData.projectKey] || "transparent"
+      hostStyles:root.bridge.viewState.hostStyles || ({});manyHosts:(root.bridge.state.environments || []).length>1
       projectScoped:!!root.projectFilter&&(Array.isArray(root.projectScope)?root.projectScope.indexOf(modelData.projectKey)>=0:root.projectScope===modelData.projectKey)
       panelVisible: root.opened
       keyboardCurrent: ListView.view ? ListView.view.activeFocus && ListView.view.currentIndex===index : false
@@ -1237,16 +1251,7 @@ Item {
               RowLayout {
                 anchors.fill: parent; anchors.leftMargin: Style.space(18); anchors.rightMargin: Style.space(18); anchors.topMargin: Style.space(11); anchors.bottomMargin: Style.space(11); spacing: Style.space(10)
                 T3IconButton { name: "panel-left-close"; tooltipText: T3I18n.tr("Hide sidebar"); onClicked: root.toggleSidebar() }
-                Column {
-                  spacing: Style.space(3)
-                  Row {
-                    LayoutMirroring.enabled:false;layoutDirection:Qt.LeftToRight
-                    spacing: Style.space(4)
-                    T3Icon { name: "t3-logo"; implicitWidth: Style.space(32); implicitHeight: Style.space(20); tint: root.fg }
-                    Text { text: "Code"; font.pixelSize: Style.space(18); font.bold: true; color: root.fg }
-                  }
-                  Text { text: "OMARCHY"; font.pixelSize: Style.space(8); font.letterSpacing: 2; color: root.dim }
-                }
+                T3BrandMark { objectName: "t3BrandMark"; variant: root.bridge.viewState.brandGlyph || "o"; fg: root.fg; dim: root.dim; accent: Color.accent; running: root.opened && !root.sidebarCollapsed }
                 Item { Layout.fillWidth: true }
                 T3IconButton{objectName:"t3PullRequestsToggle";name:"git-pull-request";tooltipText:T3I18n.tr("Pull requests");tint:root.pullRequestsOpen?Color.accent:root.dim;onClicked:{root.preferencesOpen=false;root.pullRequestsOpen=!root.pullRequestsOpen}}
                 T3IconButton {
@@ -1288,6 +1293,42 @@ Item {
               Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)
               T3Select {objectName:"t3HostFilter";Layout.fillWidth:true;popupAbove:false;model:root.hostItems;textRole:"name";currentIndex:Math.max(0,root.hostItems.findIndex(function(h){return h.id===root.hostFilter}));onActivated:function(index){root.hostFilter=root.hostItems[index].id};Accessible.name:T3I18n.tr("Host")}
               T3IconButton {objectName:"t3MosaicToggle";name:"layout-grid";tint:root.mosaicOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread mosaic");onClicked:if(root.mosaicOpen&&mosaicLoader.item)mosaicLoader.item.dismiss();else root.bridge.rememberView({mosaicOpen:!root.mosaicOpen})}
+            }
+            ListView {
+              id: groupChipList
+              objectName: "t3GroupChips"
+              Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12); Layout.topMargin: Style.space(6)
+              Layout.preferredHeight: Style.space(24)
+              visible: root.projectChips && root.groupChips.length > 1
+              orientation: ListView.Horizontal; spacing: Style.space(6); clip: true
+              boundsBehavior: Flickable.StopAtBounds
+              model: visible ? root.groupChips : []
+              delegate: Controls.AbstractButton {
+                id: chip
+                required property var modelData
+                readonly property bool active: root.projectFilter === modelData.key || root.projectGroups.some(function(g){return g.key===modelData.key&&g.members.some(function(m){return m.key===root.projectFilter})})
+                readonly property color tint: root.projectWash ? modelData.tint : root.dim
+                objectName: "t3GroupChip_" + modelData.key
+                height: Style.space(24); implicitWidth: chipRow.implicitWidth + Style.space(16)
+                hoverEnabled: true
+                Accessible.name: T3I18n.tr("Filter by {project}", {project: modelData.title})
+                onClicked: root.projectFilter = active ? "" : modelData.key
+                background: Rectangle {
+                  radius: height / 2
+                  color: Qt.rgba(chip.tint.r, chip.tint.g, chip.tint.b, chip.active ? 0.26 : chip.hovered ? 0.16 : 0.08)
+                  border.width: chip.active ? 1 : 0; border.color: chip.tint
+                  Behavior on color { enabled: T3Motion.enabled; ColorAnimation { duration: T3Motion.duration(140) } }
+                }
+                contentItem: Item {
+                  RowLayout {
+                    id: chipRow
+                    anchors.centerIn: parent; spacing: Style.space(5)
+                    Rectangle { width: Style.space(7); height: width; radius: width / 2; color: chip.tint }
+                    Text { text: chip.modelData.title; color: chip.active ? root.fg : root.dim; font.pixelSize: Style.font.caption; textFormat: Text.PlainText }
+                    Text { text: String(chip.modelData.count); color: root.dim; font.family: "monospace"; font.pixelSize: Style.font.caption - Style.space(1); opacity: 0.8 }
+                  }
+                }
+              }
             }
             RowLayout {
               Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12)
@@ -1862,7 +1903,7 @@ Item {
                       wrapMode: TextEdit.Wrap
                       color: root.fg; selectionColor: Color.accent; selectedTextColor: Color.popups.background
                       font.pixelSize: Style.font.body
-                      Accessible.name:message.userMessage?T3I18n.tr("You"):"T3"
+                      Accessible.name:message.userMessage?T3I18n.tr("You"):"O3"
                       // Quote a selection into the composer (T3's assistant selection toolbar).
                       T3PickerButton{
                         objectName:"t3QuoteSelection";z:5;primary:false;implicitHeight:Style.space(26);leftPadding:Style.space(8);rightPadding:Style.space(8)
@@ -2069,7 +2110,7 @@ Item {
               anchors.centerIn: parent
               spacing: Style.space(15)
               visible: !root.bridge.selectedThread
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: "T3"; color: Color.accent; font.pixelSize: Style.space(42); font.bold: true; opacity: 0.55 }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; text: "O3"; color: Color.accent; font.pixelSize: Style.space(42); font.bold: true; opacity: 0.55 }
               Text { anchors.horizontalCenter: parent.horizontalCenter; text: T3I18n.tr("Your work, within reach."); color: root.fg; font.pixelSize: Style.space(18) }
               Text { anchors.horizontalCenter: parent.horizontalCenter; text: T3I18n.tr("Choose a thread to continue the conversation"); color: root.dim; font.pixelSize: Style.font.body }
             }

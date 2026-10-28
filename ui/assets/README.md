@@ -48,3 +48,7 @@ unchanged from `apps/web/src/assets/` of pingdotgg/t3code, commit
 `sha512-V6K3C8EBdEsPFZXSKMJe6ppQOENxuHARr9GvHX4hh47lAbhMRD9qf4oEK7LoaRQxULMa80/qt5gHO73aCleBBg==`).
 License: `mermaid/LICENSE` (MIT). It only runs inside the sandboxed document
 renderer when you choose Show diagram on a Mermaid code block.
+
+Omarchy wordmark and logo (`ui/js/BrandPixels.js`): grid cells taken from
+https://omarchy.org/brand/omarchy-wordmark.svg and omarchy-logo.svg, for the O3 Code
+header animation.
