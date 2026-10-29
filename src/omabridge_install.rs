@@ -59,16 +59,20 @@ fn pair_here(p:&mut String,n:usize,host:&str,inviter:&str,bin:&str,client:&str,i
   req(&format!("\"action\":\"approve\",\"peer\":\"{id}\",\"confirmed\":true")),
   req("\"action\":\"pair-retry\",\"id\":\"<its awaiting id>\",\"confirmed\":true")));
  let mut n=n+3;
- if manage||share_ssh{
-  p.push_str(&format!("{n}."));
-  if manage{p.push_str(&format!(" I chose to let {inviter} manage the host: on the host, {}.",req(&format!("\"action\":\"admin-set\",\"peer\":\"{id}\",\"allowed\":true,\"confirmed\":true"))));}
-  if share_ssh{p.push_str(&format!(" I chose to let the host reach this device's SSH: here, {}, adding `ssh` to that peer's current `services` under `peers`.",req("\"action\":\"grant-set\",\"peer\":\"<the host's id>\",\"services\":[<its current services>, \"ssh\"],\"public\":[],\"confirmed\":true")));}
-  p.push('\n');n+=1;
- }
+ p.push_str(&format!("{n}."));
+ if manage{p.push_str(&format!(" I chose to let {inviter} manage the host: on the host, {}.",req(&format!("\"action\":\"admin-set\",\"peer\":\"{id}\",\"allowed\":true,\"confirmed\":true"))));}
+ // The host's O3 Code adds a device that shares `t3` with it by itself, so
+ // each side sees the other's projects without a second assistant run.
+ p.push_str(&format!(" Let the host reach this device's T3 Code too, so its O3 Code adds this device's projects by itself{}: here, {}, adding to that peer's current `services` under `peers` `t3` when this device's `published.services` lists it{}.\n",
+  if share_ssh{", and its SSH, as I chose"}else{""},
+  req("\"action\":\"grant-set\",\"peer\":\"<the host's id>\",\"services\":[<its current services>, <the added ones>],\"public\":[],\"confirmed\":true"),
+  if share_ssh{", and `ssh`"}else{""}));
+ n+=1;
  p.push_str(&format!("{n}. Verify here: `read` lists the host's id under `peers`{}, and `timeout 20 {bin} connect --peer <the host's id> --service ssh </dev/null | head -c 64` prints an SSH banner when the host shares SSH. Name peers by id, not by name: an older identity of the same device may share its name. If you see one, mention it; do not revoke it.\n",if manage{" with `managed` true"}else{""}));
  p.push_str(&format!("{}. If the host runs T3 Code (`t3` among its published services), add it to ot3's connections here. `{client} connections-view` lists the saved ones and their `revision`; unless the host's T3 environment is among them, pipe {} into `{client} connections-manage` (a `user@` in `{host}` goes to `username`, without it `username` is null). It checks the host over SSH and answers with the saved connections, or `{{\"error\":<code>}}`. ot3 picks it up by itself.\n",n+1,
   req(&format!("\"action\":\"save-route\",\"revision\":\"<that revision>\",\"kind\":\"ssh\",\"label\":\"<the host's OmaBridge name>\",\"ssh\":{{\"alias\":\"<host without user@>\",\"hostname\":\"<host without user@>\",\"username\":<user or null>,\"port\":null}}"))));
- n+2
+ p.push_str(&format!("{}. If this device granted `t3` and the host has O3 Code (`~/.config/omarchy/plugins/omarchy-t3-code/bin/omarchy-t3-client` there), pipe `{{\"action\":\"run\"}}` into its `omarchy-t3-client omabridge-share` on the host: under `peers`, this device's id must reach `state` `shared`. Otherwise quote its `error`; do not work around it.\n",n+2));
+ n+3
 }
 fn prompt_with(input:&Value,bin:&str,client:&str)->Result<String>{
  let host=text(input,"host").trim();if !valid_host(host){return Err("invalid_host".into())}
@@ -168,7 +172,13 @@ mod tests{
   assert!(p.contains(&format!("`{CLIENT} connections-manage`"))&&p.contains("\"action\":\"save-route\",\"revision\":"));
   assert!(!p.contains("install.sh")&&!p.contains("identity-create")&&!p.contains("service install")&&!p.contains("releases/download")&&!p.contains("allowManage"));
   v["manage"]=json!(false);v["shareSsh"]=json!(true);let p=prompt(&v).unwrap();
-  assert!(!p.contains("admin-set")&&p.contains("\"action\":\"grant-set\"")&&!p.contains("`managed` true"));
+  assert!(!p.contains("admin-set")&&p.contains("\"action\":\"grant-set\"")&&!p.contains("`managed` true")&&p.contains("and `ssh`"));
+ }
+ #[test]
+ fn existing_shares_t3_back_so_the_host_adds_this_device(){
+  let mut v=here();v["existing"]=json!(true);v["profile"]=json!("");v["manage"]=json!(false);let p=prompt(&v).unwrap();
+  assert!(p.contains("\"action\":\"grant-set\"")&&p.contains("`t3` when this device's `published.services` lists it")&&!p.contains("and `ssh`"));
+  assert!(p.contains("omarchy-t3-client omabridge-share")&&p.contains("`state` `shared`"));
  }
  #[test]
  fn installs_here_and_pairs_without_asking_for_approval(){
