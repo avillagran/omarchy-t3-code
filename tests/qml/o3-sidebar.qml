@@ -71,6 +71,7 @@ ShellRoot{
    root.check(panel.groupChips.length===2&&panel.groupChips[0].title==="Alpha"&&panel.groupChips[0].count===2,"one chip per group, busiest first: "+JSON.stringify(panel.groupChips))
    root.check(String(panel.groupTints["local/alpha"])===String(panel.groupTints["fixture/alpha"]),"grouped projects share a colour")
    var chips=keys.findChild(panel,"t3GroupChips");root.check(chips&&chips.visible,"chips show with two or more groups")
+   var toggle=keys.findChild(panel,"t3GroupChipsToggle");root.check(toggle&&!toggle.visible&&chips.height<=Style.space(24)+1,"two chips fit on one line, no chevron")
    var chip=chips.itemAtIndex(1);root.check(!!chip,"Beta chip exists");keys.mouseClick(chip,chip.width/2,chip.height/2);phase=5
   }else if(phase===5){
    root.check(panel.projectFilter===panel.groupChips.find(function(c){return c.title==="Beta"}).key,"a chip click filters by its group")
@@ -78,6 +79,24 @@ ShellRoot{
    var chip2=keys.findChild(panel,"t3GroupChips").itemAtIndex(panel.groupChips.findIndex(function(c){return c.key===panel.projectFilter}));keys.mouseClick(chip2,chip2.width/2,chip2.height/2);phase=6
   }else if(phase===6){
    root.check(panel.projectFilter==="","clicking the active chip clears the filter")
+   // Many projects: one scrolling line folded, rows unfolded; scratch gets no chip.
+   var many=JSON.parse(JSON.stringify(b.state));for(var n=0;n<8;n++){many.projects.push({key:"fixture/long"+n,environmentId:"fixture",title:"A rather long project name "+n,workspaceRoot:"/w/long"+n});many.threads.push({id:"l"+n,key:"fixture/l"+n,environmentId:"fixture",project:"Long "+n,projectKey:"fixture/long"+n,title:"T"+n,status:"completed"})}
+   many.projects.push({key:"fixture/scratch",environmentId:"fixture",title:"No project",workspaceRoot:"/w/scratch",isScratch:true});many.threads.push({id:"s0",key:"fixture/s0",environmentId:"fixture",project:"No project",projectKey:"fixture/scratch",title:"S",status:"completed"})
+   b.state=many;fixture=many;phase=61
+  }else if(phase===61){
+   var cl=keys.findChild(panel,"t3GroupChips"),tg=keys.findChild(panel,"t3GroupChipsToggle")
+   root.check(!panel.groupChips.some(function(c){return c.title==="No project"}),"scratch workspaces get no chip")
+   root.check(cl.overflow&&tg.visible&&!cl.expanded&&cl.height<=Style.space(24)+1,"folded chips stay on one line: "+cl.lineWidth+">"+cl.width)
+   var last=cl.itemAtIndex(panel.groupChips.length-1);root.check(last&&last.y===0,"folded chips never wrap")
+   panel.projectFilter=panel.groupChips[panel.groupChips.length-1].key;phase=62
+  }else if(phase===62){
+   var cl2=keys.findChild(panel,"t3GroupChips"),strip=cl2.children[0],lastItem=cl2.itemAtIndex(panel.groupChips.findIndex(function(c){return c.key===panel.projectFilter}))
+   root.check(lastItem&&lastItem.x+lastItem.width<=strip.contentX+strip.width+1,"the active chip scrolls into view: "+lastItem.x+"+"+lastItem.width+" vs "+strip.contentX+"+"+strip.width)
+   panel.projectFilter="";b.rememberView({chipsExpanded:true});phase=63
+  }else if(phase===63){
+   var cl3=keys.findChild(panel,"t3GroupChips");root.check(cl3.expanded&&cl3.height>Style.space(40)&&cl3.itemAtIndex(panel.groupChips.length-1).y>0,"unfolded chips wrap into rows: "+cl3.height)
+   b.rememberView({chipsExpanded:false});fixture=JSON.parse(JSON.stringify(b.state));fixture.projects=fixture.projects.slice(0,3);fixture.threads=fixture.threads.slice(0,3);b.state=fixture;phase=64
+  }else if(phase===64){
    keys.findChild(panel,"t3PanelLayout").grabToImage(function(g){g.saveToFile("/tmp/o3-chips.png")})
    b.state={threads:[
     {id:"p1",key:"local/p1",environmentId:"local",project:"P",title:"Pinned one",status:"completed",pinned:true,pinOrderKey:"a",repliedAt:1},
