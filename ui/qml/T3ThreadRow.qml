@@ -153,6 +153,7 @@ Item {
   readonly property var threadGroups:bridge.viewState.threadGroups || ({})
   readonly property var groupNames:{var seen={};Object.keys(threadGroups).forEach(function(k){seen[threadGroups[k]]=true});return Object.keys(seen).sort(function(a,b){return a.localeCompare(b)})}
   function groupOf(t){return threadGroups[t.key] || ""}
+  readonly property string threadGroup:groupOf(thread)
   function setGroup(t,name){var all=Object.assign({},threadGroups),clean=String(name || "").trim().slice(0,48);if(clean)all[t.key]=clean;else delete all[t.key];bridge.rememberView({threadGroups:all})}
   function openNewGroup(){ensureActions();groupName.text="";groupPopup.open();Qt.callLater(function(){groupName.forceActiveFocus()})}
   function openSnooze(context){ensureActions();snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
@@ -308,7 +309,7 @@ Item {
           MouseArea{objectName:"projectIconContext";anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
         }
         Rectangle{objectName:"threadCardProjectDot";visible:root.sober&&root.projectWash&&!root.slim&&!root.child;width:Style.space(6);height:width;radius:width/2;color:root.washTint;opacity:root.shelved?0.5:1}
-        T3MarqueeText{objectName:"threadProjectOrTitle";Layout.fillWidth:true;active:root.slim&&root.titleSliding;text:root.slim?root.thread.title || "":root.thread.project || root.thread.environmentName || "";color:root.slim?(root.receding?root.dim:root.fg):root.dim;pixelSize:root.slim?Style.font.body:Style.font.caption
+        T3MarqueeText{objectName:"threadProjectOrTitle";Layout.fillWidth:true;active:root.slim&&root.titleSliding;text:root.slim?root.thread.title || "":[root.thread.project || root.thread.environmentName || "",root.threadGroup].filter(Boolean).join(" · ");color:root.slim?(root.receding?root.dim:root.fg):root.dim;pixelSize:root.slim?Style.font.body:Style.font.caption
           activeFocusOnTab:!root.slim
           Keys.onPressed:function(event){if(event.key===Qt.Key_Menu || (event.key===Qt.Key_F10&&event.modifiers===Qt.ShiftModifier)){root.hidePreview();root.projectContextRequested(this,width/2,height/2);event.accepted=true}}
           MouseArea{objectName:"projectNameContext";anchors.fill:parent;enabled:!root.slim;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
@@ -388,9 +389,17 @@ Item {
         Rectangle{objectName:"threadProjectDot";visible:root.sober&&root.projectWash;width:Style.space(6);height:width;radius:width/2;color:root.washTint}
         Text{
           objectName:"threadCompactProject"
-          Layout.fillWidth:true
+          Layout.fillWidth:!root.threadGroup;Layout.maximumWidth:root.threadGroup?parent.width*0.6:-1
           text:root.thread.project || root.thread.environmentName || ""
           color:root.dim;font.family:"monospace";font.pixelSize:Style.font.caption-Style.space(1.5);elide:Text.ElideRight;textFormat:Text.PlainText
+        }
+        // The thread's own group, after its project.
+        T3Icon{visible:!!root.threadGroup;name:"layers";tint:root.dim;implicitWidth:Style.space(10);Layout.leftMargin:Style.space(4)}
+        Text{
+          objectName:"threadCompactGroup";visible:!!root.threadGroup
+          Layout.fillWidth:true
+          text:root.threadGroup
+          color:root.dim;font.pixelSize:Style.font.caption-Style.space(1.5);elide:Text.ElideRight;textFormat:Text.PlainText
         }
       }
       RowLayout{

@@ -114,6 +114,8 @@ ShellRoot{
    hr.setGroup(hr.thread,"Release");hr.rowMenu.close();phase=31
   }else if(phase===31){
    root.check(panel.threadGroups["local/r1"]==="Release"&&panel.threadGroupChips.length===1&&panel.threadGroupChips[0].count===1,"a thread joins a group from its menu")
+   var gr=null;for(var k=0;k<panel.sidebarView.count;k++){var it2=panel.sidebarView.itemAtIndex(k);if(it2&&it2.thread.id==="r1")gr=it2}
+   var label=gr?keys.findChild(gr,"threadCompactGroup"):null;root.check(label&&label.visible&&label.text==="Release","the group name shows after the project")
    panel.threadGroupFilter="Release";phase=32
   }else if(phase===32){
    root.check(panel.activeRows.length===1&&panel.activeRows[0].id==="r1"&&!panel.pinnedRows.length&&!panel.inputRows.length,"a group chip filters to its threads")
