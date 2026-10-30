@@ -156,7 +156,7 @@ ColumnLayout {
      Controls.CheckBox{required property var modelData;width:parent.width;text:T3I18n.tr(modelData.title);palette.windowText:root.fg;palette.text:root.fg;checked:root.selectedScopes.indexOf(modelData.scope)>=0;enabled:!root.busy;onToggled:root.toggleScope(modelData.scope,checked)}
     }}
    }
-   Image{objectName:"connectionPairingQr";Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:Style.space(180);Layout.preferredHeight:visible?Style.space(180):0;visible:root.scoped&&!!root.store.created&&!!root.store.created.qrImage;source:root.scoped&&root.store.created?root.store.created.qrImage || "":"";fillMode:Image.PreserveAspectFit}
+   T3PairingQr{objectName:"connectionPairingQr";Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:Style.space(180);Layout.preferredHeight:visible?Style.space(180):0;visible:root.scoped&&!!root.store.created&&!!root.store.created.qrImage;source:root.scoped&&root.store.created?root.store.created.qrImage || "":"";fillMode:Image.PreserveAspectFit}
    Text{Layout.fillWidth:true;visible:root.scoped&&!!root.store.created;text:T3I18n.tr("Pairing code");color:root.fg;font.pixelSize:Style.font.body}
    T3PickerField{objectName:"connectionCreatedCode";Layout.fillWidth:true;visible:root.scoped&&!!root.store.created;text:root.store.created?root.store.created.credential || "":"";readOnly:true;selectByMouse:true;Accessible.name:T3I18n.tr("Pairing code")}
    T3PickerField{objectName:"connectionCreatedUrl";Layout.fillWidth:true;visible:root.scoped&&!!root.store.created;text:root.store.created?root.store.created.pairingUrl || "":"";readOnly:true;selectByMouse:true;Accessible.name:T3I18n.tr("Pairing link")}

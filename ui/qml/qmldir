@@ -159,3 +159,5 @@ T3DeferredPopup 1.0 T3DeferredPopup.qml
 T3VideoViewer 1.0 T3VideoViewer.qml
 T3BrandMark 1.0 T3BrandMark.qml
 T3MarqueeText 1.0 T3MarqueeText.qml
+
+T3PairingQr 1.0 T3PairingQr.qml

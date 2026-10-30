@@ -1598,7 +1598,7 @@ ColumnLayout {
                 visible: !root.created && inviteManage.checked
                 text: root.t("omabridgeInviteManageDetail")
             }
-            Image {
+            T3PairingQr {
                 objectName: "omabridgeInviteQrImage"
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: 220
