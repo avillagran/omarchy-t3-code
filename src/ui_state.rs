@@ -48,7 +48,7 @@ pub fn sanitize(input: &Value) -> Value {
     if let Some(map)=input["hostStyles"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(64){if !valid_id(k){continue}let mut style=serde_json::Map::new();if let Some(i)=v["icon"].as_str().filter(|i|matches!(*i,"server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){style.insert("icon".into(),json!(i));}if let Some(c)=v["color"].as_str().filter(|c|c.is_empty()||(c.len()==7&&c.starts_with('#')&&c[1..].chars().all(|h|h.is_ascii_hexdigit()))){style.insert("color".into(),json!(c));}if let Some(b)=v["showName"].as_bool(){style.insert("showName".into(),json!(b));}clean.insert(k.clone(),Value::Object(style));}out["hostStyles"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
     if matches!(input["starfieldMode"].as_str(),Some("auto"|"full"|"light"|"off")){out["starfieldMode"]=input["starfieldMode"].clone();}
-    for (key,allowed) in [("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..]),("sidebarStyle",&["sober","vivid"][..])] {
+    for (key,allowed) in [("interfaceLayout",&["classic","focus"][..]),("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..]),("sidebarStyle",&["sober","vivid"][..])] {
         if input[key].as_str().is_some_and(|v|allowed.contains(&v)){out[key]=input[key].clone();}
     }
     if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
@@ -134,6 +134,20 @@ pub fn save(value: &Value) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn interface_layout_is_optional_and_preserves_other_preferences() {
+        assert!(sanitize(&json!({})).get("interfaceLayout").is_none());
+        for layout in ["classic", "focus"] {
+            let clean = sanitize(&json!({"interfaceLayout":layout,"sidebarStyle":"vivid","threadRowSize":"large","projectColors":false}));
+            assert_eq!(clean["interfaceLayout"], layout);
+            assert_eq!(clean["sidebarStyle"], "vivid");
+            assert_eq!(clean["threadRowSize"], "large");
+            assert_eq!(clean["projectColors"], false);
+        }
+        for invalid in [json!("unknown"), json!(true), json!(null)] {
+            assert!(sanitize(&json!({"interfaceLayout":invalid})).get("interfaceLayout").is_none());
+        }
+    }
     #[test]
     fn mosaic_and_quick_replies_are_bounded() {
         let clean=sanitize(&json!({"hostFilter":"node","statusFilter":"waiting","mosaicOpen":true,"mosaicCount":8,"quickReplyLanguage":"es","quickReplies":{"es":["Continúa.","", "bad\nline"],"../en":["bad"]}}));

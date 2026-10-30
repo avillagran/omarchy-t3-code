@@ -1983,6 +1983,11 @@
     "Remove project from group": "Remove project from group",
     "Pinned threads height": "Pinned threads height",
     "Show one row of groups": "Show one row of groups",
-    "Show all groups ({count})": "Show all groups ({count})"
+    "Show all groups ({count})": "Show all groups ({count})",
+    "Interface layout": "Interface layout",
+    "Classic": "Classic",
+    "Focus": "Focus",
+    "Task board": "Task board",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved."
   }
 }

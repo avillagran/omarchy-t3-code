@@ -17,12 +17,13 @@ Rectangle {
   function nativeModelControl(command){
     if(command==="modelPicker.toggle"){if(modelPicker.enabled)modelPicker.popup.visible?modelPicker.popup.close():modelPicker.popup.open();return}
     if(command==="composer.mode"){if(permissionPicker.enabled)permissionPicker.popup.open();return}
-    if(command==="composer.branch"){branchPicker.open();return}
+    if(command==="composer.branch"){(focusLayout?focusBranch:branchPicker).open();return}
     if(command==="composer.increaseEffort"||command==="composer.decreaseEffort"){modelOptions.stepEffort(command==="composer.increaseEffort"?1:-1);return}
     if(command==="composer.effort"){showOptions=true;Qt.callLater(function(){modelOptions.focusEffort()});return}
     if(command==="modelPicker.previousProvider"||command==="modelPicker.nextProvider"){modelPicker.moveProvider(command==="modelPicker.nextProvider"?1:-1);return}
     var jump=/^modelPicker\.jump\.([1-9])$/.exec(command);if(jump)modelPicker.selectResult(Number(jump[1])-1)
   }
+  readonly property bool focusLayout:bridge.viewState.interfaceLayout === "focus"
   required property var bridge
   property bool showOptions: false
   property bool expanded: false
@@ -263,7 +264,7 @@ Rectangle {
     return o ? o.value : d.currentValue
   }
   implicitHeight: content.implicitHeight + Style.space(24)
-  color: Color.popups.background; radius: Style.space(17)
+  color: Color.popups.background; radius: Style.space(focusLayout?12:17)
   border.width: 1; border.color: editor.activeFocus ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45) : Qt.rgba(fg.r, fg.g, fg.b, 0.09)
   Behavior on border.color { enabled:T3Motion.enabled;ColorAnimation { duration: T3Motion.duration(130)} }
   ColumnLayout {
@@ -271,6 +272,15 @@ Rectangle {
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(12) }
     height:root.expanded ? Math.max(0,root.height-Style.space(24)) : implicitHeight
     spacing: Style.space(8)
+    RowLayout {
+      objectName:"t3FocusComposerContext";Layout.fillWidth:true;visible:root.focusLayout;spacing:Style.space(8)
+      T3Icon{name:"folder";implicitWidth:Style.space(13);tint:root.dim}
+      Text{Layout.fillWidth:true;text:root.bridge.selectedProject || "";elide:Text.ElideRight;color:root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
+      T3Icon{name:"server";implicitWidth:Style.space(12);tint:Color.accent}
+      Text{objectName:"t3FocusComposerHost";Layout.maximumWidth:Style.space(120);text:((root.bridge.state.environments || []).find(function(e){return e.id===root.bridge.selectedEnvironment}) || {}).name || root.bridge.selectedEnvironment;color:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+      T3BranchPicker{id:focusBranch;bridge:root.bridge;Layout.maximumWidth:Math.min(Style.space(190),root.width*0.35)}
+    }
+    Rectangle{Layout.fillWidth:true;implicitHeight:1;visible:root.focusLayout;color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.07)}
     T3Reveal {
       id:draftsReveal;Layout.fillWidth:true;shown:root.projectDraftsVisible
     T3ProjectDrafts {
@@ -712,7 +722,7 @@ Rectangle {
         onPicked:editor.forceActiveFocus()
       }
       T3PickerButton{objectName:"t3InteractionMode";primary:false;implicitHeight:Style.space(28);leftPadding:Style.space(8);rightPadding:leftPadding;visible:root.bridge.interactionModeEnabled===true;text:T3I18n.tr(root.bridge.interactionMode==="plan"?"Plan":"Build");enabled:!root.locked&&!root.draft.queueEdit&&root.bridge.catalog.canWrite!==false;onClicked:root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan")}
-      T3BranchPicker { id:branchPicker;bridge:root.bridge;Layout.maximumWidth:Style.space(190) }
+      T3BranchPicker { id:branchPicker;visible:!root.focusLayout&&available;bridge:root.bridge;Layout.maximumWidth:Style.space(190) }
       T3ContextMeter { objectName:"t3ComposerContext";usage:root.bridge.contextWindow }
       T3IconButton { enabled:!root.draft.queueEdit;name: "sliders-horizontal"; tooltipText: T3I18n.tr("Model options"); onClicked: root.showOptions = !root.showOptions }
       Item { Layout.fillWidth: true }

@@ -5,12 +5,14 @@ import qs.Commons
 Rectangle {
  id:root
  required property var summary
+ property bool focusLayout:false
  property bool expanded:true
  signal openDiff(string filePath)
  signal previewFile(string filePath)
  width:parent.width
  implicitHeight:content.implicitHeight+Style.space(22)
  height:implicitHeight
+ border.width:focusLayout?1:0;border.color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.09)
  radius:Style.space(10);color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.025)
  Column {
   id:content

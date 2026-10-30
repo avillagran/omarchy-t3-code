@@ -1983,7 +1983,12 @@
     "Remove project from group": "Remove project from group",
     "Pinned threads height": "Pinned threads height",
     "Show one row of groups": "Show one row of groups",
-    "Show all groups ({count})": "Show all groups ({count})"
+    "Show all groups ({count})": "Show all groups ({count})",
+    "Interface layout": "Interface layout",
+    "Classic": "Classic",
+    "Focus": "Focus",
+    "Task board": "Task board",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3969,7 +3974,12 @@
     "Remove project from group": "Quitar el proyecto del grupo",
     "Pinned threads height": "Altura de hilos fijados",
     "Show one row of groups": "Mostrar una fila de grupos",
-    "Show all groups ({count})": "Mostrar todos los grupos ({count})"
+    "Show all groups ({count})": "Mostrar todos los grupos ({count})",
+    "Interface layout": "Formato de interfaz",
+    "Classic": "Actual",
+    "Focus": "Enfoque",
+    "Task board": "Tablero de tareas",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Enfoque añade etiquetas de host, contexto al editor y un tablero de tareas. Actual mantiene el formato existente. Se conservan tus otros ajustes de apariencia."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5955,7 +5965,12 @@
     "Remove project from group": "Remover o projeto do grupo",
     "Pinned threads height": "Altura das conversas fixadas",
     "Show one row of groups": "Mostrar uma linha de grupos",
-    "Show all groups ({count})": "Mostrar todos os grupos ({count})"
+    "Show all groups ({count})": "Mostrar todos os grupos ({count})",
+    "Interface layout": "Formato da interface",
+    "Classic": "Atual",
+    "Focus": "Foco",
+    "Task board": "Quadro de tarefas",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Foco adiciona etiquetas de host, contexto ao editor e um quadro de tarefas. Atual mantém o formato existente. As outras definições de aparência são preservadas."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7941,7 +7956,12 @@
     "Remove project from group": "Retirer le projet du groupe",
     "Pinned threads height": "Hauteur des fils épinglés",
     "Show one row of groups": "Afficher une ligne de groupes",
-    "Show all groups ({count})": "Afficher tous les groupes ({count})"
+    "Show all groups ({count})": "Afficher tous les groupes ({count})",
+    "Interface layout": "Disposition de l’interface",
+    "Classic": "Actuelle",
+    "Focus": "Concentration",
+    "Task board": "Tableau des tâches",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Concentration ajoute les noms des hôtes, le contexte de saisie et un tableau des tâches. Actuelle conserve la disposition existante. Les autres réglages d’apparence sont préservés."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9927,7 +9947,12 @@
     "Remove project from group": "Projekt aus Gruppe entfernen",
     "Pinned threads height": "Höhe der angehefteten Threads",
     "Show one row of groups": "Eine Zeile Gruppen zeigen",
-    "Show all groups ({count})": "Alle Gruppen zeigen ({count})"
+    "Show all groups ({count})": "Alle Gruppen zeigen ({count})",
+    "Interface layout": "Oberflächenlayout",
+    "Classic": "Aktuell",
+    "Focus": "Fokus",
+    "Task board": "Aufgabenübersicht",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus ergänzt Hostnamen, Eingabekontext und eine Aufgabenübersicht. Aktuell behält das bisherige Layout bei. Andere Darstellungseinstellungen bleiben erhalten."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11913,7 +11938,12 @@
     "Remove project from group": "Rimuovi il progetto dal gruppo",
     "Pinned threads height": "Altezza dei thread fissati",
     "Show one row of groups": "Mostra una riga di gruppi",
-    "Show all groups ({count})": "Mostra tutti i gruppi ({count})"
+    "Show all groups ({count})": "Mostra tutti i gruppi ({count})",
+    "Interface layout": "Formato dell’interfaccia",
+    "Classic": "Attuale",
+    "Focus": "Focus",
+    "Task board": "Bacheca attività",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus aggiunge etichette host, contesto nell’editor e una bacheca attività. Attuale mantiene il formato esistente. Le altre impostazioni di aspetto vengono conservate."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13899,7 +13929,12 @@
     "Remove project from group": "Project uit groep verwijderen",
     "Pinned threads height": "Hoogte van vastgezette threads",
     "Show one row of groups": "Eén rij groepen tonen",
-    "Show all groups ({count})": "Alle groepen tonen ({count})"
+    "Show all groups ({count})": "Alle groepen tonen ({count})",
+    "Interface layout": "Interface-indeling",
+    "Classic": "Huidig",
+    "Focus": "Focus",
+    "Task board": "Takenbord",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus voegt hostlabels, invoercontext en een takenbord toe. Huidig behoudt de bestaande indeling. Andere weergave-instellingen blijven behouden."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15885,7 +15920,12 @@
     "Remove project from group": "Usuń projekt z grupy",
     "Pinned threads height": "Wysokość przypiętych wątków",
     "Show one row of groups": "Pokaż jeden wiersz grup",
-    "Show all groups ({count})": "Pokaż wszystkie grupy ({count})"
+    "Show all groups ({count})": "Pokaż wszystkie grupy ({count})",
+    "Interface layout": "Układ interfejsu",
+    "Classic": "Obecny",
+    "Focus": "Skupienie",
+    "Task board": "Tablica zadań",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Skupienie dodaje etykiety hostów, kontekst edytora i tablicę zadań. Obecny zachowuje dotychczasowy układ. Inne ustawienia wyglądu pozostają bez zmian."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17871,7 +17911,12 @@
     "Remove project from group": "Убрать проект из группы",
     "Pinned threads height": "Высота закреплённых тредов",
     "Show one row of groups": "Показать один ряд групп",
-    "Show all groups ({count})": "Показать все группы ({count})"
+    "Show all groups ({count})": "Показать все группы ({count})",
+    "Interface layout": "Макет интерфейса",
+    "Classic": "Текущий",
+    "Focus": "Фокус",
+    "Task board": "Доска задач",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Фокус добавляет метки хостов, контекст ввода и доску задач. Текущий сохраняет прежний макет. Остальные настройки оформления сохраняются."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19857,7 +19902,12 @@
     "Remove project from group": "Прибрати проєкт із групи",
     "Pinned threads height": "Висота закріплених тредів",
     "Show one row of groups": "Показати один ряд груп",
-    "Show all groups ({count})": "Показати всі групи ({count})"
+    "Show all groups ({count})": "Показати всі групи ({count})",
+    "Interface layout": "Макет інтерфейсу",
+    "Classic": "Поточний",
+    "Focus": "Фокус",
+    "Task board": "Дошка завдань",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Фокус додає позначки хостів, контекст введення та дошку завдань. Поточний зберігає наявний макет. Інші налаштування вигляду зберігаються."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21843,7 +21893,12 @@
     "Remove project from group": "プロジェクトをグループから外す",
     "Pinned threads height": "ピン留めスレッドの高さ",
     "Show one row of groups": "グループを1行だけ表示",
-    "Show all groups ({count})": "すべてのグループを表示 ({count})"
+    "Show all groups ({count})": "すべてのグループを表示 ({count})",
+    "Interface layout": "インターフェースのレイアウト",
+    "Classic": "現在の形式",
+    "Focus": "フォーカス",
+    "Task board": "タスクボード",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "フォーカスはホスト名、入力欄のコンテキスト、タスクボードを追加します。現在の形式は既存のレイアウトを維持します。他の外観設定は保持されます。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23829,7 +23884,12 @@
     "Remove project from group": "프로젝트를 그룹에서 제거",
     "Pinned threads height": "고정 스레드 높이",
     "Show one row of groups": "그룹을 한 줄만 표시",
-    "Show all groups ({count})": "모든 그룹 표시 ({count})"
+    "Show all groups ({count})": "모든 그룹 표시 ({count})",
+    "Interface layout": "인터페이스 레이아웃",
+    "Classic": "현재 형식",
+    "Focus": "집중",
+    "Task board": "작업 보드",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "집중은 호스트 이름, 입력 컨텍스트 및 작업 보드를 추가합니다. 현재 형식은 기존 레이아웃을 유지합니다. 다른 모양 설정은 보존됩니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25815,7 +25875,12 @@
     "Remove project from group": "从分组中移除项目",
     "Pinned threads height": "已置顶线程的高度",
     "Show one row of groups": "只显示一行分组",
-    "Show all groups ({count})": "显示所有分组 ({count})"
+    "Show all groups ({count})": "显示所有分组 ({count})",
+    "Interface layout": "界面布局",
+    "Classic": "当前布局",
+    "Focus": "专注",
+    "Task board": "任务看板",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "专注布局添加主机标签、输入上下文和任务看板。当前布局保持现有布局。其他外观设置将保留。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27801,7 +27866,12 @@
     "Remove project from group": "إزالة المشروع من المجموعة",
     "Pinned threads height": "ارتفاع السلاسل المثبتة",
     "Show one row of groups": "عرض صف واحد من المجموعات",
-    "Show all groups ({count})": "عرض كل المجموعات ({count})"
+    "Show all groups ({count})": "عرض كل المجموعات ({count})",
+    "Interface layout": "تخطيط الواجهة",
+    "Classic": "الحالي",
+    "Focus": "تركيز",
+    "Task board": "لوحة المهام",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "يضيف تركيز تسميات المضيف وسياق الإدخال ولوحة المهام. يحافظ الحالي على التخطيط الموجود. تُحفظ إعدادات المظهر الأخرى."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29787,7 +29857,12 @@
     "Remove project from group": "Projeyi gruptan çıkar",
     "Pinned threads height": "Sabitlenen konuların yüksekliği",
     "Show one row of groups": "Grupların tek satırını göster",
-    "Show all groups ({count})": "Tüm grupları göster ({count})"
+    "Show all groups ({count})": "Tüm grupları göster ({count})",
+    "Interface layout": "Arayüz düzeni",
+    "Classic": "Mevcut",
+    "Focus": "Odak",
+    "Task board": "Görev panosu",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Odak, ana makine etiketleri, giriş bağlamı ve görev panosu ekler. Mevcut, geçerli düzeni korur. Diğer görünüm ayarlarınız korunur."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31773,7 +31848,12 @@
     "Remove project from group": "Ta bort projektet från gruppen",
     "Pinned threads height": "Höjd för fästa trådar",
     "Show one row of groups": "Visa en rad grupper",
-    "Show all groups ({count})": "Visa alla grupper ({count})"
+    "Show all groups ({count})": "Visa alla grupper ({count})",
+    "Interface layout": "Gränssnittslayout",
+    "Classic": "Nuvarande",
+    "Focus": "Fokus",
+    "Task board": "Uppgiftstavla",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus lägger till värdetiketter, inmatningskontext och en uppgiftstavla. Nuvarande behåller befintlig layout. Övriga utseendeinställningar bevaras."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33759,7 +33839,12 @@
     "Remove project from group": "Fjern projektet fra gruppen",
     "Pinned threads height": "Højde for fastgjorte tråde",
     "Show one row of groups": "Vis én række grupper",
-    "Show all groups ({count})": "Vis alle grupper ({count})"
+    "Show all groups ({count})": "Vis alle grupper ({count})",
+    "Interface layout": "Grænsefladelayout",
+    "Classic": "Nuværende",
+    "Focus": "Fokus",
+    "Task board": "Opgavetavle",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus tilføjer værtsnavne, inputkontekst og en opgavetavle. Nuværende bevarer det eksisterende layout. Dine andre udseendeindstillinger bevares."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35745,7 +35830,12 @@
     "Remove project from group": "Fjern prosjektet fra gruppen",
     "Pinned threads height": "Høyde for festede tråder",
     "Show one row of groups": "Vis én rad grupper",
-    "Show all groups ({count})": "Vis alle grupper ({count})"
+    "Show all groups ({count})": "Vis alle grupper ({count})",
+    "Interface layout": "Grensesnittoppsett",
+    "Classic": "Nåværende",
+    "Focus": "Fokus",
+    "Task board": "Oppgavetavle",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus legger til vertsetiketter, inndatakontekst og en oppgavetavle. Nåværende beholder eksisterende oppsett. Andre utseendeinnstillinger bevares."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37731,7 +37821,12 @@
     "Remove project from group": "Poista projekti ryhmästä",
     "Pinned threads height": "Kiinnitettyjen ketjujen korkeus",
     "Show one row of groups": "Näytä yksi rivi ryhmiä",
-    "Show all groups ({count})": "Näytä kaikki ryhmät ({count})"
+    "Show all groups ({count})": "Näytä kaikki ryhmät ({count})",
+    "Interface layout": "Käyttöliittymän asettelu",
+    "Classic": "Nykyinen",
+    "Focus": "Keskittyminen",
+    "Task board": "Tehtävätaulu",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Keskittyminen lisää koneiden nimet, syöttökontekstin ja tehtävätaulun. Nykyinen säilyttää olemassa olevan asettelun. Muut ulkoasuasetukset säilyvät."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39717,6 +39812,11 @@
     "Remove project from group": "Odebrat projekt ze skupiny",
     "Pinned threads height": "Výška připnutých vláken",
     "Show one row of groups": "Zobrazit jeden řádek skupin",
-    "Show all groups ({count})": "Zobrazit všechny skupiny ({count})"
+    "Show all groups ({count})": "Zobrazit všechny skupiny ({count})",
+    "Interface layout": "Rozložení rozhraní",
+    "Classic": "Současné",
+    "Focus": "Soustředění",
+    "Task board": "Tabule úkolů",
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Soustředění přidá popisky hostitelů, kontext zadávání a tabuli úkolů. Současné zachová stávající rozložení. Ostatní nastavení vzhledu zůstanou zachována."
   }
 }

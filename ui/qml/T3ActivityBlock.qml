@@ -26,7 +26,7 @@ Column {
   T3IconButton{objectName:"t3ActivityInspect";visible:!!root.activity.inspector&&(root.activity.entries || []).length<2;name:"terminal";tooltipText:T3I18n.tr("Activity details");onClicked:root.inspectRequested(root.activity.inspector)}
   WorkIndicator{visible:!!root.activity.active;active:visible&&root.active}
   T3Icon{objectName:"t3ActivityFailed";visible:root.failed;name:"circle-alert";implicitWidth:Style.space(13);tint:Color.urgent}
-  T3ActivityText{Layout.fillWidth:true;active:root.active&&!!root.activity.active;tint:root.failed?Color.urgent:Color.popups.text;text:root.bridge.activityText(root.activity)}
+  T3ActivityText{Layout.fillWidth:true;active:root.active&&!!root.activity.active;tint:root.failed?Color.urgent:(root.bridge.viewState || {}).interfaceLayout === "focus"?Color.muted:Color.popups.text;text:root.bridge.activityText(root.activity)}
  }
  Column {
   objectName:"t3ActivityFailure";visible:root.failed&&!!root.failure&&!root.failure.busy&&(!!root.failure.input||!!root.failure.detail)

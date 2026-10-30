@@ -182,7 +182,7 @@ Item {
   readonly property var mosaicView: mosaicLoader.item
   readonly property var conversationView: conversation
   // Native comfortable lane: 46rem, shared by timeline and composer.
-  readonly property real chatContentMaxWidth:Style.space(736)
+  readonly property real chatContentMaxWidth:Style.space(focusLayout?800:736)
   property bool findOpen:false
   // Folded agent/automation messages the user opened, by message id (rows are pooled).
   property var expandedFolds:({})
@@ -464,12 +464,15 @@ Item {
   property bool sidebarCompact: !!bridge.viewState.sidebarCompact
   // O3 orders threads by the agent's latest answer; "t3" keeps T3's own order.
   // Appearance > Thread rows: one-line rows (default), marquee titles, project colours.
+  readonly property bool focusLayout: bridge.viewState.interfaceLayout === "focus"
+  property bool boardOpen:false
+  onFocusLayoutChanged:if(!focusLayout)boardOpen=false
   readonly property bool compactRows: (bridge.viewState.threadRowSize || "compact") === "compact"
   readonly property bool titleMarquee: bridge.viewState.threadTitleOverflow === "marquee"
   readonly property bool projectWash: bridge.viewState.projectColors !== false
   // Appearance > Sidebar > Style: "sober" (default) keeps colour to small dots,
   // greys and monospace figures; "vivid" brings back washes, strips and glows.
-  readonly property bool sober: bridge.viewState.sidebarStyle !== "vivid"
+  readonly property bool sober: focusLayout || bridge.viewState.sidebarStyle !== "vivid"
   readonly property bool orderByReply: (bridge.viewState.threadOrder || "reply") === "reply"
   property bool workingExpanded: !!bridge.viewState.workingExpanded
   onSidebarCompactChanged:if(initialized && bridge.viewState.sidebarCompact!==sidebarCompact)bridge.rememberView({sidebarCompact:sidebarCompact})
@@ -1848,6 +1851,11 @@ Item {
         }
         Loader{id:overlaySideLoader;objectName:"t3BrowserSheet";anchors.fill:parent;z:20;active:root.sideShown&&!root.browserInline;sourceComponent:sidePanelComponent}
         Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
+        Loader {
+          objectName:"t3FocusBoardLoader";anchors.fill:parent;z:19
+          active:root.focusLayout&&root.boardOpen&&root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen&&!root.mosaicOpen
+          sourceComponent:T3ThreadBoard{bridge:root.bridge;threads:root.mosaicRows;onClosed:root.boardOpen=false;onThreadRequested:function(t){root.boardOpen=false;root.bridge.selectThread(t.environmentId,t.id)}}
+        }
         Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         Loader {
           id:mosaicLoader
@@ -1892,6 +1900,7 @@ Item {
             T3IconButton {objectName:"t3MergeBack";visible:!!root.bridge.mergeBackTarget;name:"git-merge";enabled:!!root.bridge.mergeBackRunId&&!root.bridge.managementBusy&&!root.bridge.selectedInfo.working;tint:root.dim;tooltipText:!root.bridge.mergeBackRunId?T3I18n.tr("Complete a run in this fork before merging it back"):root.bridge.mergeBackTitle?T3I18n.tr("Merge this conversation back into {title}",{title:root.bridge.mergeBackTitle}):T3I18n.tr("Merge this conversation back into its source");onClicked:root.bridge.mergeBack()}
             T3IconButton {objectName:"t3ToggleThreadDetails";name:"square-menu";enabled:!!root.bridge.selectedThread;tint:root.threadDetailsOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread details")+" · Ctrl+Shift+B";onClicked:root.toggleThreadDetails()}
             T3IconButton {objectName:"t3OpenSidePanel";name:"panel-right";enabled:!!root.bridge.selectedThread;tint:root.sidePanelOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Side panel");onClicked:root.toggleSide()}
+            T3PickerButton{objectName:"t3OpenFocusBoard";visible:root.focusLayout;text:T3I18n.tr("Task board");primary:false;implicitHeight:Style.space(28);onClicked:root.boardOpen=true}
             T3IconButton {objectName:"t3OpenGit";name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
             T3IconButton {objectName:"t3OpenTerminal";name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
             T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"||(!root.panelAvailable&&root.windowMode==="tiled")?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
@@ -2067,7 +2076,7 @@ Item {
                   for (var i = index + 1; i < rows.length && rows[i].role !== "user"; i++) if (rows[i].role === "assistant" && !!rows[i].text) return true
                   return false
                 }
-                readonly property real bottomGap:Style.space(modelData.role==="activity"?0:commentary?8:16)
+                readonly property real bottomGap:Style.space(modelData.role==="activity"?(root.focusLayout?8:0):commentary?8:root.focusLayout?24:16)
                 readonly property real verticalInset:Style.space(userMessage?12:modelData.role==="activity"?0:2)
                 readonly property real laneWidth:messageLane.width
                 width: conversation.width
@@ -2106,8 +2115,8 @@ Item {
                   anchors.right: parent.right
                   width: message.folded ? (message.foldExpanded ? parent.width*0.8 : Math.min(parent.width*0.8,foldHeader.naturalWidth)) : message.userMessage ? Math.min(parent.width*0.8,Math.max(Style.space(80),message.naturalUserWidth+Style.space(24),(message.modelData.attachments || []).length?Style.space(240):0)) : parent.width
                   height: message.folded ? message.foldHeaderHeight+(message.foldExpanded?body.implicitHeight+message.verticalInset:0) : body.implicitHeight + 2*message.verticalInset
-                  radius: Style.space(16)
-                  color: message.userMessage ? root.surface : "transparent"
+                  radius: Style.space(root.focusLayout?12:16)
+                  color: message.userMessage ? (root.focusLayout?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.065):root.surface) : "transparent"
                   border.width:root.findOpen&&root.findMatches[root.findIndex]&&root.findMatches[root.findIndex].id===message.modelData.id?1:0
                   border.color:Color.accent
                   Item {
@@ -2293,7 +2302,7 @@ Item {
                     }
                     Loader{
                       width:parent.width;active:message.modelData.role==="changes";visible:active
-                      sourceComponent:T3Changes{summary:message.modelData.changes || {};onPreviewFile:function(filePath){root.bridge.openReference(filePath)};onOpenDiff:function(filePath){diffPopup.initialPath=filePath;root.bridge.requestDiff(summary);diffPopup.open()}}
+                      sourceComponent:T3Changes{focusLayout:root.focusLayout;summary:message.modelData.changes || {};onPreviewFile:function(filePath){root.bridge.openReference(filePath)};onOpenDiff:function(filePath){diffPopup.initialPath=filePath;root.bridge.requestDiff(summary);diffPopup.open()}}
                     }
 
                   }
