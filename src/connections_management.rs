@@ -49,10 +49,13 @@ fn encrypt(catalog: &Value, prefix: &[u8], password: &[u8]) -> Result<Value> {
 }
 fn load() -> Result<Value> {
     if catalog_path().exists() {
-        read_catalog()
-    } else {
-        Ok(protocol::connection_catalog::empty())
+        let c = read_catalog()?;
+        // `read_catalog` sets aside a catalog no keyring here can open.
+        if catalog_path().exists() {
+            return Ok(c);
+        }
     }
+    Ok(protocol::connection_catalog::empty())
 }
 fn snapshot(c: &Value) -> Result<Value> {
     let enabled = read_json(&t3_home().join("userdata/desktop-settings.json"))

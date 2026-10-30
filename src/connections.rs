@@ -37,10 +37,31 @@ pub fn read_catalog() -> Result<Value> {
     if !bytes.starts_with(b"v11") {return Err("unsupported_catalog_encryption".into())}
     // T3's Electron application attribute; never query other applications' secrets.
     let output=Command::new("timeout").args(["4s","secret-tool","lookup","application","t3code"]).output().map_err(|_|"catalog_locked")?;
-    if !output.status.success() {return Err("catalog_locked".into())}
+    if !output.status.success() {
+        if set_aside_orphaned(&path) {return Ok(json!({"profiles":[]}))}
+        return Err("catalog_locked".into())
+    }
     let mut password=Zeroizing::new(output.stdout);
     while password.last()==Some(&b'\n') || password.last()==Some(&b'\r') {password.pop();}
     validate_catalog(decrypt_catalog(&bytes,&password)?)
+}
+/// Whether the keyring answers and holds no T3 secret at all, locked or not.
+/// Search results carry item paths only, never secrets.
+fn keyring_lacks_t3_secret()->bool {
+    let out=Command::new("timeout").args(["4s","gdbus","call","--session","--dest","org.freedesktop.secrets","--object-path","/org/freedesktop/secrets","--method","org.freedesktop.Secret.Service.SearchItems","{'application': 't3code'}"]).output();
+    out.is_ok_and(|o|o.status.success()&&no_items(&String::from_utf8_lossy(&o.stdout)))
+}
+/// `SearchItems` found neither unlocked nor locked items.
+fn no_items(reply:&str)->bool {reply.trim()=="(@ao [], @ao [])"}
+/// A v11 catalog is sealed with T3's secret in the login keyring. A reinstalled
+/// system that restored `~/.t3` has a new keyring without it, so nothing can
+/// ever open that catalog: it is set aside, still encrypted, and connections
+/// start over (paired OmaBridge devices are added again by themselves). A
+/// locked keyring or a missing secret service is not that, and changes nothing.
+fn set_aside_orphaned(path:&Path)->bool {
+    if !keyring_lacks_t3_secret() {return false}
+    let secs=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d|d.as_secs()).unwrap_or(0);
+    fs::rename(path,path.with_file_name(format!("connection-catalog.orphaned-{secs}.json"))).is_ok()
 }
 fn validate_catalog(c:Value)->Result<Value>{
     if c["schemaVersion"]!=1 || !["targets","profiles","credentials"].iter().all(|k|c[*k].is_array()){return Err("unsupported_t3_catalog".into())}
@@ -459,6 +480,13 @@ pub fn connection_failed(id:&str) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn only_an_empty_keyring_search_orphans_the_catalog() {
+        assert!(no_items("(@ao [], @ao [])\n"));
+        assert!(!no_items("([objectpath '/org/freedesktop/secrets/collection/login/1'], @ao [])"));
+        assert!(!no_items("(@ao [], [objectpath '/org/freedesktop/secrets/collection/login/1'])"));
+        assert!(!no_items(""));
+    }
     use super::*;
     #[test]
     fn failed_environments_back_off_without_blocking_refreshes() {
