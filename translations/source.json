@@ -1966,6 +1966,17 @@
     "No colour": "No colour",
     "Show the host's name on threads": "Show the host's name on threads",
     "Group chips": "Group chips",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "A chip per project group above the threads, with its open thread count. Click one to show only that group."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "A chip per project group above the threads, with its open thread count. Click one to show only that group.",
+    "Style": "Style",
+    "Sober": "Sober",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.",
+    "Groups": "Groups",
+    "New group…": "New group…",
+    "Remove from group": "Remove from group",
+    "Group name": "Group name",
+    "Pinned ({count})": "Pinned ({count})",
+    "Ready ({count})": "Ready ({count})",
+    "Waiting for input ({count})": "Waiting for input ({count})",
+    "Waiting for input threads height": "Waiting for input threads height"
   }
 }

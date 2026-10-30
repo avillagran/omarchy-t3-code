@@ -22,6 +22,9 @@ Item {
   readonly property bool animate: running && T3Motion.enabled
   readonly property bool software: GraphicsInfo.api === GraphicsInfo.Software
   property string variant: "o"
+  // Sober (the default look): the morph and the falling letters stay, the
+  // glow, chromatic ghosts, sheen and sparks do not.
+  property bool sober: true
   readonly property bool blocks: variant === "omarchy"
   readonly property var wordmark: Pixels.WORDMARK
   property int restMs: 7000
@@ -199,7 +202,7 @@ Item {
     // Glow: a blurred, accent-coloured copy of the glyph behind it.
     MultiEffect {
       x: mark.x; y: mark.y; width: glyph.width; height: glyph.height
-      visible: !root.software && root.glow > 0.01
+      visible: !root.sober && !root.software && root.glow > 0.01
       source: glyph
       opacity: root.glow
       autoPaddingEnabled: true
@@ -222,7 +225,7 @@ Item {
           delegate: Item {
             required property var modelData
             width: mark.width; height: mark.height
-            visible: !root.blocks && root.chroma > 0.01
+            visible: !root.sober && !root.blocks && root.chroma > 0.01
             x: modelData.dx * root.chroma * Style.space(3)
             opacity: root.chroma * 0.7
             transform: Scale { origin.x: 39.9 * root.unit - root.originX * root.unit; origin.y: mark.height; xScale: root.squashX; yScale: root.squashY }
@@ -297,7 +300,7 @@ Item {
             required property int index
             readonly property real angle: -Math.PI * (0.08 + 0.84 * index / 8)
             readonly property real reach: Style.space(14) + (index % 3) * Style.space(4)
-            visible: root.burst < 0.999
+            visible: !root.sober && root.burst < 0.999
             width: Style.space(2); height: width; radius: width / 2
             color: index % 2 ? root.accent : root.fg
             x: (39.9 - root.originX) * root.unit + Math.cos(angle) * reach * root.burst - width / 2
@@ -322,7 +325,7 @@ Item {
       model: [{ band: Style.space(16), light: 0.45 }, { band: Style.space(5), light: 1 }]
       delegate: Item {
         required property var modelData
-        visible: !root.software && root.sheen > -0.35 && root.sheen < 1.35
+        visible: !root.sober && !root.software && root.sheen > -0.35 && root.sheen < 1.35
         x: root.sheen * word.width - width / 2
         width: modelData.band; height: word.height
         clip: true

@@ -60,7 +60,8 @@ ShellRoot {
       root.check(Test.T3Backend.activityLabel(false).indexOf("Llamando herramienta · Search")>=0,"native dynamic tool labels")
       panel.statusFilter="all"
       Test.T3Backend.state={projects:projects,threads:threads.concat([{id:"sleep",key:"fixture/sleep",environmentId:"fixture",title:"Snoozed",snoozed:true}]),environments:[],working:2,pending:2}
-      root.check(panel.snoozedRows.length===1 && panel.activeRows.length===4,"snoozed shelf is separate from active and settled")
+      root.check(panel.snoozedRows.length===1 && panel.activeRows.length===3,"snoozed shelf is separate from active and settled")
+      root.check(panel.inputRows.length===1 && panel.inputRows[0].id==="e" && !panel.activeRows.some(function(t){return t.id==="e"}),"threads waiting for input have their own group")
       Qt.callLater(function(){ console.log("T3_SIDEBAR_QML_PASS: shelf, filters, palette, projects and activity");Qt.quit() })
     }
   }

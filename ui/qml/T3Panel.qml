@@ -225,6 +225,8 @@ Item {
   property real sidebarWidth: Math.max(260,Math.min(600,bridge.viewState.sidebarWidth || 300))
   // Shelf heights in logical px, resized from the handle above each shelf.
   property real workingShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.workingShelfHeight || 220))
+  property real pinnedShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.pinnedShelfHeight || 220))
+  property real inputShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.inputShelfHeight || 164))
   property real snoozedShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.snoozedShelfHeight || 164))
   property real settledShelfHeight: Math.max(60,Math.min(1200,bridge.viewState.settledShelfHeight || 220))
   function resizeShelf(key,height) { var h=Math.round(Math.max(60,Math.min(1200,height)));root[key]=h;var v={};v[key]=h;bridge.rememberView(v) }
@@ -247,7 +249,7 @@ Item {
     if(composerExpanded)expandComposer(false)
     if(sidebarCollapsed)toggleSidebar(false)
     var items=sidebarFocusItems(),choice=items.find(function(r){return r.key===root.bridge.selectedKey})
-    if(!choice){var groups=[{rows:workingRows,header:workingToggle},{rows:snoozedRows,header:snoozedToggle},{rows:settledRows,header:settledToggle}];var group=groups.find(function(g){return g.rows.some(function(t){return t.key===root.bridge.selectedKey})});if(group)choice={item:group.header,index:-1}}
+    if(!choice){var groups=[{rows:pinnedRows,header:pinnedToggle},{rows:workingRows,header:workingToggle},{rows:inputRows,header:inputToggle},{rows:snoozedRows,header:snoozedToggle},{rows:settledRows,header:settledToggle}];var group=groups.find(function(g){return g.rows.some(function(t){return t.key===root.bridge.selectedKey})});if(group)choice={item:group.header,index:-1}}
     choice=choice||items[0]||{item:threads,index:0};choice.item.forceActiveFocus()
     if(choice.index>=0){choice.item.forceLayout();choice.item.currentIndex=choice.index;choice.item.positionViewAtIndex(choice.index,ListView.Contain)}
   }
@@ -263,11 +265,13 @@ Item {
       child=all.find(function(t){return t.key===parentKey})
     }
     if(changed)bridge.rememberView({subthreadsExpanded:expanded})
-    var rows=activeRows.concat(workingRows,snoozedRows,settledRows)
+    var rows=pinnedRows.concat(activeRows,workingRows,inputRows,snoozedRows,settledRows)
     if(target&&!rows.some(function(t){return t.key===root.bridge.selectedKey})){
       hostFilter="";projectFilter="";statusFilter="all";bridge.query=""
     }
+    if(pinnedRows.some(function(t){return t.key===root.bridge.selectedKey}))pinnedExpanded=true
     if(workingRows.some(function(t){return t.key===root.bridge.selectedKey}))workingExpanded=true
+    if(inputRows.some(function(t){return t.key===root.bridge.selectedKey}))inputExpanded=true
     if(snoozedRows.some(function(t){return t.key===root.bridge.selectedKey}))snoozedExpanded=true
     if(settledRows.some(function(t){return t.key===root.bridge.selectedKey}))settledExpanded=true
     syncSidebar();focusSidebar();sidebarRefocus.restart()
@@ -277,8 +281,10 @@ Item {
   function sidebarFocusItems(){
     var out=[]
     function list(view,rows){rows.forEach(function(t,i){out.push({item:view,index:i,key:t.key})})}
+    if(pinnedRows.length){out.push({item:pinnedToggle,index:-1});list(pinnedThreads,visiblePinnedRows)}
     list(threads,activeRows)
     if(workingRows.length){out.push({item:workingToggle,index:-1});list(workingThreads,visibleWorkingRows)}
+    if(inputRows.length){out.push({item:inputToggle,index:-1});list(inputThreads,visibleInputRows)}
     if(snoozedRows.length){out.push({item:snoozedToggle,index:-1});list(snoozedThreads,visibleSnoozedRows)}
     if(settledRows.length){out.push({item:settledToggle,index:-1});list(settledThreads,visibleSettledRows)}
     return out
@@ -290,7 +296,7 @@ Item {
     next.item.forceActiveFocus()
     if(next.index>=0){next.item.currentIndex=next.index;next.item.positionViewAtIndex(next.index,ListView.Contain)}
   }
-  function navigateThread(step) { var rows=activeRows.concat(visibleWorkingRows).concat(visibleSnoozedRows).concat(visibleSettledRows);if(!rows.length)return;var index=rows.findIndex(function(t){return t.key===root.bridge.selectedKey});var t=rows[(index+step+rows.length)%rows.length];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus() }
+  function navigateThread(step) { var rows=visiblePinnedRows.concat(activeRows).concat(visibleWorkingRows).concat(visibleInputRows).concat(visibleSnoozedRows).concat(visibleSettledRows);if(!rows.length)return;var index=rows.findIndex(function(t){return t.key===root.bridge.selectedKey});var t=rows[(index+step+rows.length)%rows.length];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus() }
   readonly property bool nativeKeybindingsEnabled:typeof bridge.keybindingRulesFor==="function"
   readonly property var nativeShortcutController:nativeShortcuts
   readonly property var nativePrimaryKeys:nativeKeybindingsEnabled?bridge.keybindingRulesFor(bridge.primaryKeybindingEnvironment):[]
@@ -302,14 +308,14 @@ Item {
   readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
-    function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.activeRows.concat(root.workingRows).concat(root.snoozedRows).concat(root.settledRows)}
+    function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.pinnedRows.concat(root.activeRows).concat(root.workingRows).concat(root.inputRows).concat(root.snoozedRows).concat(root.settledRows)}
     function onSettledLastThread(thread){
       // Existing management dialogs close on the success signal; open afterwards.
       var epoch=root.bridge.selectionEpoch
       Qt.callLater(function(){if(root.opened&&!root.bridge.selectedKey&&root.bridge.selectionEpoch===epoch)sidebarActions.newThread(null,thread.projectKey)})
     }
   }
-  function nativeThreadRows(){return activeRows.concat(visibleWorkingRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
+  function nativeThreadRows(){return visiblePinnedRows.concat(activeRows).concat(visibleWorkingRows).concat(visibleInputRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
   function supportsNativeShortcut(command){
     if(!nativeKeybindingsEnabled)return false
     if(workingPopup.visible)return command==="diff.toggle"
@@ -418,7 +424,11 @@ Item {
   readonly property color surface: Qt.rgba(fg.r, fg.g, fg.b, 0.045)
   readonly property color healthy: Color.accent
   property string hostFilter: bridge.viewState.hostFilter || ""
-  readonly property var hostThreads: bridge.state.threads.filter(function(t){return !root.hostFilter || t.environmentId===root.hostFilter})
+  readonly property var hostThreads: bridge.state.threads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.threadGroups[t.key]===root.threadGroupFilter)})
+  // Groups the user makes from a thread's menu (Groups): one name per thread.
+  readonly property var threadGroups: bridge.viewState.threadGroups || ({})
+  property string threadGroupFilter: bridge.viewState.threadGroupFilter || ""
+  onThreadGroupFilterChanged: if(initialized && (bridge.viewState.threadGroupFilter || "")!==threadGroupFilter)bridge.rememberView({threadGroupFilter:threadGroupFilter})
   readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))
   onHostFilterChanged: if(initialized && bridge.viewState.hostFilter!==hostFilter)bridge.rememberView({hostFilter:hostFilter})
   readonly property bool mosaicOpen: bridge.viewState.mosaicOpen===true
@@ -453,6 +463,9 @@ Item {
   readonly property bool compactRows: (bridge.viewState.threadRowSize || "compact") === "compact"
   readonly property bool titleMarquee: bridge.viewState.threadTitleOverflow === "marquee"
   readonly property bool projectWash: bridge.viewState.projectColors !== false
+  // Appearance > Sidebar > Style: "sober" (default) keeps colour to small dots,
+  // greys and monospace figures; "vivid" brings back washes, strips and glows.
+  readonly property bool sober: bridge.viewState.sidebarStyle !== "vivid"
   readonly property bool orderByReply: (bridge.viewState.threadOrder || "reply") === "reply"
   property bool workingExpanded: !!bridge.viewState.workingExpanded
   onSidebarCompactChanged:if(initialized && bridge.viewState.sidebarCompact!==sidebarCompact)bridge.rememberView({sidebarCompact:sidebarCompact})
@@ -479,6 +492,11 @@ Item {
   property bool restoringSettled: true
   property bool restoringSnoozed: true
   property bool snoozedExpanded: !!bridge.viewState.snoozedExpanded
+  // Pinned and Waiting for input start open; folding them is remembered.
+  property bool pinnedExpanded: bridge.viewState.pinnedExpanded !== false
+  onPinnedExpandedChanged: if(initialized && (bridge.viewState.pinnedExpanded !== false)!==pinnedExpanded)bridge.rememberView({pinnedExpanded:pinnedExpanded})
+  property bool inputExpanded: bridge.viewState.inputExpanded !== false
+  onInputExpandedChanged: if(initialized && (bridge.viewState.inputExpanded !== false)!==inputExpanded)bridge.rememberView({inputExpanded:inputExpanded})
   onSnoozedExpandedChanged: if(initialized && bridge.viewState.snoozedExpanded!==snoozedExpanded)bridge.rememberView({snoozedExpanded:snoozedExpanded})
   function capturePosition(view, rows, key) {
     if (!opened || !view.visible || !view.count || !rows.length) return
@@ -619,7 +637,22 @@ Item {
   function nestRows(rows){return Sidebar.nest(rows,bridge.state.threads,bridge.viewState.subthreadsExpanded,bridge.selectedKey)}
   function topCount(rows){return rows.filter(function(r){return !r.depth}).length}
   function toggleSubthreads(row){var all=Object.assign({},bridge.viewState.subthreadsExpanded || {});all[row.key]=!row.subthreadsExpanded;var keys=Object.keys(all);while(keys.length>512)delete all[keys.shift()];bridge.rememberView({subthreadsExpanded:all})}
-  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.sidebarCompact || !Sidebar.inWorkingShelf(t)}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
+  // Threads waiting on you (approval, input, plan) get their own group above Snoozed.
+  function needsInput(t){return Sidebar.state(t)==="waiting"}
+  // Pinned threads sit in their group on top. One whose answer is ready heads
+  // Ready instead, and stays there while open; once focus moves on it goes back.
+  property var pinnedHold:({})
+  function pinnedReady(t){return !!t.pinned&&(Sidebar.detail(t)==="done"||!!pinnedHold[t.key])}
+  Connections{target:root.bridge;function onSelectedKeyChanged(){
+    var key=root.bridge.selectedKey,t=(root.bridge.state.threads || []).find(function(r){return r.key===key}),hold={}
+    if(t&&root.pinnedReady(t))hold[key]=true
+    if(JSON.stringify(hold)!==JSON.stringify(root.pinnedHold)){root.rowMotionPending=true;root.pinnedHold=hold}
+  }}
+  readonly property var pinnedRows:nestRows(inboxRows.filter(function(t){return t.pinned&&!root.needsInput(t)&&!root.pinnedReady(t)}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
+  readonly property var inputRows:nestRows(inboxRows.filter(root.needsInput).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
+  readonly property var visiblePinnedRows:pinnedExpanded ? pinnedRows : []
+  readonly property var visibleInputRows:inputExpanded ? inputRows : []
+  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.needsInput(t)&&(!t.pinned||root.pinnedReady(t))&&(!root.sidebarCompact || !Sidebar.inWorkingShelf(t))}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
   readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(function(a,b){return (b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)})) : []
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
@@ -640,6 +673,13 @@ Item {
   readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   // A project group's colour is its first project's, so grouped projects share it.
+  // One chip per thread group, ahead of the project chips; a click filters by it.
+  readonly property var threadGroupChips:{
+    var counts={}
+    bridge.state.threads.forEach(function(t){var g=root.threadGroups[t.key];if(!g||root.hostFilter&&t.environmentId!==root.hostFilter)return;counts[g]=(counts[g] || 0)+(t.settled?0:1)})
+    if(threadGroupFilter&&counts[threadGroupFilter]===undefined)counts[threadGroupFilter]=0
+    return Object.keys(counts).sort(function(a,b){return a.localeCompare(b)}).map(function(g){return {key:"group:"+g,group:g,title:g,count:counts[g]}})
+  }
   function groupTint(g){var first=g.members[0] || {};return T3Palette.pick((first.projectIcon || {}).color || "",T3Palette.projectColor(first.key,bridge.state.projects || []))}
   readonly property var groupTints:{var map={};projectGroups.forEach(function(g){var tint=root.groupTint(g);g.members.forEach(function(p){map[p.key]=tint})});return map}
   // One chip per group with open threads on the shown hosts, busiest first: a click filters by it.
@@ -669,11 +709,13 @@ Item {
   ListModel { id: workingRowModel; dynamicRoles: true }
   ListModel { id: snoozedRowModel; dynamicRoles: true }
   ListModel { id: settledRowModel; dynamicRoles: true }
+  ListModel { id: pinnedRowModel; dynamicRoles: true }
+  ListModel { id: inputRowModel; dynamicRoles: true }
   readonly property string rowMoveEffect: !T3Motion.enabled ? "off" : ["arc","glide","fade","off"].indexOf(bridge.viewState.threadMoveEffect) >= 0 ? bridge.viewState.threadMoveEffect : "arc"
   readonly property int rowMoveMs: ({slow: 820, fast: 300})[bridge.viewState.threadMoveSpeed] || 520
-  readonly property var sidebarSections: [activeRows, workingReveal.present ? workingRows : [], snoozedReveal.present ? snoozedRows : [], settledReveal.present ? settledRows : []]
+  readonly property var sidebarSections: [activeRows, workingReveal.present ? workingRows : [], snoozedReveal.present ? snoozedRows : [], settledReveal.present ? settledRows : [], pinnedReveal.present ? pinnedRows : [], inputReveal.present ? inputRows : []]
   onSidebarSectionsChanged: Qt.callLater(syncSidebar)
-  property var sidebarSyncState: [{ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}]
+  property var sidebarSyncState: [{ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}, {ids: [], prints: {}}]
   property bool rowMotionPending: false
   property bool rowMotion: false
   property var movingKeys: ({})
@@ -682,7 +724,7 @@ Item {
   Connections { target: root.bridge; function onSnapshotAboutToChange() { root.rowMotionPending = true } }
   Timer { id: rowMotionHold; interval: root.rowMoveMs + 120; onTriggered: { root.rowMotion = false; root.movingKeys = ({}) } }
   function syncSidebar() {
-    var models = [activeRowModel, workingRowModel, snoozedRowModel, settledRowModel], sections = sidebarSections
+    var models = [activeRowModel, workingRowModel, snoozedRowModel, settledRowModel, pinnedRowModel, inputRowModel], sections = sidebarSections
     var states = sidebarSyncState.map(function(st) { return {ids: st.ids.slice(), prints: Object.assign({}, st.prints)} })
     var removed = {}, added = {}, moving = {}, changed = false
     sections.forEach(function(rows, n) {
@@ -728,7 +770,9 @@ Item {
     else item.arrive(Math.round(rowMoveMs * 0.8))
   }
   function sectionHeader(key) {
+    if (pinnedRows.some(function(t) { return t.key === key })) return pinnedToggle
     if (workingRows.some(function(t) { return t.key === key })) return workingToggle
+    if (inputRows.some(function(t) { return t.key === key })) return inputToggle
     if (snoozedRows.some(function(t) { return t.key === key })) return snoozedToggle
     if (settledRows.some(function(t) { return t.key === key })) return settledToggle
     return threads
@@ -736,7 +780,7 @@ Item {
   function startFlights() {
     var leaving = leavingRows, arriving = arrivingRows, landed = {}
     leavingRows = ({}); arrivingRows = []
-    ;[threads, workingThreads, snoozedThreads, settledThreads].forEach(function(view) { view.forceLayout() })
+    ;[pinnedThreads, threads, workingThreads, inputThreads, snoozedThreads, settledThreads].forEach(function(view) { view.forceLayout() })
     arriving.forEach(function(item) {
       // A row destroyed or recycled before this ran has nothing to land on.
       if (!item || item.pooled || typeof item.arrive !== "function") return
@@ -852,7 +896,7 @@ Item {
       readonly property var modelData: row
       thread: modelData; bridge: root.bridge
       width: ListView.view ? ListView.view.width : 0
-      compactRows:root.compactRows;marquee:root.titleMarquee;projectWash:root.projectWash;projectTint:root.groupTints[modelData.projectKey] || "transparent"
+      compactRows:root.compactRows;marquee:root.titleMarquee;projectWash:root.projectWash;sober:root.sober;projectTint:root.groupTints[modelData.projectKey] || "transparent"
       hostStyles:root.bridge.viewState.hostStyles || ({});manyHosts:(root.bridge.state.environments || []).length>1
       projectScoped:!!root.projectFilter&&(Array.isArray(root.projectScope)?root.projectScope.indexOf(modelData.projectKey)>=0:root.projectScope===modelData.projectKey)
       panelVisible: root.opened
@@ -1251,7 +1295,7 @@ Item {
               RowLayout {
                 anchors.fill: parent; anchors.leftMargin: Style.space(18); anchors.rightMargin: Style.space(18); anchors.topMargin: Style.space(11); anchors.bottomMargin: Style.space(11); spacing: Style.space(10)
                 T3IconButton { name: "panel-left-close"; tooltipText: T3I18n.tr("Hide sidebar"); onClicked: root.toggleSidebar() }
-                T3BrandMark { objectName: "t3BrandMark"; variant: root.bridge.viewState.brandGlyph || "o"; fg: root.fg; dim: root.dim; accent: Color.accent; running: root.opened && !root.sidebarCollapsed }
+                T3BrandMark { objectName: "t3BrandMark"; variant: root.bridge.viewState.brandGlyph || "o"; fg: root.fg; dim: root.dim; accent: Color.accent; sober: root.sober; running: root.opened && !root.sidebarCollapsed }
                 Item { Layout.fillWidth: true }
                 T3IconButton{objectName:"t3PullRequestsToggle";name:"git-pull-request";tooltipText:T3I18n.tr("Pull requests");tint:root.pullRequestsOpen?Color.accent:root.dim;onClicked:{root.preferencesOpen=false;root.pullRequestsOpen=!root.pullRequestsOpen}}
                 T3IconButton {
@@ -1297,33 +1341,37 @@ Item {
             ListView {
               id: groupChipList
               objectName: "t3GroupChips"
-              Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12); Layout.topMargin: Style.space(6)
+              Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12); Layout.topMargin: Style.space(8)
               Layout.preferredHeight: Style.space(24)
-              visible: root.projectChips && root.groupChips.length > 1
-              orientation: ListView.Horizontal; spacing: Style.space(6); clip: true
+              visible: root.projectChips && (root.groupChips.length > 1 || root.threadGroupChips.length > 0)
+              orientation: ListView.Horizontal; spacing: Style.space(root.sober ? 4 : 6); clip: true
               boundsBehavior: Flickable.StopAtBounds
-              model: visible ? root.groupChips : []
+              model: visible ? root.threadGroupChips.concat(root.groupChips.length > 1 ? root.groupChips : []) : []
               delegate: Controls.AbstractButton {
                 id: chip
                 required property var modelData
-                readonly property bool active: root.projectFilter === modelData.key || root.projectGroups.some(function(g){return g.key===modelData.key&&g.members.some(function(m){return m.key===root.projectFilter})})
-                readonly property color tint: root.projectWash ? modelData.tint : root.dim
+                readonly property bool threadGroup: !!modelData.group
+                readonly property bool active: threadGroup ? root.threadGroupFilter === modelData.group : root.projectFilter === modelData.key || root.projectGroups.some(function(g){return g.key===modelData.key&&g.members.some(function(m){return m.key===root.projectFilter})})
+                readonly property color tint: root.projectWash && !threadGroup ? modelData.tint : root.dim
+                // Sober chips are grey; only their dot carries the group's colour.
+                readonly property color face: root.sober ? root.fg : tint
                 objectName: "t3GroupChip_" + modelData.key
                 height: Style.space(24); implicitWidth: chipRow.implicitWidth + Style.space(16)
                 hoverEnabled: true
                 Accessible.name: T3I18n.tr("Filter by {project}", {project: modelData.title})
-                onClicked: root.projectFilter = active ? "" : modelData.key
+                onClicked: if (threadGroup) root.threadGroupFilter = active ? "" : modelData.group; else root.projectFilter = active ? "" : modelData.key
                 background: Rectangle {
-                  radius: height / 2
-                  color: Qt.rgba(chip.tint.r, chip.tint.g, chip.tint.b, chip.active ? 0.26 : chip.hovered ? 0.16 : 0.08)
-                  border.width: chip.active ? 1 : 0; border.color: chip.tint
+                  radius: root.sober ? Style.space(6) : height / 2
+                  color: Qt.rgba(chip.face.r, chip.face.g, chip.face.b, root.sober ? (chip.active ? 0.12 : chip.hovered ? 0.08 : 0.04) : (chip.active ? 0.26 : chip.hovered ? 0.16 : 0.08))
+                  border.width: chip.active ? 1 : 0; border.color: root.sober ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.28) : chip.tint
                   Behavior on color { enabled: T3Motion.enabled; ColorAnimation { duration: T3Motion.duration(140) } }
                 }
                 contentItem: Item {
                   RowLayout {
                     id: chipRow
-                    anchors.centerIn: parent; spacing: Style.space(5)
-                    Rectangle { width: Style.space(7); height: width; radius: width / 2; color: chip.tint }
+                    anchors.centerIn: parent; spacing: Style.space(4)
+                    Rectangle { visible: !chip.threadGroup; width: Style.space(root.sober ? 6 : 7); height: width; radius: width / 2; color: chip.tint }
+                    T3Icon { visible: chip.threadGroup; name: "layers"; tint: root.dim; implicitWidth: Style.space(11) }
                     Text { text: chip.modelData.title; color: chip.active ? root.fg : root.dim; font.pixelSize: Style.font.caption; textFormat: Text.PlainText }
                     Text { text: String(chip.modelData.count); color: root.dim; font.family: "monospace"; font.pixelSize: Style.font.caption - Style.space(1); opacity: 0.8 }
                   }
@@ -1335,6 +1383,60 @@ Item {
               visible: !!root.bridge.managementError
               Text { objectName:"t3ManagementError"; Layout.fillWidth: true; text: T3I18n.error(root.bridge.managementError); color: Color.urgent; font.pixelSize: Style.font.caption; wrapMode: Text.Wrap; maximumLineCount: 6; elide: Text.ElideRight; textFormat: Text.PlainText }
               T3IconButton { name: "refresh-cw"; visible: !!root.bridge.managementRequest; tooltipText: T3I18n.tr("Retry action"); onClicked: root.bridge.manage({}) }
+            }
+            // Pinned threads, on top; a ready one moves down to head Ready.
+            T3Reveal {
+              objectName:"pinnedShelfHeader";shown:root.pinnedRows.length>0
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              Rectangle {
+                width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
+                id:pinnedToggle;objectName:"pinnedShelfToggle"
+                border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+                color:"transparent";activeFocusOnTab:true
+                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Pinned ({count})",{count:root.topCount(root.pinnedRows)})
+                Keys.onReturnPressed:root.pinnedExpanded=!root.pinnedExpanded
+                Keys.onSpacePressed:root.pinnedExpanded=!root.pinnedExpanded
+                Keys.onUpPressed:root.moveSidebarFocus(pinnedToggle,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(pinnedToggle,1)
+                Keys.onLeftPressed:root.pinnedExpanded=false
+                Keys.onRightPressed:root.pinnedExpanded=true
+                RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:root.dim;font.pixelSize:Style.font.caption}Rectangle{objectName:"pinnedShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.pinnedExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
+                MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.pinnedExpanded=!root.pinnedExpanded}
+              }
+            }
+            T3Reveal {
+              id:pinnedReveal;shown:root.visiblePinnedRows.length>0
+              size:Math.min(pinnedThreads.contentHeight,Style.space(root.pinnedShelfHeight))
+              Layout.fillWidth:true;Layout.maximumHeight:Style.space(root.pinnedShelfHeight)
+              Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              ListView {
+                id:pinnedThreads;objectName:"pinnedThreadList";interactive:false
+                anchors.fill:parent
+                Keys.onUpPressed:root.moveSidebarFocus(pinnedThreads,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(pinnedThreads,1)
+                T3Wheel{flickable:pinnedThreads}
+                activeFocusOnTab:true;keyNavigationEnabled:true;clip:true;reuseItems:true;cacheBuffer:0;spacing:0
+                highlightFollowsCurrentItem:activeFocus
+                highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:pinnedThreads.activeFocus;radius:Style.space(8)}
+                Keys.onReturnPressed:{var t=root.visiblePinnedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                Keys.onEnterPressed:{var t=root.visiblePinnedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                model:pinnedRowModel;delegate:threadDelegate
+                remove:RowRemove{}
+                displaced:RowDisplaced{}
+                move:RowMove{}
+                Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
+              }
+            }
+            // Names the main list once there are groups around it.
+            T3Reveal {
+              objectName:"readyShelfHeader";shown:root.activeRows.length>0&&(root.pinnedRows.length>0||root.inputRows.length>0)
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              Item{width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
+                RowLayout{anchors.fill:parent;anchors.margins:Style.space(5)
+                  Text{objectName:"readyShelfTitle";text:T3I18n.tr("Ready ({count})",{count:root.topCount(root.activeRows)});color:root.dim;font.pixelSize:Style.font.caption}
+                  Rectangle{Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}
+                }
+              }
             }
             ListView {
               id: threads
@@ -1354,7 +1456,7 @@ Item {
               Layout.fillWidth: true; Layout.fillHeight: true
               Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
               clip: true; reuseItems: true; cacheBuffer: 0
-              visible: root.activeRows.length > 0 || (!root.workingRows.length && !root.snoozedRows.length && !root.settledRows.length)
+              visible: root.activeRows.length > 0 || (!root.pinnedRows.length && !root.workingRows.length && !root.inputRows.length && !root.snoozedRows.length && !root.settledRows.length)
               model: activeRowModel
               remove: RowRemove {}
               displaced: RowDisplaced {}
@@ -1415,6 +1517,50 @@ Item {
                 displaced:RowDisplaced{}
                 move:RowMove{}
                 onContentYChanged:if(!root.restoringWorking)root.capturePosition(workingThreads,root.visibleWorkingRows,"@working")
+                Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
+              }
+            }
+            T3ShelfResizer{objectName:"inputShelfResizer";label:"Waiting for input threads height";visible:inputReveal.shown&&!inputReveal.moving;value:root.inputShelfHeight;defaultValue:164;onResized:function(h){root.resizeShelf("inputShelfHeight",h)}}
+            // Threads waiting on you: approvals, questions and plans.
+            T3Reveal {
+              objectName:"inputShelfHeader";shown:root.inputRows.length>0
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              Rectangle {
+                width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
+                id:inputToggle;objectName:"inputShelfToggle"
+                border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
+                color:"transparent";activeFocusOnTab:true
+                Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Waiting for input ({count})",{count:root.topCount(root.inputRows)})
+                Keys.onReturnPressed:root.inputExpanded=!root.inputExpanded
+                Keys.onSpacePressed:root.inputExpanded=!root.inputExpanded
+                Keys.onUpPressed:root.moveSidebarFocus(inputToggle,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(inputToggle,1)
+                Keys.onLeftPressed:root.inputExpanded=false
+                Keys.onRightPressed:root.inputExpanded=true
+                RowLayout{anchors.fill:parent;anchors.margins:Style.space(5);Text{text:parent.parent.Accessible.name;color:T3Palette.waiting;font.pixelSize:Style.font.caption}Rectangle{objectName:"inputShelfDivider";Layout.fillWidth:true;Layout.minimumWidth:Style.space(8);height:1;color:root.divider}T3Icon{name:root.inputExpanded?"chevron-down":"chevron-up";tint:root.dim;implicitWidth:Style.space(12)}}
+                MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.inputExpanded=!root.inputExpanded}
+              }
+            }
+            T3Reveal {
+              id:inputReveal;shown:root.visibleInputRows.length>0
+              size:Math.min(inputThreads.contentHeight,Style.space(root.inputShelfHeight))
+              Layout.fillWidth:true;Layout.maximumHeight:Style.space(root.inputShelfHeight)
+              Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              ListView {
+                id:inputThreads;objectName:"inputThreadList";interactive:false
+                anchors.fill:parent
+                Keys.onUpPressed:root.moveSidebarFocus(inputThreads,-1)
+                Keys.onDownPressed:root.moveSidebarFocus(inputThreads,1)
+                T3Wheel{flickable:inputThreads}
+                activeFocusOnTab:true;keyNavigationEnabled:true;clip:true;reuseItems:true;cacheBuffer:0;spacing:0
+                highlightFollowsCurrentItem:activeFocus
+                highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:inputThreads.activeFocus;radius:Style.space(8)}
+                Keys.onReturnPressed:{var t=root.visibleInputRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                Keys.onEnterPressed:{var t=root.visibleInputRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
+                model:inputRowModel;delegate:threadDelegate
+                remove:RowRemove{}
+                displaced:RowDisplaced{}
+                move:RowMove{}
                 Controls.ScrollBar.vertical:Controls.ScrollBar{policy:Controls.ScrollBar.AsNeeded}
               }
             }
@@ -1647,7 +1793,23 @@ Item {
             }
             Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
             Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
-            Text { Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText; MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized} }
+            Text {
+              objectName:"t3HeaderThreadTitle"
+              Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText
+              MouseArea{anchors.fill:parent;enabled:root.detached;onPressed:desktop.startSystemMove();onDoubleClicked:desktop.maximized=!desktop.maximized}
+              // Right click: the same menu as the thread's row in the sidebar.
+              MouseArea{objectName:"t3HeaderThreadMenuArea";anchors.fill:parent;acceptedButtons:Qt.RightButton;enabled:!!headerThreadRow.thread.key;onClicked:headerThreadRow.openContextMenu()}
+              T3ThreadRow {
+                id:headerThreadRow;objectName:"t3HeaderThreadRow"
+                width:0;height:0;clip:true;panelVisible:false
+                thread:(root.bridge.state.threads || []).find(function(t){return t.key===root.bridge.selectedKey}) || ({})
+                bridge:root.bridge
+                projectScoped:!!root.projectFilter&&(Array.isArray(root.projectScope)?root.projectScope.indexOf(thread.projectKey)>=0:root.projectScope===thread.projectKey)
+                onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
+                onProjectSettingsRequested:function(key){root.openProjectSettings(key)}
+                onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
+              }
+            }
             T3IconButton {objectName:"t3MergeBack";visible:!!root.bridge.mergeBackTarget;name:"git-merge";enabled:!!root.bridge.mergeBackRunId&&!root.bridge.managementBusy&&!root.bridge.selectedInfo.working;tint:root.dim;tooltipText:!root.bridge.mergeBackRunId?T3I18n.tr("Complete a run in this fork before merging it back"):root.bridge.mergeBackTitle?T3I18n.tr("Merge this conversation back into {title}",{title:root.bridge.mergeBackTitle}):T3I18n.tr("Merge this conversation back into its source");onClicked:root.bridge.mergeBack()}
             T3IconButton {objectName:"t3ToggleThreadDetails";name:"square-menu";enabled:!!root.bridge.selectedThread;tint:root.threadDetailsOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread details")+" · Ctrl+Shift+B";onClicked:root.toggleThreadDetails()}
             T3IconButton {objectName:"t3OpenSidePanel";name:"panel-right";enabled:!!root.bridge.selectedThread;tint:root.sidePanelOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Side panel");onClicked:root.toggleSide()}

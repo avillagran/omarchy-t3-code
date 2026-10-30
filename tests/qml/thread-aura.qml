@@ -8,7 +8,7 @@ ShellRoot{
  function check(ok,msg){if(!ok){console.error("THREAD_AURA_QML_FAIL: "+msg);Qt.callLater(function(){Qt.exit(1)})}}
  function threads(doneId){var r=[{id:"w",title:"Working thread",working:true,startedAt:Date.now()-30000},{id:"q",title:"Needs input",pending:true,reason:"request",status:"completed"},{id:"i",title:"Idle thread",status:"completed"}];
   return r.map(function(t,i){var row=Object.assign({key:"fixture/"+t.id,environmentId:"fixture",project:"Project",updatedAt:1e12-i*60000,activeAnchorAt:1e12-i*60000},t);if(t.id===doneId){row.working=false;row.status="completed";row.pending=true;row.reason="review"}return row})}
- function row(id){var list=keys.findChild(panel,"threadList");for(var i=0;i<list.count;i++){var it=list.itemAtIndex(i);if(it&&it.thread.id===id)return it}return null}
+ function row(id){var found=null;["threadList","inputThreadList"].forEach(function(name){var list=keys.findChild(panel,name);for(var i=0;i<list.count;i++){var it=list.itemAtIndex(i);if(it&&it.thread.id===id)found=it}});return found}
  function aura(id){var r=row(id);return r?keys.findChild(r,"threadAura"):null}
  Test.T3Panel{id:panel;bridge:Test.T3Backend}
  TestCase{id:keys;when:false}

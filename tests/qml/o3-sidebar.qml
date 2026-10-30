@@ -26,10 +26,15 @@ ShellRoot{
    fixture=b.state;panel.open();phase=1
   }else if(phase===1){
    var ids=panel.activeRows.map(function(t){return t.id})
-   root.check(ids.join()==="pin,new,old","pinned first, then latest reply: "+ids.join())
+   root.check(ids.join()==="new,old","latest reply first: "+ids.join())
+   root.check(panel.pinnedRows.map(function(t){return t.id}).join()==="pin","pinned threads have their own group on top")
    var r=root.row("new");if(!r)return;root.check(!!r&&r.slim&&r.compactRows,"rows are compact by default")
    root.check(r.showHost&&!r.hostLook.color,"another host shows its icon, with no colour by default")
    var sub=keys.findChild(r,"threadCompactProject");root.check(r.subtitled&&sub&&sub.visible&&sub.text==="P"&&r.height>Style.space(40),"compact rows show the project under the title")
+   // Sober by default: the project colour is a dot, with no wash behind the row.
+   var dot=keys.findChild(r,"threadProjectDot");root.check(r.sober&&dot&&dot.visible,"sober rows mark the project with a dot")
+   var wash=keys.findChild(r,"threadProjectWash");root.check(wash&&!wash.visible,"sober rows have no colour wash")
+   var mark=keys.findChild(panel,"t3BrandMark");root.check(mark&&mark.sober,"the header is sober too")
    b.rememberView({hostStyles:{fixture:{color:"#5aa2e6",showName:true,icon:"laptop"}}});phase=11
   }else if(phase>=11&&phase<16){
    phase++;if(phase===16)keys.findChild(panel,"t3PanelLayout").grabToImage(function(g){g.saveToFile("/tmp/o3-sidebar-compact.png")})
@@ -39,14 +44,20 @@ ShellRoot{
    var r2=root.row("new");if(!r2)return
    root.check(!r2.slim,"large rows on request")
    root.check(String(r2.hostLook.color)==="#5aa2e6"&&r2.hostLook.icon==="laptop","host style applies to its threads")
-   var strip=keys.findChild(r2,"threadHostStrip");root.check(strip&&strip.visible,"coloured host draws an edge strip")
+   var strip=keys.findChild(r2,"threadHostStrip");root.check(strip&&!strip.visible,"sober rows draw no host edge strip")
+   b.rememberView({sidebarStyle:"vivid"});phase=21
+  }else if(phase===21){
+   var r3=root.row("new");if(!r3)return
+   root.check(!r3.sober&&keys.findChild(r3,"threadHostStrip").visible,"vivid: a coloured host draws an edge strip")
+   root.check(keys.findChild(r3,"threadProjectWash").visible,"vivid: rows get the project wash")
+   var r2=r3
    var name=keys.findChild(r2,"threadHostName");root.check(name&&name.visible&&name.text==="NODE","host name shows when asked")
    root.check(r2.marquee,"marquee preference reaches the rows")
    keys.findChild(panel,"t3PanelLayout").grabToImage(function(g){g.saveToFile("/tmp/o3-sidebar-large.png")})
    b.rememberView({threadOrder:"t3"});phase=3
   }else if(phase===3){
    root.check(!panel.orderByReply,"T3's own order on request")
-   b.rememberView({threadOrder:"reply",threadRowSize:"compact",threadTitleOverflow:"elide",hostStyles:{}})
+   b.rememberView({threadOrder:"reply",threadRowSize:"compact",threadTitleOverflow:"elide",hostStyles:{},sidebarStyle:"sober"})
    // The same repository on two hosts is one group; another repository is another.
    var repo=function(k){return {canonicalKey:k,rootPath:"/w/"+k}}
    b.state={threads:[
@@ -68,6 +79,48 @@ ShellRoot{
   }else if(phase===6){
    root.check(panel.projectFilter==="","clicking the active chip clears the filter")
    keys.findChild(panel,"t3PanelLayout").grabToImage(function(g){g.saveToFile("/tmp/o3-chips.png")})
+   b.state={threads:[
+    {id:"p1",key:"local/p1",environmentId:"local",project:"P",title:"Pinned one",status:"completed",pinned:true,pinOrderKey:"a",repliedAt:1},
+    {id:"r1",key:"local/r1",environmentId:"local",project:"P",title:"Reply",status:"completed",repliedAt:5},
+    {id:"q1",key:"local/q1",environmentId:"local",project:"P",title:"Question",status:"running",working:true,pending:true,reason:"request",repliedAt:3}],
+    projects:[],environments:[{id:"local",name:"mbp",state:"ready"}]}
+   fixture=b.state;phase=7
+  }else if(phase===7){
+   var ids2=function(rows){return rows.map(function(t){return t.id}).join()}
+   root.check(ids2(panel.pinnedRows)==="p1"&&ids2(panel.activeRows)==="r1"&&ids2(panel.inputRows)==="q1","pinned, ready and waiting for input are separate groups: "+ids2(panel.pinnedRows)+"|"+ids2(panel.activeRows)+"|"+ids2(panel.inputRows))
+   var input=keys.findChild(panel,"inputShelfHeader"),pinnedHead=keys.findChild(panel,"pinnedShelfHeader"),ready=keys.findChild(panel,"readyShelfHeader")
+   root.check(input&&input.shown&&pinnedHead&&pinnedHead.shown&&ready&&ready.shown,"the groups have headers")
+   root.check(input.mapToItem(panel,0,0).y>pinnedHead.mapToItem(panel,0,0).y,"pinned sits above, waiting for input below")
+   // The pinned thread's answer is ready: it heads Ready.
+   fixture=JSON.parse(JSON.stringify(b.state));fixture.threads[0].pending=true;fixture.threads[0].reason="review";b.state=fixture;phase=8
+  }else if(phase===8){
+   root.check(panel.activeRows[0].id==="p1"&&!panel.pinnedRows.length,"a ready pinned thread heads Ready")
+   b.selectThread("local","p1")
+   // Opening it clears "done"; it stays in Ready while it has focus.
+   fixture=JSON.parse(JSON.stringify(b.state));fixture.threads[0].pending=false;fixture.threads[0].reason=null;b.state=fixture;phase=9
+  }else if(phase===9){
+   root.check(panel.activeRows[0].id==="p1","the open pinned thread stays in Ready")
+   var sel=null;for(var i=0;i<panel.sidebarView.count;i++){var it=panel.sidebarView.itemAtIndex(i);if(it&&it.thread.id==="p1")sel=it}
+   root.check(sel&&sel.selected&&keys.findChild(sel,"threadSelectedBar").visible,"the open thread is marked with a bar")
+   root.check(!keys.findChild(sel,"threadPinIndicator"),"pinned rows carry no pin icon")
+   b.selectThread("local","r1");phase=10
+  }else if(phase===10){
+   root.check(panel.pinnedRows.length===1&&panel.pinnedRows[0].id==="p1"&&panel.activeRows[0].id==="r1","once focus moves on it goes back to Pinned")
+   // Right click on the header title opens the thread's menu, with Groups.
+   var title=keys.findChild(panel,"t3HeaderThreadTitle");root.check(title&&title.visible,"header title shows")
+   keys.mouseClick(title,Style.space(4),title.height/2,Qt.RightButton);phase=30
+  }else if(phase===30){
+   var hr=keys.findChild(panel,"t3HeaderThreadRow");root.check(hr&&hr.thread.key==="local/r1"&&hr.rowMenu&&hr.rowMenu.visible,"right click on the header title opens the thread menu")
+   hr.setGroup(hr.thread,"Release");hr.rowMenu.close();phase=31
+  }else if(phase===31){
+   root.check(panel.threadGroups["local/r1"]==="Release"&&panel.threadGroupChips.length===1&&panel.threadGroupChips[0].count===1,"a thread joins a group from its menu")
+   panel.threadGroupFilter="Release";phase=32
+  }else if(phase===32){
+   root.check(panel.activeRows.length===1&&panel.activeRows[0].id==="r1"&&!panel.pinnedRows.length&&!panel.inputRows.length,"a group chip filters to its threads")
+   keys.findChild(panel,"t3PanelLayout").grabToImage(function(g){g.saveToFile("/tmp/o3-groups.png")});phase=33
+  }else if(phase===33){
+   panel.threadGroupFilter="";b.rememberView({threadGroups:{}});phase=34
+  }else if(phase===34){
    console.log("O3_SIDEBAR_QML_PASS");root.done=true
   }
  }}

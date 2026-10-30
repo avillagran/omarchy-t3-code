@@ -1966,7 +1966,18 @@
     "No colour": "No colour",
     "Show the host's name on threads": "Show the host's name on threads",
     "Group chips": "Group chips",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "A chip per project group above the threads, with its open thread count. Click one to show only that group."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "A chip per project group above the threads, with its open thread count. Click one to show only that group.",
+    "Style": "Style",
+    "Sober": "Sober",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.",
+    "Groups": "Groups",
+    "New group…": "New group…",
+    "Remove from group": "Remove from group",
+    "Group name": "Group name",
+    "Pinned ({count})": "Pinned ({count})",
+    "Ready ({count})": "Ready ({count})",
+    "Waiting for input ({count})": "Waiting for input ({count})",
+    "Waiting for input threads height": "Waiting for input threads height"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3935,7 +3946,18 @@
     "No colour": "Sin color",
     "Show the host's name on threads": "Mostrar el nombre del host en los hilos",
     "Group chips": "Chips de grupos",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Un chip por grupo de proyectos sobre los hilos, con su cantidad de hilos abiertos. Haz clic en uno para ver solo ese grupo."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Un chip por grupo de proyectos sobre los hilos, con su cantidad de hilos abiertos. Haz clic en uno para ver solo ese grupo.",
+    "Style": "Estilo",
+    "Sober": "Sobrio",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sobrio deja el color en puntos pequeños, con etiquetas grises y cifras monoespaciadas. Vívido tiñe las filas, marca el borde del host e ilumina el logo.",
+    "Groups": "Grupos",
+    "New group…": "Nuevo grupo…",
+    "Remove from group": "Quitar del grupo",
+    "Group name": "Nombre del grupo",
+    "Pinned ({count})": "Fijados ({count})",
+    "Ready ({count})": "Listos ({count})",
+    "Waiting for input ({count})": "Esperando input ({count})",
+    "Waiting for input threads height": "Altura de hilos esperando input"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5904,7 +5926,18 @@
     "No colour": "Sem cor",
     "Show the host's name on threads": "Mostrar o nome do host nas threads",
     "Group chips": "Chips de grupos",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Um chip por grupo de projetos acima das threads, com a quantidade de threads abertas. Clique em um para ver só esse grupo."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Um chip por grupo de projetos acima das threads, com a quantidade de threads abertas. Clique em um para ver só esse grupo.",
+    "Style": "Estilo",
+    "Sober": "Sóbrio",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sóbrio deixa a cor em pequenos pontos, com rótulos cinza e números monoespaçados. Vívido tinge as linhas, marca a borda do host e ilumina o logo.",
+    "Groups": "Grupos",
+    "New group…": "Novo grupo…",
+    "Remove from group": "Remover do grupo",
+    "Group name": "Nome do grupo",
+    "Pinned ({count})": "Fixados ({count})",
+    "Ready ({count})": "Prontos ({count})",
+    "Waiting for input ({count})": "Aguardando resposta ({count})",
+    "Waiting for input threads height": "Altura das conversas aguardando resposta"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7873,7 +7906,18 @@
     "No colour": "Aucune couleur",
     "Show the host's name on threads": "Afficher le nom de l'hôte sur les fils",
     "Group chips": "Pastilles de groupes",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Une pastille par groupe de projets au-dessus des fils, avec le nombre de fils ouverts. Cliquez sur l'une pour n'afficher que ce groupe."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Une pastille par groupe de projets au-dessus des fils, avec le nombre de fils ouverts. Cliquez sur l'une pour n'afficher que ce groupe.",
+    "Style": "Style",
+    "Sober": "Sobre",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sobre limite la couleur à de petits points, avec des libellés gris et des chiffres à chasse fixe. Vif teinte les lignes, marque le bord de l'hôte et illumine le logo.",
+    "Groups": "Groupes",
+    "New group…": "Nouveau groupe…",
+    "Remove from group": "Retirer du groupe",
+    "Group name": "Nom du groupe",
+    "Pinned ({count})": "Épinglés ({count})",
+    "Ready ({count})": "Prêts ({count})",
+    "Waiting for input ({count})": "En attente de réponse ({count})",
+    "Waiting for input threads height": "Hauteur des fils en attente de réponse"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9842,7 +9886,18 @@
     "No colour": "Keine Farbe",
     "Show the host's name on threads": "Hostnamen an Threads anzeigen",
     "Group chips": "Gruppen-Chips",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Ein Chip pro Projektgruppe über den Threads, mit der Zahl offener Threads. Klicke auf einen, um nur diese Gruppe zu zeigen."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Ein Chip pro Projektgruppe über den Threads, mit der Zahl offener Threads. Klicke auf einen, um nur diese Gruppe zu zeigen.",
+    "Style": "Stil",
+    "Sober": "Schlicht",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Schlicht beschränkt Farbe auf kleine Punkte, mit grauen Beschriftungen und Ziffern in Festbreitenschrift. Lebhaft tönt Zeilen, markiert den Host-Rand und lässt das Logo leuchten.",
+    "Groups": "Gruppen",
+    "New group…": "Neue Gruppe…",
+    "Remove from group": "Aus Gruppe entfernen",
+    "Group name": "Gruppenname",
+    "Pinned ({count})": "Angeheftet ({count})",
+    "Ready ({count})": "Bereit ({count})",
+    "Waiting for input ({count})": "Wartet auf Eingabe ({count})",
+    "Waiting for input threads height": "Höhe der Threads, die auf Eingabe warten"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11811,7 +11866,18 @@
     "No colour": "Nessun colore",
     "Show the host's name on threads": "Mostra il nome dell'host nei thread",
     "Group chips": "Chip dei gruppi",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Un chip per gruppo di progetti sopra i thread, con il numero di thread aperti. Fai clic su uno per mostrare solo quel gruppo."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Un chip per gruppo di progetti sopra i thread, con il numero di thread aperti. Fai clic su uno per mostrare solo quel gruppo.",
+    "Style": "Stile",
+    "Sober": "Sobrio",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sobrio limita il colore a piccoli punti, con etichette grigie e cifre a spaziatura fissa. Vivace colora le righe, segna il bordo dell'host e illumina il logo.",
+    "Groups": "Gruppi",
+    "New group…": "Nuovo gruppo…",
+    "Remove from group": "Rimuovi dal gruppo",
+    "Group name": "Nome del gruppo",
+    "Pinned ({count})": "Fissati ({count})",
+    "Ready ({count})": "Pronti ({count})",
+    "Waiting for input ({count})": "In attesa di risposta ({count})",
+    "Waiting for input threads height": "Altezza dei thread in attesa di risposta"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13780,7 +13846,18 @@
     "No colour": "Geen kleur",
     "Show the host's name on threads": "Hostnaam bij threads tonen",
     "Group chips": "Groepschips",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Een chip per projectgroep boven de threads, met het aantal open threads. Klik erop om alleen die groep te tonen."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Een chip per projectgroep boven de threads, met het aantal open threads. Klik erop om alleen die groep te tonen.",
+    "Style": "Stijl",
+    "Sober": "Sober",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sober houdt kleur bij kleine stippen, met grijze labels en cijfers in vaste breedte. Levendig kleurt rijen, markeert de hostrand en laat het logo oplichten.",
+    "Groups": "Groepen",
+    "New group…": "Nieuwe groep…",
+    "Remove from group": "Uit groep verwijderen",
+    "Group name": "Groepsnaam",
+    "Pinned ({count})": "Vastgezet ({count})",
+    "Ready ({count})": "Klaar ({count})",
+    "Waiting for input ({count})": "Wacht op invoer ({count})",
+    "Waiting for input threads height": "Hoogte van threads die op invoer wachten"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15749,7 +15826,18 @@
     "No colour": "Bez koloru",
     "Show the host's name on threads": "Pokazuj nazwę hosta przy wątkach",
     "Group chips": "Etykiety grup",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Etykieta dla każdej grupy projektów nad wątkami, z liczbą otwartych wątków. Kliknij, aby pokazać tylko tę grupę."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Etykieta dla każdej grupy projektów nad wątkami, z liczbą otwartych wątków. Kliknij, aby pokazać tylko tę grupę.",
+    "Style": "Styl",
+    "Sober": "Stonowany",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Stonowany ogranicza kolor do małych kropek, z szarymi etykietami i cyframi o stałej szerokości. Żywy barwi wiersze, oznacza krawędź hosta i rozświetla logo.",
+    "Groups": "Grupy",
+    "New group…": "Nowa grupa…",
+    "Remove from group": "Usuń z grupy",
+    "Group name": "Nazwa grupy",
+    "Pinned ({count})": "Przypięte ({count})",
+    "Ready ({count})": "Gotowe ({count})",
+    "Waiting for input ({count})": "Czeka na odpowiedź ({count})",
+    "Waiting for input threads height": "Wysokość wątków czekających na odpowiedź"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17718,7 +17806,18 @@
     "No colour": "Без цвета",
     "Show the host's name on threads": "Показывать имя хоста в тредах",
     "Group chips": "Метки групп",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Метка для каждой группы проектов над тредами с числом открытых тредов. Нажмите, чтобы показать только эту группу."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Метка для каждой группы проектов над тредами с числом открытых тредов. Нажмите, чтобы показать только эту группу.",
+    "Style": "Стиль",
+    "Sober": "Сдержанный",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Сдержанный оставляет цвет только в маленьких точках, с серыми подписями и моноширинными цифрами. Яркий окрашивает строки, отмечает край хоста и подсвечивает логотип.",
+    "Groups": "Группы",
+    "New group…": "Новая группа…",
+    "Remove from group": "Убрать из группы",
+    "Group name": "Название группы",
+    "Pinned ({count})": "Закреплённые ({count})",
+    "Ready ({count})": "Готовые ({count})",
+    "Waiting for input ({count})": "Ждут ответа ({count})",
+    "Waiting for input threads height": "Высота тредов, ждущих ответа"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19687,7 +19786,18 @@
     "No colour": "Без кольору",
     "Show the host's name on threads": "Показувати ім'я хоста в тредах",
     "Group chips": "Мітки груп",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Мітка для кожної групи проєктів над тредами з кількістю відкритих тредів. Натисніть, щоб показати лише цю групу."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Мітка для кожної групи проєктів над тредами з кількістю відкритих тредів. Натисніть, щоб показати лише цю групу.",
+    "Style": "Стиль",
+    "Sober": "Стриманий",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Стриманий залишає колір лише в маленьких крапках, із сірими підписами та моноширинними цифрами. Яскравий тонує рядки, позначає край хоста й підсвічує логотип.",
+    "Groups": "Групи",
+    "New group…": "Нова група…",
+    "Remove from group": "Прибрати з групи",
+    "Group name": "Назва групи",
+    "Pinned ({count})": "Закріплені ({count})",
+    "Ready ({count})": "Готові ({count})",
+    "Waiting for input ({count})": "Чекають на відповідь ({count})",
+    "Waiting for input threads height": "Висота тредів, що чекають на відповідь"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21656,7 +21766,18 @@
     "No colour": "色なし",
     "Show the host's name on threads": "スレッドにホスト名を表示",
     "Group chips": "グループチップ",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "スレッドの上にプロジェクトグループごとのチップを表示し、開いているスレッド数を示します。クリックするとそのグループだけを表示します。"
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "スレッドの上にプロジェクトグループごとのチップを表示し、開いているスレッド数を示します。クリックするとそのグループだけを表示します。",
+    "Style": "スタイル",
+    "Sober": "控えめ",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "控えめは色を小さな点だけにし、ラベルはグレー、数字は等幅にします。鮮やかは行に色を付け、ホストの端を示し、ロゴを光らせます。",
+    "Groups": "グループ",
+    "New group…": "新しいグループ…",
+    "Remove from group": "グループから外す",
+    "Group name": "グループ名",
+    "Pinned ({count})": "ピン留め ({count})",
+    "Ready ({count})": "準備完了 ({count})",
+    "Waiting for input ({count})": "入力待ち ({count})",
+    "Waiting for input threads height": "入力待ちスレッドの高さ"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23625,7 +23746,18 @@
     "No colour": "색상 없음",
     "Show the host's name on threads": "스레드에 호스트 이름 표시",
     "Group chips": "그룹 칩",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "스레드 위에 프로젝트 그룹마다 칩을 표시하고 열린 스레드 수를 보여 줍니다. 클릭하면 그 그룹만 표시합니다."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "스레드 위에 프로젝트 그룹마다 칩을 표시하고 열린 스레드 수를 보여 줍니다. 클릭하면 그 그룹만 표시합니다.",
+    "Style": "스타일",
+    "Sober": "절제된",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "절제된 스타일은 색을 작은 점에만 쓰고, 회색 레이블과 고정폭 숫자를 사용합니다. 선명한 스타일은 행에 색을 입히고 호스트 가장자리를 표시하며 로고를 빛나게 합니다.",
+    "Groups": "그룹",
+    "New group…": "새 그룹…",
+    "Remove from group": "그룹에서 제거",
+    "Group name": "그룹 이름",
+    "Pinned ({count})": "고정됨 ({count})",
+    "Ready ({count})": "준비됨 ({count})",
+    "Waiting for input ({count})": "입력 대기 ({count})",
+    "Waiting for input threads height": "입력 대기 스레드 높이"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25594,7 +25726,18 @@
     "No colour": "无颜色",
     "Show the host's name on threads": "在线程上显示主机名",
     "Group chips": "分组标签",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "在线程上方为每个项目分组显示一个标签及其未结线程数。点击即可只显示该分组。"
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "在线程上方为每个项目分组显示一个标签及其未结线程数。点击即可只显示该分组。",
+    "Style": "样式",
+    "Sober": "简洁",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "简洁样式只在小圆点上保留颜色，标签为灰色，数字为等宽字体。鲜艳样式为行着色、标出主机边缘并点亮标志。",
+    "Groups": "分组",
+    "New group…": "新建分组…",
+    "Remove from group": "从分组中移除",
+    "Group name": "分组名称",
+    "Pinned ({count})": "已置顶 ({count})",
+    "Ready ({count})": "就绪 ({count})",
+    "Waiting for input ({count})": "等待输入 ({count})",
+    "Waiting for input threads height": "等待输入线程的高度"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27563,7 +27706,18 @@
     "No colour": "بلا لون",
     "Show the host's name on threads": "إظهار اسم المضيف على السلاسل",
     "Group chips": "شارات المجموعات",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "شارة لكل مجموعة مشاريع فوق السلاسل مع عدد السلاسل المفتوحة. انقر على إحداها لعرض تلك المجموعة فقط."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "شارة لكل مجموعة مشاريع فوق السلاسل مع عدد السلاسل المفتوحة. انقر على إحداها لعرض تلك المجموعة فقط.",
+    "Style": "النمط",
+    "Sober": "هادئ",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "الهادئ يحصر اللون في نقاط صغيرة، مع تسميات رمادية وأرقام بعرض ثابت. الحيوي يلوّن الصفوف ويميّز حافة المضيف ويضيء الشعار.",
+    "Groups": "المجموعات",
+    "New group…": "مجموعة جديدة…",
+    "Remove from group": "إزالة من المجموعة",
+    "Group name": "اسم المجموعة",
+    "Pinned ({count})": "المثبتة ({count})",
+    "Ready ({count})": "جاهزة ({count})",
+    "Waiting for input ({count})": "بانتظار الإدخال ({count})",
+    "Waiting for input threads height": "ارتفاع السلاسل بانتظار الإدخال"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29532,7 +29686,18 @@
     "No colour": "Renk yok",
     "Show the host's name on threads": "Konularda sunucu adını göster",
     "Group chips": "Grup çipleri",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Konuların üstünde her proje grubu için açık konu sayısıyla bir çip. Yalnızca o grubu göstermek için birine tıklayın."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Konuların üstünde her proje grubu için açık konu sayısıyla bir çip. Yalnızca o grubu göstermek için birine tıklayın.",
+    "Style": "Stil",
+    "Sober": "Sade",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Sade, rengi küçük noktalarla sınırlar; etiketler gri, rakamlar eş aralıklıdır. Canlı, satırları renklendirir, ana bilgisayar kenarını işaretler ve logoyu parlatır.",
+    "Groups": "Gruplar",
+    "New group…": "Yeni grup…",
+    "Remove from group": "Gruptan çıkar",
+    "Group name": "Grup adı",
+    "Pinned ({count})": "Sabitlenenler ({count})",
+    "Ready ({count})": "Hazır ({count})",
+    "Waiting for input ({count})": "Yanıt bekliyor ({count})",
+    "Waiting for input threads height": "Yanıt bekleyen konuların yüksekliği"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31501,7 +31666,18 @@
     "No colour": "Ingen färg",
     "Show the host's name on threads": "Visa värdens namn på trådar",
     "Group chips": "Gruppetiketter",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "En etikett per projektgrupp ovanför trådarna, med antalet öppna trådar. Klicka på en för att bara visa den gruppen."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "En etikett per projektgrupp ovanför trådarna, med antalet öppna trådar. Klicka på en för att bara visa den gruppen.",
+    "Style": "Stil",
+    "Sober": "Stilren",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Stilren håller färgen till små prickar, med grå etiketter och siffror i fast bredd. Livfull färgar rader, markerar värdens kant och får logotypen att lysa.",
+    "Groups": "Grupper",
+    "New group…": "Ny grupp…",
+    "Remove from group": "Ta bort från grupp",
+    "Group name": "Gruppnamn",
+    "Pinned ({count})": "Fästa ({count})",
+    "Ready ({count})": "Klara ({count})",
+    "Waiting for input ({count})": "Väntar på svar ({count})",
+    "Waiting for input threads height": "Höjd för trådar som väntar på svar"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33470,7 +33646,18 @@
     "No colour": "Ingen farve",
     "Show the host's name on threads": "Vis værtens navn på tråde",
     "Group chips": "Gruppechips",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "En chip pr. projektgruppe over trådene med antallet åbne tråde. Klik på en for kun at vise den gruppe."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "En chip pr. projektgruppe over trådene med antallet åbne tråde. Klik på en for kun at vise den gruppe.",
+    "Style": "Stil",
+    "Sober": "Afdæmpet",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Afdæmpet holder farven til små prikker, med grå etiketter og tal i fast bredde. Livlig farver rækker, markerer værtens kant og får logoet til at lyse.",
+    "Groups": "Grupper",
+    "New group…": "Ny gruppe…",
+    "Remove from group": "Fjern fra gruppe",
+    "Group name": "Gruppenavn",
+    "Pinned ({count})": "Fastgjorte ({count})",
+    "Ready ({count})": "Klar ({count})",
+    "Waiting for input ({count})": "Venter på svar ({count})",
+    "Waiting for input threads height": "Højde for tråde, der venter på svar"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35439,7 +35626,18 @@
     "No colour": "Ingen farge",
     "Show the host's name on threads": "Vis vertens navn på tråder",
     "Group chips": "Gruppebrikker",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "En brikke per prosjektgruppe over trådene, med antall åpne tråder. Klikk på en for å vise bare den gruppen."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "En brikke per prosjektgruppe over trådene, med antall åpne tråder. Klikk på en for å vise bare den gruppen.",
+    "Style": "Stil",
+    "Sober": "Nøktern",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Nøktern holder fargen til små prikker, med grå etiketter og tall i fast bredde. Livlig farger rader, markerer vertens kant og får logoen til å lyse.",
+    "Groups": "Grupper",
+    "New group…": "Ny gruppe…",
+    "Remove from group": "Fjern fra gruppe",
+    "Group name": "Gruppenavn",
+    "Pinned ({count})": "Festet ({count})",
+    "Ready ({count})": "Klare ({count})",
+    "Waiting for input ({count})": "Venter på svar ({count})",
+    "Waiting for input threads height": "Høyde for tråder som venter på svar"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37408,7 +37606,18 @@
     "No colour": "Ei väriä",
     "Show the host's name on threads": "Näytä isännän nimi ketjuissa",
     "Group chips": "Ryhmäsirut",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Siru jokaiselle projektiryhmälle ketjujen yläpuolella avoimien ketjujen määrän kanssa. Napsauta sirua nähdäksesi vain sen ryhmän."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Siru jokaiselle projektiryhmälle ketjujen yläpuolella avoimien ketjujen määrän kanssa. Napsauta sirua nähdäksesi vain sen ryhmän.",
+    "Style": "Tyyli",
+    "Sober": "Hillitty",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Hillitty rajaa värin pieniin pisteisiin, harmaisiin nimiöihin ja tasavälisiin numeroihin. Eloisa sävyttää rivit, merkitsee isännän reunan ja valaisee logon.",
+    "Groups": "Ryhmät",
+    "New group…": "Uusi ryhmä…",
+    "Remove from group": "Poista ryhmästä",
+    "Group name": "Ryhmän nimi",
+    "Pinned ({count})": "Kiinnitetyt ({count})",
+    "Ready ({count})": "Valmiit ({count})",
+    "Waiting for input ({count})": "Odottaa vastausta ({count})",
+    "Waiting for input threads height": "Vastausta odottavien ketjujen korkeus"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39377,6 +39586,17 @@
     "No colour": "Bez barvy",
     "Show the host's name on threads": "Zobrazovat název hostitele u vláken",
     "Group chips": "Štítky skupin",
-    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Štítek pro každou skupinu projektů nad vlákny s počtem otevřených vláken. Kliknutím zobrazíte jen tuto skupinu."
+    "A chip per project group above the threads, with its open thread count. Click one to show only that group.": "Štítek pro každou skupinu projektů nad vlákny s počtem otevřených vláken. Kliknutím zobrazíte jen tuto skupinu.",
+    "Style": "Styl",
+    "Sober": "Střídmý",
+    "Sober keeps colour to small dots, with grey labels and monospace figures. Vivid tints rows, marks host edges and lights up the logo.": "Střídmý omezuje barvu na malé tečky, se šedými popisky a číslicemi s pevnou šířkou. Živý barví řádky, označuje okraj hostitele a rozsvítí logo.",
+    "Groups": "Skupiny",
+    "New group…": "Nová skupina…",
+    "Remove from group": "Odebrat ze skupiny",
+    "Group name": "Název skupiny",
+    "Pinned ({count})": "Připnuté ({count})",
+    "Ready ({count})": "Připravené ({count})",
+    "Waiting for input ({count})": "Čeká na vstup ({count})",
+    "Waiting for input threads height": "Výška vláken čekajících na vstup"
   }
 }

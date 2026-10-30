@@ -11,7 +11,7 @@ pub fn sanitize(input: &Value) -> Value {
         "usageExpanded",
         "queueExpanded",
         "tasksExpanded",
-        "settledExpanded","snoozedExpanded","sidebarCompact","workingExpanded",
+        "settledExpanded","snoozedExpanded","sidebarCompact","workingExpanded","pinnedExpanded","inputExpanded",
         "sidebarCollapsed",
         "english",
         "composerExpanded","detached",
@@ -41,18 +41,20 @@ pub fn sanitize(input: &Value) -> Value {
     // Sub-threads the user expanded or collapsed under a parent thread ("env/thread").
     if let Some(map)=input["subthreadsExpanded"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){if let Some(b)=v.as_bool(){clean.insert(k.clone(),json!(b));}}}out["subthreadsExpanded"]=Value::Object(clean);}
     if let Some(map)=input["sidebarProjectGroupingOverrides"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.len()<=2200&&!k.chars().any(char::is_control)&&matches!(v.as_str(),Some("inherit"|"repository"|"repository_path"|"separate")){clean.insert(k.clone(),v.clone());}}out["sidebarProjectGroupingOverrides"]=Value::Object(clean);}
+    // The user's thread groups: "env/thread" to a short group name.
+    if let Some(map)=input["threadGroups"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(2048){if !k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){continue}if let Some(name)=v.as_str().map(str::trim).filter(|n|!n.is_empty()&&n.chars().count()<=48&&!n.chars().any(char::is_control)){clean.insert(k.clone(),json!(name));}}out["threadGroups"]=Value::Object(clean);}
     // Per host: machine icon, colour swatch and whether threads show its name.
     if let Some(map)=input["hostStyles"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(64){if !valid_id(k){continue}let mut style=serde_json::Map::new();if let Some(i)=v["icon"].as_str().filter(|i|matches!(*i,"server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){style.insert("icon".into(),json!(i));}if let Some(c)=v["color"].as_str().filter(|c|c.is_empty()||(c.len()==7&&c.starts_with('#')&&c[1..].chars().all(|h|h.is_ascii_hexdigit()))){style.insert("color".into(),json!(c));}if let Some(b)=v["showName"].as_bool(){style.insert("showName".into(),json!(b));}clean.insert(k.clone(),Value::Object(style));}out["hostStyles"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
     if matches!(input["starfieldMode"].as_str(),Some("auto"|"full"|"light"|"off")){out["starfieldMode"]=input["starfieldMode"].clone();}
-    for (key,allowed) in [("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..])] {
+    for (key,allowed) in [("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..]),("sidebarStyle",&["sober","vivid"][..])] {
         if input[key].as_str().is_some_and(|v|allowed.contains(&v)){out[key]=input[key].clone();}
     }
     if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
     if matches!(input["dictationModel"].as_str(),Some("base"|"small")){out["dictationModel"]=input["dictationModel"].clone();}
     if matches!(input["dictationRecordings"].as_str(),Some("thread"|"day"|"week"|"month"|"off")){out["dictationRecordings"]=input["dictationRecordings"].clone();}
     if input["dictationLanguage"].as_str().is_some_and(|v|v=="auto"||(matches!(v.len(),2|3)&&v.chars().all(|c|c.is_ascii_lowercase()))){out["dictationLanguage"]=input["dictationLanguage"].clone();}
-    for key in ["workingShelfHeight","snoozedShelfHeight","settledShelfHeight"] {
+    for key in ["workingShelfHeight","snoozedShelfHeight","settledShelfHeight","pinnedShelfHeight","inputShelfHeight"] {
         if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=60.0 && *n<=1200.0){out[key]=json!(value);}
     }
     for key in ["panelWidth","panelHeight","sidebarWidth","browserPanelWidth","renderPanelWidth","windowWidth","windowHeight"] {
@@ -63,6 +65,7 @@ pub fn sanitize(input: &Value) -> Value {
         ("selectedThread", 2048),
         ("projectFilter", 2200),
         ("hostFilter", 2048),
+        ("threadGroupFilter", 256),
         ("query", 256),
         ("language", 32),
         ("screenshotCommand", 4096),
@@ -195,6 +198,12 @@ mod tests {
         assert_eq!(sanitize(&json!({"omabridgeIndicator":true}))["omabridgeIndicator"], true);
         assert!(sanitize(&json!({})).get("omabridgeIndicator").is_none());
         assert!(sanitize(&json!({"omabridgeIndicator":"yes"})).get("omabridgeIndicator").is_none());
+    }
+    #[test]
+    fn thread_groups_keep_short_names_on_thread_keys() {
+        let clean = sanitize(&json!({"threadGroups":{"local/t1":"  Release ","local/t2":"","bad":"X","local/t3":"a\nb","local/t4":"x".repeat(49)},"threadGroupFilter":"Release","pinnedExpanded":false,"inputShelfHeight":200}));
+        assert_eq!(clean["threadGroups"], json!({"local/t1":"Release"}));
+        assert_eq!((clean["threadGroupFilter"].clone(), clean["pinnedExpanded"].clone(), clean["inputShelfHeight"].clone()), (json!("Release"), json!(false), json!(200.0)));
     }
     #[test]
     fn screenshot_preferences_keep_single_line_commands() {

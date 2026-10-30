@@ -40,7 +40,7 @@ ShellRoot {
    var list=keys.findChild(panel,"settledThreadList")
    check(!panel.sidebarCollapsed&&panel.settledExpanded&&list.activeFocus&&panel.visibleSettledRows[list.currentIndex].key==="fixture/t21","Super+B reveals hidden sidebar and selected settled row")
    check(panel.shortcutHelp().indexOf("Super+B")>=0&&panel.shortcutHelp().indexOf("Ctrl+B")>=0,"help exposes both shortcuts")
-   var rows=fixture.threads.concat([{key:"fixture/child",id:"child",environmentId:"fixture",title:"Child",relationshipToParent:"subagent",parentThreadId:"t0"}]);fixture=Object.assign({},fixture,{threads:rows});b.state=fixture;b.rememberView({subthreadsExpanded:{"fixture/t0":false}});b.selectedKey="fixture/child";panel.statusFilter="settled";b.query="no match";panel.composerView.inputField.forceActiveFocus();keys.keyClick(Qt.Key_B,Qt.MetaModifier);phase=5
+   var rows=fixture.threads.concat([{key:"fixture/child",id:"child",environmentId:"fixture",title:"Child",relationshipToParent:"subagent",parentThreadId:"t0"}]);fixture=Object.assign({},fixture,{threads:rows});b.state=fixture;b.rememberView({subthreadsExpanded:{"fixture/t0":false}});b.selectedKey="fixture/child";panel.statusFilter="settled";b.query="no match";panel.composerView.inputField.forceActiveFocus();phase=-1;keys.keyClick(Qt.Key_B,Qt.MetaModifier);phase=5
   }else if(phase===5){
    var list=keys.findChild(panel,"threadList")
    check(b.query===""&&panel.statusFilter==="all"&&b.viewState.subthreadsExpanded["fixture/t0"]===true,"reveal clears excluding filters and opens selected child's parent")

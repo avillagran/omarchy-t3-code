@@ -74,6 +74,9 @@ Item {
   readonly property bool showHost:!!hostLook.color||hostLook.showName||manyHosts&&thread.environmentId!=="local"
   // A wash of the project's colour behind the row (Appearance > Project colours).
   property bool projectWash:true
+  // Sober look (the default): the project colour is a small dot, not a wash;
+  // no host edge strip; times and counts in grey monospace.
+  property bool sober:true
   // The project group's shared colour; falls back to the project's own.
   property color projectTint:"transparent"
   readonly property color washTint:projectTint.a>0?projectTint:projectIcon.tint
@@ -105,10 +108,12 @@ Item {
   readonly property var threadTitle: actionUi.item ? actionUi.item.titleField : null
   readonly property var editPopup: actionUi.item ? actionUi.item.editDialog : null
   readonly property var copyField: actionUi.item ? actionUi.item.clipboardField : null
+  readonly property var groupPopup: actionUi.item ? actionUi.item.newGroupPopup : null
+  readonly property var groupName: groupPopup ? groupPopup.nameField : null
   readonly property bool actionsLoaded: actionUi.active
   function ensureActions(){actionUi.active=true;actionExpiry.restart()}
   function releaseActions(){
-    if(!actionUi.item || (rowMenu && rowMenu.visible) || (snoozeMenu && snoozeMenu.visible) || (customSnooze && customSnooze.visible) || (editPopup && editPopup.visible) || root.busy)return false
+    if(!actionUi.item || (rowMenu && rowMenu.visible) || (snoozeMenu && snoozeMenu.visible) || (customSnooze && customSnooze.visible) || (editPopup && editPopup.visible) || (groupPopup && groupPopup.visible) || root.busy)return false
     actionUi.active=false
     return true
   }
@@ -142,6 +147,14 @@ Item {
     var monday=new Date(d);monday.setDate(monday.getDate()+((1-d.getDay()+7)%7 || 7));monday.setHours(9,0,0,0);if(monday.getTime()!==tomorrow.getTime())result.push({label:"Next week",date:monday})
     return result
   }
+  // The thread's menu at the pointer: right click on the row or the chat header title.
+  function openContextMenu(){hidePreview();ensureActions();contextThread=Object.assign({},thread);bridge.ensureCatalog(thread.environmentId);rowMenu.popup()}
+  // The user's own thread groups: one name per thread, kept in the view state.
+  readonly property var threadGroups:bridge.viewState.threadGroups || ({})
+  readonly property var groupNames:{var seen={};Object.keys(threadGroups).forEach(function(k){seen[threadGroups[k]]=true});return Object.keys(seen).sort(function(a,b){return a.localeCompare(b)})}
+  function groupOf(t){return threadGroups[t.key] || ""}
+  function setGroup(t,name){var all=Object.assign({},threadGroups),clean=String(name || "").trim().slice(0,48);if(clean)all[t.key]=clean;else delete all[t.key];bridge.rememberView({threadGroups:all})}
+  function openNewGroup(){ensureActions();groupName.text="";groupPopup.open();Qt.callLater(function(){groupName.forceActiveFocus()})}
   function openSnooze(context){ensureActions();snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
   onPanelVisibleChanged: if(!panelVisible)dismiss()
   onPooledChanged: {resetMotion();statePop.complete();if(pooled){dismiss();burstAnimation.stop();aura.burst=0}}
@@ -210,13 +223,14 @@ Item {
   Rectangle {
     anchors.fill:parent;anchors.leftMargin:root.indent;anchors.topMargin:Style.space(root.slim?0:2);anchors.bottomMargin:Style.space(root.slim?0:2)
     radius:Style.space(6)
-    color: root.selected ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.075) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.045) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
-    border.width:root.keyboardCurrent?1:0;border.color:Color.accent
+    // The open thread reads at a glance: a firm fill, a hairline and an accent bar.
+    color: root.selected ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.14) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
+    border.width:root.keyboardCurrent||root.selected?1:0;border.color:root.keyboardCurrent?Color.accent:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.22)
     Behavior on color { enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(130)}}
     Rectangle {
       objectName:"threadProjectWash"
       anchors.fill:parent;radius:parent.radius
-      visible:root.projectWash&&!root.child
+      visible:root.projectWash&&!root.sober&&!root.child
       opacity:root.thread.settled||root.thread.snoozed?0.5:1
       gradient:Gradient{orientation:Gradient.Horizontal
         GradientStop{position:0;color:Qt.rgba(root.washTint.r,root.washTint.g,root.washTint.b,0.13)}
@@ -224,8 +238,15 @@ Item {
         GradientStop{position:1;color:"transparent"}}
     }
     Rectangle {
+      objectName:"threadSelectedBar"
+      visible:root.selected
+      x:0;width:Style.space(3);radius:width/2
+      anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.topMargin:Style.space(root.slim?6:8);anchors.bottomMargin:Style.space(root.slim?6:8)
+      color:Color.accent
+    }
+    Rectangle {
       objectName:"threadHostStrip"
-      visible:!!root.hostLook.color
+      visible:!root.sober&&!!root.hostLook.color&&!root.selected
       x:0;width:Style.space(3);radius:width/2
       anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.topMargin:Style.space(root.slim?6:8);anchors.bottomMargin:Style.space(root.slim?6:8)
       color:root.hostLook.color || "transparent"
@@ -263,7 +284,7 @@ Item {
     }
     MouseArea {
       anchors.fill:parent;cursorShape:Qt.PointingHandCursor;acceptedButtons:Qt.LeftButton|Qt.RightButton
-      onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.ensureActions();root.contextThread=Object.assign({},root.thread);root.bridge.ensureCatalog(root.thread.environmentId);rowMenu.popup();}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
+      onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.openContextMenu()}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
     }
     ColumnLayout {
       anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(root.subtitled?6:root.slim?0:8);anchors.bottomMargin:Style.space(root.subtitled?6:root.slim?0:8);spacing:Style.space(root.subtitled?0:2)
@@ -286,12 +307,12 @@ Item {
           opacity:root.shelved&&!root.showActions?0.4:1
           MouseArea{objectName:"projectIconContext";anchors.fill:parent;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
         }
+        Rectangle{objectName:"threadCardProjectDot";visible:root.sober&&root.projectWash&&!root.slim&&!root.child;width:Style.space(6);height:width;radius:width/2;color:root.washTint;opacity:root.shelved?0.5:1}
         T3MarqueeText{objectName:"threadProjectOrTitle";Layout.fillWidth:true;active:root.slim&&root.titleSliding;text:root.slim?root.thread.title || "":root.thread.project || root.thread.environmentName || "";color:root.slim?(root.receding?root.dim:root.fg):root.dim;pixelSize:root.slim?Style.font.body:Style.font.caption
           activeFocusOnTab:!root.slim
           Keys.onPressed:function(event){if(event.key===Qt.Key_Menu || (event.key===Qt.Key_F10&&event.modifiers===Qt.ShiftModifier)){root.hidePreview();root.projectContextRequested(this,width/2,height/2);event.accepted=true}}
           MouseArea{objectName:"projectNameContext";anchors.fill:parent;enabled:!root.slim;acceptedButtons:Qt.RightButton;onClicked:function(mouse){root.hidePreview();root.projectContextRequested(parent,mouse.x,mouse.y)}}
         }
-        T3IconButton{objectName:"threadPinIndicator";visible:!!root.thread.pinned;name:root.canPin&&root.hovered?"pin-off":"pin";implicitWidth:Style.space(18);implicitHeight:Style.space(18);tooltipText:T3I18n.tr("Unpin thread");opacity:root.canPin?1:0.65;enabled:root.canPin&&!root.busy;onClicked:root.manage("unpin")}
         // One-line rows: the host's icon in its colour, and its name when asked.
         RowLayout{objectName:"threadSlimHost";visible:root.slim&&root.showHost;spacing:Style.space(3)
           T3Icon{name:root.hostLook.icon;tint:root.hostLook.color || root.dim;implicitWidth:Style.space(12);opacity:root.shelved&&!root.hostLook.color?0.7:1}
@@ -305,7 +326,7 @@ Item {
           background:Rectangle{radius:Style.space(4);color:subthreadToggle.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.08):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.04);border.width:subthreadToggle.activeFocus?1:0;border.color:Color.accent}
           contentItem:RowLayout{id:subthreadContent;spacing:Style.space(3)
             T3Icon{name:"bot";implicitWidth:Style.space(12);tint:root.subthreads&&(root.subthreads.working||root.subthreads.waiting)?T3Palette.working:root.dim}
-            Text{text:root.subthreads?(root.subthreads.working?root.subthreads.working+"/"+root.subthreads.count:String(root.subthreads.count)):"";color:root.dim;font.pixelSize:Style.font.caption}
+            Text{text:root.subthreads?(root.subthreads.working?root.subthreads.working+"/"+root.subthreads.count:String(root.subthreads.count)):"";color:root.dim;font.pixelSize:Style.font.caption;font.family:root.sober?"monospace":Qt.application.font.family}
             T3Icon{name:root.thread.subthreadsExpanded?"chevron-down":"chevron-right";implicitWidth:Style.space(12);tint:root.dim}
           }
           Controls.ToolTip.visible:hovered;Controls.ToolTip.delay:500;Controls.ToolTip.text:Accessible.name
@@ -342,7 +363,7 @@ Item {
               }
             }
           }
-          Text{visible:!root.woke;readonly property bool labelled:(!root.slim||root.child)&&!!root.stateLabel;text:labelled ? root.stateLabel+((root.stateKind==="working"||root.stateKind==="goal") && root.timeLabel ? " "+root.timeLabel : "") : root.timeLabel;color:labelled ? root.stateColor : root.thread.snoozed ? T3Palette.working : root.dim;font.pixelSize:Style.font.caption;font.weight:labelled?Font.Medium:Font.Normal}
+          Text{visible:!root.woke;readonly property bool labelled:(!root.slim||root.child)&&!!root.stateLabel;text:labelled ? root.stateLabel+((root.stateKind==="working"||root.stateKind==="goal") && root.timeLabel ? " "+root.timeLabel : "") : root.timeLabel;color:labelled ? root.stateColor : root.thread.snoozed ? T3Palette.working : root.dim;font.pixelSize:Style.font.caption;font.weight:labelled?Font.Medium:Font.Normal;font.family:root.sober&&!labelled?"monospace":Qt.application.font.family}
         }
         RowLayout {
           visible:root.showActions;spacing:0
@@ -361,18 +382,23 @@ Item {
           }
         }
       }
-      Text{
-        objectName:"threadCompactProject";visible:root.subtitled
-        Layout.fillWidth:true;Layout.leftMargin:Style.space(22);Layout.topMargin:-Style.space(6)
-        text:root.thread.project || root.thread.environmentName || ""
-        color:root.dim;font.family:"monospace";font.pixelSize:Style.font.caption-Style.space(1.5);elide:Text.ElideRight;textFormat:Text.PlainText
+      RowLayout{
+        visible:root.subtitled
+        Layout.fillWidth:true;Layout.leftMargin:Style.space(22);Layout.topMargin:-Style.space(6);spacing:Style.space(4)
+        Rectangle{objectName:"threadProjectDot";visible:root.sober&&root.projectWash;width:Style.space(6);height:width;radius:width/2;color:root.washTint}
+        Text{
+          objectName:"threadCompactProject"
+          Layout.fillWidth:true
+          text:root.thread.project || root.thread.environmentName || ""
+          color:root.dim;font.family:"monospace";font.pixelSize:Style.font.caption-Style.space(1.5);elide:Text.ElideRight;textFormat:Text.PlainText
+        }
       }
       RowLayout{
         visible:!root.slim
         Layout.fillWidth:true;Layout.topMargin:Style.space(2);spacing:Style.space(6)
         T3MarqueeText{objectName:"threadCardTitle";Layout.fillWidth:true;active:root.titleSliding;text:root.thread.title || "";color:root.receding?root.dim:root.fg;weight:root.receding?Font.Normal:Font.Medium;pixelSize:Style.font.body}
         // Under "Done": how long ago the thread finished, muted.
-        Text{objectName:"threadDoneAge";visible:root.stateLabel===T3I18n.tr("Done")&&!!root.timeLabel;text:root.timeLabel;color:root.dim;font.pixelSize:Style.font.caption}
+        Text{objectName:"threadDoneAge";visible:root.stateLabel===T3I18n.tr("Done")&&!!root.timeLabel;text:root.timeLabel;color:root.dim;font.pixelSize:Style.font.caption;font.family:root.sober?"monospace":Qt.application.font.family}
       }
       RowLayout{
         visible:!root.slim
@@ -413,6 +439,7 @@ Item {
       property alias titleField:threadTitle
       property alias editDialog:editPopup
       property alias clipboardField:copyField
+      property alias newGroupPopup:groupPopup
   Controls.Menu {
     width:Style.space(280)
     id:snoozeMenu;property var choices:[];objectName:"threadSnoozeMenu"
@@ -438,6 +465,21 @@ Item {
       Controls.Button{text:T3I18n.tr("Snooze thread");Layout.alignment:Qt.AlignRight;enabled:(root.snoozeContext?root.actionCanOperate&&root.actionCaps.threadSnooze===true&&root.actionThread.canSnooze===true:root.canSnooze)&&!root.busy&&isFinite(Date.parse(customDate.text))&&Date.parse(customDate.text)>Date.now();onClicked:{root.snoozeManage("snooze",{snoozedUntil:new Date(customDate.text).toISOString()});customSnooze.close()}}
     }
   }
+  Controls.Popup {
+    id:groupPopup;objectName:"threadNewGroupDialog";parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Style.space(320);padding:Style.space(16);modal:true;focus:true
+    property alias nameField:groupName
+    background:Rectangle{color:Color.popups.background;radius:Style.space(8);border.width:1;border.color:Color.accent}
+    contentItem:ColumnLayout{
+      spacing:Style.space(12)
+      Text{text:T3I18n.tr("New group…");color:root.fg;font.pixelSize:Style.font.body}
+      T3TextField{id:groupName;objectName:"threadNewGroupName";Layout.fillWidth:true;placeholderText:T3I18n.tr("Group name");color:root.fg;selectByMouse:true;maximumLength:48;Accessible.name:T3I18n.tr("Group name");onAccepted:if(text.trim()){root.setGroup(root.actionThread,text);groupPopup.close()}}
+      RowLayout{
+        Item{Layout.fillWidth:true}
+        Controls.Button{text:T3I18n.tr("Cancel");onClicked:groupPopup.close()}
+        Controls.Button{objectName:"threadNewGroupSave";text:T3I18n.tr("Save");enabled:!!groupName.text.trim();onClicked:{root.setGroup(root.actionThread,groupName.text);groupPopup.close()}}
+      }
+    }
+  }
   Controls.Menu {
     width:Style.space(280)
     id:autoSettleMenu
@@ -459,6 +501,21 @@ Item {
     Controls.MenuItem{objectName:"threadPin";icon.source:root.menuIcon("pin");icon.color:root.dim;text:T3I18n.tr(root.actionThread.pinned?"Unpin thread":"Pin thread");visible:root.actionCaps.threadPinning===true;height:visible?implicitHeight:0;enabled:(root.actionCanOperate&&root.actionCaps.threadPinning===true)&&!root.busy;onTriggered:root.contextManage(root.actionThread.pinned?"unpin":"pin")}
     Controls.MenuItem{objectName:"threadPinUp";text:T3I18n.tr("Move up");visible:!!root.actionThread.pinned&&root.actionCaps.threadPinning===true;height:visible?implicitHeight:0;enabled:root.actionCanOperate&&!root.busy;onTriggered:root.bridge.movePinned(root.actionThread,-1)}
     Controls.MenuItem{objectName:"threadPinDown";text:T3I18n.tr("Move down");visible:!!root.actionThread.pinned&&root.actionCaps.threadPinning===true;height:visible?implicitHeight:0;enabled:root.actionCanOperate&&!root.busy;onTriggered:root.bridge.movePinned(root.actionThread,1)}
+    Controls.Menu {
+      id:groupMenu;objectName:"threadGroupMenu";width:Style.space(240)
+      title:T3I18n.tr("Groups")
+      palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
+      background:Rectangle{color:Color.popups.background;border.color:root.dim;border.width:1;radius:Style.space(7)}
+      Instantiator{
+        model:root.groupNames
+        delegate:Controls.MenuItem{required property var modelData;objectName:"threadGroup_"+modelData;text:modelData;checkable:true;checked:root.groupOf(root.actionThread)===modelData;onTriggered:root.setGroup(root.actionThread,checked?modelData:"")}
+        onObjectAdded:function(index,object){groupMenu.insertItem(index,object)}
+        onObjectRemoved:function(index,object){groupMenu.removeItem(object)}
+      }
+      Controls.MenuSeparator{visible:root.groupNames.length>0;height:visible?implicitHeight:0}
+      Controls.MenuItem{objectName:"threadGroupNew";text:T3I18n.tr("New group…");onTriggered:root.openNewGroup()}
+      Controls.MenuItem{objectName:"threadGroupRemove";text:T3I18n.tr("Remove from group");visible:!!root.groupOf(root.actionThread);height:visible?implicitHeight:0;onTriggered:root.setGroup(root.actionThread,"")}
+    }
     Controls.MenuItem{text:T3I18n.tr(root.actionThread.settled?"Move to active":"Mark settled");visible:root.actionCaps.threadSettlement===true;height:visible?implicitHeight:0;enabled:(root.actionCanOperate&&root.actionCaps.threadSettlement===true)&&!root.busy;onTriggered:root.contextManage(root.actionThread.settled?"unsettle":"settle")}
     Controls.MenuItem{text:T3I18n.tr(root.actionThread.snoozed?"Wake thread now":"Snooze thread");visible:root.actionCaps.threadSnooze===true;height:visible?implicitHeight:0;enabled:root.actionCanOperate&&!root.busy&&((root.actionCanOperate&&root.actionCaps.threadSnooze===true&&root.actionThread.canSnooze===true)||!!root.actionThread.snoozed);onTriggered:if(root.actionThread.snoozed)root.contextManage("unsnooze");else root.openSnooze(true)}
     Controls.MenuSeparator{visible:!!root.actionThread.branch||root.actionCaps.threadPinning===true||root.actionCaps.threadSettlement===true||root.actionCaps.threadSnooze===true;height:visible?implicitHeight:0}
