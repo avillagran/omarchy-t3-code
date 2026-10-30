@@ -55,7 +55,8 @@ Item {
   // Sub-threads (subagents) sit indented under their parent as compact rows.
   readonly property int depth:thread.depth || 0
   readonly property bool child:depth>0
-  readonly property real indent:Style.space(16)*depth
+  property real hierarchyIndent:0
+  readonly property real indent:hierarchyIndent+Style.space(16)*depth
   readonly property var subthreads:thread.subthreads || null
   // Shelved rows (settled, snoozed, subagents) are always one line; compact
   // rows (Appearance > Thread rows) put active threads on one line too.

@@ -170,7 +170,9 @@ function compareInbox(a,b,returned) {
   return Math.max(b.inboxAt || 0,returned[b.key] || 0)-Math.max(a.inboxAt || 0,returned[a.key] || 0) || tie(a,b)
 }
 // The agent's latest answer first (O3's default); pinned threads keep their place on top.
-function compareReply(a,b){return (b.repliedAt || b.inboxAt || 0)-(a.repliedAt || a.inboxAt || 0) || tie(a,b)}
+// Older servers may omit reply timestamps; retain their completion clock as fallback.
+function replyTime(t){return t.repliedAt || (t.settled && t.settledSortAt) || t.inboxAt || t.updatedAt || 0}
+function compareReply(a,b){return replyTime(b)-replyTime(a) || tie(a,b)}
 function compareActive(a,b,grouped,returned,byReply) {
   if(!!a.pinned!==!!b.pinned)return a.pinned?-1:1
   if(a.pinned&&b.pinned)return String(a.pinOrderKey || "").localeCompare(String(b.pinOrderKey || "")) || (a.pinnedAt || 0)-(b.pinnedAt || 0) || tie(a,b)
@@ -187,14 +189,14 @@ function shelfRows(rows, expanded, selectedKey, reveal) {
 
 // Sub-threads (subagents) hang under their parent thread, newest first.
 function isSubthread(t) { return t.relationshipToParent === "subagent" && !!t.parentThreadId }
-function childrenByParent(threads) {
+function childrenByParent(threads, compare) {
   var map = {}
   threads.forEach(function(t) {
     if (!isSubthread(t)) return
     var key = t.environmentId + "/" + t.parentThreadId
     ;(map[key] = map[key] || []).push(t)
   })
-  Object.keys(map).forEach(function(k) { map[k].sort(function(a,b){return (b.lastSentAt || b.updatedAt || 0)-(a.lastSentAt || a.updatedAt || 0) || tie(a,b)}) })
+  Object.keys(map).forEach(function(k) { map[k].sort(compare || function(a,b){return (b.lastSentAt || b.updatedAt || 0)-(a.lastSentAt || a.updatedAt || 0) || tie(a,b)}) })
   return map
 }
 function descendantKeys(key, map, depth) {
@@ -215,8 +217,8 @@ function childSummary(kids) {
   kids.forEach(function(c) { var k = state(c); if (s[k] !== undefined) s[k]++ })
   return s
 }
-function nest(rows, threads, overrides, selectedKey) {
-  var map = childrenByParent(threads || [])
+function nest(rows, threads, overrides, selectedKey, compare) {
+  var map = childrenByParent(threads || [], compare)
   if (!Object.keys(map).length) return rows
   var out = []
   function add(t, depth, parentKey) {

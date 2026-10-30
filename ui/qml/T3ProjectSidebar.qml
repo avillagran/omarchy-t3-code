@@ -63,7 +63,7 @@ ListView {
                 required property int index
                 objectName:"projectTreeHeader_"+row.key
                 width:ListView.view.width;height:Style.space(row.kind==="project"?40:29)
-                leftPadding:Style.space(row.kind==="project"?8:18);rightPadding:Style.space(8)
+                leftPadding:Style.space(row.kind==="project"?8:28);rightPadding:Style.space(8)
                 Accessible.name:(row.kind==="project"?row.title:T3I18n.tr(row.title))+" · "+row.count
                 onClicked:{root.currentIndex=index;root.forceActiveFocus();root.toggle(row.key)}
                 background:Rectangle{radius:Style.space(6);color:header.hovered||root.activeFocus&&root.currentIndex===header.index?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.06):"transparent";border.width:root.activeFocus&&root.currentIndex===header.index?1:0;border.color:Color.accent}
@@ -71,7 +71,7 @@ ListView {
                     spacing:Style.space(6)
                     T3Icon{name:header.row.expanded?"chevron-down":"chevron-right";implicitWidth:Style.space(12);tint:root.dim}
                     T3Icon{visible:header.row.kind==="project";name:"folder-git-2";implicitWidth:Style.space(14);tint:Color.accent}
-                    Text{Layout.fillWidth:true;text:header.row.kind==="project"?header.row.title:T3I18n.tr(header.row.title);color:header.row.kind==="project"?root.fg:root.dim;font.pixelSize:header.row.kind==="project"?Style.font.body:Style.font.caption;font.weight:header.row.kind==="project"?Font.Medium:Font.Normal;elide:Text.ElideRight;textFormat:Text.PlainText}
+                    Text{objectName:"projectTreeHeaderTitle";Layout.fillWidth:true;text:header.row.kind==="project"?header.row.title:T3I18n.tr(header.row.title);color:header.row.kind==="project"?root.fg:root.dim;font.pixelSize:header.row.kind==="project"?Style.font.body:Style.font.caption;font.weight:header.row.kind==="project"?Font.Medium:Font.Normal;elide:Text.ElideRight;textFormat:Text.PlainText}
                     Text{text:String(header.row.count);color:root.dim;font.family:"monospace";font.pixelSize:Style.font.caption}
                 }
             }

@@ -10,6 +10,7 @@ import "../js/SidebarModel.js" as Sidebar
 import "../js/MarkdownLinks.js" as MarkdownLinks
 import "../js/MarkdownStyle.js" as MarkdownStyle
 import "../js/ProjectModel.js" as Projects
+import "../js/ProjectTree.js" as ProjectTree
 import "../js/WheelMotion.js" as Motion
 import "../js/NativeKeybindings.js" as Native
 import "../js/KeybindingLabels.js" as KeyLabels
@@ -648,7 +649,7 @@ Item {
   readonly property bool settledShown: settledExpanded || searching
   readonly property var inboxRows: sidebarRows.filter(function(t) { return !t.sectionHeader && !t.settled && !t.snoozed })
   // Each section lists sub-threads right under their parent (Sidebar.nest).
-  function nestRows(rows){return Sidebar.nest(rows,bridge.state.threads,bridge.viewState.subthreadsExpanded,bridge.selectedKey)}
+  function nestRows(rows){return Sidebar.nest(rows,bridge.state.threads,bridge.viewState.subthreadsExpanded,bridge.selectedKey,root.projectLayout?ProjectTree.compareThreads:undefined)}
   function topCount(rows){return rows.filter(function(r){return !r.depth}).length}
   function toggleSubthreads(row){var all=Object.assign({},bridge.viewState.subthreadsExpanded || {});all[row.key]=!row.subthreadsExpanded;var keys=Object.keys(all);while(keys.length>512)delete all[keys.shift()];bridge.rememberView({subthreadsExpanded:all})}
   // Threads waiting on you (approval, input, plan) get their own group above Snoozed.
@@ -667,7 +668,7 @@ Item {
   readonly property var visiblePinnedRows:pinnedExpanded ? pinnedRows : []
   readonly property var visibleInputRows:inputExpanded ? inputRows : []
   readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.needsInput(t)&&(!t.pinned||root.pinnedReady(t))&&(!root.sidebarCompact || !Sidebar.inWorkingShelf(t))}).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)})))
-  readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(root.rankFirst(function(a,b){return (b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)}))) : []
+  readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(root.rankFirst(function(a,b){return root.orderByReply?Sidebar.compareReply(a,b):(b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)}))) : []
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
   readonly property var visibleSettledRows:settledShown ? settledRows : []
@@ -683,8 +684,8 @@ Item {
       })
     });return missing
   }
-  readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(root.rankFirst(Sidebar.compareSettled)))
-  readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}).sort(root.rankFirst(function(){return 0})))
+  readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(root.rankFirst(root.orderByReply?Sidebar.compareReply:Sidebar.compareSettled)))
+  readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}).sort(root.rankFirst(root.orderByReply?Sidebar.compareReply:function(){return 0})))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   // A project group's colour is its first project's, so grouped projects share it.
   // One chip per thread group, ahead of the project chips; a click filters by it.
@@ -910,8 +911,8 @@ Item {
       required property int index
       readonly property var modelData: row
       thread: modelData; bridge: root.bridge
-      x:root.projectLayout?Style.space(12):0
-      width: ListView.view ? ListView.view.width-(root.projectLayout?Style.space(12):0) : 0
+      hierarchyIndent:root.projectLayout?Style.space(54):0
+      width: ListView.view ? ListView.view.width : 0
       compactRows:root.compactRows;marquee:root.titleMarquee;projectWash:root.projectWash;sober:root.sober;projectTint:root.groupTints[modelData.projectKey] || "transparent"
       hostStyles:root.bridge.viewState.hostStyles || ({});manyHosts:(root.bridge.state.environments || []).length>1
       projectScoped:!!root.projectFilter&&(Array.isArray(root.projectScope)?root.projectScope.indexOf(modelData.projectKey)>=0:root.projectScope===modelData.projectKey)

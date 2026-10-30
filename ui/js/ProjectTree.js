@@ -1,7 +1,8 @@
 .pragma library
 .import "SidebarModel.js" as Sidebar
 
-function stamp(t) { return Number(t.repliedAt || t.updatedAt || t.startedAt || 0) }
+function alphabetic(a,b) { return Sidebar.fold(a).localeCompare(Sidebar.fold(b)) }
+function compareThreads(a,b) { return alphabetic(a.title,b.title) || String(a.key).localeCompare(String(b.key)) }
 function state(t) {
     if (t.snoozed) return "snoozed"
     var s = Sidebar.state(t)
@@ -14,17 +15,17 @@ function build(groups, threads, collapsed) {
     groups.forEach(function(g) { (g.members || []).forEach(function(p) { members[p.key] = g }) })
     threads.filter(function(t) { return t.relationshipToParent !== "subagent" }).forEach(function(t) {
         var g = members[t.projectKey], key = g ? g.key : t.projectKey || t.environmentId + "/" + (t.projectId || "scratch")
-        if (!lookup[key]) { lookup[key] = {key:key, title:g ? g.title : t.project || t.environmentName || "", threads:[], latest:0}; projects.push(lookup[key]) }
-        lookup[key].threads.push(t); lookup[key].latest = Math.max(lookup[key].latest, stamp(t))
+        if (!lookup[key]) { lookup[key] = {key:key, title:g ? g.title : t.project || t.environmentName || "", threads:[]}; projects.push(lookup[key]) }
+        lookup[key].threads.push(t)
     })
-    projects.sort(function(a,b) { return b.latest - a.latest || a.title.localeCompare(b.title) })
+    projects.sort(function(a,b) { return alphabetic(a.title,b.title) || String(a.key).localeCompare(String(b.key)) })
     var result = [], states = [{id:"waiting",label:"Waiting"},{id:"working",label:"Working"},{id:"failed",label:"Failed"},{id:"idle",label:"Pending"},{id:"done",label:"Done"},{id:"snoozed",label:"Snoozed"},{id:"settled",label:"Settled"}]
     projects.forEach(function(p) {
         var projectKey = "project/" + p.key
         result.push({kind:"project",key:projectKey,title:p.title,count:p.threads.length,projectKey:p.key,expanded:!collapsed[projectKey]})
         if (collapsed[projectKey]) return
         states.forEach(function(s) {
-            var rows = p.threads.filter(function(t) { return state(t) === s.id }).sort(function(a,b) { return stamp(b)-stamp(a) || String(a.key).localeCompare(String(b.key)) })
+            var rows = p.threads.filter(function(t) { return state(t) === s.id }).sort(compareThreads)
             if (!rows.length) return
             var key = projectKey + "/state/" + s.id
             result.push({kind:"state",key:key,title:s.label,count:rows.length,projectKey:p.key,state:s.id,expanded:!collapsed[key]})

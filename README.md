@@ -62,7 +62,7 @@ to add the launcher entry and `o3` command as well.
 **Preferences → Appearance → Interface layout** offers **Classic** (the default)
 and **Focus**, plus **By project** for a project → state → thread hierarchy.
 Project and state headers fold independently; matching repositories across hosts
-share a project, and threads stay ordered by the latest reply. Focus adds two-line thread rows with host labels, project/host/branch
+share a project. In By project, projects and threads sort alphabetically; Classic and Focus sort by latest reply by default. Focus adds two-line thread rows with host labels, project/host/branch
 context in the composer, a quieter conversation and a **Task board** in the header.
 The board follows the sidebar filters; click a card to open its conversation.
 Switching back restores your existing appearance choices and keeps drafts intact.
