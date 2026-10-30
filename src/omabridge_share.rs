@@ -10,6 +10,10 @@
 //! loopback OmaBridge forward on a fixed port, kept by a systemd user unit, so
 //! clients that cannot run OmaBridge reach the host as well.
 //!
+//! It also links T3 itself to that peer (`t3 environment link`, with another
+//! one-use pairing over the same forward) and turns on T3's Linked environments
+//! on both ends, so agents here can start and read threads there.
+//!
 //! Revocation runs both ways: when the peer stops sharing, its route and forward
 //! are removed here; on the host, sessions paired for a device it no longer
 //! shares T3 with are revoked. A route the user removes is not added again.
@@ -224,6 +228,56 @@ fn revoke_withdrawn(peers:&[Peer]){
  }
 }
 
+/// T3's own switch for agents working on other machines (Settings → Labs →
+/// Linked environments). Both ends need it: this side to link, the host to
+/// answer a linked agent. Sharing T3 with a paired device is that consent.
+fn ensure_linked_environments(){
+ if read_json(&connections::t3_home().join("userdata/settings.json")).is_ok_and(|s|s["linkedEnvironmentsEnabled"]==true){return}
+ if let Ok(c)=connections::local_environment().and_then(|e|e.connection(true)){
+  let _=write::update_settings(&c,&json!({"patch":{"linkedEnvironmentsEnabled":true}}));
+ }
+}
+fn t3_environment(cli:&Path,args:&[&str])->Option<std::process::Output>{
+ Command::new("timeout").arg("40s").arg(cli).arg("environment").args(args).arg("--base-dir").arg(connections::t3_home()).stdin(Stdio::null()).stderr(Stdio::piped()).stdout(Stdio::piped()).output().ok()
+}
+/// Whether this T3 already has a live link to `environment`.
+pub fn has_link(links:&Value,environment:&str)->bool{
+ links.as_array().into_iter().flatten().any(|l|l["environmentId"]==environment&&l["status"]!="expired")
+}
+/// T3's own link to a shared peer, so agents here can start and read threads
+/// there, through the same loopback forward and a fresh one-use pairing.
+fn link_agents(peer:&Peer,share:&Value,bin:&Path,state_dir:&Path)->Result<()>{
+ let cli=local_cli().ok_or("t3_cli_missing")?;
+ let environment=text(share,"environmentId");
+ let port=share["port"].as_u64().ok_or("share_invalid")?;
+ let listed=t3_environment(&cli,&["list","--json"]).filter(|o|o.status.success()).ok_or("t3_link_unavailable")?;
+ let links:Value=serde_json::from_slice(&listed.stdout).map_err(|_|"t3_link_unavailable")?;
+ if has_link(&links,environment){return Ok(())}
+ let url=format!("http://127.0.0.1:{port}");
+ // A host whose T3 predates linking would refuse it: no pairing is spent on it.
+ let descriptor=wait_descriptor(&url)?;
+ if !links_supported(&descriptor){return Err("t3_link_peer_outdated".into())}
+ let (code,_)=mint(peer,environment,bin,state_dir)?;
+ // The CLI writes T3's database next to the running server: a busy moment is retried.
+ for attempt in 0..3{
+  let out=t3_environment(&cli,&["link",&url,"--pairing-code",code.as_str(),"--access","full-access"]).ok_or("t3_link_unavailable")?;
+  if out.status.success(){return Ok(())}
+  if attempt==2||!String::from_utf8_lossy(&out.stderr).contains("database is locked"){break}
+  std::thread::sleep(Duration::from_secs(2));
+ }
+ Err("t3_link_failed".into())
+}
+/// T3 links only to a host that keeps a linked agent's limits.
+pub fn links_supported(descriptor:&Value)->bool{
+ let c=&descriptor["capabilities"];
+ ["peerLinks","mcpModeLimitHeader","linkFence"].iter().all(|k|c[*k]==true)
+}
+fn unlink_agents(share:&Value){
+ let environment=text(share,"environmentId");
+ if environment.is_empty()||uuid::Uuid::parse_str(environment).is_err(){return}
+ if let Some(cli)=local_cli(){let _=t3_environment(&cli,&["unlink",environment]);}
+}
+
 static RUNNING:Mutex<()>=Mutex::new(());
 /// One reconciliation pass. Any OmaBridge read failure changes nothing.
 pub fn reconcile()->Result<Value>{
@@ -236,17 +290,27 @@ pub fn reconcile()->Result<Value>{
  let catalog=connections::manage_connections(&json!({"action":"read"})).ok();
  let in_catalog=|share:&Value|catalog.as_ref().is_none_or(|v|v["environments"].as_array().into_iter().flatten().flat_map(|e|e["routes"].as_array().cloned().unwrap_or_default()).any(|r|r["connectionId"]==share["connectionId"]));
  let steps=plan(&doc,&peers,&in_catalog,now());
+ if doc["enabled"]==true&&peers.iter().any(|p|p.grants.iter().chain(&p.remote).any(|s|s=="t3")){ensure_linked_environments()}
  for step in steps{
   match step{
-   Step::Keep(id)=>{let unit=unit_name(&id);if !systemctl(&["is-active","--quiet",&unit]){systemctl(&["start",&unit]);}}
-   Step::Withdraw(id)=>{remove_route(&doc["shares"][&id]);remove_unit(&id);doc["shares"].as_object_mut().unwrap().remove(&id);doc["status"][&id]=json!({"state":"withdrawn","at":now()});}
-   Step::UserRemoved(id)=>{remove_unit(&id);doc["shares"].as_object_mut().unwrap().remove(&id);doc["skip"].as_array_mut().unwrap().push(json!(id));doc["status"][&id]=json!({"state":"removed","at":now()});}
+   Step::Keep(id)=>{
+    let unit=unit_name(&id);if !systemctl(&["is-active","--quiet",&unit]){systemctl(&["start",&unit]);}
+    if let Some(peer)=peers.iter().find(|p|p.id==id){
+     let agents=link_agents(peer,&doc["shares"][&id],&bin,&state_dir);
+     doc["status"][&id]["agents"]=match agents{Ok(())=>json!("linked"),Err(e)=>json!(e)};
+    }
+   }
+   Step::Withdraw(id)=>{unlink_agents(&doc["shares"][&id]);remove_route(&doc["shares"][&id]);remove_unit(&id);doc["shares"].as_object_mut().unwrap().remove(&id);doc["status"][&id]=json!({"state":"withdrawn","at":now()});}
+   Step::UserRemoved(id)=>{unlink_agents(&doc["shares"][&id]);remove_unit(&id);doc["shares"].as_object_mut().unwrap().remove(&id);doc["skip"].as_array_mut().unwrap().push(json!(id));doc["status"][&id]=json!({"state":"removed","at":now()});}
    Step::Enroll(id)=>{
     let Some(peer)=peers.iter().find(|p|p.id==id) else {continue};
     let taken:Vec<u16>=doc["shares"].as_object().into_iter().flatten().filter_map(|(_,s)|s["port"].as_u64()).map(|p|p as u16).collect();
     let result=enroll(peer,&taken,&bin,&state_dir);
     match result{
-     Ok(share)=>{doc["status"][&id]=json!({"state":"shared","at":now(),"environmentId":share["environmentId"]});doc["shares"][&id]=share;}
+     Ok(share)=>{
+      let agents=match link_agents(peer,&share,&bin,&state_dir){Ok(())=>json!("linked"),Err(e)=>json!(e)};
+      doc["status"][&id]=json!({"state":"shared","at":now(),"environmentId":share["environmentId"],"agents":agents});doc["shares"][&id]=share;
+     }
      Err(e)=>{doc["status"][&id]=json!({"state":"error","error":e,"at":now(),"grants":peer.remote});}
     }
    }
@@ -362,6 +426,17 @@ mod tests{
    {"sessionId":"s;4","client":{"label":format!("{LABEL_PREFIX}{B}")}},
    {"sessionId":"s-5","client":{"label":format!("{LABEL_PREFIX}nothex")}}]);
   assert_eq!(revocable(&sessions,&[peer(A,&[],&["t3","ssh"]),peer(B,&[],&["ssh"])]),vec!["s-2"]);
+ }
+ #[test]
+ fn links_need_a_current_host(){
+  assert!(links_supported(&json!({"capabilities":{"peerLinks":true,"mcpModeLimitHeader":true,"linkFence":true}})));
+  assert!(!links_supported(&json!({"capabilities":{"peerLinks":true,"mcpModeLimitHeader":true}})));
+  assert!(!links_supported(&json!({})));
+ }
+ #[test]
+ fn live_links_only(){
+  let links=json!([{"environmentId":"e1","status":"reachable"},{"environmentId":"e2","status":"expired"},{"environmentId":"e3","status":"unreachable"}]);
+  assert!(has_link(&links,"e1"));assert!(!has_link(&links,"e2"));assert!(has_link(&links,"e3"));assert!(!has_link(&links,"e4"));assert!(!has_link(&json!(null),"e1"));
  }
  #[test]
  fn ports_and_units(){

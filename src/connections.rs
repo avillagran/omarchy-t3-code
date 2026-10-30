@@ -155,7 +155,7 @@ fn has_filesystem_read(token:&str)->bool {has_scope(token,"filesystem:read")}
 fn fresh_token(token:&str)->bool {
     token_expiry_ms(token).is_some_and(|t|t>Utc::now().timestamp_millis()+3600*1000)
 }
-fn local_environment()->Result<Environment> {
+pub fn local_environment()->Result<Environment> {
     let runtime=read_json(&t3_home().join("userdata/server-runtime.json")).map_err(|_|"t3_not_running")?;
     let origin=text(&runtime,"origin");validate_base(origin)?;
     let url=crate::Url::parse(origin).map_err(|_|"invalid_t3_runtime")?;
