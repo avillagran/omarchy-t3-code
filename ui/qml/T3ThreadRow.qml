@@ -398,7 +398,7 @@ Item {
           objectName:"threadCompactProject"
           Layout.fillWidth:!root.threadGroup;Layout.maximumWidth:root.threadGroup?parent.width*0.6:-1
           text:root.thread.project || root.thread.environmentName || ""
-          color:root.dim;font.family:"monospace";font.pixelSize:Style.font.caption-Style.space(1.5);elide:Text.ElideRight;textFormat:Text.PlainText
+          color:root.dim;font.pixelSize:Style.font.caption-Style.space(1);elide:Text.ElideRight;textFormat:Text.PlainText
         }
         // The thread's own group, after its project.
         T3Icon{visible:!!root.threadGroup;name:"layers";tint:root.dim;implicitWidth:Style.space(10);Layout.leftMargin:Style.space(4)}
@@ -406,7 +406,7 @@ Item {
           objectName:"threadCompactGroup";visible:!!root.threadGroup
           Layout.fillWidth:true
           text:root.threadGroup
-          color:root.dim;font.pixelSize:Style.font.caption-Style.space(1.5);elide:Text.ElideRight;textFormat:Text.PlainText
+          color:root.dim;font.pixelSize:Style.font.caption-Style.space(1);elide:Text.ElideRight;textFormat:Text.PlainText
         }
       }
       RowLayout{

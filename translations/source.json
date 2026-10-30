@@ -1980,6 +1980,9 @@
     "Waiting for input threads height": "Waiting for input threads height",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out",
     "Project {project}": "Project {project}",
-    "Remove project from group": "Remove project from group"
+    "Remove project from group": "Remove project from group",
+    "Pinned threads height": "Pinned threads height",
+    "Show one row of groups": "Show one row of groups",
+    "Show all groups ({count})": "Show all groups ({count})"
   }
 }

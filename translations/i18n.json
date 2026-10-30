@@ -1980,7 +1980,10 @@
     "Waiting for input threads height": "Waiting for input threads height",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out",
     "Project {project}": "Project {project}",
-    "Remove project from group": "Remove project from group"
+    "Remove project from group": "Remove project from group",
+    "Pinned threads height": "Pinned threads height",
+    "Show one row of groups": "Show one row of groups",
+    "Show all groups ({count})": "Show all groups ({count})"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3963,7 +3966,10 @@
     "Waiting for input threads height": "Altura de hilos esperando input",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Título, proyecto, grupo o rama, por el inicio de una palabra o sus iniciales. p: proyecto · g: grupo · b: rama · h: host · is: input, working, done, pinned · \"palabras exactas\" · un signo menos delante excluye la palabra",
     "Project {project}": "Proyecto {project}",
-    "Remove project from group": "Quitar el proyecto del grupo"
+    "Remove project from group": "Quitar el proyecto del grupo",
+    "Pinned threads height": "Altura de hilos fijados",
+    "Show one row of groups": "Mostrar una fila de grupos",
+    "Show all groups ({count})": "Mostrar todos los grupos ({count})"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5946,7 +5952,10 @@
     "Waiting for input threads height": "Altura das conversas aguardando resposta",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Título, projeto, grupo ou branch, pelo início de uma palavra ou pelas iniciais. p: projeto · g: grupo · b: branch · h: host · is: input, working, done, pinned · \"palavras exatas\" · um sinal de menos antes exclui a palavra",
     "Project {project}": "Projeto {project}",
-    "Remove project from group": "Remover o projeto do grupo"
+    "Remove project from group": "Remover o projeto do grupo",
+    "Pinned threads height": "Altura das conversas fixadas",
+    "Show one row of groups": "Mostrar uma linha de grupos",
+    "Show all groups ({count})": "Mostrar todos os grupos ({count})"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7929,7 +7938,10 @@
     "Waiting for input threads height": "Hauteur des fils en attente de réponse",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titre, projet, groupe ou branche, par le début d'un mot ou ses initiales. p: projet · g: groupe · b: branche · h: hôte · is: input, working, done, pinned · \"mots exacts\" · un signe moins devant exclut le mot",
     "Project {project}": "Projet {project}",
-    "Remove project from group": "Retirer le projet du groupe"
+    "Remove project from group": "Retirer le projet du groupe",
+    "Pinned threads height": "Hauteur des fils épinglés",
+    "Show one row of groups": "Afficher une ligne de groupes",
+    "Show all groups ({count})": "Afficher tous les groupes ({count})"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9912,7 +9924,10 @@
     "Waiting for input threads height": "Höhe der Threads, die auf Eingabe warten",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, Projekt, Gruppe oder Branch, nach Wortanfang oder Initialen. p: Projekt · g: Gruppe · b: Branch · h: Host · is: input, working, done, pinned · \"exakte Wörter\" · ein Minus davor schließt das Wort aus",
     "Project {project}": "Projekt {project}",
-    "Remove project from group": "Projekt aus Gruppe entfernen"
+    "Remove project from group": "Projekt aus Gruppe entfernen",
+    "Pinned threads height": "Höhe der angehefteten Threads",
+    "Show one row of groups": "Eine Zeile Gruppen zeigen",
+    "Show all groups ({count})": "Alle Gruppen zeigen ({count})"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11895,7 +11910,10 @@
     "Waiting for input threads height": "Altezza dei thread in attesa di risposta",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titolo, progetto, gruppo o branch, dall'inizio di una parola o dalle iniziali. p: progetto · g: gruppo · b: branch · h: host · is: input, working, done, pinned · \"parole esatte\" · un segno meno davanti esclude la parola",
     "Project {project}": "Progetto {project}",
-    "Remove project from group": "Rimuovi il progetto dal gruppo"
+    "Remove project from group": "Rimuovi il progetto dal gruppo",
+    "Pinned threads height": "Altezza dei thread fissati",
+    "Show one row of groups": "Mostra una riga di gruppi",
+    "Show all groups ({count})": "Mostra tutti i gruppi ({count})"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13878,7 +13896,10 @@
     "Waiting for input threads height": "Hoogte van threads die op invoer wachten",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, project, groep of branch, op het begin van een woord of de initialen. p: project · g: groep · b: branch · h: host · is: input, working, done, pinned · \"exacte woorden\" · een min ervoor sluit het woord uit",
     "Project {project}": "Project {project}",
-    "Remove project from group": "Project uit groep verwijderen"
+    "Remove project from group": "Project uit groep verwijderen",
+    "Pinned threads height": "Hoogte van vastgezette threads",
+    "Show one row of groups": "Eén rij groepen tonen",
+    "Show all groups ({count})": "Alle groepen tonen ({count})"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15861,7 +15882,10 @@
     "Waiting for input threads height": "Wysokość wątków czekających na odpowiedź",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Tytuł, projekt, grupa lub gałąź, po początku słowa lub inicjałach. p: projekt · g: grupa · b: gałąź · h: host · is: input, working, done, pinned · \"dokładne słowa\" · minus na początku wyklucza słowo",
     "Project {project}": "Projekt {project}",
-    "Remove project from group": "Usuń projekt z grupy"
+    "Remove project from group": "Usuń projekt z grupy",
+    "Pinned threads height": "Wysokość przypiętych wątków",
+    "Show one row of groups": "Pokaż jeden wiersz grup",
+    "Show all groups ({count})": "Pokaż wszystkie grupy ({count})"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17844,7 +17868,10 @@
     "Waiting for input threads height": "Высота тредов, ждущих ответа",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Название, проект, группа или ветка — по началу слова или инициалам. p: проект · g: группа · b: ветка · h: хост · is: input, working, done, pinned · \"точные слова\" · минус перед словом исключает его",
     "Project {project}": "Проект {project}",
-    "Remove project from group": "Убрать проект из группы"
+    "Remove project from group": "Убрать проект из группы",
+    "Pinned threads height": "Высота закреплённых тредов",
+    "Show one row of groups": "Показать один ряд групп",
+    "Show all groups ({count})": "Показать все группы ({count})"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19827,7 +19854,10 @@
     "Waiting for input threads height": "Висота тредів, що чекають на відповідь",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Назва, проєкт, група або гілка — за початком слова чи ініціалами. p: проєкт · g: група · b: гілка · h: хост · is: input, working, done, pinned · \"точні слова\" · мінус перед словом виключає його",
     "Project {project}": "Проєкт {project}",
-    "Remove project from group": "Прибрати проєкт із групи"
+    "Remove project from group": "Прибрати проєкт із групи",
+    "Pinned threads height": "Висота закріплених тредів",
+    "Show one row of groups": "Показати один ряд груп",
+    "Show all groups ({count})": "Показати всі групи ({count})"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21810,7 +21840,10 @@
     "Waiting for input threads height": "入力待ちスレッドの高さ",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "タイトル・プロジェクト・グループ・ブランチを、単語の先頭や頭文字で検索。 p: プロジェクト · g: グループ · b: ブランチ · h: ホスト · is: input, working, done, pinned · \"完全一致\" · 先頭にマイナスでその語を除外",
     "Project {project}": "プロジェクト {project}",
-    "Remove project from group": "プロジェクトをグループから外す"
+    "Remove project from group": "プロジェクトをグループから外す",
+    "Pinned threads height": "ピン留めスレッドの高さ",
+    "Show one row of groups": "グループを1行だけ表示",
+    "Show all groups ({count})": "すべてのグループを表示 ({count})"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23793,7 +23826,10 @@
     "Waiting for input threads height": "입력 대기 스레드 높이",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "제목, 프로젝트, 그룹, 브랜치를 단어 시작이나 머리글자로 찾습니다. p: 프로젝트 · g: 그룹 · b: 브랜치 · h: 호스트 · is: input, working, done, pinned · \"정확한 단어\" · 앞에 마이너스를 붙이면 단어 제외",
     "Project {project}": "프로젝트 {project}",
-    "Remove project from group": "프로젝트를 그룹에서 제거"
+    "Remove project from group": "프로젝트를 그룹에서 제거",
+    "Pinned threads height": "고정 스레드 높이",
+    "Show one row of groups": "그룹을 한 줄만 표시",
+    "Show all groups ({count})": "모든 그룹 표시 ({count})"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25776,7 +25812,10 @@
     "Waiting for input threads height": "等待输入线程的高度",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "按词首或首字母搜索标题、项目、分组或分支。 p: 项目 · g: 分组 · b: 分支 · h: 主机 · is: input, working, done, pinned · \"精确词语\" · 词前加减号可排除该词",
     "Project {project}": "项目 {project}",
-    "Remove project from group": "从分组中移除项目"
+    "Remove project from group": "从分组中移除项目",
+    "Pinned threads height": "已置顶线程的高度",
+    "Show one row of groups": "只显示一行分组",
+    "Show all groups ({count})": "显示所有分组 ({count})"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27759,7 +27798,10 @@
     "Waiting for input threads height": "ارتفاع السلاسل بانتظار الإدخال",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "العنوان أو المشروع أو المجموعة أو الفرع، ببداية الكلمة أو أحرفها الأولى. p: مشروع · g: مجموعة · b: فرع · h: مضيف · is: input, working, done, pinned · \"كلمات مطابقة\" · علامة الطرح قبل الكلمة تستبعدها",
     "Project {project}": "المشروع {project}",
-    "Remove project from group": "إزالة المشروع من المجموعة"
+    "Remove project from group": "إزالة المشروع من المجموعة",
+    "Pinned threads height": "ارتفاع السلاسل المثبتة",
+    "Show one row of groups": "عرض صف واحد من المجموعات",
+    "Show all groups ({count})": "عرض كل المجموعات ({count})"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29742,7 +29784,10 @@
     "Waiting for input threads height": "Yanıt bekleyen konuların yüksekliği",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Başlık, proje, grup veya dal; kelime başı ya da baş harflerle. p: proje · g: grup · b: dal · h: ana bilgisayar · is: input, working, done, pinned · \"tam kelimeler\" · başına eksi koymak kelimeyi hariç tutar",
     "Project {project}": "Proje {project}",
-    "Remove project from group": "Projeyi gruptan çıkar"
+    "Remove project from group": "Projeyi gruptan çıkar",
+    "Pinned threads height": "Sabitlenen konuların yüksekliği",
+    "Show one row of groups": "Grupların tek satırını göster",
+    "Show all groups ({count})": "Tüm grupları göster ({count})"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31725,7 +31770,10 @@
     "Waiting for input threads height": "Höjd för trådar som väntar på svar",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, projekt, grupp eller gren, efter ordets början eller initialer. p: projekt · g: grupp · b: gren · h: värd · is: input, working, done, pinned · \"exakta ord\" · ett minus framför utesluter ordet",
     "Project {project}": "Projekt {project}",
-    "Remove project from group": "Ta bort projektet från gruppen"
+    "Remove project from group": "Ta bort projektet från gruppen",
+    "Pinned threads height": "Höjd för fästa trådar",
+    "Show one row of groups": "Visa en rad grupper",
+    "Show all groups ({count})": "Visa alla grupper ({count})"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33708,7 +33756,10 @@
     "Waiting for input threads height": "Højde for tråde, der venter på svar",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, projekt, gruppe eller branch, efter ordets begyndelse eller initialer. p: projekt · g: gruppe · b: branch · h: vært · is: input, working, done, pinned · \"præcise ord\" · et minus foran udelader ordet",
     "Project {project}": "Projekt {project}",
-    "Remove project from group": "Fjern projektet fra gruppen"
+    "Remove project from group": "Fjern projektet fra gruppen",
+    "Pinned threads height": "Højde for fastgjorte tråde",
+    "Show one row of groups": "Vis én række grupper",
+    "Show all groups ({count})": "Vis alle grupper ({count})"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35691,7 +35742,10 @@
     "Waiting for input threads height": "Høyde for tråder som venter på svar",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Tittel, prosjekt, gruppe eller gren, etter ordets begynnelse eller initialer. p: prosjekt · g: gruppe · b: gren · h: vert · is: input, working, done, pinned · \"eksakte ord\" · et minus foran utelater ordet",
     "Project {project}": "Prosjekt {project}",
-    "Remove project from group": "Fjern prosjektet fra gruppen"
+    "Remove project from group": "Fjern prosjektet fra gruppen",
+    "Pinned threads height": "Høyde for festede tråder",
+    "Show one row of groups": "Vis én rad grupper",
+    "Show all groups ({count})": "Vis alle grupper ({count})"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37674,7 +37728,10 @@
     "Waiting for input threads height": "Vastausta odottavien ketjujen korkeus",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Otsikko, projekti, ryhmä tai haara sanan alusta tai alkukirjaimista. p: projekti · g: ryhmä · b: haara · h: isäntä · is: input, working, done, pinned · \"tarkat sanat\" · miinus sanan edessä jättää sen pois",
     "Project {project}": "Projekti {project}",
-    "Remove project from group": "Poista projekti ryhmästä"
+    "Remove project from group": "Poista projekti ryhmästä",
+    "Pinned threads height": "Kiinnitettyjen ketjujen korkeus",
+    "Show one row of groups": "Näytä yksi rivi ryhmiä",
+    "Show all groups ({count})": "Näytä kaikki ryhmät ({count})"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39657,6 +39714,9 @@
     "Waiting for input threads height": "Výška vláken čekajících na vstup",
     "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Název, projekt, skupina nebo větev podle začátku slova či iniciál. p: projekt · g: skupina · b: větev · h: hostitel · is: input, working, done, pinned · \"přesná slova\" · mínus před slovem ho vyloučí",
     "Project {project}": "Projekt {project}",
-    "Remove project from group": "Odebrat projekt ze skupiny"
+    "Remove project from group": "Odebrat projekt ze skupiny",
+    "Pinned threads height": "Výška připnutých vláken",
+    "Show one row of groups": "Zobrazit jeden řádek skupin",
+    "Show all groups ({count})": "Zobrazit všechny skupiny ({count})"
   }
 }

@@ -691,6 +691,7 @@ Item {
   readonly property var groupTints:{var map={};projectGroups.forEach(function(g){var tint=root.groupTint(g);g.members.forEach(function(p){map[p.key]=tint})});return map}
   // One chip per group with open threads on the shown hosts, busiest first: a click filters by it.
   readonly property bool projectChips: bridge.viewState.projectChips !== false
+  readonly property bool chipsExpanded: !!bridge.viewState.chipsExpanded
   readonly property var groupChips: projectGroups.map(function(g){var keys=g.members.map(function(p){return p.key});var count=hostThreads.filter(function(t){return !t.settled&&t.relationshipToParent!=="subagent"&&keys.indexOf(t.projectKey)>=0}).length;return {key:g.key,title:g.title,count:count,tint:root.groupTints[keys[0]] || root.dim}}).filter(function(c){return c.count>0||c.key===root.projectFilter}).sort(function(a,b){return b.count-a.count || String(a.title).localeCompare(String(b.title))})
   function kind(t) { return Sidebar.state(t) }
   // Last seen state per thread and when it changed, so rows can celebrate a
@@ -1353,44 +1354,73 @@ Item {
               T3Select {objectName:"t3HostFilter";Layout.fillWidth:true;popupAbove:false;model:root.hostItems;textRole:"name";currentIndex:Math.max(0,root.hostItems.findIndex(function(h){return h.id===root.hostFilter}));onActivated:function(index){root.hostFilter=root.hostItems[index].id};Accessible.name:T3I18n.tr("Host")}
               T3IconButton {objectName:"t3MosaicToggle";name:"layout-grid";tint:root.mosaicOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread mosaic");onClicked:if(root.mosaicOpen&&mosaicLoader.item)mosaicLoader.item.dismiss();else root.bridge.rememberView({mosaicOpen:!root.mosaicOpen})}
             }
-            ListView {
+            // Group chips wrap into rows. One row shows by default; a chevron
+            // reveals the rest, and the row with the active chip always shows.
+            Item {
               id: groupChipList
               objectName: "t3GroupChips"
+              readonly property var chips: visible ? root.threadGroupChips.concat(root.groupChips.length > 1 ? root.groupChips : []) : []
+              readonly property real rowHeight: Style.space(24) + chipFlow.spacing
+              readonly property int rows: Math.max(1, Math.round((chipFlow.implicitHeight + chipFlow.spacing) / rowHeight))
+              readonly property bool expanded: root.chipsExpanded || rows <= 1
+              // The active chip's row, so folding never hides it.
+              readonly property int activeRow: { var item = chipRepeater.itemAt(chips.findIndex(function(c) { return c.group ? root.threadGroupFilter === c.group : c.key === root.projectFilter })); return item ? Math.round(item.y / rowHeight) : 0 }
+              function itemAtIndex(i) { return chipRepeater.itemAt(i) }
               Layout.fillWidth: true; Layout.leftMargin: Style.space(12); Layout.rightMargin: Style.space(12); Layout.topMargin: Style.space(8)
-              Layout.preferredHeight: Style.space(24)
+              Layout.preferredHeight: expanded ? chipFlow.implicitHeight : Style.space(24)
+              Behavior on Layout.preferredHeight { enabled: T3Motion.enabled; NumberAnimation { duration: T3Motion.duration(160); easing.type: Easing.OutCubic } }
               visible: root.projectChips && (root.groupChips.length > 1 || root.threadGroupChips.length > 0)
-              orientation: ListView.Horizontal; spacing: Style.space(root.sober ? 4 : 6); clip: true
-              boundsBehavior: Flickable.StopAtBounds
-              model: visible ? root.threadGroupChips.concat(root.groupChips.length > 1 ? root.groupChips : []) : []
-              delegate: Controls.AbstractButton {
-                id: chip
-                required property var modelData
-                readonly property bool threadGroup: !!modelData.group
-                readonly property bool active: threadGroup ? root.threadGroupFilter === modelData.group : root.projectFilter === modelData.key || root.projectGroups.some(function(g){return g.key===modelData.key&&g.members.some(function(m){return m.key===root.projectFilter})})
-                readonly property color tint: root.projectWash && !threadGroup ? modelData.tint : root.dim
-                // Sober chips are grey; only their dot carries the group's colour.
-                readonly property color face: root.sober ? root.fg : tint
-                objectName: "t3GroupChip_" + modelData.key
-                height: Style.space(24); implicitWidth: chipRow.implicitWidth + Style.space(16)
-                hoverEnabled: true
-                Accessible.name: T3I18n.tr("Filter by {project}", {project: modelData.title})
-                onClicked: if (threadGroup) root.threadGroupFilter = active ? "" : modelData.group; else root.projectFilter = active ? "" : modelData.key
-                background: Rectangle {
-                  radius: root.sober ? Style.space(6) : height / 2
-                  color: Qt.rgba(chip.face.r, chip.face.g, chip.face.b, root.sober ? (chip.active ? 0.12 : chip.hovered ? 0.08 : 0.04) : (chip.active ? 0.26 : chip.hovered ? 0.16 : 0.08))
-                  border.width: chip.active ? 1 : 0; border.color: root.sober ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.28) : chip.tint
-                  Behavior on color { enabled: T3Motion.enabled; ColorAnimation { duration: T3Motion.duration(140) } }
-                }
-                contentItem: Item {
-                  RowLayout {
-                    id: chipRow
-                    anchors.centerIn: parent; spacing: Style.space(4)
-                    Rectangle { visible: !chip.threadGroup; width: Style.space(root.sober ? 6 : 7); height: width; radius: width / 2; color: chip.tint }
-                    T3Icon { visible: chip.threadGroup; name: "layers"; tint: root.dim; implicitWidth: Style.space(11) }
-                    Text { text: chip.modelData.title; color: chip.active ? root.fg : root.dim; font.pixelSize: Style.font.caption; textFormat: Text.PlainText }
-                    Text { text: String(chip.modelData.count); color: root.dim; font.family: "monospace"; font.pixelSize: Style.font.caption - Style.space(1); opacity: 0.8 }
+              clip: true
+              Flow {
+                id: chipFlow
+                width: parent.width - (groupChipList.rows > 1 ? Style.space(28) : 0)
+                spacing: Style.space(root.sober ? 4 : 6)
+                // Folded: slide so the active chip's row shows.
+                y: groupChipList.expanded ? 0 : -groupChipList.activeRow * groupChipList.rowHeight
+                Behavior on y { enabled: T3Motion.enabled; NumberAnimation { duration: T3Motion.duration(160); easing.type: Easing.OutCubic } }
+                Repeater {
+                  id: chipRepeater
+                  model: groupChipList.chips
+    Controls.AbstractButton {
+                    id: chip
+                    required property var modelData;required property int index
+                    readonly property bool threadGroup: !!modelData.group
+                    readonly property bool active: threadGroup ? root.threadGroupFilter === modelData.group : root.projectFilter === modelData.key || root.projectGroups.some(function(g){return g.key===modelData.key&&g.members.some(function(m){return m.key===root.projectFilter})})
+                    readonly property color tint: root.projectWash && !threadGroup ? modelData.tint : root.dim
+                    // Sober chips are grey; only their dot carries the group's colour.
+                    readonly property color face: root.sober ? root.fg : tint
+                    objectName: "t3GroupChip_" + modelData.key
+                    height: Style.space(24); implicitWidth: chipRow.implicitWidth + Style.space(16)
+                    hoverEnabled: true
+                    Accessible.name: T3I18n.tr("Filter by {project}", {project: modelData.title})
+                    onClicked: if (threadGroup) root.threadGroupFilter = active ? "" : modelData.group; else root.projectFilter = active ? "" : modelData.key
+                    background: Rectangle {
+                      radius: root.sober ? Style.space(6) : height / 2
+                      color: Qt.rgba(chip.face.r, chip.face.g, chip.face.b, root.sober ? (chip.active ? 0.12 : chip.hovered ? 0.08 : 0.04) : (chip.active ? 0.26 : chip.hovered ? 0.16 : 0.08))
+                      border.width: chip.active ? 1 : 0; border.color: root.sober ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.28) : chip.tint
+                      Behavior on color { enabled: T3Motion.enabled; ColorAnimation { duration: T3Motion.duration(140) } }
+                    }
+                    contentItem: Item {
+                      RowLayout {
+                        id: chipRow
+                        anchors.centerIn: parent; spacing: Style.space(4)
+                        Rectangle { visible: !chip.threadGroup; width: Style.space(root.sober ? 6 : 7); height: width; radius: width / 2; color: chip.tint }
+                        T3Icon { visible: chip.threadGroup; name: "layers"; tint: root.dim; implicitWidth: Style.space(11) }
+                        Text { text: chip.modelData.title; color: chip.active ? root.fg : root.dim; font.pixelSize: Style.font.caption; textFormat: Text.PlainText }
+                        Text { text: String(chip.modelData.count); color: root.dim; font.family: "monospace"; font.pixelSize: Style.font.caption - Style.space(1); opacity: 0.8 }
+                      }
+                    }
                   }
                 }
+              }
+              T3IconButton {
+                objectName: "t3GroupChipsToggle"
+                visible: groupChipList.rows > 1
+                anchors.right: parent.right; anchors.top: parent.top
+                implicitWidth: Style.space(24); implicitHeight: Style.space(24)
+                name: root.chipsExpanded ? "chevron-up" : "chevron-down"; tint: root.dim
+                tooltipText: root.chipsExpanded ? T3I18n.tr("Show one row of groups") : T3I18n.tr("Show all groups ({count})", {count: groupChipList.chips.length})
+                onClicked: root.bridge.rememberView({chipsExpanded: !root.chipsExpanded})
               }
             }
             RowLayout {
@@ -1400,6 +1430,7 @@ Item {
               T3IconButton { name: "refresh-cw"; visible: !!root.bridge.managementRequest; tooltipText: T3I18n.tr("Retry action"); onClicked: root.bridge.manage({}) }
             }
             // Pinned threads, on top; a ready one moves down to head Ready.
+            T3ShelfResizer{objectName:"pinnedShelfResizer";label:"Pinned threads height";visible:pinnedReveal.shown&&!pinnedReveal.moving;value:root.pinnedShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("pinnedShelfHeight",h)}}
             T3Reveal {
               objectName:"pinnedShelfHeader";shown:root.pinnedRows.length>0
               Layout.fillWidth:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
@@ -1407,7 +1438,8 @@ Item {
                 width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
                 id:pinnedToggle;objectName:"pinnedShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-                color:"transparent";activeFocusOnTab:true
+                color:pinnedHeaderHover.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05):"transparent";activeFocusOnTab:true
+                HoverHandler{id:pinnedHeaderHover}
                 Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Pinned ({count})",{count:root.topCount(root.pinnedRows)})
                 Keys.onReturnPressed:root.pinnedExpanded=!root.pinnedExpanded
                 Keys.onSpacePressed:root.pinnedExpanded=!root.pinnedExpanded
@@ -1498,7 +1530,8 @@ Item {
                 width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
                 id:workingToggle;objectName:"workingShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-                color:"transparent";activeFocusOnTab:true
+                color:workingHeaderHover.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05):"transparent";activeFocusOnTab:true
+                HoverHandler{id:workingHeaderHover}
                 Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Working ({count})",{count:root.topCount(root.workingRows)})
                 Keys.onReturnPressed:root.workingExpanded=!root.workingExpanded
                 Keys.onSpacePressed:root.workingExpanded=!root.workingExpanded
@@ -1544,7 +1577,8 @@ Item {
                 width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
                 id:inputToggle;objectName:"inputShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-                color:"transparent";activeFocusOnTab:true
+                color:inputHeaderHover.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05):"transparent";activeFocusOnTab:true
+                HoverHandler{id:inputHeaderHover}
                 Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Waiting for input ({count})",{count:root.topCount(root.inputRows)})
                 Keys.onReturnPressed:root.inputExpanded=!root.inputExpanded
                 Keys.onSpacePressed:root.inputExpanded=!root.inputExpanded
@@ -1587,7 +1621,8 @@ Item {
                 width:parent.width;implicitHeight:Style.space(32);height:implicitHeight
                 id:snoozedToggle;objectName:"snoozedShelfToggle"
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
-                color:"transparent";activeFocusOnTab:true
+                color:snoozedHeaderHover.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05):"transparent";activeFocusOnTab:true
+                HoverHandler{id:snoozedHeaderHover}
                 Accessible.role:Accessible.Button;Accessible.name:T3I18n.tr("Snoozed ({count})",{count:root.topCount(root.snoozedRows)})
                 Keys.onReturnPressed:root.snoozedExpanded=!root.snoozedExpanded
                 Keys.onSpacePressed:root.snoozedExpanded=!root.snoozedExpanded
@@ -1640,6 +1675,8 @@ Item {
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 id:settledToggle;objectName:"settledShelfToggle"
+                color:settledHeaderHover.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05):"transparent"
+                HoverHandler{id:settledHeaderHover}
                 border.width:activeFocus?1:0;border.color:Color.accent;radius:Style.space(5)
                 Accessible.name: T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)+root.olderSettledMissing})
                 Keys.onReturnPressed: root.settledExpanded = !root.settledExpanded
@@ -1648,7 +1685,6 @@ Item {
                 Keys.onDownPressed:root.moveSidebarFocus(settledToggle,1)
                 Keys.onLeftPressed:root.settledExpanded=false
                 Keys.onRightPressed:root.settledExpanded=true
-                color: "transparent"
                 RowLayout {
                   anchors.fill: parent; anchors.leftMargin: Style.space(5); anchors.rightMargin: Style.space(5)
                   Text { text:T3I18n.tr("Settled ({count})",{count:root.topCount(root.settledRows)+root.olderSettledMissing}); color: root.dim; font.pixelSize: Style.font.caption }

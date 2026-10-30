@@ -18,7 +18,7 @@ pub fn sanitize(input: &Value) -> Value {
         "screenshotButton","screenshotHidePanel","dictationButton",
         "animationsEnabled","fpsMeter","mosaicOpen","quickRepliesButton",
         "omabridgeIndicator",
-        "threadDetailsOpen","projectColors","projectChips",
+        "threadDetailsOpen","projectColors","projectChips","chipsExpanded",
     ] {
         if let Some(v) = input[key].as_bool() {
             out[key] = json!(v)
