@@ -219,7 +219,8 @@ Item {
   // Tasks, queue, approvals, questions and the live status line share the composer's column.
   readonly property real composerColumnWidth: composerPanel.width
   readonly property var searchInput: searchField
-  readonly property var sidebarView: threads
+  readonly property var projectThreads:projectTreeLoader.item
+  readonly property var sidebarView: projectLayout && projectThreads ? projectThreads : threads
   property bool usageCollapsed: bridge.viewState.usageExpanded !== true
   onUsageCollapsedChanged: if(initialized && bridge.viewState.usageExpanded !== !usageCollapsed) bridge.rememberView({usageExpanded:!usageCollapsed,quotaCollapsed:usageCollapsed})
   property real sidebarWidth: Math.max(260,Math.min(600,bridge.viewState.sidebarWidth || 300))
@@ -274,11 +275,13 @@ Item {
     if(inputRows.some(function(t){return t.key===root.bridge.selectedKey}))inputExpanded=true
     if(snoozedRows.some(function(t){return t.key===root.bridge.selectedKey}))snoozedExpanded=true
     if(settledRows.some(function(t){return t.key===root.bridge.selectedKey}))settledExpanded=true
+    if(projectLayout&&projectThreads)projectThreads.reveal(bridge.selectedKey)
     syncSidebar();focusSidebar();sidebarRefocus.restart()
   }
   Timer{id:sidebarRefocus;interval:0;onTriggered:if(root.opened)root.focusSidebar()}
   // One focus order across cards and shelf headers, matching the native sidebar.
   function sidebarFocusItems(){
+    if(projectLayout&&projectThreads)return projectThreads.entries.map(function(e,i){return {item:projectThreads,index:i,key:e.kind==="thread"?e.key:undefined}})
     var out=[]
     function list(view,rows){rows.forEach(function(t,i){out.push({item:view,index:i,key:t.key})})}
     if(pinnedRows.length){out.push({item:pinnedToggle,index:-1});list(pinnedThreads,visiblePinnedRows)}
@@ -296,7 +299,7 @@ Item {
     next.item.forceActiveFocus()
     if(next.index>=0){next.item.currentIndex=next.index;next.item.positionViewAtIndex(next.index,ListView.Contain)}
   }
-  function navigateThread(step) { var rows=visiblePinnedRows.concat(activeRows).concat(visibleWorkingRows).concat(visibleInputRows).concat(visibleSnoozedRows).concat(visibleSettledRows);if(!rows.length)return;var index=rows.findIndex(function(t){return t.key===root.bridge.selectedKey});var t=rows[(index+step+rows.length)%rows.length];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus() }
+  function navigateThread(step) { var rows=nativeThreadRows();if(!rows.length)return;var index=rows.findIndex(function(t){return t.key===root.bridge.selectedKey});var t=rows[(index+step+rows.length)%rows.length];bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus() }
   readonly property bool nativeKeybindingsEnabled:typeof bridge.keybindingRulesFor==="function"
   readonly property var nativeShortcutController:nativeShortcuts
   readonly property var nativePrimaryKeys:nativeKeybindingsEnabled?bridge.keybindingRulesFor(bridge.primaryKeybindingEnvironment):[]
@@ -315,7 +318,7 @@ Item {
       Qt.callLater(function(){if(root.opened&&!root.bridge.selectedKey&&root.bridge.selectionEpoch===epoch)sidebarActions.newThread(null,thread.projectKey)})
     }
   }
-  function nativeThreadRows(){return visiblePinnedRows.concat(activeRows).concat(visibleWorkingRows).concat(visibleInputRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
+  function nativeThreadRows(){if(projectLayout&&projectThreads)return projectThreads.visibleThreads;return visiblePinnedRows.concat(activeRows).concat(visibleWorkingRows).concat(visibleInputRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
   function supportsNativeShortcut(command){
     if(!nativeKeybindingsEnabled)return false
     if(workingPopup.visible)return command==="diff.toggle"
@@ -464,6 +467,7 @@ Item {
   property bool sidebarCompact: !!bridge.viewState.sidebarCompact
   // O3 orders threads by the agent's latest answer; "t3" keeps T3's own order.
   // Appearance > Thread rows: one-line rows (default), marquee titles, project colours.
+  readonly property bool projectLayout: bridge.viewState.interfaceLayout === "projects"
   readonly property bool focusLayout: bridge.viewState.interfaceLayout === "focus"
   property bool boardOpen:false
   onFocusLayoutChanged:if(!focusLayout)boardOpen=false
@@ -472,7 +476,7 @@ Item {
   readonly property bool projectWash: bridge.viewState.projectColors !== false
   // Appearance > Sidebar > Style: "sober" (default) keeps colour to small dots,
   // greys and monospace figures; "vivid" brings back washes, strips and glows.
-  readonly property bool sober: focusLayout || bridge.viewState.sidebarStyle !== "vivid"
+  readonly property bool sober: focusLayout || projectLayout || bridge.viewState.sidebarStyle !== "vivid"
   readonly property bool orderByReply: (bridge.viewState.threadOrder || "reply") === "reply"
   property bool workingExpanded: !!bridge.viewState.workingExpanded
   onSidebarCompactChanged:if(initialized && bridge.viewState.sidebarCompact!==sidebarCompact)bridge.rememberView({sidebarCompact:sidebarCompact})
@@ -899,14 +903,15 @@ Item {
     NumberAnimation { properties: "x,y"; duration: T3Motion.duration(root.rowMoveMs); easing.type: Easing.InOutCubic }
   }
   Component {
-    id: threadDelegate
+    id: sidebarThreadComponent
     T3ThreadRow {
       id: sidebarRow
       required property var row
       required property int index
       readonly property var modelData: row
       thread: modelData; bridge: root.bridge
-      width: ListView.view ? ListView.view.width : 0
+      x:root.projectLayout?Style.space(12):0
+      width: ListView.view ? ListView.view.width-(root.projectLayout?Style.space(12):0) : 0
       compactRows:root.compactRows;marquee:root.titleMarquee;projectWash:root.projectWash;sober:root.sober;projectTint:root.groupTints[modelData.projectKey] || "transparent"
       hostStyles:root.bridge.viewState.hostStyles || ({});manyHosts:(root.bridge.state.environments || []).length>1
       projectScoped:!!root.projectFilter&&(Array.isArray(root.projectScope)?root.projectScope.indexOf(modelData.projectKey)>=0:root.projectScope===modelData.projectKey)
@@ -1460,6 +1465,16 @@ Item {
               Text { objectName:"t3ManagementError"; Layout.fillWidth: true; text: T3I18n.error(root.bridge.managementError); color: Color.urgent; font.pixelSize: Style.font.caption; wrapMode: Text.Wrap; maximumLineCount: 6; elide: Text.ElideRight; textFormat: Text.PlainText }
               T3IconButton { name: "refresh-cw"; visible: !!root.bridge.managementRequest; tooltipText: T3I18n.tr("Retry action"); onClicked: root.bridge.manage({}) }
             }
+            Loader {
+              id:projectTreeLoader;objectName:"t3ProjectSidebarLoader";visible:active;active:root.projectLayout
+              Layout.fillWidth:true;Layout.fillHeight:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              sourceComponent:T3ProjectSidebar {
+                bridge:root.bridge;threads:root.mosaicRows;groups:root.projectGroups;threadDelegate:sidebarThreadComponent
+                nest:function(rows){return root.nestRows(rows)}
+              }
+            }
+            ColumnLayout {
+              visible:!root.projectLayout;Layout.fillWidth:true;Layout.fillHeight:true;spacing:0
             // Pinned threads, on top; a ready one moves down to head Ready.
             T3ShelfResizer{objectName:"pinnedShelfResizer";label:"Pinned threads height";visible:pinnedReveal.shown&&!pinnedReveal.moving;value:root.pinnedShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("pinnedShelfHeight",h)}}
             T3Reveal {
@@ -1498,7 +1513,7 @@ Item {
                 highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:pinnedThreads.activeFocus;radius:Style.space(8)}
                 Keys.onReturnPressed:{var t=root.visiblePinnedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
                 Keys.onEnterPressed:{var t=root.visiblePinnedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-                model:pinnedRowModel;delegate:threadDelegate
+                model:root.projectLayout?null:pinnedRowModel;delegate:sidebarThreadComponent
                 remove:RowRemove{}
                 displaced:RowDisplaced{}
                 move:RowMove{}
@@ -1535,14 +1550,14 @@ Item {
               Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(8)
               clip: true; reuseItems: true; cacheBuffer: 0
               visible: root.activeRows.length > 0 || (!root.pinnedRows.length && !root.workingRows.length && !root.inputRows.length && !root.snoozedRows.length && !root.settledRows.length)
-              model: activeRowModel
+              model: root.projectLayout?null:activeRowModel
               remove: RowRemove {}
               displaced: RowDisplaced {}
               move: RowMove {}
               onContentYChanged: if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")
               spacing: 0
               Controls.ScrollBar.vertical: Controls.ScrollBar { policy: Controls.ScrollBar.AsNeeded }
-              delegate: threadDelegate
+              delegate: sidebarThreadComponent
               Text {
                 anchors.centerIn: parent; width: parent.width - Style.space(28)
                 visible: threads.count === 0
@@ -1591,7 +1606,7 @@ Item {
                 highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:workingThreads.activeFocus;radius:Style.space(8)}
                 Keys.onReturnPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
                 Keys.onEnterPressed:{var t=root.visibleWorkingRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-                model:workingRowModel;delegate:threadDelegate
+                model:root.projectLayout?null:workingRowModel;delegate:sidebarThreadComponent
                 remove:RowRemove{}
                 displaced:RowDisplaced{}
                 move:RowMove{}
@@ -1637,7 +1652,7 @@ Item {
                 highlight:Rectangle{color:Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.09);visible:inputThreads.activeFocus;radius:Style.space(8)}
                 Keys.onReturnPressed:{var t=root.visibleInputRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
                 Keys.onEnterPressed:{var t=root.visibleInputRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-                model:inputRowModel;delegate:threadDelegate
+                model:root.projectLayout?null:inputRowModel;delegate:sidebarThreadComponent
                 remove:RowRemove{}
                 displaced:RowDisplaced{}
                 move:RowMove{}
@@ -1680,7 +1695,7 @@ Item {
                 highlightFollowsCurrentItem:activeFocus
                 Keys.onReturnPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
                 Keys.onEnterPressed:{var t=root.visibleSnoozedRows[currentIndex];if(t)root.bridge.selectThread(t.environmentId,t.id)}
-                model:snoozedRowModel;delegate:threadDelegate
+                model:root.projectLayout?null:snoozedRowModel;delegate:sidebarThreadComponent
                 remove:RowRemove{}
                 displaced:RowDisplaced{}
                 move:RowMove{}
@@ -1744,7 +1759,7 @@ Item {
                 Keys.onReturnPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
                 Keys.onEnterPressed: {var t=root.visibleSettledRows[currentIndex];if(t){root.bridge.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}
                 clip: true; reuseItems: true; cacheBuffer: 0; spacing: 0
-                model: settledRowModel; delegate: threadDelegate
+                model: root.projectLayout?null:settledRowModel; delegate: sidebarThreadComponent
                 remove: RowRemove {}
                 displaced: RowDisplaced {}
                 move: RowMove {}
@@ -1753,6 +1768,7 @@ Item {
               }
             }
             Item { objectName:"sidebarFiller"; Layout.fillWidth:true; Layout.fillHeight:!threads.visible&&!workingReveal.Layout.fillHeight&&!settledReveal.Layout.fillHeight }
+            }
             Rectangle { Layout.fillWidth: true; height: 1; color: root.divider }
             RowLayout {
               objectName:"t3SidebarFooter"
@@ -1796,8 +1812,8 @@ Item {
               T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
               T3IconButton {
                 objectName:"sidebarLayoutToggle";name:"chevron-up";implicitWidth:Style.space(18)
-                tint:root.focusLayout?Color.accent:root.dim
-                tooltipText:T3I18n.tr("Interface layout")+" · "+T3I18n.tr(root.focusLayout?"Focus":"Classic")
+                tint:root.focusLayout||root.projectLayout?Color.accent:root.dim
+                tooltipText:T3I18n.tr("Interface layout")+" · "+T3I18n.tr(root.projectLayout?"By project":root.focusLayout?"Focus":"Classic")
                 onClicked:sidebarLayoutMenu.opened?sidebarLayoutMenu.close():sidebarLayoutMenu.popup()
                 Controls.Menu {
                   id:sidebarLayoutMenu;objectName:"sidebarLayoutMenu";width:Style.space(200)
@@ -1805,8 +1821,9 @@ Item {
                   palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
                   background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.divider}
                   Controls.MenuItem{text:T3I18n.tr("Interface layout");enabled:false}
-                  Controls.MenuItem{objectName:"sidebarLayoutClassic";text:T3I18n.tr("Classic");checkable:true;checked:!root.focusLayout;onTriggered:root.bridge.rememberView({interfaceLayout:"classic"})}
+                  Controls.MenuItem{objectName:"sidebarLayoutClassic";text:T3I18n.tr("Classic");checkable:true;checked:!root.focusLayout&&!root.projectLayout;onTriggered:root.bridge.rememberView({interfaceLayout:"classic"})}
                   Controls.MenuItem{objectName:"sidebarLayoutFocus";text:T3I18n.tr("Focus");checkable:true;checked:root.focusLayout;onTriggered:root.bridge.rememberView({interfaceLayout:"focus"})}
+                  Controls.MenuItem{objectName:"sidebarLayoutProjects";text:T3I18n.tr("By project");checkable:true;checked:root.projectLayout;onTriggered:root.bridge.rememberView({interfaceLayout:"projects"})}
                 }
               }
               T3IconButton {name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:root.bridge.refresh()}

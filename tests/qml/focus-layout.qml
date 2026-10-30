@@ -77,6 +77,7 @@ ShellRoot {
    keys.findChild(panel,"sidebarLayoutClassic").triggered();phase=11
   }else if(phase===11){
    check(!panel.focusLayout&&!panel.sidebarCompact&&b.draft.text===originalDraft,"quick switch keeps grouping and draft unchanged")
+   check(!panel.projectThreads,"other modes do not keep a hidden project tree alive")
    console.log("FOCUS_LAYOUT_QML_PASS: default classic, searchable preference, reversible style, composer host, board status/filter/navigation and draft preservation");Qt.quit()
   }
  }}

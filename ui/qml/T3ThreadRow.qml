@@ -60,7 +60,7 @@ Item {
   // Shelved rows (settled, snoozed, subagents) are always one line; compact
   // rows (Appearance > Thread rows) put active threads on one line too.
   readonly property bool shelved:!!thread.settled||!!thread.snoozed||child
-  readonly property bool focusLayout:(bridge.viewState || {}).interfaceLayout === "focus"
+  readonly property bool focusLayout:(bridge.viewState || {}).interfaceLayout === "focus" || (bridge.viewState || {}).interfaceLayout === "projects"
   property bool compactRows:false
   readonly property bool slim:focusLayout||shelved||compactRows
   // Compact active rows keep a second line: the project, under the title.

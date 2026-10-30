@@ -27,6 +27,7 @@ pub fn sanitize(input: &Value) -> Value {
     for (key,min,max) in [("idleReleaseMinutes",1,1440),("autoCompactFallbackMinutes",1,1440),("autoCompactMinTokens",1000,1000000)] {if let Some(n)=input[key].as_u64().filter(|n|*n>=min&&*n<=max){out[key]=json!(n)}}
     if let Some(map)=input["idleReleaseProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if value.is_null()||value.as_u64().is_some_and(|n|(1..=1440).contains(&n)){clean.insert(key.clone(),value.clone());}}}out["idleReleaseProviderMinutes"]=Value::Object(clean);}
     if let Some(map)=input["autoCompactProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if valid_id(key)||key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if let Some(n)=value.as_u64().filter(|n|*n>=1&&*n<=1440){clean.insert(key.clone(),json!(n));}}}out["autoCompactProviderMinutes"]=Value::Object(clean);}
+    if let Some(map)=input["projectTreeCollapsed"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(4096){if k.starts_with("project/")&&k.len()<=2200&&!k.chars().any(char::is_control){if let Some(b)=v.as_bool(){clean.insert(k.clone(),json!(b));}}}out["projectTreeCollapsed"]=Value::Object(clean);}
     // Provider sign-in notices hidden per host, by the set of providers they named.
     if let Some(map)=input["signInDismissed"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if let Some(v)=value.as_str().filter(|v|valid_id(key)&&v.len()<=2048){clean.insert(key.clone(),json!(v));}}out["signInDismissed"]=Value::Object(clean);}
     if let Some(list)=input["autoCompactExcludedThreads"].as_array(){out["autoCompactExcludedThreads"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|s.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)))).take(1024).collect::<Vec<_>>());}
@@ -48,7 +49,7 @@ pub fn sanitize(input: &Value) -> Value {
     if let Some(map)=input["hostStyles"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(64){if !valid_id(k){continue}let mut style=serde_json::Map::new();if let Some(i)=v["icon"].as_str().filter(|i|matches!(*i,"server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){style.insert("icon".into(),json!(i));}if let Some(c)=v["color"].as_str().filter(|c|c.is_empty()||(c.len()==7&&c.starts_with('#')&&c[1..].chars().all(|h|h.is_ascii_hexdigit()))){style.insert("color".into(),json!(c));}if let Some(b)=v["showName"].as_bool(){style.insert("showName".into(),json!(b));}clean.insert(k.clone(),Value::Object(style));}out["hostStyles"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
     if matches!(input["starfieldMode"].as_str(),Some("auto"|"full"|"light"|"off")){out["starfieldMode"]=input["starfieldMode"].clone();}
-    for (key,allowed) in [("interfaceLayout",&["classic","focus"][..]),("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..]),("sidebarStyle",&["sober","vivid"][..])] {
+    for (key,allowed) in [("interfaceLayout",&["classic","focus","projects"][..]),("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..]),("sidebarStyle",&["sober","vivid"][..])] {
         if input[key].as_str().is_some_and(|v|allowed.contains(&v)){out[key]=input[key].clone();}
     }
     if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
@@ -137,7 +138,7 @@ mod tests {
     #[test]
     fn interface_layout_is_optional_and_preserves_other_preferences() {
         assert!(sanitize(&json!({})).get("interfaceLayout").is_none());
-        for layout in ["classic", "focus"] {
+        for layout in ["classic", "focus", "projects"] {
             let clean = sanitize(&json!({"interfaceLayout":layout,"sidebarStyle":"vivid","threadRowSize":"large","projectColors":false}));
             assert_eq!(clean["interfaceLayout"], layout);
             assert_eq!(clean["sidebarStyle"], "vivid");
@@ -147,6 +148,12 @@ mod tests {
         for invalid in [json!("unknown"), json!(true), json!(null)] {
             assert!(sanitize(&json!({"interfaceLayout":invalid})).get("interfaceLayout").is_none());
         }
+    }
+    #[test]
+    fn project_tree_collapses_are_bounded_and_saved() {
+        let clean=sanitize(&json!({"interfaceLayout":"projects","projectTreeCollapsed":{"project/repository/alpha":true,"project/repository/alpha/state/working":false,"bad":true,"project/bad\nkey":true,"project/wrong-type":"yes"}}));
+        assert_eq!(clean["interfaceLayout"],"projects");
+        assert_eq!(clean["projectTreeCollapsed"],json!({"project/repository/alpha":true,"project/repository/alpha/state/working":false}));
     }
     #[test]
     fn mosaic_and_quick_replies_are_bounded() {

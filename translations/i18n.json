@@ -1988,7 +1988,9 @@
     "Classic": "Classic",
     "Focus": "Focus",
     "Task board": "Task board",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.",
+    "By project": "By project",
+    "Snoozed": "Snoozed"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3979,7 +3981,9 @@
     "Classic": "Actual",
     "Focus": "Enfoque",
     "Task board": "Tablero de tareas",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Enfoque añade etiquetas de host, contexto al editor y un tablero de tareas. Actual mantiene el formato existente. Se conservan tus otros ajustes de apariencia."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Enfoque añade etiquetas de host, contexto al editor y un tablero de tareas. Actual mantiene el formato existente. Se conservan tus otros ajustes de apariencia.",
+    "By project": "Por proyecto",
+    "Snoozed": "Pospuestos"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5970,7 +5974,9 @@
     "Classic": "Atual",
     "Focus": "Foco",
     "Task board": "Quadro de tarefas",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Foco adiciona etiquetas de host, contexto ao editor e um quadro de tarefas. Atual mantém o formato existente. As outras definições de aparência são preservadas."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Foco adiciona etiquetas de host, contexto ao editor e um quadro de tarefas. Atual mantém o formato existente. As outras definições de aparência são preservadas.",
+    "By project": "Por projeto",
+    "Snoozed": "Adiadas"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7961,7 +7967,9 @@
     "Classic": "Actuelle",
     "Focus": "Concentration",
     "Task board": "Tableau des tâches",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Concentration ajoute les noms des hôtes, le contexte de saisie et un tableau des tâches. Actuelle conserve la disposition existante. Les autres réglages d’apparence sont préservés."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Concentration ajoute les noms des hôtes, le contexte de saisie et un tableau des tâches. Actuelle conserve la disposition existante. Les autres réglages d’apparence sont préservés.",
+    "By project": "Par projet",
+    "Snoozed": "En veille"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9952,7 +9960,9 @@
     "Classic": "Aktuell",
     "Focus": "Fokus",
     "Task board": "Aufgabenübersicht",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus ergänzt Hostnamen, Eingabekontext und eine Aufgabenübersicht. Aktuell behält das bisherige Layout bei. Andere Darstellungseinstellungen bleiben erhalten."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus ergänzt Hostnamen, Eingabekontext und eine Aufgabenübersicht. Aktuell behält das bisherige Layout bei. Andere Darstellungseinstellungen bleiben erhalten.",
+    "By project": "Nach Projekt",
+    "Snoozed": "Zurückgestellt"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11943,7 +11953,9 @@
     "Classic": "Attuale",
     "Focus": "Focus",
     "Task board": "Bacheca attività",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus aggiunge etichette host, contesto nell’editor e una bacheca attività. Attuale mantiene il formato esistente. Le altre impostazioni di aspetto vengono conservate."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus aggiunge etichette host, contesto nell’editor e una bacheca attività. Attuale mantiene il formato esistente. Le altre impostazioni di aspetto vengono conservate.",
+    "By project": "Per progetto",
+    "Snoozed": "Rimandati"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13934,7 +13946,9 @@
     "Classic": "Huidig",
     "Focus": "Focus",
     "Task board": "Takenbord",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus voegt hostlabels, invoercontext en een takenbord toe. Huidig behoudt de bestaande indeling. Andere weergave-instellingen blijven behouden."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus voegt hostlabels, invoercontext en een takenbord toe. Huidig behoudt de bestaande indeling. Andere weergave-instellingen blijven behouden.",
+    "By project": "Per project",
+    "Snoozed": "Uitgesteld"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15925,7 +15939,9 @@
     "Classic": "Obecny",
     "Focus": "Skupienie",
     "Task board": "Tablica zadań",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Skupienie dodaje etykiety hostów, kontekst edytora i tablicę zadań. Obecny zachowuje dotychczasowy układ. Inne ustawienia wyglądu pozostają bez zmian."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Skupienie dodaje etykiety hostów, kontekst edytora i tablicę zadań. Obecny zachowuje dotychczasowy układ. Inne ustawienia wyglądu pozostają bez zmian.",
+    "By project": "Według projektu",
+    "Snoozed": "Odłożone"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17916,7 +17932,9 @@
     "Classic": "Текущий",
     "Focus": "Фокус",
     "Task board": "Доска задач",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Фокус добавляет метки хостов, контекст ввода и доску задач. Текущий сохраняет прежний макет. Остальные настройки оформления сохраняются."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Фокус добавляет метки хостов, контекст ввода и доску задач. Текущий сохраняет прежний макет. Остальные настройки оформления сохраняются.",
+    "By project": "По проектам",
+    "Snoozed": "Отложенные"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19907,7 +19925,9 @@
     "Classic": "Поточний",
     "Focus": "Фокус",
     "Task board": "Дошка завдань",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Фокус додає позначки хостів, контекст введення та дошку завдань. Поточний зберігає наявний макет. Інші налаштування вигляду зберігаються."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Фокус додає позначки хостів, контекст введення та дошку завдань. Поточний зберігає наявний макет. Інші налаштування вигляду зберігаються.",
+    "By project": "За проєктами",
+    "Snoozed": "Відкладені"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21898,7 +21918,9 @@
     "Classic": "現在の形式",
     "Focus": "フォーカス",
     "Task board": "タスクボード",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "フォーカスはホスト名、入力欄のコンテキスト、タスクボードを追加します。現在の形式は既存のレイアウトを維持します。他の外観設定は保持されます。"
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "フォーカスはホスト名、入力欄のコンテキスト、タスクボードを追加します。現在の形式は既存のレイアウトを維持します。他の外観設定は保持されます。",
+    "By project": "プロジェクト別",
+    "Snoozed": "スヌーズ中"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23889,7 +23911,9 @@
     "Classic": "현재 형식",
     "Focus": "집중",
     "Task board": "작업 보드",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "집중은 호스트 이름, 입력 컨텍스트 및 작업 보드를 추가합니다. 현재 형식은 기존 레이아웃을 유지합니다. 다른 모양 설정은 보존됩니다."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "집중은 호스트 이름, 입력 컨텍스트 및 작업 보드를 추가합니다. 현재 형식은 기존 레이아웃을 유지합니다. 다른 모양 설정은 보존됩니다.",
+    "By project": "프로젝트별",
+    "Snoozed": "다시 알림"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25880,7 +25904,9 @@
     "Classic": "当前布局",
     "Focus": "专注",
     "Task board": "任务看板",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "专注布局添加主机标签、输入上下文和任务看板。当前布局保持现有布局。其他外观设置将保留。"
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "专注布局添加主机标签、输入上下文和任务看板。当前布局保持现有布局。其他外观设置将保留。",
+    "By project": "按项目",
+    "Snoozed": "已推迟"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27871,7 +27897,9 @@
     "Classic": "الحالي",
     "Focus": "تركيز",
     "Task board": "لوحة المهام",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "يضيف تركيز تسميات المضيف وسياق الإدخال ولوحة المهام. يحافظ الحالي على التخطيط الموجود. تُحفظ إعدادات المظهر الأخرى."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "يضيف تركيز تسميات المضيف وسياق الإدخال ولوحة المهام. يحافظ الحالي على التخطيط الموجود. تُحفظ إعدادات المظهر الأخرى.",
+    "By project": "حسب المشروع",
+    "Snoozed": "مؤجلة"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29862,7 +29890,9 @@
     "Classic": "Mevcut",
     "Focus": "Odak",
     "Task board": "Görev panosu",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Odak, ana makine etiketleri, giriş bağlamı ve görev panosu ekler. Mevcut, geçerli düzeni korur. Diğer görünüm ayarlarınız korunur."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Odak, ana makine etiketleri, giriş bağlamı ve görev panosu ekler. Mevcut, geçerli düzeni korur. Diğer görünüm ayarlarınız korunur.",
+    "By project": "Projeye göre",
+    "Snoozed": "Ertelenen"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31853,7 +31883,9 @@
     "Classic": "Nuvarande",
     "Focus": "Fokus",
     "Task board": "Uppgiftstavla",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus lägger till värdetiketter, inmatningskontext och en uppgiftstavla. Nuvarande behåller befintlig layout. Övriga utseendeinställningar bevaras."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus lägger till värdetiketter, inmatningskontext och en uppgiftstavla. Nuvarande behåller befintlig layout. Övriga utseendeinställningar bevaras.",
+    "By project": "Efter projekt",
+    "Snoozed": "Uppskjutna"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33844,7 +33876,9 @@
     "Classic": "Nuværende",
     "Focus": "Fokus",
     "Task board": "Opgavetavle",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus tilføjer værtsnavne, inputkontekst og en opgavetavle. Nuværende bevarer det eksisterende layout. Dine andre udseendeindstillinger bevares."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus tilføjer værtsnavne, inputkontekst og en opgavetavle. Nuværende bevarer det eksisterende layout. Dine andre udseendeindstillinger bevares.",
+    "By project": "Efter projekt",
+    "Snoozed": "Udsatte"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35835,7 +35869,9 @@
     "Classic": "Nåværende",
     "Focus": "Fokus",
     "Task board": "Oppgavetavle",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus legger til vertsetiketter, inndatakontekst og en oppgavetavle. Nåværende beholder eksisterende oppsett. Andre utseendeinnstillinger bevares."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Fokus legger til vertsetiketter, inndatakontekst og en oppgavetavle. Nåværende beholder eksisterende oppsett. Andre utseendeinnstillinger bevares.",
+    "By project": "Etter prosjekt",
+    "Snoozed": "Utsatte"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37826,7 +37862,9 @@
     "Classic": "Nykyinen",
     "Focus": "Keskittyminen",
     "Task board": "Tehtävätaulu",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Keskittyminen lisää koneiden nimet, syöttökontekstin ja tehtävätaulun. Nykyinen säilyttää olemassa olevan asettelun. Muut ulkoasuasetukset säilyvät."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Keskittyminen lisää koneiden nimet, syöttökontekstin ja tehtävätaulun. Nykyinen säilyttää olemassa olevan asettelun. Muut ulkoasuasetukset säilyvät.",
+    "By project": "Projekteittain",
+    "Snoozed": "Lykätyt"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39817,6 +39855,8 @@
     "Classic": "Současné",
     "Focus": "Soustředění",
     "Task board": "Tabule úkolů",
-    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Soustředění přidá popisky hostitelů, kontext zadávání a tabuli úkolů. Současné zachová stávající rozložení. Ostatní nastavení vzhledu zůstanou zachována."
+    "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Soustředění přidá popisky hostitelů, kontext zadávání a tabuli úkolů. Současné zachová stávající rozložení. Ostatní nastavení vzhledu zůstanou zachována.",
+    "By project": "Podle projektu",
+    "Snoozed": "Odložené"
   }
 }

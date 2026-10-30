@@ -23,7 +23,7 @@ Rectangle {
     if(command==="modelPicker.previousProvider"||command==="modelPicker.nextProvider"){modelPicker.moveProvider(command==="modelPicker.nextProvider"?1:-1);return}
     var jump=/^modelPicker\.jump\.([1-9])$/.exec(command);if(jump)modelPicker.selectResult(Number(jump[1])-1)
   }
-  readonly property bool focusLayout:bridge.viewState.interfaceLayout === "focus"
+  readonly property bool focusLayout:bridge.viewState.interfaceLayout === "focus" || (bridge.viewState || {}).interfaceLayout === "projects"
   required property var bridge
   property bool showOptions: false
   property bool expanded: false
