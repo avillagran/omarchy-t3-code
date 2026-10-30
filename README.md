@@ -64,6 +64,7 @@ and **Focus**. Focus adds two-line thread rows with host labels, project/host/br
 context in the composer, a quieter conversation and a **Task board** in the header.
 The board follows the sidebar filters; click a card to open its conversation.
 Switching back restores your existing appearance choices and keeps drafts intact.
+The chevron beside the sidebar grouping button switches layouts directly.
 
 
 Press **Super+Shift+A**, open **O3 Code** from the app launcher or click **O3** in the status bar

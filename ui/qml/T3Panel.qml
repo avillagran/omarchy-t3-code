@@ -1794,6 +1794,21 @@ Item {
                 }
               }
               T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
+              T3IconButton {
+                objectName:"sidebarLayoutToggle";name:"chevron-up";implicitWidth:Style.space(18)
+                tint:root.focusLayout?Color.accent:root.dim
+                tooltipText:T3I18n.tr("Interface layout")+" · "+T3I18n.tr(root.focusLayout?"Focus":"Classic")
+                onClicked:sidebarLayoutMenu.opened?sidebarLayoutMenu.close():sidebarLayoutMenu.popup()
+                Controls.Menu {
+                  id:sidebarLayoutMenu;objectName:"sidebarLayoutMenu";width:Style.space(200)
+                  y:-height-Style.space(6)
+                  palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
+                  background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.divider}
+                  Controls.MenuItem{text:T3I18n.tr("Interface layout");enabled:false}
+                  Controls.MenuItem{objectName:"sidebarLayoutClassic";text:T3I18n.tr("Classic");checkable:true;checked:!root.focusLayout;onTriggered:root.bridge.rememberView({interfaceLayout:"classic"})}
+                  Controls.MenuItem{objectName:"sidebarLayoutFocus";text:T3I18n.tr("Focus");checkable:true;checked:root.focusLayout;onTriggered:root.bridge.rememberView({interfaceLayout:"focus"})}
+                }
+              }
               T3IconButton {name:"refresh-cw";tooltipText:T3I18n.tr("Refresh");onClicked:root.bridge.refresh()}
             }
 

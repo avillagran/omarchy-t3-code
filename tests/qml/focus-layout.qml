@@ -68,6 +68,15 @@ ShellRoot {
    check(!panel.focusLayout&&!r.slim&&!r.sober&&!r.projectWash,"classic restores prior appearance settings")
    check(!keys.findChild(panel,"t3FocusComposerContext").visible,"classic composer restored")
    check(b.draft.text===originalDraft,"draft survives full round trip")
+   keys.findChild(panel,"sidebarLayoutToggle").clicked();phase=9
+  }else if(phase===9){
+   check(keys.findChild(panel,"sidebarLayoutMenu").opened,"quick layout menu opens from sidebar footer")
+   keys.findChild(panel,"sidebarLayoutFocus").triggered();keys.findChild(panel,"sidebarLayoutMenu").close();phase=10
+  }else if(phase===10){
+   check(panel.focusLayout&&b.viewState.interfaceLayout==="focus","quick menu shares the persisted preference")
+   keys.findChild(panel,"sidebarLayoutClassic").triggered();phase=11
+  }else if(phase===11){
+   check(!panel.focusLayout&&!panel.sidebarCompact&&b.draft.text===originalDraft,"quick switch keeps grouping and draft unchanged")
    console.log("FOCUS_LAYOUT_QML_PASS: default classic, searchable preference, reversible style, composer host, board status/filter/navigation and draft preservation");Qt.quit()
   }
  }}
