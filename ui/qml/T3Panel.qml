@@ -622,11 +622,14 @@ Item {
   readonly property var sidebarRows: Sidebar.rows(hostThreads, statusFilter, projectScope, settledExpanded, bridge.query, searchContext)
   // Host names and the server's message matches for the current search.
   readonly property bool searching: Sidebar.terms(bridge.query).length > 0
+  // While searching, every group lists its best matches first (Sidebar.rank).
+  readonly property var searchRanks: searching ? Sidebar.rank(hostThreads.filter(function(t) { return Sidebar.matches(t, root.statusFilter, root.projectScope) }), bridge.query, searchContext) : ({})
+  function rankFirst(compare) { return function(a, b) { if (root.searching) { var d = (root.searchRanks[b.key] || 0) - (root.searchRanks[a.key] || 0); if (d) return d } return compare(a, b) } }
   readonly property var searchContext: {
     var hosts = {}, hits = {}, s = bridge.sidebarSearch || {}
     ;(bridge.state.environments || []).forEach(function(e) { hosts[e.id] = e.name || e.label || e.id })
-    if (s.query && Sidebar.fold(s.query) === Sidebar.fold(String(bridge.query).trim())) (s.matches || []).forEach(function(m) { hits[m.environmentId + "/" + m.threadId] = true })
-    return {hosts: hosts, hits: hits}
+    if (s.query && Sidebar.fold(s.query) === Sidebar.fold(Sidebar.freeText(bridge.query))) (s.matches || []).forEach(function(m) { hits[m.environmentId + "/" + m.threadId] = true })
+    return {hosts: hosts, hits: hits, groups: threadGroups}
   }
   // Filtering animates like a snapshot change: rows leave and arrive.
   Connections { target: root.bridge; function onQueryChanged() { root.rowMotionPending = true } }
@@ -648,12 +651,12 @@ Item {
     if(t&&root.pinnedReady(t))hold[key]=true
     if(JSON.stringify(hold)!==JSON.stringify(root.pinnedHold)){root.rowMotionPending=true;root.pinnedHold=hold}
   }}
-  readonly property var pinnedRows:nestRows(inboxRows.filter(function(t){return t.pinned&&!root.needsInput(t)&&!root.pinnedReady(t)}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
-  readonly property var inputRows:nestRows(inboxRows.filter(root.needsInput).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
+  readonly property var pinnedRows:nestRows(inboxRows.filter(function(t){return t.pinned&&!root.needsInput(t)&&!root.pinnedReady(t)}).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)})))
+  readonly property var inputRows:nestRows(inboxRows.filter(root.needsInput).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)})))
   readonly property var visiblePinnedRows:pinnedExpanded ? pinnedRows : []
   readonly property var visibleInputRows:inputExpanded ? inputRows : []
-  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.needsInput(t)&&(!t.pinned||root.pinnedReady(t))&&(!root.sidebarCompact || !Sidebar.inWorkingShelf(t))}).sort(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)}))
-  readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(function(a,b){return (b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)})) : []
+  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.needsInput(t)&&(!t.pinned||root.pinnedReady(t))&&(!root.sidebarCompact || !Sidebar.inWorkingShelf(t))}).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)})))
+  readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(root.rankFirst(function(a,b){return (b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)}))) : []
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
   readonly property var visibleSettledRows:settledShown ? settledRows : []
@@ -669,8 +672,8 @@ Item {
       })
     });return missing
   }
-  readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(Sidebar.compareSettled))
-  readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}))
+  readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(root.rankFirst(Sidebar.compareSettled)))
+  readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}).sort(root.rankFirst(function(){return 0})))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   // A project group's colour is its first project's, so grouped projects share it.
   // One chip per thread group, ahead of the project chips; a click filters by it.
@@ -1332,6 +1335,14 @@ Item {
               }
               T3IconButton { objectName:"newProjectButton"; name: "folder-plus"; tooltipText: T3I18n.tr("Add project"); onClicked: sidebarActions.addProject() }
               T3IconButton { objectName:"newChatButton"; name: "square-pen"; tooltipText: T3I18n.tr("New chat"); onClicked: sidebarActions.newThread() }
+            }
+            // How to aim the search, while the empty field has focus.
+            Text {
+              objectName:"t3SearchHint"
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);Layout.topMargin:-Style.space(8)
+              visible:searchField.activeFocus&&!root.bridge.query
+              text:T3I18n.tr("Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out")
+              color:root.dim;font.pixelSize:Style.font.caption-Style.space(1);wrapMode:Text.Wrap;textFormat:Text.PlainText
             }
             RowLayout {
               Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12)

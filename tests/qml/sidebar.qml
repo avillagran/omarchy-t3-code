@@ -32,6 +32,27 @@ ShellRoot {
       root.check(Sidebar.rows(threads,"all","",false,"parked")[1].id==="d","search reveals settled match")
       root.check(Sidebar.rows(threads,"failed","fixture/p1",false,"").length===0,"project and state intersection")
       root.check(Sidebar.rows(threads,"all","",false,"error")[0].id==="c","search and section filtering")
+      // Smart search: fields, word starts, initials, prefixes, phrases, exclusions and typos.
+      var lib=[{key:"e/a",id:"a",title:"Fix dictation long clips",project:"omarchy-t3-code"},
+        {key:"e/b",id:"b",title:"Sidebar search refinements",project:"omabridge"},
+        {key:"e/c",id:"c",title:"Release notes",project:"omarchy-t3-code"},
+        {key:"e/d",id:"d",title:"Audit the omabridge transport",project:"omarchy-t3-code",branch:"feat/live-wire"},
+        {key:"e/p",id:"p",title:"Pinned chores",project:"misc",pinned:true}]
+      var ctx={groups:{"e/c":"Launch"},hosts:{}}
+      function found(q){var r=Sidebar.rank(lib,q,ctx);return Object.keys(r).sort(function(x,y){return r[y]-r[x]||x.localeCompare(y)}).map(function(k){return k.slice(2)}).join()}
+      root.check(found("sid")==="b","a word start finds the title: "+found("sid"))
+      root.check(found("otc")==="a,c,d","initials find the project: "+found("otc"))
+      root.check(found("p:omabridge")==="b","p: looks only at the project: "+found("p:omabridge"))
+      root.check(found("omabridge").split(",").sort().join()==="b,d","plain words look everywhere: "+found("omabridge"))
+      root.check(found("g:launch")==="c"&&found("launch")==="c","groups are searchable: "+found("launch"))
+      root.check(found("b:live")==="d","b: looks at the branch: "+found("b:live"))
+      root.check(found("re").indexOf("c")===0,"a title that starts with the word ranks first: "+found("re"))
+      root.check(found("dictaiton")==="a","typos are forgiven when nothing matches exactly: "+found("dictaiton"))
+      root.check(found("dic")==="a"&&found("dicta -long")==="","a leading minus leaves a thread out: "+found("dicta -long"))
+      root.check(found("\"long clips\"")==="a"&&found("\"clips long\"")==="","quoted words stay together")
+      root.check(found("is:pin")==="p","is: filters by state: "+found("is:pin"))
+      root.check(found("ACCIÓN")===""&&found("réléase")==="c","accents and case never matter")
+      root.check(Sidebar.freeText('p:x "a b" -c d')==='"a b" d',"only free words go to the server: "+Sidebar.freeText('p:x "a b" -c d'))
       var family=[{id:"parent",title:"Parent"},{id:"child",title:"Child",parentThreadId:"parent",relationshipToParent:"subagent",working:true},{id:"fork",title:"Fork",parentThreadId:"parent",relationshipToParent:"fork"}]
       root.check(Sidebar.rows(family,"all","",false,"").length===2,"subagents stay outside the official sidebar roster")
       root.check(Sidebar.rows(family,"all","",false,"")[1].id==="fork","forks remain visible")

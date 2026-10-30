@@ -1977,6 +1977,7 @@
     "Pinned ({count})": "Pinned ({count})",
     "Ready ({count})": "Ready ({count})",
     "Waiting for input ({count})": "Waiting for input ({count})",
-    "Waiting for input threads height": "Waiting for input threads height"
+    "Waiting for input threads height": "Waiting for input threads height",
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out"
   }
 }

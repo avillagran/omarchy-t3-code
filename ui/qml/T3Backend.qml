@@ -2061,7 +2061,7 @@ Singleton {
   // Message matches for the sidebar search, separate from the command palette's.
   property var sidebarSearch: ({query:"",matches:[],requestId:""})
   Timer { id: sidebarSearchDebounce; interval: 260; onTriggered: root.searchSidebar(root.query) }
-  function searchSidebar(value){var q=String(value||"").trim();if(q.length<3){sidebarSearch={query:q,matches:[],requestId:""};return}var id=uuid();sidebarSearch={query:q,matches:sidebarSearch.query&&q.indexOf(sidebarSearch.query)===0?sidebarSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
+  function searchSidebar(value){var q=Sidebar.freeText(value);if(q.length<3){sidebarSearch={query:q,matches:[],requestId:""};return}var id=uuid();sidebarSearch={query:q,matches:sidebarSearch.query&&q.indexOf(sidebarSearch.query)===0?sidebarSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
   function clearSelection(){clearInlineDocuments();closeDocument();documentOpen=({busy:false,error:"",requestId:""});dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""};threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";planView=({plans:[],ready:null});planOperation=({busy:false,error:"",command:null});transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
   function selectThread(env, thread) {
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}

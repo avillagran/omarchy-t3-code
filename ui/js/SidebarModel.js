@@ -31,10 +31,31 @@ function matches(t, filter, project) {
   if (t.relationshipToParent === "subagent") return false
   return (!project || (Array.isArray(project) ? project.indexOf(t.projectKey)>=0 : t.projectKey === project)) && (filter === "all" || (filter === "settled" ? !!t.settled : filter === "pending" ? !!t.pending : state(t) === filter))
 }
-// Search forgives accents, case, word order and small typos, and also finds
-// threads whose messages matched on the server (context.hits, keyed by thread).
-function fold(text) { return String(text || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") }
-function terms(query) { return fold(query).split(/[\s\/·,]+/).filter(function(w) { return w.length > 0 }) }
+// Search reads like a person would: the title first, then project, group,
+// branch and host. Matches at the start of a field or word rank highest, then
+// whole words, initials ("otc" → omarchy-t3-code), inner text and, only when
+// nothing matches exactly, small typos. Accents, case and word order never
+// matter. Prefixes aim at one field: t: title, p: project, g: group,
+// b: branch, h: host, is: state (working, input, done, failed, pinned,
+// snoozed, settled); "quoted words" stay together and -word excludes.
+// Threads whose messages matched on the server (context.hits) are found too.
+function fold(text) { return String(text || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") }
+var FIELD_NAMES = {t: "title", title: "title", titulo: "title", p: "project", project: "project", proyecto: "project", g: "group", group: "group", grupo: "group",
+                   b: "branch", branch: "branch", rama: "branch", h: "host", host: "host", is: "is", estado: "is", state: "is"}
+var FIELD_WEIGHT = {title: 1, project: 0.85, group: 0.85, branch: 0.6, host: 0.5}
+function parse(query) {
+  var out = [], re = /(-?)(?:([a-z]+):)?(?:"([^"]*)"?|(\S+))/g, q = fold(query), m
+  while ((m = re.exec(q))) {
+    var field = m[2] ? FIELD_NAMES[m[2]] || "" : "", text = m[3] !== undefined ? m[3] : m[4] || ""
+    if (m[2] && !field) text = m[2] + ":" + text
+    text = text.replace(/^[\/·,]+|[\/·,]+$/g, "").trim()
+    if (text) out.push({text: text, field: field, not: m[1] === "-", phrase: m[3] !== undefined})
+  }
+  return out
+}
+function terms(query) { return parse(query).map(function(t) { return t.text }) }
+// The words the server should look for in messages: no field or excluded terms.
+function freeText(query) { return parse(query).filter(function(t) { return !t.field && !t.not }).map(function(t) { return t.phrase ? '"' + t.text + '"' : t.text }).join(" ") }
 // Edits needed to turn a into a prefix of b, stopping once over the limit.
 function near(a, b, limit) {
   var prev = [], i, j
@@ -47,34 +68,81 @@ function near(a, b, limit) {
   }
   return Math.min.apply(null, prev) <= limit
 }
-function termMatches(term, text, words) {
-  if (text.indexOf(term) >= 0) return true
-  var limit = term.length >= 7 ? 2 : term.length >= 4 ? 1 : 0
-  return limit > 0 && words.some(function(w) { return Math.abs(w.length - term.length) <= limit + 3 && near(term, w, limit) })
+function words(text) { return text.split(/[^a-z0-9]+/).filter(function(w) { return w.length > 0 }) }
+// How well one term fits one field, 0 to 100.
+function fit(term, text, fuzzy) {
+  if (!text || !term) return 0
+  var ws = words(text)
+  if (text.indexOf(term) === 0) return 100
+  if (ws.indexOf(term) >= 0) return 90
+  if (ws.some(function(w) { return w.indexOf(term) === 0 })) return 75
+  if (term.length >= 2 && ws.length > 1 && ws.map(function(w) { return w[0] }).join("").indexOf(term) === 0) return 60
+  if (term.length >= 3 && text.indexOf(term) >= 0) return 45
+  if (fuzzy) {
+    var limit = term.length >= 8 ? 2 : term.length >= 5 ? 1 : 0
+    if (limit && ws.some(function(w) { return Math.abs(w.length - term.length) <= limit + 3 && near(term, w, limit) })) return 20
+  }
+  return 0
 }
-function haystack(t, context) {
-  var hosts = (context && context.hosts) || {}
-  return fold([t.title, t.project, hosts[t.environmentId] || "", t.environmentId, t.branch || "", t.worktreeBranch || ""].join(" "))
+function fields(t, context) {
+  var c = context || {}, hosts = c.hosts || {}, groups = c.groups || {}
+  return {title: fold(t.title), project: fold(t.project), group: fold(groups[t.key] || ""),
+          branch: fold([t.branch || "", t.worktreeBranch || ""].join(" ")).trim(), host: fold([hosts[t.environmentId] || "", t.environmentName || "", t.environmentId || ""].join(" "))}
 }
-// 2: every word matches; 1: some word matches; 0: no match.
+var STATES = {working: function(t) { return state(t) === "working" }, trabajando: function(t) { return state(t) === "working" },
+              input: function(t) { return state(t) === "waiting" }, waiting: function(t) { return state(t) === "waiting" }, esperando: function(t) { return state(t) === "waiting" },
+              done: function(t) { return detail(t) === "done" }, ready: function(t) { return detail(t) === "done" }, listo: function(t) { return detail(t) === "done" },
+              failed: function(t) { return state(t) === "failed" }, error: function(t) { return state(t) === "failed" }, fallido: function(t) { return state(t) === "failed" },
+              pinned: function(t) { return !!t.pinned }, fijado: function(t) { return !!t.pinned },
+              snoozed: function(t) { return !!t.snoozed }, pospuesto: function(t) { return !!t.snoozed },
+              settled: function(t) { return !!t.settled }}
+function stateIs(t, value) { var key = Object.keys(STATES).find(function(k) { return k.indexOf(value) === 0 }); return !!key && STATES[key](t) }
+function termScore(term, f, fuzzy) {
+  var best = 0
+  ;(term.field ? [term.field] : Object.keys(FIELD_WEIGHT)).forEach(function(name) { best = Math.max(best, fit(term.text, f[name] || "", fuzzy) * (FIELD_WEIGHT[name] || 1)) })
+  return best
+}
+// {matched, total, score}: how many wanted terms the thread meets and how well.
+// An excluded term that matches drops the thread (matched -1).
+function evaluate(t, list, context, fuzzy) {
+  var f = fields(t, context), matched = 0, total = 0, score = 0
+  for (var i = 0; i < list.length; i++) {
+    var term = list[i], s = term.field === "is" ? (stateIs(t, term.text) ? 100 : 0) : termScore(term, f, fuzzy)
+    if (term.not) { if (s >= 45) return {matched: -1, total: 0, score: 0}; continue }
+    total++
+    if (s > 0) { matched++; score += s }
+  }
+  // Words found only in the thread's messages count, below any field match.
+  if (matched < total && context && context.hits && context.hits[t.key]) { score += 15 * (total - matched); matched = total }
+  return {matched: matched, total: total, score: total ? score / total : 0}
+}
+// Every thread's relevance for a query, best tier only: exact matches of all
+// words; else with typos; else the most words any thread matches.
+function rank(threads, query, context) {
+  var list = parse(query), out = {}
+  if (!list.length) return out
+  function pass(fuzzy) { return threads.map(function(t) { return {t: t, e: evaluate(t, list, context, fuzzy)} }) }
+  var strict = pass(false), all = strict.filter(function(r) { return r.e.matched >= 0 && r.e.matched === r.e.total })
+  if (!all.length) { strict = pass(true); all = strict.filter(function(r) { return r.e.matched >= 0 && r.e.matched === r.e.total }) }
+  if (!all.length) {
+    var most = Math.max.apply(null, [0].concat(strict.map(function(r) { return r.e.matched })))
+    all = most > 0 ? strict.filter(function(r) { return r.e.matched === most }) : []
+  }
+  all.forEach(function(r) { out[r.t.key || r.t.id] = Math.max(1, r.e.score) })
+  return out
+}
+// Kept for callers that score one thread: 2 every word, 1 some word, 0 none.
 function searchScore(t, query, context) {
-  var list = terms(query)
+  var list = parse(query)
   if (!list.length) return 2
-  if (context && context.hits && context.hits[t.key]) return 2
-  var text = haystack(t, context), words = text.split(/[^a-z0-9]+/).filter(function(w) { return w.length > 1 })
-  var found = list.filter(function(term) { return termMatches(term, text, words) }).length
-  return found === list.length ? 2 : found > 0 ? 1 : 0
+  var e = evaluate(t, list, context, true)
+  return e.matched < 0 ? 0 : e.matched === e.total ? 2 : e.matched > 0 ? 1 : 0
 }
 function rows(threads, filter, project, expanded, query, context) {
-  var result = [], settled = []
-  var needle = terms(query).length > 0, scored = [], best = 0
-  threads.forEach(function(t) {
-    if (!matches(t, filter, project)) return
-    var score = needle ? searchScore(t, query, context) : 2
-    if (score > 0) { scored.push({t: t, score: score}); best = Math.max(best, score) }
-  })
-  // Nothing matches every word: show what matches any of them rather than nothing.
-  scored.forEach(function(s) { if (s.score === best) (s.t.settled ? settled : result).push(s.t) })
+  var result = [], settled = [], needle = parse(query).length > 0
+  var visible = threads.filter(function(t) { return matches(t, filter, project) })
+  var ranks = needle ? rank(visible, query, context) : null
+  visible.forEach(function(t) { if (!ranks || ranks[t.key || t.id]) (t.settled ? settled : result).push(t) })
   if (settled.length > 0) {
     result.push({sectionHeader: true, count: settled.length, key: "@settled"})
     if (expanded || filter === "settled" || needle) result = result.concat(settled)
