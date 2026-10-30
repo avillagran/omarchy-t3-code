@@ -483,6 +483,14 @@ Item {
   onSidebarCompactChanged:if(initialized && bridge.viewState.sidebarCompact!==sidebarCompact)bridge.rememberView({sidebarCompact:sidebarCompact})
   onWorkingExpandedChanged:if(initialized && bridge.viewState.workingExpanded!==workingExpanded)bridge.rememberView({workingExpanded:workingExpanded})
   property bool restoringWorking:true
+  // The footer's group/ungroup button: grouped lists threads in sections by state
+  // (Pinned, Ready, Working, Waiting for input… or, by project, state headers);
+  // ungrouped is one flat list. Snoozed and Settled stay on their own shelves.
+  property bool sidebarGrouped: bridge.viewState.sidebarGrouped !== false
+  onSidebarGroupedChanged:if(initialized && (bridge.viewState.sidebarGrouped!==false)!==sidebarGrouped)bridge.rememberView({sidebarGrouped:sidebarGrouped})
+  // The Working shelf needs grouping on, and its own preference (Preferences > Sidebar).
+  readonly property bool workingShelf: sidebarCompact && sidebarGrouped
+  function toggleGrouped(){captureState();sidebarGrouped=!sidebarGrouped;restoreSidebarShelves()}
   function toggleCompact(){setSidebarGrouped(!sidebarCompact)}
   function setSidebarGrouped(value){
     captureState();sidebarCompact=value
@@ -663,12 +671,12 @@ Item {
     if(t&&root.pinnedReady(t))hold[key]=true
     if(JSON.stringify(hold)!==JSON.stringify(root.pinnedHold)){root.rowMotionPending=true;root.pinnedHold=hold}
   }}
-  readonly property var pinnedRows:nestRows(inboxRows.filter(function(t){return t.pinned&&!root.needsInput(t)&&!root.pinnedReady(t)}).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)})))
-  readonly property var inputRows:nestRows(inboxRows.filter(root.needsInput).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)})))
+  readonly property var pinnedRows:!sidebarGrouped?[]:nestRows(inboxRows.filter(function(t){return t.pinned&&!root.needsInput(t)&&!root.pinnedReady(t)}).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.workingShelf,bridge.inboxReturnState.returned,root.orderByReply)})))
+  readonly property var inputRows:!sidebarGrouped?[]:nestRows(inboxRows.filter(root.needsInput).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.workingShelf,bridge.inboxReturnState.returned,root.orderByReply)})))
   readonly property var visiblePinnedRows:pinnedExpanded ? pinnedRows : []
   readonly property var visibleInputRows:inputExpanded ? inputRows : []
-  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.needsInput(t)&&(!t.pinned||root.pinnedReady(t))&&(!root.sidebarCompact || !Sidebar.inWorkingShelf(t))}).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.sidebarCompact,bridge.inboxReturnState.returned,root.orderByReply)})))
-  readonly property var workingRows:sidebarCompact ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(root.rankFirst(function(a,b){return root.orderByReply?Sidebar.compareReply(a,b):(b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)}))) : []
+  readonly property var activeRows:nestRows(inboxRows.filter(function(t){return !root.sidebarGrouped||!root.needsInput(t)&&(!t.pinned||root.pinnedReady(t))&&(!root.workingShelf || !Sidebar.inWorkingShelf(t))}).sort(root.rankFirst(function(a,b){return Sidebar.compareActive(a,b,root.workingShelf,bridge.inboxReturnState.returned,root.orderByReply)})))
+  readonly property var workingRows:workingShelf ? nestRows(inboxRows.filter(Sidebar.inWorkingShelf).sort(root.rankFirst(function(a,b){return root.orderByReply?Sidebar.compareReply(a,b):(b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)}))) : []
   readonly property var visibleWorkingRows:workingExpanded ? workingRows : []
   readonly property var visibleSnoozedRows:snoozedExpanded ? snoozedRows : []
   readonly property var visibleSettledRows:settledShown ? settledRows : []
@@ -911,7 +919,7 @@ Item {
       required property int index
       readonly property var modelData: row
       thread: modelData; bridge: root.bridge
-      hierarchyIndent:root.projectLayout?Style.space(54):0
+      hierarchyIndent:root.projectLayout?Style.space(root.sidebarGrouped?54:30):0
       width: ListView.view ? ListView.view.width : 0
       compactRows:root.compactRows;marquee:root.titleMarquee;projectWash:root.projectWash;sober:root.sober;projectTint:root.groupTints[modelData.projectKey] || "transparent"
       hostStyles:root.bridge.viewState.hostStyles || ({});manyHosts:(root.bridge.state.environments || []).length>1
@@ -1470,7 +1478,7 @@ Item {
               id:projectTreeLoader;objectName:"t3ProjectSidebarLoader";visible:active;active:root.projectLayout
               Layout.fillWidth:true;Layout.fillHeight:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
               sourceComponent:T3ProjectSidebar {
-                bridge:root.bridge;threads:root.mosaicRows;groups:root.projectGroups;threadDelegate:sidebarThreadComponent
+                bridge:root.bridge;threads:root.mosaicRows;groups:root.projectGroups;grouped:root.sidebarGrouped;threadDelegate:sidebarThreadComponent
                 nest:function(rows){return root.nestRows(rows)}
               }
             }
@@ -1810,7 +1818,7 @@ Item {
                   Controls.MenuItem{objectName:"localBackendStop";text:T3I18n.tr("Stop local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("stop")}
                 }
               }
-              T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarCompact?"check":"list-ordered";tint:root.sidebarCompact?Color.accent:root.dim;tooltipText:T3I18n.tr("Group working, snoozed and settled threads");onClicked:root.toggleCompact()}
+              T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarGrouped?"layers":"list-ordered";tint:root.sidebarGrouped?Color.accent:root.dim;tooltipText:T3I18n.tr(root.sidebarGrouped?"Ungroup threads":"Group threads by state");onClicked:root.toggleGrouped()}
               T3IconButton {
                 objectName:"sidebarLayoutToggle";name:"chevron-up";implicitWidth:Style.space(18)
                 tint:root.focusLayout||root.projectLayout?Color.accent:root.dim

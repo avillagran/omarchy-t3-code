@@ -11,7 +11,7 @@ pub fn sanitize(input: &Value) -> Value {
         "usageExpanded",
         "queueExpanded",
         "tasksExpanded",
-        "settledExpanded","snoozedExpanded","sidebarCompact","workingExpanded","pinnedExpanded","inputExpanded",
+        "settledExpanded","snoozedExpanded","sidebarCompact","sidebarGrouped","workingExpanded","pinnedExpanded","inputExpanded",
         "sidebarCollapsed",
         "english",
         "composerExpanded","detached",

@@ -1990,6 +1990,8 @@
     "Task board": "Task board",
     "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.": "Focus adds host labels, composer context and a task board. Classic keeps the current layout. Your other appearance settings are preserved.",
     "By project": "By project",
-    "Snoozed": "Snoozed"
+    "Snoozed": "Snoozed",
+    "Ungroup threads": "Ungroup threads",
+    "Group threads by state": "Group threads by state"
   }
 }

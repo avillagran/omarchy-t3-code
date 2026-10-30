@@ -10,7 +10,9 @@ function state(t) {
     if (t.settled) return "settled"
     return s === "done" ? "done" : "idle"
 }
-function build(groups, threads, collapsed) {
+// grouped: threads sit under a header per state; otherwise straight under their project.
+function build(groups, threads, collapsed, grouped) {
+    if (grouped === undefined) grouped = true
     var projects = [], lookup = Object.create(null), members = Object.create(null)
     groups.forEach(function(g) { (g.members || []).forEach(function(p) { members[p.key] = g }) })
     threads.filter(function(t) { return t.relationshipToParent !== "subagent" }).forEach(function(t) {
@@ -24,6 +26,10 @@ function build(groups, threads, collapsed) {
         var projectKey = "project/" + p.key
         result.push({kind:"project",key:projectKey,title:p.title,count:p.threads.length,projectKey:p.key,expanded:!collapsed[projectKey]})
         if (collapsed[projectKey]) return
+        if (!grouped) {
+            p.threads.slice().sort(compareThreads).forEach(function(t) { result.push({kind:"thread",key:t.key,thread:t,projectKey:p.key,state:state(t)}) })
+            return
+        }
         states.forEach(function(s) {
             var rows = p.threads.filter(function(t) { return state(t) === s.id }).sort(compareThreads)
             if (!rows.length) return

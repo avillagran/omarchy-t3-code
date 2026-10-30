@@ -12,10 +12,11 @@ ListView {
     required property Component threadDelegate
     property var threads:[]
     property var groups:[]
+    property bool grouped:true
     property var nest:function(rows){return rows}
     readonly property var collapsed:bridge.viewState.projectTreeCollapsed || ({})
     readonly property var entries: {
-        var rows=Tree.build(groups,threads,collapsed),out=[]
+        var rows=Tree.build(groups,threads,collapsed,grouped),out=[]
         // Reuse O3's subagent expansion and every existing thread context action.
         rows.forEach(function(row){if(row.kind!=="thread"){out.push(row);return}root.nest([row.thread]).forEach(function(t){out.push(Object.assign({},row,{key:t.key,thread:t}))})})
         return out
@@ -31,7 +32,7 @@ ListView {
     function toggle(key){var next=Object.assign({},collapsed);if(next[key])delete next[key];else next[key]=true;bridge.rememberView({projectTreeCollapsed:next})}
     function activate(){var entry=entries[currentIndex];if(!entry)return;if(entry.kind==="thread")bridge.selectThread(entry.thread.environmentId,entry.thread.id);else toggle(entry.key)}
     function reveal(key){
-        var all=Tree.build(groups,threads,{}),entry=all.find(function(r){return r.kind==="thread"&&r.key===key})
+        var all=Tree.build(groups,threads,{},grouped),entry=all.find(function(r){return r.kind==="thread"&&r.key===key})
         if(!entry)return
         var next=Object.assign({},collapsed),p="project/"+entry.projectKey;delete next[p];delete next[p+"/state/"+entry.state];bridge.rememberView({projectTreeCollapsed:next})
         Qt.callLater(function(){var i=root.entries.findIndex(function(r){return r.key===key});if(i>=0){root.currentIndex=i;root.positionViewAtIndex(i,ListView.Contain)}})
@@ -52,7 +53,7 @@ ListView {
     Keys.onEnterPressed:activate()
     Keys.onSpacePressed:activate()
     Keys.onRightPressed:{var e=entries[currentIndex];if(e&&e.kind!=="thread"&&!e.expanded)toggle(e.key)}
-    Keys.onLeftPressed:{var e=entries[currentIndex];if(e){if(e.kind!=="thread"&&e.expanded)toggle(e.key);else{var key=e.kind==="thread"?"project/"+e.projectKey+"/state/"+e.state:"project/"+e.projectKey;var i=entries.findIndex(function(r){return r.key===key});if(i>=0)currentIndex=i}}}
+    Keys.onLeftPressed:{var e=entries[currentIndex];if(e){if(e.kind!=="thread"&&e.expanded)toggle(e.key);else{var key=e.kind==="thread"?(grouped?"project/"+e.projectKey+"/state/"+e.state:"project/"+e.projectKey):"project/"+e.projectKey;var i=entries.findIndex(function(r){return r.key===key});if(i>=0)currentIndex=i}}}
     delegate:DelegateChooser {
         role:"kind"
         DelegateChoice{roleValue:"thread";delegate:root.threadDelegate}

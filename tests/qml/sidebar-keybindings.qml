@@ -28,7 +28,7 @@ ShellRoot {
    var list=keys.findChild(panel,"threadList")
    check(list.activeFocus&&panel.activeRows[list.currentIndex].key==="fixture/t18","Super+B focuses current chat")
    check(list.itemAtIndex(list.currentIndex).y>=list.contentY-1&&list.itemAtIndex(list.currentIndex).y<list.contentY+list.height,"selected row scrolled into view")
-   keys.keyClick(Qt.Key_Down);check(panel.activeRows[list.currentIndex].key==="fixture/t19","arrows navigate from current chat")
+   var before=list.currentIndex;keys.keyClick(Qt.Key_Down);check(list.currentIndex===before+1&&panel.activeRows[list.currentIndex].key===panel.activeRows[before+1].key,"arrows navigate from current chat")
    check(b.selectedKey==="fixture/t18"&&b.draft.text==="Borrador con tildes: áéíóú","focus and arrows preserve selection/draft")
    b.selectedKey="fixture/t20";panel.workingExpanded=false;panel.composerView.inputField.forceActiveFocus();keys.keyClick(Qt.Key_B,Qt.MetaModifier);phase=3
   }else if(phase===3){

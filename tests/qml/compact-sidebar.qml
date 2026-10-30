@@ -19,9 +19,9 @@ ShellRoot{
   }else if(phase===1){
    root.check(panel.activeRows.length===3&&panel.inputRows.length===1&&!panel.workingRows.length,"original list before toggle")
    var footer=keys.findChild(panel,"t3SidebarFooter"),group=keys.findChild(panel,"sidebarCompactToggle");root.check(!keys.findChild(panel,"t3LanguagePicker"),"language lives in Preferences, not the sidebar footer");root.check(!!group&&group.visible,"footer keeps its controls")
-   var button=keys.findChild(panel,"sidebarCompactToggle");keys.mouseClick(button,button.width/2,button.height/2);phase=2
+   var button=keys.findChild(panel,"sidebarCompactToggle");root.check(button.name==="layers"&&panel.sidebarGrouped,"the footer button starts grouped");panel.setSidebarGrouped(true);phase=2
   }else if(phase===2){
-   root.check(panel.sidebarCompact&&b.viewState.sidebarCompact,"button persists compact mode")
+   root.check(panel.sidebarCompact&&b.viewState.sidebarCompact,"the Working shelf preference persists")
    root.check(panel.activeRows.length===1&&panel.inputRows.length===1&&panel.inputRows[0].id==="ask","attention request waits in its own group, outside Working")
    root.check(panel.workingRows.length===2&&panel.workingRows[0].id==="busy","working section sorted by send time")
    root.check(panel.visibleWorkingRows.length===0,"collapsed section hides even the open thread")
@@ -38,7 +38,7 @@ ShellRoot{
    var original=b.state;b.state={threads:[original.threads[3]],projects:[],environments:[]};
    root.check(panel.sidebarCompact&&!panel.workingRows.length&&!panel.snoozedRows.length&&!panel.settledRows.length,"idle data has no work to move")
    root.check(!keys.findChild(panel,"workingShelfHeader").shown&&!keys.findChild(panel,"snoozedShelfHeader").shown&&!keys.findChild(panel,"settledShelfHeader").shown,"empty group headers hide")
-   var button=keys.findChild(panel,"sidebarCompactToggle");root.check(button.name==="check","grouping is an icon-only active button");b.state=original;keys.mouseClick(button,button.width/2,button.height/2);phase=4
+   var button=keys.findChild(panel,"sidebarCompactToggle");root.check(button.name==="layers","grouping is an icon-only active button");b.state=original;panel.setSidebarGrouped(false);phase=4
   }else if(phase===4){
    root.check(!panel.sidebarCompact&&panel.activeRows.length===3&&!panel.workingRows.length,"turning off restores inbox")
    root.check(b.drafts["fixture/busy"].text==="Safe draft","grouping preserves prompt")
