@@ -41,8 +41,9 @@ pub fn sanitize(input: &Value) -> Value {
     // Sub-threads the user expanded or collapsed under a parent thread ("env/thread").
     if let Some(map)=input["subthreadsExpanded"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){if let Some(b)=v.as_bool(){clean.insert(k.clone(),json!(b));}}}out["subthreadsExpanded"]=Value::Object(clean);}
     if let Some(map)=input["sidebarProjectGroupingOverrides"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.len()<=2200&&!k.chars().any(char::is_control)&&matches!(v.as_str(),Some("inherit"|"repository"|"repository_path"|"separate")){clean.insert(k.clone(),v.clone());}}out["sidebarProjectGroupingOverrides"]=Value::Object(clean);}
-    // The user's thread groups: "env/thread" to a short group name.
-    if let Some(map)=input["threadGroups"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(2048){if !k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){continue}if let Some(name)=v.as_str().map(str::trim).filter(|n|!n.is_empty()&&n.chars().count()<=48&&!n.chars().any(char::is_control)){clean.insert(k.clone(),json!(name));}}out["threadGroups"]=Value::Object(clean);}
+    // The user's thread groups: "env/thread" (threadGroups) or a whole project,
+    // "env/project" (groupProjects), to a short group name.
+    for key in ["threadGroups","groupProjects"]{if let Some(map)=input[key].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(2048){if !k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){continue}if let Some(name)=v.as_str().map(str::trim).filter(|n|!n.is_empty()&&n.chars().count()<=48&&!n.chars().any(char::is_control)){clean.insert(k.clone(),json!(name));}}out[key]=Value::Object(clean);}}
     // Per host: machine icon, colour swatch and whether threads show its name.
     if let Some(map)=input["hostStyles"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(64){if !valid_id(k){continue}let mut style=serde_json::Map::new();if let Some(i)=v["icon"].as_str().filter(|i|matches!(*i,"server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){style.insert("icon".into(),json!(i));}if let Some(c)=v["color"].as_str().filter(|c|c.is_empty()||(c.len()==7&&c.starts_with('#')&&c[1..].chars().all(|h|h.is_ascii_hexdigit()))){style.insert("color".into(),json!(c));}if let Some(b)=v["showName"].as_bool(){style.insert("showName".into(),json!(b));}clean.insert(k.clone(),Value::Object(style));}out["hostStyles"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
@@ -203,6 +204,7 @@ mod tests {
     fn thread_groups_keep_short_names_on_thread_keys() {
         let clean = sanitize(&json!({"threadGroups":{"local/t1":"  Release ","local/t2":"","bad":"X","local/t3":"a\nb","local/t4":"x".repeat(49)},"threadGroupFilter":"Release","pinnedExpanded":false,"inputShelfHeight":200}));
         assert_eq!(clean["threadGroups"], json!({"local/t1":"Release"}));
+        assert_eq!(sanitize(&json!({"groupProjects":{"local/p1":"Release","nope":"X"}}))["groupProjects"], json!({"local/p1":"Release"}));
         assert_eq!((clean["threadGroupFilter"].clone(), clean["pinnedExpanded"].clone(), clean["inputShelfHeight"].clone()), (json!("Release"), json!(false), json!(200.0)));
     }
     #[test]

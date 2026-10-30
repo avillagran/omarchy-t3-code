@@ -121,7 +121,21 @@ ShellRoot{
    root.check(panel.activeRows.length===1&&panel.activeRows[0].id==="r1"&&!panel.pinnedRows.length&&!panel.inputRows.length,"a group chip filters to its threads")
    keys.findChild(panel,"t3PanelLayout").grabToImage(function(g){g.saveToFile("/tmp/o3-groups.png")});phase=33
   }else if(phase===33){
-   panel.threadGroupFilter="";b.rememberView({threadGroups:{}});phase=34
+   panel.threadGroupFilter="";b.rememberView({threadGroups:{}})
+   // The whole project joins a group: all its threads, a thread's own group wins.
+   var hr2=keys.findChild(panel,"t3HeaderThreadRow");hr2.setProjectGroup({key:"local/r1",projectKey:"local/proj"},"Infra");phase=35
+  }else if(phase===35){
+   root.check(b.viewState.groupProjects&&b.viewState.groupProjects["local/proj"]==="Infra","a project joins a group from the menu")
+   fixture=JSON.parse(JSON.stringify(b.state));fixture.threads.forEach(function(t){t.projectKey="local/proj"});b.state=fixture
+   b.rememberView({threadGroups:{"local/q1":"Solo"}});phase=36
+  }else if(phase===36){
+   var infra=panel.threadGroupChips.find(function(c){return c.group==="Infra"}),solo=panel.threadGroupChips.find(function(c){return c.group==="Solo"})
+   root.check(infra&&infra.count===2&&solo&&solo.count===1,"project threads count in its group; a thread's own group wins: "+JSON.stringify(panel.threadGroupChips))
+   panel.threadGroupFilter="Infra";phase=37
+  }else if(phase===37){
+   var shown=panel.pinnedRows.concat(panel.activeRows,panel.inputRows).map(function(t){return t.id}).sort().join()
+   root.check(shown==="p1,r1","the group chip shows the project's threads: "+shown)
+   panel.threadGroupFilter="";b.rememberView({threadGroups:{},groupProjects:{}});phase=34
   }else if(phase===34){
    console.log("O3_SIDEBAR_QML_PASS");root.done=true
   }

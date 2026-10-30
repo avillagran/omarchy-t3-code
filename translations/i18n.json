@@ -1978,7 +1978,9 @@
     "Ready ({count})": "Ready ({count})",
     "Waiting for input ({count})": "Waiting for input ({count})",
     "Waiting for input threads height": "Waiting for input threads height",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out",
+    "Project {project}": "Project {project}",
+    "Remove project from group": "Remove project from group"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3959,7 +3961,9 @@
     "Ready ({count})": "Listos ({count})",
     "Waiting for input ({count})": "Esperando input ({count})",
     "Waiting for input threads height": "Altura de hilos esperando input",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Título, proyecto, grupo o rama, por el inicio de una palabra o sus iniciales. p: proyecto · g: grupo · b: rama · h: host · is: input, working, done, pinned · \"palabras exactas\" · un signo menos delante excluye la palabra"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Título, proyecto, grupo o rama, por el inicio de una palabra o sus iniciales. p: proyecto · g: grupo · b: rama · h: host · is: input, working, done, pinned · \"palabras exactas\" · un signo menos delante excluye la palabra",
+    "Project {project}": "Proyecto {project}",
+    "Remove project from group": "Quitar el proyecto del grupo"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5940,7 +5944,9 @@
     "Ready ({count})": "Prontos ({count})",
     "Waiting for input ({count})": "Aguardando resposta ({count})",
     "Waiting for input threads height": "Altura das conversas aguardando resposta",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Título, projeto, grupo ou branch, pelo início de uma palavra ou pelas iniciais. p: projeto · g: grupo · b: branch · h: host · is: input, working, done, pinned · \"palavras exatas\" · um sinal de menos antes exclui a palavra"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Título, projeto, grupo ou branch, pelo início de uma palavra ou pelas iniciais. p: projeto · g: grupo · b: branch · h: host · is: input, working, done, pinned · \"palavras exatas\" · um sinal de menos antes exclui a palavra",
+    "Project {project}": "Projeto {project}",
+    "Remove project from group": "Remover o projeto do grupo"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7921,7 +7927,9 @@
     "Ready ({count})": "Prêts ({count})",
     "Waiting for input ({count})": "En attente de réponse ({count})",
     "Waiting for input threads height": "Hauteur des fils en attente de réponse",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titre, projet, groupe ou branche, par le début d'un mot ou ses initiales. p: projet · g: groupe · b: branche · h: hôte · is: input, working, done, pinned · \"mots exacts\" · un signe moins devant exclut le mot"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titre, projet, groupe ou branche, par le début d'un mot ou ses initiales. p: projet · g: groupe · b: branche · h: hôte · is: input, working, done, pinned · \"mots exacts\" · un signe moins devant exclut le mot",
+    "Project {project}": "Projet {project}",
+    "Remove project from group": "Retirer le projet du groupe"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9902,7 +9910,9 @@
     "Ready ({count})": "Bereit ({count})",
     "Waiting for input ({count})": "Wartet auf Eingabe ({count})",
     "Waiting for input threads height": "Höhe der Threads, die auf Eingabe warten",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, Projekt, Gruppe oder Branch, nach Wortanfang oder Initialen. p: Projekt · g: Gruppe · b: Branch · h: Host · is: input, working, done, pinned · \"exakte Wörter\" · ein Minus davor schließt das Wort aus"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, Projekt, Gruppe oder Branch, nach Wortanfang oder Initialen. p: Projekt · g: Gruppe · b: Branch · h: Host · is: input, working, done, pinned · \"exakte Wörter\" · ein Minus davor schließt das Wort aus",
+    "Project {project}": "Projekt {project}",
+    "Remove project from group": "Projekt aus Gruppe entfernen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11883,7 +11893,9 @@
     "Ready ({count})": "Pronti ({count})",
     "Waiting for input ({count})": "In attesa di risposta ({count})",
     "Waiting for input threads height": "Altezza dei thread in attesa di risposta",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titolo, progetto, gruppo o branch, dall'inizio di una parola o dalle iniziali. p: progetto · g: gruppo · b: branch · h: host · is: input, working, done, pinned · \"parole esatte\" · un segno meno davanti esclude la parola"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titolo, progetto, gruppo o branch, dall'inizio di una parola o dalle iniziali. p: progetto · g: gruppo · b: branch · h: host · is: input, working, done, pinned · \"parole esatte\" · un segno meno davanti esclude la parola",
+    "Project {project}": "Progetto {project}",
+    "Remove project from group": "Rimuovi il progetto dal gruppo"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13864,7 +13876,9 @@
     "Ready ({count})": "Klaar ({count})",
     "Waiting for input ({count})": "Wacht op invoer ({count})",
     "Waiting for input threads height": "Hoogte van threads die op invoer wachten",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, project, groep of branch, op het begin van een woord of de initialen. p: project · g: groep · b: branch · h: host · is: input, working, done, pinned · \"exacte woorden\" · een min ervoor sluit het woord uit"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, project, groep of branch, op het begin van een woord of de initialen. p: project · g: groep · b: branch · h: host · is: input, working, done, pinned · \"exacte woorden\" · een min ervoor sluit het woord uit",
+    "Project {project}": "Project {project}",
+    "Remove project from group": "Project uit groep verwijderen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15845,7 +15859,9 @@
     "Ready ({count})": "Gotowe ({count})",
     "Waiting for input ({count})": "Czeka na odpowiedź ({count})",
     "Waiting for input threads height": "Wysokość wątków czekających na odpowiedź",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Tytuł, projekt, grupa lub gałąź, po początku słowa lub inicjałach. p: projekt · g: grupa · b: gałąź · h: host · is: input, working, done, pinned · \"dokładne słowa\" · minus na początku wyklucza słowo"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Tytuł, projekt, grupa lub gałąź, po początku słowa lub inicjałach. p: projekt · g: grupa · b: gałąź · h: host · is: input, working, done, pinned · \"dokładne słowa\" · minus na początku wyklucza słowo",
+    "Project {project}": "Projekt {project}",
+    "Remove project from group": "Usuń projekt z grupy"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17826,7 +17842,9 @@
     "Ready ({count})": "Готовые ({count})",
     "Waiting for input ({count})": "Ждут ответа ({count})",
     "Waiting for input threads height": "Высота тредов, ждущих ответа",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Название, проект, группа или ветка — по началу слова или инициалам. p: проект · g: группа · b: ветка · h: хост · is: input, working, done, pinned · \"точные слова\" · минус перед словом исключает его"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Название, проект, группа или ветка — по началу слова или инициалам. p: проект · g: группа · b: ветка · h: хост · is: input, working, done, pinned · \"точные слова\" · минус перед словом исключает его",
+    "Project {project}": "Проект {project}",
+    "Remove project from group": "Убрать проект из группы"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19807,7 +19825,9 @@
     "Ready ({count})": "Готові ({count})",
     "Waiting for input ({count})": "Чекають на відповідь ({count})",
     "Waiting for input threads height": "Висота тредів, що чекають на відповідь",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Назва, проєкт, група або гілка — за початком слова чи ініціалами. p: проєкт · g: група · b: гілка · h: хост · is: input, working, done, pinned · \"точні слова\" · мінус перед словом виключає його"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Назва, проєкт, група або гілка — за початком слова чи ініціалами. p: проєкт · g: група · b: гілка · h: хост · is: input, working, done, pinned · \"точні слова\" · мінус перед словом виключає його",
+    "Project {project}": "Проєкт {project}",
+    "Remove project from group": "Прибрати проєкт із групи"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21788,7 +21808,9 @@
     "Ready ({count})": "準備完了 ({count})",
     "Waiting for input ({count})": "入力待ち ({count})",
     "Waiting for input threads height": "入力待ちスレッドの高さ",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "タイトル・プロジェクト・グループ・ブランチを、単語の先頭や頭文字で検索。 p: プロジェクト · g: グループ · b: ブランチ · h: ホスト · is: input, working, done, pinned · \"完全一致\" · 先頭にマイナスでその語を除外"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "タイトル・プロジェクト・グループ・ブランチを、単語の先頭や頭文字で検索。 p: プロジェクト · g: グループ · b: ブランチ · h: ホスト · is: input, working, done, pinned · \"完全一致\" · 先頭にマイナスでその語を除外",
+    "Project {project}": "プロジェクト {project}",
+    "Remove project from group": "プロジェクトをグループから外す"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23769,7 +23791,9 @@
     "Ready ({count})": "준비됨 ({count})",
     "Waiting for input ({count})": "입력 대기 ({count})",
     "Waiting for input threads height": "입력 대기 스레드 높이",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "제목, 프로젝트, 그룹, 브랜치를 단어 시작이나 머리글자로 찾습니다. p: 프로젝트 · g: 그룹 · b: 브랜치 · h: 호스트 · is: input, working, done, pinned · \"정확한 단어\" · 앞에 마이너스를 붙이면 단어 제외"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "제목, 프로젝트, 그룹, 브랜치를 단어 시작이나 머리글자로 찾습니다. p: 프로젝트 · g: 그룹 · b: 브랜치 · h: 호스트 · is: input, working, done, pinned · \"정확한 단어\" · 앞에 마이너스를 붙이면 단어 제외",
+    "Project {project}": "프로젝트 {project}",
+    "Remove project from group": "프로젝트를 그룹에서 제거"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25750,7 +25774,9 @@
     "Ready ({count})": "就绪 ({count})",
     "Waiting for input ({count})": "等待输入 ({count})",
     "Waiting for input threads height": "等待输入线程的高度",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "按词首或首字母搜索标题、项目、分组或分支。 p: 项目 · g: 分组 · b: 分支 · h: 主机 · is: input, working, done, pinned · \"精确词语\" · 词前加减号可排除该词"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "按词首或首字母搜索标题、项目、分组或分支。 p: 项目 · g: 分组 · b: 分支 · h: 主机 · is: input, working, done, pinned · \"精确词语\" · 词前加减号可排除该词",
+    "Project {project}": "项目 {project}",
+    "Remove project from group": "从分组中移除项目"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27731,7 +27757,9 @@
     "Ready ({count})": "جاهزة ({count})",
     "Waiting for input ({count})": "بانتظار الإدخال ({count})",
     "Waiting for input threads height": "ارتفاع السلاسل بانتظار الإدخال",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "العنوان أو المشروع أو المجموعة أو الفرع، ببداية الكلمة أو أحرفها الأولى. p: مشروع · g: مجموعة · b: فرع · h: مضيف · is: input, working, done, pinned · \"كلمات مطابقة\" · علامة الطرح قبل الكلمة تستبعدها"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "العنوان أو المشروع أو المجموعة أو الفرع، ببداية الكلمة أو أحرفها الأولى. p: مشروع · g: مجموعة · b: فرع · h: مضيف · is: input, working, done, pinned · \"كلمات مطابقة\" · علامة الطرح قبل الكلمة تستبعدها",
+    "Project {project}": "المشروع {project}",
+    "Remove project from group": "إزالة المشروع من المجموعة"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29712,7 +29740,9 @@
     "Ready ({count})": "Hazır ({count})",
     "Waiting for input ({count})": "Yanıt bekliyor ({count})",
     "Waiting for input threads height": "Yanıt bekleyen konuların yüksekliği",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Başlık, proje, grup veya dal; kelime başı ya da baş harflerle. p: proje · g: grup · b: dal · h: ana bilgisayar · is: input, working, done, pinned · \"tam kelimeler\" · başına eksi koymak kelimeyi hariç tutar"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Başlık, proje, grup veya dal; kelime başı ya da baş harflerle. p: proje · g: grup · b: dal · h: ana bilgisayar · is: input, working, done, pinned · \"tam kelimeler\" · başına eksi koymak kelimeyi hariç tutar",
+    "Project {project}": "Proje {project}",
+    "Remove project from group": "Projeyi gruptan çıkar"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31693,7 +31723,9 @@
     "Ready ({count})": "Klara ({count})",
     "Waiting for input ({count})": "Väntar på svar ({count})",
     "Waiting for input threads height": "Höjd för trådar som väntar på svar",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, projekt, grupp eller gren, efter ordets början eller initialer. p: projekt · g: grupp · b: gren · h: värd · is: input, working, done, pinned · \"exakta ord\" · ett minus framför utesluter ordet"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, projekt, grupp eller gren, efter ordets början eller initialer. p: projekt · g: grupp · b: gren · h: värd · is: input, working, done, pinned · \"exakta ord\" · ett minus framför utesluter ordet",
+    "Project {project}": "Projekt {project}",
+    "Remove project from group": "Ta bort projektet från gruppen"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33674,7 +33706,9 @@
     "Ready ({count})": "Klar ({count})",
     "Waiting for input ({count})": "Venter på svar ({count})",
     "Waiting for input threads height": "Højde for tråde, der venter på svar",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, projekt, gruppe eller branch, efter ordets begyndelse eller initialer. p: projekt · g: gruppe · b: branch · h: vært · is: input, working, done, pinned · \"præcise ord\" · et minus foran udelader ordet"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Titel, projekt, gruppe eller branch, efter ordets begyndelse eller initialer. p: projekt · g: gruppe · b: branch · h: vært · is: input, working, done, pinned · \"præcise ord\" · et minus foran udelader ordet",
+    "Project {project}": "Projekt {project}",
+    "Remove project from group": "Fjern projektet fra gruppen"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35655,7 +35689,9 @@
     "Ready ({count})": "Klare ({count})",
     "Waiting for input ({count})": "Venter på svar ({count})",
     "Waiting for input threads height": "Høyde for tråder som venter på svar",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Tittel, prosjekt, gruppe eller gren, etter ordets begynnelse eller initialer. p: prosjekt · g: gruppe · b: gren · h: vert · is: input, working, done, pinned · \"eksakte ord\" · et minus foran utelater ordet"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Tittel, prosjekt, gruppe eller gren, etter ordets begynnelse eller initialer. p: prosjekt · g: gruppe · b: gren · h: vert · is: input, working, done, pinned · \"eksakte ord\" · et minus foran utelater ordet",
+    "Project {project}": "Prosjekt {project}",
+    "Remove project from group": "Fjern prosjektet fra gruppen"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37636,7 +37672,9 @@
     "Ready ({count})": "Valmiit ({count})",
     "Waiting for input ({count})": "Odottaa vastausta ({count})",
     "Waiting for input threads height": "Vastausta odottavien ketjujen korkeus",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Otsikko, projekti, ryhmä tai haara sanan alusta tai alkukirjaimista. p: projekti · g: ryhmä · b: haara · h: isäntä · is: input, working, done, pinned · \"tarkat sanat\" · miinus sanan edessä jättää sen pois"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Otsikko, projekti, ryhmä tai haara sanan alusta tai alkukirjaimista. p: projekti · g: ryhmä · b: haara · h: isäntä · is: input, working, done, pinned · \"tarkat sanat\" · miinus sanan edessä jättää sen pois",
+    "Project {project}": "Projekti {project}",
+    "Remove project from group": "Poista projekti ryhmästä"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39617,6 +39655,8 @@
     "Ready ({count})": "Připravené ({count})",
     "Waiting for input ({count})": "Čeká na vstup ({count})",
     "Waiting for input threads height": "Výška vláken čekajících na vstup",
-    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Název, projekt, skupina nebo větev podle začátku slova či iniciál. p: projekt · g: skupina · b: větev · h: hostitel · is: input, working, done, pinned · \"přesná slova\" · mínus před slovem ho vyloučí"
+    "Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out": "Název, projekt, skupina nebo větev podle začátku slova či iniciál. p: projekt · g: skupina · b: větev · h: hostitel · is: input, working, done, pinned · \"přesná slova\" · mínus před slovem ho vyloučí",
+    "Project {project}": "Projekt {project}",
+    "Remove project from group": "Odebrat projekt ze skupiny"
   }
 }

@@ -424,9 +424,13 @@ Item {
   readonly property color surface: Qt.rgba(fg.r, fg.g, fg.b, 0.045)
   readonly property color healthy: Color.accent
   property string hostFilter: bridge.viewState.hostFilter || ""
-  readonly property var hostThreads: bridge.state.threads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.threadGroups[t.key]===root.threadGroupFilter)})
+  readonly property var hostThreads: bridge.state.threads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.groupOf(t)===root.threadGroupFilter)})
   // Groups the user makes from a thread's menu (Groups): one name per thread.
   readonly property var threadGroups: bridge.viewState.threadGroups || ({})
+  // A whole project can join a group too; a thread's own group wins.
+  readonly property var groupProjects: bridge.viewState.groupProjects || ({})
+  function groupOf(t) { return threadGroups[t.key] || groupProjects[t.projectKey] || "" }
+  readonly property var threadGroupMap: { var map = {}; bridge.state.threads.forEach(function(t) { var g = root.groupOf(t); if (g) map[t.key] = g }); return map }
   property string threadGroupFilter: bridge.viewState.threadGroupFilter || ""
   onThreadGroupFilterChanged: if(initialized && (bridge.viewState.threadGroupFilter || "")!==threadGroupFilter)bridge.rememberView({threadGroupFilter:threadGroupFilter})
   readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))
@@ -629,7 +633,7 @@ Item {
     var hosts = {}, hits = {}, s = bridge.sidebarSearch || {}
     ;(bridge.state.environments || []).forEach(function(e) { hosts[e.id] = e.name || e.label || e.id })
     if (s.query && Sidebar.fold(s.query) === Sidebar.fold(Sidebar.freeText(bridge.query))) (s.matches || []).forEach(function(m) { hits[m.environmentId + "/" + m.threadId] = true })
-    return {hosts: hosts, hits: hits, groups: threadGroups}
+    return {hosts: hosts, hits: hits, groups: threadGroupMap}
   }
   // Filtering animates like a snapshot change: rows leave and arrive.
   Connections { target: root.bridge; function onQueryChanged() { root.rowMotionPending = true } }
@@ -679,7 +683,7 @@ Item {
   // One chip per thread group, ahead of the project chips; a click filters by it.
   readonly property var threadGroupChips:{
     var counts={}
-    bridge.state.threads.forEach(function(t){var g=root.threadGroups[t.key];if(!g||root.hostFilter&&t.environmentId!==root.hostFilter)return;counts[g]=(counts[g] || 0)+(t.settled?0:1)})
+    bridge.state.threads.forEach(function(t){var g=root.groupOf(t);if(!g||root.hostFilter&&t.environmentId!==root.hostFilter)return;counts[g]=(counts[g] || 0)+(t.settled?0:1)})
     if(threadGroupFilter&&counts[threadGroupFilter]===undefined)counts[threadGroupFilter]=0
     return Object.keys(counts).sort(function(a,b){return a.localeCompare(b)}).map(function(g){return {key:"group:"+g,group:g,title:g,count:counts[g]}})
   }

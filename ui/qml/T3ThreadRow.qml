@@ -149,13 +149,20 @@ Item {
   }
   // The thread's menu at the pointer: right click on the row or the chat header title.
   function openContextMenu(){hidePreview();ensureActions();contextThread=Object.assign({},thread);bridge.ensureCatalog(thread.environmentId);rowMenu.popup()}
-  // The user's own thread groups: one name per thread, kept in the view state.
+  // The user's own groups, kept in the view state: a whole project belongs to
+  // one (groupProjects) and a thread may pick its own (threadGroups), which wins.
   readonly property var threadGroups:bridge.viewState.threadGroups || ({})
-  readonly property var groupNames:{var seen={};Object.keys(threadGroups).forEach(function(k){seen[threadGroups[k]]=true});return Object.keys(seen).sort(function(a,b){return a.localeCompare(b)})}
-  function groupOf(t){return threadGroups[t.key] || ""}
+  readonly property var projectGroupNames:bridge.viewState.groupProjects || ({})
+  readonly property var groupNames:{var seen={};[threadGroups,projectGroupNames].forEach(function(map){Object.keys(map).forEach(function(k){seen[map[k]]=true})});return Object.keys(seen).sort(function(a,b){return a.localeCompare(b)})}
+  function groupOf(t){return threadGroups[t.key] || projectGroupNames[t.projectKey] || ""}
+  function projectGroupOf(t){return projectGroupNames[t.projectKey] || ""}
+  function setProjectGroup(t,name){if(!t.projectKey)return;var all=Object.assign({},projectGroupNames),clean=String(name || "").trim().slice(0,48);if(clean)all[t.projectKey]=clean;else delete all[t.projectKey];bridge.rememberView({groupProjects:all})}
+  // "thread" or "project": what the New group dialog files.
+  property string groupTarget:"thread"
   readonly property string threadGroup:groupOf(thread)
   function setGroup(t,name){var all=Object.assign({},threadGroups),clean=String(name || "").trim().slice(0,48);if(clean)all[t.key]=clean;else delete all[t.key];bridge.rememberView({threadGroups:all})}
-  function openNewGroup(){ensureActions();groupName.text="";groupPopup.open();Qt.callLater(function(){groupName.forceActiveFocus()})}
+  function saveNewGroup(name){if(groupTarget==="project")setProjectGroup(actionThread,name);else setGroup(actionThread,name)}
+  function openNewGroup(target){ensureActions();groupTarget=target || "thread";groupName.text="";groupPopup.open();Qt.callLater(function(){groupName.forceActiveFocus()})}
   function openSnooze(context){ensureActions();snoozeContext=!!context;hidePreview();snoozeMenu.choices=presets();snoozeMenu.open()}
   onPanelVisibleChanged: if(!panelVisible)dismiss()
   onPooledChanged: {resetMotion();statePop.complete();if(pooled){dismiss();burstAnimation.stop();aura.burst=0}}
@@ -481,11 +488,12 @@ Item {
     contentItem:ColumnLayout{
       spacing:Style.space(12)
       Text{text:T3I18n.tr("New group…");color:root.fg;font.pixelSize:Style.font.body}
-      T3TextField{id:groupName;objectName:"threadNewGroupName";Layout.fillWidth:true;placeholderText:T3I18n.tr("Group name");color:root.fg;selectByMouse:true;maximumLength:48;Accessible.name:T3I18n.tr("Group name");onAccepted:if(text.trim()){root.setGroup(root.actionThread,text);groupPopup.close()}}
+      Text{Layout.fillWidth:true;text:root.groupTarget==="project"?T3I18n.tr("Project {project}",{project:root.actionThread.project || ""}):root.actionThread.title || "";color:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+      T3TextField{id:groupName;objectName:"threadNewGroupName";Layout.fillWidth:true;placeholderText:T3I18n.tr("Group name");color:root.fg;selectByMouse:true;maximumLength:48;Accessible.name:T3I18n.tr("Group name");onAccepted:if(text.trim()){root.saveNewGroup(text);groupPopup.close()}}
       RowLayout{
         Item{Layout.fillWidth:true}
         Controls.Button{text:T3I18n.tr("Cancel");onClicked:groupPopup.close()}
-        Controls.Button{objectName:"threadNewGroupSave";text:T3I18n.tr("Save");enabled:!!groupName.text.trim();onClicked:{root.setGroup(root.actionThread,groupName.text);groupPopup.close()}}
+        Controls.Button{objectName:"threadNewGroupSave";text:T3I18n.tr("Save");enabled:!!groupName.text.trim();onClicked:{root.saveNewGroup(groupName.text);groupPopup.close()}}
       }
     }
   }
@@ -522,8 +530,26 @@ Item {
         onObjectRemoved:function(index,object){groupMenu.removeItem(object)}
       }
       Controls.MenuSeparator{visible:root.groupNames.length>0;height:visible?implicitHeight:0}
-      Controls.MenuItem{objectName:"threadGroupNew";text:T3I18n.tr("New group…");onTriggered:root.openNewGroup()}
-      Controls.MenuItem{objectName:"threadGroupRemove";text:T3I18n.tr("Remove from group");visible:!!root.groupOf(root.actionThread);height:visible?implicitHeight:0;onTriggered:root.setGroup(root.actionThread,"")}
+      Controls.MenuItem{objectName:"threadGroupNew";text:T3I18n.tr("New group…");onTriggered:root.openNewGroup("thread")}
+      Controls.MenuItem{objectName:"threadGroupRemove";text:T3I18n.tr("Remove from group");visible:!!root.threadGroups[root.actionThread.key];height:visible?implicitHeight:0;onTriggered:root.setGroup(root.actionThread,"")}
+      Controls.MenuSeparator{visible:!!root.actionThread.projectKey;height:visible?implicitHeight:0}
+      // The whole project: every thread in it, now and later, joins the group.
+      Controls.Menu {
+        id:projectGroupMenu;objectName:"threadProjectGroupMenu";width:Style.space(260)
+        title:T3I18n.tr("Project {project}",{project:root.actionThread.project || ""})
+        enabled:!!root.actionThread.projectKey
+        palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
+        background:Rectangle{color:Color.popups.background;border.color:root.dim;border.width:1;radius:Style.space(7)}
+        Instantiator{
+          model:root.groupNames
+          delegate:Controls.MenuItem{required property var modelData;objectName:"projectGroup_"+modelData;text:modelData;checkable:true;checked:root.projectGroupOf(root.actionThread)===modelData;onTriggered:root.setProjectGroup(root.actionThread,checked?modelData:"")}
+          onObjectAdded:function(index,object){projectGroupMenu.insertItem(index,object)}
+          onObjectRemoved:function(index,object){projectGroupMenu.removeItem(object)}
+        }
+        Controls.MenuSeparator{visible:root.groupNames.length>0;height:visible?implicitHeight:0}
+        Controls.MenuItem{objectName:"projectGroupNew";text:T3I18n.tr("New group…");onTriggered:root.openNewGroup("project")}
+        Controls.MenuItem{objectName:"projectGroupRemove";text:T3I18n.tr("Remove project from group");visible:!!root.projectGroupOf(root.actionThread);height:visible?implicitHeight:0;onTriggered:root.setProjectGroup(root.actionThread,"")}
+      }
     }
     Controls.MenuItem{text:T3I18n.tr(root.actionThread.settled?"Move to active":"Mark settled");visible:root.actionCaps.threadSettlement===true;height:visible?implicitHeight:0;enabled:(root.actionCanOperate&&root.actionCaps.threadSettlement===true)&&!root.busy;onTriggered:root.contextManage(root.actionThread.settled?"unsettle":"settle")}
     Controls.MenuItem{text:T3I18n.tr(root.actionThread.snoozed?"Wake thread now":"Snooze thread");visible:root.actionCaps.threadSnooze===true;height:visible?implicitHeight:0;enabled:root.actionCanOperate&&!root.busy&&((root.actionCanOperate&&root.actionCaps.threadSnooze===true&&root.actionThread.canSnooze===true)||!!root.actionThread.snoozed);onTriggered:if(root.actionThread.snoozed)root.contextManage("unsnooze");else root.openSnooze(true)}
