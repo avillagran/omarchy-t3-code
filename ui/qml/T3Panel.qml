@@ -2251,10 +2251,12 @@ Item {
                         width:0;height:0
                         readonly property real viewportY:message.y+body.y-conversation.contentY
                         readonly property bool active:root.opened&&conversation.visible&&!message.pooled&&viewportY<conversation.height&&viewportY+message.height>0
-                        function request(){if(active)root.bridge.requestImage(modelData)}
+                        function request(){if(active&&root&&root.bridge)root.bridge.requestImage(modelData)}
+                        // Owned by the delegate: cancellation follows its destruction.
+                        Timer{id:imageRequestDelay;interval:0;onTriggered:markdownImageRequest.request()}
                         onActiveChanged:request()
-                        onModelDataChanged:Qt.callLater(request)
-                        Component.onCompleted:Qt.callLater(request)
+                        onModelDataChanged:imageRequestDelay.restart()
+                        Component.onCompleted:imageRequestDelay.restart()
                         Connections{target:root.bridge;function onImageStatesChanged(){if(markdownImageRequest.active&&!root.bridge.imageStates[root.bridge.imageKey(markdownImageRequest.modelData)])Qt.callLater(markdownImageRequest.request)}}
                       }
                     }
