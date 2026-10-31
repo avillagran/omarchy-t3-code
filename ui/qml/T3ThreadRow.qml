@@ -356,14 +356,13 @@ Item {
           }
           T3Icon{
             id:stateIcon;objectName:"threadStateIcon"
-            name:({approval:"shield-question",input:"message-circle-question",plan:"message-circle-question",waiting:"circle-dot-dashed",goal:"circle-dashed",working:"circle-dashed",limited:"circle-alert",failed:"circle-alert",done:"circle-check"})[root.stateKind] || "circle-alert";visible:!root.woke&&!root.slim&&!!root.stateLabel;implicitWidth:Style.space(16);tint:root.stateColor
+            name:({approval:"shield-question",input:"message-circle-question",plan:"message-circle-question",waiting:"circle-dot-dashed",goal:"circle-dashed",working:"circle-dashed",limited:"circle-alert",failed:"circle-alert",done:"circle-check"})[root.stateKind] || "circle-alert";visible:!root.woke&&!!root.stateLabel&&(!root.slim||root.stateKind==="working"||root.stateKind==="goal");implicitWidth:Style.space(root.slim?14:16);tint:root.stateColor
             Behavior on tint{ enabled:T3Motion.enabled && (root.motionReady);ColorAnimation{duration: T3Motion.duration(320)}}
-            // Working turns slowly on the sky clock, like the auras: its own
-            // animation would repaint the whole panel at the display rate for
-            // as long as any thread works. A still sky keeps it still.
-            readonly property bool spinning:name==="circle-dashed"&&visible&&root.panelVisible&&!root.pooled&&root.skyMoving
-            rotation:spinning?(root.sky.clock*112.5)%360:0
-            T3Tick{running:stateIcon.spinning;pace:"smooth"}
+            // Execution state stays legible in compact/focus rows and does not
+            // depend on decorative starfield preferences. Share the UI clock.
+            readonly property bool spinning:name==="circle-dashed"&&visible&&root.panelVisible&&!root.pooled&&T3Motion.enabled
+            rotation:spinning?(stateTick.time*112.5)%360:0
+            T3Tick{id:stateTick;running:stateIcon.spinning;pace:"smooth"}
             onNameChanged:if(root.motionReady)statePop.restart()
             SequentialAnimation{
               id:statePop

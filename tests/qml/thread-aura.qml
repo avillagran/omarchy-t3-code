@@ -4,7 +4,7 @@ import Quickshell
 import qs.Commons
 import "UnderTest/ui/qml" as Test
 ShellRoot{
- id:root;property int phase:0;property var fixture:null
+ id:root;property int phase:0;property var fixture:null;property real previousRotation:0
  function check(ok,msg){if(!ok){console.error("THREAD_AURA_QML_FAIL: "+msg);Qt.callLater(function(){Qt.exit(1)})}}
  function threads(doneId){var r=[{id:"w",title:"Working thread",working:true,startedAt:Date.now()-30000},{id:"q",title:"Needs input",pending:true,reason:"request",status:"completed"},{id:"i",title:"Idle thread",status:"completed"}];
   return r.map(function(t,i){var row=Object.assign({key:"fixture/"+t.id,environmentId:"fixture",project:"Project",updatedAt:1e12-i*60000,activeAnchorAt:1e12-i*60000},t);if(t.id===doneId){row.working=false;row.status="completed";row.pending=true;row.reason="review"}return row})}
@@ -26,6 +26,9 @@ ShellRoot{
    var w=aura("w");check(w&&w.visible&&w.workingStyle===1&&w.intensity===1.6,"working row pulses at vivid intensity");check(aura("q")&&!aura("q").visible,"input effect can be turned off");check(row("w").changeStyle===1,"state change uses the flash");
    b.rememberView({starfieldMode:"off",threadInputEffect:"glints"});phase=9
   }else if(phase===9){phase=10}else if(phase===10){check(aura("w")&&!aura("w").visible,"a still sky stops the working effect");var q=aura("q");check(q&&q.visible&&q.attentionStyle===2,"input stays highlighted, still, without motion");
-   console.log("THREAD_AURA_QML_PASS: working comet, input glow, state-change shooting star, animation preferences");panel.close();Qt.callLater(Qt.quit)}
+   b.rememberView({interfaceLayout:"focus",threadRowSize:"compact"});phase=11
+  }else if(phase===11){var icon=keys.findChild(row("w"),"threadStateIcon");check(icon&&icon.visible&&icon.spinning,"compact focus working indicator animates without the starfield");previousRotation=icon.rotation;phase=12
+  }else if(phase===12){var icon=keys.findChild(row("w"),"threadStateIcon");check(icon.rotation!==previousRotation,"working indicator actually rotates");check(!keys.findChild(row("i"),"threadStateIcon").visible,"idle compact row has no spinner");
+   console.log("THREAD_AURA_QML_PASS: working effects and compact focus spinner independent of starfield");panel.close();Qt.callLater(Qt.quit)}
  }}
 }
