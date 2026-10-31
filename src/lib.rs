@@ -32,6 +32,7 @@ pub use t3_protocol::checkpoint_revert;
 pub mod checkpoint_journal;
 pub mod checkpoint_operations;
 pub mod drafts;
+pub mod shared_drafts;
 pub use t3_protocol::prompt_recall;
 pub mod git_controls;
 pub mod branch_picker;
