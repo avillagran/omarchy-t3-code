@@ -1846,8 +1846,8 @@
     "Agent memory": "Agent memory",
     "Release idle agents": "Release idle agents",
     "Managed by the harness": "Managed by the harness",
-    "OT3 frees idle agent memory and resumes the saved conversation when you send a message.": "OT3 frees idle agent memory and resumes the saved conversation when you send a message.",
-    "Running tasks, questions and approvals keep the session open. OT3 must remain running.": "Running tasks, questions and approvals keep the session open. OT3 must remain running.",
+    "O3 frees idle agent memory and resumes the saved conversation when you send a message.": "O3 frees idle agent memory and resumes the saved conversation when you send a message.",
+    "Running tasks, questions and approvals keep the session open. O3 must remain running.": "Running tasks, questions and approvals keep the session open. O3 must remain running.",
     "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime.": "Codex manages context compaction. Claude and other supported harnesses use their own cache lifetime.",
     "Enable animations": "Enable animations",
     "Turn off all motion and transitions. Your animation choices are kept.": "Turn off all motion and transitions. Your animation choices are kept.",
@@ -1992,6 +1992,17 @@
     "By project": "By project",
     "Snoozed": "Snoozed",
     "Ungroup threads": "Ungroup threads",
-    "Group threads by state": "Group threads by state"
+    "Group threads by state": "Group threads by state",
+    "Approve it on that device: a managing device cannot give this access.": "Approve it on that device: a managing device cannot give this access.",
+    "Asks for all hosts: full T3 access on every host that allows it.": "Asks for all hosts: full T3 access on every host that allows it.",
+    "Allow this bridge to invite devices with full access": "Allow this bridge to invite devices with full access",
+    "Full access invitations updated.": "Full access invitations updated.",
+    "Allow {name} to invite devices with full access?": "Allow {name} to invite devices with full access?",
+    "Devices {name} invites get full T3 access on this device, and you are not asked about each one. {name} also handles their credentials, so allow this only for a bridge you trust.": "Devices {name} invites get full T3 access on this device, and you are not asked about each one. {name} also handles their credentials, so allow this only for a bridge you trust.",
+    "Lets this device invite devices with full access": "Lets this device invite devices with full access",
+    "Stop {name} from inviting devices with full access?": "Stop {name} from inviting devices with full access?",
+    "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.",
+    "Give access to all hosts": "Give access to all hosts",
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust."
   }
 }

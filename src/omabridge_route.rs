@@ -144,11 +144,20 @@ pub fn forwarding_url(line:&str,peer:&str,service:&str)->Result<String>{
  if !addr.ip().is_loopback()||addr.port()==0{return Err("omabridge_route_failed".into())}
  Ok(format!("http://{addr}"))
 }
+/// A forward started while the server restarts opens a second endpoint with the same
+/// identity, which takes the server's relay connection and cuts its public gateways.
+/// A socket file means a server ran here, so give it time to answer.
+fn wait_for_server(state_dir:&Path,deadline:Duration){
+ let socket=state_dir.join("control.sock");
+ let started=Instant::now();
+ while socket.exists()&&std::os::unix::net::UnixStream::connect(&socket).is_err()&&started.elapsed()<deadline{std::thread::sleep(Duration::from_millis(250));}
+}
 /// Start a private loopback forward tied to this process' lifetime. The child is
 /// killed by the caller's tunnel guard, or by PDEATHSIG if ot3 dies first.
 pub fn connect(route:&Route,deadline:Duration)->Result<(Child,String)>{
  let bin=binary().ok_or("omabridge_unavailable")?;
  if !identity_ready(&route.state_dir){return Err("omabridge_identity_missing".into())}
+ wait_for_server(&route.state_dir,deadline.min(Duration::from_secs(10)));
  let mut cmd=base(&bin,&route.state_dir,route.relay_url.as_deref());
  cmd.args(["forward","--peer",&route.peer,"--service",&route.service,"--listen","127.0.0.1:0"]).stdout(Stdio::piped());
  let parent=unsafe{libc::getpid()};

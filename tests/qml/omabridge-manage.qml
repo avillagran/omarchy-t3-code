@@ -10,18 +10,20 @@ ShellRoot {
  readonly property string vps:"9f1e3c1a4b5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7"
  readonly property string guest:"b21d3e5f5c3ee737761cbbc2bc2a427715b430ac3e7ec391e0a20a7c42d9e888"
  property var forced:null
+ property bool consent:false;property bool allHostsPending:false
  property var features:["control-socket","forward-through-server"]
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_MANAGE_QML_FAIL "+msg);Qt.exit(1)}}
  function snapshot(){return {available:true,version:"0.1.0",identity:true,device:{id:me,name:"alpha"},
-  peers:[{id:vps,name:"vps",services:["t3"],remoteServices:[],public:["t3"],admin:false,managed:true},{id:guest,name:"charlie",services:["ssh"],remoteServices:["t3","ssh"],public:[],admin:false,managed:false}],features:root.features,
-  pending:[{id:guest,name:"charlie",services:["t3"],expires:1792390449}],awaiting:[],
+  peers:[{id:vps,name:"vps",services:["t3"],remoteServices:[],public:["t3"],admin:false,managed:true,bridgeConsent:root.consent,remoteBridgeConsent:true},{id:guest,name:"charlie",services:["ssh"],remoteServices:["t3","ssh"],public:[],admin:false,managed:false,bridgeConsent:false,remoteBridgeConsent:false}],features:root.features,
+  pending:[{id:guest,name:"charlie",services:["t3"],expires:1792390449,allHosts:root.allHostsPending}],awaiting:[],
   published:{enabled:true,active:true,external:false,stale:false,services:["t3","ssh"],sshAvailable:true,t3Available:true},
   relay:{mode:"public",url:null},relayHost:{enabled:false,url:null,running:false,error:null,suggested:null},gateways:[],gatewayZones:[],error:""}}
  function reply(req){
   if(forced){var f=forced;forced=null;return f}
   var doc=snapshot()
   if(req.action==="invite")doc.created={path:"/tmp/omabridge-invite.json",expires:1792390449,services:["t3"],manage:false,qrImage:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxIDEnLz4="}
-  if(req.action==="remote"){var r=snapshot();r.device={id:vps,name:"vps"};r.peers=[{id:me,name:"alpha",services:[],remoteServices:["t3"],public:[],admin:true,managed:false}];r.pending=[];r.gateways=[{peer:me,name:"alpha",service:"t3",url:"https://gw.example.net:55944/",running:true,error:""}];doc.remote=r}
+  if(req.action==="bridge-consent-set"){root.consent=req.allowed;doc=snapshot()}
+  if(req.action==="remote"){var r=snapshot();r.device={id:vps,name:"vps"};r.peers=[{id:me,name:"alpha",services:[],remoteServices:["t3"],public:[],admin:true,managed:false}];r.pending=root.allHostsPending?[{id:guest,name:"charlie",services:["t3"],expires:1792390449,allHosts:true}]:[];r.gateways=[{peer:me,name:"alpha",service:"t3",url:"https://gw.example.net:55944/",running:true,error:""}];doc.remote=r}
   if(req.action==="gateway-check")doc.gatewayCheck={reachable:true,sameEnvironment:true}
   return {doc:doc,code:0}
  }
@@ -39,6 +41,8 @@ ShellRoot {
  }
  TestCase{id:keys;when:false}
  function find(name){return keys.findChild(view,name)}
+ // Repeater rows inside the remote dialog's ScrollView are reachable only as visual children.
+ function row(item,name){if(item.objectName===name)return item;for(var i=0;i<item.children.length;i++){var hit=row(item.children[i],name);if(hit)return hit}return null}
  Timer{interval:200;repeat:true;running:true;onTriggered:{
   if(view.busy)return
   if(phase===0){
@@ -85,7 +89,52 @@ ShellRoot {
    find("omabridgeConfirmCancel").clicked();root.forced={doc:{error:"omabridge_outdated"},code:1};view.refresh();phase++
   }else if(phase===10){
    check(view.pageState==="outdated"&&find("omabridgeStateTitle").visible,"an OmaBridge without manage says so");
-   console.log("OMABRIDGE_MANAGE_QML_PASS: unconfirmed reads, confirmed approve/invite/unpublish, managed device and its public address check, shown-once invitation, readable errors, outdated OmaBridge");Qt.quit()
+   root.features=["connect-stdio"];view.refresh();phase=30
+  }else if(phase===30){
+   // Without the feature nothing about all hosts appears or is sent.
+   check(view.pageState==="ready"&&!find("omabridgeBridgeConsent_"+root.vps).visible&&!find("omabridgePeerRemoteConsent_"+root.vps).visible,"no consent controls without the feature");
+   view.openInvite();check(!find("omabridgeInviteAllHosts").visible,"no all-hosts option without the feature");
+   find("omabridgeInviteCreate").clicked();phase++
+  }else if(phase===31){
+   var plain=b.sent.filter(function(r){return r.action==="invite"}).pop();check(plain.allHosts===undefined,"a plain invitation sends no flag: "+JSON.stringify(plain));
+   find("omabridgeInviteClose").clicked();root.features=["all-hosts-invite-v1"];root.allHostsPending=true;view.refresh();phase++
+  }else if(phase===32){
+   view.openInvite();var all=find("omabridgeInviteAllHosts");
+   check(all.visible&&!all.checked&&!find("omabridgeInviteAllHostsWarning").visible,"offered unchecked, warning hidden");
+   all.checked=true;check(find("omabridgeInviteAllHostsWarning").visible,"warning follows the box");
+   find("omabridgeInviteT3").checked=false;check(!all.visible,"all hosts needs T3");find("omabridgeInviteSsh").checked=true;
+   find("omabridgeInviteCreate").clicked();phase++
+  }else if(phase===33){
+   var sshOnly=b.sent.filter(function(r){return r.action==="invite"}).pop();check(sshOnly.allHosts===undefined&&JSON.stringify(sshOnly.services)==='["ssh"]',"no flag once T3 is off: "+JSON.stringify(sshOnly));
+   find("omabridgeInviteClose").clicked();view.openInvite();
+   check(!find("omabridgeInviteAllHosts").checked,"reset when reopened");
+   find("omabridgeInviteAllHosts").checked=true;find("omabridgeInviteCreate").clicked();phase++
+  }else if(phase===34){
+   var allHosts=b.sent.filter(function(r){return r.action==="invite"}).pop();check(allHosts.allHosts===true&&allHosts.confirmed===true&&allHosts.services.indexOf("t3")>=0,"opted-in invitation: "+JSON.stringify(allHosts));
+   find("omabridgeInviteClose").clicked();
+   check(find("omabridgePendingAllHosts_"+root.guest).visible,"pending row says all hosts");
+   find("omabridgeApprove_"+root.guest).clicked();check(view.confirmRequest.detail.indexOf(view.t("omabridgeInviteAllHostsWarning"))>=0,"approval warns: "+view.confirmRequest.detail);
+   find("omabridgeConfirmCancel").clicked();
+   check(find("omabridgePeerRemoteConsent_"+root.vps).visible&&!find("omabridgePeerRemoteConsent_"+root.guest).visible,"hosts that consented to this device are shown");
+   check(!find("omabridgeBridgeConsent_"+root.guest).visible,"no consent without a t3 grant");
+   var box=find("omabridgeBridgeConsent_"+root.vps);check(box.visible&&!box.checked,"consent state from OmaBridge");
+   var sentBefore=b.sent.length;box.click();
+   check(b.sent.length===sentBefore&&!box.checked&&find("omabridgeConfirmDialog").opened,"a click only asks");
+   find("omabridgeConfirmCancel").clicked();check(!box.checked,"cancelling leaves it as it was");
+   box.click();find("omabridgeConfirm").clicked();phase++
+  }else if(phase===35){
+   var on=b.last();check(on.action==="bridge-consent-set"&&on.peer===root.vps&&on.allowed===true&&on.confirmed===true,"confirmed consent: "+JSON.stringify(on));
+   var box=find("omabridgeBridgeConsent_"+root.vps);check(box.checked,"answer moves the toggle");
+   box.click();check(find("omabridgeConfirmDialog").opened&&view.confirmRequest.values.allowed===false,"withdrawal asks too");find("omabridgeConfirm").clicked();phase++
+  }else if(phase===36){
+   var off=b.last();check(off.action==="bridge-consent-set"&&off.allowed===false&&off.confirmed===true,"confirmed withdrawal: "+JSON.stringify(off));
+   check(!find("omabridgeBridgeConsent_"+root.vps).checked,"toggle follows the withdrawal");
+   find("omabridgeManage_"+root.vps).clicked();phase++
+  }else if(phase===37){
+   var dialog=find("omabridgeRemoteDialog").contentItem;
+   check(row(dialog,"omabridgeRemotePending_"+root.guest).text.indexOf(view.t("omabridgeAllHostsRequest"))>=0&&!row(dialog,"omabridgeRemoteApprove_"+root.guest).visible,"a managing device sees all hosts and cannot approve it");
+   find("omabridgeRemoteClose").clicked();
+   console.log("OMABRIDGE_MANAGE_QML_PASS: unconfirmed reads, confirmed approve/invite/unpublish, managed device and its public address check, shown-once invitation, readable errors, outdated OmaBridge, all-hosts invitation and bridge consent");Qt.quit()
   }
  }}
 }

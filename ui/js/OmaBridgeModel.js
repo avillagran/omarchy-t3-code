@@ -6,7 +6,7 @@
 
 var ACTIONS = ["identity-create", "invite", "invite-discard", "pair", "pair-retry",
                "pair-discard", "approve", "revoke", "publish", "unpublish", "relay-set", "rename",
-               "admin-set", "remote", "relay-host", "gateway-set", "grant-set"]
+               "admin-set", "remote", "relay-host", "gateway-set", "grant-set", "bridge-consent-set"]
 
 // What a managing device may ask a managed one; OmaBridge enforces the same list there.
 var REMOTE_ACTIONS = ["read", "rename", "relay-set", "publish", "unpublish", "revoke", "approve", "relay-host", "gateway-set"]
@@ -91,10 +91,11 @@ function normalize(raw) {
         device: device ? { id: _text(device.id), name: _text(device.name) } : null,
         peers: _list(raw.peers).map(function(p) {
             return { id: _text(p.id), name: _text(p.name), services: _list(p.services), remoteServices: _list(p.remoteServices),
-                     public: _list(p.public), admin: p.admin === true, managed: p.managed === true }
+                     public: _list(p.public), admin: p.admin === true, managed: p.managed === true,
+                     bridgeConsent: p.bridgeConsent === true, remoteBridgeConsent: p.remoteBridgeConsent === true }
         }),
         pending: _list(raw.pending).map(function(p) {
-            return { id: _text(p.id), name: _text(p.name), services: _list(p.services), expires: p.expires }
+            return { id: _text(p.id), name: _text(p.name), services: _list(p.services), expires: p.expires, allHosts: p.allHosts === true }
         }),
         awaiting: _list(raw.awaiting).map(function(p) {
             return { id: _text(p.id), name: _text(p.name), expires: p.expires }
@@ -138,6 +139,7 @@ function parseResponse(text, exitCode) {
         path: _text(raw.created.path),
         expires: raw.created.expires,
         services: _list(raw.created.services),
+        allHosts: raw.created.allHosts === true,
         qrImage: /^data:image\/svg\+xml[;,]/.test(_text(raw.created.qrImage)) ? raw.created.qrImage : ""
     } : null
     var paired = raw.paired && typeof raw.paired === "object" ? {
@@ -210,6 +212,30 @@ function inviteManageValues(values, manage) {
     for (var key in values) out[key] = values[key]
     if (manage === true) out.manage = true
     return out
+}
+
+// All-hosts invitations and bridge consent need an OmaBridge that reports them.
+function allHostsSupported(features) {
+    return _list(features).indexOf("all-hosts-invite-v1") >= 0
+}
+
+// The dialog's "all hosts" option, which OmaBridge accepts only along with t3.
+function inviteAllHostsValues(values, allHosts, features) {
+    var out = {}
+    for (var key in values) out[key] = values[key]
+    if (allHosts === true && allHostsSupported(features) && _list(values.services).indexOf("t3") >= 0)
+        out.allHosts = true
+    return out
+}
+
+// The per-peer consent needs a current t3 grant; a consent still set is always
+// shown, so it can be withdrawn.
+function bridgeConsentOffered(peer, features) {
+    return allHostsSupported(features) && !!peer && (peer.bridgeConsent === true || _list(peer.services).indexOf("t3") >= 0)
+}
+
+function bridgeConsentValues(peer, allowed) {
+    return { peer: _text(peer && peer.id), allowed: allowed === true }
 }
 
 // Reading an invitation file is unconfirmed: it only shows what accepting means.
