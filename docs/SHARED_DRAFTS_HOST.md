@@ -1,9 +1,9 @@
-# Shared drafts and Android host contracts — first pass
+# Shared drafts Desktop integration and Android host contracts
 
-Status: **foundation only**. OmaBridge is pinned to v0.2.4. Composer, prompt stash,
-project drafts and Preferences still use their existing local behavior. No migration
-runs, no sharing toggle is advertised, and no remote Desktop listener is installed.
-Do not mark Android P14–P17 or shared-composer integration complete from this PR.
+Status: **Desktop editor integration, opt-in**. Preferences → Connections persists
+an explicit bridge endpoint ID and sharing switch (off by default). Composer and
+project drafts use the durable journal when enabled; local files remain offline
+editor caches. No deployment or remote Desktop listener is included.
 
 Reviewed against Desktop base `55c0ce3e81e5aaf348e263e8896cceec6d52a4e6`,
 Android `origin/main` `9ef8deb6780557134ec7f3a975399b9fc5d0389a`
@@ -61,26 +61,50 @@ snapshot and stage a **new** journal/mutation based on the chosen current revisi
 the original branch remains available. There is no automatic rebase or merge.
 This CLI does not itself resolve a conflict or delete a journal.
 
-### Remaining Desktop migration
+### Desktop composer and migration
 
-The foundation deliberately leaves existing files intact. Completing the user-facing
-feature requires all of the following together:
+`shared_editor` persists private local branches, edit generations, original bases,
+completed snapshot cursors and journal identities. Local saves perform no network
+I/O. A background worker resolves aliases through authenticated
+`/.well-known/t3/environment`, consumes every bounded snapshot page, then stages or
+retries exact journal commands. Polling alternates the selected composer and known
+threads; the selected project's legacy stash is imported during project refresh.
+Full snapshots are used instead of a partial watch cursor. Authority never changes
+automatically. A successful authorized list confirms protocol/grant availability;
+failed reads preserve all local data and do not send writes.
 
-1. Preferences: explicit persisted authority selection and opt-in; advertise only
-   after capability/grant validation. Translate new strings through source/batch
-   catalogs in all 20 locales.
-2. Map local environment aliases to stable source UUIDs. Build a lossless adapter
-   for allowed payload preferences and durable attachment descriptors; never share
-   queue edits, approval/question recovery, send identities or outbox state.
-3. Persist edit generations, revision bases and local offline branches; consume
-   full snapshots/watch pages before replay. Apply authority/scope/generation guards
-   to every callback and preserve active editor text on remote change.
-4. Import existing files create-if-absent, retain them until acknowledged, and
-   expose explicit local/remote conflict resolution, including absent keys after
-   compaction. The journal alone is not an offline editor cache.
-5. Wire stash/restore to atomic `transfer`, including backup of a live target;
-   project drafts list/delete must use the same scopes. Clear after send only by
-   the submitted shared revision. Verify target uploads before cross-host sending.
+Exact document scopes (no additional wire fields):
+
+- Composer: `{environment:<source UUID>, project:<project UUID>, kind:"thread", id:<thread ID>}`.
+- Project stash: `{environment:<source UUID>, project:<project UUID>, kind:"stash", id:<entry UUID>}`.
+- Legacy stash imports reuse the existing entry UUID; new stash entries reuse the
+  durable request UUID. Backup entries have fresh UUIDs. There is no `project`
+  document kind, path-derived ID, local alias or caller-supplied owner field.
+
+Payloads use `schema:1`, plain `text`, `attachments:[{id,name,sourceEnvironment}]`,
+optional `modelSelection:{providerId,modelId,effort?,reasoningEffort?,permissionMode?,speedMode?}`
+and `preferences:{interactionMode,deliveryMode,permissionMode?}`. Unsupported local
+model options and unfinished uploads fail closed rather than being truncated.
+Selection, queue edits, send identities, outbox, approvals, questionnaires and
+checkpoint recovery remain local. Imported attachment descriptors are unsendable
+until verified by an existing local descriptor or replaced through normal upload;
+this UI does not offer cross-host resource copying.
+
+Imports are create-if-absent, retain original files, and persist acknowledgment
+state to avoid repeating successful imports. Existing shared content and expired
+mutations produce visible conflicts. Composer and legacy-stash conflicts offer
+**Keep local** / **Use shared**; explicit resolution archives the original branch
+and uses a new mutation anchored to a fresh completed snapshot, including absence.
+Remote changes never replace a nonempty active composer. Generation/scope/authority
+guards preserve edits and ignore late callbacks.
+
+Stash/restore uses journaled atomic `transfer`; a live destination, even empty,
+gets a fresh stash backup. Local before-images are persisted before dispatch and
+checked before updating editor caches. Unknown outcomes retain the request for an
+identical retry. Acknowledged sends clear with a conditional `delete` against the
+submitted branch's base revision; newer remote content survives as a conflict.
+Unassociated legacy files (for threads no longer in the native project catalog)
+remain intact locally until their source scope can be resolved; no scope is guessed.
 
 ## Android wire API and security assessment
 
@@ -137,28 +161,22 @@ with credentials, or draft payloads. No remote capability is advertised in this 
 
 ## Validation (2026-10-31)
 
-- `cargo test`: stops at the unchanged approvals fixture.
-- `CARGO_BUILD_JOBS=2 cargo test --no-fail-fast`: **443 passed, 5 failed, 0 ignored**,
-  including **6/6 new journal tests**. The five failures are in unchanged code:
-  `approvals` and `history` assert older HTTP request shapes; `plan_transport`
-  expects a WebSocket upgrade where it receives another request; `qml_preview`
-  produces no sandboxed renderer frame in this environment; `third_party_licenses`
-  requires regenerating the target-specific compiled notices with
-  `tools/build-licenses.cjs`. These fixtures/modules match the base branch; a
-  separate baseline checkout was not built. They are reported, not fixed here.
-- `cargo clippy --lib` and `cargo clippy --test shared_drafts`: pass, with 24
-  existing library warnings and no warnings in the new module/test file.
-- `cargo clippy --all-targets`: fails on existing denied `unused_io_amount`
-  lints at `tests/plan_transport.rs:12,14`.
-- QML `project-drafts` and `native-terminal`: **2/2 pass** using the observed
-  Wayland display. The initial display-less/offscreen attempts cannot load a
-  PanelWindow backend. No QML source was changed.
-- Translation checker: **20 locales × 2004 keys**, no warnings. No new UI strings;
-  Preferences and its translations remain part of the deferred migration.
-- `rustfmt --check` for the new Rust files and `git diff --check`: pass.
+- `cargo test --no-fail-fast`: **453 passed, 4 failed, 0 ignored**.
+- The same four failures were reproduced from an archived clean
+  `origin/feat/o3-brand` source: `approvals`, `history`, `plan_transport`, and
+  `third_party_licenses`. These are pre-existing fixture/compiled-notice failures.
+  The renderer fixture that failed in PR 21 passes in this environment now.
+- Journal/migration/transfer tests: **14/14**; local draft tests: **5/5**.
+  Covers anchored retry, import acknowledgment/deduplication, collision resolution,
+  absent keys after compaction, stale send clear, payload privacy, and live-empty
+  target backup. Preferences has a new default-off/authority sanitizer test.
+- QML: `shared-drafts`, `composer`, `project-drafts`, `preferences` pass. The new
+  fixture covers composer conflicts, retained editor text, project migration
+  conflict branches, and explicit/default-off Preferences controls.
+- Translation flow: **20 locales × 2011 keys**, seven new strings, no warnings.
+- `cargo clippy --lib --test shared_drafts`: passes with 24 existing library warnings.
+- `rustfmt --check` for new Rust files and `git diff --check`: pass.
 
-The host rebooted during an earlier verification attempt (uptime reset and `/tmp`
-logs disappeared); no reboot/service-control command was issued for this task.
-The results above are from the completed rerun. No deployment, service restart,
-phone access, live two-client shared-composer test or remote-host acceptance is
-claimed. `target-orphan/` remains untracked and was not modified.
+No deployment, service restart, phone access, or physical Android/Desktop round
+trip was performed. `target-orphan/` was left untouched. The Android wire API and
+host broker security boundaries described above remain unchanged.

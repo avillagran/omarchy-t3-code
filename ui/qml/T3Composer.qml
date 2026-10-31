@@ -441,6 +441,14 @@ Rectangle {
         Keys.onEnterPressed: function(event) {root.handleEnter(event)}
       }
     }
+    RowLayout {
+      Layout.fillWidth:true;visible:root.bridge.viewState.sharedDraftsEnabled===true
+      readonly property var status:(root.bridge.sharedDraftStatus || {})[root.bridge.selectedKey] || {}
+      Text{Layout.fillWidth:true;text:parent.status.conflict?T3I18n.tr("Shared draft conflict"):parent.status.error?T3I18n.error(parent.status.error):T3I18n.tr("Shared drafts");color:parent.status.conflict?Color.urgent:root.dim;font.pixelSize:Style.font.caption}
+      Controls.Button{objectName:"sharedDraftKeepLocal";visible:parent.status.conflict===true;text:T3I18n.tr("Keep local");enabled:!root.bridge.sharedDraftBusy;onClicked:root.bridge.syncSharedDraft("local")}
+      Controls.Button{objectName:"sharedDraftUseRemote";visible:parent.status.conflict===true;text:T3I18n.tr("Use shared");enabled:!root.bridge.sharedDraftBusy;onClicked:root.bridge.syncSharedDraft("remote")}
+      T3IconButton{name:"refresh-cw";tooltipText:T3I18n.tr("Resync");enabled:!root.bridge.sharedDraftBusy;onClicked:root.bridge.syncSharedDraft("")}
+    }
     T3ModelOptions {id:modelOptions;Layout.fillWidth:true;visible:root.showOptions&&!root.draft.queueEdit;bridge:root.bridge;descriptors:root.descriptors;selection:root.selection;locked:root.locked}
     Text {
       Layout.fillWidth: true

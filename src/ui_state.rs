@@ -17,13 +17,14 @@ pub fn sanitize(input: &Value) -> Value {
         "composerExpanded","detached",
         "screenshotButton","screenshotHidePanel","dictationButton",
         "animationsEnabled","fpsMeter","mosaicOpen","quickRepliesButton",
-        "omabridgeIndicator",
+        "omabridgeIndicator","sharedDraftsEnabled",
         "threadDetailsOpen","projectColors","projectChips","chipsExpanded",
     ] {
         if let Some(v) = input[key].as_bool() {
             out[key] = json!(v)
         }
     }
+    if input["sharedDraftsAuthority"].as_str().is_some_and(omabridge_route::valid_peer){out["sharedDraftsAuthority"]=input["sharedDraftsAuthority"].clone();}
     for (key,min,max) in [("idleReleaseMinutes",1,1440),("autoCompactFallbackMinutes",1,1440),("autoCompactMinTokens",1000,1000000)] {if let Some(n)=input[key].as_u64().filter(|n|*n>=min&&*n<=max){out[key]=json!(n)}}
     if let Some(map)=input["idleReleaseProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if value.is_null()||value.as_u64().is_some_and(|n|(1..=1440).contains(&n)){clean.insert(key.clone(),value.clone());}}}out["idleReleaseProviderMinutes"]=Value::Object(clean);}
     if let Some(map)=input["autoCompactProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if valid_id(key)||key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if let Some(n)=value.as_u64().filter(|n|*n>=1&&*n<=1440){clean.insert(key.clone(),json!(n));}}}out["autoCompactProviderMinutes"]=Value::Object(clean);}
@@ -135,6 +136,14 @@ pub fn save(value: &Value) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shared_drafts_are_explicit_and_default_off(){
+        let owner="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let state=sanitize(&json!({"sharedDraftsEnabled":true,"sharedDraftsAuthority":owner}));
+        assert_eq!(state["sharedDraftsEnabled"],true);assert_eq!(state["sharedDraftsAuthority"],owner);
+        assert!(sanitize(&json!({}))["sharedDraftsEnabled"].is_null());
+        assert!(sanitize(&json!({"sharedDraftsEnabled":"yes","sharedDraftsAuthority":"display-name"}))["sharedDraftsAuthority"].is_null());
+    }
     #[test]
     fn interface_layout_is_optional_and_preserves_other_preferences() {
         assert!(sanitize(&json!({})).get("interfaceLayout").is_none());

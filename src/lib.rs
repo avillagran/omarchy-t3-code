@@ -33,6 +33,7 @@ pub mod checkpoint_journal;
 pub mod checkpoint_operations;
 pub mod drafts;
 pub mod shared_drafts;
+pub mod shared_editor;
 pub use t3_protocol::prompt_recall;
 pub mod git_controls;
 pub mod branch_picker;

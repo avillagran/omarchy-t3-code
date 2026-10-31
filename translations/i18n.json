@@ -2003,7 +2003,14 @@
     "Stop {name} from inviting devices with full access?": "Stop {name} from inviting devices with full access?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.",
     "Give access to all hosts": "Give access to all hosts",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.",
+    "Shared drafts": "Shared drafts",
+    "Shared draft conflict": "Shared draft conflict",
+    "Keep local": "Keep local",
+    "Use shared": "Use shared",
+    "Resync": "Resync",
+    "Bridge endpoint ID": "Bridge endpoint ID",
+    "Share drafts": "Share drafts"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4009,7 +4016,14 @@
     "Stop {name} from inviting devices with full access?": "¿Impedir que {name} invite equipos con acceso completo?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Las invitaciones nuevas se detienen de inmediato. Los equipos que ya invitó pierden el acceso aquí en pocos minutos, mientras O3 Code esté en ejecución en este equipo.",
     "Give access to all hosts": "Dar acceso a todos los hosts",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "El equipo obtiene acceso completo a T3 en cada host que lo permita, no solo en este. Dáselo solo a un equipo de confianza."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "El equipo obtiene acceso completo a T3 en cada host que lo permita, no solo en este. Dáselo solo a un equipo de confianza.",
+    "Shared drafts": "Borradores compartidos",
+    "Shared draft conflict": "Conflicto de borrador compartido",
+    "Keep local": "Conservar local",
+    "Use shared": "Usar compartido",
+    "Resync": "Resincronizar",
+    "Bridge endpoint ID": "ID del endpoint del bridge",
+    "Share drafts": "Compartir borradores"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6015,7 +6029,14 @@
     "Stop {name} from inviting devices with full access?": "Impedir que {name} convide dispositivos com acesso total?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Novos convites param imediatamente. Os dispositivos já convidados perdem o acesso aqui em poucos minutos, enquanto o O3 Code estiver em execução neste dispositivo.",
     "Give access to all hosts": "Dar acesso a todos os hosts",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "O dispositivo obtém acesso total ao T3 em cada host que permitir, não só neste. Conceda isso apenas a um dispositivo de confiança."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "O dispositivo obtém acesso total ao T3 em cada host que permitir, não só neste. Conceda isso apenas a um dispositivo de confiança.",
+    "Shared drafts": "Rascunhos compartilhados",
+    "Shared draft conflict": "Conflito de rascunho compartilhado",
+    "Keep local": "Manter local",
+    "Use shared": "Usar compartilhado",
+    "Resync": "Ressincronizar",
+    "Bridge endpoint ID": "ID do endpoint da ponte",
+    "Share drafts": "Compartilhar rascunhos"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8021,7 +8042,14 @@
     "Stop {name} from inviting devices with full access?": "Empêcher {name} d'inviter des appareils avec un accès complet ?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Les nouvelles invitations s'arrêtent immédiatement. Les appareils déjà invités perdent l'accès ici en quelques minutes, tant qu'O3 Code tourne sur cet appareil.",
     "Give access to all hosts": "Donner accès à tous les hôtes",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "L'appareil obtient un accès complet à T3 sur chaque hôte qui l'autorise, pas seulement celui-ci. Ne l'accordez qu'à un appareil de confiance."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "L'appareil obtient un accès complet à T3 sur chaque hôte qui l'autorise, pas seulement celui-ci. Ne l'accordez qu'à un appareil de confiance.",
+    "Shared drafts": "Brouillons partagés",
+    "Shared draft conflict": "Conflit de brouillon partagé",
+    "Keep local": "Conserver la version locale",
+    "Use shared": "Utiliser la version partagée",
+    "Resync": "Resynchroniser",
+    "Bridge endpoint ID": "ID du point de terminaison du pont",
+    "Share drafts": "Partager les brouillons"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10027,7 +10055,14 @@
     "Stop {name} from inviting devices with full access?": "{name} das Einladen von Geräten mit vollem Zugriff untersagen?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Neue Einladungen enden sofort. Bereits eingeladene Geräte verlieren den Zugriff hier innerhalb weniger Minuten, solange O3 Code auf diesem Gerät läuft.",
     "Give access to all hosts": "Zugriff auf alle Hosts geben",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Das Gerät erhält vollen T3-Zugriff auf jedem Host, der es erlaubt, nicht nur auf diesem. Gib das nur einem vertrauenswürdigen Gerät."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Das Gerät erhält vollen T3-Zugriff auf jedem Host, der es erlaubt, nicht nur auf diesem. Gib das nur einem vertrauenswürdigen Gerät.",
+    "Shared drafts": "Geteilte Entwürfe",
+    "Shared draft conflict": "Konflikt im geteilten Entwurf",
+    "Keep local": "Lokale Version behalten",
+    "Use shared": "Geteilte Version verwenden",
+    "Resync": "Erneut synchronisieren",
+    "Bridge endpoint ID": "Bridge-Endpunkt-ID",
+    "Share drafts": "Entwürfe teilen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12033,7 +12068,14 @@
     "Stop {name} from inviting devices with full access?": "Impedire a {name} di invitare dispositivi con accesso completo?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "I nuovi inviti si fermano subito. I dispositivi già invitati perdono l'accesso qui entro pochi minuti, finché O3 Code è in esecuzione su questo dispositivo.",
     "Give access to all hosts": "Dai accesso a tutti gli host",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Il dispositivo ottiene l'accesso completo a T3 su ogni host che lo consente, non solo su questo. Concedilo solo a un dispositivo di fiducia."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Il dispositivo ottiene l'accesso completo a T3 su ogni host che lo consente, non solo su questo. Concedilo solo a un dispositivo di fiducia.",
+    "Shared drafts": "Bozze condivise",
+    "Shared draft conflict": "Conflitto nella bozza condivisa",
+    "Keep local": "Mantieni locale",
+    "Use shared": "Usa condivisa",
+    "Resync": "Risincronizza",
+    "Bridge endpoint ID": "ID endpoint del bridge",
+    "Share drafts": "Condividi bozze"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14039,7 +14081,14 @@
     "Stop {name} from inviting devices with full access?": "{name} verbieden apparaten met volledige toegang uit te nodigen?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Nieuwe uitnodigingen stoppen meteen. Al uitgenodigde apparaten verliezen hier binnen enkele minuten de toegang, zolang O3 Code op dit apparaat draait.",
     "Give access to all hosts": "Toegang geven tot alle hosts",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Het apparaat krijgt volledige T3-toegang op elke host die het toestaat, niet alleen op deze. Geef dit alleen aan een apparaat dat je vertrouwt."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Het apparaat krijgt volledige T3-toegang op elke host die het toestaat, niet alleen op deze. Geef dit alleen aan een apparaat dat je vertrouwt.",
+    "Shared drafts": "Gedeelde concepten",
+    "Shared draft conflict": "Conflict in gedeeld concept",
+    "Keep local": "Lokale versie behouden",
+    "Use shared": "Gedeelde versie gebruiken",
+    "Resync": "Opnieuw synchroniseren",
+    "Bridge endpoint ID": "Bridge-eindpunt-ID",
+    "Share drafts": "Concepten delen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16045,7 +16094,14 @@
     "Stop {name} from inviting devices with full access?": "Zabronić {name} zapraszania urządzeń z pełnym dostępem?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Nowe zaproszenia ustają natychmiast. Już zaproszone urządzenia tracą tu dostęp w ciągu kilku minut, o ile O3 Code działa na tym urządzeniu.",
     "Give access to all hosts": "Daj dostęp do wszystkich hostów",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Urządzenie otrzymuje pełny dostęp do T3 na każdym hoście, który na to pozwala, nie tylko na tym. Przyznaj to tylko zaufanemu urządzeniu."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Urządzenie otrzymuje pełny dostęp do T3 na każdym hoście, który na to pozwala, nie tylko na tym. Przyznaj to tylko zaufanemu urządzeniu.",
+    "Shared drafts": "Współdzielone wersje robocze",
+    "Shared draft conflict": "Konflikt współdzielonej wersji roboczej",
+    "Keep local": "Zachowaj lokalną",
+    "Use shared": "Użyj współdzielonej",
+    "Resync": "Synchronizuj ponownie",
+    "Bridge endpoint ID": "Identyfikator punktu końcowego mostka",
+    "Share drafts": "Udostępniaj wersje robocze"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18051,7 +18107,14 @@
     "Stop {name} from inviting devices with full access?": "Запретить {name} приглашать устройства с полным доступом?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Новые приглашения прекращаются сразу. Уже приглашённые устройства теряют здесь доступ в течение нескольких минут, пока на этом устройстве работает O3 Code.",
     "Give access to all hosts": "Дать доступ ко всем хостам",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Устройство получает полный доступ к T3 на каждом хосте, который это разрешает, а не только на этом. Давайте его только доверенному устройству."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Устройство получает полный доступ к T3 на каждом хосте, который это разрешает, а не только на этом. Давайте его только доверенному устройству.",
+    "Shared drafts": "Общие черновики",
+    "Shared draft conflict": "Конфликт общего черновика",
+    "Keep local": "Сохранить локальный",
+    "Use shared": "Использовать общий",
+    "Resync": "Синхронизировать снова",
+    "Bridge endpoint ID": "ID конечной точки моста",
+    "Share drafts": "Делиться черновиками"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20057,7 +20120,14 @@
     "Stop {name} from inviting devices with full access?": "Заборонити {name} запрошувати пристрої з повним доступом?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Нові запрошення припиняються одразу. Уже запрошені пристрої втрачають тут доступ протягом кількох хвилин, поки на цьому пристрої працює O3 Code.",
     "Give access to all hosts": "Надати доступ до всіх хостів",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Пристрій отримує повний доступ до T3 на кожному хості, який це дозволяє, а не лише на цьому. Надавайте його лише довіреному пристрою."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Пристрій отримує повний доступ до T3 на кожному хості, який це дозволяє, а не лише на цьому. Надавайте його лише довіреному пристрою.",
+    "Shared drafts": "Спільні чернетки",
+    "Shared draft conflict": "Конфлікт спільної чернетки",
+    "Keep local": "Зберегти локальну",
+    "Use shared": "Використати спільну",
+    "Resync": "Синхронізувати знову",
+    "Bridge endpoint ID": "ID кінцевої точки мосту",
+    "Share drafts": "Ділитися чернетками"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22063,7 +22133,14 @@
     "Stop {name} from inviting devices with full access?": "{name} によるフルアクセスのデバイスの招待を停止しますか？",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "新しい招待はすぐに停止します。招待済みのデバイスは、このデバイスで O3 Code が実行中であれば、数分以内にここへのアクセスを失います。",
     "Give access to all hosts": "すべてのホストへのアクセスを許可",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "このデバイスは、ここだけでなく、許可しているすべてのホストで T3 へのフルアクセスを得ます。信頼できるデバイスにのみ許可してください。"
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "このデバイスは、ここだけでなく、許可しているすべてのホストで T3 へのフルアクセスを得ます。信頼できるデバイスにのみ許可してください。",
+    "Shared drafts": "共有下書き",
+    "Shared draft conflict": "共有下書きの競合",
+    "Keep local": "ローカルを保持",
+    "Use shared": "共有を使用",
+    "Resync": "再同期",
+    "Bridge endpoint ID": "ブリッジのエンドポイントID",
+    "Share drafts": "下書きを共有"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24069,7 +24146,14 @@
     "Stop {name} from inviting devices with full access?": "{name}의 전체 접근 권한 기기 초대를 중지할까요?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "새 초대는 즉시 중단됩니다. 이미 초대된 기기는 이 기기에서 O3 Code가 실행 중이면 몇 분 안에 여기에 대한 접근 권한을 잃습니다.",
     "Give access to all hosts": "모든 호스트에 대한 접근 권한 부여",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "이 기기는 이곳뿐 아니라 허용한 모든 호스트에서 T3 전체 접근 권한을 얻습니다. 신뢰하는 기기에만 부여하세요."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "이 기기는 이곳뿐 아니라 허용한 모든 호스트에서 T3 전체 접근 권한을 얻습니다. 신뢰하는 기기에만 부여하세요.",
+    "Shared drafts": "공유 초안",
+    "Shared draft conflict": "공유 초안 충돌",
+    "Keep local": "로컬 유지",
+    "Use shared": "공유 버전 사용",
+    "Resync": "다시 동기화",
+    "Bridge endpoint ID": "브리지 엔드포인트 ID",
+    "Share drafts": "초안 공유"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26075,7 +26159,14 @@
     "Stop {name} from inviting devices with full access?": "停止 {name} 邀请具有完全访问权限的设备？",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "新邀请立即停止。只要此设备上正在运行 O3 Code，已邀请的设备会在几分钟内失去此处的访问权限。",
     "Give access to all hosts": "授予所有主机的访问权限",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "该设备将在每台允许的主机上获得 T3 完全访问权限，而不仅是这一台。请仅授予你信任的设备。"
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "该设备将在每台允许的主机上获得 T3 完全访问权限，而不仅是这一台。请仅授予你信任的设备。",
+    "Shared drafts": "共享草稿",
+    "Shared draft conflict": "共享草稿冲突",
+    "Keep local": "保留本地",
+    "Use shared": "使用共享版本",
+    "Resync": "重新同步",
+    "Bridge endpoint ID": "桥接端点 ID",
+    "Share drafts": "共享草稿内容"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28081,7 +28172,14 @@
     "Stop {name} from inviting devices with full access?": "هل تريد منع {name} من دعوة أجهزة بوصول كامل؟",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "تتوقف الدعوات الجديدة فورًا. تفقد الأجهزة المدعوة سابقًا وصولها هنا خلال دقائق قليلة، ما دام O3 Code يعمل على هذا الجهاز.",
     "Give access to all hosts": "منح الوصول إلى كل المضيفين",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "يحصل الجهاز على وصول كامل إلى T3 على كل مضيف يسمح بذلك، وليس هذا فقط. امنح هذا لجهاز موثوق فقط."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "يحصل الجهاز على وصول كامل إلى T3 على كل مضيف يسمح بذلك، وليس هذا فقط. امنح هذا لجهاز موثوق فقط.",
+    "Shared drafts": "المسودات المشتركة",
+    "Shared draft conflict": "تعارض المسودة المشتركة",
+    "Keep local": "الاحتفاظ بالمحلية",
+    "Use shared": "استخدام المشتركة",
+    "Resync": "إعادة المزامنة",
+    "Bridge endpoint ID": "معرّف نقطة نهاية الجسر",
+    "Share drafts": "مشاركة المسودات"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30087,7 +30185,14 @@
     "Stop {name} from inviting devices with full access?": "{name} tam erişimli cihaz davet etmeyi bıraksın mı?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Yeni davetler hemen durur. Daha önce davet edilen cihazlar, bu cihazda O3 Code çalıştığı sürece birkaç dakika içinde buradaki erişimini kaybeder.",
     "Give access to all hosts": "Tüm ana makinelere erişim ver",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Cihaz yalnızca bunda değil, izin veren her ana makinede tam T3 erişimi alır. Bunu yalnızca güvendiğiniz bir cihaza verin."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Cihaz yalnızca bunda değil, izin veren her ana makinede tam T3 erişimi alır. Bunu yalnızca güvendiğiniz bir cihaza verin.",
+    "Shared drafts": "Paylaşılan taslaklar",
+    "Shared draft conflict": "Paylaşılan taslak çakışması",
+    "Keep local": "Yereli koru",
+    "Use shared": "Paylaşılanı kullan",
+    "Resync": "Yeniden eşitle",
+    "Bridge endpoint ID": "Köprü uç noktası kimliği",
+    "Share drafts": "Taslakları paylaş"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32093,7 +32198,14 @@
     "Stop {name} from inviting devices with full access?": "Hindra {name} från att bjuda in enheter med full åtkomst?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Nya inbjudningar upphör direkt. Redan inbjudna enheter förlorar åtkomsten här inom några minuter, så länge O3 Code körs på den här enheten.",
     "Give access to all hosts": "Ge åtkomst till alla värdar",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Enheten får full T3-åtkomst på varje värd som tillåter det, inte bara den här. Ge detta bara till en enhet du litar på."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Enheten får full T3-åtkomst på varje värd som tillåter det, inte bara den här. Ge detta bara till en enhet du litar på.",
+    "Shared drafts": "Delade utkast",
+    "Shared draft conflict": "Konflikt i delat utkast",
+    "Keep local": "Behåll lokal",
+    "Use shared": "Använd delad",
+    "Resync": "Synkronisera igen",
+    "Bridge endpoint ID": "Bryggans slutpunkts-ID",
+    "Share drafts": "Dela utkast"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34099,7 +34211,14 @@
     "Stop {name} from inviting devices with full access?": "Forhindr {name} i at invitere enheder med fuld adgang?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Nye invitationer stopper med det samme. Allerede inviterede enheder mister adgangen her inden for få minutter, så længe O3 Code kører på denne enhed.",
     "Give access to all hosts": "Giv adgang til alle værter",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Enheden får fuld T3-adgang på hver vært, der tillader det, ikke kun denne. Giv kun dette til en enhed, du stoler på."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Enheden får fuld T3-adgang på hver vært, der tillader det, ikke kun denne. Giv kun dette til en enhed, du stoler på.",
+    "Shared drafts": "Delte kladder",
+    "Shared draft conflict": "Konflikt i delt kladde",
+    "Keep local": "Behold lokal",
+    "Use shared": "Brug delt",
+    "Resync": "Synkroniser igen",
+    "Bridge endpoint ID": "Broens slutpunkts-ID",
+    "Share drafts": "Del kladder"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36105,7 +36224,14 @@
     "Stop {name} from inviting devices with full access?": "Hindre {name} i å invitere enheter med full tilgang?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Nye invitasjoner stopper med en gang. Allerede inviterte enheter mister tilgangen her innen noen få minutter, så lenge O3 Code kjører på denne enheten.",
     "Give access to all hosts": "Gi tilgang til alle verter",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Enheten får full T3-tilgang på hver vert som tillater det, ikke bare denne. Gi dette bare til en enhet du stoler på."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Enheten får full T3-tilgang på hver vert som tillater det, ikke bare denne. Gi dette bare til en enhet du stoler på.",
+    "Shared drafts": "Delte utkast",
+    "Shared draft conflict": "Konflikt i delt utkast",
+    "Keep local": "Behold lokal",
+    "Use shared": "Bruk delt",
+    "Resync": "Synkroniser på nytt",
+    "Bridge endpoint ID": "Broens endepunkt-ID",
+    "Share drafts": "Del utkast"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -38111,7 +38237,14 @@
     "Stop {name} from inviting devices with full access?": "Estetäänkö laitetta {name} kutsumasta laitteita täydellä käyttöoikeudella?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Uudet kutsut loppuvat heti. Jo kutsutut laitteet menettävät käyttöoikeutensa täällä muutamassa minuutissa, kun O3 Code on käynnissä tällä laitteella.",
     "Give access to all hosts": "Anna käyttöoikeus kaikkiin isäntiin",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Laite saa täyden T3-käyttöoikeuden jokaisella isännällä, joka sallii sen, ei vain tällä. Anna tämä vain luotetulle laitteelle."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Laite saa täyden T3-käyttöoikeuden jokaisella isännällä, joka sallii sen, ei vain tällä. Anna tämä vain luotetulle laitteelle.",
+    "Shared drafts": "Jaetut luonnokset",
+    "Shared draft conflict": "Jaetun luonnoksen ristiriita",
+    "Keep local": "Säilytä paikallinen",
+    "Use shared": "Käytä jaettua",
+    "Resync": "Synkronoi uudelleen",
+    "Bridge endpoint ID": "Sillan päätepisteen tunnus",
+    "Share drafts": "Jaa luonnokset"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -40117,6 +40250,13 @@
     "Stop {name} from inviting devices with full access?": "Zakázat {name} zvát zařízení s plným přístupem?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "Nové pozvánky se zastaví okamžitě. Již pozvaná zařízení zde ztratí přístup během několika minut, pokud na tomto zařízení běží O3 Code.",
     "Give access to all hosts": "Dát přístup ke všem hostitelům",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Zařízení získá plný přístup k T3 na každém hostiteli, který to povoluje, nejen na tomto. Dejte to jen zařízení, kterému důvěřujete."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "Zařízení získá plný přístup k T3 na každém hostiteli, který to povoluje, nejen na tomto. Dejte to jen zařízení, kterému důvěřujete.",
+    "Shared drafts": "Sdílené koncepty",
+    "Shared draft conflict": "Konflikt sdíleného konceptu",
+    "Keep local": "Ponechat místní",
+    "Use shared": "Použít sdílený",
+    "Resync": "Znovu synchronizovat",
+    "Bridge endpoint ID": "ID koncového bodu mostu",
+    "Share drafts": "Sdílet koncepty"
   }
 }

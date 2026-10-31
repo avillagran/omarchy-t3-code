@@ -235,13 +235,32 @@ fn snapshot(authority: &str) -> Result<Value> {
 /// Local-only foundation API. Explicit authority + journal ID are required.
 /// `stage` fsyncs the exact command without network I/O; `retry` sends only that
 /// command. Conflicts require an explicit new journal, preserving the old branch.
-/// This is not a remote host endpoint and does not enable composer sharing.
+/// Editor actions use the same local journal; this is not a remote host endpoint.
 pub fn execute(input: &Value) -> Result<Value> {
     let authority = text(input, "authority");
     if !omabridge_route::valid_peer(authority) {
         return Err("invalid_shared_draft_authority".into());
     }
     match text(input, "action") {
+        "editor-project" => {
+            return crate::shared_editor::project(
+                authority,
+                &input["command"],
+                text(input, "environment"),
+            )
+        }
+        "editor-record" => {
+            crate::shared_editor::record(authority, text(input, "key"), &input["draft"])?;
+            return Ok(json!({"saved":true}));
+        }
+        "editor-sync" if scope(&input["scope"]) => {
+            return crate::shared_editor::sync(
+                authority,
+                text(input, "key"),
+                &input["scope"],
+                text(input, "resolution"),
+            )
+        }
         "snapshot" => return snapshot(authority),
         "get" if scope(&input["scope"]) => {
             return call(authority, &json!({"op":"get","scope":input["scope"]}))
