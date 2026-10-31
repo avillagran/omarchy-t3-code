@@ -1474,10 +1474,8 @@
     "T3 Code and OmaBridge": "T3 Code and OmaBridge",
     "For a desktop without Omarchy where you code locally.": "For a desktop without Omarchy where you code locally.",
     "Use an SSH host, alias or user@host.": "Use an SSH host, alias or user@host.",
-    "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.": "A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.",
     "Let this device manage it": "Let this device manage it",
     "Also let it reach this device's SSH": "Also let it reach this device's SSH",
-    "Open chat": "Open chat",
     "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.": "Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.",
     "Set up a new host with your AI": "Set up a new host with your AI",
     "Set up a new host…": "Set up a new host…",
@@ -1864,6 +1862,18 @@
     "The T3 server is not running or did not become ready.": "The T3 server is not running or did not become ready.",
     "The host answered with a different T3 environment.": "The host answered with a different T3 environment.",
     "The saved connections could not be unlocked.": "The saved connections could not be unlocked.",
-    "The connection to T3 was interrupted.": "The connection to T3 was interrupted."
+    "The connection to T3 was interrupted.": "The connection to T3 was interrupted.",
+    "Connection assistants": "Connection assistants",
+    "Connect existing…": "Connect existing…",
+    "Start": "Start",
+    "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.": "The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.",
+    "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.": "The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.",
+    "Sign in needed · {host}": "Sign in needed · {host}",
+    "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.": "{providers} cannot run agents on this host until you sign in there. Each host keeps its own sign-in.",
+    "Not now": "Not now",
+    "Sign in to {provider}…": "Sign in to {provider}…",
+    "Waiting for {provider}…": "Waiting for {provider}…",
+    "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.": "Finish the sign-in in the terminal that opened. This card closes by itself once it is done.",
+    "Sign in on that host directly: this connection has no SSH.": "Sign in on that host directly: this connection has no SSH."
   }
 }

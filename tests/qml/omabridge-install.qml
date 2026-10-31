@@ -3,11 +3,13 @@ import QtTest
 import Quickshell
 import "UnderTest/ui/qml" as Test
 // Set up a new host with an agent: the chat runs on the chosen host, starts in
-// that host's scratch project, the invitation is created first (confirmed by
-// the dialog), moved to that host, and the prompt names only its path there.
+// that host's scratch project and is sent at once. Run elsewhere, the invitation
+// is created first (confirmed by the dialog), moved to that host, and the prompt
+// names only its path there; run here, the new host invites and none is made here.
 ShellRoot {
  id:root;property int phase:0
  property string promptError:""
+ property int invites:0
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_INSTALL_QML_FAIL "+msg);Qt.exit(1)}}
  QtObject{id:b
   property var state:({environments:[{id:"local",name:"T3 Code",state:"ready"},{id:"devbox",name:"devbox",state:"ready"},{id:"down",name:"down",state:"connecting"}],
@@ -24,7 +26,7 @@ ShellRoot {
   function requestOmaBridgeInstall(op,values){seq++;var id="i"+seq;installs=installs.concat([Object.assign({op:op},values)])
    var result=op==="omabridge-invite-handoff"?{path:values.environment==="local"?values.invitation:"/srv/home/.cache/omabridge/omabridge-invite-20261020-120000.json"}:(root.promptError?null:{prompt:"PROMPT"})
    Qt.callLater(function(){b.omabridgeInstallAnswer(id,result,op==="omabridge-install-prompt"?root.promptError:"")});return id}
-  function startPromptedChat(environment,projectId,text){chat={environment:environment,projectId:projectId,text:text};return true}
+  function startPromptedChat(environment,projectId,text,send){chat={environment:environment,projectId:projectId,text:text,send:send};return true}
  }
  FloatingWindow{visible:true;implicitWidth:900;implicitHeight:900
   Item{anchors.fill:parent;Test.T3OmaBridgeInstall{id:dialog;bridge:b}}
@@ -50,16 +52,28 @@ ShellRoot {
    check(find("omabridgeInstallError").visible&&b.chat===null&&dialog.opened,"a refused prompt opens no chat");
    root.promptError="";find("omabridgeInstallStart").clicked();phase++
   }else if(phase===3){
-   check(b.chat&&b.chat.environment==="devbox"&&b.chat.projectId==="devbox-scratch"&&b.chat.text==="PROMPT","clean chat on that host with the prompt");
+   check(b.chat&&b.chat.environment==="devbox"&&b.chat.projectId==="devbox-scratch"&&b.chat.text==="PROMPT"&&b.chat.send===true,"clean chat on that host, sent at once");
    check(!dialog.opened&&dialog.invitation==="","dialog closes and forgets the invitation path");
    dialog.begin(0);phase++
   }else if(phase===4){
    check(dialog.environment==="local"&&dialog.scratch.id==="scratch","this device's scratch project by its folder");
+   root.invites=b.sent.filter(function(r){return r.action==="invite"}).length
    find("omabridgeInstallHost").text="vps";find("omabridgeInstallManage").toggle();find("omabridgeInstallSsh").toggle();find("omabridgeInstallStart").clicked();phase++
   }else if(phase===5){
-   var invite=b.sent[b.sent.length-1];check(invite.manage===false&&JSON.stringify(invite.services)==='["t3","ssh"]',"management off, SSH shared on request");
-   check(last("omabridge-install-prompt").runsOn===""&&b.chat.environment==="local"&&b.chat.projectId==="scratch","here the invitation stays put and the chat opens here");
-   console.log("OMABRIDGE_INSTALL_QML_PASS: connected hosts, chat on the chosen host in its scratch project, confirmed managing invitation moved there, prompt from its path, refused prompt, local run, options");Qt.quit()
+   var p=last("omabridge-install-prompt");
+   check(b.sent.filter(function(r){return r.action==="invite"}).length===root.invites&&p.invitation===""&&p.deviceId==="a".repeat(64),"run here: no invitation from this device, its identity instead: "+JSON.stringify(p));
+   check(p.manage===false&&p.shareSsh===true,"management off, SSH shared on request");
+   check(p.runsOn===""&&b.chat.environment==="local"&&b.chat.projectId==="scratch"&&b.chat.send===true,"the chat opens here and starts");
+   dialog.begin(1,true);phase++
+  }else if(phase===6){
+   check(dialog.existing&&!find("omabridgeInstallProfile_headless").visible,"existing mode hides installation profiles");
+   check(dialog.environment==="local","an existing host always pairs from this device");
+   find("omabridgeInstallHost").text="existing-vps";find("omabridgeInstallStart").clicked();phase++
+  }else if(phase===7){
+   check(last("omabridge-install-prompt").existing===true&&last("omabridge-install-prompt").host==="existing-vps","existing mode reaches backend prompt");
+   check(b.chat&&b.chat.projectId==="scratch"&&!dialog.opened,"existing pairing opens the prompted chat");
+   dialog.begin(0);check(!dialog.existing,"new host resets existing mode");dialog.close();
+   console.log("OMABRIDGE_INSTALL_QML_PASS: connected hosts, chat on the chosen host in its scratch project sent at once, confirmed managing invitation moved there, prompt from its path, refused prompt, local run without invitation, existing host from here, options");Qt.quit()
   }
  }}
 }

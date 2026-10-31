@@ -159,7 +159,7 @@ fn local_environment()->Result<Environment> {
         file.write_all(value.as_bytes()).map_err(|_|"local_error")?;file.sync_all().map_err(|_|"local_error")?;
         fs::rename(temp,&token).map_err(|_|"local_error")?;
     }
-    Ok(Environment{id:"local".into(),name:"T3 Code".into(),base_url:origin.into(),token_file:token.clone(),write_token_file:Some(token),bearer:None,connection_error:None,connection:None})
+    Ok(Environment{id:"local".into(),name:local_name(),base_url:origin.into(),token_file:token.clone(),write_token_file:Some(token),bearer:None,connection_error:None,connection:None})
 }
 fn remote_base(target:&Value)->Environment {
     Environment{id:text(target,"environmentId").into(),name:text(target,"label").into(),base_url:String::new(),token_file:PathBuf::new(),write_token_file:None,bearer:None,connection_error:None,connection:None}
@@ -341,7 +341,7 @@ fn build_environments()->Result<Vec<Environment>> {
     let local_disabled=catalog.as_ref().ok().and_then(|c|c["disabledEnvironmentIds"].as_array()).is_some_and(|ids|ids.contains(&json!(primary_id.trim()))||ids.contains(&json!("local")));
     let local_disabled=local_disabled || read_json(&t3_home().join("userdata/desktop-settings.json")).ok().is_some_and(|c|c["localEnvironmentEnabled"]==false);
     if !local_disabled {
-        match local_environment(){Ok(e)=>result.push(e),Err(error)=>{let mut e=remote_base(&json!({"environmentId":"local","label":"T3 Code"}));e.connection_error=Some(error);result.push(e);}}
+        match local_environment(){Ok(e)=>result.push(e),Err(error)=>{let mut e=remote_base(&json!({"environmentId":"local","label":local_name()}));e.connection_error=Some(error);result.push(e);}}
     }
     match &catalog {
         Ok(catalog)=>{
@@ -439,6 +439,16 @@ fn build_environments()->Result<Vec<Environment>> {
     Ok(result)
 }
 
+/// This device's name: the one OmaBridge publishes (renamed in its section), else
+/// the host name T3 itself reports, else "T3 Code". OmaBridge's state is part of the
+/// catalog signature, so a rename shows on the next refresh.
+pub fn local_name()->String{
+    #[derive(serde::Deserialize)]struct Named{name:Option<String>}
+    let state=crate::omabridge_route::config().map(|c|c.state_dir()).unwrap_or_else(|_|crate::omabridge_route::default_state_dir());
+    let bridge=fs::read(state.join("state.json")).ok().and_then(|b|serde_json::from_slice::<Named>(&b).ok()).and_then(|n|n.name);
+    let host=fs::read_to_string("/proc/sys/kernel/hostname").ok();
+    [bridge,host].into_iter().flatten().map(|n|n.trim().chars().filter(|c|!c.is_control()).take(80).collect::<String>()).find(|n|!n.is_empty()).unwrap_or_else(||"T3 Code".into())
+}
 pub fn refresh_connections() {
     INVALIDATED.store(true,std::sync::atomic::Ordering::SeqCst);
 }

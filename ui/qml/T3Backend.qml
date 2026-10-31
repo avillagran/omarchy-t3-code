@@ -161,17 +161,18 @@ Singleton {
     var id=uuid();omabridgeInstallRequest=id
     send(Object.assign({},values || {},{op:op,requestId:id}));return id
   }
-  // A new chat with a prompt typed in but not sent, for the user to review.
+  // A new chat with a prompt typed in, for the user to review, or sent at once.
   signal promptedChatStarted()
   property var promptPrefill:null
-  function startPromptedChat(environment,projectId,text){
+  function startPromptedChat(environment,projectId,text,send){
     if(managementBusy || managementRequest || !String(text || "").trim())return false
-    promptPrefill={environment:environment,projectId:projectId,text:String(text),key:""}
+    promptPrefill={environment:environment,projectId:projectId,text:String(text),key:"",send:send===true}
     openProject(environment,projectId,true);promptedChatStarted();return true
   }
   function applyPromptPrefill(){
     var p=promptPrefill;if(!p || !p.key || p.key!==selectedKey || draft.loading)return
     promptPrefill=null;patchDraft(p.key,{text:p.text})
+    if(p.send)Qt.callLater(function(){if(root.selectedKey===p.key&&root.draft.text===p.text)root.submit(false)})
   }
   onProjectOpened:function(environment,projectId,error){
     var p=promptPrefill;if(!p || p.key || p.environment!==environment || p.projectId!==projectId)return
@@ -639,6 +640,32 @@ Singleton {
   function answerSecret(request,answer){var key=request.turnItemId;if(!key||(secretAnswers[key]||{}).busy)return;var id=uuid(),all=Object.assign({},secretAnswers);all[key]={busy:true,error:"",requestId:id};secretAnswers=all;send({op:"secret-answer",environment:selectedEnvironment,thread:request.threadId||selectedThread,turnItemId:key,answer:answer,requestId:id})}
   // Provider install and sign-in (provider.install.* / provider.auth.*), per instance.
   property var providerSetup:({})
+  // Connected hosts whose providers are signed out, from each host's catalog:
+  // [{environment, name, providers:[names], key}]. "Not now" hides one set of
+  // providers on a host; another provider signing out shows it again.
+  readonly property var providerSignIns:(state.environments || []).filter(function(e){return e.state==="ready"}).map(function(e){
+    var providers=((catalogs[e.id] || {}).providers || []).filter(function(p){return p.signIn==="t3" || p.signIn==="cli"}).map(function(p){return {instanceId:p.instanceId,driver:p.driverKind,name:String(p.name || p.instanceId),method:p.signIn}})
+    return {environment:e.id,name:e.name || e.id,providers:providers,key:providers.map(function(p){return p.instanceId}).sort().join("\n")}
+  }).filter(function(s){return s.providers.length>0&&((viewState.signInDismissed || {})[s.environment] || "")!==s.key})
+  // A CLI login runs in a terminal; T3 is asked to re-check that provider every
+  // 5 s for 10 minutes, or until its catalog shows it signed in.
+  property var providerLogins:({})
+  function signInProvider(environment,provider){
+    var k=environment+"/"+provider.instanceId,all=Object.assign({},providerLogins),id=uuid()
+    all[k]={environment:environment,instanceId:provider.instanceId,started:Date.now(),error:"",requestId:id};providerLogins=all
+    send({op:"provider-login",environment:environment,instanceId:provider.instanceId,driver:provider.driver,requestId:id})
+  }
+  function providerLogin(environment,instanceId){return providerLogins[environment+"/"+instanceId] || null}
+  function settleProviderLogins(){
+    var all={},changed=false
+    Object.keys(providerLogins).forEach(function(k){var l=providerLogins[k];var p=((catalogs[l.environment] || {}).providers || []).find(function(p){return p.instanceId===l.instanceId})
+      if(l.error || (p&&p.signIn!=="cli") || Date.now()-l.started>600000){changed=true;if(l.error)all[k]=l;return}all[k]=l})
+    if(changed)providerLogins=all
+  }
+  onCatalogsChanged:settleProviderLogins()
+  Timer{interval:5000;repeat:true;running:Object.keys(root.providerLogins).some(function(k){return !root.providerLogins[k].error})
+    onTriggered:{root.settleProviderLogins();Object.keys(root.providerLogins).forEach(function(k){var l=root.providerLogins[k];if(!l.error)root.send({op:"provider-refresh",environment:l.environment,instanceId:l.instanceId,requestId:root.uuid()})})}}
+  function dismissProviderSignIn(environment,key){var all=Object.assign({},viewState.signInDismissed || {});all[environment]=key;rememberView({signInDismissed:all})}
   function providerSetupAction(environment,instanceId,values){var id=uuid(),all=Object.assign({},providerSetup);all[instanceId]=Object.assign({},all[instanceId]||{},{busy:true,error:"",requestId:id,environment:environment,action:values.action || ""});providerSetup=all;send(Object.assign({op:"provider-setup",environment:environment,instanceId:instanceId,requestId:id},values))}
   // While a flow runs, its state is re-read every second.
   Timer{interval:1000;repeat:true;running:Object.keys(root.providerSetup).some(function(k){var s=root.providerSetup[k];var p=s.state&&s.state.phase;return !s.busy&&["starting","waiting","verifying","downloading","extracting"].indexOf(p)>=0})
@@ -1628,7 +1655,9 @@ Singleton {
     if(data.op==="local-servers"){if(data.requestId!==localServers.requestId)return;localServers=Object.assign({},localServers,{busy:false,servers:data.error?[]:((data.result||{}).servers||[])});return}
     if(data.op==="process-diagnostics"){if(data.requestId!==processDiagnostics.requestId)return;processDiagnostics=Object.assign({},processDiagnostics,{busy:false,error:data.error||"",report:data.error?processDiagnostics.report:data.result});return}
     if(data.op==="agent-sessions"){if(data.requestId!==agentSessions.requestId)return;var r=data.result||{};var next=Object.assign({},agentSessions,{busy:false,error:data.error||""});if(!data.error&&agentSessions.action==="scan")next.candidates=r.candidates||[];if(!data.error&&agentSessions.action==="import"){next.last=r;refresh()}agentSessions=next;if(!data.error&&agentSessions.action==="import")agentSessionsAction({action:"scan"});return}
-    if(data.op==="provider-setup"){var key=Object.keys(providerSetup).find(function(k){return providerSetup[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},providerSetup),r=data.result||{};all[key]=Object.assign({},all[key],{busy:false,error:data.error||"",kind:r.kind||all[key].kind,state:data.error?all[key].state:(r.kind==="update"?null:r.state)});providerSetup=all;if(r.kind==="update"&&all[key].environment){requestProviderInstances(all[key].environment,"read");return}var phase=r.state&&r.state.phase;if(phase==="succeeded"&&all[key].environment)requestProviderInstances(all[key].environment,"read");return}
+    if(data.op==="provider-login"){var lk=Object.keys(providerLogins).find(function(k){return providerLogins[k].requestId===data.requestId});if(lk&&data.error){var la=Object.assign({},providerLogins);la[lk]=Object.assign({},la[lk],{error:data.error});providerLogins=la}return}
+    if(data.op==="provider-refresh"){if(!data.error)refreshCatalogIn(data.environment);return}
+    if(data.op==="provider-setup"){var key=Object.keys(providerSetup).find(function(k){return providerSetup[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},providerSetup),r=data.result||{};all[key]=Object.assign({},all[key],{busy:false,error:data.error||"",kind:r.kind||all[key].kind,state:data.error?all[key].state:(r.kind==="update"?null:r.state)});providerSetup=all;if(r.kind==="update"&&all[key].environment){requestProviderInstances(all[key].environment,"read");return}var phase=r.state&&r.state.phase;if(phase==="succeeded"&&all[key].environment){requestProviderInstances(all[key].environment,"read");refreshCatalogIn(all[key].environment)}return}
     if(data.op==="vault-read"){if(data.requestId!==vault.requestId)return;vault=Object.assign({},vault,{busy:false,error:data.error||"",state:data.error?vault.state:data.result});return}
     if(data.op==="vault-discover"){if(data.requestId!==vaultHosts.requestId)return;var vd=data.result||{};vaultHosts=Object.assign({},vaultHosts,{busy:false,loaded:true,error:data.error||"",hosts:data.error?vaultHosts.hosts:vd.hosts||[],vaults:data.error?vaultHosts.vaults:vd.vaults||[]});return}
     if(data.op==="vault-action"&&data.action==="search"){if(data.requestId!==vaultSearch.requestId)return;vaultSearch=Object.assign({},vaultSearch,{hits:data.error?[]:((data.result||{}).hits||[])});return}
