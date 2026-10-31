@@ -21,12 +21,12 @@ ColumnLayout {
   Text{Layout.fillWidth:true;text:T3I18n.tr("Release idle agents");color:Color.popups.text;font.pixelSize:Style.font.body;font.weight:Font.Medium}
   T3Switch{objectName:"idleReleaseEnabled";Accessible.name:T3I18n.tr("Release idle agents");checked:root.settings.idleReleaseEnabled!==false;onToggled:root.configure({idleReleaseEnabled:checked})}
  }
- Text{Layout.fillWidth:true;text:T3I18n.tr("OT3 frees idle agent memory and resumes the saved conversation when you send a message.");color:Color.popups.text;opacity:0.65;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+ Text{Layout.fillWidth:true;text:T3I18n.tr("O3 frees idle agent memory and resumes the saved conversation when you send a message.");color:Color.popups.text;opacity:0.65;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
  RowLayout{Layout.fillWidth:true
   T3Select{id:providerSelect;objectName:"idleReleaseProvider";Layout.fillWidth:true;model:root.providers;textRole:"title"}
   T3Select{objectName:"idleReleaseMinutes";Layout.preferredWidth:Style.space(130);model:root.choices;textRole:"label";currentIndex:root.choices.findIndex(function(c){return c.value===root.value});enabled:root.settings.idleReleaseEnabled!==false;onActivated:function(i){root.setMinutes(root.choices[i].value)}}
  }
- Text{Layout.fillWidth:true;text:T3I18n.tr("Running tasks, questions and approvals keep the session open. OT3 must remain running.");color:Color.popups.text;opacity:0.55;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+ Text{Layout.fillWidth:true;text:T3I18n.tr("Running tasks, questions and approvals keep the session open. O3 must remain running.");color:Color.popups.text;opacity:0.55;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
  RowLayout{Layout.fillWidth:true
   Text{Layout.fillWidth:true;text:T3I18n.tr("Automatic compaction");color:Color.popups.text;font.pixelSize:Style.font.caption}
   T3PickerButton{objectName:"memoryCompactionSettings";text:T3I18n.tr("Settings");primary:false;onClicked:{compaction.active=true;Qt.callLater(function(){if(compaction.item)compaction.item.open()})}}

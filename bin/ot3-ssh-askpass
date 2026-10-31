@@ -6,6 +6,6 @@ prompt=${prompt//&/\&amp;}
 prompt=${prompt//</\&lt;}
 prompt=${prompt//>/\&gt;}
 if command -v zenity >/dev/null 2>&1; then
-  exec zenity --entry --hide-text --title='OT3 · SSH' --timeout=110 --text="$prompt"
+  exec zenity --entry --hide-text --title='O3 · SSH' --timeout=110 --text="$prompt"
 fi
 exit 1

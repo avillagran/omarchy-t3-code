@@ -1,4 +1,4 @@
-//! OT3's idle runtime policy. Saved provider conversations remain owned by their harness.
+//! O3's idle runtime policy. Saved provider conversations remain owned by their harness.
 use crate::*;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -108,7 +108,7 @@ pub fn candidate(p: &Value, settings: &Value, environment: &str, now: i64) -> Va
     json!({"status":if now >= due {"due"} else {"scheduled"},"episode":episode,"dueAt":due,"sessionId":session["id"],"driver":driver,"provider":provider_id,"threadId":t["id"]})
 }
 pub fn command(plan: &Value) -> Value {
-    json!({"type":"provider-session.detach","commandId":format!("ot3-idle-{}",text(plan,"episode")),"threadId":plan["threadId"],"providerSessionId":plan["sessionId"],"reason":"OT3 idle memory release; resume saved conversation on next message"})
+    json!({"type":"provider-session.detach","commandId":format!("ot3-idle-{}",text(plan,"episode")),"threadId":plan["threadId"],"providerSessionId":plan["sessionId"],"reason":"O3 idle memory release; resume saved conversation on next message"})
 }
 
 /// Idle cache expiry and context-window compaction are separate policies.

@@ -1,9 +1,9 @@
-# Agent memory in OT3
+# Agent memory in O3
 
-Preferences → General → Agent memory controls OT3’s own runtime policy. It is
+Preferences → General → Agent memory controls O3’s own runtime policy. It is
 enabled by default after five minutes; choose another interval or Never, globally
 or for a provider instance on the selected environment. The policy runs while
-OT3 is running, including when its window is hidden. It uses existing native
+O3 is running, including when its window is hidden. It uses existing native
 session operations and does not wait for an upstream T3 release.
 
 Release retains the provider’s native conversation ID. The next message resumes
@@ -17,11 +17,11 @@ state; claims prevent replay after a lost reply or worker restart.
 The existing detach operation on older servers has no atomic idle precondition.
 A turn started from another client between the final read and detach can race
 with release. The server-side idle timers avoid that cross-client admission gap;
-OT3’s checks cannot turn a legacy RPC into an atomic transaction.
+O3’s checks cannot turn a legacy RPC into an atomic transaction.
 
 ## Compaction follows the harness
 
-Codex: OT3 does not compact just because the thread is idle. Codex’s native
+Codex: O3 does not compact just because the thread is idle. Codex’s native
 context-window compaction remains enabled. Indefinite cache retention announced
 for ChatGPT-authenticated Codex is distinct from API cache policy and from the
 model’s finite context window.
@@ -33,7 +33,7 @@ requests use five minutes. A saved conversation can resume after its cache
 expires; the next turn may process more input tokens. Closing the process and
 compacting the context are independent actions.
 
-Other harnesses: OT3 checks the provider’s advertised compact command. A generic
+Other harnesses: O3 checks the provider’s advertised compact command. A generic
 ACP implementation is not assumed to support compaction or durable recovery.
 
 Diagnostics: `o3 call memoryState` reports the local policy and worker status.
