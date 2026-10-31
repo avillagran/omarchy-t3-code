@@ -2010,7 +2010,10 @@
     "Use shared": "Use shared",
     "Resync": "Resync",
     "Bridge endpoint ID": "Bridge endpoint ID",
-    "Share drafts": "Share drafts"
+    "Share drafts": "Share drafts",
+    "Remote documents on this device": "Remote documents on this device",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Share only owner-published snapshots. Turning this off revokes access.",
+    "Allow remote documents and HTML previews": "Allow remote documents and HTML previews"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4023,7 +4026,10 @@
     "Use shared": "Usar compartido",
     "Resync": "Resincronizar",
     "Bridge endpoint ID": "ID del endpoint del bridge",
-    "Share drafts": "Compartir borradores"
+    "Share drafts": "Compartir borradores",
+    "Remote documents on this device": "Documentos remotos en este dispositivo",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Comparte solo instantáneas publicadas por el dueño. Desactivar revoca el acceso.",
+    "Allow remote documents and HTML previews": "Permitir documentos remotos y vistas previas HTML"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6036,7 +6042,10 @@
     "Use shared": "Usar compartilhado",
     "Resync": "Ressincronizar",
     "Bridge endpoint ID": "ID do endpoint da ponte",
-    "Share drafts": "Compartilhar rascunhos"
+    "Share drafts": "Compartilhar rascunhos",
+    "Remote documents on this device": "Documentos remotos neste dispositivo",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Compartilhe apenas instantâneos publicados pelo proprietário. Desativar revoga o acesso.",
+    "Allow remote documents and HTML previews": "Permitir documentos remotos e prévias HTML"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8049,7 +8058,10 @@
     "Use shared": "Utiliser la version partagée",
     "Resync": "Resynchroniser",
     "Bridge endpoint ID": "ID du point de terminaison du pont",
-    "Share drafts": "Partager les brouillons"
+    "Share drafts": "Partager les brouillons",
+    "Remote documents on this device": "Documents distants sur cet appareil",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Partagez uniquement les instantanés publiés par le propriétaire. Désactiver révoque l’accès.",
+    "Allow remote documents and HTML previews": "Autoriser les documents distants et les aperçus HTML"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10062,7 +10074,10 @@
     "Use shared": "Geteilte Version verwenden",
     "Resync": "Erneut synchronisieren",
     "Bridge endpoint ID": "Bridge-Endpunkt-ID",
-    "Share drafts": "Entwürfe teilen"
+    "Share drafts": "Entwürfe teilen",
+    "Remote documents on this device": "Remote-Dokumente auf diesem Gerät",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Nur vom Eigentümer veröffentlichte Momentaufnahmen teilen. Ausschalten widerruft den Zugriff.",
+    "Allow remote documents and HTML previews": "Remote-Dokumente und HTML-Vorschauen erlauben"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12075,7 +12090,10 @@
     "Use shared": "Usa condivisa",
     "Resync": "Risincronizza",
     "Bridge endpoint ID": "ID endpoint del bridge",
-    "Share drafts": "Condividi bozze"
+    "Share drafts": "Condividi bozze",
+    "Remote documents on this device": "Documenti remoti su questo dispositivo",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Condividi solo istantanee pubblicate dal proprietario. Disattivando si revoca l’accesso.",
+    "Allow remote documents and HTML previews": "Consenti documenti remoti e anteprime HTML"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14088,7 +14106,10 @@
     "Use shared": "Gedeelde versie gebruiken",
     "Resync": "Opnieuw synchroniseren",
     "Bridge endpoint ID": "Bridge-eindpunt-ID",
-    "Share drafts": "Concepten delen"
+    "Share drafts": "Concepten delen",
+    "Remote documents on this device": "Externe documenten op dit apparaat",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Deel alleen door de eigenaar gepubliceerde momentopnamen. Uitschakelen trekt de toegang in.",
+    "Allow remote documents and HTML previews": "Externe documenten en HTML-voorbeelden toestaan"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16101,7 +16122,10 @@
     "Use shared": "Użyj współdzielonej",
     "Resync": "Synchronizuj ponownie",
     "Bridge endpoint ID": "Identyfikator punktu końcowego mostka",
-    "Share drafts": "Udostępniaj wersje robocze"
+    "Share drafts": "Udostępniaj wersje robocze",
+    "Remote documents on this device": "Dokumenty zdalne na tym urządzeniu",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Udostępniaj tylko migawki opublikowane przez właściciela. Wyłączenie cofa dostęp.",
+    "Allow remote documents and HTML previews": "Zezwalaj na dokumenty zdalne i podglądy HTML"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18114,7 +18138,10 @@
     "Use shared": "Использовать общий",
     "Resync": "Синхронизировать снова",
     "Bridge endpoint ID": "ID конечной точки моста",
-    "Share drafts": "Делиться черновиками"
+    "Share drafts": "Делиться черновиками",
+    "Remote documents on this device": "Удалённые документы на этом устройстве",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Доступны только снимки, опубликованные владельцем. Отключение отзывает доступ.",
+    "Allow remote documents and HTML previews": "Разрешить удалённые документы и предпросмотр HTML"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20127,7 +20154,10 @@
     "Use shared": "Використати спільну",
     "Resync": "Синхронізувати знову",
     "Bridge endpoint ID": "ID кінцевої точки мосту",
-    "Share drafts": "Ділитися чернетками"
+    "Share drafts": "Ділитися чернетками",
+    "Remote documents on this device": "Віддалені документи на цьому пристрої",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Доступні лише знімки, опубліковані власником. Вимкнення відкликає доступ.",
+    "Allow remote documents and HTML previews": "Дозволити віддалені документи та перегляд HTML"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22140,7 +22170,10 @@
     "Use shared": "共有を使用",
     "Resync": "再同期",
     "Bridge endpoint ID": "ブリッジのエンドポイントID",
-    "Share drafts": "下書きを共有"
+    "Share drafts": "下書きを共有",
+    "Remote documents on this device": "このデバイスのリモートドキュメント",
+    "Share only owner-published snapshots. Turning this off revokes access.": "所有者が公開したスナップショットのみ共有します。オフにするとアクセスが取り消されます。",
+    "Allow remote documents and HTML previews": "リモートドキュメントとHTMLプレビューを許可"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24153,7 +24186,10 @@
     "Use shared": "공유 버전 사용",
     "Resync": "다시 동기화",
     "Bridge endpoint ID": "브리지 엔드포인트 ID",
-    "Share drafts": "초안 공유"
+    "Share drafts": "초안 공유",
+    "Remote documents on this device": "이 기기의 원격 문서",
+    "Share only owner-published snapshots. Turning this off revokes access.": "소유자가 게시한 스냅샷만 공유합니다. 끄면 접근 권한이 취소됩니다.",
+    "Allow remote documents and HTML previews": "원격 문서 및 HTML 미리보기 허용"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26166,7 +26202,10 @@
     "Use shared": "使用共享版本",
     "Resync": "重新同步",
     "Bridge endpoint ID": "桥接端点 ID",
-    "Share drafts": "共享草稿内容"
+    "Share drafts": "共享草稿内容",
+    "Remote documents on this device": "此设备上的远程文档",
+    "Share only owner-published snapshots. Turning this off revokes access.": "仅共享所有者发布的快照。关闭后将撤销访问权限。",
+    "Allow remote documents and HTML previews": "允许远程文档和 HTML 预览"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28179,7 +28218,10 @@
     "Use shared": "استخدام المشتركة",
     "Resync": "إعادة المزامنة",
     "Bridge endpoint ID": "معرّف نقطة نهاية الجسر",
-    "Share drafts": "مشاركة المسودات"
+    "Share drafts": "مشاركة المسودات",
+    "Remote documents on this device": "المستندات البعيدة على هذا الجهاز",
+    "Share only owner-published snapshots. Turning this off revokes access.": "مشاركة اللقطات التي ينشرها المالك فقط. يؤدي الإيقاف إلى إلغاء الوصول.",
+    "Allow remote documents and HTML previews": "السماح بالمستندات البعيدة ومعاينات HTML"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30192,7 +30234,10 @@
     "Use shared": "Paylaşılanı kullan",
     "Resync": "Yeniden eşitle",
     "Bridge endpoint ID": "Köprü uç noktası kimliği",
-    "Share drafts": "Taslakları paylaş"
+    "Share drafts": "Taslakları paylaş",
+    "Remote documents on this device": "Bu cihazdaki uzak belgeler",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Yalnızca sahibin yayımladığı anlık görüntüleri paylaşın. Kapatmak erişimi iptal eder.",
+    "Allow remote documents and HTML previews": "Uzak belgelere ve HTML önizlemelerine izin ver"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32205,7 +32250,10 @@
     "Use shared": "Använd delad",
     "Resync": "Synkronisera igen",
     "Bridge endpoint ID": "Bryggans slutpunkts-ID",
-    "Share drafts": "Dela utkast"
+    "Share drafts": "Dela utkast",
+    "Remote documents on this device": "Fjärrdokument på den här enheten",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Dela endast ögonblicksbilder som ägaren publicerat. Avstängning återkallar åtkomst.",
+    "Allow remote documents and HTML previews": "Tillåt fjärrdokument och HTML-förhandsvisningar"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34218,7 +34266,10 @@
     "Use shared": "Brug delt",
     "Resync": "Synkroniser igen",
     "Bridge endpoint ID": "Broens slutpunkts-ID",
-    "Share drafts": "Del kladder"
+    "Share drafts": "Del kladder",
+    "Remote documents on this device": "Fjerndokumenter på denne enhed",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Del kun øjebliksbilleder udgivet af ejeren. Deaktivering tilbagekalder adgang.",
+    "Allow remote documents and HTML previews": "Tillad fjerndokumenter og HTML-forhåndsvisninger"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36231,7 +36282,10 @@
     "Use shared": "Bruk delt",
     "Resync": "Synkroniser på nytt",
     "Bridge endpoint ID": "Broens endepunkt-ID",
-    "Share drafts": "Del utkast"
+    "Share drafts": "Del utkast",
+    "Remote documents on this device": "Eksterne dokumenter på denne enheten",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Del bare øyeblikksbilder publisert av eieren. Deaktivering opphever tilgangen.",
+    "Allow remote documents and HTML previews": "Tillat eksterne dokumenter og HTML-forhåndsvisninger"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -38244,7 +38298,10 @@
     "Use shared": "Käytä jaettua",
     "Resync": "Synkronoi uudelleen",
     "Bridge endpoint ID": "Sillan päätepisteen tunnus",
-    "Share drafts": "Jaa luonnokset"
+    "Share drafts": "Jaa luonnokset",
+    "Remote documents on this device": "Etäasiakirjat tällä laitteella",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Jaa vain omistajan julkaisemia tilannekuvia. Poistaminen käytöstä peruuttaa pääsyn.",
+    "Allow remote documents and HTML previews": "Salli etäasiakirjat ja HTML-esikatselut"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -40257,6 +40314,9 @@
     "Use shared": "Použít sdílený",
     "Resync": "Znovu synchronizovat",
     "Bridge endpoint ID": "ID koncového bodu mostu",
-    "Share drafts": "Sdílet koncepty"
+    "Share drafts": "Sdílet koncepty",
+    "Remote documents on this device": "Vzdálené dokumenty na tomto zařízení",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Sdílejte pouze snímky zveřejněné vlastníkem. Vypnutí zruší přístup.",
+    "Allow remote documents and HTML previews": "Povolit vzdálené dokumenty a náhledy HTML"
   }
 }
