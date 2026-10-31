@@ -39,11 +39,12 @@ fn emit(kind: &str, data: Value) {
     let _ = writeln!(stdout, "{out}");
     let _ = stdout.flush();
 }
+static SHARED_EDITOR_BUSY:std::sync::Mutex<()>=std::sync::Mutex::new(());
 fn draft_command(cmd:&Value)->bool {
     let key=text(cmd,"key");
     match text(cmd,"op") {
         "draft-load" => {let result=prompt_stash::recover_before_load(key,text(cmd,"projectId")).and_then(|_|checkpoint_operations::recover_before_load(key)).and_then(|_|drafts::load(key));emit("draft-loaded",json!({"key":key,"draft":result.as_ref().ok(),"error":result.as_ref().err()}));true}
-        "draft-save" => {let result=drafts::save(key,&cmd["draft"]);let recovery=if result.as_ref().err().is_some_and(|e|e=="draft_recovery_changed"){drafts::load(key).ok().and_then(|d|d["recoveryIds"].as_array().and_then(|ids|ids.iter().find(|id|!cmd["draft"]["recoveryIds"].as_array().is_some_and(|old|old.contains(id)))).and_then(Value::as_str).and_then(|id|checkpoint_journal::action(id).ok().flatten()).as_ref().map(checkpoint_journal::receipt))}else{None};emit("draft-saved",json!({"key":key,"revision":cmd["revision"],"error":result.as_ref().err(),"recovery":recovery}));true}
+        "draft-save" => {let result=drafts::save(key,&cmd["draft"]).and_then(|_|{let settings=ui_state::load();if settings["sharedDraftsEnabled"]==true{shared_editor::record(text(&settings,"sharedDraftsAuthority"),key,&cmd["draft"])}else{Ok(())}});let recovery=if result.as_ref().err().is_some_and(|e|e=="draft_recovery_changed"){drafts::load(key).ok().and_then(|d|d["recoveryIds"].as_array().and_then(|ids|ids.iter().find(|id|!cmd["draft"]["recoveryIds"].as_array().is_some_and(|old|old.contains(id)))).and_then(Value::as_str).and_then(|id|checkpoint_journal::action(id).ok().flatten()).as_ref().map(checkpoint_journal::receipt))}else{None};emit("draft-saved",json!({"key":key,"revision":cmd["revision"],"error":result.as_ref().err(),"recovery":recovery}));true}
         "prompt-stash" => {let result=prompt_stash::execute(cmd);emit("prompt-stash",json!({"requestId":cmd["requestId"],"environment":cmd["environment"],"projectId":cmd["projectId"],"key":key,"result":result.as_ref().ok(),"error":result.as_ref().err()}));true}
         _=>false
     }
@@ -404,6 +405,45 @@ fn watch(client: Client) -> Result<()> {
                     });continue
                 }
                 if v["op"]=="quit"{let _=cloud_manager.cancel_active();}
+                if v["op"]=="prompt-stash"&&!text(&v,"authority").is_empty(){
+                    let c=input_client.clone();std::thread::spawn(move||{
+                      let result=(||{let _g=SHARED_EDITOR_BUSY.try_lock().map_err(|_|"shared_drafts_busy")?;let settings=ui_state::load();let authority=text(&settings,"sharedDraftsAuthority");if settings["sharedDraftsEnabled"]!=true||authority!=text(&v,"authority"){return Err("shared_drafts_disabled".into())}
+                        let alias=text(&v,"environment");let env=env_by_id(alias)?;let descriptor=c.get(&env,"/.well-known/t3/environment",false)?;let environment=text(&descriptor,"environmentId");uuid::Uuid::parse_str(environment).map_err(|_|"invalid_t3_environment_id")?;
+                        if matches!(text(&v,"action"),"resolve-local"|"resolve-remote"){
+                          shared_editor::sync(authority,text(&v,"sharedKey"),&v["sharedScope"],if v["action"]=="resolve-local"{"local"}else{"remote"})?;
+                          shared_editor::sync(authority,text(&v,"sharedKey"),&v["sharedScope"],"")?;
+                          let mut list=v.clone();list["action"]=json!("list");return shared_editor::project(authority,&list,environment)
+                        }
+                        let mut conflicts=vec![];
+                        let prior=shared_drafts::execute(&json!({"action":"status","authority":authority,"journalId":v["requestId"]}))?;
+                        if prior["command"].is_object(){return shared_editor::project(authority,&v,environment)}
+                        for key in v["keys"].as_array().into_iter().flatten(){let key=key.as_str().ok_or("invalid_draft_key")?;let id=key.split_once('/').ok_or("invalid_draft_key")?.1;
+                          let scope=json!({"environment":environment,"project":v["projectId"],"kind":"thread","id":id});
+                          let d=drafts::load(key)?;if d["attempt"].is_object()||d["queueEdit"].is_object(){continue}let imported=shared_editor::import(authority,key,&scope,&d)?;
+                          if imported["conflict"]==true&&key==text(&v,"key"){return Err("shared_draft_conflict".into())}
+                        }
+                        for e in prompt_stash::legacy_entries(alias,text(&v,"projectId"))?{let id=text(&e,"id");let scope=json!({"environment":environment,"project":v["projectId"],"kind":"stash","id":id});let d=json!({"text":e["prompt"],"attachments":e["attachments"]});let shared_key=format!("stash/{alias}/{id}");let result=shared_editor::import(authority,&shared_key,&scope,&d)?;
+                          if result["conflict"]==true{conflicts.push(json!({"id":id,"prompt":d["text"],"attachmentCount":d["attachments"].as_array().map_or(0,Vec::len),"locked":true,"conflict":true,"sharedKey":shared_key,"sharedScope":scope}));}}
+                        let mut result=shared_editor::project(authority,&v,environment)?;result["entries"].as_array_mut().ok_or("draft_read_failed")?.extend(conflicts);Ok(result)
+                      })();emit("prompt-stash",json!({"requestId":v["requestId"],"environment":v["environment"],"projectId":v["projectId"],"key":v["key"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
+                    });continue
+                }
+                if v["op"]=="shared-editor" {
+                    let c=input_client.clone();std::thread::spawn(move||{
+                        let result=(||{let _guard=SHARED_EDITOR_BUSY.try_lock().map_err(|_|"shared_drafts_busy")?;
+                            let settings=ui_state::load();let authority=text(&settings,"sharedDraftsAuthority");
+                            if settings["sharedDraftsEnabled"]!=true||authority!=text(&v,"authority"){return Err("shared_drafts_disabled".into())}
+                            let key=text(&v,"key");let (alias,id)=key.split_once('/').ok_or("invalid_draft_key")?;
+                            let env=env_by_id(alias)?;let descriptor=c.get(&env,"/.well-known/t3/environment",false)?;
+                            let environment=text(&descriptor,"environmentId");uuid::Uuid::parse_str(environment).map_err(|_|"invalid_t3_environment_id")?;
+                            uuid::Uuid::parse_str(text(&v,"projectId")).map_err(|_|"invalid_project")?;
+                            let scope=json!({"environment":environment,"project":v["projectId"],"kind":"thread","id":id});
+                            shared_editor::record(authority,key,&drafts::load(key)?)?;
+                            shared_editor::sync(authority,key,&scope,text(&v,"resolution"))
+                        })();
+                        emit("shared-editor",json!({"key":v["key"],"authority":v["authority"],"generation":v["generation"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
+                    });continue
+                }
                 if draft_command(&v) {continue}
                 if v["op"]=="ui-state-set"{if let Err(error)=ui_state::save(&v["state"]){emit("ui-state-error",json!({"error":error}));}continue}
                 if v["op"]=="build-cleanup"{let started=start_build_cleanup(input_client.clone(),input_tx.clone());if !started{emit("build-cleanup",json!({"running":true}));}continue}

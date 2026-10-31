@@ -2003,6 +2003,13 @@
     "Stop {name} from inviting devices with full access?": "Stop {name} from inviting devices with full access?",
     "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.": "New invitations stop at once. Devices it already invited lose access here within a few minutes, while O3 Code is running on this device.",
     "Give access to all hosts": "Give access to all hosts",
-    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust."
+    "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.": "The device gets full T3 access on every host that allows it, not only this one. Give this only to a device you trust.",
+    "Shared drafts": "Shared drafts",
+    "Shared draft conflict": "Shared draft conflict",
+    "Keep local": "Keep local",
+    "Use shared": "Use shared",
+    "Resync": "Resync",
+    "Bridge endpoint ID": "Bridge endpoint ID",
+    "Share drafts": "Share drafts"
   }
 }

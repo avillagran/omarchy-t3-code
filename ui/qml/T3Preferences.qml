@@ -334,6 +334,12 @@ Rectangle {
       Loader{Layout.fillWidth:true;active:root.page==="memory";visible:active;sourceComponent:Component{T3JournalSettings{bridge:root.bridge;query:root.query}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="licenses";visible:active;sourceComponent:Component{T3Licenses{bridge:root.bridge}}}
       Loader{Layout.fillWidth:true;Layout.preferredHeight:Math.max(Style.space(280),settingsScroll.height-Style.space(170));active:!root.query.trim()&&root.page==="archived";visible:active;sourceComponent:Component{T3Archive{bridge:root.bridge;targets:root.scope.targets}}}
+      ColumnLayout {
+       Layout.fillWidth:true;visible:root.page==="connections"
+       Text{text:T3I18n.tr("Shared drafts");color:root.fg;font.bold:true}
+       Controls.TextField{objectName:"sharedDraftAuthority";Layout.fillWidth:true;placeholderText:T3I18n.tr("Bridge endpoint ID");text:root.bridge.viewState.sharedDraftsAuthority || "";enabled:!root.bridge.viewState.sharedDraftsEnabled;onEditingFinished:{root.bridge.viewState=Object.assign({},root.bridge.viewState,{sharedDraftsAuthority:text.trim()});root.bridge.persistViewNow()}}
+       Controls.CheckBox{objectName:"sharedDraftEnable";text:T3I18n.tr("Share drafts");checked:root.bridge.viewState.sharedDraftsEnabled===true;enabled:!!root.bridge.viewState.sharedDraftsAuthority;onToggled:{root.bridge.viewState=Object.assign({},root.bridge.viewState,{sharedDraftsEnabled:checked});root.bridge.persistViewNow()}}
+      }
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="connections";visible:active;sourceComponent:Component{T3Connections{bridge:root.bridge;environment:root.environment}}}
       Loader{Layout.fillWidth:true;active:!root.query.trim()&&root.page==="providers";visible:active;sourceComponent:Component{T3ProviderInstances{bridge:root.bridge;environment:root.environment}}}
       T3PreferenceSection{visible:!root.query.trim()&&root.page==="providers";Layout.fillWidth:true;title:"Model options";icon:"star"

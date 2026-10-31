@@ -314,13 +314,13 @@ Singleton {
   function projectDraftScope(){return selectedInfo.projectId?selectedEnvironment+"/"+selectedInfo.projectId:""}
   function requestProjectDrafts(action,entry){
     if(action==="list"&&projectDrafts.error&&projectDrafts.command){retryProjectDrafts();return}
-    if(projectDrafts.busy || !selectedInfo.projectId || !selectedKey || draft.loading || draft.loadError)return
+    if(projectDrafts.busy || (viewState.sharedDraftsEnabled&&sharedDraftBusy) || !selectedInfo.projectId || !selectedKey || draft.loading || draft.loadError)return
     if(action!=="list"&&(draft.busy||draft.attempt||draft.queueEdit||draft.attachments.some(function(f){return f.uploading})))return
     var keys=(state.threads || []).filter(function(t){return t.environmentId===root.selectedEnvironment&&t.projectId===root.selectedInfo.projectId}).map(function(t){return t.key || t.environmentId+"/"+t.id})
     if(keys.indexOf(selectedKey)<0)keys.push(selectedKey)
     flushDrafts()
-    var command={op:"prompt-stash",action:action,environment:selectedEnvironment,projectId:selectedInfo.projectId,key:selectedKey,keys:keys,requestId:uuid(),draft:draft}
-    if(entry){command.id=entry.id;command.fingerprint=entry.fingerprint || ""}
+    var command={op:"prompt-stash",action:action,environment:selectedEnvironment,projectId:selectedInfo.projectId,key:selectedKey,keys:keys,requestId:uuid(),draft:draft,authority:viewState.sharedDraftsEnabled?viewState.sharedDraftsAuthority:""}
+    if(entry){command.id=entry.id;command.fingerprint=entry.fingerprint || "";if(entry.sharedKey){command.sharedKey=entry.sharedKey;command.sharedScope=entry.sharedScope}}
     if(action!=="list"){flushDraft(selectedKey);patchDraft(selectedKey,{busy:true});if(entry&&entry.sourceKey&&entry.sourceKey!==selectedKey&&drafts[entry.sourceKey])patchDraft(entry.sourceKey,{busy:true})}
     projectDrafts={entries:projectDrafts.scope===projectDraftScope()?projectDrafts.entries:[],busy:true,error:"",requestId:command.requestId,scope:projectDraftScope(),command:command}
     send(command)
@@ -330,6 +330,23 @@ Singleton {
     var command=projectDrafts.command;if(!command||projectDrafts.busy)return
     projectDrafts=Object.assign({},projectDrafts,{busy:true,error:""});send(command)
   }
+  property var sharedDraftStatus: ({})
+  property bool sharedDraftBusy:false
+  property int sharedDraftCycle:0
+  function syncSharedDraft(resolution,key){
+    key=key || selectedKey
+    var d=drafts[key]
+    if(!viewState.sharedDraftsEnabled||!viewState.sharedDraftsAuthority||sharedDraftBusy||projectDrafts.busy||!key||!draftProject(key)||(d&&(d.loading||d.loadError||d.busy||d.attempt||d.queueEdit)))return
+    if(d)flushDraft(key)
+    sharedDraftBusy=true
+    send({op:"shared-editor",authority:viewState.sharedDraftsAuthority,key:key,projectId:draftProject(key),generation:d?drafts[key].saveRevision:"",resolution:resolution || ""})
+  }
+  Timer{interval:3000;running:root.viewState.sharedDraftsEnabled===true;repeat:true;onTriggered:{
+    root.sharedDraftCycle++
+    var threads=root.state.threads || [],candidate=threads.length?threads[Math.floor(root.sharedDraftCycle/2)%threads.length]:null
+    if(root.sharedDraftCycle%10===0&&!root.sharedDraftBusy&&!root.projectDrafts.busy){root.requestProjectDrafts("list");return}
+    root.syncSharedDraft("",root.sharedDraftCycle%2&&candidate?(candidate.key || candidate.environmentId+"/"+candidate.id):root.selectedKey)
+  }}
   property var dirtyDrafts: ({})
   property var pendingSends: ({})
   function flushDraft(key, submission) {
@@ -2108,11 +2125,12 @@ Singleton {
       else if(event.type==="prompt-stash"){
         if(data.requestId!==projectDrafts.requestId)return
         var command=projectDrafts.command,result=data.result || {},changes=result.changes || {}
+        if(command&&command.authority&&(command.authority!==viewState.sharedDraftsAuthority||!viewState.sharedDraftsEnabled)){if(drafts[command.key])patchDraft(command.key,{busy:false});projectDrafts=Object.assign({},projectDrafts,{busy:false,command:null});return}
         Object.keys(changes).forEach(function(key){
           root.patchDraft(key,Object.assign({},changes[key],{busy:false,error:"",saveState:"saved",saveError:""}),false);root.resetUndo(key)
           var dirty=Object.assign({},root.dirtyDrafts);delete dirty[key];root.dirtyDrafts=dirty
         })
-        var retryable=!!data.error&&["draft_save_failed","draft_read_failed","local_error","rpc_outcome_unknown","drafts_busy"].indexOf(data.error)>=0
+        var retryable=!!data.error&&["draft_save_failed","draft_read_failed","local_error","rpc_outcome_unknown","drafts_busy","shared_drafts_unavailable","shared_drafts_busy"].indexOf(data.error)>=0
         if(command&&command.action!=="list"){
           if(drafts[command.key])patchDraft(command.key,{busy:retryable,error:data.error || ""})
           var source=command.id&&command.id.indexOf("thread:")===0?command.id.slice(7):""
@@ -2121,6 +2139,15 @@ Singleton {
         projectDrafts=Object.assign({},projectDrafts,{busy:false,error:data.error || "",entries:data.error?projectDrafts.entries:result.entries || [],command:retryable?command:null})
         if(!data.error&&command&&command.action==="restore")projectDraftRestored(command.key)
         if(!data.error&&projectDrafts.scope!==projectDraftScope()&&selectedInfo.projectId)Qt.callLater(function(){root.requestProjectDrafts("list")})
+      }
+      else if(event.type === "shared-editor") {
+        sharedDraftBusy=false
+        if(data.authority!==viewState.sharedDraftsAuthority||!viewState.sharedDraftsEnabled)return
+        var d=drafts[data.key],result=data.result || {},statuses=Object.assign({},sharedDraftStatus)
+        statuses[data.key]={conflict:!!result.conflict,error:data.error || result.error || "",remote:result.remote,pending:!!result.pending};sharedDraftStatus=statuses
+        if(d&&d.saveRevision===data.generation&&!dirtyDrafts[data.key]&&!d.busy&&!d.attempt&&!d.queueEdit&&result.draft&&!result.conflict){
+          var next=Object.assign({},drafts);next[data.key]=Object.assign({},d,result.draft);drafts=next
+        }
       }
       else if (event.type === "draft-loaded") {
         var loaded=drafts[data.key];if(!loaded || !loaded.loading) return

@@ -53,6 +53,8 @@ Rectangle {
       T3Icon{visible:!!modelData.locked||modelData.sourceKey===root.bridge.selectedKey;name:modelData.locked?"lock":"check";tint:modelData.locked?root.fg:Color.accent;implicitWidth:Style.space(14)}
      }
     }
+    Controls.Button{objectName:"projectDraftKeepLocal_"+index;visible:modelData.conflict===true;text:T3I18n.tr("Keep local");enabled:!root.locked;onClicked:root.bridge.requestProjectDrafts("resolve-local",modelData)}
+    Controls.Button{objectName:"projectDraftUseShared_"+index;visible:modelData.conflict===true;text:T3I18n.tr("Use shared");enabled:!root.locked;onClicked:root.bridge.requestProjectDrafts("resolve-remote",modelData)}
     T3IconButton{objectName:"deleteProjectDraft_"+index;name:"x";tooltipText:T3I18n.tr("Delete draft");enabled:!root.locked&&!modelData.locked;onClicked:root.bridge.requestProjectDrafts("delete",modelData)}
    }
    Text{anchors.centerIn:parent;visible:!list.count&&!root.state.busy;text:T3I18n.tr("No project drafts");color:root.fg;opacity:0.55;font.pixelSize:Style.font.caption}

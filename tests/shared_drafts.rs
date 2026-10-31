@@ -31,6 +31,11 @@ else:
     if isinstance(response, list):
         request = json.loads((root / 'request.json').read_text())
         response = response[1 if request['command'].get('offset') else 0]
+    if isinstance(response, dict) and '__byOp' in response:
+        request = json.loads((root / 'request.json').read_text())
+        response = response['__byOp'][request['command']['op']]
+        if response.get('mutationId') == '$mutation':
+            response['mutationId'] = request['command']['mutationId']
     print(json.dumps(response))
 PYTHON
 "#,
@@ -230,4 +235,203 @@ fn foreign_receipt_cannot_acknowledge_pending_command() {
     assert!(recovered["outcome"].is_null());
     f.response(json!({"status":"applied","mutationId":cmd["mutationId"]}));
     assert_eq!(f.ok(f.input("retry", &id))["outcome"]["status"], "applied");
+}
+
+fn editor_record(f: &Fixture, text: &str) {
+    f.ok(json!({"action":"editor-record","authority":OWNER,"key":"local/thread-one","draft":{"text":text,"attachments":[],"delivery":"auto","attempt":null,"modelSelection":null}}));
+}
+fn editor_sync(f: &Fixture, resolution: &str) -> Value {
+    f.ok(json!({"action":"editor-sync","authority":OWNER,"key":"local/thread-one","scope":scope(),"resolution":resolution}))
+}
+fn snapshot_response(items: Value, sequence: u64) -> Value {
+    json!({"owner":OWNER,"items":items,"cursor":format!("{OWNER}:{sequence}")})
+}
+fn editor_state(f: &Fixture) -> Value {
+    let dir = f.0.join("omarchy-t3-code/shared-editor");
+    let file = fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| {
+            p.extension().is_some_and(|s| s == "json")
+                && !p
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with("resolved-")
+        })
+        .unwrap();
+    serde_json::from_slice(&fs::read(file).unwrap()).unwrap()
+}
+#[test]
+fn migration_stages_create_once_and_preserves_legacy_cache() {
+    let f = Fixture::new();
+    editor_record(&f, "legacy branch");
+    assert!(
+        !f.0.join("request.json").exists(),
+        "offline cache write must not access bridge"
+    );
+    f.response(snapshot_response(json!([]), 12));
+    let first = editor_sync(&f, "");
+    assert_eq!(first["pending"], true);
+    let state = editor_state(&f);
+    let pending = state["pending"].clone();
+    assert_eq!(pending["command"]["scope"], scope());
+    assert_eq!(pending["command"]["expected"], Value::Null);
+    assert_eq!(pending["command"]["payload"]["schema"], 1);
+    assert_eq!(state["draft"]["text"], "legacy branch");
+    // A failed read before retry cannot regenerate the persisted identity.
+    f.response(json!({"error":"draft_snapshot_required"}));
+    let blocked = editor_sync(&f, "");
+    assert_eq!(blocked["error"], "draft_snapshot_required");
+    assert_eq!(editor_state(&f)["pending"], pending);
+    assert_eq!(editor_state(&f)["draft"]["text"], "legacy branch");
+}
+#[test]
+fn import_collision_keeps_both_and_resolution_archives_original() {
+    let f = Fixture::new();
+    editor_record(&f, "local branch");
+    let doc = json!({"scope":scope(),"revision":"remote-revision","deleted":false,"payload":{"schema":1,"text":"remote branch","attachments":[],"preferences":{"deliveryMode":"send","interactionMode":"default"}}});
+    f.response(snapshot_response(json!([doc]), 20));
+    let result = editor_sync(&f, "");
+    assert_eq!(result["conflict"], true);
+    assert_eq!(result["draft"]["text"], "local branch");
+    assert_eq!(result["remote"]["payload"]["text"], "remote branch");
+    assert_eq!(result["pending"], false);
+    let resolved = editor_sync(&f, "local");
+    assert_eq!(resolved["pending"], true);
+    let s = editor_state(&f);
+    assert_eq!(s["pending"]["command"]["expected"], "remote-revision");
+    assert_eq!(s["pending"]["command"]["baseCursor"], format!("{OWNER}:20"));
+    assert!(fs::read_dir(f.0.join("omarchy-t3-code/shared-editor"))
+        .unwrap()
+        .any(|p| p
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with("resolved-")));
+}
+#[test]
+fn clean_empty_editor_does_not_create_a_shared_document() {
+    let f = Fixture::new();
+    editor_record(&f, "");
+    f.response(snapshot_response(json!([]), 12));
+    let result = editor_sync(&f, "");
+    assert_eq!(result["pending"], false);
+    assert_eq!(result["conflict"], false);
+    assert!(editor_state(&f)["pending"].is_null());
+}
+#[test]
+fn shared_payload_excludes_local_recovery_and_rejects_unfinished_uploads() {
+    use omarchy_t3_client::shared_editor::payload;
+    let p=payload(&json!({"text":"plain source","attachments":[],"questionnaires":{"private":"answer"},"approvals":{"private":true},"recoveryIds":["local-only"],"modelSelection":{"instanceId":"provider","model":"model","options":[{"id":"effort","value":"high"}]}}),"11111111-1111-4111-8111-111111111111").unwrap();
+    assert_eq!(
+        p,
+        json!({"schema":1,"text":"plain source","attachments":[],"modelSelection":{"providerId":"provider","modelId":"model","effort":"high"},"preferences":{"deliveryMode":"send","interactionMode":"default"}})
+    );
+    assert!(payload(
+        &json!({"text":"text","attachments":[{"uploading":true}]}),
+        "env"
+    )
+    .is_err());
+    assert!(payload(&json!({"text":"text","queueEdit":{}}), "env").is_err());
+    assert!(payload(
+        &json!({"text":"text","modelSelection":{"options":[{"id":"secret","value":"x"}]}}),
+        "env"
+    )
+    .is_err());
+}
+
+#[test]
+fn acknowledged_import_is_not_duplicated_and_send_clear_uses_submitted_revision() {
+    let f = Fixture::new();
+    editor_record(&f, "submitted text");
+    f.response(snapshot_response(json!([]), 12));
+    editor_sync(&f, "");
+    let staged = editor_state(&f)["pending"].clone();
+    let payload = staged["command"]["payload"].clone();
+    let document =
+        json!({"scope":scope(),"revision":"submitted-revision","deleted":false,"payload":payload});
+    f.response(json!({"__byOp":{"list":snapshot_response(json!([document]),13),"put":{"status":"applied","mutationId":"$mutation","event":{"revision":"submitted-revision"}}}}));
+    let ack = editor_sync(&f, "");
+    assert_eq!(ack["pending"], false);
+    assert_eq!(ack["conflict"], false);
+    editor_sync(&f, "");
+    assert!(
+        editor_state(&f)["pending"].is_null(),
+        "acknowledged import must not generate another command"
+    );
+    editor_record(&f, "");
+    let clear = editor_sync(&f, "");
+    assert_eq!(clear["pending"], true);
+    let command = editor_state(&f)["pending"]["command"].clone();
+    assert_eq!(command["op"], "delete");
+    assert_eq!(command["expected"], "submitted-revision");
+    assert!(command.get("payload").is_none());
+}
+#[test]
+fn newer_remote_edit_survives_local_send_clear_as_visible_conflict() {
+    let f = Fixture::new();
+    editor_record(&f, "submitted text");
+    f.response(snapshot_response(json!([]), 12));
+    editor_sync(&f, "");
+    let payload = editor_state(&f)["pending"]["command"]["payload"].clone();
+    let doc = json!({"scope":scope(),"revision":"submitted","deleted":false,"payload":payload});
+    f.response(json!({"__byOp":{"list":snapshot_response(json!([doc]),13),"put":{"status":"applied","mutationId":"$mutation","event":{"revision":"submitted"}}}}));
+    editor_sync(&f, "");
+    editor_record(&f, "");
+    let doc = json!({"scope":scope(),"revision":"other-device","deleted":false,"payload":{"schema":1,"text":"newer unsent edit","attachments":[]}});
+    f.response(snapshot_response(json!([doc]), 14));
+    let clear = editor_sync(&f, "");
+    assert_eq!(clear["conflict"], true);
+    assert_eq!(clear["remote"]["payload"]["text"], "newer unsent edit");
+    assert_eq!(clear["pending"], false);
+}
+#[test]
+fn compaction_blocks_pending_create_even_when_fresh_snapshot_key_is_absent() {
+    let f = Fixture::new();
+    editor_record(&f, "offline create");
+    f.response(snapshot_response(json!([]), 12));
+    editor_sync(&f, "");
+    let original = editor_state(&f)["pending"].clone();
+    f.response(json!({"__byOp":{"list":snapshot_response(json!([]),100),"put":{"error":"draft_resync_required","status":"conflict","mutationId":"$mutation","floor":99}}}));
+    let conflict = editor_sync(&f, "");
+    assert_eq!(conflict["conflict"], true);
+    assert_eq!(editor_state(&f)["pending"], original);
+    editor_sync(&f, "");
+    assert_eq!(
+        editor_state(&f)["pending"],
+        original,
+        "resync cannot rebase or replay an expired create"
+    );
+    let resolve = editor_sync(&f, "local");
+    assert_eq!(resolve["conflict"], false);
+    let resolved = editor_state(&f)["pending"].clone();
+    assert_ne!(resolved["id"], original["id"]);
+    assert_eq!(resolved["command"]["baseCursor"], format!("{OWNER}:100"));
+}
+
+#[test]
+fn restore_uses_atomic_transfer_and_backs_up_even_a_live_empty_target() {
+    let f = Fixture::new();
+    let mut source = scope();
+    source["kind"] = json!("stash");
+    source["id"] = json!(uuid::Uuid::new_v4().to_string());
+    let payload = json!({"schema":1,"text":"stashed text","attachments":[]});
+    let docs = json!([{ "scope":source,"revision":"source-revision","deleted":false,"payload":payload},{"scope":scope(),"revision":"live-empty-target","deleted":false,"payload":{"schema":1,"text":"","attachments":[],"preferences":{"deliveryMode":"send","interactionMode":"default"}}}]);
+    f.response(json!({"__byOp":{"list":snapshot_response(docs,23),"transfer":{"status":"conflict","mutationId":"$mutation","conflicts":[]}}}));
+    let request = uuid::Uuid::new_v4().to_string();
+    let command = json!({"action":"restore","projectId":scope()["project"],"key":"local/thread-one","requestId":request,"id":source["id"]});
+    let input = json!({"action":"editor-project","authority":OWNER,"environment":scope()["environment"],"command":command});
+    assert!(!f.run(input.clone()).status.success());
+    let staged = f.ok(f.input("status", &request))["command"].clone();
+    assert_eq!(staged["op"], "transfer");
+    assert_eq!(staged["scope"], source);
+    assert_eq!(staged["target"], scope());
+    assert_eq!(staged["targetExpected"], "live-empty-target");
+    assert_eq!(staged["expected"], "source-revision");
+    assert_eq!(staged["backup"]["kind"], "stash");
+    assert_eq!(staged["backup"]["environment"], scope()["environment"]);
+    assert_ne!(staged["backup"]["id"], source["id"]);
+    assert!(!f.run(input).status.success());
+    assert_eq!(f.ok(f.input("status", &request))["command"], staged);
 }

@@ -100,3 +100,8 @@ pub fn execute(cmd:&Value)->Result<Value>{
  }
  Ok(json!({"entries":store.list(keys)?,"changes":changes}))
 }
+
+pub fn legacy_entries(environment:&str,project:&str)->Result<Vec<Value>>{
+ let mut store=Store::open(environment,project)?;store.recover()?;
+ Ok(store.data["entries"].as_array().cloned().unwrap_or_default())
+}
