@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""Isolated HTTP/CLI acceptance: synthetic auth, private state, no bridge or phone."""
+import base64
+import hashlib
+import http.client
+import http.server
+import json
+import os
+from pathlib import Path
+import socket
+import struct
+import subprocess
+import tempfile
+import threading
+import time
+import zlib
+
+BINARY = Path(__file__).resolve().parents[1] / "target/debug/omarchy-t3-client"
+TOKEN = "fixture-phone-bearer"
+OTHER = "fixture-other-bearer"
+CONTENT = "PRIVATE_SNAPSHOT_MARKER"
+TITLE = "PRIVATE_TITLE_MARKER"
+revoked = False
+
+
+class Auth(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        assert self.path == "/api/auth/session"
+        allowed = self.headers.get("Authorization") in ("Bearer " + TOKEN, "Bearer " + OTHER)
+        body = json.dumps({"authenticated": allowed and not revoked,
+                           "auth": {"policy": "remote-reachable"},
+                           "sessionMethod": "bearer-access-token",
+                           "scopes": ["orchestration:read"],
+                           "permissions": ["orchestration:read"]}).encode()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *_):
+        pass
+
+
+def png():
+    def chunk(name, data):
+        return struct.pack(">I", len(data)) + name + data + struct.pack(">I", zlib.crc32(name + data))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\xff")) + chunk(b"IEND", b""))
+
+
+with tempfile.TemporaryDirectory(prefix="remote-surfaces-http-") as temp:
+    env = dict(os.environ, HOME=temp, XDG_STATE_HOME=temp + "/state", XDG_CONFIG_HOME=temp + "/config")
+    state = Path(temp) / "state/omarchy-t3-code"
+    state.mkdir(parents=True)
+
+    def consent(enabled, epoch):
+        path = state / "ui-state.json"
+        pending = state / "ui-state.pending"
+        pending.write_text(json.dumps({"remoteDocumentsEnabled": enabled, "remoteDocumentsConsent": epoch}))
+        pending.replace(path)
+
+    def owner(command, ok=True):
+        result = subprocess.run([str(BINARY), "remote-surfaces-owner"], input=json.dumps(command),
+                                text=True, capture_output=True, env=env, timeout=5)
+        assert (result.returncode == 0) == ok, result.stdout
+        assert CONTENT not in result.stderr and TOKEN not in result.stderr
+        return json.loads(result.stdout)
+
+    authority = http.server.HTTPServer(("127.0.0.1", 0), Auth)
+    worker = threading.Thread(target=authority.serve_forever, daemon=True)
+    worker.start()
+    with socket.socket() as reserve:
+        reserve.bind(("127.0.0.1", 0))
+        port = reserve.getsockname()[1]
+    broker = subprocess.Popen([str(BINARY), "remote-surfaces-serve",
+                               f"http://127.0.0.1:{authority.server_port}", str(port)],
+                              env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+
+    def get(path, token=TOKEN, headers=None):
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        h = dict(headers or {})
+        if token is not None:
+            h["Authorization"] = "Bearer " + token
+        try:
+            conn.request("GET", path, headers=h)
+            response = conn.getresponse()
+            assert response.getheader("Cache-Control") == "no-store"
+            assert response.getheader("X-Content-Type-Options") == "nosniff"
+            return response.status, json.loads(response.read())
+        finally:
+            conn.close()
+
+    try:
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.1):
+                    break
+            except OSError:
+                assert time.monotonic() < deadline and broker.poll() is None, "broker did not start"
+                time.sleep(0.01)
+        assert get("/v1/session", token=None)[0] == 401
+        assert get("/v1/session", token="invalid-fixture-bearer")[0] == 401
+        assert get("/v1/session")[0] == 403  # default off
+        consent(True, "consent-1")
+        code, session = get("/v1/session")
+        assert code == 200 and session["session"] == hashlib.sha256(TOKEN.encode()).hexdigest()
+        publication = {"action": "publish", "confirmed": True, "session": session["session"],
+                       "threadId": "thread", "projectId": "project", "title": TITLE,
+                       "kind": "html", "contents": CONTENT, "expiresAt": int(time.time()) + 300,
+                       "previewPng": base64.b64encode(png()).decode()}
+        item = owner(publication)["id"]
+        doc_path, frame_path = "/v1/documents/" + item, "/v1/gallery/" + item
+        assert len(get("/v1/documents")[1]["items"]) == 1
+        assert len(get("/v1/gallery")[1]["items"]) == 1
+        assert get(doc_path)[1]["contents"] == CONTENT
+        assert get(doc_path)[1]["executable"] is False
+        assert base64.b64decode(get(frame_path)[1]["base64"]) == png()
+        assert get(doc_path, OTHER)[0] == 404 and get(frame_path, OTHER)[0] == 404
+        assert get("/v1/documents", OTHER)[1]["items"] == []
+        assert get("/v1/cleanup")[0] == 404
+        assert get("/v1/session", headers={"Origin": "https://untrusted.example"})[0] == 400
+        assert get("/v1/session", headers={"X-Oversize": "a" * 8192})[0] == 400
+        oversized = dict(publication, contents="a" * (1024 * 1024 + 1))
+        assert owner(oversized, ok=False)["error"] == "snapshot_limit"
+        oversized = dict(publication, previewPng="a" * (512 * 1024 * 4 // 3 + 5))
+        assert owner(oversized, ok=False)["error"] == "frame_limit"
+        owner({"action": "revoke", "id": item})
+        assert get(doc_path)[0] == 404 and get(frame_path)[0] == 404
+        owner(publication)
+        consent(False, "consent-2")
+        assert get("/v1/documents")[0] == 403 and get("/v1/gallery")[0] == 403
+        consent(True, "consent-3")
+        assert get("/v1/documents")[1]["items"] == [] and get("/v1/gallery")[1]["items"] == []
+        revoked = True
+        assert get("/v1/documents")[0] == 401 and get("/v1/gallery")[0] == 401
+        revoked = False
+        statuses = [get("/v1/documents", OTHER)[0] for _ in range(35)]
+        assert statuses[-1] == 429 and 200 in statuses
+        store = state / "remote-surfaces/snapshots.json"
+        assert store.stat().st_mode & 0o777 == 0o600
+        assert store.parent.stat().st_mode & 0o777 == 0o700
+    finally:
+        broker.terminate()
+        audit = broker.communicate(timeout=5)[1].decode()
+        authority.shutdown()
+        authority.server_close()
+        worker.join(timeout=5)
+    assert all(marker not in audit for marker in (TOKEN, OTHER, CONTENT, TITLE, publication["previewPng"]))
+    records = [json.loads(line) for line in audit.splitlines()]
+    assert records and len(records) <= 121
+    assert all(set(row) == {"surfaceAudit", "operation", "session", "outcome"} for row in records)
+    print("REMOTE_SURFACES_HTTP_PASS: documents/gallery, session ownership, denied/revoked/limits, consent epochs, private store, content-free audit")
