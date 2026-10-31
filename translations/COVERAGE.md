@@ -3,26 +3,26 @@
 Format: [omarchy-i18n](https://github.com/avillagran/omarchy-i18n/tree/5df6970583f9987369d11f15bec1b6f573025fb1).
 English source keys are stable, with named placeholders and full/base/English fallback.
 
-- en: 1993/1993 keys
-- es: 1993/1993 keys
-- pt: 1993/1993 keys
-- fr: 1993/1993 keys
-- de: 1993/1993 keys
-- it: 1993/1993 keys
-- nl: 1993/1993 keys
-- pl: 1993/1993 keys
-- ru: 1993/1993 keys
-- uk: 1993/1993 keys
-- ja: 1993/1993 keys
-- ko: 1993/1993 keys
-- zh: 1993/1993 keys
-- ar: 1993/1993 keys
-- tr: 1993/1993 keys
-- sv: 1993/1993 keys
-- da: 1993/1993 keys
-- no: 1993/1993 keys
-- fi: 1993/1993 keys
-- cs: 1993/1993 keys
+- en: 2004/2004 keys
+- es: 2004/2004 keys
+- pt: 2004/2004 keys
+- fr: 2004/2004 keys
+- de: 2004/2004 keys
+- it: 2004/2004 keys
+- nl: 2004/2004 keys
+- pl: 2004/2004 keys
+- ru: 2004/2004 keys
+- uk: 2004/2004 keys
+- ja: 2004/2004 keys
+- ko: 2004/2004 keys
+- zh: 2004/2004 keys
+- ar: 2004/2004 keys
+- tr: 2004/2004 keys
+- sv: 2004/2004 keys
+- da: 2004/2004 keys
+- no: 2004/2004 keys
+- fi: 2004/2004 keys
+- cs: 2004/2004 keys
 
 All non-English values are machine-authored drafts, not human-approved translations.
 Intentional identical values include placeholder-only templates, the technical 5H window,

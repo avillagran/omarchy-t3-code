@@ -298,6 +298,7 @@ ColumnLayout {
         inviteSsh.checked = false;
         inviteQr.checked = false;
         inviteManage.checked = false;
+        inviteAllHosts.checked = false;
         inviteDialog.open();
     }
     function openPublish() {
@@ -396,6 +397,8 @@ ColumnLayout {
                 peersReread.restart();
         } else if (done === "admin-set") {
             status = t("omabridgeAdminChanged");
+        } else if (done === "bridge-consent-set") {
+            status = t("omabridgeBridgeConsentChanged");
         } else if (done === "rename") {
             renameDialog.close();
             var renamed = OmaBridgeModel.renamedStatus(response.renamed);
@@ -776,6 +779,12 @@ ColumnLayout {
                         Copy {
                             text: root.t("omabridgeAsksToReach") + " " + OmaBridgeModel.servicesText(pendingCard.modelData.services) + (pendingCard.modelData.expires ? " · " + root.t("omabridgeExpires") + " " + root.expiry(pendingCard.modelData.expires) : "")
                         }
+                        Copy {
+                            objectName: "omabridgePendingAllHosts_" + pendingCard.modelData.id
+                            visible: pendingCard.modelData.allHosts
+                            text: root.t("omabridgeAllHostsRequest")
+                            color: theme.urgent
+                        }
                     }
                     Action {
                         objectName: "omabridgeApprove_" + pendingCard.modelData.id
@@ -784,7 +793,7 @@ ColumnLayout {
                         onClicked: root.ask("approve", {
                             peer: pendingCard.modelData.id,
                             expires: pendingCard.modelData.expires
-                        }, root.tr("omabridgeApproveConfirm", pendingCard.modelData.name), OmaBridgeModel.servicesText(pendingCard.modelData.services) + " · " + pendingCard.modelData.id)
+                        }, root.tr("omabridgeApproveConfirm", pendingCard.modelData.name), (pendingCard.modelData.allHosts ? root.t("omabridgeInviteAllHostsWarning") + "\n\n" : "") + OmaBridgeModel.servicesText(pendingCard.modelData.services) + " · " + pendingCard.modelData.id)
                     }
                 }
             }
@@ -864,6 +873,25 @@ ColumnLayout {
                             peer: peerCard.modelData.id
                         }, root.tr("omabridgeRevokeConfirm", peerCard.modelData.name), root.t("omabridgeRevokeDetail"))
                     }
+                }
+                // Hosts that consented to this device, as they reported it.
+                Copy {
+                    objectName: "omabridgePeerRemoteConsent_" + peerCard.modelData.id
+                    visible: peerCard.modelData.remoteBridgeConsent && OmaBridgeModel.allHostsSupported(root.snapshot ? root.snapshot.features : [])
+                    text: root.t("omabridgeBridgeConsentGiven")
+                    color: theme.accent
+                }
+                // Shows OmaBridge's state: a click only asks, and the answer moves it.
+                Check {
+                    objectName: "omabridgeBridgeConsent_" + peerCard.modelData.id
+                    Layout.fillWidth: true
+                    visible: OmaBridgeModel.bridgeConsentOffered(peerCard.modelData, root.snapshot ? root.snapshot.features : [])
+                    text: root.t("omabridgeBridgeConsent")
+                    checked: peerCard.modelData.bridgeConsent
+                    nextCheckState: function () {
+                        return checkState;
+                    }
+                    onClicked: peerCard.modelData.bridgeConsent ? root.ask("bridge-consent-set", OmaBridgeModel.bridgeConsentValues(peerCard.modelData, false), root.tr("omabridgeBridgeConsentRemoveConfirm", peerCard.modelData.name), root.t("omabridgeBridgeConsentRemoveDetail")) : root.ask("bridge-consent-set", OmaBridgeModel.bridgeConsentValues(peerCard.modelData, true), root.tr("omabridgeBridgeConsentConfirm", peerCard.modelData.name + " · " + OmaBridgeModel.shortId(peerCard.modelData.id)), root.tr("omabridgeBridgeConsentDetail", peerCard.modelData.name))
                 }
             }
         }
@@ -1356,12 +1384,15 @@ ColumnLayout {
                         required property var modelData
                         Layout.fillWidth: true
                         Copy {
+                            objectName: "omabridgeRemotePending_" + remotePending.modelData.id
                             Layout.fillWidth: true
-                            text: remotePending.modelData.name + " · " + OmaBridgeModel.shortId(remotePending.modelData.id) + " · " + root.t("omabridgeAsksToReach") + " " + OmaBridgeModel.servicesText(remotePending.modelData.services)
-                            color: theme.text
+                            text: remotePending.modelData.name + " · " + OmaBridgeModel.shortId(remotePending.modelData.id) + " · " + root.t("omabridgeAsksToReach") + " " + OmaBridgeModel.servicesText(remotePending.modelData.services) + (remotePending.modelData.allHosts ? "\n" + root.t("omabridgeAllHostsRequest") + " " + root.t("omabridgeAllHostsApproveThere") : "")
+                            color: remotePending.modelData.allHosts ? theme.urgent : theme.text
                         }
+                        // OmaBridge answers omabridge_remote_forbidden: only its owner approves one.
                         Action {
                             objectName: "omabridgeRemoteApprove_" + remotePending.modelData.id
+                            visible: !remotePending.modelData.allHosts
                             enabled: !root.busy
                             text: root.t("omabridgeApprove")
                             onClicked: root.askRemote({
@@ -1598,6 +1629,18 @@ ColumnLayout {
                 visible: !root.created && inviteManage.checked
                 text: root.t("omabridgeInviteManageDetail")
             }
+            Check {
+                id: inviteAllHosts
+                objectName: "omabridgeInviteAllHosts"
+                visible: !root.created && inviteT3.visible && inviteT3.checked && OmaBridgeModel.allHostsSupported(root.snapshot ? root.snapshot.features : [])
+                text: root.t("omabridgeInviteAllHosts")
+            }
+            Copy {
+                objectName: "omabridgeInviteAllHostsWarning"
+                visible: inviteAllHosts.visible && inviteAllHosts.checked
+                text: root.t("omabridgeInviteAllHostsWarning")
+                color: theme.urgent
+            }
             T3PairingQr {
                 objectName: "omabridgeInviteQrImage"
                 Layout.alignment: Qt.AlignHCenter
@@ -1633,7 +1676,7 @@ ColumnLayout {
             }
             Copy {
                 visible: !!root.created
-                text: root.created ? root.t("omabridgeExpires") + " " + root.expiry(root.created.expires) + " · " + OmaBridgeModel.servicesText(root.created.services) : ""
+                text: root.created ? root.t("omabridgeExpires") + " " + root.expiry(root.created.expires) + " · " + OmaBridgeModel.servicesText(root.created.services) + (root.created.allHosts ? " · " + root.t("omabridgeAllHosts") : "") : ""
             }
             ErrorLine {}
             RowLayout {
@@ -1660,7 +1703,7 @@ ColumnLayout {
                     primary: true
                     enabled: !root.busy && OmaBridgeModel.inviteValues(root.published, inviteT3.checked && inviteT3.visible, inviteSsh.checked && inviteSsh.visible, false).services.length > 0
                     text: root.t("omabridgeInviteCreate")
-                    onClicked: root.confirmed("invite", OmaBridgeModel.inviteManageValues(OmaBridgeModel.inviteValues(root.published, inviteT3.checked && inviteT3.visible, inviteSsh.checked && inviteSsh.visible, inviteQr.checked), inviteManage.checked))
+                    onClicked: root.confirmed("invite", OmaBridgeModel.inviteAllHostsValues(OmaBridgeModel.inviteManageValues(OmaBridgeModel.inviteValues(root.published, inviteT3.checked && inviteT3.visible, inviteSsh.checked && inviteSsh.visible, inviteQr.checked), inviteManage.checked), inviteAllHosts.checked && inviteAllHosts.visible, root.snapshot ? root.snapshot.features : []))
                 }
             }
         }

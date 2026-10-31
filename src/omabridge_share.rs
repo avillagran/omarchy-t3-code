@@ -16,7 +16,9 @@
 //!
 //! Revocation runs both ways: when the peer stops sharing, its route and forward
 //! are removed here; on the host, sessions paired for a device it no longer
-//! shares T3 with are revoked. A route the user removes is not added again.
+//! shares T3 with are revoked, as are sessions of devices a bridge invited with
+//! full access once that bridge loses `t3` or its consent. A route the user
+//! removes is not added again.
 use crate::*;
 use zeroize::Zeroizing;
 use std::{io::Write,net::TcpListener,os::unix::fs::OpenOptionsExt,process::{Command,Stdio},sync::Mutex,time::Instant};
@@ -24,6 +26,9 @@ use std::{io::Write,net::TcpListener,os::unix::fs::OpenOptionsExt,process::{Comm
 /// Session label prefix on the host, set by OmaBridge; the suffix is the receiving
 /// device's OmaBridge id.
 pub const LABEL_PREFIX:&str="omabridge:";
+/// Same, for a device a bridge invited with full access: `<bridge>:<client>`. That
+/// device is no peer here, so it answers for the bridge's standing, not its own.
+pub const DELEGATED_PREFIX:&str="omabridge-delegated:";
 const RETRY_SECS:u64=600;
 const PORT_BASE:u16=47300;
 const PORT_SPAN:u16=500;
@@ -66,11 +71,13 @@ fn pick_port(peer:&str,taken:&[u16])->Result<u16>{
 
 fn safe_path(p:&Path)->bool{let s=p.to_string_lossy();p.is_absolute()&&!s.is_empty()&&s.bytes().all(|b|b.is_ascii_alphanumeric()||b"/._-+@".contains(&b))}
 /// The forward unit: OmaBridge's own `forward`, through the running server when it
-/// has `forward-through-server`, restarted if the peer is briefly away.
+/// has `forward-through-server`, restarted if the peer is briefly away. It waits for
+/// that server: a forward started without it opens a second endpoint with the same
+/// identity, which takes the server's relay connection and cuts its public gateways.
 pub fn unit_text(bin:&Path,state_dir:&Path,peer:&str,name:&str,port:u16)->Result<String>{
  if !omabridge_route::valid_peer(peer)||!safe_path(bin)||!safe_path(state_dir){return Err("share_invalid_unit".into())}
  let name:String=name.chars().filter(|c|c.is_alphanumeric()||" ._-".contains(*c)).take(64).collect();
- Ok(format!("[Unit]\nDescription=ot3: T3 Code of OmaBridge peer {name} on 127.0.0.1:{port}\nAfter=network-online.target omabridge-serve.service\n\n[Service]\nExecStart={} --state-dir {} --name ot3 forward --peer {peer} --service t3 --listen 127.0.0.1:{port}\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=default.target\n",bin.display(),state_dir.display()))
+ Ok(format!("[Unit]\nDescription=O3: T3 Code of OmaBridge peer {name} on 127.0.0.1:{port}\nAfter=network-online.target omabridge-serve.service\n\n[Service]\nExecStartPre=-/usr/bin/timeout 30 /usr/bin/sh -c 'until ss -xl | grep -qF {}/control.sock; do sleep 1; done'\nExecStart={} --state-dir {} --name ot3 forward --peer {peer} --service t3 --listen 127.0.0.1:{port}\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=default.target\n",state_dir.display(),bin.display(),state_dir.display()))
 }
 fn systemctl(args:&[&str])->bool{
  Command::new("timeout").arg("20s").arg("systemctl").arg("--user").args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s|s.success())
@@ -94,14 +101,15 @@ fn remove_unit(peer:&str){
  if fs::remove_file(unit_dir().join(&name)).is_ok(){systemctl(&["daemon-reload"]);}
 }
 
-/// Paired peers as OmaBridge lists them.
+/// Paired peers as OmaBridge lists them. `omabridge peers` prints its stored peer,
+/// so fields are snake_case, unlike the camelCase `manage` snapshot.
 #[derive(Clone,Debug,PartialEq)]
-pub struct Peer{pub id:String,pub name:String,pub grants:Vec<String>,pub remote:Vec<String>}
+pub struct Peer{pub id:String,pub name:String,pub grants:Vec<String>,pub remote:Vec<String>,pub bridge_consent:bool}
 pub fn parse_peers(doc:&Value)->Vec<Peer>{
  let list=|v:&Value|v.as_array().into_iter().flatten().filter_map(|s|s.as_str()).filter(|s|omabridge_route::valid_service(s)).map(str::to_owned).collect::<Vec<_>>();
  doc["peers"].as_array().into_iter().flatten().filter(|p|omabridge_route::valid_peer(text(p,"id"))).map(|p|Peer{
   id:text(p,"id").into(),name:text(p,"name").chars().filter(|c|!c.is_control()).take(64).collect(),
-  grants:list(&p["services"]),remote:list(&p["remote_services"]),
+  grants:list(&p["services"]),remote:list(&p["remote_services"]),bridge_consent:p["bridge_consent"]==true,
  }).collect()
 }
 fn read_peers(bin:&Path,state_dir:&Path)->Result<Vec<Peer>>{
@@ -204,12 +212,21 @@ pub fn plan(doc:&Value,peers:&[Peer],in_catalog:&dyn Fn(&Value)->bool,now:u64)->
  out
 }
 
-/// Host side: sessions paired for a device this host no longer shares T3 with.
+/// Host side: sessions paired for a device this host no longer shares T3 with, and
+/// sessions a bridge delegated once it lost `t3` or `bridge_consent`. Only the bridge
+/// is read from a delegated label: its client part is the bridge's word.
 pub fn revocable(sessions:&Value,peers:&[Peer])->Vec<String>{
+ let holds_t3=|p:&Peer|p.grants.iter().any(|g|g=="t3");
  sessions.as_array().into_iter().flatten().filter_map(|s|{
-  let device=text(&s["client"],"label").strip_prefix(LABEL_PREFIX)?;
-  if !omabridge_route::valid_peer(device){return None}
-  let shared=peers.iter().any(|p|p.id==device&&p.grants.iter().any(|g|g=="t3"));
+  let label=text(&s["client"],"label");
+  let shared=if let Some(device)=label.strip_prefix(LABEL_PREFIX){
+   if !omabridge_route::valid_peer(device){return None}
+   peers.iter().any(|p|p.id==device&&holds_t3(p))
+  }else{
+   let (bridge,_)=label.strip_prefix(DELEGATED_PREFIX)?.split_once(':')?;
+   if !omabridge_route::valid_peer(bridge){return None}
+   peers.iter().any(|p|p.id==bridge&&p.bridge_consent&&holds_t3(p))
+  };
   let id=text(s,"sessionId");
   (!shared&&!id.is_empty()&&id.len()<=128&&id.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-')).then(||id.to_string())
  }).collect()
@@ -389,12 +406,17 @@ mod tests{
  use super::*;
  const A:&str="75ebf82c1c0f3c6df7c6ccab7ce79e0c5c957e2027d9ea8e144a6966b43fe764";
  const B:&str="0f6da8065c780e468ec60ecb8c9640717766692666135a81e934c246c7f42329";
- fn peer(id:&str,remote:&[&str],grants:&[&str])->Peer{Peer{id:id.into(),name:"NODE".into(),grants:grants.iter().map(|s|s.to_string()).collect(),remote:remote.iter().map(|s|s.to_string()).collect()}}
+ fn peer(id:&str,remote:&[&str],grants:&[&str])->Peer{Peer{id:id.into(),name:"NODE".into(),grants:grants.iter().map(|s|s.to_string()).collect(),remote:remote.iter().map(|s|s.to_string()).collect(),bridge_consent:false}}
+ fn bridge(id:&str,grants:&[&str],consent:bool)->Peer{Peer{bridge_consent:consent,..peer(id,&[],grants)}}
  #[test]
  fn peers_keep_valid_ids_names_and_services(){
   let doc=json!({"peers":[{"id":A,"name":"mbp\u{7}","services":["ssh","t3"],"remote_services":["t3","bad;x"],"address":{"addrs":[{"Relay":"https://relay.example/"},{"Ip":"192.0.2.7:48702"}]}},{"id":"short"}]});
   let peers=parse_peers(&doc);
   assert_eq!(peers.len(),1);assert_eq!(peers[0].name,"mbp");assert_eq!(peers[0].remote,vec!["t3"]);
+  assert!(!peers[0].bridge_consent,"an OmaBridge that does not list consent gives none");
+  // The stored peer `omabridge peers` prints, not the camelCase `manage` snapshot.
+  assert!(parse_peers(&json!({"peers":[{"id":A,"name":"h","services":["t3"],"bridge_consent":true}]}))[0].bridge_consent);
+  assert!(!parse_peers(&json!({"peers":[{"id":A,"name":"h","services":["t3"],"bridgeConsent":true}]}))[0].bridge_consent);
  }
  #[test]
  fn plan_enrolls_withdraws_and_respects_removal(){
@@ -428,6 +450,25 @@ mod tests{
   assert_eq!(revocable(&sessions,&[peer(A,&[],&["t3","ssh"]),peer(B,&[],&["ssh"])]),vec!["s-2"]);
  }
  #[test]
+ fn host_revokes_delegated_sessions_of_a_withdrawn_bridge(){
+  let session=|id:&str,bridge:&str,client:&str|json!({"sessionId":id,"client":{"label":format!("{DELEGATED_PREFIX}{bridge}:{client}")}});
+  let sessions=json!([session("d-1",A,B),session("d-2",A,"odd client"),session("d-3",B,A)]);
+  // Consent stands: the phone is no peer here, and that does not matter.
+  assert!(revocable(&sessions,&[bridge(A,&["t3"],true),bridge(B,&["t3"],true)]).is_empty());
+  // Only the bridge that lost its standing, whatever follows its id.
+  assert_eq!(revocable(&sessions,&[bridge(A,&["t3"],false),bridge(B,&["t3"],true)]),vec!["d-1","d-2"]);
+  assert_eq!(revocable(&sessions,&[bridge(A,&["ssh"],true),bridge(B,&["t3"],true)]),vec!["d-1","d-2"]);
+  assert_eq!(revocable(&sessions,&[bridge(B,&["t3"],true)]),vec!["d-1","d-2"]);
+  // Labels it cannot attribute to a bridge are left alone; ids stay checked.
+  let odd=json!([session("d-4","nothex",A),{"sessionId":"d-5","client":{"label":format!("{DELEGATED_PREFIX}{A}")}},session("d;6",A,B)]);
+  assert!(revocable(&odd,&[]).is_empty());
+  // The two kinds are judged apart: a plain session needs no consent, and a
+  // consented bridge's own plain session goes with its `t3` grant, not with this.
+  let plain=json!([{"sessionId":"p-1","client":{"label":format!("{LABEL_PREFIX}{A}")}},session("d-1",A,B)]);
+  assert_eq!(revocable(&plain,&[bridge(A,&["t3"],false)]),vec!["d-1"]);
+  assert_eq!(revocable(&plain,&[]),vec!["p-1","d-1"]);
+ }
+ #[test]
  fn links_need_a_current_host(){
   assert!(links_supported(&json!({"capabilities":{"peerLinks":true,"mcpModeLimitHeader":true,"linkFence":true}})));
   assert!(!links_supported(&json!({"capabilities":{"peerLinks":true,"mcpModeLimitHeader":true}})));
@@ -444,6 +485,7 @@ mod tests{
   let unit=unit_text(Path::new("/opt/ot3/bin/omabridge"),Path::new("/home/u/.local/share/omabridge"),A,"mbp m2\n[Service]",p).unwrap();
   assert!(unit.contains(&format!("forward --peer {A} --service t3 --listen 127.0.0.1:{p}")));
   assert_eq!(unit.matches("[Service]").count(),1);
+  assert!(unit.contains("grep -qF /home/u/.local/share/omabridge/control.sock"));
   assert!(unit_text(Path::new("/opt/a b/omabridge"),Path::new("/s"),A,"x",p).is_err());
   assert!(unit_text(Path::new("/opt/omabridge"),Path::new("/s"),"abc","x",p).is_err());
   assert_eq!(unit_name(A),"ot3-omabridge-share-75ebf82c1c0f.service");
