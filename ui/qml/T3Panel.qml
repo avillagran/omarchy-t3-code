@@ -552,7 +552,10 @@ Item {
   property string modelKey:""
   function syncConversation() {
     var rows=bridge.transcript, ids=conversationIds.slice(), fingerprints=Object.assign({},conversationFingerprints)
-    if(modelKey!==bridge.selectedKey){conversationRows.clear();ids=[];fingerprints={};modelKey=bridge.selectedKey}
+    var switched=modelKey!==bridge.selectedKey
+    // Detach before clearing: Qt can retain the previous current delegate while
+    // the same ListModel is repopulated, especially during a rapid thread switch.
+    if(switched){conversation.model=null;conversationRows.clear();ids=[];fingerprints={};modelKey=bridge.selectedKey}
     var wanted={};rows.forEach(function(r){wanted[r.id]=true})
     for(var n=ids.length-1;n>=0;n--)if(!wanted[ids[n]]){conversationRows.remove(n);delete fingerprints[ids[n]];ids.splice(n,1)}
     // Rows from the client carry a content revision; local rows fall back to
@@ -564,6 +567,8 @@ Item {
       fingerprints[row.id]=print
     }
     conversationIds=ids;conversationFingerprints=fingerprints
+    if(switched)conversation.model=conversationRows
+    conversation.forceLayout()
   }
   property bool followingTail:true
   property string positionedKey:""
@@ -928,7 +933,7 @@ Item {
       keyboardCurrent: ListView.view ? ListView.view.activeFocus && ListView.view.currentIndex===index : false
       stateColor:root.stateColor(modelData);stateLabel:root.status(modelData)
       sky:root.starfield;effects:root.threadEffects;stateChangedAt:root.stateChangedAt[modelData.key] || 0
-      timeLabel:modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
+      timeLabel:root.orderByReply ? root.age(Sidebar.replyTime(modelData)) : modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
       onThreadActivated:function(source){root.pullRequestsOpen=false;root.preferencesOpen=false;root.revealSidebarThread(source.environmentId,source.id)}
@@ -2039,6 +2044,7 @@ Item {
               anchors.bottomMargin:-composerStack.height
               footer:Item{width:conversation.width;height:composerStack.height+Style.space(26)}
               model: conversationRows
+              currentIndex: -1
               property bool userGesture:false
               onDraggingChanged: if(dragging){userGesture=true;conversation.stopWheel();root.detachConversation()}
               onFlickStarted: {userGesture=true;root.detachConversation()}
@@ -2103,6 +2109,7 @@ Item {
                 required property int index
                 required property var row
                 readonly property var modelData: row
+                visible: index>=0 && root.modelKey===root.bridge.selectedKey
                 readonly property var textItem:messageText
                 readonly property var segments:root.messageSegments(row)
                 property bool pooled:false

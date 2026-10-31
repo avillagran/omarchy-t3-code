@@ -453,7 +453,12 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         if sorting["latestRun"].is_object()&&sorting["latestRun"].get("requestedAt").is_none(){sorting["latestRun"]["requestedAt"]=sorting["latestRun"]["createdAt"].clone();}
         let mut thread_state=json!({"working":!active.is_empty(),"startedAt":started,"activeRunId":if active.is_empty(){Value::Null}else{json!(active)},"status":status,"providerInstanceId":p["thread"]["providerInstanceId"],"interactionMode":p["thread"]["interactionMode"],"latestRunSettled":plan_workflow::latest_run_settled(p)});
         for (key,value) in protocol::sidebar::sort_timestamps(&sorting).as_object().unwrap(){if key!="lastSentAt"&&value.as_i64().unwrap_or(0)>0{thread_state[key]=value.clone();}}
-        let replied=replied_at(&sorting);if replied>0{thread_state["repliedAt"]=json!(replied);}
+        // The latest run can still be running. Keep replies from earlier runs and
+        // include commentary in this run instead of falling back to thread creation.
+        let replied=p["messages"].as_array().into_iter().flatten().filter(|m|m["role"]=="assistant"&&!rolled.contains(text(m,"runId")))
+            .map(|m|epoch(&m["createdAt"])).chain(p["runs"].as_array().into_iter().flatten().filter(|r|!rolled.contains(text(r,"id"))).map(|r|epoch(&r["completedAt"]))).max().unwrap_or(0);
+        let replied=if replied>0{replied}else{replied_at(&sorting)};
+        if replied>0{thread_state["repliedAt"]=json!(replied);}
         for (key,value) in thread_workflows(p).as_object().unwrap(){thread_state[key]=value.clone();}
         thread_state["contextWindow"]=context_window(p);
         thread_state["guestShare"]=p["thread"]["guestShare"].clone();
@@ -1060,6 +1065,28 @@ mod table_tests {
     }
 }
 
-/// When the agent last answered: its latest finished run, else when the thread
-/// was created or brought back. The sidebar's default order.
-fn replied_at(t:&Value)->i64{epoch(&t["latestRunCompletedAt"]).max(epoch(&t["latestRun"]["completedAt"])).max(epoch(&t["createdAt"])).max(epoch(&t["unsettledAt"]))}
+/// Shells can omit completion while the latest run is active. In that case
+/// use the shell's activity clock, never reset a busy thread to its creation.
+fn replied_at(t:&Value)->i64{
+    let completed=epoch(&t["latestRunCompletedAt"]).max(epoch(&t["latestRun"]["completedAt"]));
+    if completed>0{completed}else{epoch(&t["updatedAt"]).max(epoch(&t["createdAt"]))}
+}
+
+#[cfg(test)]
+mod reply_order_tests {
+    use super::*;
+    #[test]
+    fn running_projection_keeps_previous_and_streaming_replies() {
+        let mut p=json!({"thread":{"id":"t","createdAt":10,"updatedAt":9999},"runs":[{"id":"old","completedAt":500},{"id":"new","status":"running","createdAt":600}],"messages":[]});
+        assert_eq!(normalize_messages(&json!({"projection":p})).unwrap()["threadState"]["repliedAt"],500000);
+        p["messages"]=json!([{"id":"m","role":"assistant","runId":"new","text":"Progress","createdAt":700,"streaming":true}]);
+        assert_eq!(normalize_messages(&json!({"projection":p})).unwrap()["threadState"]["repliedAt"],700000);
+    }
+    #[test]
+    fn active_run_does_not_fall_back_to_creation() {
+        assert_eq!(replied_at(&json!({"createdAt":10,"updatedAt":900,"latestRun":{"status":"running"}})),900000);
+        assert_eq!(replied_at(&json!({"createdAt":10,"updatedAt":900,"latestRunCompletedAt":500})),500000);
+        assert_eq!(replied_at(&json!({"createdAt":10,"updatedAt":900,"latestRun":{"completedAt":600}})),600000);
+        assert_eq!(replied_at(&json!({"createdAt":10})),10000);
+    }
+}

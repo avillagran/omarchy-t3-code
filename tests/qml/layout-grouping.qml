@@ -23,7 +23,7 @@ ShellRoot{
    b.rememberView({sidebarCompact:true,workingExpanded:true,sidebarGrouped:true,interfaceLayout:"classic"})
    b.state={threads:[
     {id:"pin",key:"fixture/pin",environmentId:"fixture",projectKey:"fixture/p",project:"P",title:"Pinned",status:"completed",pinned:true,repliedAt:1},
-    {id:"busy",key:"fixture/busy",environmentId:"fixture",projectKey:"fixture/p",project:"P",title:"Busy",working:true,status:"running",lastSentAt:20},
+    {id:"busy",key:"fixture/busy",environmentId:"fixture",projectKey:"fixture/p",project:"P",title:"Busy",working:true,status:"running",lastSentAt:20,repliedAt:Date.now()-3600000,updatedAt:Date.now()-1000,startedAt:Date.now()-3600000},
     {id:"ask",key:"fixture/ask",environmentId:"fixture",projectKey:"fixture/q",project:"Q",title:"Question",working:true,status:"running",pending:true,reason:"request"},
     {id:"idle",key:"fixture/idle",environmentId:"fixture",projectKey:"fixture/q",project:"Q",title:"Inbox",status:"completed",repliedAt:9},
     {id:"nap",key:"fixture/nap",environmentId:"fixture",projectKey:"fixture/q",project:"Q",title:"Nap",snoozed:true},
@@ -51,7 +51,9 @@ ShellRoot{
    }else{
     root.check(!panel.pinnedRows.length&&!panel.inputRows.length&&!panel.workingRows.length,layout+": no sections when ungrouped")
     root.check(ids(panel.activeRows)==="ask,busy,idle,pin","a flat list holds pinned, waiting, working and ready threads: "+ids(panel.activeRows))
-    root.check(panel.activeRows[0].id==="pin","pinned threads still lead the flat list")
+    root.check(panel.activeRows[0].id==="busy","recent running activity leads the flat list, including pins")
+    var busy=panel.sidebarView.itemAtIndex(0)
+    root.check(busy&&busy.timeLabel===panel.age(busy.thread.updatedAt),"visible age matches the sorting clock, not run duration")
     root.check(panel.snoozedRows.length===1&&panel.settledRows.length===1,layout+": snoozed and settled keep their shelves")
    }
    root.press();phase=4

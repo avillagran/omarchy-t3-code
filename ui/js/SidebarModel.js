@@ -169,14 +169,19 @@ function tie(a,b){return String(a.id).localeCompare(String(b.id)) || String(a.en
 function compareInbox(a,b,returned) {
   return Math.max(b.inboxAt || 0,returned[b.key] || 0)-Math.max(a.inboxAt || 0,returned[a.key] || 0) || tie(a,b)
 }
-// The agent's latest answer first (O3's default); pinned threads keep their place on top.
+// Chronological mode includes pins; grouping alone gives pins a separate section.
 // Older servers may omit reply timestamps; retain their completion clock as fallback.
-function replyTime(t){return t.repliedAt || (t.settled && t.settledSortAt) || t.inboxAt || t.updatedAt || 0}
+function replyTime(t){
+  var reply=t.repliedAt || (t.settled && t.settledSortAt) || t.inboxAt || t.updatedAt || 0
+  // While a run is active the shell exposes activity, not individual token times.
+  // Do not bury that run below its previous completed answer.
+  return t.working ? Math.max(reply,t.updatedAt || 0,t.startedAt || 0) : reply
+}
 function compareReply(a,b){return replyTime(b)-replyTime(a) || tie(a,b)}
 function compareActive(a,b,grouped,returned,byReply) {
+  if(byReply)return compareReply(a,b)
   if(!!a.pinned!==!!b.pinned)return a.pinned?-1:1
   if(a.pinned&&b.pinned)return String(a.pinOrderKey || "").localeCompare(String(b.pinOrderKey || "")) || (a.pinnedAt || 0)-(b.pinnedAt || 0) || tie(a,b)
-  if(byReply)return compareReply(a,b)
   if(grouped)return compareInbox(a,b,returned)
   if(a.activeOrderKey==null&&b.activeOrderKey!=null)return -1
   if(a.activeOrderKey!=null&&b.activeOrderKey==null)return 1

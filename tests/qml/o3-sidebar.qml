@@ -113,12 +113,12 @@ ShellRoot{
    // The pinned thread's answer is ready: it heads Ready.
    fixture=JSON.parse(JSON.stringify(b.state));fixture.threads[0].pending=true;fixture.threads[0].reason="review";b.state=fixture;phase=8
   }else if(phase===8){
-   root.check(panel.activeRows[0].id==="p1"&&!panel.pinnedRows.length,"a ready pinned thread heads Ready")
+   root.check(panel.activeRows.some(t=>t.id==="p1")&&!panel.pinnedRows.length&&panel.activeRows[0].id==="r1","a ready pinned thread joins Ready in reply order")
    b.selectThread("local","p1")
    // Opening it clears "done"; it stays in Ready while it has focus.
    fixture=JSON.parse(JSON.stringify(b.state));fixture.threads[0].pending=false;fixture.threads[0].reason=null;b.state=fixture;phase=9
   }else if(phase===9){
-   root.check(panel.activeRows[0].id==="p1","the open pinned thread stays in Ready")
+   root.check(panel.activeRows.some(t=>t.id==="p1"),"the open pinned thread stays in Ready")
    var sel=null;for(var i=0;i<panel.sidebarView.count;i++){var it=panel.sidebarView.itemAtIndex(i);if(it&&it.thread.id==="p1")sel=it}
    root.check(sel&&sel.selected&&keys.findChild(sel,"threadSelectedBar").visible,"the open thread is marked with a bar")
    root.check(!keys.findChild(sel,"threadPinIndicator"),"pinned rows carry no pin icon")
