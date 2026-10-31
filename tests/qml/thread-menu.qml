@@ -13,6 +13,7 @@ ShellRoot{
   property var state:({projects:[{key:"remote/p",workspaceRoot:"/home/node/project"}]})
   property var catalogs:({remote:{canWrite:true,capabilities:{threadSettlement:true,threadSnooze:true,threadPinning:true,threadAutoSettleOptOut:true,threadTitleRegeneration:true}},other:{canWrite:false}})
   property var drafts:({})
+  property var viewState:({})
   property bool managementBusy:false
   property var managementRequest:null
   property var actions:[]

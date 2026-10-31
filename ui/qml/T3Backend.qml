@@ -1228,6 +1228,7 @@ Singleton {
   function closeInlineDocument(id){if(!id||!inlineDocuments[id])return;send({op:"document-close",requestId:id});var all=Object.assign({},inlineDocuments);delete all[id];inlineDocuments=all}
   function updateInlineDocument(id,values){if(!inlineDocuments[id])return;var all=Object.assign({},inlineDocuments);all[id]=Object.assign({},all[id],values);inlineDocuments=all}
   function clearInlineDocuments(){Object.keys(inlineDocuments).forEach(closeInlineDocument)}
+  signal mediaRequested(var attachment)
   function openReference(link,attachment){
     var path=String(link || "");
     if(/^https?:\/\//i.test(path)){Qt.openUrlExternally(path);return}
@@ -1238,6 +1239,8 @@ Singleton {
     try{path=decodeURIComponent(path.replace(/^file:\/\//,""))}catch(e){return}
     path=path.replace(/#[^/#]*$/,"").replace(/:[0-9]+(?::[0-9]+)?$/,"")
     if(selectedEnvironment==="local"&&/^~(?:\/|$)/.test(path))path=Quickshell.env("HOME")+path.slice(1)
+    var media=attachment || {id:"media-"+uuid(),type:"file",name:path.split("/").pop(),mimeType:"",source:path}
+    if(isAudio(media)||isVideo(media)){mediaRequested(media);return}
     if(documentOpen.busy)return
     var id=uuid();documentOpen={busy:true,error:"",requestId:id,data:null,frameUrl:"",frameRevision:0}
     var project=(state.projects || []).find(function(p){return p.environmentId===root.selectedEnvironment&&p.id===root.selectedInfo.projectId}) || {}

@@ -13,6 +13,8 @@ ListView {
     property var threads:[]
     property var groups:[]
     property bool grouped:true
+    property bool updatesPaused:false
+    onUpdatesPausedChanged:if(!updatesPaused)Qt.callLater(sync)
     property var nest:function(rows){return rows}
     readonly property var collapsed:bridge.viewState.projectTreeCollapsed || ({})
     readonly property var entries: {
@@ -38,6 +40,7 @@ ListView {
         Qt.callLater(function(){var i=root.entries.findIndex(function(r){return r.key===key});if(i>=0){root.currentIndex=i;root.positionViewAtIndex(i,ListView.Contain)}})
     }
     function sync(){
+        if(updatesPaused)return
         var old=treeModel.count&&currentIndex>=0&&currentIndex<treeModel.count?treeModel.get(currentIndex).row.key:""
         entries.forEach(function(entry,i){
             var at=-1;for(var j=i;j<treeModel.count;j++)if(treeModel.get(j).row.key===entry.key){at=j;break}

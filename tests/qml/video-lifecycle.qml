@@ -37,6 +37,11 @@ ShellRoot {
   }else if(phase===4){
    if(!loader.item||loader.item.player.duration<=0){check(++frames<35,"video reopens");return}
    check(loader.item.player.playbackState===MediaPlayer.PlayingState,"reopened video plays")
+   panel.imageViewer.close();b.openReference("/home/remote/sound%20sample.mp3");
+   check(panel.imageViewer.visible&&panel.imageViewer.attachment.source==="/home/remote/sound sample.mp3","remote audio link opens player with decoded host path");
+   check(!b.documentOpen.busy,"binary media never enters text document reader");
+   panel.imageViewer.close();b.openReference("file:///home/remote/clip.mp4");
+   check(panel.imageViewer.visible&&panel.imageViewer.attachment.source==="/home/remote/clip.mp4","remote video link opens player");
    panel.close();console.log("VIDEO_LIFECYCLE_QML_PASS: no idle player, local video load, playback, pause, seek, teardown and reopen");Qt.quit()
   }
  }}

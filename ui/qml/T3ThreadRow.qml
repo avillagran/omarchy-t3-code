@@ -112,6 +112,9 @@ Item {
   readonly property var copyField: actionUi.item ? actionUi.item.clipboardField : null
   readonly property var groupPopup: actionUi.item ? actionUi.item.newGroupPopup : null
   readonly property var groupName: groupPopup ? groupPopup.nameField : null
+  readonly property bool interactionOpen: !!((rowMenu&&rowMenu.visible)||(snoozeMenu&&snoozeMenu.visible)||(customSnooze&&customSnooze.visible)||(editPopup&&editPopup.visible)||(groupPopup&&groupPopup.visible))
+  signal interactionChanged(bool active)
+  onInteractionOpenChanged:interactionChanged(interactionOpen)
   readonly property bool actionsLoaded: actionUi.active
   function ensureActions(){actionUi.active=true;actionExpiry.restart()}
   function releaseActions(){
@@ -211,10 +214,10 @@ Item {
   // recycled row is handed a different one.
   property bool motionReady: false
   onIdentityChanged: { dismiss(); motionReady = false; Qt.callLater(function() { root.motionReady = true }) }
-  Component.onDestruction: dismiss()
+  Component.onDestruction: {interactionChanged(false);dismiss()}
   Connections {
     target: root.ListView.view
-    function onContentYChanged(){root.dismiss()}
+    function onContentYChanged(){root.hidePreview()}
     function onMovingChanged(){if(root.ListView.view.moving)root.dismiss()}
   }
   HoverHandler {

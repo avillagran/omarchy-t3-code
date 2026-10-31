@@ -428,7 +428,9 @@ Item {
   readonly property color surface: Qt.rgba(fg.r, fg.g, fg.b, 0.045)
   readonly property color healthy: Color.accent
   property string hostFilter: bridge.viewState.hostFilter || ""
-  readonly property var hostThreads: bridge.state.threads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.groupOf(t)===root.threadGroupFilter)})
+  property var sidebarInteractionThreads:[]
+  readonly property var sidebarSourceThreads:sidebarUpdatesPaused?sidebarInteractionThreads:bridge.state.threads
+  readonly property var hostThreads: sidebarSourceThreads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.groupOf(t)===root.threadGroupFilter)})
   // Groups the user makes from a thread's menu (Groups): one name per thread.
   readonly property var threadGroups: bridge.viewState.threadGroups || ({})
   // A whole project can join a group too; a thread's own group wins.
@@ -662,7 +664,7 @@ Item {
   readonly property bool settledShown: settledExpanded || searching
   readonly property var inboxRows: sidebarRows.filter(function(t) { return !t.sectionHeader && !t.settled && !t.snoozed })
   // Each section lists sub-threads right under their parent (Sidebar.nest).
-  function nestRows(rows){return Sidebar.nest(rows,bridge.state.threads,bridge.viewState.subthreadsExpanded,bridge.selectedKey,root.projectLayout?ProjectTree.compareThreads:undefined)}
+  function nestRows(rows){return Sidebar.nest(rows,sidebarSourceThreads,bridge.viewState.subthreadsExpanded,bridge.selectedKey,root.projectLayout?ProjectTree.compareThreads:undefined)}
   function topCount(rows){return rows.filter(function(r){return !r.depth}).length}
   function toggleSubthreads(row){var all=Object.assign({},bridge.viewState.subthreadsExpanded || {});all[row.key]=!row.subthreadsExpanded;var keys=Object.keys(all);while(keys.length>512)delete all[keys.shift()];bridge.rememberView({subthreadsExpanded:all})}
   // Threads waiting on you (approval, input, plan) get their own group above Snoozed.
@@ -752,7 +754,12 @@ Item {
   property var arrivingRows: []
   Connections { target: root.bridge; function onSnapshotAboutToChange() { root.rowMotionPending = true } }
   Timer { id: rowMotionHold; interval: root.rowMoveMs + 120; onTriggered: { root.rowMotion = false; root.movingKeys = ({}) } }
+  property var sidebarInteractions:({})
+  readonly property bool sidebarUpdatesPaused:Object.keys(sidebarInteractions).length>0
+  function holdSidebar(key,active){if(active&&!sidebarUpdatesPaused)sidebarInteractionThreads=bridge.state.threads.slice();var next=Object.assign({},sidebarInteractions);if(active)next[key]=true;else delete next[key];sidebarInteractions=next}
+  onSidebarUpdatesPausedChanged:if(!sidebarUpdatesPaused)Qt.callLater(syncSidebar)
   function syncSidebar() {
+    if(sidebarUpdatesPaused)return
     var models = [activeRowModel, workingRowModel, snoozedRowModel, settledRowModel, pinnedRowModel, inputRowModel], sections = sidebarSections
     var states = sidebarSyncState.map(function(st) { return {ids: st.ids.slice(), prints: Object.assign({}, st.prints)} })
     var removed = {}, added = {}, moving = {}, changed = false
@@ -934,6 +941,7 @@ Item {
       stateColor:root.stateColor(modelData);stateLabel:root.status(modelData)
       sky:root.starfield;effects:root.threadEffects;stateChangedAt:root.stateChangedAt[modelData.key] || 0
       timeLabel:root.orderByReply ? root.age(Sidebar.replyTime(modelData)) : modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
+      onInteractionChanged:function(active){root.holdSidebar(modelData.key,active)}
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
       onThreadActivated:function(source){root.pullRequestsOpen=false;root.preferencesOpen=false;root.revealSidebarThread(source.environmentId,source.id)}
@@ -1483,7 +1491,7 @@ Item {
               id:projectTreeLoader;objectName:"t3ProjectSidebarLoader";visible:active;active:root.projectLayout
               Layout.fillWidth:true;Layout.fillHeight:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
               sourceComponent:T3ProjectSidebar {
-                bridge:root.bridge;threads:root.mosaicRows;groups:root.projectGroups;grouped:root.sidebarGrouped;threadDelegate:sidebarThreadComponent
+                bridge:root.bridge;threads:root.mosaicRows;groups:root.projectGroups;grouped:root.sidebarGrouped;threadDelegate:sidebarThreadComponent;updatesPaused:root.sidebarUpdatesPaused
                 nest:function(rows){return root.nestRows(rows)}
               }
             }
@@ -2377,6 +2385,7 @@ Item {
               Connections {
                 target: root.bridge
                 function onMessageSubmitted(key) { root.followSubmittedMessage(key) }
+                function onMediaRequested(attachment){root.openVideo(attachment)}
                 function onThreadWillChange() { root.findOpen=false;root.findQuery="";if(!root.bridge.connectionChanging)root.preferencesOpen=false;root.pullRequestsOpen=false;documentPopup.close();conversation.stopWheel();root.cancelScrollRestore();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();root.captureState();Qt.callLater(root.restoreSidebarShelves); root.submissionFollowKey = ""; root.restoringConversation = true }
                 function onSnapshotAboutToChange() {
                   if (!root.restoringSidebar) root.capturePosition(threads,root.activeRows,"@sidebar")

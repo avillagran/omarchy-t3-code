@@ -11,7 +11,8 @@ ShellRoot {
  Timer{interval:200;running:true;repeat:true;onTriggered:{var b=Test.T3Backend
   if(phase===0){if(!b.viewStateLoaded)return;b.state={threads:[{key:"fixture/one",id:"one",environmentId:"fixture",title:"One"}],projects:[],environments:[]};fixture=b.state;b.selectThread("fixture","one");panel.open();phase=1
   }else if(phase===1){var row=panel.sidebarView.itemAtIndex(0);if(!row)return;keys.mouseClick(row,100,40,Qt.RightButton);menu=keys.findChild(row,"t3ThreadContextMenu");phase=2
-  }else if(phase===2){check(menu.visible,"menu visible in real panel");check(menu.width>100&&menu.height>100,"menu must render usable content, not just a line");check(keys.findChild(panel.sidebarView.itemAtIndex(0),"threadRename").width>100,"menu item receives usable text width");menu.contentItem.grabToImage(function(image){root.captured=image.saveToFile("/tmp/t3-thread-menu-panel.png")});phase=3
-  }else if(phase===3){if(!captured)return;menu.close();panel.close();console.log("THREAD_MENU_PANEL_QML_PASS");Qt.quit()}
+  }else if(phase===2){check(menu.visible,"menu visible in real panel");check(menu.width>100&&menu.height>100,"menu must render usable content, not just a line");check(keys.findChild(panel.sidebarView.itemAtIndex(0),"threadRename").width>100,"menu item receives usable text width");menu.contentItem.grabToImage(function(image){root.captured=image.saveToFile("/tmp/t3-thread-menu-panel.png")});fixture=Object.assign({},fixture,{threads:fixture.threads.map(t=>Object.assign({},t,{settled:true,updatedAt:Date.now()}))});b.state=fixture;panel.sidebarView.contentY+=1;phase=3
+  }else if(phase===3){if(!captured)return;check(menu.visible&&panel.sidebarUpdatesPaused,"snapshot and programmatic scroll keep the menu open");check(panel.sidebarView.count===1&&panel.activeRows.length===1&&panel.sidebarView.visible,"section move deferred while menu is open");menu.close();phase=4
+  }else if(phase===4){check(!panel.sidebarUpdatesPaused&&panel.sidebarView.count===0,"closing applies latest section membership");panel.close();console.log("THREAD_MENU_PANEL_QML_PASS");Qt.quit()}
  }}
 }

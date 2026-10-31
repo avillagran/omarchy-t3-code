@@ -17,11 +17,18 @@ pub fn load(input:&Value)->Result<Value>{
  let kind=mime(name,text(a,"mimeType")).ok_or("invalid_video")?;
  let ext=match kind{"audio/mpeg"=>"mp3","audio/mp4"=>"m4a","audio/wav"=>"wav","audio/ogg"=>"ogg","audio/webm"=>"webm","audio/flac"=>"flac","audio/aac"=>"aac","video/mp4"=>"mp4","video/webm"=>"webm","video/quicktime"=>"mov","video/x-matroska"=>"mkv","video/ogg"=>"ogv",_=>"avi"};
  let root=xdg("XDG_CACHE_HOME",".cache").join("videos");std::fs::create_dir_all(&root).map_err(|_|"video_cache_failed")?;std::fs::set_permissions(&root,std::fs::Permissions::from_mode(0o700)).map_err(|_|"video_cache_failed")?;
- let file=root.join(format!("{:x}.{ext}",Sha256::digest(format!("{env}/{id}").as_bytes())));
- let cached=std::fs::symlink_metadata(&file).is_ok_and(|m|m.is_file()&&m.uid()==unsafe{libc::geteuid()}&&m.mode()&0o077==0&&m.len()>0&&m.len()<=LIMIT);
+ let workspace=!text(a,"source").is_empty();
+ let file=root.join(format!("{:x}.{ext}",Sha256::digest(format!("{env}/{}/{id}/{}",if workspace{text(input,"thread")}else{""},if workspace{uuid::Uuid::new_v4().to_string()}else{String::new()}).as_bytes())));
+ let cached=!workspace && std::fs::symlink_metadata(&file).is_ok_and(|m|m.is_file()&&m.uid()==unsafe{libc::geteuid()}&&m.mode()&0o077==0&&m.len()>0&&m.len()<=LIMIT);
  if !cached{
   let e=environments()?.into_iter().find(|e|e.id==env).ok_or("unknown_environment")?;
-  let bytes=attachment_bytes(&e,id,name,text(a,"mimeType"),LIMIT)?;
+  let bytes=if workspace{
+   let path=markdown_images::workspace_path(text(a,"source"))?;
+   let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_video".into())}
+   let resource=json!({"_tag":"media-file","threadId":thread,"path":path});
+   e.connection(true)?.asset_bytes_with(resource,&protocol::AssetOptions::new(LIMIT).with_timeout(Duration::from_secs(120)))
+    .map(|asset|asset.bytes).map_err(|error|asset_error(error,"attachment_"))?
+  }else{attachment_bytes(&e,id,name,text(a,"mimeType"),LIMIT)?};
   let tmp=root.join(format!(".{}.tmp",uuid::Uuid::new_v4()));let mut f=std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(&tmp).map_err(|_|"video_cache_failed")?;
   if f.write_all(&bytes).and_then(|_|std::fs::rename(&tmp,&file)).is_err(){let _=std::fs::remove_file(&tmp);return Err("video_cache_failed".into())}
   // Keep at most 16 videos / 512 MiB, oldest first.
