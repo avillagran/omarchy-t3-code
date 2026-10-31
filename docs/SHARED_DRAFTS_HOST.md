@@ -90,6 +90,12 @@ carry a remote requesting session identity. Wrapping `write::execute`, the QML
 handlers or the local CLI in HTTP would create a confused deputy. This pass adds
 no such wrapper, grants, remote shell, browser or screen access.
 
+For draft storage Android should call OmaBridge's v0.2.4 mobile ABI directly,
+`{"op":"drafts","handle":N,"peer":"<authority-id>","command":C}`, with the phone's
+own paired identity and explicit `drafts` grant. That existing bridge API is separate
+from the new local Desktop journal CLI. This PR does not modify Android or claim
+an authenticated physical-phone round trip.
+
 The existing native terminal contract is already in the vendored library:
 
 | Operation | Native contract | Permission / bounds |
@@ -128,3 +134,31 @@ queues/bytes/time and emit content-free audit records (operation, opaque session
 outcome). Writes/input require `orchestration:operate` or a documented stronger
 service-specific scope. Never log text, keystrokes, frames, audio, tokens, full URLs
 with credentials, or draft payloads. No remote capability is advertised in this pass.
+
+## Validation (2026-10-31)
+
+- `cargo test`: stops at the unchanged approvals fixture.
+- `CARGO_BUILD_JOBS=2 cargo test --no-fail-fast`: **443 passed, 5 failed, 0 ignored**,
+  including **6/6 new journal tests**. The five failures are in unchanged code:
+  `approvals` and `history` assert older HTTP request shapes; `plan_transport`
+  expects a WebSocket upgrade where it receives another request; `qml_preview`
+  produces no sandboxed renderer frame in this environment; `third_party_licenses`
+  requires regenerating the target-specific compiled notices with
+  `tools/build-licenses.cjs`. These fixtures/modules match the base branch; a
+  separate baseline checkout was not built. They are reported, not fixed here.
+- `cargo clippy --lib` and `cargo clippy --test shared_drafts`: pass, with 24
+  existing library warnings and no warnings in the new module/test file.
+- `cargo clippy --all-targets`: fails on existing denied `unused_io_amount`
+  lints at `tests/plan_transport.rs:12,14`.
+- QML `project-drafts` and `native-terminal`: **2/2 pass** using the observed
+  Wayland display. The initial display-less/offscreen attempts cannot load a
+  PanelWindow backend. No QML source was changed.
+- Translation checker: **20 locales × 2004 keys**, no warnings. No new UI strings;
+  Preferences and its translations remain part of the deferred migration.
+- `rustfmt --check` for the new Rust files and `git diff --check`: pass.
+
+The host rebooted during an earlier verification attempt (uptime reset and `/tmp`
+logs disappeared); no reboot/service-control command was issued for this task.
+The results above are from the completed rerun. No deployment, service restart,
+phone access, live two-client shared-composer test or remote-host acceptance is
+claimed. `target-orphan/` remains untracked and was not modified.
