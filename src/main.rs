@@ -744,6 +744,15 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
+    if std::env::args().nth(1).as_deref()==Some("remote-surfaces-serve") {
+        let args:Vec<_>=std::env::args().skip(2).collect();
+        let result=if args.len()==2 {args[1].parse::<u16>().map_err(|_|"invalid_port".to_string()).and_then(|port|remote_surfaces::serve(&args[0],port,ui_state::load))}else{Err("invalid_command".into())};
+        if let Err(e)=result{eprintln!("{e}");std::process::exit(1)}return
+    }
+    if std::env::args().nth(1).as_deref()==Some("remote-surfaces-owner") {
+        let result=(|| -> Result<Value> {let mut bytes=Vec::new();std::io::Read::read_to_end(&mut std::io::Read::take(std::io::stdin(),2*1024*1024+1),&mut bytes).map_err(|_|"invalid_command")?;if bytes.len()>2*1024*1024{return Err("request_limit".into())}let v=serde_json::from_slice(&bytes).map_err(|_|"invalid_command")?;remote_surfaces::owner(&v,&ui_state::load())})();
+        match result{Ok(v)=>println!("{v}"),Err(e)=>{println!("{}",json!({"error":e}));std::process::exit(1)}}return
+    }
     if std::env::args().nth(1).as_deref()==Some("__ssh-forward") {
         if run_ssh_forward(&std::env::args().skip(2).collect::<Vec<_>>()).is_err(){std::process::exit(1)}
         return

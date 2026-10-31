@@ -336,6 +336,9 @@ Rectangle {
       Loader{Layout.fillWidth:true;Layout.preferredHeight:Math.max(Style.space(280),settingsScroll.height-Style.space(170));active:!root.query.trim()&&root.page==="archived";visible:active;sourceComponent:Component{T3Archive{bridge:root.bridge;targets:root.scope.targets}}}
       ColumnLayout {
        Layout.fillWidth:true;visible:root.page==="connections"
+       Text{text:T3I18n.tr("Remote documents on this device");color:root.fg;font.bold:true}
+       Text{Layout.fillWidth:true;wrapMode:Text.WordWrap;color:root.dim;text:T3I18n.tr("Share only owner-published snapshots. Turning this off revokes access.")}
+       Controls.CheckBox{objectName:"remoteDocumentsEnable";text:T3I18n.tr("Allow remote documents and HTML previews");checked:root.bridge.viewState.remoteDocumentsEnabled===true;onToggled:{root.bridge.viewState=Object.assign({},root.bridge.viewState,{remoteDocumentsEnabled:checked,remoteDocumentsConsent:root.bridge.uuid()});root.bridge.persistViewNow()}}
        Text{text:T3I18n.tr("Shared drafts");color:root.fg;font.bold:true}
        Controls.TextField{objectName:"sharedDraftAuthority";Layout.fillWidth:true;placeholderText:T3I18n.tr("Bridge endpoint ID");text:root.bridge.viewState.sharedDraftsAuthority || "";enabled:!root.bridge.viewState.sharedDraftsEnabled;onEditingFinished:{root.bridge.viewState=Object.assign({},root.bridge.viewState,{sharedDraftsAuthority:text.trim()});root.bridge.persistViewNow()}}
        Controls.CheckBox{objectName:"sharedDraftEnable";text:T3I18n.tr("Share drafts");checked:root.bridge.viewState.sharedDraftsEnabled===true;enabled:!!root.bridge.viewState.sharedDraftsAuthority;onToggled:{root.bridge.viewState=Object.assign({},root.bridge.viewState,{sharedDraftsEnabled:checked});root.bridge.persistViewNow()}}

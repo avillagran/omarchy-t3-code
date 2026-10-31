@@ -1,5 +1,10 @@
 # Shared drafts Desktop integration and Android host contracts
 
+Follow-up: [Remote surfaces broker v1](REMOTE_SURFACES.md) adds an opt-in,
+read-only owner-published snapshot broker. The assessment below is the historical
+shared-drafts pass; live document/render sessions and the remaining P14–P17
+surfaces are still deferred. The new broker does not wrap local owner handlers.
+
 Status: **Desktop editor integration, opt-in**. Preferences → Connections persists
 an explicit bridge endpoint ID and sharing switch (off by default). Composer and
 project drafts use the durable journal when enabled; local files remain offline

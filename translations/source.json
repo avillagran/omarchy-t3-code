@@ -2010,6 +2010,9 @@
     "Use shared": "Use shared",
     "Resync": "Resync",
     "Bridge endpoint ID": "Bridge endpoint ID",
-    "Share drafts": "Share drafts"
+    "Share drafts": "Share drafts",
+    "Remote documents on this device": "Remote documents on this device",
+    "Share only owner-published snapshots. Turning this off revokes access.": "Share only owner-published snapshots. Turning this off revokes access.",
+    "Allow remote documents and HTML previews": "Allow remote documents and HTML previews"
   }
 }
