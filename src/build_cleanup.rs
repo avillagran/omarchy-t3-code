@@ -284,3 +284,367 @@ mod tests {
         assert_eq!(f[&PathBuf::from("/w/busy")].1, 42, "a running thread is in use now");
     }
 }
+
+// Remote scans use bounded subprocess output and deadlines rather than the
+// desktop's broad discovery/report helpers.
+pub(crate) fn remote_git(root: &Path, args: &[&str], limit: usize) -> Result<Vec<u8>> {
+    use std::io::Read;
+    let mut child = std::process::Command::new("timeout")
+        .arg("1s")
+        .arg("git")
+        .arg("-C")
+        .arg(root)
+        .args([
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+        ])
+        .args(args)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|_| "report_unavailable")?;
+    let mut bytes = Vec::new();
+    let read = child
+        .stdout
+        .take()
+        .ok_or("report_unavailable")?
+        .take(limit as u64 + 1)
+        .read_to_end(&mut bytes);
+    if read.is_err() || bytes.len() > limit {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err("report_limit".into());
+    }
+    if !child.wait().map_err(|_| "report_unavailable")?.success() {
+        return Err("report_unavailable".into());
+    }
+    Ok(bytes)
+}
+fn remote_source_change(root: &Path) -> Result<i64> {
+    use std::os::unix::ffi::OsStrExt;
+    let names = remote_git(
+        root,
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
+        65536,
+    )?;
+    let mut newest = 0;
+    for name in names.split(|b| *b == 0).filter(|n| !n.is_empty()) {
+        newest = newest.max(mtime_ms(&root.join(std::ffi::OsStr::from_bytes(name))));
+    }
+    let git_dir = remote_git(root, &["rev-parse", "--absolute-git-dir"], 4096)?;
+    let dir = PathBuf::from(
+        std::str::from_utf8(&git_dir)
+            .map_err(|_| "invalid_root")?
+            .trim(),
+    );
+    for file in ["index", "HEAD", "logs/HEAD"] {
+        newest = newest.max(mtime_ms(&dir.join(file)));
+    }
+    Ok(newest)
+}
+/// Remote manual cleanup is restricted to owner-listed canonical roots. It never
+/// expands discovery to other checkouts or accepts paths from the HTTP request.
+pub fn remote_report(shell: &Value, settings: &Value) -> Result<Value> {
+    use sha2::{Digest, Sha256};
+    use std::os::unix::fs::MetadataExt;
+    let start = std::time::Instant::now();
+    let mut entries = Vec::new();
+    let roots = settings["remoteMaintenanceRoots"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if roots.len() > 16 {
+        return Err("report_limit".into());
+    }
+    let projects = shell["projects"].as_array().ok_or("invalid_shell")?;
+    let threads = shell["threads"].as_array().ok_or("invalid_shell")?;
+    let mut visited = 0;
+    for value in roots {
+        if start.elapsed() > Duration::from_secs(2) {
+            return Err("report_limit".into());
+        }
+        let root = PathBuf::from(value.as_str().ok_or("invalid_root")?);
+        if root.canonicalize().ok().as_ref() != Some(&root) || !real_dir(&root) {
+            return Err("invalid_root".into());
+        }
+        let associated = threads
+            .iter()
+            .filter(|t| t["worktreePath"].as_str() == root.to_str())
+            .collect::<Vec<_>>();
+        let (kind, at) = if !associated.is_empty() {
+            (
+                "worktree",
+                associated
+                    .iter()
+                    .map(|t| thread_activity(t, now_ms()))
+                    .max()
+                    .unwrap_or(0),
+            )
+        } else if let Some(project) = projects
+            .iter()
+            .find(|p| p["workspaceRoot"].as_str() == root.to_str())
+        {
+            (
+                "checkout",
+                threads
+                    .iter()
+                    .filter(|t| {
+                        t["projectId"] == project["id"]
+                            && t["worktreePath"].as_str().is_none_or(str::is_empty)
+                    })
+                    .map(|t| thread_activity(t, now_ms()))
+                    .max()
+                    .unwrap_or(0),
+            )
+        } else {
+            continue;
+        };
+        let limit = days(
+            settings,
+            if kind == "worktree" {
+                "buildCleanupWorktreeDays"
+            } else {
+                "buildCleanupCheckoutDays"
+            },
+            if kind == "worktree" { 1 } else { 7 },
+        );
+        if !due(at, now_ms(), limit) {
+            continue;
+        }
+        let mut builds = Vec::new();
+        for (markers, names) in RULES {
+            if !markers.iter().any(|m| root.join(m).is_file()) {
+                continue;
+            }
+            for name in *names {
+                if start.elapsed() > Duration::from_secs(2) {
+                    return Err("report_limit".into());
+                }
+                let dir = root.join(name);
+                if !real_dir(&dir) {
+                    continue;
+                }
+                if *name == "build"
+                    && markers.contains(&"CMakeLists.txt")
+                    && !dir.join("CMakeCache.txt").is_file()
+                {
+                    continue;
+                }
+                // check-ignore has no content output; a nonzero result denies the candidate.
+                if remote_git(&root, &["check-ignore", "-q", "--", &format!("{name}/")], 0).is_ok()
+                {
+                    builds.push(dir)
+                }
+            }
+        }
+        builds.sort();
+        builds.dedup();
+        if !due(remote_source_change(&root)?, now_ms(), limit) {
+            continue;
+        }
+        for dir in builds {
+            // Remote API deliberately excludes custom CACHEDIR.TAG directories.
+            if !RULES
+                .iter()
+                .any(|(_, ds)| ds.iter().any(|d| dir == root.join(d)))
+            {
+                continue;
+            }
+            if entries.len() >= 32 {
+                return Err("report_limit".into());
+            }
+            let mut stack = vec![dir.clone()];
+            let mut digest = Sha256::new();
+            let mut bytes = 0u64;
+            let mut newest = 0i64;
+            while let Some(path) = stack.pop() {
+                visited += 1;
+                if visited > 10_000 || start.elapsed() > Duration::from_secs(2) {
+                    return Err("report_limit".into());
+                }
+                let meta = path.symlink_metadata().map_err(|_| "report_unavailable")?;
+                newest = newest.max(
+                    meta.mtime()
+                        .saturating_mul(1000)
+                        .saturating_add(meta.mtime_nsec() / 1_000_000),
+                );
+                digest.update(path.as_os_str().as_encoded_bytes());
+                digest.update(format!(
+                    "{}:{}:{}:{}:{}:{}:{}:{}",
+                    meta.dev(),
+                    meta.ino(),
+                    meta.len(),
+                    meta.mtime(),
+                    meta.mtime_nsec(),
+                    meta.mode(),
+                    meta.ctime(),
+                    meta.ctime_nsec()
+                ));
+                bytes = bytes.saturating_add(meta.blocks().saturating_mul(512));
+                if meta.is_dir() {
+                    let mut children = Vec::new();
+                    for child in std::fs::read_dir(&path).map_err(|_| "report_unavailable")? {
+                        if children.len() + visited > 10_000 {
+                            return Err("report_limit".into());
+                        }
+                        children.push(child.map_err(|_| "report_unavailable")?.path());
+                    }
+                    children.sort();
+                    stack.extend(children);
+                }
+            }
+            if !due(newest, now_ms(), limit) {
+                continue;
+            }
+            entries.push(json!({"root":root,"dir":dir,"kind":kind,"activity":at,"identity":format!("{:x}",digest.finalize()),"bytes":bytes}));
+        }
+    }
+    Ok(
+        json!({"entries":entries,"settings":{"worktreeDays":settings["buildCleanupWorktreeDays"],"checkoutDays":settings["buildCleanupCheckoutDays"]},"roots":settings["remoteMaintenanceRoots"]}),
+    )
+}
+/// Caller re-reads native activity with its own bearer immediately before here.
+pub fn remote_run(shell: &Value, settings: &Value, expected: &Value) -> Result<Value> {
+    let report = remote_report(shell, settings)?;
+    if &report != expected {
+        return Err("stale_report".into());
+    }
+    let mut removed = 0;
+    for entry in report["entries"].as_array().ok_or("invalid_report")? {
+        // Revalidate each tree's identity before removal as earlier removals may take time.
+        let fresh = remote_report(shell, settings)?;
+        if !fresh["entries"]
+            .as_array()
+            .is_some_and(|rows| rows.contains(entry))
+        {
+            return Err("stale_report".into());
+        }
+        std::fs::remove_dir_all(text(entry, "dir")).map_err(|_| "cleanup_outcome_unknown")?;
+        removed += 1;
+    }
+    Ok(json!({"removed":removed}))
+}
+
+#[cfg(test)]
+mod remote_tests {
+    use super::*;
+    fn fixture() -> (PathBuf, Value, Value) {
+        let root = PathBuf::from("/var/tmp").join(format!("remote-build-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(root.join("target/debug/deep")).unwrap();
+        assert!(std::process::Command::new("git")
+            .arg("-C")
+            .arg(&root)
+            .args(["init", "-q"])
+            .status()
+            .unwrap()
+            .success());
+        std::fs::write(root.join("Cargo.toml"), "[package]").unwrap();
+        std::fs::write(root.join(".gitignore"), "target/\ntarget-orphan/\n").unwrap();
+        std::fs::write(root.join("target/debug/deep/artifact"), "old").unwrap();
+        std::fs::create_dir(root.join("target-orphan")).unwrap();
+        std::fs::write(root.join("target-orphan/keep"), "untouched").unwrap();
+        old(&root);
+        let shell = json!({"projects":[{"id":"p","workspaceRoot":root}],"threads":[]});
+        let settings = json!({"remoteMaintenanceRoots":[root],"buildCleanupCheckoutDays":1});
+        (root, shell, settings)
+    }
+    fn old(root: &Path) {
+        let time = std::fs::FileTimes::new()
+            .set_modified(SystemTime::now() - Duration::from_secs(10 * 86400));
+        for p in [
+            "Cargo.toml",
+            ".gitignore",
+            ".git/HEAD",
+            "target",
+            "target/debug",
+            "target/debug/deep",
+            "target/debug/deep/artifact",
+        ] {
+            std::fs::File::open(root.join(p))
+                .unwrap()
+                .set_times(time)
+                .unwrap();
+        }
+    }
+    #[test]
+    fn remote_cleanup_is_allowlisted_stale_checked_and_preserves_orphan_output() {
+        let (root, shell, settings) = fixture();
+        assert_eq!(
+            remote_report(&shell, &json!({})).unwrap()["entries"],
+            json!([])
+        );
+        let report = remote_report(&shell, &settings).unwrap();
+        assert_eq!(report["entries"].as_array().unwrap().len(), 1);
+        let artifact = root.join("target/debug/deep/artifact");
+        let previous = artifact.metadata().unwrap().modified().unwrap();
+        std::fs::write(&artifact, "new").unwrap();
+        std::fs::File::open(&artifact)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(previous))
+            .unwrap();
+        assert_eq!(
+            remote_run(&shell, &settings, &report),
+            Err("stale_report".into()),
+            "same length and restored mtime still change identity"
+        );
+        std::fs::write(root.join("target/debug/deep/artifact"), "new active build").unwrap();
+        assert_eq!(
+            remote_run(&shell, &settings, &report),
+            Err("stale_report".into())
+        );
+        assert!(root.join("target").exists());
+        old(&root);
+        let report = remote_report(&shell, &settings).unwrap();
+        assert_eq!(
+            remote_run(&shell, &settings, &report).unwrap()["removed"],
+            1
+        );
+        assert!(!root.join("target").exists());
+        assert_eq!(
+            std::fs::read_to_string(root.join("target-orphan/keep")).unwrap(),
+            "untouched"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn active_thread_and_changed_settings_prevent_remote_cleanup() {
+        let (root, mut shell, mut settings) = fixture();
+        let report = remote_report(&shell, &settings).unwrap();
+        shell["threads"] = json!([{"id":"t","projectId":"p","activeRunId":"r"}]);
+        assert_eq!(
+            remote_report(&shell, &settings).unwrap()["entries"],
+            json!([])
+        );
+        assert!(remote_run(&shell, &settings, &report).is_err());
+        shell["threads"] = json!([]);
+        settings["buildCleanupCheckoutDays"] = Value::Null;
+        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert!(root.join("target").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn remote_walk_is_bounded_and_symlink_roots_are_denied() {
+        let (root, shell, settings) = fixture();
+        for n in 0..10001 {
+            std::fs::write(root.join(format!("target/debug/deep/{n}")), "x").unwrap();
+        }
+        old(&root);
+        assert_eq!(remote_report(&shell, &settings), Err("report_limit".into()));
+        let link = root.with_extension("link");
+        std::os::unix::fs::symlink(&root, &link).unwrap();
+        assert!(remote_report(&shell, &json!({"remoteMaintenanceRoots":[link]})).is_err());
+        std::fs::remove_file(link).unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}

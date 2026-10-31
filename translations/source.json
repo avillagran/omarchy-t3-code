@@ -2013,6 +2013,10 @@
     "Share drafts": "Share drafts",
     "Remote documents on this device": "Remote documents on this device",
     "Share only owner-published snapshots. Turning this off revokes access.": "Share only owner-published snapshots. Turning this off revokes access.",
-    "Allow remote documents and HTML previews": "Allow remote documents and HTML previews"
+    "Allow remote documents and HTML previews": "Allow remote documents and HTML previews",
+    "Allow remote maintenance on this device": "Allow remote maintenance on this device",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Each change requires permission and confirmation. Turning this off revokes pending confirmations.",
+    "Cleanup roots (one absolute path per line)": "Cleanup roots (one absolute path per line)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access."
   }
 }
