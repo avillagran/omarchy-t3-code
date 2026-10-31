@@ -72,6 +72,16 @@ privileged WebView. Gallery previews are static, decoded PNG bytes: they carry n
 HTML runtime, network/resource grant or input channel. There is no pagination:
 the complete host store is capped at 32 publications.
 
+Rate windows last 60 seconds: 120 authenticated requests host-wide and 30 per
+bearer fingerprint. Missing bearers consume neither budget and never call T3.
+Failed authentication probes are limited to eight per window; fingerprints that
+already authenticated in that window may still revalidate with T3 after that
+limit. Successful authentication never skips either live permission check.
+Both fingerprint collections are bounded by the authenticated admission limit
+and cleared on window rollover; a failed revalidation removes the known-good
+fingerprint. Each T3 authentication call has a 250 ms timeout because the
+listener handles connections serially. Audit output is independently capped.
+
 Errors: `401 unauthorized`, `403 consent_required`, `404 not_found`,
 `429 rate_limit`; unavailable auth/store or corrupt/oversized store returns 503.
 Malformed/oversized requests return 400. The JSON body is `{error:<fixed-code>}`.
@@ -118,8 +128,10 @@ next owner operation. Turning off prevents reading them immediately.
 - One synchronous request in flight, no application work queue or renderer process.
 - Header limit 8 KiB; path 128 bytes; token 4096 bytes; two-second read/write/auth
   timeouts. Header assembly also has an elapsed-time bound. No streaming input.
-- 30 parsed requests/session/minute, 120 connections/host/minute, including
-  malformed requests and invalid credentials. Rate state has at most 120 keys and resets every minute.
+- 30 authenticated requests/session/minute, 120 authenticated requests/host/minute.
+  Eight failed auth probes/window; known-good fingerprints still revalidate.
+  Missing bearers never call T3. Each fingerprint collection has at most 120 keys
+  and resets every minute.
 - 1 MiB UTF-8 content, 256-byte title, 512 KiB decoded PNG, max 1920×1080 pixels,
   max decoder allocation 16 MiB, TTL at most one hour, 32 publications/host,
   aggregate JSON store 32 MiB. Auth response limit 16 KiB.
@@ -175,3 +187,20 @@ before this snapshot slice is reachable from a production phone.
   `git diff --check`: pass. Clippy reports 24 existing warnings, none in the broker.
 
 `target-orphan/` and the user's local `feat/o3-brand` commit were left untouched.
+
+### Authentication-budget regression (2026-10-31)
+
+- Focused broker tests: **27 passed** (four new regressions); isolated HTTP fixture
+  passes 120 missing-bearer requests without T3 calls, bounded random-bearer
+  probes, known-good live revalidation, revocation and per-session limits.
+- Clippy `--lib -j 6`: no broker warnings; 24 existing warnings elsewhere.
+  Module rustfmt, build `-j 6` and `git diff --check` pass.
+- Complete `cargo test -j 6 --no-fail-fast -- --test-threads=1`:
+  **475 passed, 10 failed**. Four documented baseline failures: `approvals`,
+  `history`, `plan_transport`, `third_party_licenses`. Six additional failures in
+  unchanged browser/Qt tests: `browser_guest` (2, runtime unavailable),
+  `preview_transport` (1, no successful navigation status), `qml_preview` (1,
+  no sandboxed frame), `qml_preview_renderer` (2, missing frames).
+- Initial parallel full run stopped at two broker test failures (synthetic auth
+  timeout and `store_busy`); both pass in the complete serial run (98 library
+  tests green). No deployment, phone access or merge.

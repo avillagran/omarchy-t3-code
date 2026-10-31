@@ -4,7 +4,7 @@ use crate::*;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::{BufReader, Read, Write},
     net::{TcpListener, TcpStream},
     os::{
@@ -263,6 +263,9 @@ fn project(store: &Value, settings: &Value, session: &str, path: &str, stamp: u6
 struct Rate {
     window: Instant,
     total: u32,
+    failures: u32,
+    audited: u32,
+    known_good: HashSet<String>,
     sessions: HashMap<String, u32>,
 }
 impl Rate {
@@ -270,13 +273,19 @@ impl Rate {
         Self {
             window: Instant::now(),
             total: 0,
+            failures: 0,
+            audited: 0,
+            known_good: HashSet::new(),
             sessions: HashMap::new(),
         }
     }
-    fn connection(&mut self) -> bool {
+    fn refresh(&mut self) {
         if self.window.elapsed() >= Duration::from_secs(60) {
             *self = Self::new();
         }
+    }
+    fn connection(&mut self) -> bool {
+        self.refresh();
         self.total = self.total.saturating_add(1);
         self.total <= 120
     }
@@ -285,10 +294,47 @@ impl Rate {
         *used += 1;
         *used <= 30
     }
-    #[cfg(test)]
     fn admit(&mut self, session: &str) -> bool {
         self.connection() && self.session(session)
     }
+}
+/// A known-good fingerprint only bypasses the failed-auth gate, never T3 auth.
+/// At most 120 authenticated admissions and fingerprints survive each window.
+fn rated_dispatch(
+    rate: &mut Rate,
+    dir: &Path,
+    path: &str,
+    token: &str,
+    settings: impl FnMut() -> Value,
+    mut auth: impl FnMut(&str) -> std::result::Result<(), &'static str>,
+) -> Reply {
+    rate.refresh();
+    if token.is_empty() {
+        return Err("unauthorized");
+    }
+    let session = fingerprint(token);
+    if rate.total >= 120
+        || rate.sessions.get(&session).is_some_and(|used| *used >= 30)
+        || (rate.failures >= 8 && !rate.known_good.contains(&session))
+    {
+        return Err("rate_limit");
+    }
+    let mut admitted = false;
+    dispatch(dir, path, token, settings, |token| {
+        if let Err(error) = auth(token) {
+            rate.failures = rate.failures.saturating_add(1);
+            rate.known_good.remove(&session);
+            return Err(error);
+        }
+        if !admitted {
+            if !rate.admit(&session) {
+                return Err("rate_limit");
+            }
+            rate.known_good.insert(session.clone());
+            admitted = true;
+        }
+        Ok(())
+    })
 }
 fn authenticate(
     client: &reqwest::blocking::Client,
@@ -297,6 +343,8 @@ fn authenticate(
 ) -> std::result::Result<(), &'static str> {
     let response = client
         .get(format!("{base}/api/auth/session"))
+        // Serial listener: failed probes must not hold up all readers for seconds.
+        .timeout(Duration::from_millis(250))
         .bearer_auth(token)
         .send()
         .map_err(|_| "authentication_unavailable")?;
@@ -437,18 +485,12 @@ pub fn serve(base: &str, port: u16, settings: fn() -> Value) -> Result<()> {
         let Ok(mut stream) = stream else {
             continue;
         };
-        let admitted = rate.connection();
+        rate.refresh();
         let mut session = String::new();
         let mut operation = "request";
         let result = (|| {
-            if !admitted {
-                return Err("rate_limit");
-            }
             let (path, token) = request(&mut stream)?;
             session = fingerprint(&token);
-            if !rate.session(&session) {
-                return Err("rate_limit");
-            }
             operation = if path.starts_with("/v1/gallery") {
                 "gallery.read"
             } else if path.starts_with("/v1/documents") {
@@ -456,7 +498,7 @@ pub fn serve(base: &str, port: u16, settings: fn() -> Value) -> Result<()> {
             } else {
                 "session.read"
             };
-            dispatch(&root(), &path, &token, settings, |token| {
+            rated_dispatch(&mut rate, &root(), &path, &token, settings, |token| {
                 authenticate(&client, base, token)
             })
         })();
@@ -470,9 +512,9 @@ pub fn serve(base: &str, port: u16, settings: fn() -> Value) -> Result<()> {
             Err(_) => 400,
         };
         // Only fixed operation/outcome and a one-way opaque fingerprint. No IDs, URLs or content.
-        // Saturated connections are dropped before parsing; audit the first
-        // saturation once/window rather than letting rejected floods fill logs.
-        if rate.total <= 121 {
+        // Bound audit volume independently of either request budget.
+        rate.audited = rate.audited.saturating_add(1);
+        if rate.audited <= 121 {
             eprintln!(
                 "{}",
                 json!({"surfaceAudit":1,"operation":operation,"session":session,"outcome":result.as_ref().err().copied().unwrap_or("ok")})
@@ -856,6 +898,137 @@ mod tests {
 #[cfg(test)]
 mod ingress_tests {
     use super::*;
+    fn enabled() -> Value {
+        json!({"remoteDocumentsEnabled":true,"remoteDocumentsConsent":"epoch"})
+    }
+    fn call(
+        rate: &mut Rate,
+        token: &str,
+        auth: impl FnMut(&str) -> std::result::Result<(), &'static str>,
+    ) -> Reply {
+        // Session metadata needs no published store, so both live auth checks run.
+        rated_dispatch(
+            rate,
+            Path::new("/not-a-store"),
+            "/v1/session",
+            token,
+            enabled,
+            auth,
+        )
+    }
+    #[test]
+    fn missing_bearer_flood_leaves_authenticated_budget_untouched() {
+        let mut rate = Rate::new();
+        for _ in 0..120 {
+            assert_eq!(
+                call(&mut rate, "", |_| panic!("missing bearer reached T3")),
+                Err("unauthorized")
+            );
+        }
+        assert_eq!(rate.total, 0);
+        assert_eq!(rate.failures, 0);
+        assert!(rate.sessions.is_empty());
+        let mut calls = 0;
+        assert!(call(&mut rate, "valid", |_| {
+            calls += 1;
+            Ok(())
+        })
+        .is_ok());
+        assert_eq!(calls, 2);
+        assert_eq!(rate.total, 1);
+    }
+    #[test]
+    fn random_bearers_are_bounded_and_known_good_still_revalidates() {
+        let mut rate = Rate::new();
+        assert!(call(&mut rate, "valid", |_| Ok(())).is_ok());
+        let mut calls = 0;
+        for i in 0..120 {
+            let result = call(&mut rate, &format!("random-{i}"), |_| {
+                calls += 1;
+                Err("unauthorized")
+            });
+            assert_eq!(
+                result,
+                Err(if i < 8 { "unauthorized" } else { "rate_limit" })
+            );
+        }
+        assert_eq!(calls, 8);
+        assert_eq!(rate.sessions.len(), 1);
+        assert_eq!(rate.known_good.len(), 1);
+        assert!(call(&mut rate, "valid", |_| {
+            calls += 1;
+            Ok(())
+        })
+        .is_ok());
+        assert_eq!(calls, 10);
+        assert_eq!(
+            call(&mut rate, "valid", |_| {
+                calls += 1;
+                Err("unauthorized")
+            }),
+            Err("unauthorized")
+        );
+        assert_eq!(calls, 11);
+        assert!(!rate.known_good.contains(&fingerprint("valid")));
+        assert_eq!(
+            call(&mut rate, "valid", |_| panic!(
+                "revoked fingerprint bypassed gate"
+            )),
+            Err("rate_limit")
+        );
+    }
+    #[test]
+    fn known_good_revocation_during_read_is_denied() {
+        let mut rate = Rate::new();
+        assert!(call(&mut rate, "valid", |_| Ok(())).is_ok());
+        let mut calls = 0;
+        assert_eq!(
+            call(&mut rate, "valid", |_| {
+                calls += 1;
+                if calls == 2 {
+                    Err("unauthorized")
+                } else {
+                    Ok(())
+                }
+            }),
+            Err("unauthorized")
+        );
+        assert_eq!(calls, 2);
+        assert!(rate.known_good.is_empty());
+    }
+    #[test]
+    fn authenticated_session_and_global_limits_bound_all_state_and_reset() {
+        let mut rate = Rate::new();
+        for _ in 0..30 {
+            assert!(call(&mut rate, "valid", |_| Ok(())).is_ok());
+        }
+        assert_eq!(
+            call(&mut rate, "valid", |_| panic!(
+                "over session limit reached T3"
+            )),
+            Err("rate_limit")
+        );
+        for i in 0..90 {
+            assert!(call(&mut rate, &format!("valid-{i}"), |_| Ok(())).is_ok());
+        }
+        for i in 90..210 {
+            assert_eq!(
+                call(&mut rate, &format!("valid-{i}"), |_| panic!(
+                    "over global limit reached T3"
+                )),
+                Err("rate_limit")
+            );
+        }
+        assert_eq!(rate.total, 120);
+        assert_eq!(rate.sessions.len(), 91);
+        assert_eq!(rate.known_good.len(), 91);
+        rate.failures = 8;
+        rate.window = Instant::now() - Duration::from_secs(61);
+        assert!(call(&mut rate, "new-window", |_| Ok(())).is_ok());
+        assert_eq!(rate.failures, 0);
+        assert_eq!(rate.sessions.len(), 1);
+        assert_eq!(rate.known_good.len(), 1);
+    }
     #[test]
     fn denied_auth_never_reads_store_or_owner_settings() {
         assert_eq!(

@@ -21,10 +21,13 @@ OTHER = "fixture-other-bearer"
 CONTENT = "PRIVATE_SNAPSHOT_MARKER"
 TITLE = "PRIVATE_TITLE_MARKER"
 revoked = False
+auth_calls = 0
 
 
 class Auth(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
+        global auth_calls
+        auth_calls += 1
         assert self.path == "/api/auth/session"
         allowed = self.headers.get("Authorization") in ("Bearer " + TOKEN, "Bearer " + OTHER)
         body = json.dumps({"authenticated": allowed and not revoked,
@@ -99,7 +102,9 @@ with tempfile.TemporaryDirectory(prefix="remote-surfaces-http-") as temp:
             except OSError:
                 assert time.monotonic() < deadline and broker.poll() is None, "broker did not start"
                 time.sleep(0.01)
-        assert get("/v1/session", token=None)[0] == 401
+        for _ in range(120):
+            assert get("/v1/session", token=None)[0] == 401
+        assert auth_calls == 0
         assert get("/v1/session", token="invalid-fixture-bearer")[0] == 401
         assert get("/v1/session")[0] == 403  # default off
         consent(True, "consent-1")
@@ -132,8 +137,16 @@ with tempfile.TemporaryDirectory(prefix="remote-surfaces-http-") as temp:
         assert get("/v1/documents")[0] == 403 and get("/v1/gallery")[0] == 403
         consent(True, "consent-3")
         assert get("/v1/documents")[1]["items"] == [] and get("/v1/gallery")[1]["items"] == []
+        before = auth_calls
+        for i in range(120):
+            assert get("/v1/session", token=f"random-{i}")[0] == (401 if i < 7 else 429)
+        assert auth_calls - before == 7  # One earlier invalid probe used the eighth slot.
+        before = auth_calls
+        assert get("/v1/documents")[0] == 200
+        assert auth_calls - before == 2  # Known-good still revalidates twice.
         revoked = True
-        assert get("/v1/documents")[0] == 401 and get("/v1/gallery")[0] == 401
+        assert get("/v1/documents")[0] == 401
+        assert get("/v1/gallery")[0] == 429  # Revoked fingerprint no longer bypasses gate.
         revoked = False
         statuses = [get("/v1/documents", OTHER)[0] for _ in range(35)]
         assert statuses[-1] == 429 and 200 in statuses
