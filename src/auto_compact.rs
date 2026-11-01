@@ -128,7 +128,8 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
         let _memory_sweep = crate::memory_pressure::Sweep;
         let settings = crate::ui_state::load();
         // General integration fixtures must never acquire side effects by default.
-        let enabled = policy::enabled(&settings)
+        let enabled = (policy::enabled(&settings)
+            || policy::enabled(&session_memory::host_settings(&settings, "local")))
             && (!std::env::var_os("OMARCHY_T3_FIXTURE_ENVIRONMENTS").is_some()
                 || settings["autoCompactEnabled"] == true);
         let settings_signature = json!([
@@ -136,7 +137,8 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
             settings["autoCompactFallbackMinutes"],
             settings["autoCompactMinTokens"],
             settings["autoCompactProviderMinutes"],
-            settings["autoCompactExcludedThreads"]
+            settings["autoCompactExcludedThreads"],
+            settings["remoteHostMemorySettings"]
         ]);
         if settings_before != settings_signature {
             checked.clear();
@@ -154,6 +156,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
         for thread in snapshot["threads"].as_array().into_iter().flatten() {
             let key = text(thread, "key");
             let env = text(thread, "environmentId");
+            let settings = session_memory::host_settings(&settings, env);
             let id = text(thread, "id");
             let excluded = settings["autoCompactExcludedThreads"]
                 .as_array()
@@ -245,7 +248,7 @@ fn run(rx: mpsc::Receiver<Value>, refresh: mpsc::Sender<Value>) -> Result<()> {
                     {
                         return Ok(checked_plan);
                     }
-                    let mut current = crate::ui_state::load();
+                    let mut current = session_memory::host_settings(&crate::ui_state::load(), env);
                     current["autoCompactEnvironment"] = json!(env);
                     if !policy::enabled(&current)
                         || current["autoCompactExcludedThreads"]

@@ -53,7 +53,9 @@ impl Control {
                     audit_cache = crate::session_audit_cache::Cache::default();
                     settings_before = settings.clone();
                 }
-                let enabled = settings["idleReleaseEnabled"] != false
+                let enabled = (settings["idleReleaseEnabled"] != false
+                    || session_memory::host_settings(&settings, "local")["idleReleaseEnabled"]
+                        != false)
                     && (std::env::var_os("OMARCHY_T3_FIXTURE_ENVIRONMENTS").is_none()
                         || settings["idleReleaseEnabled"] == true);
                 crate::emit(
