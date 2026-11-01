@@ -300,6 +300,7 @@ Item {
       onClicked:function(mouse){root.hidePreview();if(mouse.button===Qt.RightButton){root.openContextMenu()}else {root.threadActivated(root.thread);root.bridge.selectThread(root.thread.environmentId,root.thread.id)}}
     }
     ColumnLayout {
+      id:rowContent
       anchors.fill:parent;anchors.leftMargin:Style.space(10);anchors.rightMargin:Style.space(10);anchors.topMargin:Style.space(root.subtitled?6:root.slim?0:8);anchors.bottomMargin:Style.space(root.subtitled?6:root.slim?0:8);spacing:Style.space(root.subtitled?0:2)
       opacity:root.receding&&root.thread.working?0.7:1
       RowLayout {
@@ -395,12 +396,16 @@ Item {
         }
       }
       RowLayout{
+        id:subtitleRow
+        // Reserve decorations and host before splitting the two text labels.
+        // Use the anchored content width, not this layout's own size hint.
+        readonly property real textBudget:Math.max(0,rowContent.width-Style.space((root.focusLayout?0:22)+(root.sober&&root.projectWash?10:0)+(root.threadGroup?18:0))-(root.focusLayout?focusHost.implicitWidth+Style.space(4):0))
         visible:root.subtitled
         Layout.fillWidth:true;Layout.leftMargin:Style.space(root.focusLayout?0:22);Layout.topMargin:Style.space(root.focusLayout?1:-6);spacing:Style.space(4)
         Rectangle{objectName:"threadProjectDot";visible:root.sober&&root.projectWash;width:Style.space(6);height:width;radius:width/2;color:root.washTint}
         Text{
           objectName:"threadCompactProject"
-          Layout.fillWidth:!root.threadGroup;Layout.maximumWidth:root.threadGroup?parent.width*(root.focusLayout?0.45:0.6):-1
+          Layout.fillWidth:!root.threadGroup;Layout.maximumWidth:root.threadGroup?subtitleRow.textBudget*(root.focusLayout?0.45:0.6):Infinity
           text:root.thread.project || root.thread.environmentName || ""
           color:root.dim;font.pixelSize:Style.font.caption-Style.space(1);elide:Text.ElideRight;textFormat:Text.PlainText
         }
@@ -413,7 +418,7 @@ Item {
           color:root.dim;font.pixelSize:Style.font.caption-Style.space(1);elide:Text.ElideRight;textFormat:Text.PlainText
         }
         Rectangle {
-          objectName:"threadFocusHost";visible:root.focusLayout
+          id:focusHost;objectName:"threadFocusHost";visible:root.focusLayout
           readonly property string hostName:root.thread.environmentName || ((root.bridge.state.environments || []).find(function(e){return e.id===root.thread.environmentId}) || {}).name || root.thread.environmentId || ""
           implicitWidth:Math.min(hostText.implicitWidth+Style.space(10),Style.space(92));implicitHeight:Style.space(18)
           radius:Style.space(4);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.035)
