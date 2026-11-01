@@ -10,7 +10,10 @@ use std::{collections::HashSet,io::{BufRead,BufReader,Write},os::unix::process::
 pub fn config_path()->PathBuf{xdg("XDG_CONFIG_HOME",".config").join("omabridge-routes.json")}
 pub(crate) fn embedded_state_dir()->Option<PathBuf>{
  let base=std::env::var_os("T3CODE_HOME").map(PathBuf::from).unwrap_or_else(||home().join(".t3"));
- let dir=base.join("omabridge");
+ // An explicit route state directory wins over automatic host discovery.
+ let configured=fs::read(config_path()).ok().and_then(|raw|serde_json::from_slice::<Value>(&raw).ok()).and_then(|doc|doc["stateDir"].as_str().map(PathBuf::from));
+ let dir=configured.unwrap_or_else(||base.join("omabridge"));
+ if !dir.is_absolute(){return None}
  let doc:Value=serde_json::from_slice(&fs::read(dir.join("services.json")).ok()?).ok()?;
  (doc["backend"]=="embedded"&&dir.join("control.sock").exists()).then_some(dir)
 }
