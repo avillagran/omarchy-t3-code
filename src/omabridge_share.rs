@@ -33,7 +33,7 @@ const RETRY_SECS:u64=600;
 const PORT_BASE:u16=47300;
 const PORT_SPAN:u16=500;
 
-pub fn config_path()->PathBuf{xdg("XDG_CONFIG_HOME",".config").join("omabridge-shares.json")}
+pub fn config_path()->PathBuf{omabridge_route::embedded_state_dir().map(|p|p.join("shares.json")).unwrap_or_else(||xdg("XDG_CONFIG_HOME",".config").join("omabridge-shares.json"))}
 fn unit_dir()->PathBuf{
  std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).filter(|p|p.is_absolute()).unwrap_or_else(||home().join(".config")).join("systemd/user")
 }
@@ -79,6 +79,20 @@ pub fn unit_text(bin:&Path,state_dir:&Path,peer:&str,name:&str,port:u16)->Result
  let name:String=name.chars().filter(|c|c.is_alphanumeric()||" ._-".contains(*c)).take(64).collect();
  Ok(format!("[Unit]\nDescription=O3: T3 Code of OmaBridge peer {name} on 127.0.0.1:{port}\nAfter=network-online.target omabridge-serve.service\n\n[Service]\nExecStartPre=-/usr/bin/timeout 30 /usr/bin/sh -c 'until ss -xl | grep -qF {}/control.sock; do sleep 1; done'\nExecStart={} --state-dir {} --name ot3 forward --peer {peer} --service t3 --listen 127.0.0.1:{port}\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=default.target\n",state_dir.display(),bin.display(),state_dir.display()))
 }
+fn embedded_forward(peer:&str,port:Option<u16>)->Option<Result<()>>{
+ let state=omabridge_route::embedded_state_dir()?;
+ let bin=omabridge_route::binary()?;
+ let request=match port{Some(p)=>json!({"action":"save","peer":peer,"service":"t3","listen":format!("127.0.0.1:{p}")}),None=>json!({"action":"remove","peer":peer})};
+ Some((||{
+  let mut child=Command::new("timeout").arg("8s").arg(bin).arg("--state-dir").arg(state).arg("forwards").stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map_err(|_|"share_forward_failed")?;
+  child.stdin.take().ok_or("share_forward_failed")?.write_all(request.to_string().as_bytes()).map_err(|_|"share_forward_failed")?;
+  if child.wait().is_ok_and(|s|s.success()){Ok(())}else{Err("share_forward_failed".into())}
+ })())
+}
+fn start_forward(peer:&str,name:&str,port:u16,bin:&Path,state:&Path)->Result<()>{
+ if let Some(result)=embedded_forward(peer,Some(port)){return result}
+ install_unit(peer,&unit_text(bin,state,peer,name,port)?)
+}
 fn systemctl(args:&[&str])->bool{
  Command::new("timeout").arg("20s").arg("systemctl").arg("--user").args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s|s.success())
 }
@@ -96,6 +110,7 @@ fn install_unit(peer:&str,body:&str)->Result<()>{
  Ok(())
 }
 fn remove_unit(peer:&str){
+ if embedded_forward(peer,None).is_some(){return}
  let name=unit_name(peer);
  systemctl(&["disable","--now",&name]);
  if fs::remove_file(unit_dir().join(&name)).is_ok(){systemctl(&["daemon-reload"]);}
@@ -158,7 +173,7 @@ pub fn connection_id(environment:&str,peer:&str)->String{format!("bearer:{enviro
 /// Add one peer's T3 Code: forward, descriptor, native pairing, catalog.
 fn enroll(peer:&Peer,taken:&[u16],bin:&Path,state_dir:&Path)->Result<Value>{
  let port=pick_port(&peer.id,taken)?;
- install_unit(&peer.id,&unit_text(bin,state_dir,&peer.id,&peer.name,port)?)?;
+ start_forward(&peer.id,&peer.name,port,bin,state_dir)?;
  let base=format!("http://127.0.0.1:{port}");
  let result=(||{
   let descriptor=wait_descriptor(&base)?;
@@ -311,7 +326,9 @@ pub fn reconcile()->Result<Value>{
  for step in steps{
   match step{
    Step::Keep(id)=>{
-    let unit=unit_name(&id);if !systemctl(&["is-active","--quiet",&unit]){systemctl(&["start",&unit]);}
+    if omabridge_route::embedded_state_dir().is_some(){
+     if let Some(port)=doc["shares"][&id]["port"].as_u64(){let _=embedded_forward(&id,Some(port as u16));}
+    }else{let unit=unit_name(&id);if !systemctl(&["is-active","--quiet",&unit]){systemctl(&["start",&unit]);}}
     if let Some(peer)=peers.iter().find(|p|p.id==id){
      let agents=link_agents(peer,&doc["shares"][&id],&bin,&state_dir);
      doc["status"][&id]["agents"]=match agents{Ok(())=>json!("linked"),Err(e)=>json!(e)};
@@ -336,12 +353,18 @@ pub fn reconcile()->Result<Value>{
  save(&doc)?;
  Ok(snapshot(&doc,&peers))
 }
+fn forward_state(peer:&str)->Option<String>{
+ let dir=omabridge_route::embedded_state_dir()?;
+ if std::os::unix::net::UnixStream::connect(dir.join("control.sock")).is_err(){return Some("retrying".into())}
+ let doc=read_json(&dir.join("forwards-status.json")).ok()?;
+ Some(doc[peer].as_str().unwrap_or("retrying").into())
+}
 /// Public view for the UI: names, states and error codes, never credentials.
 pub fn snapshot(doc:&Value,peers:&[Peer])->Value{
  let rows=peers.iter().filter(|p|p.remote.iter().any(|s|s=="t3")||doc["shares"].get(&p.id).is_some()).map(|p|{
   let share=&doc["shares"][&p.id];let status=&doc["status"][&p.id];
   json!({"peer":p.id,"name":p.name,"shared":share.is_object(),"port":share["port"],"environmentId":share["environmentId"],
-   "state":if share.is_object(){"shared"}else if doc["skip"].as_array().is_some_and(|s|s.contains(&json!(p.id))){"skipped"}else{status["state"].as_str().unwrap_or("pending")},
+   "state":if share.is_object(){forward_state(&p.id).unwrap_or_else(||"shared".into())}else if doc["skip"].as_array().is_some_and(|s|s.contains(&json!(p.id))){"skipped".into()}else{status["state"].as_str().unwrap_or("pending").to_string()},
    "error":status["error"]})
  }).collect::<Vec<_>>();
  json!({"enabled":doc["enabled"],"peers":rows})
@@ -353,7 +376,7 @@ pub fn public_state()->Value{
  let mut peers=serde_json::Map::new();
  for (id,status) in doc["status"].as_object().into_iter().flatten(){peers.insert(id.clone(),json!({"state":status["state"],"error":status["error"]}));}
  for id in doc["skip"].as_array().into_iter().flatten().filter_map(|v|v.as_str()){peers.insert(id.into(),json!({"state":"skipped"}));}
- for (id,share) in doc["shares"].as_object().into_iter().flatten(){peers.insert(id.clone(),json!({"state":"shared","port":share["port"],"environmentId":share["environmentId"]}));}
+ for (id,share) in doc["shares"].as_object().into_iter().flatten(){peers.insert(id.clone(),json!({"state":forward_state(id).unwrap_or_else(||"shared".into()),"port":share["port"],"environmentId":share["environmentId"]}));}
  json!({"enabled":doc["enabled"],"peers":peers})
 }
 pub fn read()->Result<Value>{

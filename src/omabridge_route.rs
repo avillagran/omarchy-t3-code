@@ -15,7 +15,7 @@ pub(crate) fn embedded_state_dir()->Option<PathBuf>{
  let dir=configured.unwrap_or_else(||base.join("omabridge"));
  if !dir.is_absolute(){return None}
  let doc:Value=serde_json::from_slice(&fs::read(dir.join("services.json")).ok()?).ok()?;
- (doc["backend"]=="embedded"&&dir.join("control.sock").exists()).then_some(dir)
+ (doc["backend"]=="embedded").then_some(dir)
 }
 pub(crate) fn default_state_dir()->PathBuf{
  if let Some(dir)=embedded_state_dir(){return dir}
