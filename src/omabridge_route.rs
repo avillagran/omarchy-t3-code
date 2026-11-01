@@ -8,7 +8,15 @@
 use crate::*;
 use std::{collections::HashSet,io::{BufRead,BufReader,Write},os::unix::process::CommandExt,process::{Child,Command,Stdio},sync::{mpsc,Mutex},time::Instant};
 pub fn config_path()->PathBuf{xdg("XDG_CONFIG_HOME",".config").join("omabridge-routes.json")}
+pub(crate) fn embedded_state_dir()->Option<PathBuf>{
+ let base=std::env::var_os("T3CODE_HOME").map(PathBuf::from).unwrap_or_else(||home().join(".t3"));
+ let dir=base.join("omabridge");
+ let doc:Value=serde_json::from_slice(&fs::read(dir.join("services.json")).ok()?).ok()?;
+ (doc["backend"]=="embedded"&&dir.join("control.sock").exists()).then_some(dir)
+}
 pub(crate) fn default_state_dir()->PathBuf{
+ if let Some(dir)=embedded_state_dir(){return dir}
+
  std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).filter(|p|p.is_absolute()).unwrap_or_else(||home().join(".local/share")).join("omabridge")
 }
 /// The OmaBridge release ot3 bundles, from the single pinned file.

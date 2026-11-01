@@ -9,6 +9,12 @@ use std::{io::Write,os::unix::fs::PermissionsExt,process::{Command,Stdio}};
 /// explicit override, the one on PATH, `~/.local/bin`, then the bundled copy.
 fn candidates()->Vec<PathBuf>{
  let mut out=vec![];
+ if let Some(dir)=crate::omabridge_route::embedded_state_dir(){
+  if let Ok(raw)=fs::read(dir.join("host.json")){
+   if let Ok(doc)=serde_json::from_slice::<Value>(&raw){if let Some(p)=doc["executable"].as_str(){let p=PathBuf::from(p);if p.is_absolute(){out.push(p);}}}
+  }
+ }
+
  if let Some(raw)=std::env::var_os("OT3_OMABRIDGE_BIN"){let p=PathBuf::from(raw);if p.is_absolute(){out.push(p)}return out}
  if let Some(path)=std::env::var_os("PATH"){for dir in std::env::split_paths(&path){out.push(dir.join("omabridge"))}}
  out.push(home().join(".local/bin/omabridge"));
@@ -33,7 +39,9 @@ pub fn manage(request:&Value,seconds:u32)->(Value,i32){
   let Ok(real)=fs::canonicalize(&candidate) else {continue};
   if !seen.insert(real.clone()){continue}
   any=true;
-  let Ok(mut child)=Command::new("timeout").arg("--kill-after=5").arg(format!("{seconds}s")).arg(&real).arg("manage").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn() else {continue};
+  let mut command=Command::new("timeout");command.arg("--kill-after=5").arg(format!("{seconds}s")).arg(&real);
+  if let Some(dir)=crate::omabridge_route::embedded_state_dir(){command.arg("--state-dir").arg(dir);}
+  let Ok(mut child)=command.arg("manage").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn() else {continue};
   if let Some(mut stdin)=child.stdin.take(){let _=stdin.write_all(&body);}
   let Ok(out)=child.wait_with_output() else {continue};
   let status=out.status.code().unwrap_or(1);
