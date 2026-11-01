@@ -16,6 +16,7 @@ mod preview_command;
 mod prompt_stash;
 mod localization;
 mod ui_state;
+mod remote_maintenance_host;
 mod quotas;
 mod local_quotas;
 mod disk_space;
@@ -746,7 +747,7 @@ fn run() -> Result<()> {
 fn main() {
     if std::env::args().nth(1).as_deref()==Some("remote-surfaces-serve") {
         let args:Vec<_>=std::env::args().skip(2).collect();
-        let result=if args.len()==2 {args[1].parse::<u16>().map_err(|_|"invalid_port".to_string()).and_then(|port|remote_surfaces::serve(&args[0],port,ui_state::load))}else{Err("invalid_command".into())};
+        let result=if args.len()==2 {args[1].parse::<u16>().map_err(|_|"invalid_port".to_string()).and_then(|port|{remote_maintenance_host::configure(&args[0]);remote_surfaces::serve_with(&args[0],port,ui_state::load,remote_maintenance_host::execute)})}else{Err("invalid_command".into())};
         if let Err(e)=result{eprintln!("{e}");std::process::exit(1)}return
     }
     if std::env::args().nth(1).as_deref()==Some("remote-surfaces-owner") {

@@ -1,8 +1,9 @@
-# Remote surfaces broker v1 — scoped snapshot slice
+# Remote surfaces broker v1 — snapshots and host maintenance
 
 This delivers **owner-published document snapshots and a static HTML render
 preview gallery**. It does not deliver a live workspace filesystem, HTML execution,
-interactive renders, maintenance, capture, transcription, browser or device sessions.
+interactive renders, capture, transcription, browser or device sessions.
+The maintenance extension below adds bounded host policy/status and confirmed operations.
 P14–P17 remain partial/blocked for those operations. No Android consumer is changed.
 
 ## Transport and owner consent
@@ -45,13 +46,13 @@ reach it until the owner configures that route. Never publish this port directly
 
 ## Android wire API
 
-HTTP/1.1, one GET per connection, `Authorization: Bearer <phone-T3-token>`.
-No request body, cookies, Origin, query string or URL escaping. All responses are
+HTTP/1.1, one request per connection (GET, or the two maintenance POSTs below), `Authorization: Bearer <phone-T3-token>`.
+GETs have no request body. No cookies, Origin, query string or URL escaping. All responses are
 JSON with `Cache-Control: no-store`, `nosniff`, restrictive CSP and connection close.
 
 | GET route | Response |
 | --- | --- |
-| `/v1/session` | `{protocol:1,session:<64 lowercase hex>,capabilities:["documents.read","gallery.read"]}` |
+| `/v1/session` | `{protocol:1,session:<64 lowercase hex>,capabilities:["documents.read","gallery.read","memory.read","vault.read","host-sync.read","compaction.read","idle-release.read","build-cleanup.read","maintenance.confirm"]}` |
 | `/v1/documents` | `{items:[{id,threadId,projectId,title,kind,expiresAt,preview}]}` |
 | `/v1/documents/<uuid>` | `{id,threadId,projectId,title,kind,contents,executable:false}` |
 | `/v1/gallery` | Same item projection, only HTML snapshots with a PNG preview |
@@ -85,8 +86,129 @@ listener handles connections serially. Audit output is independently capped.
 Errors: `401 unauthorized`, `403 consent_required`, `404 not_found`,
 `429 rate_limit`; unavailable auth/store or corrupt/oversized store returns 503.
 Malformed/oversized requests return 400. The JSON body is `{error:<fixed-code>}`.
-There are no remote writes/input routes, so `orchestration:operate` cannot turn
-this API into a mutation capability. Unsupported paths never reach local handlers.
+Snapshot routes remain read-only. Maintenance mutations use the additional
+consent and confirmation protocol below. Unsupported paths never reach local handlers.
+
+## Maintenance wire API (memory slice)
+
+The same loopback service now exposes read-only host policy/status projections.
+Reads use the existing explicit `orchestration:read`, bearer-only authentication,
+owner read consent, live revocation checks, rate budgets and redacted audit rules.
+No Desktop credential is used. `/v1/session` advertises these capabilities.
+
+| GET route | `report` projection |
+| --- | --- |
+| `/v1/memory` | Local idle-release and compaction policy; no transcript or vault note content |
+| `/v1/vault` | Configured/steps/local Git state, enabled flags, configured vault identity, configuration and instruction-file fingerprints |
+| `/v1/host-sync` | Bounded persisted host/item outcomes, no backups, file content or secrets |
+| `/v1/compaction` | Local settings plus persisted aggregate worker status |
+| `/v1/idle-release` | Local settings plus persisted aggregate worker status |
+| `/v1/build-cleanup` | Dry-run candidates under owner-selected roots, byte counts, file identities and fresh idle claims |
+
+Each response is `{surface, reportId:<SHA-256>, report:<object>}`. `reportId` binds
+the entire projection, including the configured target and relevant settings.
+Worker status is explicitly `source:"persisted", live:false`; a claimed or uncertain
+operation is `unknown`. This does not claim to inspect another live Desktop process.
+Missing state yields an empty persisted status; malformed or oversized state fails
+closed. Reads do not refresh instructions, clone/pull/push, sync hosts, compact,
+release sessions, clean builds or invoke a generic local command.
+
+Local Preferences → Connections → **Allow remote maintenance on this device** is
+an additional consent, default off and independent of the selected environment.
+Every toggle and cleanup-root edit rotates `remoteMaintenanceConsent`. Disabling
+read consent or changing either epoch revokes pending confirmations. Both consents
+must be enabled to mutate. `remoteMaintenanceRoots` is a local-only allowlist of at
+most 16 absolute canonical checkout roots, empty by default; remote settings
+requests cannot change this allowlist, either consent, vault path or host identity.
+The owner enters roots one per line in Preferences. Paths are never accepted in a
+remote mutation body. The configured vault is the only vault rollout target.
+
+Only these actions are supported:
+
+| Surface | Action | Extra request fields |
+| --- | --- | --- |
+| `compaction` | `settings` | `settings` with boolean `autoCompactEnabled`, minutes `autoCompactFallbackMinutes` (1–1440), tokens `autoCompactMinTokens` (1000–1000000) |
+| `idle-release` | `settings` | `settings` with boolean `idleReleaseEnabled`, minutes `idleReleaseMinutes` (1–1440) |
+| `vault` | `rollout` | None; installs the managed instruction block for this host's already configured/enabled vault, without Git/network operations |
+| `build-cleanup` | `run` | None; executes the exact rechecked dry-run report |
+
+Settings are persisted in a separate private `remote-host-memory.json` (16 KiB
+read limit), so ordinary Desktop presentation-state writes cannot overwrite them.
+They override the global policy only for environment `local`; other environments
+managed by the Desktop retain their existing policy. Reports include `hostOverrides`
+and merged policy values; null means no saved global value and native defaults apply. Corrupt/unreadable overrides disable the local memory
+workers until the owner repairs the file. Settings take effect on the next Desktop
+worker poll. No immediate compact/detach
+RPC is exposed. Host sync is status-only; remote apply, credential copying and login
+are unsupported. Vault rollout never selects another host, remote URL or path.
+Instruction-file symlinks and parents resolving outside the local home are refused.
+Vault config reads are capped at 64 KiB and instruction files at 64 KiB each.
+Vault Git status uses fixed read commands with optional index writes/fsmonitor/hooks
+disabled, one-second subprocess deadlines and bounded output; it does not invoke
+the broad Desktop vault wizard/read action.
+
+Mutations require both explicit read permission and `orchestration:operate` or
+`environment:maintain`. Authoritative `permissions` still overrides legacy
+`scopes`; wildcard, cookie, missing read and unsafe auth remain denied. The server
+revalidates these permissions before preparing/confirming and after report reads.
+Android must implement this two-step user-confirmed flow:
+
+1. GET the surface report with the phone's bearer.
+2. POST `/v1/maintenance/prepare` with that `reportId` and the exact proposed action:
+   `{"surface":"compaction","action":"settings","settings":{"autoCompactEnabled":false},"reportId":"<GET reportId>"}`.
+3. Show the returned `request` and full `report` to the user. Response:
+   `{confirmationToken:<UUID>, report:{surface,reportId,report}, request, expiresIn:60, retry:false}`.
+4. Only after confirmation, POST `/v1/maintenance/confirm` with
+   `{"confirmationToken":"<token>","reportId":"<same reportId>"}`.
+
+POSTs require a single `Content-Length` of 1–4096 bytes and a JSON body. GETs still
+reject bodies. Only the two POST paths above exist; header/path/bearer bounds,
+no cookie/Origin/query/escaping, no redirects/proxies and connection-close rules
+are unchanged. Both steps share the existing 30/session and 120/host minute budget,
+failed-auth gate and audit cap with all reads. Tokens are random, session-bound,
+action-bound, epoch-bound, expire after 60 seconds and are consumed when authenticated confirmation validation begins, including
+session/epoch/report/expiry failures. Authentication and rate rejection happen
+before token validation and never dispatch a mutation. At most 32 tokens are pending.
+Any changed/expired report gives `409 stale_report`; get a new report and ask the
+user again. A token from another bearer or consent epoch cannot be used.
+
+A nonblocking cross-process operation lock covers fresh-report validation,
+authorization, claim and apply; concurrent broker mutations fail closed without
+queuing. Before any side effect the broker persists and fsyncs an irreversible claim for
+that exact session/epochs/request/report in its private state. Up to 128 claims
+are retained without automatic eviction; saturation fails closed. A duplicate
+report/action after disconnect or broker restart gives `409 already_claimed`.
+The adapter rechecks consent and the report again immediately before acting.
+The claim store has a 64 KiB read limit, 0700 directory/0600 atomic files,
+nonblocking lock and no-follow checks. Owner removal of claims is not a retry
+mechanism and can discard protection against replay; no remote reset exists.
+
+Success is `{outcome:"completed",result:<bounded result>,retry:false}`. Backend
+failure or oversized reply after claiming is `{outcome:"unknown",retry:false}`:
+work may have partially completed, and neither broker nor Android may retry the
+mutation. Lost HTTP responses are also unknown. Refresh read status and ask the
+owner to reconcile; do not automatically prepare the same action again. No
+outcome is inferred from a timeout. Claims intentionally survive unknown outcomes.
+The fixed audit outcome is `unknown` for these responses, never a completed action.
+Additional fixed errors include `confirmation_required`, `invalid_command`,
+`report_limit`, `surface_unavailable`, and `429 confirmation_limit`.
+
+Cleanup uses only the caller's bearer against the fixed local T3 origin for shell
+and bounded-thread reads (1 MiB response limit, two-second HTTP timeout), never
+saved Desktop credentials. Each relevant thread must have a complete idle
+projection: no active/queued runs, pending requests/plans, subagents or background
+nodes/items. Missing claims fail closed, and at most 16 thread claims are read.
+Only configured, canonical, ignored, recognized regenerable build directories
+qualify. Custom cache-tag directories and `target-orphan/` are excluded. The dry run
+is capped at 32 candidates and 10000 filesystem entries, with a two-second walk
+budget. Fixed Git reads have one-second subprocess deadlines and 64 KiB file-list /
+4 KiB git-directory output bounds. Other checkouts are never discovered by this path. Recent nested-file changes postpone cleanup. Exact filesystem identity,
+settings and native idle claims are checked again before removal. A final legacy
+read/delete race with another client or external build remains possible; no atomic
+server lease is claimed. Never use this API to clean an actively used checkout.
+
+The Android consumer is not changed in this PR. No bridge route, deployment,
+restart or phone acceptance is performed.
 
 ## Publishing and revoking (local owner only)
 
@@ -150,10 +272,8 @@ next owner operation. Turning off prevents reading them immediately.
 1. Automatic authorized-thread document export and live HTML render sessions:
    require native resource resolution using the requester's authorization, isolated
    renderer/network grants, bounded frames and an input owner. No arbitrary QML.
-2. Memory/vault/host-sync/compaction/idle release/build cleanup: require scoped
-   policy projections; explicit configured vault/target allowlists; fresh idle
-   claims; dry-run plans and confirmation receipts; `orchestration:operate` or
-   `environment:maintain` at ingress. No generic shell/SSH wrapper is exposed.
+2. Cross-host vault rollout and host-sync apply; manual compact/detach actions;
+   live worker control and automatic retry/reconciliation remain unsupported.
 3. Capture/transcription: need display/region/model allowlists and bounded upload,
    cancel and result ownership. No microphone or model installer is invoked.
 4. Browser/device sessions: need isolated profiles, cookie/resource grants,
@@ -204,3 +324,30 @@ before this snapshot slice is reachable from a production phone.
 - Initial parallel full run stopped at two broker test failures (synthetic auth
   timeout and `store_busy`); both pass in the complete serial run (98 library
   tests green). No deployment, phone access or merge.
+
+### Memory and maintenance validation (2026-10-31)
+
+- Focused final Rust checks: **49 passed** (41 library, 8 binary), including
+  scope/consent denial, token/owner revocation, stale and expired reports,
+  over-limit confirmations/claims/reports/filesystem walks, cross-process
+  exclusion, unknown outcomes and durable replay refusal. Local memory overrides
+  cannot change another environment's policy. Restored mtime and unchanged size
+  do not bypass cleanup identity checks (ctime/inode are also included).
+- `tools/test-remote-memory`: **44 assertions passed**, synthetic auth and private
+  `/var/tmp` HOME/state only. Includes actual confirmed cleanup and vault rollout,
+  late revocation returning/auditing `unknown`, no replay after unknown outcomes
+  or broker restart, stale/denied/rate/body limits and unchanged global settings.
+- Existing document/gallery HTTP fixture passes. QML `shared-drafts` fixture
+  passes, including the maintenance default-off control and epoch rotation, using
+  the observed Wayland test display and private `/var/tmp` state. No compositor
+  or product service was started or restarted.
+- **20 locales × 2018 keys**, four new strings, translation validator clean.
+- Product clippy (`--lib --bin omarchy-t3-client -j 6`) passes with 24 existing
+  library and 16 existing binary warnings, none in the added modules. The broader
+  all-targets check encountered the existing unchecked-read lint in unchanged
+  `tests/quota_sources.rs`. Rustfmt checks on the changed broker/policy modules
+  and new cleanup/state sections, build `-j 6`, and `git diff --check` pass.
+- Final full `cargo test -j 6 --no-fail-fast -- --test-threads=1`:
+  **502 passed, 4 failed**. The four documented baseline failures are `approvals`,
+  `history`, `plan_transport`, and `third_party_licenses`; those files are unchanged.
+  All 112 library and 39 binary tests pass. No browser/Qt failures occurred.

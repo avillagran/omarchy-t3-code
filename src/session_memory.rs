@@ -4,6 +4,17 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 pub fn minutes(settings: &Value, environment: &str, provider: &str) -> Option<u64> {
+    let local;
+    let settings = if environment == "local"
+        && settings["remoteHostMemorySettings"]
+            .as_object()
+            .is_some_and(|o| !o.is_empty())
+    {
+        local = host_settings(settings, environment);
+        &local
+    } else {
+        settings
+    };
     if settings["idleReleaseEnabled"] == false {
         return None;
     }
@@ -124,4 +135,51 @@ pub fn compaction_candidate(p: &Value, settings: &Value, now: i64) -> Value {
         return json!({"status":"harness_managed","provider":p["thread"]["modelSelection"]["instanceId"]});
     }
     protocol::compaction::candidate(p, settings, now)
+}
+
+/// Broker policy belongs only to this host. It must never affect another
+/// environment which the Desktop happens to manage with its own credentials.
+pub fn host_settings(settings: &Value, environment: &str) -> Value {
+    let mut local = settings.clone();
+    if environment != "local" {
+        return local;
+    }
+    let overrides = &settings["remoteHostMemorySettings"];
+    if overrides["unavailable"] == true {
+        local["autoCompactEnabled"] = json!(false);
+        local["idleReleaseEnabled"] = json!(false);
+        return local;
+    }
+    for surface in ["compaction", "idle-release"] {
+        if let Some(patch) = overrides[surface].as_object() {
+            if crate::remote_maintenance::valid_patch(surface, &overrides[surface]) {
+                for (key, value) in patch {
+                    local[key] = value.clone()
+                }
+            }
+        }
+    }
+    local
+}
+
+#[cfg(test)]
+mod remote_host_policy_tests {
+    use super::*;
+    #[test]
+    fn remote_policy_never_changes_other_hosts_or_global_preferences() {
+        let global = json!({"autoCompactEnabled":true,"idleReleaseEnabled":true,"idleReleaseMinutes":5,"remoteHostMemorySettings":{"compaction":{"autoCompactEnabled":false},"idle-release":{"idleReleaseEnabled":false,"idleReleaseMinutes":10}}});
+        let local = host_settings(&global, "local");
+        assert_eq!(local["autoCompactEnabled"], false);
+        assert_eq!(local["idleReleaseEnabled"], false);
+        assert_eq!(host_settings(&global, "other-host"), global);
+        assert_eq!(global["autoCompactEnabled"], true);
+        assert_eq!(minutes(&global, "local", "provider"), None);
+        assert_eq!(minutes(&global, "other-host", "provider"), Some(5));
+    }
+    #[test]
+    fn unavailable_remote_policy_fails_closed_only_on_its_host() {
+        let s = json!({"remoteHostMemorySettings":{"unavailable":true}});
+        assert_eq!(host_settings(&s, "local")["autoCompactEnabled"], false);
+        assert!(host_settings(&s, "other")["autoCompactEnabled"].is_null());
+    }
 }

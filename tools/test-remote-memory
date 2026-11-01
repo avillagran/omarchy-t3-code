@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""Isolated maintenance HTTP acceptance; no live host, credentials or phone."""
+import http.client
+import http.server
+import json
+import os
+from pathlib import Path
+import socket
+import subprocess
+import tempfile
+import threading
+import time
+
+BINARY = Path(__file__).resolve().parents[1] / "target/debug/omarchy-t3-client"
+mode = "operate"
+checks = 0
+deny_at = 0
+shell_value = {"projects": [], "threads": []}
+
+
+class Auth(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        global checks
+        checks += 1
+        if self.path == "/api/orchestration/shell":
+            body = json.dumps(shell_value).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        assert self.path == "/api/auth/session"
+        scopes = ["orchestration:read"]
+        if mode == "operate":
+            scopes.append("orchestration:operate")
+        body = json.dumps({"authenticated": mode != "revoked" and checks != deny_at,
+                           "auth": {"policy": "remote-reachable"},
+                           "sessionMethod": "bearer-access-token",
+                           "permissions": scopes}).encode()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *_):
+        pass
+
+
+with tempfile.TemporaryDirectory(prefix="remote-memory-", dir="/var/tmp") as temp:
+    env = dict(os.environ, HOME=temp, XDG_STATE_HOME=temp + "/state", XDG_CONFIG_HOME=temp + "/config")
+    state = Path(temp) / "state/omarchy-t3-code"
+    state.mkdir(parents=True)
+    settings = {"remoteDocumentsEnabled": True, "remoteDocumentsConsent": "read-epoch",
+                "remoteMaintenanceEnabled": False, "remoteMaintenanceConsent": "write-epoch"}
+
+    def save():
+        pending = state / "ui-state.pending"
+        pending.write_text(json.dumps(settings))
+        pending.replace(state / "ui-state.json")
+
+    save()
+    authority = http.server.HTTPServer(("127.0.0.1", 0), Auth)
+    threading.Thread(target=authority.serve_forever, daemon=True).start()
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    command = [str(BINARY), "remote-surfaces-serve", f"http://127.0.0.1:{authority.server_port}", str(port)]
+    audit = open(Path(temp) / "audit", "wb")
+
+    def launch():
+        process = subprocess.Popen(command, env=env, stdout=subprocess.DEVNULL, stderr=audit)
+        for _ in range(100):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=.1):
+                    return process
+            except OSError:
+                time.sleep(.02)
+        raise AssertionError("broker did not listen")
+
+    broker = launch()
+    assertions = 0
+
+    def call(path, body=None, token="fixture-phone"):
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+        headers = {"Authorization": "Bearer " + token}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        conn.request("GET" if body is None else "POST", path,
+                     None if body is None else json.dumps(body), headers)
+        response = conn.getresponse()
+        result = (response.status, json.loads(response.read()))
+        assert response.getheader("Cache-Control") == "no-store"
+        conn.close()
+        return result
+
+    def check(condition):
+        global assertions
+        assert condition
+        assertions += 1
+
+    def prepare(report):
+        return {"surface": "compaction", "action": "settings", "settings": {"autoCompactEnabled": False},
+                "reportId": report["reportId"]}
+
+    try:
+        code, report = call("/v1/compaction")
+        check(code == 200 and report["report"]["status"]["live"] is False)
+        check(call("/v1/maintenance/prepare", prepare(report))[0] == 403)
+        settings["remoteMaintenanceEnabled"] = True
+        save()
+        mode = "read"
+        check(call("/v1/memory")[0] == 200)
+        check(call("/v1/maintenance/prepare", prepare(report))[0] == 401)
+        mode = "operate"
+        code, pending = call("/v1/maintenance/prepare", prepare(report))
+        check(code == 200 and pending["retry"] is False)
+        confirmation = {"confirmationToken": pending["confirmationToken"], "reportId": report["reportId"]}
+        mode = "revoked"
+        check(call("/v1/maintenance/confirm", confirmation)[0] == 401)
+        mode = "operate"
+        settings["remoteMaintenanceConsent"] = "rotated"
+        save()
+        check(call("/v1/maintenance/confirm", confirmation)[0] == 403)
+        code, report = call("/v1/compaction")
+        code, pending = call("/v1/maintenance/prepare", prepare(report))
+        check(code == 200)
+        confirmation = {"confirmationToken": pending["confirmationToken"], "reportId": report["reportId"]}
+        settings["autoCompactEnabled"] = True
+        save()
+        check(call("/v1/maintenance/confirm", confirmation)[0] == 409)
+        code, report = call("/v1/compaction")
+        code, pending = call("/v1/maintenance/prepare", prepare(report))
+        check(code == 200)
+        confirmation = {"confirmationToken": pending["confirmationToken"], "reportId": report["reportId"]}
+        code, result = call("/v1/maintenance/confirm", confirmation)
+        check(code == 200 and result["outcome"] == "completed" and result["retry"] is False)
+        check(json.loads((state / "remote-host-memory.json").read_text())["compaction"]["autoCompactEnabled"] is False)
+        check(json.loads((state / "ui-state.json").read_text())["autoCompactEnabled"] is True)
+        check(call("/v1/maintenance/confirm", confirmation)[0] == 400)
+        claims = state / "remote-surfaces/maintenance-claims.json"
+        check(len(json.loads(claims.read_text())) == 1 and claims.stat().st_mode & 0o777 == 0o600)
+        # Revoke after the engine's final check but before adapter dispatch.
+        # The durable claim remains unknown and cannot be replayed.
+        _, current = call("/v1/compaction")
+        uncertain_request = prepare(current)
+        uncertain_request["settings"]["autoCompactEnabled"] = True
+        code, uncertain = call("/v1/maintenance/prepare", uncertain_request)
+        check(code == 200)
+        uncertain_confirmation = {"confirmationToken": uncertain["confirmationToken"], "reportId": current["reportId"]}
+        deny_at = checks + 5
+        code, result = call("/v1/maintenance/confirm", uncertain_confirmation)
+        check(code == 200 and result["outcome"] == "unknown" and result["retry"] is False)
+        check(json.loads((state / "remote-host-memory.json").read_text())["compaction"]["autoCompactEnabled"] is False)
+        check(call("/v1/maintenance/confirm", uncertain_confirmation)[0] == 400)
+        code, uncertain = call("/v1/maintenance/prepare", uncertain_request)
+        check(code == 200)
+        check(call("/v1/maintenance/confirm", {"confirmationToken": uncertain["confirmationToken"],
+                                             "reportId": current["reportId"]})[0] == 409)
+        # Reconstruct the exact old report after a broker restart. Its durable
+        # claim must prevent repeating the already dispatched operation.
+        broker.terminate()
+        broker.wait(timeout=30)
+        settings["autoCompactEnabled"] = True
+        save()
+        # Restore the exact policy/report to model a lost reply followed by an
+        # owner-side policy restore; claims themselves remain intact.
+        (state / "remote-host-memory.json").write_text("{}")
+        broker = launch()
+        code, report = call("/v1/compaction")
+        code, pending = call("/v1/maintenance/prepare", prepare(report))
+        check(code == 200)
+        check(call("/v1/maintenance/confirm", {"confirmationToken": pending["confirmationToken"],
+                                             "reportId": report["reportId"]})[0] == 409)
+        check(json.loads((state / "ui-state.json").read_text())["autoCompactEnabled"] is True)
+        # Every surface is readable without invoking a mutation.
+        check(call("/v1/idle-release")[0] == 200)
+        check(call("/v1/host-sync")[0] == 200)
+        check(call("/v1/vault")[0] == 200)
+        check(call("/v1/build-cleanup")[1]["report"]["entries"] == [])
+        root = Path(temp) / "checkout"
+        (root / "target/debug/deep").mkdir(parents=True)
+        (root / "target-orphan").mkdir()
+        (root / "target-orphan/keep").write_text("preserve")
+        artifact = root / "target/debug/deep/output"
+        artifact.write_text("old build")
+        (root / "Cargo.toml").write_text("[package]")
+        (root / ".gitignore").write_text("target/\ntarget-orphan/\n")
+        subprocess.run(["git", "init", "-q", str(root)], check=True)
+
+        def age():
+            old = time.time() - 10 * 86400
+            for path in [root / "Cargo.toml", root / ".gitignore", root / ".git/HEAD",
+                         root / "target", root / "target/debug", root / "target/debug/deep", artifact]:
+                os.utime(path, (old, old))
+
+        age()
+        shell_value = {"projects": [{"id": "p", "workspaceRoot": str(root)}], "threads": []}
+        settings["remoteMaintenanceRoots"] = [str(root)]
+        settings["remoteMaintenanceConsent"] = "cleanup-epoch"
+        settings["autoCompactEnabled"] = True
+        save()
+        code, cleanup = call("/v1/build-cleanup")
+        check(code == 200 and len(cleanup["report"]["entries"]) == 1)
+        cleanup_request = {"surface": "build-cleanup", "action": "run", "reportId": cleanup["reportId"]}
+        code, pending = call("/v1/maintenance/prepare", cleanup_request)
+        check(code == 200)
+        artifact.write_text("recent active build")
+        check(call("/v1/maintenance/confirm", {"confirmationToken": pending["confirmationToken"],
+                                             "reportId": cleanup["reportId"]})[0] == 409)
+        check(artifact.exists())
+        age()
+        code, cleanup = call("/v1/build-cleanup")
+        cleanup_request["reportId"] = cleanup["reportId"]
+        code, pending = call("/v1/maintenance/prepare", cleanup_request)
+        check(code == 200)
+        code, result = call("/v1/maintenance/confirm", {"confirmationToken": pending["confirmationToken"],
+                                                       "reportId": cleanup["reportId"]})
+        check(code == 200 and result["outcome"] == "completed" and result["result"]["removed"] == 1)
+        check(not (root / "target").exists() and (root / "target-orphan/keep").read_text() == "preserve")
+        vault = Path(temp) / "Obsidian/Dev"
+        vault.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(vault)], check=True)
+        subprocess.run(["git", "-C", str(vault), "remote", "add", "origin", "https://example.invalid/vault.git"], check=True)
+        config = Path(temp) / "config/omarchy-t3-code"
+        config.mkdir(parents=True)
+        (config / "vault.json").write_text(json.dumps({"enabled": True, "path": str(vault), "agentInstructions": True}))
+        code, vault_report = call("/v1/vault")
+        check(code == 200 and vault_report["report"]["localState"] == "clone")
+        rollout = {"surface": "vault", "action": "rollout", "reportId": vault_report["reportId"]}
+        check(call("/v1/maintenance/prepare", dict(rollout, path="/etc"))[0] == 400)
+        code, pending = call("/v1/maintenance/prepare", rollout)
+        check(code == 200)
+        code, result = call("/v1/maintenance/confirm", {"confirmationToken": pending["confirmationToken"],
+                                                       "reportId": vault_report["reportId"]})
+        check(code == 200 and result["outcome"] == "completed" and result["result"]["installed"] == 2)
+        check("dev-vault-journal:start" in (Path(temp) / ".codex/AGENTS.md").read_text())
+        for _ in range(30):
+            code, _ = call("/v1/memory")
+            if code == 429:
+                break
+        before = checks
+        check(code == 429 and call("/v1/maintenance/prepare", prepare(report))[0] == 429 and checks == before)
+        check(call("/v1/maintenance/prepare", {"x": "a" * 4096}, token="oversized")[0] == 400)
+    finally:
+        broker.terminate()
+        broker.wait(timeout=30)
+        authority.shutdown()
+        audit.close()
+    logs = (Path(temp) / "audit").read_text()
+    check("fixture-phone" not in logs and "confirmationToken" not in logs and "autoCompactEnabled" not in logs)
+    check('"outcome":"unknown"' in logs)
+    print(f"remote maintenance HTTP acceptance: {assertions} assertions passed")

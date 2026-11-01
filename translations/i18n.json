@@ -2013,7 +2013,11 @@
     "Share drafts": "Share drafts",
     "Remote documents on this device": "Remote documents on this device",
     "Share only owner-published snapshots. Turning this off revokes access.": "Share only owner-published snapshots. Turning this off revokes access.",
-    "Allow remote documents and HTML previews": "Allow remote documents and HTML previews"
+    "Allow remote documents and HTML previews": "Allow remote documents and HTML previews",
+    "Allow remote maintenance on this device": "Allow remote maintenance on this device",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Each change requires permission and confirmation. Turning this off revokes pending confirmations.",
+    "Cleanup roots (one absolute path per line)": "Cleanup roots (one absolute path per line)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4029,7 +4033,11 @@
     "Share drafts": "Compartir borradores",
     "Remote documents on this device": "Documentos remotos en este dispositivo",
     "Share only owner-published snapshots. Turning this off revokes access.": "Comparte solo instantáneas publicadas por el dueño. Desactivar revoca el acceso.",
-    "Allow remote documents and HTML previews": "Permitir documentos remotos y vistas previas HTML"
+    "Allow remote documents and HTML previews": "Permitir documentos remotos y vistas previas HTML",
+    "Allow remote maintenance on this device": "Permitir mantenimiento remoto en este dispositivo",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Cada cambio requiere permiso y confirmación. Desactivar revoca las confirmaciones pendientes.",
+    "Cleanup roots (one absolute path per line)": "Raíces de limpieza (una ruta absoluta por línea)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Comparte instantáneas publicadas por el dueño y reportes de mantenimiento del host de solo lectura. Desactivar revoca el acceso."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6045,7 +6053,11 @@
     "Share drafts": "Compartilhar rascunhos",
     "Remote documents on this device": "Documentos remotos neste dispositivo",
     "Share only owner-published snapshots. Turning this off revokes access.": "Compartilhe apenas instantâneos publicados pelo proprietário. Desativar revoga o acesso.",
-    "Allow remote documents and HTML previews": "Permitir documentos remotos e prévias HTML"
+    "Allow remote documents and HTML previews": "Permitir documentos remotos e prévias HTML",
+    "Allow remote maintenance on this device": "Permitir manutenção remota neste dispositivo",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Cada alteração exige permissão e confirmação. Desativar revoga as confirmações pendentes.",
+    "Cleanup roots (one absolute path per line)": "Raízes de limpeza (um caminho absoluto por linha)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Compartilhe instantâneos publicados pelo proprietário e relatórios de manutenção do host somente para leitura. Desativar revoga o acesso."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8061,7 +8073,11 @@
     "Share drafts": "Partager les brouillons",
     "Remote documents on this device": "Documents distants sur cet appareil",
     "Share only owner-published snapshots. Turning this off revokes access.": "Partagez uniquement les instantanés publiés par le propriétaire. Désactiver révoque l’accès.",
-    "Allow remote documents and HTML previews": "Autoriser les documents distants et les aperçus HTML"
+    "Allow remote documents and HTML previews": "Autoriser les documents distants et les aperçus HTML",
+    "Allow remote maintenance on this device": "Autoriser la maintenance à distance sur cet appareil",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Chaque modification nécessite une autorisation et une confirmation. La désactivation révoque les confirmations en attente.",
+    "Cleanup roots (one absolute path per line)": "Racines de nettoyage (un chemin absolu par ligne)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Partagez les instantanés publiés par le propriétaire et les rapports de maintenance de l’hôte en lecture seule. La désactivation révoque l’accès."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10077,7 +10093,11 @@
     "Share drafts": "Entwürfe teilen",
     "Remote documents on this device": "Remote-Dokumente auf diesem Gerät",
     "Share only owner-published snapshots. Turning this off revokes access.": "Nur vom Eigentümer veröffentlichte Momentaufnahmen teilen. Ausschalten widerruft den Zugriff.",
-    "Allow remote documents and HTML previews": "Remote-Dokumente und HTML-Vorschauen erlauben"
+    "Allow remote documents and HTML previews": "Remote-Dokumente und HTML-Vorschauen erlauben",
+    "Allow remote maintenance on this device": "Fernwartung auf diesem Gerät erlauben",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Jede Änderung erfordert Berechtigung und Bestätigung. Ausschalten widerruft ausstehende Bestätigungen.",
+    "Cleanup roots (one absolute path per line)": "Bereinigungswurzeln (ein absoluter Pfad pro Zeile)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Vom Eigentümer veröffentlichte Momentaufnahmen und schreibgeschützte Wartungsberichte des Hosts teilen. Ausschalten widerruft den Zugriff."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12093,7 +12113,11 @@
     "Share drafts": "Condividi bozze",
     "Remote documents on this device": "Documenti remoti su questo dispositivo",
     "Share only owner-published snapshots. Turning this off revokes access.": "Condividi solo istantanee pubblicate dal proprietario. Disattivando si revoca l’accesso.",
-    "Allow remote documents and HTML previews": "Consenti documenti remoti e anteprime HTML"
+    "Allow remote documents and HTML previews": "Consenti documenti remoti e anteprime HTML",
+    "Allow remote maintenance on this device": "Consenti manutenzione remota su questo dispositivo",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Ogni modifica richiede autorizzazione e conferma. La disattivazione revoca le conferme in sospeso.",
+    "Cleanup roots (one absolute path per line)": "Radici di pulizia (un percorso assoluto per riga)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Condividi istantanee pubblicate dal proprietario e rapporti di manutenzione dell’host in sola lettura. La disattivazione revoca l’accesso."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14109,7 +14133,11 @@
     "Share drafts": "Concepten delen",
     "Remote documents on this device": "Externe documenten op dit apparaat",
     "Share only owner-published snapshots. Turning this off revokes access.": "Deel alleen door de eigenaar gepubliceerde momentopnamen. Uitschakelen trekt de toegang in.",
-    "Allow remote documents and HTML previews": "Externe documenten en HTML-voorbeelden toestaan"
+    "Allow remote documents and HTML previews": "Externe documenten en HTML-voorbeelden toestaan",
+    "Allow remote maintenance on this device": "Onderhoud op afstand op dit apparaat toestaan",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Elke wijziging vereist toestemming en bevestiging. Uitschakelen trekt openstaande bevestigingen in.",
+    "Cleanup roots (one absolute path per line)": "Opschoonmappen (één absoluut pad per regel)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Deel door de eigenaar gepubliceerde momentopnamen en alleen-lezen onderhoudsrapporten van de host. Uitschakelen trekt de toegang in."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16125,7 +16153,11 @@
     "Share drafts": "Udostępniaj wersje robocze",
     "Remote documents on this device": "Dokumenty zdalne na tym urządzeniu",
     "Share only owner-published snapshots. Turning this off revokes access.": "Udostępniaj tylko migawki opublikowane przez właściciela. Wyłączenie cofa dostęp.",
-    "Allow remote documents and HTML previews": "Zezwalaj na dokumenty zdalne i podglądy HTML"
+    "Allow remote documents and HTML previews": "Zezwalaj na dokumenty zdalne i podglądy HTML",
+    "Allow remote maintenance on this device": "Zezwalaj na zdalną konserwację tego urządzenia",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Każda zmiana wymaga uprawnień i potwierdzenia. Wyłączenie unieważnia oczekujące potwierdzenia.",
+    "Cleanup roots (one absolute path per line)": "Katalogi czyszczenia (jedna ścieżka bezwzględna w wierszu)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Udostępniaj migawki właściciela i raporty konserwacji hosta tylko do odczytu. Wyłączenie cofa dostęp."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18141,7 +18173,11 @@
     "Share drafts": "Делиться черновиками",
     "Remote documents on this device": "Удалённые документы на этом устройстве",
     "Share only owner-published snapshots. Turning this off revokes access.": "Доступны только снимки, опубликованные владельцем. Отключение отзывает доступ.",
-    "Allow remote documents and HTML previews": "Разрешить удалённые документы и предпросмотр HTML"
+    "Allow remote documents and HTML previews": "Разрешить удалённые документы и предпросмотр HTML",
+    "Allow remote maintenance on this device": "Разрешить удалённое обслуживание этого устройства",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Каждое изменение требует разрешения и подтверждения. Отключение отзывает ожидающие подтверждения.",
+    "Cleanup roots (one absolute path per line)": "Корни очистки (один абсолютный путь в строке)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Делиться снимками владельца и отчётами об обслуживании хоста только для чтения. Отключение отзывает доступ."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20157,7 +20193,11 @@
     "Share drafts": "Ділитися чернетками",
     "Remote documents on this device": "Віддалені документи на цьому пристрої",
     "Share only owner-published snapshots. Turning this off revokes access.": "Доступні лише знімки, опубліковані власником. Вимкнення відкликає доступ.",
-    "Allow remote documents and HTML previews": "Дозволити віддалені документи та перегляд HTML"
+    "Allow remote documents and HTML previews": "Дозволити віддалені документи та перегляд HTML",
+    "Allow remote maintenance on this device": "Дозволити віддалене обслуговування цього пристрою",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Кожна зміна потребує дозволу та підтвердження. Вимкнення скасовує очікувані підтвердження.",
+    "Cleanup roots (one absolute path per line)": "Корені очищення (один абсолютний шлях на рядок)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Надавайте знімки власника та звіти обслуговування хоста лише для читання. Вимкнення скасовує доступ."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22173,7 +22213,11 @@
     "Share drafts": "下書きを共有",
     "Remote documents on this device": "このデバイスのリモートドキュメント",
     "Share only owner-published snapshots. Turning this off revokes access.": "所有者が公開したスナップショットのみ共有します。オフにするとアクセスが取り消されます。",
-    "Allow remote documents and HTML previews": "リモートドキュメントとHTMLプレビューを許可"
+    "Allow remote documents and HTML previews": "リモートドキュメントとHTMLプレビューを許可",
+    "Allow remote maintenance on this device": "このデバイスのリモートメンテナンスを許可",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "変更ごとに権限と確認が必要です。オフにすると保留中の確認が取り消されます。",
+    "Cleanup roots (one absolute path per line)": "クリーンアップ対象（1行に1つの絶対パス）",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "所有者が公開したスナップショットと読み取り専用のホスト保守レポートを共有します。オフにするとアクセスが取り消されます。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24189,7 +24233,11 @@
     "Share drafts": "초안 공유",
     "Remote documents on this device": "이 기기의 원격 문서",
     "Share only owner-published snapshots. Turning this off revokes access.": "소유자가 게시한 스냅샷만 공유합니다. 끄면 접근 권한이 취소됩니다.",
-    "Allow remote documents and HTML previews": "원격 문서 및 HTML 미리보기 허용"
+    "Allow remote documents and HTML previews": "원격 문서 및 HTML 미리보기 허용",
+    "Allow remote maintenance on this device": "이 기기의 원격 유지보수 허용",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "각 변경에는 권한과 확인이 필요합니다. 끄면 대기 중인 확인이 취소됩니다.",
+    "Cleanup roots (one absolute path per line)": "정리 루트 (줄당 절대 경로 하나)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "소유자가 게시한 스냅샷과 읽기 전용 호스트 유지보수 보고서를 공유합니다. 끄면 접근 권한이 취소됩니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26205,7 +26253,11 @@
     "Share drafts": "共享草稿内容",
     "Remote documents on this device": "此设备上的远程文档",
     "Share only owner-published snapshots. Turning this off revokes access.": "仅共享所有者发布的快照。关闭后将撤销访问权限。",
-    "Allow remote documents and HTML previews": "允许远程文档和 HTML 预览"
+    "Allow remote documents and HTML previews": "允许远程文档和 HTML 预览",
+    "Allow remote maintenance on this device": "允许远程维护此设备",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "每项更改都需要权限和确认。关闭后将撤销待处理的确认。",
+    "Cleanup roots (one absolute path per line)": "清理根目录（每行一个绝对路径）",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "共享所有者发布的快照和只读主机维护报告。关闭后将撤销访问权限。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28221,7 +28273,11 @@
     "Share drafts": "مشاركة المسودات",
     "Remote documents on this device": "المستندات البعيدة على هذا الجهاز",
     "Share only owner-published snapshots. Turning this off revokes access.": "مشاركة اللقطات التي ينشرها المالك فقط. يؤدي الإيقاف إلى إلغاء الوصول.",
-    "Allow remote documents and HTML previews": "السماح بالمستندات البعيدة ومعاينات HTML"
+    "Allow remote documents and HTML previews": "السماح بالمستندات البعيدة ومعاينات HTML",
+    "Allow remote maintenance on this device": "السماح بالصيانة عن بُعد على هذا الجهاز",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "يتطلب كل تغيير إذنًا وتأكيدًا. يؤدي الإيقاف إلى إلغاء التأكيدات المعلقة.",
+    "Cleanup roots (one absolute path per line)": "جذور التنظيف (مسار مطلق واحد لكل سطر)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "مشاركة لقطات المالك وتقارير صيانة المضيف للقراءة فقط. يؤدي الإيقاف إلى إلغاء الوصول."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30237,7 +30293,11 @@
     "Share drafts": "Taslakları paylaş",
     "Remote documents on this device": "Bu cihazdaki uzak belgeler",
     "Share only owner-published snapshots. Turning this off revokes access.": "Yalnızca sahibin yayımladığı anlık görüntüleri paylaşın. Kapatmak erişimi iptal eder.",
-    "Allow remote documents and HTML previews": "Uzak belgelere ve HTML önizlemelerine izin ver"
+    "Allow remote documents and HTML previews": "Uzak belgelere ve HTML önizlemelerine izin ver",
+    "Allow remote maintenance on this device": "Bu cihazda uzaktan bakıma izin ver",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Her değişiklik izin ve onay gerektirir. Kapatmak bekleyen onayları iptal eder.",
+    "Cleanup roots (one absolute path per line)": "Temizleme kökleri (satır başına bir mutlak yol)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Sahibin yayımladığı anlık görüntüleri ve salt okunur ana makine bakım raporlarını paylaşın. Kapatmak erişimi iptal eder."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32253,7 +32313,11 @@
     "Share drafts": "Dela utkast",
     "Remote documents on this device": "Fjärrdokument på den här enheten",
     "Share only owner-published snapshots. Turning this off revokes access.": "Dela endast ögonblicksbilder som ägaren publicerat. Avstängning återkallar åtkomst.",
-    "Allow remote documents and HTML previews": "Tillåt fjärrdokument och HTML-förhandsvisningar"
+    "Allow remote documents and HTML previews": "Tillåt fjärrdokument och HTML-förhandsvisningar",
+    "Allow remote maintenance on this device": "Tillåt fjärrunderhåll på den här enheten",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Varje ändring kräver behörighet och bekräftelse. Avstängning återkallar väntande bekräftelser.",
+    "Cleanup roots (one absolute path per line)": "Rensningsrötter (en absolut sökväg per rad)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Dela ägarens ögonblicksbilder och skrivskyddade underhållsrapporter för värden. Avstängning återkallar åtkomst."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34269,7 +34333,11 @@
     "Share drafts": "Del kladder",
     "Remote documents on this device": "Fjerndokumenter på denne enhed",
     "Share only owner-published snapshots. Turning this off revokes access.": "Del kun øjebliksbilleder udgivet af ejeren. Deaktivering tilbagekalder adgang.",
-    "Allow remote documents and HTML previews": "Tillad fjerndokumenter og HTML-forhåndsvisninger"
+    "Allow remote documents and HTML previews": "Tillad fjerndokumenter og HTML-forhåndsvisninger",
+    "Allow remote maintenance on this device": "Tillad fjernvedligeholdelse på denne enhed",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Hver ændring kræver tilladelse og bekræftelse. Deaktivering tilbagekalder ventende bekræftelser.",
+    "Cleanup roots (one absolute path per line)": "Oprydningsrødder (én absolut sti pr. linje)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Del ejerens øjebliksbilleder og skrivebeskyttede vedligeholdelsesrapporter for værten. Deaktivering tilbagekalder adgang."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36285,7 +36353,11 @@
     "Share drafts": "Del utkast",
     "Remote documents on this device": "Eksterne dokumenter på denne enheten",
     "Share only owner-published snapshots. Turning this off revokes access.": "Del bare øyeblikksbilder publisert av eieren. Deaktivering opphever tilgangen.",
-    "Allow remote documents and HTML previews": "Tillat eksterne dokumenter og HTML-forhåndsvisninger"
+    "Allow remote documents and HTML previews": "Tillat eksterne dokumenter og HTML-forhåndsvisninger",
+    "Allow remote maintenance on this device": "Tillat fjernvedlikehold på denne enheten",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Hver endring krever tillatelse og bekreftelse. Deaktivering opphever ventende bekreftelser.",
+    "Cleanup roots (one absolute path per line)": "Oppryddingsrøtter (én absolutt sti per linje)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Del eierens øyeblikksbilder og skrivebeskyttede vedlikeholdsrapporter for verten. Deaktivering opphever tilgangen."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -38301,7 +38373,11 @@
     "Share drafts": "Jaa luonnokset",
     "Remote documents on this device": "Etäasiakirjat tällä laitteella",
     "Share only owner-published snapshots. Turning this off revokes access.": "Jaa vain omistajan julkaisemia tilannekuvia. Poistaminen käytöstä peruuttaa pääsyn.",
-    "Allow remote documents and HTML previews": "Salli etäasiakirjat ja HTML-esikatselut"
+    "Allow remote documents and HTML previews": "Salli etäasiakirjat ja HTML-esikatselut",
+    "Allow remote maintenance on this device": "Salli tämän laitteen etähuolto",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Jokainen muutos vaatii käyttöoikeuden ja vahvistuksen. Poistaminen käytöstä peruuttaa odottavat vahvistukset.",
+    "Cleanup roots (one absolute path per line)": "Siivouksen juuret (yksi absoluuttinen polku rivillä)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Jaa omistajan julkaisemia tilannekuvia ja vain luettavia huoltoraportteja isännästä. Poistaminen käytöstä peruuttaa pääsyn."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -40317,6 +40393,10 @@
     "Share drafts": "Sdílet koncepty",
     "Remote documents on this device": "Vzdálené dokumenty na tomto zařízení",
     "Share only owner-published snapshots. Turning this off revokes access.": "Sdílejte pouze snímky zveřejněné vlastníkem. Vypnutí zruší přístup.",
-    "Allow remote documents and HTML previews": "Povolit vzdálené dokumenty a náhledy HTML"
+    "Allow remote documents and HTML previews": "Povolit vzdálené dokumenty a náhledy HTML",
+    "Allow remote maintenance on this device": "Povolit vzdálenou údržbu tohoto zařízení",
+    "Each change requires permission and confirmation. Turning this off revokes pending confirmations.": "Každá změna vyžaduje oprávnění a potvrzení. Vypnutí zruší čekající potvrzení.",
+    "Cleanup roots (one absolute path per line)": "Kořeny čištění (jedna absolutní cesta na řádek)",
+    "Share owner-published snapshots and read-only host maintenance reports. Turning this off revokes access.": "Sdílejte snímky vlastníka a zprávy údržby hostitele pouze pro čtení. Vypnutí zruší přístup."
   }
 }

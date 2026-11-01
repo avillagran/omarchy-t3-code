@@ -1,4 +1,5 @@
 pub mod remote_surfaces;
+pub mod remote_maintenance;
 pub mod quota_sources;
 pub mod notification_icon;
 pub mod backend_service;

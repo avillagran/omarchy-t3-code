@@ -1,4 +1,4 @@
-//! Opt-in, read-only snapshot broker. Never uses the desktop owner's T3 credential.
+//! Opt-in snapshot and host-maintenance broker. Never uses the owner's T3 credential.
 //! The owner publishes immutable, expiring snapshots for an exact bearer fingerprint.
 use crate::*;
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -201,7 +201,7 @@ fn owner_at(dir: &Path, input: &Value, settings: &Value) -> Reply {
     result_write.map_err(|_| "store_unavailable")?;
     Ok(result)
 }
-fn read_allowed(auth: &Value) -> bool {
+pub(crate) fn read_allowed(auth: &Value) -> bool {
     auth["authenticated"] == true
         && matches!(
             text(&auth["auth"], "policy"),
@@ -218,7 +218,7 @@ fn project(store: &Value, settings: &Value, session: &str, path: &str, stamp: u6
     let epoch = consent(settings).ok_or("consent_required")?;
     if path == "/v1/session" {
         return Ok(
-            json!({"protocol":1,"session":session,"capabilities":["documents.read","gallery.read"]}),
+            json!({"protocol":1,"session":session,"capabilities":["documents.read","gallery.read","memory.read","vault.read","host-sync.read","compaction.read","idle-release.read","build-cleanup.read","maintenance.confirm"]}),
         );
     }
     let rows: Vec<&Value> = store
@@ -341,6 +341,14 @@ fn authenticate(
     base: &str,
     token: &str,
 ) -> std::result::Result<(), &'static str> {
+    authenticate_permission(client, base, token, false)
+}
+fn authenticate_permission(
+    client: &reqwest::blocking::Client,
+    base: &str,
+    token: &str,
+    operate: bool,
+) -> std::result::Result<(), &'static str> {
     let response = client
         .get(format!("{base}/api/auth/session"))
         // Serial listener: failed probes must not hold up all readers for seconds.
@@ -360,14 +368,24 @@ fn authenticate(
         return Err("unauthorized");
     }
     let auth: Value = serde_json::from_slice(&body).map_err(|_| "unauthorized")?;
-    if !read_allowed(&auth) {
+    if !read_allowed(&auth) || (operate && !crate::remote_maintenance::operate_allowed(&auth)) {
         return Err("unauthorized");
     }
     Ok(())
 }
-/// Only GET, one request per connection. No cookies, CORS, body, query strings,
+/// One GET or bounded maintenance POST per connection. No cookies, CORS or query strings,
 /// redirects, caller-selected auth server, or path forwarding to native handlers.
+#[cfg(test)]
 fn request(stream: &mut TcpStream) -> std::result::Result<(String, String), &'static str> {
+    let (method, path, token, _) = request_full(stream)?;
+    if method != "GET" {
+        return Err("invalid_request");
+    }
+    Ok((path, token))
+}
+fn request_full(
+    stream: &mut TcpStream,
+) -> std::result::Result<(String, String, String, Value), &'static str> {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
         .map_err(|_| "invalid_request")?;
@@ -392,7 +410,12 @@ fn request(stream: &mut TcpStream) -> std::result::Result<(String, String), &'st
     let line = lines.next().ok_or("invalid_request")?;
     let parts: Vec<_> = line.split(' ').collect();
     if parts.len() != 3
-        || parts[0] != "GET"
+        || !matches!(parts[0], "GET" | "POST")
+        || (parts[0] == "POST"
+            && !matches!(
+                parts[1],
+                "/v1/maintenance/prepare" | "/v1/maintenance/confirm"
+            ))
         || parts[2] != "HTTP/1.1"
         || parts[1].len() > 128
         || parts[1].contains(['?', '%', '#'])
@@ -400,6 +423,7 @@ fn request(stream: &mut TcpStream) -> std::result::Result<(String, String), &'st
         return Err("invalid_request");
     }
     let mut token = None;
+    let mut length = None;
     for line in lines.filter(|s| !s.is_empty()) {
         let (name, value) = line.split_once(':').ok_or("invalid_request")?;
         if !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
@@ -425,13 +449,42 @@ fn request(stream: &mut TcpStream) -> std::result::Result<(String, String), &'st
                         .to_owned(),
                 );
             }
+            "content-length" if parts[0] == "POST" && length.is_none() => {
+                length = Some(
+                    value
+                        .trim()
+                        .parse::<usize>()
+                        .ok()
+                        .filter(|n| *n > 0 && *n <= 4096)
+                        .ok_or("request_limit")?,
+                );
+            }
             "cookie" | "origin" | "transfer-encoding" | "content-length" => {
                 return Err("invalid_request")
             }
             _ => {}
         }
     }
-    Ok((parts[1].to_owned(), token.ok_or("unauthorized")?))
+    let token = token.ok_or("unauthorized")?;
+    let body = if parts[0] == "POST" {
+        if !matches!(
+            parts[1],
+            "/v1/maintenance/prepare" | "/v1/maintenance/confirm"
+        ) {
+            return Err("not_found");
+        }
+        let mut body = vec![0; length.ok_or("invalid_request")?];
+        reader
+            .read_exact(&mut body)
+            .map_err(|_| "invalid_request")?;
+        if deadline.elapsed() > Duration::from_secs(2) {
+            return Err("request_limit");
+        }
+        serde_json::from_slice(&body).map_err(|_| "invalid_request")?
+    } else {
+        Value::Null
+    };
+    Ok((parts[0].into(), parts[1].into(), token, body))
 }
 fn dispatch(
     dir: &Path,
@@ -459,6 +512,16 @@ fn dispatch(
 /// Manual launch only. Publish via an explicitly owner-configured OmaBridge
 /// service route; this never modifies service configuration or starts a forwarder.
 pub fn serve(base: &str, port: u16, settings: fn() -> Value) -> Result<()> {
+    serve_with(base, port, settings, |_, _, _| {
+        Err("surface_unavailable".into())
+    })
+}
+pub fn serve_with(
+    base: &str,
+    port: u16,
+    settings: fn() -> Value,
+    backend: crate::remote_maintenance::Backend,
+) -> Result<()> {
     let url = reqwest::Url::parse(base).map_err(|_| "invalid_auth_base")?;
     if url.scheme() != "http"
         || url.host_str() != Some("127.0.0.1")
@@ -481,6 +544,7 @@ pub fn serve(base: &str, port: u16, settings: fn() -> Value) -> Result<()> {
         .map_err(|_| "authentication_unavailable")?;
     let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|_| "broker_unavailable")?;
     let mut rate = Rate::new();
+    let mut confirmations = crate::remote_maintenance::Confirmations::default();
     for stream in listener.incoming() {
         let Ok(mut stream) = stream else {
             continue;
@@ -489,35 +553,70 @@ pub fn serve(base: &str, port: u16, settings: fn() -> Value) -> Result<()> {
         let mut session = String::new();
         let mut operation = "request";
         let result = (|| {
-            let (path, token) = request(&mut stream)?;
+            let (method, path, token, input) = request_full(&mut stream)?;
             session = fingerprint(&token);
-            operation = if path.starts_with("/v1/gallery") {
+            operation = if method == "POST" {
+                "maintenance.write"
+            } else if crate::remote_maintenance::SURFACES
+                .iter()
+                .any(|s| path == format!("/v1/{s}"))
+            {
+                "maintenance.read"
+            } else if path.starts_with("/v1/gallery") {
                 "gallery.read"
             } else if path.starts_with("/v1/documents") {
                 "documents.read"
             } else {
                 "session.read"
             };
-            rated_dispatch(&mut rate, &root(), &path, &token, settings, |token| {
-                authenticate(&client, base, token)
-            })
+            if operation.starts_with("maintenance.") {
+                maintenance_dispatch(
+                    &mut rate,
+                    &mut confirmations,
+                    &root(),
+                    &method,
+                    &path,
+                    &token,
+                    &input,
+                    settings,
+                    |token| authenticate_permission(&client, base, token, method == "POST"),
+                    backend,
+                )
+            } else {
+                rated_dispatch(&mut rate, &root(), &path, &token, settings, |token| {
+                    authenticate(&client, base, token)
+                })
+            }
         })();
         let code = match &result {
             Ok(_) => 200,
             Err("unauthorized") => 401,
             Err("consent_required") => 403,
             Err("not_found") => 404,
-            Err("rate_limit") => 429,
-            Err("authentication_unavailable" | "store_unavailable" | "store_limit") => 503,
+            Err("stale_report" | "already_claimed") => 409,
+            Err("rate_limit" | "confirmation_limit") => 429,
+            Err(
+                "authentication_unavailable"
+                | "store_busy"
+                | "store_unavailable"
+                | "store_limit"
+                | "surface_unavailable"
+                | "report_limit",
+            ) => 503,
             Err(_) => 400,
         };
         // Only fixed operation/outcome and a one-way opaque fingerprint. No IDs, URLs or content.
         // Bound audit volume independently of either request budget.
         rate.audited = rate.audited.saturating_add(1);
         if rate.audited <= 121 {
+            let outcome = match &result {
+                Ok(value) if value["outcome"] == "unknown" => "unknown",
+                Ok(_) => "ok",
+                Err(error) => *error,
+            };
             eprintln!(
                 "{}",
-                json!({"surfaceAudit":1,"operation":operation,"session":session,"outcome":result.as_ref().err().copied().unwrap_or("ok")})
+                json!({"surfaceAudit":1,"operation":operation,"session":session,"outcome":outcome})
             );
         }
         let body = result
@@ -1134,5 +1233,269 @@ mod configuration_tests {
         f.set_len(STORE_LIMIT + 1).unwrap();
         assert_eq!(read_store(&dir), Err("store_limit"));
         fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+/// Serialize the full stale-check/claim/apply boundary across broker processes.
+pub(crate) fn operation_lock(dir: &Path) -> std::result::Result<fs::File, &'static str> {
+    fs::create_dir_all(dir).map_err(|_| "store_unavailable")?;
+    if fs::symlink_metadata(dir)
+        .map_err(|_| "store_unavailable")?
+        .file_type()
+        .is_symlink()
+    {
+        return Err("store_unavailable");
+    }
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(|_| "store_unavailable")?;
+    let lock = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(dir.join("maintenance-operation.lock"))
+        .map_err(|_| "store_unavailable")?;
+    if !lock.metadata().is_ok_and(|m| m.is_file()) {
+        return Err("store_unavailable");
+    }
+    if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+        return Err("store_busy");
+    }
+    Ok(lock)
+}
+/// Separate durable, bounded claims; a crash after this write is an unknown outcome.
+pub(crate) fn claim(dir: &Path, id: &str) -> std::result::Result<(), &'static str> {
+    fs::create_dir_all(dir).map_err(|_| "store_unavailable")?;
+    if fs::symlink_metadata(dir)
+        .map_err(|_| "store_unavailable")?
+        .file_type()
+        .is_symlink()
+    {
+        return Err("store_unavailable");
+    }
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(|_| "store_unavailable")?;
+    let lock = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(dir.join("maintenance.lock"))
+        .map_err(|_| "store_unavailable")?;
+    if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+        return Err("store_busy");
+    }
+    let path = dir.join("maintenance-claims.json");
+    let mut claims: Vec<String> = match fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(&path)
+    {
+        Ok(f) => {
+            if !f.metadata().is_ok_and(|m| m.is_file() && m.len() <= 65536) {
+                return Err("store_limit");
+            }
+            let mut bytes = Vec::new();
+            f.take(65537)
+                .read_to_end(&mut bytes)
+                .map_err(|_| "store_unavailable")?;
+            if bytes.len() > 65536 {
+                return Err("store_limit");
+            }
+            serde_json::from_slice(&bytes).map_err(|_| "store_unavailable")?
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(_) => return Err("store_unavailable"),
+    };
+    if claims.iter().any(|s| s == id) {
+        return Err("already_claimed");
+    }
+    if claims.len() >= 128 || claims.iter().any(|s| !opaque(s)) {
+        return Err("store_limit");
+    }
+    claims.push(id.into());
+    let bytes = serde_json::to_vec(&claims).map_err(|_| "store_unavailable")?;
+    let tmp = dir.join(format!(".{}", uuid::Uuid::new_v4()));
+    let result = (|| -> std::io::Result<()> {
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(&tmp)?;
+        f.write_all(&bytes)?;
+        f.sync_all()?;
+        fs::rename(&tmp, &path)?;
+        fs::File::open(dir)?.sync_all()
+    })();
+    let _ = fs::remove_file(tmp);
+    result.map_err(|_| "store_unavailable")
+}
+#[allow(clippy::too_many_arguments)]
+fn maintenance_dispatch(
+    rate: &mut Rate,
+    confirmations: &mut crate::remote_maintenance::Confirmations,
+    dir: &Path,
+    method: &str,
+    path: &str,
+    token: &str,
+    input: &Value,
+    mut settings: impl FnMut() -> Value,
+    mut auth: impl FnMut(&str) -> std::result::Result<(), &'static str>,
+    backend: crate::remote_maintenance::Backend,
+) -> Reply {
+    // Share the existing auth flood gate, session/global admission and live checks.
+    rated_dispatch(rate, dir, "/v1/session", token, &mut settings, &mut auth)?;
+    let before = settings();
+    if method == "POST" && crate::remote_maintenance::epoch(&before).is_none() {
+        return Err("consent_required");
+    }
+    let surface = path.strip_prefix("/v1/").ok_or("not_found")?;
+    let first = if method == "GET" {
+        Some(crate::remote_maintenance::report(
+            backend, surface, &before, token,
+        )?)
+    } else {
+        None
+    };
+    if let Err(error) = auth(token) {
+        rate.known_good.remove(&fingerprint(token));
+        rate.failures = rate.failures.saturating_add(1);
+        return Err(error);
+    }
+    let after = settings();
+    if consent(&before) != consent(&after)
+        || consent(&after).is_none()
+        || crate::remote_maintenance::epoch(&before) != crate::remote_maintenance::epoch(&after)
+    {
+        return Err("consent_required");
+    }
+    let session = fingerprint(token);
+    match (method, path) {
+        ("POST", "/v1/maintenance/prepare") => {
+            confirmations.prepare(backend, &after, &session, token, input)
+        }
+        ("POST", "/v1/maintenance/confirm") => {
+            confirmations.confirm_checked(dir, backend, &after, &session, token, input, || {
+                if let Err(error) = auth(token) {
+                    rate.known_good.remove(&session);
+                    rate.failures = rate.failures.saturating_add(1);
+                    return Err(error);
+                }
+                if settings() != after {
+                    return Err("stale_report");
+                }
+                Ok(())
+            })
+        }
+        ("GET", _) => {
+            let last = crate::remote_maintenance::report(backend, surface, &after, token)?;
+            if first.as_ref() != Some(&last) {
+                return Err("stale_report");
+            }
+            Ok(last)
+        }
+        _ => Err("not_found"),
+    }
+}
+
+#[cfg(test)]
+mod maintenance_ingress_tests {
+    use super::*;
+    fn settings() -> Value {
+        json!({"remoteDocumentsEnabled":true,"remoteDocumentsConsent":"r","remoteMaintenanceEnabled":true,"remoteMaintenanceConsent":"w"})
+    }
+    fn backend(_: &Value, _: &Value, _: &str) -> Result<Value> {
+        Ok(json!({"status":"idle"}))
+    }
+    fn invoke(
+        rate: &mut Rate,
+        method: &str,
+        settings: impl FnMut() -> Value,
+        auth: impl FnMut(&str) -> std::result::Result<(), &'static str>,
+    ) -> Reply {
+        maintenance_dispatch(
+            rate,
+            &mut crate::remote_maintenance::Confirmations::default(),
+            Path::new("/unavailable"),
+            method,
+            if method == "GET" {
+                "/v1/memory"
+            } else {
+                "/v1/maintenance/prepare"
+            },
+            "phone",
+            &json!({}),
+            settings,
+            auth,
+            backend,
+        )
+    }
+    #[test]
+    fn denied_and_revoked_requests_never_reach_backend() {
+        let mut rate = Rate::new();
+        assert_eq!(
+            invoke(
+                &mut rate,
+                "GET",
+                || panic!("denied settings read"),
+                |_| Err("unauthorized")
+            ),
+            Err("unauthorized")
+        );
+        let mut calls = 0;
+        assert_eq!(
+            invoke(&mut rate, "GET", settings, |_| {
+                calls += 1;
+                if calls == 3 {
+                    Err("unauthorized")
+                } else {
+                    Ok(())
+                }
+            }),
+            Err("unauthorized")
+        );
+        assert!(!rate.known_good.contains(&fingerprint("phone")));
+    }
+    #[test]
+    fn maintenance_shares_existing_session_budget() {
+        let mut rate = Rate::new();
+        for _ in 0..30 {
+            assert!(invoke(&mut rate, "GET", settings, |_| Ok(())).is_ok())
+        }
+        assert_eq!(
+            invoke(&mut rate, "POST", settings, |_| panic!("over-limit auth")),
+            Err("rate_limit")
+        );
+    }
+    #[test]
+    fn disabling_owner_consent_during_report_denies_response() {
+        let mut calls = 0;
+        let result = invoke(
+            &mut Rate::new(),
+            "GET",
+            || {
+                calls += 1;
+                let mut s = settings();
+                if calls >= 4 {
+                    s["remoteDocumentsEnabled"] = json!(false)
+                }
+                s
+            },
+            |_| Ok(()),
+        );
+        assert_eq!(result, Err("consent_required"));
+    }
+    #[test]
+    fn default_off_write_consent_denies_mutations() {
+        assert_eq!(
+            invoke(
+                &mut Rate::new(),
+                "POST",
+                || json!({"remoteDocumentsEnabled":true,"remoteDocumentsConsent":"r"}),
+                |_| Ok(())
+            ),
+            Err("consent_required")
+        );
     }
 }
