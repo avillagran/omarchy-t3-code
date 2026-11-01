@@ -8,6 +8,12 @@
 //! so building by hand counts as use). Sources, branches and uncommitted changes are
 //! never touched, nor is `node_modules` (reinstalling needs the network). Without a
 //! shell to read thread activity from, nothing is cleaned.
+//!
+//! Deletion first renames the candidate to `.o3-cleanup-<uuid>` in the same parent.
+//! Interrupted quarantines block subsequent cleanup and are reported for owner
+//! inspection. Recovery is manual: stop builders, inspect the reported directory,
+//! then restore its original build name only when that name is unoccupied. Never
+//! recursively delete an unverified leftover as part of startup or a retry.
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
 use std::{
@@ -187,6 +193,7 @@ mod guarded {
         children: Vec<Node>,
     }
     pub(super) struct Tree {
+        root: PathBuf,
         parent: File,
         node: Node,
         pub identity: String,
@@ -267,7 +274,11 @@ mod guarded {
         start: std::time::Instant,
     ) -> io::Result<Tree> {
         use sha2::Digest;
-        if dir.parent() != Some(root) {
+        if dir
+            .file_name()
+            .is_some_and(|n| n.as_bytes().starts_with(b".o3-cleanup-"))
+            || dir.parent() != Some(root)
+        {
             return Err(io::Error::other("invalid candidate"));
         }
         let path = CString::new(root.as_os_str().as_bytes())?;
@@ -305,6 +316,7 @@ mod guarded {
             0,
         )?;
         Ok(Tree {
+            root: root.to_path_buf(),
             parent,
             node,
             identity: format!("{:x}", digest.finalize()),
@@ -350,9 +362,129 @@ mod guarded {
         }
         Ok(())
     }
+    const QUARANTINE_PREFIX: &str = ".o3-cleanup-";
+
+    // Leftovers require an explicit owner decision; never adopt them as candidates.
+    pub(super) fn leftovers(root: &Path) -> io::Result<Vec<PathBuf>> {
+        std::fs::read_dir(root)?
+            .filter_map(|entry| match entry {
+                Ok(entry)
+                    if entry
+                        .file_name()
+                        .as_bytes()
+                        .starts_with(QUARANTINE_PREFIX.as_bytes()) =>
+                {
+                    Some(Ok(entry.path()))
+                }
+                Ok(_) => None,
+                Err(error) => Some(Err(error)),
+            })
+            .collect()
+    }
+    fn rename(parent: &File, from: &std::ffi::OsStr, to: &std::ffi::OsStr) -> io::Result<()> {
+        let from = CString::new(from.as_bytes())?;
+        let to = CString::new(to.as_bytes())?;
+        let rc = unsafe {
+            libc::syscall(
+                libc::SYS_renameat2,
+                parent.as_raw_fd(),
+                from.as_ptr(),
+                parent.as_raw_fd(),
+                to.as_ptr(),
+                libc::RENAME_NOREPLACE,
+            )
+        };
+        if rc != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(())
+    }
+    fn same_entry(a: &File, b: &File) -> io::Result<()> {
+        let a_meta = a.metadata()?;
+        let b_meta = b.metadata()?;
+        same_mount(mount(a)?, mount(b)?)?;
+        if a_meta.dev() != b_meta.dev() || a_meta.ino() != b_meta.ino() {
+            return Err(io::Error::other("replaced directory entry"));
+        }
+        Ok(())
+    }
+    // Validate the entire snapshot before the first unlink, including nested Git.
+    fn validate(parent: &File, node: &Node) -> io::Result<()> {
+        let current = open(parent, &node.name)?;
+        same_entry(&current, &node.file)?;
+        if current.metadata()?.is_dir() {
+            if names(&current)?
+                != node
+                    .children
+                    .iter()
+                    .map(|n| n.name.clone())
+                    .collect::<Vec<_>>()
+            {
+                return Err(io::Error::other("changed directory"));
+            }
+            for child in &node.children {
+                validate(&current, child)?;
+            }
+        }
+        Ok(())
+    }
     impl Tree {
+        #[cfg(test)]
         pub fn remove(self) -> io::Result<()> {
-            remove(&self.parent, &self.node)
+            self.remove_checked(|_| Ok(()))
+        }
+        pub fn remove_checked(self, check: impl FnOnce(&Path) -> io::Result<()>) -> io::Result<()> {
+            self.remove_hooked(|| {}, check)
+        }
+        pub(super) fn remove_hooked(
+            mut self,
+            before_rename: impl FnOnce(),
+            check: impl FnOnce(&Path) -> io::Result<()>,
+        ) -> io::Result<()> {
+            before_rename();
+            let original = self.node.name.clone();
+            let quarantine =
+                std::ffi::OsString::from(format!("{QUARANTINE_PREFIX}{}", uuid::Uuid::new_v4()));
+            // Atomic ownership transfer relative to the validated parent. ENOSYS and
+            // unsupported flags fail closed: there is no pathname deletion fallback.
+            rename(&self.parent, &original, &quarantine).map_err(|error| {
+                io::Error::other(format!("no deletion: quarantine rename failed: {error}"))
+            })?;
+            self.node.name = quarantine.clone();
+            let moved = open(&self.parent, &quarantine);
+            let verified: io::Result<()> = (|| {
+                let reopened = moved
+                    .as_ref()
+                    .map_err(|e| io::Error::other(e.to_string()))?
+                    .try_clone()?;
+                same_entry(&self.node.file, &reopened)?;
+                self.node.file = reopened;
+                check(&self.root.join(&quarantine))?;
+                validate(&self.parent, &self.node)?;
+                Ok(())
+            })();
+            if let Err(error) = verified {
+                // Do not overwrite a new build, or move an unrelated replacement.
+                if open(&self.parent, &quarantine).is_ok_and(|f| {
+                    moved
+                        .as_ref()
+                        .is_ok_and(|moved| same_entry(moved, &f).is_ok())
+                }) {
+                    let _ = rename(&self.parent, &quarantine, &original);
+                }
+                return Err(io::Error::other(format!(
+                    "no deletion: {error}; inspect {}",
+                    self.root.join(&quarantine).display()
+                )));
+            }
+            // Children are resolved only beneath the reopened quarantine descriptor.
+            // An interruption leaves a discoverable quarantine for manual recovery.
+            remove(&self.parent, &self.node).map_err(|error| {
+                io::Error::other(format!(
+                    "cleanup_outcome_unknown: {error}; inspect {}",
+                    self.root.join(&quarantine).display()
+                ))
+            })
         }
     }
     #[cfg(test)]
@@ -383,7 +515,13 @@ pub fn build_dirs(root: &Path) -> Vec<PathBuf> {
         }
     }
     for entry in std::fs::read_dir(root).into_iter().flatten().flatten() {
-        if entry.file_name() != ".git" && entry.path().join("CACHEDIR.TAG").is_file() {
+        if entry.file_name() != ".git"
+            && !entry
+                .file_name()
+                .as_encoded_bytes()
+                .starts_with(b".o3-cleanup-")
+            && entry.path().join("CACHEDIR.TAG").is_file()
+        {
             found.push(entry.path());
         }
     }
@@ -521,6 +659,19 @@ pub fn run(client: &Client, ui_state: &Value, dry_run: bool) -> Result<Value> {
             .iter()
             .find(|(k, _)| *k == kind)
             .and_then(|(_, d)| *d);
+        match guarded::leftovers(root) {
+            Ok(paths) if !paths.is_empty() => {
+                failed.push(
+                    json!({"path":root,"error":"cleanup_recovery_required","quarantines":paths}),
+                );
+                continue;
+            }
+            Err(error) => {
+                failed.push(json!({"path":root,"error":error.to_string()}));
+                continue;
+            }
+            _ => {}
+        }
         // Cheap checks first: thread activity, then whether there is anything to clean.
         if !due(activity, now, limit) || !real_dir(root) {
             continue;
@@ -559,7 +710,17 @@ pub fn run(client: &Client, ui_state: &Value, dry_run: bool) -> Result<Value> {
             if fresh.identity != tree.identity {
                 continue;
             }
-            match fresh.remove() {
+            match fresh.remove_checked(|quarantine| {
+                if protected_candidate(&fresh_shell, root, &dir)
+                    || protected_candidate(&fresh_shell, root, quarantine)
+                    || folders(&fresh_shell, now_ms()).keys().any(|p| {
+                        p != root && (paths_overlap(&dir, p) || paths_overlap(quarantine, p))
+                    })
+                {
+                    return Err(std::io::Error::other("protected root overlap"));
+                }
+                Ok(())
+            }) {
                 Ok(()) => {
                     eprintln!(
                         "ot3: removed idle build output {} ({bytes} bytes)",
@@ -568,9 +729,8 @@ pub fn run(client: &Client, ui_state: &Value, dry_run: bool) -> Result<Value> {
                     freed += bytes;
                     entries.push(json!({"path":root,"dir":dir,"kind":kind,"bytes":bytes}));
                 }
-                Err(error) => failed.push(
-                    json!({"path":root,"dir":dir,"kind":kind,"error":error.kind().to_string()}),
-                ),
+                Err(error) => failed
+                    .push(json!({"path":root,"dir":dir,"kind":kind,"error":error.to_string()})),
             }
         }
     }
@@ -826,6 +986,17 @@ pub fn remote_report(shell: &Value, settings: &Value) -> Result<Value> {
         if root.canonicalize().ok().as_ref() != Some(&root) || !real_dir(&root) {
             return Err("invalid_root".into());
         }
+        let quarantines = guarded::leftovers(&root).map_err(|_| "invalid_root")?;
+        if !quarantines.is_empty() {
+            return Err(format!(
+                "cleanup_recovery_required: {}",
+                quarantines
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
         let associated = threads
             .iter()
             .filter(|t| t["worktreePath"].as_str() == root.to_str())
@@ -958,7 +1129,14 @@ pub fn remote_run(shell: &Value, settings: &Value, expected: &Value) -> Result<V
         if tree.identity != text(entry, "identity") {
             return Err("stale_report".into());
         }
-        tree.remove().map_err(|_| "cleanup_outcome_unknown")?;
+        tree.remove_checked(|quarantine| {
+            if protected_candidate(shell, root, dir) || protected_candidate(shell, root, quarantine)
+            {
+                return Err(std::io::Error::other("protected root overlap"));
+            }
+            Ok(())
+        })
+        .map_err(|error| format!("cleanup_stopped: {error}"))?;
         removed += 1;
     }
     Ok(json!({"removed":removed}))
@@ -1150,6 +1328,115 @@ mod remote_tests {
         std::os::unix::fs::symlink(root.join("saved-output"), root.join("target")).unwrap();
         assert!(tree.remove().is_err());
         assert!(root.join("saved-output/debug/deep/artifact").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn rename_after_validation_never_traverses_moved_tree() {
+        for replacement in [false, true] {
+            let (root, _, _) = fixture();
+            let outside = root.with_extension("outside");
+            std::fs::create_dir(&outside).unwrap();
+            let saved = outside.join("saved-output");
+            let tree = guarded::scan(&root, &root.join("target")).unwrap();
+            let result = tree.remove_hooked(
+                || {
+                    std::fs::rename(root.join("target"), &saved).unwrap();
+                    if replacement {
+                        std::fs::create_dir(root.join("target")).unwrap();
+                        std::fs::write(root.join("target/precious"), "keep").unwrap();
+                    }
+                },
+                |_| Ok(()),
+            );
+            assert!(result.is_err());
+            assert_eq!(
+                std::fs::read_to_string(saved.join("debug/deep/artifact")).unwrap(),
+                "old"
+            );
+            if replacement {
+                assert_eq!(
+                    std::fs::read_to_string(root.join("target/precious")).unwrap(),
+                    "keep"
+                );
+            }
+            assert!(guarded::leftovers(&root).unwrap().is_empty());
+            std::fs::remove_dir_all(root).unwrap();
+            std::fs::remove_dir_all(outside).unwrap();
+        }
+    }
+    #[test]
+    fn interrupted_quarantine_is_reported_and_manually_recoverable() {
+        let (root, shell, settings) = fixture();
+        std::fs::write(root.join(".gitignore"), "target/\n.o3-cleanup-*/\n").unwrap();
+        std::fs::write(root.join("target/CACHEDIR.TAG"), "cache").unwrap();
+        let tree = guarded::scan(&root, &root.join("target")).unwrap();
+        let interrupted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            tree.remove_checked(|_| panic!("simulated interruption"))
+        }));
+        assert!(interrupted.is_err());
+        let leftovers = guarded::leftovers(&root).unwrap();
+        assert_eq!(leftovers.len(), 1);
+        assert!(leftovers[0].join("debug/deep/artifact").exists());
+        assert!(remote_report(&shell, &settings)
+            .unwrap_err()
+            .contains("cleanup_recovery_required"));
+        assert!(remote_report(&shell, &settings)
+            .unwrap_err()
+            .contains(leftovers[0].to_str().unwrap()));
+        assert!(guarded::scan(&root, &leftovers[0]).is_err());
+        assert!(build_dirs(&root).is_empty());
+        // Recovery is an explicit owner action, never an automatic retry.
+        std::fs::rename(&leftovers[0], root.join("target")).unwrap();
+        assert!(guarded::leftovers(&root).unwrap().is_empty());
+        assert_eq!(
+            std::fs::read_to_string(root.join("target/debug/deep/artifact")).unwrap(),
+            "old"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn quarantine_git_and_overlap_rechecks_restore_without_deletion() {
+        for nested_git in [false, true] {
+            let (root, mut shell, _) = fixture();
+            let tree = guarded::scan(&root, &root.join("target")).unwrap();
+            let result = tree.remove_checked(|quarantine| {
+                if nested_git {
+                    std::fs::write(quarantine.join("debug/.git"), "gitdir: /protected").unwrap();
+                } else {
+                    shell["projects"]
+                        .as_array_mut()
+                        .unwrap()
+                        .push(json!({"workspaceRoot":quarantine.join("debug")}));
+                    if protected_candidate(&shell, &root, quarantine) {
+                        return Err(std::io::Error::other("protected root overlap"));
+                    }
+                }
+                Ok(())
+            });
+            assert!(result.is_err());
+            assert!(root.join("target/debug/deep/artifact").exists());
+            assert!(guarded::leftovers(&root).unwrap().is_empty());
+            std::fs::remove_dir_all(root).unwrap();
+        }
+    }
+    #[test]
+    fn failed_verification_never_overwrites_new_original_name() {
+        let (root, _, _) = fixture();
+        let tree = guarded::scan(&root, &root.join("target")).unwrap();
+        assert!(tree
+            .remove_checked(|_| {
+                std::fs::create_dir(root.join("target")).unwrap();
+                std::fs::write(root.join("target/precious"), "keep").unwrap();
+                Err(std::io::Error::other("stop before deletion"))
+            })
+            .is_err());
+        assert_eq!(
+            std::fs::read_to_string(root.join("target/precious")).unwrap(),
+            "keep"
+        );
+        let leftovers = guarded::leftovers(&root).unwrap();
+        assert_eq!(leftovers.len(), 1);
+        assert!(leftovers[0].join("debug/deep/artifact").exists());
         std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
