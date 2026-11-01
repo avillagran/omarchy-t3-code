@@ -9,13 +9,14 @@ use std::{io::Write,os::unix::fs::PermissionsExt,process::{Command,Stdio}};
 /// explicit override, the one on PATH, `~/.local/bin`, then the bundled copy.
 fn candidates()->Vec<PathBuf>{
  let mut out=vec![];
+ if let Some(raw)=std::env::var_os("OT3_OMABRIDGE_BIN"){let p=PathBuf::from(raw);if p.is_absolute(){out.push(p)}return out}
+
  if let Some(dir)=crate::omabridge_route::embedded_state_dir(){
   if let Ok(raw)=fs::read(dir.join("host.json")){
    if let Ok(doc)=serde_json::from_slice::<Value>(&raw){if let Some(p)=doc["executable"].as_str(){let p=PathBuf::from(p);if p.is_absolute(){out.push(p);}}}
   }
  }
 
- if let Some(raw)=std::env::var_os("OT3_OMABRIDGE_BIN"){let p=PathBuf::from(raw);if p.is_absolute(){out.push(p)}return out}
  if let Some(path)=std::env::var_os("PATH"){for dir in std::env::split_paths(&path){out.push(dir.join("omabridge"))}}
  out.push(home().join(".local/bin/omabridge"));
  if let Some(dir)=std::env::current_exe().ok().and_then(|e|e.parent().map(Path::to_path_buf)){out.push(dir.join("omabridge"))}
