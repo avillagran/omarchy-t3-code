@@ -183,7 +183,12 @@ fn cleanup_report(settings: &Value, bearer: &str) -> Result<(Value, Value)> {
                     .find(|p| p["id"] == t["projectId"])
                     .and_then(|p| p["workspaceRoot"].as_str())
             });
-        if !root.is_some_and(|r| roots.iter().any(|v| v == r)) {
+        if !root.is_some_and(|r| {
+            roots
+                .iter()
+                .filter_map(Value::as_str)
+                .any(|v| crate::build_cleanup::paths_overlap(Path::new(v), Path::new(r)))
+        }) {
             continue;
         }
         if claims.len() >= 16 || start.elapsed() > std::time::Duration::from_secs(2) {

@@ -28,9 +28,20 @@ const MAX_FILES: usize = 200_000;
 /// Project markers and the build folders their tools regenerate.
 const RULES: &[(&[&str], &[&str])] = &[
     (&["Cargo.toml"], &["target"]),
-    (&["build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts"], &["build", ".gradle"]),
+    (
+        &[
+            "build.gradle",
+            "build.gradle.kts",
+            "settings.gradle",
+            "settings.gradle.kts",
+        ],
+        &["build", ".gradle"],
+    ),
     (&["CMakeLists.txt"], &["build"]),
-    (&["package.json"], &[".next", ".nuxt", ".svelte-kit", ".turbo", ".parcel-cache"]),
+    (
+        &["package.json"],
+        &[".next", ".nuxt", ".svelte-kit", ".turbo", ".parcel-cache"],
+    ),
     (&["build.zig"], &["zig-cache", ".zig-cache"]),
 ];
 
@@ -39,7 +50,11 @@ const RULES: &[(&[&str], &[&str])] = &[
 pub fn days(ui_state: &Value, key: &str, default: u64) -> Option<u64> {
     match ui_state.get(key) {
         Some(Value::Null) => None,
-        Some(v) => Some(v.as_u64().filter(|n| (1..=365).contains(n)).unwrap_or(default)),
+        Some(v) => Some(
+            v.as_u64()
+                .filter(|n| (1..=365).contains(n))
+                .unwrap_or(default),
+        ),
         None => Some(default),
     }
 }
@@ -48,12 +63,304 @@ pub fn due(last_use_ms: i64, now_ms: i64, days: Option<u64>) -> bool {
 }
 
 fn ignored(root: &Path, dir: &Path) -> bool {
-    let Ok(rel) = dir.strip_prefix(root) else { return false };
+    let Ok(rel) = dir.strip_prefix(root) else {
+        return false;
+    };
     let rel = format!("{}/", rel.display());
-    crate::disk_space::git(root, &["check-ignore", "-q", "--", &rel]).is_some_and(|o| o.status.success())
+    crate::disk_space::git(root, &["check-ignore", "-q", "--", &rel])
+        .is_some_and(|o| o.status.success())
 }
 fn real_dir(path: &Path) -> bool {
     path.symlink_metadata().is_ok_and(|m| m.is_dir())
+}
+
+/// Component-aware overlap, including canonical aliases when available.
+pub(crate) fn paths_overlap(a: &Path, b: &Path) -> bool {
+    let a = a.canonicalize().unwrap_or_else(|_| a.to_path_buf());
+    let b = b.canonicalize().unwrap_or_else(|_| b.to_path_buf());
+    a.starts_with(&b) || b.starts_with(&a)
+}
+fn protected_candidate(shell: &Value, owner: &Path, dir: &Path) -> bool {
+    shell["projects"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|p| p["workspaceRoot"].as_str())
+        .chain(
+            shell["threads"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|t| t["worktreePath"].as_str()),
+        )
+        .filter(|p| !p.is_empty())
+        .map(Path::new)
+        // The owning checkout necessarily contains its build output.
+        .any(|p| p != owner && paths_overlap(dir, p))
+}
+
+// No pathname-based recursive deletion: every lookup is relative to an opened
+// directory, and openat2 refuses bind mounts (even on the same device), symlinks,
+// and escapes. Unsupported kernels/filesystems fail closed.
+mod guarded {
+    use super::*;
+    use std::{
+        ffi::CString,
+        fs::File,
+        io,
+        os::fd::{AsRawFd, FromRawFd},
+        os::unix::{ffi::OsStrExt, fs::MetadataExt},
+    };
+    const RESOLVE_NO_XDEV: u64 = 0x01;
+    const RESOLVE_NO_SYMLINKS: u64 = 0x04;
+    const RESOLVE_BENEATH: u64 = 0x08;
+    #[repr(C)]
+    struct OpenHow {
+        flags: u64,
+        mode: u64,
+        resolve: u64,
+    }
+    fn open(parent: &File, name: &std::ffi::OsStr) -> io::Result<File> {
+        let name = CString::new(name.as_bytes())?;
+        let how = OpenHow {
+            flags: (libc::O_PATH | libc::O_CLOEXEC) as u64,
+            mode: 0,
+            resolve: RESOLVE_NO_XDEV | RESOLVE_NO_SYMLINKS | RESOLVE_BENEATH,
+        };
+        let fd = unsafe {
+            libc::syscall(
+                libc::SYS_openat2,
+                parent.as_raw_fd(),
+                name.as_ptr(),
+                &how,
+                std::mem::size_of::<OpenHow>(),
+            )
+        };
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(unsafe { File::from_raw_fd(fd as i32) })
+    }
+    fn mount(file: &File) -> io::Result<u64> {
+        let mut stat: libc::statx = unsafe { std::mem::zeroed() };
+        let rc = unsafe {
+            libc::statx(
+                file.as_raw_fd(),
+                c"".as_ptr(),
+                libc::AT_EMPTY_PATH | libc::AT_SYMLINK_NOFOLLOW,
+                libc::STATX_MNT_ID,
+                &mut stat,
+            )
+        };
+        if rc != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        if stat.stx_mask & libc::STATX_MNT_ID == 0 {
+            return Err(io::Error::other("mount identity unavailable"));
+        }
+        Ok(stat.stx_mnt_id)
+    }
+    fn same_mount(expected: u64, actual: u64) -> io::Result<()> {
+        if expected != actual {
+            Err(io::Error::other("mount crossing"))
+        } else {
+            Ok(())
+        }
+    }
+    fn names(file: &File) -> io::Result<Vec<std::ffi::OsString>> {
+        let mut names = std::fs::read_dir(format!("/proc/self/fd/{}", file.as_raw_fd()))?
+            .take(10_001)
+            .map(|e| e.map(|e| e.file_name()))
+            .collect::<io::Result<Vec<_>>>()?;
+        if names.len() > 10_000 {
+            return Err(io::Error::other("report_limit"));
+        }
+        names.sort();
+        if names.iter().any(|n| n == ".git") {
+            return Err(io::Error::other("nested Git checkout"));
+        }
+        Ok(names)
+    }
+    struct Node {
+        file: File,
+        name: std::ffi::OsString,
+        children: Vec<Node>,
+    }
+    pub(super) struct Tree {
+        parent: File,
+        node: Node,
+        pub identity: String,
+        pub bytes: u64,
+        pub newest: i64,
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn walk(
+        parent: &File,
+        name: std::ffi::OsString,
+        mount_id: u64,
+        digest: &mut sha2::Sha256,
+        bytes: &mut u64,
+        newest: &mut i64,
+        visited: &mut usize,
+        start: std::time::Instant,
+        depth: usize,
+    ) -> io::Result<Node> {
+        use sha2::Digest;
+        *visited += 1;
+        if depth > 128 || *visited > 10_000 || start.elapsed() > Duration::from_secs(2) {
+            return Err(io::Error::other("report_limit"));
+        }
+        let file = open(parent, &name)?;
+        same_mount(mount_id, mount(&file)?)?;
+        let meta = file.metadata()?;
+        if !meta.is_dir() && !meta.is_file() {
+            return Err(io::Error::other("unsupported entry"));
+        }
+        digest.update(name.as_bytes());
+        digest.update(format!(
+            "{}:{}:{}:{}:{}:{}:{}:{}:{}",
+            mount_id,
+            meta.dev(),
+            meta.ino(),
+            meta.len(),
+            meta.mtime(),
+            meta.mtime_nsec(),
+            meta.mode(),
+            meta.ctime(),
+            meta.ctime_nsec()
+        ));
+        *bytes = bytes.saturating_add(meta.blocks().saturating_mul(512));
+        *newest = (*newest).max(
+            meta.mtime()
+                .saturating_mul(1000)
+                .saturating_add(meta.mtime_nsec() / 1_000_000),
+        );
+        let mut children = Vec::new();
+        if meta.is_dir() {
+            for child in names(&file)? {
+                children.push(walk(
+                    &file,
+                    child,
+                    mount_id,
+                    digest,
+                    bytes,
+                    newest,
+                    visited,
+                    start,
+                    depth + 1,
+                )?);
+            }
+        }
+        Ok(Node {
+            file,
+            name,
+            children,
+        })
+    }
+    pub(super) fn scan(root: &Path, dir: &Path) -> io::Result<Tree> {
+        scan_bounded(root, dir, &mut 0, std::time::Instant::now())
+    }
+    pub(super) fn scan_bounded(
+        root: &Path,
+        dir: &Path,
+        visited: &mut usize,
+        start: std::time::Instant,
+    ) -> io::Result<Tree> {
+        use sha2::Digest;
+        if dir.parent() != Some(root) {
+            return Err(io::Error::other("invalid candidate"));
+        }
+        let path = CString::new(root.as_os_str().as_bytes())?;
+        let how = OpenHow {
+            flags: (libc::O_PATH | libc::O_DIRECTORY | libc::O_CLOEXEC) as u64,
+            mode: 0,
+            resolve: RESOLVE_NO_SYMLINKS,
+        };
+        let fd = unsafe {
+            libc::syscall(
+                libc::SYS_openat2,
+                libc::AT_FDCWD,
+                path.as_ptr(),
+                &how,
+                std::mem::size_of::<OpenHow>(),
+            )
+        };
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let parent = unsafe { File::from_raw_fd(fd as i32) };
+        let mut digest = sha2::Sha256::new();
+        let (mut bytes, mut newest) = (0, 0);
+        let node = walk(
+            &parent,
+            dir.file_name()
+                .ok_or_else(|| io::Error::other("invalid candidate"))?
+                .to_owned(),
+            mount(&parent)?,
+            &mut digest,
+            &mut bytes,
+            &mut newest,
+            visited,
+            start,
+            0,
+        )?;
+        Ok(Tree {
+            parent,
+            node,
+            identity: format!("{:x}", digest.finalize()),
+            bytes,
+            newest,
+        })
+    }
+    fn remove(parent: &File, node: &Node) -> io::Result<()> {
+        let current = open(parent, &node.name)?;
+        let a = current.metadata()?;
+        let b = node.file.metadata()?;
+        same_mount(mount(&node.file)?, mount(&current)?)?;
+        if a.dev() != b.dev() || a.ino() != b.ino() {
+            return Err(io::Error::other("replaced directory entry"));
+        }
+        if b.is_dir() {
+            if names(&node.file)?
+                != node
+                    .children
+                    .iter()
+                    .map(|n| n.name.clone())
+                    .collect::<Vec<_>>()
+            {
+                return Err(io::Error::other("changed directory"));
+            }
+            for child in &node.children {
+                remove(&node.file, child)?;
+            }
+            if !names(&node.file)?.is_empty() {
+                return Err(io::Error::other("changed directory"));
+            }
+        }
+        let name = CString::new(node.name.as_bytes())?;
+        let rc = unsafe {
+            libc::unlinkat(
+                parent.as_raw_fd(),
+                name.as_ptr(),
+                if b.is_dir() { libc::AT_REMOVEDIR } else { 0 },
+            )
+        };
+        if rc != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(())
+    }
+    impl Tree {
+        pub fn remove(self) -> io::Result<()> {
+            remove(&self.parent, &self.node)
+        }
+    }
+    #[cfg(test)]
+    #[test]
+    fn same_device_different_mount_is_refused() {
+        assert!(same_mount(100, 101).is_err());
+        assert!(same_mount(100, 100).is_ok());
+    }
 }
 
 /// Build folders directly under `root` that are safe to delete.
@@ -66,7 +373,10 @@ pub fn build_dirs(root: &Path) -> Vec<PathBuf> {
         for d in *dirs {
             let path = root.join(d);
             // A CMake `build/` is only build output once CMake configured it.
-            if *d == "build" && markers.contains(&"CMakeLists.txt") && !path.join("CMakeCache.txt").is_file() {
+            if *d == "build"
+                && markers.contains(&"CMakeLists.txt")
+                && !path.join("CMakeCache.txt").is_file()
+            {
                 continue;
             }
             found.push(path);
@@ -94,12 +404,30 @@ fn mtime_ms(path: &Path) -> i64 {
 /// Newest change to the folder's files, git state or build output.
 pub fn last_file_change(root: &Path, builds: &[PathBuf]) -> i64 {
     let mut newest = 0;
-    if let Some(out) = crate::disk_space::git(root, &["ls-files", "-z", "--cached", "--others", "--exclude-standard"]).filter(|o| o.status.success()) {
-        for name in out.stdout.split(|b| *b == 0).filter(|n| !n.is_empty()).take(MAX_FILES) {
+    if let Some(out) = crate::disk_space::git(
+        root,
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
+    )
+    .filter(|o| o.status.success())
+    {
+        for name in out
+            .stdout
+            .split(|b| *b == 0)
+            .filter(|n| !n.is_empty())
+            .take(MAX_FILES)
+        {
             newest = newest.max(mtime_ms(&root.join(String::from_utf8_lossy(name).as_ref())));
         }
     }
-    if let Some(out) = crate::disk_space::git(root, &["rev-parse", "--absolute-git-dir"]).filter(|o| o.status.success()) {
+    if let Some(out) = crate::disk_space::git(root, &["rev-parse", "--absolute-git-dir"])
+        .filter(|o| o.status.success())
+    {
         let git_dir = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
         for f in ["index", "HEAD", "logs/HEAD"] {
             newest = newest.max(mtime_ms(&git_dir.join(f)));
@@ -118,7 +446,16 @@ fn thread_activity(t: &Value, now: i64) -> i64 {
     if !t["activeRunId"].is_null() {
         return now;
     }
-    ["updatedAt", "latestRunCompletedAt", "latestUserAuthoredMessageAt", "createdAt"].iter().map(|k| epoch(&t[*k])).max().unwrap_or(0)
+    [
+        "updatedAt",
+        "latestRunCompletedAt",
+        "latestUserAuthoredMessageAt",
+        "createdAt",
+    ]
+    .iter()
+    .map(|k| epoch(&t[*k]))
+    .max()
+    .unwrap_or(0)
 }
 
 /// Worktrees and checkouts on this computer, with the latest activity of their threads.
@@ -135,14 +472,18 @@ fn folders(shell: &Value, now: i64) -> BTreeMap<PathBuf, (&'static str, i64)> {
         out.entry(tree).or_insert(("worktree", 0));
     }
     for p in shell["projects"].as_array().into_iter().flatten() {
-        let Some(root) = p["workspaceRoot"].as_str().filter(|r| !r.is_empty()) else { continue };
+        let Some(root) = p["workspaceRoot"].as_str().filter(|r| !r.is_empty()) else {
+            continue;
+        };
         let root = PathBuf::from(root);
         if out.contains_key(&root) {
             continue;
         }
         let activity = threads
             .iter()
-            .filter(|t| t["projectId"] == p["id"] && t["worktreePath"].as_str().is_none_or(str::is_empty))
+            .filter(|t| {
+                t["projectId"] == p["id"] && t["worktreePath"].as_str().is_none_or(str::is_empty)
+            })
             .map(|t| thread_activity(t, now))
             .max()
             .unwrap_or(0);
@@ -152,7 +493,10 @@ fn folders(shell: &Value, now: i64) -> BTreeMap<PathBuf, (&'static str, i64)> {
 }
 
 fn now_ms() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 /// One cleanup pass; returns what was removed (or, with `dry_run`, what would be).
@@ -160,34 +504,73 @@ pub fn run(client: &Client, ui_state: &Value, dry_run: bool) -> Result<Value> {
     let shell = crate::disk_space::local_shell(client)?;
     let now = now_ms();
     let limits = [
-        ("worktree", days(ui_state, "buildCleanupWorktreeDays", DEFAULT_WORKTREE_DAYS)),
-        ("checkout", days(ui_state, "buildCleanupCheckoutDays", DEFAULT_CHECKOUT_DAYS)),
+        (
+            "worktree",
+            days(ui_state, "buildCleanupWorktreeDays", DEFAULT_WORKTREE_DAYS),
+        ),
+        (
+            "checkout",
+            days(ui_state, "buildCleanupCheckoutDays", DEFAULT_CHECKOUT_DAYS),
+        ),
     ];
     let (mut entries, mut failed, mut freed) = (vec![], vec![], 0u64);
-    for (root, (kind, activity)) in folders(&shell, now) {
-        let limit = limits.iter().find(|(k, _)| *k == kind).and_then(|(_, d)| *d);
+    let known = folders(&shell, now);
+    for (root, (kind, activity)) in &known {
+        let (kind, activity) = (*kind, *activity);
+        let limit = limits
+            .iter()
+            .find(|(k, _)| *k == kind)
+            .and_then(|(_, d)| *d);
         // Cheap checks first: thread activity, then whether there is anything to clean.
-        if !due(activity, now, limit) || !real_dir(&root) {
+        if !due(activity, now, limit) || !real_dir(root) {
             continue;
         }
-        let builds = build_dirs(&root);
-        if builds.is_empty() || !due(last_file_change(&root, &builds), now, limit) {
+        let builds = build_dirs(root);
+        if builds.is_empty() || !due(last_file_change(root, &builds), now, limit) {
             continue;
         }
         for dir in builds {
-            let bytes = crate::disk_space::disk_usage(&dir);
+            if protected_candidate(&shell, root, &dir)
+                || known.keys().any(|p| p != root && paths_overlap(&dir, p))
+            {
+                continue;
+            }
+            let Ok(tree) = guarded::scan(root, &dir) else {
+                continue;
+            };
+            if !due(tree.newest, now, limit) {
+                continue;
+            }
+            let bytes = tree.bytes;
             if dry_run {
                 freed += bytes;
                 entries.push(json!({"path":root,"dir":dir,"kind":kind,"bytes":bytes}));
                 continue;
             }
-            match std::fs::remove_dir_all(&dir) {
+            let fresh_shell = crate::disk_space::local_shell(client)?;
+            if protected_candidate(&fresh_shell, root, &dir)
+                || folders(&fresh_shell, now_ms())
+                    .keys()
+                    .any(|p| p != root && paths_overlap(&dir, p))
+            {
+                continue;
+            }
+            let fresh = guarded::scan(root, &dir).map_err(|_| "stale_report")?;
+            if fresh.identity != tree.identity {
+                continue;
+            }
+            match fresh.remove() {
                 Ok(()) => {
-                    eprintln!("ot3: removed idle build output {} ({bytes} bytes)", dir.display());
+                    eprintln!(
+                        "ot3: removed idle build output {} ({bytes} bytes)",
+                        dir.display()
+                    );
                     freed += bytes;
                     entries.push(json!({"path":root,"dir":dir,"kind":kind,"bytes":bytes}));
                 }
-                Err(error) => failed.push(json!({"path":root,"dir":dir,"kind":kind,"error":error.kind().to_string()})),
+                Err(error) => failed.push(
+                    json!({"path":root,"dir":dir,"kind":kind,"error":error.kind().to_string()}),
+                ),
             }
         }
     }
@@ -213,17 +596,45 @@ mod tests {
     use super::*;
     use std::process::Command;
     fn repo() -> PathBuf {
-        let root = std::env::temp_dir().join(format!("t3-build-cleanup-{}", uuid::Uuid::new_v4()));
+        let root =
+            PathBuf::from("/var/tmp").join(format!("t3-build-cleanup-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).unwrap();
-        assert!(Command::new("git").arg("-C").arg(&root).args(["init", "-q"]).status().unwrap().success());
+        assert!(Command::new("git")
+            .arg("-C")
+            .arg(&root)
+            .args(["init", "-q"])
+            .status()
+            .unwrap()
+            .success());
         root
     }
     #[test]
     fn days_default_and_off() {
         assert_eq!(days(&json!({}), "buildCleanupWorktreeDays", 1), Some(1));
-        assert_eq!(days(&json!({"buildCleanupCheckoutDays":3}), "buildCleanupCheckoutDays", 7), Some(3));
-        assert_eq!(days(&json!({"buildCleanupCheckoutDays":0}), "buildCleanupCheckoutDays", 7), Some(7));
-        assert_eq!(days(&json!({"buildCleanupWorktreeDays":null}), "buildCleanupWorktreeDays", 1), None);
+        assert_eq!(
+            days(
+                &json!({"buildCleanupCheckoutDays":3}),
+                "buildCleanupCheckoutDays",
+                7
+            ),
+            Some(3)
+        );
+        assert_eq!(
+            days(
+                &json!({"buildCleanupCheckoutDays":0}),
+                "buildCleanupCheckoutDays",
+                7
+            ),
+            Some(7)
+        );
+        assert_eq!(
+            days(
+                &json!({"buildCleanupWorktreeDays":null}),
+                "buildCleanupWorktreeDays",
+                1
+            ),
+            None
+        );
         assert!(due(0, DAY_MS, Some(1)));
         assert!(!due(1, DAY_MS, Some(1)));
         assert!(!due(0, 100 * DAY_MS, None));
@@ -239,15 +650,25 @@ mod tests {
         std::fs::create_dir_all(root.join("build")).unwrap();
         // A tagged cache folder qualifies whatever the project kind…
         std::fs::create_dir_all(root.join("cache")).unwrap();
-        std::fs::write(root.join("cache/CACHEDIR.TAG"), "Signature: 8a477f597d28d172789f06886806bc55").unwrap();
+        std::fs::write(
+            root.join("cache/CACHEDIR.TAG"),
+            "Signature: 8a477f597d28d172789f06886806bc55",
+        )
+        .unwrap();
         // …but only when git ignores it.
         std::fs::create_dir_all(root.join("assets")).unwrap();
         std::fs::write(root.join("assets/CACHEDIR.TAG"), "x").unwrap();
         // Symlinks are never followed.
         std::os::unix::fs::symlink(root.join("target"), root.join("linked")).unwrap();
-        assert_eq!(build_dirs(&root), vec![root.join("cache"), root.join("target")]);
+        assert_eq!(
+            build_dirs(&root),
+            vec![root.join("cache"), root.join("target")]
+        );
         std::fs::write(root.join("build/CMakeCache.txt"), "").unwrap();
-        assert_eq!(build_dirs(&root), vec![root.join("build"), root.join("cache"), root.join("target")]);
+        assert_eq!(
+            build_dirs(&root),
+            vec![root.join("build"), root.join("cache"), root.join("target")]
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
@@ -257,19 +678,38 @@ mod tests {
         std::fs::write(root.join(".gitignore"), "target/\n").unwrap();
         std::fs::create_dir_all(root.join("target/debug")).unwrap();
         let builds = build_dirs(&root);
-        assert!(now_ms() - last_file_change(&root, &builds) < 60_000, "fresh files are recent use");
-        let old = std::fs::FileTimes::new().set_modified(SystemTime::now() - Duration::from_secs(3 * 86400));
+        assert!(
+            now_ms() - last_file_change(&root, &builds) < 60_000,
+            "fresh files are recent use"
+        );
+        let old = std::fs::FileTimes::new()
+            .set_modified(SystemTime::now() - Duration::from_secs(3 * 86400));
         for p in ["Cargo.toml", ".gitignore", "target", "target/debug"] {
-            std::fs::File::open(root.join(p)).unwrap().set_times(old).unwrap();
+            std::fs::File::open(root.join(p))
+                .unwrap()
+                .set_times(old)
+                .unwrap();
         }
         let git_dir = root.join(".git");
         for f in ["HEAD"] {
-            std::fs::File::open(git_dir.join(f)).unwrap().set_times(old).unwrap();
+            std::fs::File::open(git_dir.join(f))
+                .unwrap()
+                .set_times(old)
+                .unwrap();
         }
-        assert!(due(last_file_change(&root, &builds), now_ms(), Some(2)), "untouched for 3 days");
+        assert!(
+            due(last_file_change(&root, &builds), now_ms(), Some(2)),
+            "untouched for 3 days"
+        );
         std::fs::write(root.join("target/debug/new"), "").unwrap();
-        std::fs::File::open(root.join("target")).unwrap().set_times(old).unwrap();
-        assert!(!due(last_file_change(&root, &builds), now_ms(), Some(2)), "a fresh build is use");
+        std::fs::File::open(root.join("target"))
+            .unwrap()
+            .set_times(old)
+            .unwrap();
+        assert!(
+            !due(last_file_change(&root, &builds), now_ms(), Some(2)),
+            "a fresh build is use"
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
@@ -279,9 +719,19 @@ mod tests {
             {"id":"b","projectId":"p","worktreePath":null,"updatedAt":"2026-10-02T00:00:00Z"},
             {"id":"c","projectId":"p","worktreePath":"/w/busy","activeRunId":"r","updatedAt":"2026-01-01T00:00:00Z"}]});
         let f = folders(&shell, 42);
-        assert_eq!(f[&PathBuf::from("/w/tree")], ("worktree", epoch(&json!("2026-10-01T00:00:00Z"))));
-        assert_eq!(f[&PathBuf::from("/w/main")], ("checkout", epoch(&json!("2026-10-02T00:00:00Z"))));
-        assert_eq!(f[&PathBuf::from("/w/busy")].1, 42, "a running thread is in use now");
+        assert_eq!(
+            f[&PathBuf::from("/w/tree")],
+            ("worktree", epoch(&json!("2026-10-01T00:00:00Z")))
+        );
+        assert_eq!(
+            f[&PathBuf::from("/w/main")],
+            ("checkout", epoch(&json!("2026-10-02T00:00:00Z")))
+        );
+        assert_eq!(
+            f[&PathBuf::from("/w/busy")].1,
+            42,
+            "a running thread is in use now"
+        );
     }
 }
 
@@ -356,10 +806,9 @@ fn remote_source_change(root: &Path) -> Result<i64> {
 /// Remote manual cleanup is restricted to owner-listed canonical roots. It never
 /// expands discovery to other checkouts or accepts paths from the HTTP request.
 pub fn remote_report(shell: &Value, settings: &Value) -> Result<Value> {
-    use sha2::{Digest, Sha256};
-    use std::os::unix::fs::MetadataExt;
     let start = std::time::Instant::now();
     let mut entries = Vec::new();
+    let mut visited = 0;
     let roots = settings["remoteMaintenanceRoots"]
         .as_array()
         .cloned()
@@ -369,7 +818,6 @@ pub fn remote_report(shell: &Value, settings: &Value) -> Result<Value> {
     }
     let projects = shell["projects"].as_array().ok_or("invalid_shell")?;
     let threads = shell["threads"].as_array().ok_or("invalid_shell")?;
-    let mut visited = 0;
     for value in roots {
         if start.elapsed() > Duration::from_secs(2) {
             return Err("report_limit".into());
@@ -464,50 +912,21 @@ pub fn remote_report(shell: &Value, settings: &Value) -> Result<Value> {
             if entries.len() >= 32 {
                 return Err("report_limit".into());
             }
-            let mut stack = vec![dir.clone()];
-            let mut digest = Sha256::new();
-            let mut bytes = 0u64;
-            let mut newest = 0i64;
-            while let Some(path) = stack.pop() {
-                visited += 1;
-                if visited > 10_000 || start.elapsed() > Duration::from_secs(2) {
-                    return Err("report_limit".into());
-                }
-                let meta = path.symlink_metadata().map_err(|_| "report_unavailable")?;
-                newest = newest.max(
-                    meta.mtime()
-                        .saturating_mul(1000)
-                        .saturating_add(meta.mtime_nsec() / 1_000_000),
-                );
-                digest.update(path.as_os_str().as_encoded_bytes());
-                digest.update(format!(
-                    "{}:{}:{}:{}:{}:{}:{}:{}",
-                    meta.dev(),
-                    meta.ino(),
-                    meta.len(),
-                    meta.mtime(),
-                    meta.mtime_nsec(),
-                    meta.mode(),
-                    meta.ctime(),
-                    meta.ctime_nsec()
-                ));
-                bytes = bytes.saturating_add(meta.blocks().saturating_mul(512));
-                if meta.is_dir() {
-                    let mut children = Vec::new();
-                    for child in std::fs::read_dir(&path).map_err(|_| "report_unavailable")? {
-                        if children.len() + visited > 10_000 {
-                            return Err("report_limit".into());
-                        }
-                        children.push(child.map_err(|_| "report_unavailable")?.path());
-                    }
-                    children.sort();
-                    stack.extend(children);
-                }
+            if protected_candidate(shell, &root, &dir) {
+                continue;
             }
+            let tree = guarded::scan_bounded(&root, &dir, &mut visited, start).map_err(|e| {
+                if e.to_string() == "report_limit" {
+                    "report_limit"
+                } else {
+                    "unsafe_build_tree"
+                }
+            })?;
+            let (newest, bytes, identity) = (tree.newest, tree.bytes, tree.identity);
             if !due(newest, now_ms(), limit) {
                 continue;
             }
-            entries.push(json!({"root":root,"dir":dir,"kind":kind,"activity":at,"identity":format!("{:x}",digest.finalize()),"bytes":bytes}));
+            entries.push(json!({"root":root,"dir":dir,"kind":kind,"activity":at,"identity":identity,"bytes":bytes}));
         }
     }
     Ok(
@@ -530,7 +949,16 @@ pub fn remote_run(shell: &Value, settings: &Value, expected: &Value) -> Result<V
         {
             return Err("stale_report".into());
         }
-        std::fs::remove_dir_all(text(entry, "dir")).map_err(|_| "cleanup_outcome_unknown")?;
+        let root = Path::new(text(entry, "root"));
+        let dir = Path::new(text(entry, "dir"));
+        if protected_candidate(shell, root, dir) {
+            return Err("stale_report".into());
+        }
+        let tree = guarded::scan(root, dir).map_err(|_| "stale_report")?;
+        if tree.identity != text(entry, "identity") {
+            return Err("stale_report".into());
+        }
+        tree.remove().map_err(|_| "cleanup_outcome_unknown")?;
         removed += 1;
     }
     Ok(json!({"removed":removed}))
@@ -631,6 +1059,141 @@ mod remote_tests {
         settings["buildCleanupCheckoutDays"] = Value::Null;
         assert!(remote_run(&shell, &settings, &report).is_err());
         assert!(root.join("target").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn nested_project_and_active_thread_are_protected_without_git_marker() {
+        let (root, mut shell, settings) = fixture();
+        let report = remote_report(&shell, &settings).unwrap();
+        shell["threads"] = json!([{"id":"nested","projectId":"p","worktreePath":root.join("target/debug"),"activeRunId":"run"}]);
+        assert_eq!(
+            remote_report(&shell, &settings).unwrap()["entries"],
+            json!([])
+        );
+        assert!(remote_run(&shell, &settings, &report).is_err());
+        shell["threads"] = json!([]);
+        shell["projects"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"id":"nested","workspaceRoot":root.join("target")}));
+        assert_eq!(
+            remote_report(&shell, &settings).unwrap()["entries"],
+            json!([])
+        );
+        assert!(protected_candidate(&shell, &root, &root.join("target")));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn nested_git_directory_and_worktree_file_refuse_scan_and_delete() {
+        for directory in [true, false] {
+            let (root, shell, settings) = fixture();
+            let report = remote_report(&shell, &settings).unwrap();
+            let tree = guarded::scan(&root, &root.join("target")).unwrap();
+            let marker = root.join("target/debug/deep/.git");
+            if directory {
+                std::fs::create_dir(&marker).unwrap();
+            } else {
+                std::fs::write(&marker, "gitdir: /not-followed").unwrap();
+            }
+            assert!(remote_report(&shell, &settings).is_err());
+            assert!(remote_run(&shell, &settings, &report).is_err());
+            assert!(tree.remove().is_err());
+            assert!(root.join("target/debug/deep/artifact").exists());
+            std::fs::remove_dir_all(root).unwrap();
+        }
+    }
+    #[test]
+    fn symlink_inside_output_is_refused() {
+        let (root, shell, settings) = fixture();
+        let report = remote_report(&shell, &settings).unwrap();
+        std::os::unix::fs::symlink(root.join("Cargo.toml"), root.join("target/debug/link"))
+            .unwrap();
+        assert!(guarded::scan(&root, &root.join("target")).is_err());
+        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert!(root.join("Cargo.toml").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn replaced_directory_between_scan_and_delete_preserves_replacement() {
+        let (root, shell, settings) = fixture();
+        let report = remote_report(&shell, &settings).unwrap();
+        let tree = guarded::scan(&root, &root.join("target")).unwrap();
+        std::fs::rename(root.join("target"), root.join("saved-output")).unwrap();
+        std::fs::create_dir(root.join("target")).unwrap();
+        std::fs::write(root.join("target/source.rs"), "precious").unwrap();
+        assert!(tree.remove().is_err());
+        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert_eq!(
+            std::fs::read_to_string(root.join("target/source.rs")).unwrap(),
+            "precious"
+        );
+        assert!(root.join("saved-output/debug/deep/artifact").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn replaced_child_directory_is_not_traversed_during_deletion() {
+        let (root, _, _) = fixture();
+        let tree = guarded::scan(&root, &root.join("target")).unwrap();
+        std::fs::rename(root.join("target/debug"), root.join("saved-output")).unwrap();
+        std::fs::create_dir(root.join("target/debug")).unwrap();
+        std::fs::write(root.join("target/debug/source.rs"), "precious").unwrap();
+        assert!(tree.remove().is_err());
+        assert!(root.join("target/debug/source.rs").exists());
+        assert!(root.join("saved-output/deep/artifact").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn symlink_replacement_after_scan_is_not_followed_during_deletion() {
+        let (root, _, _) = fixture();
+        let tree = guarded::scan(&root, &root.join("target")).unwrap();
+        std::fs::rename(root.join("target"), root.join("saved-output")).unwrap();
+        std::os::unix::fs::symlink(root.join("saved-output"), root.join("target")).unwrap();
+        assert!(tree.remove().is_err());
+        assert!(root.join("saved-output/debug/deep/artifact").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn bind_mount_same_filesystem_is_refused_when_permitted() {
+        use std::os::unix::ffi::OsStrExt;
+        let (root, shell, settings) = fixture();
+        let source = root.join("mount-source");
+        let dest = root.join("target/debug/deep/mount");
+        std::fs::create_dir(&source).unwrap();
+        std::fs::create_dir(&dest).unwrap();
+        std::fs::write(source.join("source.rs"), "precious").unwrap();
+        let src = std::ffi::CString::new(source.as_os_str().as_bytes()).unwrap();
+        let dst = std::ffi::CString::new(dest.as_os_str().as_bytes()).unwrap();
+        let tree = guarded::scan(&root, &root.join("target")).unwrap();
+        let rc = unsafe {
+            libc::mount(
+                src.as_ptr(),
+                dst.as_ptr(),
+                std::ptr::null(),
+                libc::MS_BIND,
+                std::ptr::null(),
+            )
+        };
+        if rc != 0 {
+            let error = std::io::Error::last_os_error();
+            assert!(
+                matches!(
+                    error.raw_os_error(),
+                    Some(libc::EPERM | libc::EACCES | libc::ENOSYS)
+                ),
+                "{error}"
+            );
+            eprintln!(
+                "bind mount unavailable: {error}; simulated mount-ID regression covers refusal"
+            );
+        } else {
+            // Always unmount before assertions or fixture teardown.
+            let denied = guarded::scan(&root, &root.join("target")).is_err();
+            let report_denied = remote_report(&shell, &settings).is_err();
+            let deletion_denied = tree.remove().is_err();
+            assert_eq!(unsafe { libc::umount2(dst.as_ptr(), 0) }, 0);
+            assert!(denied && report_denied && deletion_denied);
+            assert!(source.join("source.rs").exists());
+        }
         std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
