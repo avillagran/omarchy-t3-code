@@ -90,12 +90,12 @@ const THREAD_SNAPSHOT_MAX_BYTES: u64 = 64 * 1024 * 1024;
 // Shells contain all active thread summaries: 10,000 long titles already exceed
 // 8 MiB. Match the bounded thread budget without lifting unrelated frame limits.
 const fn shell_snapshot_max_bytes(android: bool) -> u64 {
-    if android { 16 * 1024 * 1024 } else { 64 * 1024 * 1024 }
+    if android { 4 * 1024 * 1024 } else { 64 * 1024 * 1024 }
 }
 const SHELL_SNAPSHOT_MAX_BYTES: u64 = shell_snapshot_max_bytes(cfg!(target_os = "android"));
 #[test]
 fn mobile_shell_budget_is_lower_without_reducing_desktop() {
-    assert_eq!(shell_snapshot_max_bytes(true), 16 * 1024 * 1024);
+    assert_eq!(shell_snapshot_max_bytes(true), 4 * 1024 * 1024);
     assert_eq!(shell_snapshot_max_bytes(false), 64 * 1024 * 1024);
 }
 const GRANT: &str = "urn:ietf:params:oauth:grant-type:token-exchange";

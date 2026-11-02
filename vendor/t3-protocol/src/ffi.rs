@@ -287,7 +287,7 @@ pub unsafe extern "C" fn t3_client_call(
 }
 fn response(result: Result<Value>) -> *mut c_char {
     let response = match result {
-        Ok(data) => json!({"ok":true,"data":data}),
+        Ok(data) => Value::Object([("ok".into(), Value::Bool(true)), ("data".into(), data)].into_iter().collect()),
         // `error` stays a stable code; a server's reason travels separately.
         Err(error) => crate::ffi_call::error_envelope(&error),
     };

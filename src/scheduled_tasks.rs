@@ -71,7 +71,11 @@ fn resolve_hooks(list: &mut Value, base: &str) {
     let Ok(origin) = reqwest::Url::parse(base) else { return };
     for task in list["tasks"].as_array_mut().into_iter().flatten() {
         let hook = &mut task["webhook"];
-        if hook["url"].as_str().is_some_and(|s| !s.is_empty()) { continue; }
+        if let Some(raw) = hook["url"].as_str().filter(|s| !s.is_empty()) {
+            let trusted = reqwest::Url::parse(raw).is_ok_and(|u| matches!(u.scheme(), "http" | "https") && u.origin() == origin.origin() && u.username().is_empty() && u.password().is_none());
+            hook["originWarning"] = json!(!trusted);
+            continue;
+        }
         if let Some(path) = hook["path"].as_str().filter(|p| p.starts_with('/') && !p.starts_with("//")) {
             if let Ok(url) = origin.join(path) {
                 if url.origin() == origin.origin() { hook["url"] = json!(url.as_str()); }
@@ -122,6 +126,19 @@ mod tests {
         resolve_hooks(&mut list, "https://o3.example/base");
         assert_eq!(list["tasks"][0]["webhook"]["url"], "https://o3.example/api/hooks/one");
         assert_eq!(list["tasks"][1]["webhook"]["url"], "https://t3.example/hook");
+        assert_eq!(list["tasks"][1]["webhook"]["originWarning"], true);
+    }
+    #[test]
+    fn untrusted_absolute_hook_values_are_warned_and_remain_inert_text() {
+        for raw in ["//attacker.invalid/hook", "https://attacker.invalid/hook", "javascript:alert(1)"] {
+            let mut list = json!({"tasks":[{"webhook":{"url":raw}}]});
+            resolve_hooks(&mut list, "https://trusted.invalid");
+            assert_eq!(list["tasks"][0]["webhook"]["originWarning"],true);
+            assert_eq!(list["tasks"][0]["webhook"]["url"],raw);
+        }
+        let mut list=json!({"tasks":[{"webhook":{"url":"https://trusted.invalid:443/hook"}}]});
+        resolve_hooks(&mut list,"https://trusted.invalid");
+        assert_eq!(list["tasks"][0]["webhook"]["originWarning"],false);
     }
     #[test]
     fn schedules_and_payloads_follow_the_contract() {

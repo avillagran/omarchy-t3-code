@@ -465,10 +465,10 @@ fn child_summary(kids: &[&Value]) -> Value {
     s
 }
 /// Each section lists sub-threads right under their parent, up to depth 4.
-fn nest(rows: Vec<&Value>, map: &HashMap<String, Vec<&Value>>, overrides: &Value, selected: &str) -> Vec<Value> {
-    fn add(t: &Value, depth: usize, parent: &str, map: &HashMap<String, Vec<&Value>>, overrides: &Value, selected: &str, out: &mut Vec<Value>) {
+fn nest(rows: Vec<&Value>, map: &HashMap<String, Vec<&Value>>, overrides: &Value, selected: &str, indexed: bool) -> Vec<Value> {
+    fn add(t: &Value, depth: usize, parent: &str, map: &HashMap<String, Vec<&Value>>, overrides: &Value, selected: &str, out: &mut Vec<Value>, indexed: bool) {
         let kids = if depth < 4 { map.get(text(t, "key")).cloned().unwrap_or_default() } else { vec![] };
-        let mut row = t.clone();
+        let mut row = if indexed { json!({"key":t["key"]}) } else { t.clone() };
         let mut open = false;
         if !kids.is_empty() || depth > 0 {
             row["depth"] = json!(depth);
@@ -482,16 +482,16 @@ fn nest(rows: Vec<&Value>, map: &HashMap<String, Vec<&Value>>, overrides: &Value
         out.push(row);
         if open {
             for c in kids {
-                add(c, depth + 1, text(t, "key"), map, overrides, selected, out);
+                add(c, depth + 1, text(t, "key"), map, overrides, selected, out, indexed);
             }
         }
     }
     let mut out = vec![];
     for t in rows {
         if map.is_empty() {
-            out.push(t.clone());
+            out.push(if indexed { json!({"key":t["key"]}) } else { t.clone() });
         } else if !(subagent(t) && truth(&t["parentThreadId"])) {
-            add(t, 0, "", map, overrides, selected, &mut out);
+            add(t, 0, "", map, overrides, selected, &mut out, indexed);
         }
     }
     out
@@ -650,6 +650,12 @@ fn top_level(rows: &[Value]) -> usize {
 }
 /// The whole sidebar: ot3's sections, ordered and nested, with the counts.
 pub fn view(snapshot: &Value, v: &ViewState, now: i64) -> Value {
+    view_impl(snapshot, v, now, false)
+}
+pub fn view_indexed(snapshot: &Value, v: &ViewState, now: i64) -> Value {
+    view_impl(snapshot, v, now, true)
+}
+fn view_impl(snapshot: &Value, v: &ViewState, now: i64, indexed: bool) -> Value {
     let threads = snapshot["threads"].as_array().map(Vec::as_slice).unwrap_or(&[]);
     let projects = snapshot["projects"].as_array().map(Vec::as_slice).unwrap_or(&[]);
     let groups = groups(projects, &v.grouping);
@@ -666,15 +672,57 @@ pub fn view(snapshot: &Value, v: &ViewState, now: i64) -> Value {
     let mut settled = all.iter().copied().filter(|t| truth(&t["settled"]) && !truth(&t["snoozed"])).collect::<Vec<_>>();
     settled.sort_by(|a, b| compare_settled(a, b));
     let snoozed = all.iter().copied().filter(|t| truth(&t["snoozed"])).collect::<Vec<_>>();
-    let section = |rows: Vec<&Value>| present(nest(rows, &map, v.subthreads_expanded, v.selected), now);
+    let section = |rows: Vec<&Value>| {
+        let rows = nest(rows, &map, v.subthreads_expanded, v.selected, indexed);
+        if indexed { rows } else { present(rows, now) }
+    };
     let (active, working, snoozed, settled) = (section(active), section(working), section(snoozed), section(settled));
     let filter_counts = FILTERS.iter().map(|f| (f.to_string(), json!(threads.iter().filter(|t| matches(t, f, &scope, v.environment)).count()))).collect::<Map<_, _>>();
-    json!({
+    let mut output = json!({
         "environments":snapshot["environments"],"stale":snapshot["stale"],"working":snapshot["working"],"pending":snapshot["pending"],
         "projects":projects,"projectGroups":groups,"projectScope":scope.to_json(),
-        "sections":{"active":active,"working":working,"snoozed":snoozed,"settled":settled},
         "sectionCounts":{"active":top_level(&active),"working":top_level(&working),"snoozed":top_level(&snoozed),"settled":top_level(&settled)},
         "counts":counts(threads),"filterCounts":filter_counts,"returns":returns,
-        "threads":present(threads.to_vec(), now),
-    })
+    });
+    output["threads"] = Value::Array(present(threads.to_vec(), now));
+    // Move row vectors into the result instead of serializing them through json!.
+    output["sections"] = Value::Object([
+        ("active".into(), Value::Array(active)), ("working".into(), Value::Array(working)),
+        ("snoozed".into(), Value::Array(snoozed)), ("settled".into(), Value::Array(settled)),
+    ].into_iter().collect());
+    if indexed { compact(&mut output); }
+    output
+}
+
+/// Opt-in wire projection. Rows occur once; section entries are [row index, overlay].
+/// Common null/false/empty values live in defaults and are restored by readers.
+pub fn compact(view: &mut Value) {
+    let Value::Array(mut rows) = view["threads"].take() else { return };
+    let indices: HashMap<String, usize> = rows.iter().enumerate().map(|(i,r)| (text(r,"key").to_string(),i)).collect();
+    for name in ["active","working","snoozed","settled"] {
+        let section = view["sections"][name].take();
+        view["sections"][name] = Value::Array(section.as_array().into_iter().flatten().map(|row| {
+            let i = indices[text(row,"key")];
+            let overlay: Map<String,Value> = row.as_object().unwrap().iter().filter(|(k,v)| rows[i].get(*k) != Some(*v)).map(|(k,v)|(k.clone(),v.clone())).collect();
+            json!([i,overlay])
+        }).collect());
+    }
+    let mut defaults = Map::new();
+    for row in &rows {
+        for (key,value) in row.as_object().unwrap() {
+            if value.is_null() || value == false || value == "" {
+                defaults.entry(key.clone()).or_insert_with(|| value.clone());
+            }
+        }
+    }
+    // Only omit equal defaults. Missing fields stay missing via per-row absent keys.
+    for row in &mut rows {
+        let obj = row.as_object_mut().unwrap();
+        let absent: Vec<_> = defaults.keys().filter(|k| !obj.contains_key(*k)).cloned().collect();
+        obj.retain(|k,v| defaults.get(k) != Some(v));
+        if !absent.is_empty() { obj.insert("$absent".into(),json!(absent)); }
+    }
+    view["threads"] = Value::Array(rows);
+    view["rowDefaults"] = Value::Object(defaults);
+    view["format"] = json!("indexed-v1");
 }

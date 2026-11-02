@@ -29,19 +29,19 @@ Evidence is **source-only**, from T3 nightly commit
   installation/authentication, without a boolean PR creation capability.
 
 Protocol GET `/api/orchestration/shell` and `orchestration.subscribeShell` accept
-at most **64 MiB on desktop, 16 MiB on Android by default** (decoded bytes).
-Thread snapshot limits remain 64 MiB. The Android limit still admits the audited
-9 MiB profile, while bounding the substantial cost of JSON presentation.
+at most **64 MiB on desktop, 4 MiB on Android by default** (decoded bytes).
+Thread snapshot limits remain 64 MiB. Android uses the bounded indexed projection described in [SIDEBAR_WIRE.md](SIDEBAR_WIRE.md).
+The previous 16 MiB policy admitted unsafe enrichment workloads.
 Explicit larger connection byte budgets remain an application opt-in.
 
 FFI admission allows one shell separately from two bounded thread subscriptions,
 with eight total subscriptions. Desktop serialized queues are bounded by
-3 × 72 MiB + 5 × 8 MiB = 256 MiB; Android shell queues have a 24 MiB budget.
+3 × 72 MiB + 5 × 8 MiB = 256 MiB; Android shell queues have a 12 MiB budget.
 JNI accepts up to 72 MiB to match Rust's domain-input envelope; Rust still
 rejects non-domain inputs over 8 MiB. This accommodates the shell wrapper and
 multi-environment sidebar input without removing the input bound.
 
-## Host JNI memory experiment (2026-11-02)
+## Historical full-response host JNI memory experiment (2026-11-02)
 
 Java 21, Linux x86_64, `-Xmx2g`, release Rust archive and host JNI. Each fresh
 process constructs 10,000 threads with long ASCII titles, sends the resulting
@@ -61,9 +61,9 @@ All four calls succeeded. Actual input includes about 250 KiB of JSON overhead;
 Run `tools/measure-jni-sidebar` after `tools/test-jni` to repeat the workload.
 `mobile-limit-red.log` records the failing 16 MiB platform-budget assertion. These are synthetic whole-process host measurements,
 not Android ART heap measurements or Compose rendering measurements. A 64 MiB
-phone default is unjustified at this cost; 16 MiB is a conservative compatibility
-compromise, not a guarantee on low-memory phones. Pagination or a persistent
-native shell handle would be preferable future work.
+phone default is unjustified at this cost. The subsequent independent audit
+also rejected 16 MiB. The current compact policy is 4 MiB / 1,000 rows; see
+[SIDEBAR_WIRE.md](SIDEBAR_WIRE.md) for limits and remaining ART validation.
 
 ## Audit corrections
 

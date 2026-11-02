@@ -38,3 +38,24 @@ The transport header test was updated from identity-only to gzip/brotli offers.
 `cargo clippy` passes with existing warnings. Optional `--all-targets` still
 fails on four pre-existing `unused_io_amount` findings in tests/scoped_settings.rs.
 No GUI interaction or live delivery was verified.
+
+## Follow-up fixes (2026-11-02)
+
+The shared library is pinned to 47bb556 (0.3.8), retaining the existing desktop
+full sidebar reader. Android opts into a bounded indexed wire representation.
+
+An unresolved create retains its command identity and draft across popup close /
+reopen. The stateful popup loader retains the editor; pending creates prevent
+Cancel or New from discarding the identity, and writes cannot cross into another
+selected environment. Successful upsert clears it; explicit rejection releases
+the pending barrier. Signing secrets still clear on submission and close; the
+unknown-outcome message explicitly requests re-entry for a signed retry. This
+is in-process recovery, not durable recovery after application termination.
+`node tools/test-scheduled-task-reopen.cjs` exercises the actual QML functions.
+
+Relative hook paths still resolve against the selected origin. Absolute URL
+values from another origin, network-path references and non-http(s) values are
+shown only as plain, selectable text with an origin warning. T3 relay URLs remain
+visible verbatim; displaying a server-supplied value does not grant origin trust.
+The same-origin comparison normalizes default ports. No endpoint widget opens
+or requests these values.

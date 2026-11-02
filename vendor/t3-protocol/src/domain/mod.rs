@@ -105,8 +105,25 @@ const SUGGESTION_KINDS: &[&str] = &["skill", "command"];
 const GROUPING_MODES: &[&str] = &["repository", "repository_path", "separate"];
 pub(crate) static NULL: Value = Value::Null;
 
+fn wire_size(value: &Value) -> usize {
+    struct Counter(usize);
+    impl std::io::Write for Counter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> { self.0 += bytes.len(); Ok(bytes.len()) }
+        fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+    }
+    let mut counter = Counter(0);
+    serde_json::to_writer(&mut counter, value).expect("count JSON bytes");
+    counter.0
+}
 fn sidebar_view(a: &Args) -> Result<Value> {
     let now = a.i64("now")?.unwrap_or(0);
+    if a.bool("compact")?.unwrap_or(false) {
+        let environments = a.req_array("environments")?;
+        let rows: usize = environments.iter().map(|e| e["shell"]["threads"].as_array().map_or(0, Vec::len)).sum();
+        if rows > 1000 || environments.iter().map(wire_size).sum::<usize>() > 4 * 1024 * 1024 {
+            return Err("sidebar_presentation_limit".into());
+        }
+    }
     let snapshot = sidebar::view::snapshot(a.req_array("environments")?, now)?;
     let state = sidebar::view::ViewState {
         filter: a.str("filter")?.unwrap_or("all"),
@@ -123,9 +140,10 @@ fn sidebar_view(a: &Args) -> Result<Value> {
             native: a.get("nativeGrouping").unwrap_or(&NULL),
         },
     };
-    let mut view = sidebar::view::view(&snapshot, &state, now);
+    let mut view = if a.bool("compact")?.unwrap_or(false) { sidebar::view::view_indexed(&snapshot, &state, now) } else { sidebar::view::view(&snapshot, &state, now) };
     let identities = projects::identities(snapshot["projects"].as_array().map(Vec::as_slice).unwrap_or(&[]), a.get("colors").unwrap_or(&NULL), a.str("accent")?);
     view["projectIdentities"] = json!(identities.into_iter().map(|i| (i["key"].as_str().unwrap_or("").to_string(), i)).collect::<serde_json::Map<_, _>>());
+    if a.bool("compact")?.unwrap_or(false) && wire_size(&view) > 8 * 1024 * 1024 { return Err("sidebar_presentation_limit".into()); }
     Ok(view)
 }
 
@@ -209,7 +227,7 @@ pub const FUNCTIONS: &[DomainFn] = &[
             (project, Text, optional), (environmentId, Text, optional), (query, Text, optional), (grouped, Bool, optional),
             (subthreadsExpanded, Object, optional), (selectedKey, Text, optional), (returns, Object, optional),
             (groupingMode, Enum(GROUPING_MODES), optional), (groupingOverrides, Object, optional), (nativeGrouping, Object, optional),
-            (colors, Object, optional), (accent, Text, optional),
+            (colors, Object, optional), (accent, Text, optional), (compact, Bool, optional),
         ],
         returns: "object {sections {active, working, snoozed, settled}, sectionCounts, counts, filterCounts, projects, projectGroups, projectScope, projectIdentities {key: identity}, environments, stale, working, pending, threads, returns}; rows carry detail, state, statusLabel, statusRole and time",
         run: sidebar_view,
