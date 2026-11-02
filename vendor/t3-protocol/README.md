@@ -463,6 +463,7 @@ streams::subscribe_thread(conn, &sub, cancelled, || false, |item| {
 | `orchestration.subscribeThread` | same | `subscribe_thread(conn, &ThreadSub, …)` | `kind`: `snapshot`, `synchronized`, `event` · `afterSequence` |
 | `orchestration.subscribeCommandOutput` | same | `subscribe_command_output(conn, thread_id, item_id, …)` | `kind`: `replace`, `append` |
 | `terminal.attach` | same | `subscribe_terminal_attach(conn, &TerminalAttach, …)` | `type`, first `snapshot` · `sequence` (ordering only) |
+| `terminal.observe` | same | `subscribe_terminal_observe(conn, thread_id, terminal_id, …)` | `type`, first `snapshot` · `sequence` (ordering only) |
 | `device.subscribeDeviceState` | `subscribeDeviceState` | `subscribe_device_state(conn, …)` | whole state per item |
 | `preview.subscribeDiscoveredLocalServers` | `subscribeDiscoveredLocalServers` | `subscribe_local_servers(conn, urls?, …)` | whole list per item |
 | `preview.subscribePreviewEvents` | `subscribePreviewEvents` | `subscribe_preview_events(conn, …)` | `type` events |
@@ -967,6 +968,9 @@ Behaviour hosts take over from their own HTTP code, and what stays theirs:
 
 ## Development
 
+See [Android/Desktop parity contracts](docs/ANDROID_PARITY.md) for the additive
+shared presentation helpers and the remaining automatic-routing host gap.
+
 Run `cargo test --locked` and `tools/test-c-abi` before changes are consumed by
 either app. Native CI runs on Linux x86_64 and aarch64. Keep platform integrations
 outside this crate. Fix shared behavior here, tag a version, then update each
@@ -977,3 +981,5 @@ The initial extraction preserves the source from ot3 commit
 used for the Android/event extension. Device/UI validation remains consumer work.
 
 [MIT License](LICENSE). Independent community project; not an official T3 SDK.
+
+Terminal context/output Kotlin/JNI helpers, read-only observation and reconnect/chunk policy: [docs/TERMINAL.md](docs/TERMINAL.md).

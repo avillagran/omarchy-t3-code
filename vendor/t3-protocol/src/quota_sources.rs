@@ -52,6 +52,7 @@ pub fn limits(raw: &Value) -> Option<Value> {
         "unsupported" | "probeFailed"
     ) {
         out["unavailable"] = json!({"reason":raw["unavailable"]["reason"]});
+        copy(&mut out["unavailable"], &raw["unavailable"], &["message"], 1024);
     }
     if let Some(count) = raw["resetCredits"]["availableCount"].as_u64() {
         out["resetCredits"] = json!({"availableCount":count});

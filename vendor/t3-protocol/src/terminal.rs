@@ -33,6 +33,15 @@ pub fn resize(thread:&str,terminal:&str,cols:u16,rows:u16)->Result<Value>{api::t
 /// A stream snapshot already contains history; ignore replayed output at/before its cursor.
 #[derive(Default)]pub struct Output{sequence:Option<u64>,pub finished:bool}
 impl Output{
+ /// Portable state for foreign-language hosts. One state per host/thread/terminal.
+ pub fn state(&self)->Value{json!({"sequence":self.sequence,"finished":self.finished})}
+ pub fn from_state(state:&Value)->Result<Self>{
+  if !state.is_object() || state.as_object().unwrap().keys().any(|k|k!="sequence"&&k!="finished") {return Err("invalid_state".into())}
+  let sequence=match state.get("sequence"){None|Some(Value::Null)=>None,Some(v)=>Some(v.as_u64().ok_or("invalid_state")?)};
+  let finished=match state.get("finished"){None=>false,Some(v)=>v.as_bool().ok_or("invalid_state")?};
+  Ok(Self{sequence,finished})
+ }
+
  pub fn apply(&mut self,event:&Value)->Result<Option<String>>{
   match event["type"].as_str().unwrap_or(""){
    "snapshot"|"started"|"restarted"=>{let s=&event["snapshot"];self.sequence=s["sequence"].as_u64().or(event["sequence"].as_u64());self.finished=matches!(s["status"].as_str(),Some("exited"|"error"));Ok(s["history"].as_str().map(str::to_string))},

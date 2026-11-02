@@ -87,6 +87,9 @@ const MAX_BYTES: u64 = 8 * 1024 * 1024;
 // Bounded native snapshots can exceed the generic response limit even when
 // compactTurnItems is enabled. Keep this allowance specific to thread reads.
 const THREAD_SNAPSHOT_MAX_BYTES: u64 = 64 * 1024 * 1024;
+// Shells contain all active thread summaries: 10,000 long titles already exceed
+// 8 MiB. Match the bounded thread budget without lifting unrelated frame limits.
+const SHELL_SNAPSHOT_MAX_BYTES: u64 = 64 * 1024 * 1024;
 const GRANT: &str = "urn:ietf:params:oauth:grant-type:token-exchange";
 const ACCESS: &str = "urn:ietf:params:oauth:token-type:access_token";
 fn now() -> i64 {
@@ -434,7 +437,7 @@ impl Connection {
     }
     /// Same-origin JSON request. Accepts `application/json` in any case and with
     /// parameters. The limit is the connection's (8 MiB unless configured), or
-    /// 64 MiB for a protocol GET of `/api/orchestration/threads/<id>/bounded`.
+    /// 64 MiB for protocol GETs of shell snapshots or `/api/orchestration/threads/<id>/bounded`.
     pub fn request_json(
         &self,
         method: &str,
@@ -443,7 +446,11 @@ impl Connection {
         protocol: bool,
     ) -> Result<Value> {
         let (response, bounded) = self.send(method, path, body, protocol)?;
-        let limit = if bounded {
+        let shell = method == "GET" && protocol
+            && matches!(path.split('?').next(), Some("/api/orchestration/shell"));
+        let limit = if shell {
+            SHELL_SNAPSHOT_MAX_BYTES.max(self.max_bytes)
+        } else if bounded {
             THREAD_SNAPSHOT_MAX_BYTES.max(self.max_bytes)
         } else {
             self.max_bytes
@@ -875,3 +882,10 @@ pub mod settings;
 pub mod device_hub;
 
 mod long_rpc;
+
+/// Shared Android/Desktop presentation contracts.
+pub mod parity;
+
+pub mod quota_present;
+
+pub mod registry_icon;

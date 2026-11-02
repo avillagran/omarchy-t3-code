@@ -84,7 +84,7 @@ fn native_rpc_creates_only_requested_instance_and_reads_back_without_credentials
 fn every_t3_driver_is_available_in_one_environment_scoped_registry() {
     let view=projection(&json!({"providerInstances":{}}),&json!({"providers":[]}),true);
     let kinds=view["drivers"].as_array().unwrap().iter().map(|v|v["id"].as_str().unwrap()).collect::<Vec<_>>();
-    assert_eq!(kinds,["codex","claudeAgent","cursor","grok","opencode","antigravity","muse","pi","acpRegistry"]);
+    assert_eq!(kinds,["codex","claudeAgent","cursor","grok","fx","opencode","antigravity","muse","pi","acpRegistry"]);
     let instances=view["instances"].as_array().unwrap();
     assert!(instances.iter().any(|v|v["id"]=="codex"&&v["enabled"]==true));
     assert!(instances.iter().any(|v|v["id"]=="opencode"&&v["enabled"]==false));

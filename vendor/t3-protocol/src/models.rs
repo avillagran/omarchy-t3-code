@@ -15,7 +15,7 @@ pub fn preferences(settings:&Value)->Value{
 }
 fn registry_icon(config:&Value,p:&Value)->String{
  if text(p,"driver")!="acpRegistry"{return String::new()}let cfg=&config["settings"]["providerInstances"][text(p,"instanceId")]["config"];if cfg["source"]=="local"{return String::new()}
- for raw in [text(cfg,"registryIconUrl"),text(p,"iconUrl")]{if let Ok(u)=reqwest::Url::parse(raw){if u.scheme()=="https"&&u.host_str()==Some("cdn.agentclientprotocol.com")&&u.username().is_empty()&&u.password().is_none()&&u.port().is_none()&&u.query().is_none()&&u.fragment().is_none()&&u.path().starts_with("/registry/v1/")&&u.path().ends_with(".svg"){return u.to_string()}}}
+ for raw in [text(cfg,"registryIconUrl"),text(p,"iconUrl")]{if let Ok(u)=crate::registry_icon::validate(raw){return u.to_string()}}
  let id=text(cfg,"agentId");if !id.is_empty()&&id.len()<=128&&id.chars().next().is_some_and(|c|c.is_ascii_lowercase()||c.is_ascii_digit())&&id.chars().all(|c|c.is_ascii_lowercase()||c.is_ascii_digit()||"._-".contains(c)){format!("https://cdn.agentclientprotocol.com/registry/v1/latest/{id}.svg")}else{String::new()}
 }
 pub fn catalog(config:&Value)->Value{

@@ -55,6 +55,7 @@ fn git_failures_with_auth_words_are_rejections_not_missing_permissions() {
             let request: Value = serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
             let success = |value: Value| json!({"_tag":"Success","value":value});
             let exit = match request["tag"].as_str().unwrap() {
+                "server.getConfig" => success(json!({})),
                 "server.getSettings" => success(json!({"defaultProjectScripts":[]})),
                 "vcs.refreshStatus" => success(json!({"isRepo":true,"hasPrimaryRemote":true,"isDefaultRef":false,"hasWorkingTreeChanges":false,"hasUpstream":true,"refName":"feature","aheadCount":0,"behindCount":2,"pr":null,"workingTree":{"files":[],"insertions":0,"deletions":0}})),
                 "vcs.pull" => git_error("pull", PULL_AUTH),

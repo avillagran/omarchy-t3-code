@@ -30,7 +30,13 @@ pub fn schedule(input: &Value) -> Result<Value> {
             }
             Ok(out)
         }
-        "webhook" => Ok(json!({"type":"webhook","signature":null})),
+        "webhook" => {
+            // Keep advanced webhook options when editing. The protocol reader validates
+            // the signature and omits an absent secret, preserving the stored one.
+            let mut out = s.clone();
+            if out.get("signature").is_none() { out["signature"] = Value::Null; }
+            Ok(out)
+        },
         _ => Err("invalid_schedule".into()),
     }
 }
@@ -62,7 +68,12 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     let c = || e.connection(true);
     let result = match action {
         "list" => tasks::list(&c()?)?,
-        "upsert" => tasks::upsert(&c()?, &TaskUpsert::from_json(&upsert_payload(input)?)?)?,
+        "upsert" => {
+            let task = TaskUpsert::from_json(&upsert_payload(input)?)?;
+            // A rejected definition can contain the submitted secret in a server
+            // diagnostic. Never forward that diagnostic to the UI or logs.
+            tasks::upsert(&c()?, &task).map_err(|_| "scheduled_task_definition_rejected")?
+        },
         "enable" => tasks::set_enabled(&c()?, &id(input)?, input["enabled"] == true)?,
         "delete" => tasks::delete(&c()?, &id(input)?)?,
         "run" => tasks::run_now(&c()?, &id(input)?)?,
@@ -89,6 +100,20 @@ mod tests {
         let p = upsert_payload(&json!({"id":"task-1","title":"x","prompt":"y","projectId":"p","modelSelection":{},"schedule":{"type":"webhook"}})).unwrap();
         assert_eq!(p["requireExisting"], true);
         assert!(upsert_payload(&json!({"title":"","prompt":"y","projectId":"p","modelSelection":{},"schedule":{"type":"webhook"}})).is_err());
+    }
+    #[test]
+    fn webhook_signatures_follow_t3_write_and_edit_contract() {
+        let mut input = json!({"title":"Hook","prompt":"{{body.action}}","projectId":"p","modelSelection":{"instanceId":"codex","model":"m"},"schedule":{"type":"webhook","signature":{"header":"x-signature","encoding":"base64","prefix":"","secret":"fixture-signing-value"},"filters":[],"maxDeliveryAgeMinutes":90}});
+        let payload = TaskUpsert::from_json(&upsert_payload(&input).unwrap()).unwrap().payload().unwrap();
+        assert_eq!(payload["schedule"], input["schedule"]);
+        input["schedule"]["signature"].as_object_mut().unwrap().remove("secret");
+        let payload = TaskUpsert::from_json(&upsert_payload(&input).unwrap()).unwrap().payload().unwrap();
+        assert!(payload["schedule"]["signature"].get("secret").is_none());
+        assert_eq!(payload["schedule"]["maxDeliveryAgeMinutes"], 90);
+        input["schedule"]["signature"]["encoding"] = json!("invalid");
+        assert!(TaskUpsert::from_json(&upsert_payload(&input).unwrap()).unwrap().payload().is_err());
+        input["schedule"] = json!({"type":"webhook"});
+        assert_eq!(upsert_payload(&input).unwrap()["schedule"]["signature"], Value::Null);
     }
     #[test]
     fn task_edits_preserve_workspace_and_require_a_worktree_base() {

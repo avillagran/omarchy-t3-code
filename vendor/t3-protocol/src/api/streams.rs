@@ -65,6 +65,14 @@ pub const TERMINAL_ATTACH: Function = Function {
         payload: |a| TerminalAttach::from_args(a)?.payload(),
     }
 };
+/// Observe an existing terminal without creating, restarting or resizing it.
+pub const TERMINAL_OBSERVE: Function = Function {
+ stream:true,
+ ..api_fn! {name:"terminal.observe", module:"terminal", tag:Some("terminal.observe"),
+ kind:Read, scope:Fixed("terminal:read"),
+ args:[(threadId,Id,required),(terminalId,Token,required)],
+ payload:|a| super::terminal::session_payload(a.req("threadId")?,a.req("terminalId")?),}
+};
 pub const SUBSCRIBE_DEVICE_STATE: Function = Function {
     stream: true,
     ..api_fn! {
@@ -187,6 +195,7 @@ pub const FUNCTIONS: &[Function] = &[
     SUBSCRIBE_THREAD,
     SUBSCRIBE_COMMAND_OUTPUT,
     TERMINAL_ATTACH,
+    TERMINAL_OBSERVE,
     SUBSCRIBE_DEVICE_STATE,
     SUBSCRIBE_DISCOVERED_LOCAL_SERVERS,
     SUBSCRIBE_PREVIEW_EVENTS,
@@ -250,6 +259,15 @@ pub const SHAPES: &[Shape] = &[
     },
     Shape {
         function: &TERMINAL_ATTACH,
+        item_key: Some("type"),
+        items: &["snapshot", "output", "exited", "closed", "error", "cleared", "restarted", "activity"],
+        starts: STATE,
+        cursor: Some("sequence"),
+        ends: &[],
+        first_item: None,
+    },
+    Shape {
+        function: &TERMINAL_OBSERVE,
         item_key: Some("type"),
         items: &["snapshot", "output", "exited", "closed", "error", "cleared", "restarted", "activity"],
         starts: STATE,
@@ -588,6 +606,9 @@ pub fn command_output_spec(thread_id: &str, item_id: &str) -> Result<StreamSpec>
 pub fn terminal_attach_spec(attach: &TerminalAttach) -> Result<StreamSpec> {
     Ok(StreamSpec::new(&TERMINAL_ATTACH, attach.payload()?))
 }
+pub fn terminal_observe_spec(thread_id: &str, terminal_id: &str) -> Result<StreamSpec> {
+    Ok(StreamSpec::new(&TERMINAL_OBSERVE, super::terminal::session_payload(thread_id, terminal_id)?))
+}
 pub fn device_state_spec() -> Result<StreamSpec> {
     Ok(StreamSpec::new(&SUBSCRIBE_DEVICE_STATE, json!({})))
 }
@@ -641,6 +662,8 @@ subscribe_fns! {
     subscribe_command_output(thread_id: &str, item_id: &str) => command_output_spec;
     /// Items by `type`, starting with `snapshot`. `terminal::Output::apply` drops replays.
     subscribe_terminal_attach(attach: &TerminalAttach) => terminal_attach_spec;
+    /// Read-only observation of an existing terminal.
+    subscribe_terminal_observe(thread_id: &str, terminal_id: &str) => terminal_observe_spec;
     /// Every item is the whole `DeviceServiceState`.
     subscribe_device_state() => device_state_spec;
     /// Every item is the whole `{servers, scannedAt}` list; the first may precede the scan.

@@ -678,3 +678,5 @@ Kotlin change is tagged without compiling.
 The upstream reference and inspected source paths are recorded in
 [UPSTREAM.md](UPSTREAM.md). Provider calls and real conversations are not used by
 these fixture tests.
+
+Terminal context, output, read-only observation and reconnect bindings: [TERMINAL.md](TERMINAL.md).

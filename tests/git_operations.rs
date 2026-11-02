@@ -110,6 +110,7 @@ fn shared_native_transport_journals_before_stream_and_never_replays_unknown_or_o
                 "server.getSettings" => {
                     json!({"defaultProjectScripts":[{"id":"test","name":"Test","command":"echo sample","icon":"test","runOnWorktreeCreate":false}],"projectSettingsFolded":true})
                 }
+                "server.getConfig" => json!({}),
                 "vcs.refreshStatus" => ns.lock().unwrap().clone(),
                 "terminal.open" | "terminal.write" => json!({}),
                 other => panic!("unexpected native RPC {other}"),

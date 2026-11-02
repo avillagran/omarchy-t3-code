@@ -384,7 +384,7 @@ pub fn validate_base(base: &str) -> Result<()> {
     Ok(())
 }
 /// HTTP policy of `Client` reads: 8 s per request, 3 s to connect, idle connections
-/// kept 90 s, 8 MiB per response (64 MiB for bounded thread snapshots).
+/// kept 90 s, 8 MiB per response (64 MiB for shell and bounded thread snapshots).
 pub fn read_options() -> protocol::ConnectionOptions {
     protocol::ConnectionOptions::default()
         .with_request_timeout(Duration::from_secs(8))

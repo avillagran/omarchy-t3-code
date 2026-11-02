@@ -17,7 +17,7 @@ fn restores_exact_native_local_prefix_before_inherited_tail_only_when_marked() {
     assert!(restore(compact).is_err());
 }
 #[test]
-fn production_http_keeps_generic_limit_and_accepts_large_compact_thread_snapshots() {
+fn production_http_keeps_generic_limit_and_accepts_large_shell_and_thread_snapshots() {
     use std::{
         io::{Read, Write},
         net::TcpListener,
@@ -33,7 +33,7 @@ fn production_http_keeps_generic_limit_and_accepts_large_compact_thread_snapshot
     let compact = compact.to_string();
     assert!(compact.len() > 8 * 1024 * 1024);
     let server = thread::spawn(move || {
-        for i in 0..2 {
+        for i in 0..3 {
             let (mut s, _) = listener.accept().unwrap();
             let mut header = vec![];
             let mut b = [0];
@@ -43,8 +43,9 @@ fn production_http_keeps_generic_limit_and_accepts_large_compact_thread_snapshot
             }
             let h = String::from_utf8(header).unwrap();
             assert!(h.to_lowercase().contains("x-t3-orchestration-protocol: 2"));
-            let body = if i == 0 {
-                assert!(h.starts_with("GET /api/orchestration/shell HTTP"));
+            let body = if i < 2 {
+                let path = if i == 0 { "/api/fixture" } else { "/api/orchestration/shell" };
+                assert!(h.starts_with(&format!("GET {path} HTTP")));
                 &legacy
             } else {
                 assert!(h.starts_with(
@@ -75,10 +76,12 @@ fn production_http_keeps_generic_limit_and_accepts_large_compact_thread_snapshot
     };
     let c = Client::new().unwrap();
     assert_eq!(
-        c.get(&e, "/api/orchestration/shell", true)
+        c.get(&e, "/api/fixture", true)
             .unwrap_err(),
         "too_large"
     );
+    let shell = c.get(&e, "/api/orchestration/shell", true).unwrap();
+    assert_eq!(shell["projection"]["turnItems"][0]["text"].as_str().unwrap().len(), 9_000_000);
     let result = c.bounded_thread(&e, "t").unwrap();
     assert_eq!(
         result["projection"]["turnItems"][0]["text"]

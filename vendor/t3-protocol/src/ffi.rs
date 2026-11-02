@@ -14,6 +14,7 @@ struct Handle {
     connection: Option<Connection>,
     key: Arc<DpopKey>,
     subscriptions: HashMap<String, Arc<Subscription>>,
+    icon_cancellations: HashMap<String, Arc<std::sync::atomic::AtomicBool>>,
 }
 /// # Safety
 /// Returned handle must be freed once, after all calls have completed.
@@ -23,6 +24,7 @@ pub extern "C" fn t3_client_new() -> *mut std::ffi::c_void {
         connection: None,
         key: Arc::new(DpopKey::generate()),
         subscriptions: HashMap::new(),
+        icon_cancellations: HashMap::new(),
     })))
     .cast()
 }
@@ -30,8 +32,8 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
     match field(&request, "op")? {
         "capabilities" => Ok(crate::ffi_stream::with_capabilities(crate::ffi_call::capabilities(
             json!({"abiVersion":3,"libraryVersion":env!("CARGO_PKG_VERSION"),
-            "operations":["connectBearer","connectRelay","request","requestOk","rpc","rpcWithTimeout","disconnect","subscribe","pollSubscription","cancelSubscription","wakeSubscriptions","fetchDescriptor","pairBearer","boundedThread","assetBytes","projectFavicon"],
-            "binaryOperations":["image","assetBytes","projectFavicon"],
+            "operations":["connectBearer","connectRelay","request","requestOk","rpc","rpcWithTimeout","disconnect","subscribe","pollSubscription","cancelSubscription","wakeSubscriptions","fetchDescriptor","pairBearer","boundedThread","historyPage","pullRequestDiff","document","assetBytes","projectFavicon","registryIconBytes","cancelRegistryIcon"],
+            "binaryOperations":["image","assetBytes","projectFavicon","registryIconBytes"],
             "connectionOptions":["requestTimeoutMs","connectTimeoutMs","poolIdleTimeoutMs","maxBytes"],
             "nativeAttachmentUpload":true,"nativeImageDownload":true,
             "maxAssetBytes":assets::MAX_ASSET_BYTES}),
@@ -119,6 +121,15 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
                 "environmentId":paired.environment_id,"descriptor":paired.descriptor,
                 "scope":paired.scope,"expiresIn":paired.expires_in,"connected":connected}))
         }
+        "cancelRegistryIcon" => {
+            let h=handle.lock().map_err(|_|"internal_error")?;
+            if let Some(flag)=h.icon_cancellations.get(field(&request,"requestId")?){flag.store(true,std::sync::atomic::Ordering::Relaxed);}
+            Ok(json!(null))
+        },
+        "registryIconBytes" => Err("binary_operation".into()),
+        "historyPage" => connection(handle)?.history_page(field(&request,"threadId")?,field(&request,"cursor")?),
+        "pullRequestDiff" => connection(handle)?.pull_request_diff(request.get("reference").ok_or("invalid_pull_request")?,request["cursor"].as_str()),
+        "document" => connection(handle)?.document_text(request.get("resource").ok_or("invalid_file")?.clone()),
         "boundedThread" => connection(handle)?.bounded_thread(field(&request, "threadId")?),
         // Bytes never travel through JSON: these go through t3_client_image.
         "assetBytes" | "projectFavicon" => Err("binary_operation".into()),
@@ -229,6 +240,8 @@ fn connection(handle: &Mutex<Handle>) -> Result<Connection> {
 }
 impl Handle {
     fn cancel_all(&mut self) {
+        for flag in self.icon_cancellations.values(){flag.store(true,std::sync::atomic::Ordering::Relaxed);}
+
         for subscription in self.subscriptions.values() {
             subscription.cancel();
         }
@@ -328,6 +341,23 @@ pub unsafe extern "C" fn t3_client_image(
     let result = std::panic::catch_unwind(|| {
         let receive = receive.ok_or("invalid_callback")?;
         let request = input_json(handle, input, len)?;
+        if request["op"]=="registryIconBytes" {
+            let id=crate::api::ids::id("requestId",field(&request,"requestId")?)?;
+            let url=field(&request,"url")?;
+            crate::registry_icon::validate(url)?;
+            let flag=Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let h=&*handle.cast::<Mutex<Handle>>();
+            {let mut h=h.lock().map_err(|_|"internal_error")?;
+             if h.icon_cancellations.contains_key(id){return Err("request_in_progress".into())}
+             if h.icon_cancellations.len()>=64{return Err("too_many_requests".into())}
+             h.icon_cancellations.insert(id.into(),flag.clone());}
+            let result=crate::registry_icon::bytes(url,||flag.load(std::sync::atomic::Ordering::Relaxed));
+            h.lock().map_err(|_|"internal_error")?.icon_cancellations.remove(id);
+            let icon=result?;
+            if flag.load(std::sync::atomic::Ordering::Relaxed){return Err("cancelled".into())}
+            receive(context,icon.bytes.as_ptr(),icon.bytes.len());
+            return Ok(json!({"sizeBytes":icon.bytes.len(),"mimeType":icon.mime}));
+        }
         let connection = connection(&*handle.cast::<Mutex<Handle>>())?;
         match request.get("op").and_then(Value::as_str) {
             None => {

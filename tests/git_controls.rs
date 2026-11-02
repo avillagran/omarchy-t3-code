@@ -288,7 +288,9 @@ fn production_read_adapter_uses_actual_native_http_and_rpc_contracts_only() {
         assert!(String::from_utf8(header)
             .unwrap()
             .starts_with("GET /api/orchestration/shell HTTP/1.1"));
-        let body = shell().to_string();
+        let mut large_shell = shell();
+        large_shell["padding"] = json!("x".repeat(9 * 1024 * 1024));
+        let body = large_shell.to_string();
         write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
         drop(stream);
         for (tag, payload, result) in [
@@ -302,6 +304,7 @@ fn production_read_adapter_uses_actual_native_http_and_rpc_contracts_only() {
                 json!({"cwd":"/remote/tree with spaces"}),
                 status(),
             ),
+            ("server.getConfig", json!({}), json!({"environment":{"capabilities":{"pullRequests":false}}})),
         ] {
             let (stream, _) = listener.accept().unwrap();
             stream
@@ -336,6 +339,8 @@ fn production_read_adapter_uses_actual_native_http_and_rpc_contracts_only() {
     assert_eq!(output["scripts"][0]["id"], "test");
     assert_eq!(output["status"]["refName"], "feature/x");
     assert_eq!(output["scope"]["environment"], "remote");
+    assert_eq!(output["actions"]["create_pr"], false);
+    assert_eq!(output["actions"]["commit_push_pr"], false);
     let mut wrong = input();
     wrong["environment"] = json!("other");
     assert_eq!(

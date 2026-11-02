@@ -118,17 +118,17 @@ pub const FUNCTIONS: &[DomainFn] = &[
     },
     domain_fn! {
         name: "gitControls.actions", module: "gitControls",
-        args: [(status, Object, required)],
+        args: [(status, Object, required), (serverConfig, Object, optional)],
         returns: "object {commit, push, pull, create_pr, commit_push, commit_push_pr} of bools: what the Git menu offers for a vcs.refreshStatus result",
-        run: |a| Ok(git_controls::actions(a.req_object("status")?)),
+        run: |a| Ok(git_controls::actions_with_config(a.req_object("status")?, &a.all()["serverConfig"])),
     },
     domain_fn! {
         name: "gitControls.present", module: "gitControls",
-        args: [(scope, Object, required), (status, Object, required), (scripts, Array, required)],
+        args: [(scope, Object, required), (status, Object, required), (scripts, Array, required), (serverConfig, Object, optional)],
         returns: "object {scope, status, scripts, actions, revision}: the Git & changes sheet; revision fingerprints checkout, status and scripts (not the requestId)",
         run: |a| {
             a.req_array("scripts")?;
-            git_controls::present(a.req_object("scope")?, a.req_object("status")?, &a.all()["scripts"])
+            git_controls::present_with_config(a.req_object("scope")?, a.req_object("status")?, &a.all()["scripts"], &a.all()["serverConfig"])
         },
     },
     domain_fn! {

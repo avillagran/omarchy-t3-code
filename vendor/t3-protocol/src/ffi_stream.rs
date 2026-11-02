@@ -13,7 +13,7 @@ pub(crate) const MAX_ITEMS: usize = 64;
 /// Streams per handle (shell, open thread, command output, config, preview, terminal,
 /// devices…), each with its own WebSocket: T3 serves one request per socket.
 pub(crate) const MAX_SUBSCRIPTIONS: usize = 8;
-/// Of those, streams in the 64 MiB bounded-snapshot mode. Queued payload per handle
+/// Of those, shell or bounded-thread streams in the 64 MiB snapshot mode. Queued payload per handle
 /// stays under 2 × 72 MiB + 6 × 8 MiB = 192 MiB of serialized JSON.
 pub(crate) const MAX_LARGE_SUBSCRIPTIONS: usize = 2;
 /// Per-subscription bounds, fixed by its mode when it starts. Sizes are serialized JSON.
@@ -26,8 +26,8 @@ pub(crate) struct Limits {
 }
 impl Limits {
     pub(crate) const NORMAL: Self = Self { item: MAX_BYTES as usize, queue: MAX_BYTES as usize };
-    /// 8 MiB everywhere except `orchestration.subscribeThread` with `acceptBoundedSnapshot`:
-    /// that one item may be a 64 MiB snapshot, and the queue keeps a normal stream's
+    /// 8 MiB except shell or `orchestration.subscribeThread` with `acceptBoundedSnapshot`:
+    /// one item may be a 64 MiB snapshot, and the queue keeps a normal stream's
     /// 8 MiB of events behind it (72 MiB).
     pub(crate) fn of(tag: &str, payload: &Value) -> Self {
         let item = stream::item_limit(tag, payload) as usize;
@@ -354,15 +354,18 @@ mod tests {
         assert!(shared.inbox.lock().unwrap().items.is_empty());
     }
     #[test]
-    fn only_a_bounded_thread_subscription_gets_the_large_item_limit() {
+    fn shell_and_bounded_thread_subscriptions_get_the_large_item_limit() {
         let bounded = json!({"threadId":"t","acceptBoundedSnapshot":true});
         let large = Limits::of("orchestration.subscribeThread", &bounded);
         assert_eq!(large, Limits { item: 64 << 20, queue: 72 << 20 });
         assert!(large.large() && !Limits::NORMAL.large());
+        for payload in [json!({}), json!({"afterSequence":7})] {
+            assert_eq!(Limits::of("orchestration.subscribeShell", &payload), large);
+        }
         for (tag, payload) in [
             ("orchestration.subscribeThread", json!({"threadId":"t"})),
             ("orchestration.subscribeThread", json!({"acceptBoundedSnapshot":"true"})),
-            ("orchestration.subscribeShell", json!({"acceptBoundedSnapshot":true})),
+            ("terminal.attach", json!({"acceptBoundedSnapshot":true})),
         ] {
             assert_eq!(Limits::of(tag, &payload), Limits::NORMAL, "{tag} {payload}");
         }

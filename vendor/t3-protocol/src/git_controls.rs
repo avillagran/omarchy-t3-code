@@ -183,6 +183,11 @@ pub fn validate_status(status: &Value) -> Result<()> {
 
 /// Mirrors native menu availability; composite actions additionally refuse upstream divergence.
 pub fn actions(status: &Value) -> Value {
+    actions_with_config(status, &Value::Null)
+}
+
+/// Consume server.getConfig's environment capability; older servers omit it.
+pub fn actions_with_config(status: &Value, server_config: &Value) -> Value {
     let repo = status["isRepo"] == true;
     let branch = status["refName"].is_string();
     let remote = status["hasPrimaryRemote"] == true;
@@ -193,17 +198,34 @@ pub fn actions(status: &Value) -> Value {
     let delta = status["aheadOfDefaultCount"].as_u64().unwrap_or(ahead);
     let pr = status["pr"]["state"] == "open";
     let pushable = branch && behind == 0 && (upstream || remote);
-    let create = pushable && remote && !pr && delta > 0;
+    let pull_requests = server_config["environment"]["capabilities"]["pullRequests"] != false;
+    let create = pull_requests && pushable && remote && !pr && delta > 0;
     json!({"commit":repo && changed,"push":repo && remote && pushable && ahead > 0,
         "pull":repo && branch && upstream && behind > 0 && ahead == 0,
         "create_pr":repo && create,"commit_push":repo && changed && remote && pushable,
-        "commit_push_pr":repo && changed && remote && pushable && !pr})
+        "commit_push_pr":repo && changed && remote && pushable && !pr && pull_requests})
 }
 
 pub fn present(scope: &Value, status: &Value, scripts: &Value) -> Result<Value> {
+    present_with_config(scope, status, scripts, &Value::Null)
+}
+
+/// Include the capability in the revision so a changed server config invalidates old plans.
+pub fn present_with_config(
+    scope: &Value,
+    status: &Value,
+    scripts: &Value,
+    server_config: &Value,
+) -> Result<Value> {
     validate_status(status)?;
-    let mut output =
-        json!({"scope":scope,"status":status,"scripts":scripts,"actions":actions(status)});
+    let mut output = json!({"scope":scope,"status":status,"scripts":scripts,"actions":actions_with_config(status, server_config)});
+    if let Some(capability) = server_config["environment"]["capabilities"].get("pullRequests") {
+        if !capability.is_boolean() {
+            return Err("invalid_git_capability".into());
+        }
+        output["serverConfig"] =
+            json!({"environment":{"capabilities":{"pullRequests":capability}}});
+    }
     bounded(&output)?;
     // Request identity rejects late reads but is NOT repository content. A fresh read with a
     // new request ID must compare equal if the checkout, status and scripts are unchanged.
@@ -282,7 +304,7 @@ pub fn build_action(current: &Value, intent: &Value) -> Result<Value> {
         json!([{"tag":"terminal.open","payload":open},{"tag":"terminal.write","payload":{"threadId":thread,"terminalId":terminal,"data":format!("{command}\r")}}])
     } else {
         validate_status(&current["status"])?;
-        if actions(&current["status"])[operation] != true {
+        if actions_with_config(&current["status"], &current["serverConfig"])[operation] != true {
             return Err("git_action_unavailable".into());
         }
         if current["status"]["isDefaultRef"] == true

@@ -17,9 +17,11 @@ Controls.Popup {
  readonly property var dayNames:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
  function show(){editing=null;open();bridge.scheduledTasksAction({action:"list"})}
  function describe(s){if(!s)return "";if(s.type==="interval"){var m=Math.round(s.everyMs/60000);return m%1440===0?T3I18n.tr("Every {count} days",{count:m/1440}):m%60===0?T3I18n.tr("Every {count} hours",{count:m/60}):T3I18n.tr("Every {count} minutes",{count:m})}if(s.type==="fixed_time"){var days=s.weekdays&&s.weekdays.length?s.weekdays.map(function(d){return T3I18n.tr(root.dayNames[d])}).join(", "):T3I18n.tr("Every day");return days+" · "+s.timeOfDay}return T3I18n.tr("Webhook")}
- function edit(task){var s=task?task.schedule:{type:"interval",everyMs:3600000};editing={workspaceStrategy:task&&task.workspaceStrategy?task.workspaceStrategy:{type:"root"},interactionMode:task&&task.interactionMode||"default",threadId:task&&task.threadId||null,id:task?task.id:null,title:task?task.title:"",prompt:task?task.prompt:"",projectId:task?task.projectId:(root.bridge.selectedInfo.projectId||(projects[0]||{}).id||""),type:s.type,minutes:s.type==="interval"?Math.round(s.everyMs/60000):60,timeOfDay:s.timeOfDay||"09:00",weekdays:s.weekdays||[],enabled:task?task.enabled:true,modelSelection:task?task.modelSelection:(root.bridge.selectedInfo.modelSelection||null),runtimeMode:task?task.runtimeMode:(root.bridge.currentRuntimeMode?root.bridge.currentRuntimeMode():"approval-required")}}
- function save(){var e=editing;if(!e)return;root.bridge.scheduledTasksAction({action:"upsert",id:e.id||undefined,title:title.text,prompt:prompt.text,projectId:e.projectId,enabled:e.enabled,modelSelection:e.modelSelection,runtimeMode:e.runtimeMode,interactionMode:e.interactionMode,threadId:e.threadId,workspaceStrategy:e.workspaceStrategy.type==="root"?{type:"root"}:Object.assign({},e.workspaceStrategy,e.workspaceStrategy.type==="worktree"?{baseRef:baseRef.text}:{worktreePath:worktreePath.text}),schedule:e.type==="interval"?{type:"interval",minutes:Number(minutes.text)}:e.type==="fixed_time"?{type:"fixed_time",timeOfDay:time.text,weekdays:e.weekdays}:{type:"webhook"}})}
- Connections{target:root.bridge;function onScheduledTasksChanged(){if(!root.view.busy&&!root.view.error&&root.view.lastAction==="upsert")root.editing=null}}
+ function edit(task){signatureSecret.clear();var s=task?task.schedule:{type:"interval",everyMs:3600000};editing={workspaceStrategy:task&&task.workspaceStrategy?task.workspaceStrategy:{type:"root"},interactionMode:task&&task.interactionMode||"default",threadId:task&&task.threadId||null,id:task?task.id:null,title:task?task.title:"",prompt:task?task.prompt:"",projectId:task?task.projectId:(root.bridge.selectedInfo.projectId||(projects[0]||{}).id||""),webhookSchedule:s.type==="webhook"?s:{type:"webhook"},signatureEnabled:!!s.signature,signatureHeader:s.signature?s.signature.header:"x-hub-signature-256",signatureEncoding:s.signature?s.signature.encoding:"hex",signaturePrefix:s.signature?s.signature.prefix:"sha256=",hasSecret:!!(task&&task.webhook&&task.webhook.hasSecret),type:s.type,minutes:s.type==="interval"?Math.round(s.everyMs/60000):60,timeOfDay:s.timeOfDay||"09:00",weekdays:s.weekdays||[],enabled:task?task.enabled:true,modelSelection:task?task.modelSelection:(root.bridge.selectedInfo.modelSelection||null),runtimeMode:task?task.runtimeMode:(root.bridge.currentRuntimeMode?root.bridge.currentRuntimeMode():"approval-required")}}
+ function webhookSchedule(){var e=editing;var signature=null;if(e.signatureEnabled){signature={header:signatureHeader.text.trim(),encoding:e.signatureEncoding,prefix:signaturePrefix.text};if(signatureSecret.text.trim())signature.secret=signatureSecret.text.trim()}return Object.assign({},e.webhookSchedule,{type:"webhook",signature:signature})}
+ function save(){var e=editing;if(!e)return;root.bridge.scheduledTasksAction({action:"upsert",id:e.id||undefined,title:title.text,prompt:prompt.text,projectId:e.projectId,enabled:e.enabled,modelSelection:e.modelSelection,runtimeMode:e.runtimeMode,interactionMode:e.interactionMode,threadId:e.threadId,workspaceStrategy:e.workspaceStrategy.type==="root"?{type:"root"}:Object.assign({},e.workspaceStrategy,e.workspaceStrategy.type==="worktree"?{baseRef:baseRef.text}:{worktreePath:worktreePath.text}),schedule:e.type==="interval"?{type:"interval",minutes:Number(minutes.text)}:e.type==="fixed_time"?{type:"fixed_time",timeOfDay:time.text,weekdays:e.weekdays}:webhookSchedule()});signatureSecret.clear()}
+ Connections{target:root.bridge;function onScheduledTasksChanged(){if(!root.view.busy&&!root.view.error&&root.view.lastAction==="upsert"){signatureSecret.clear();root.editing=null}}}
+ onClosed:signatureSecret.clear()
  modal:true;focus:true;padding:Style.space(18)
  x:Math.round((parent.width-width)/2);y:Math.round((parent.height-height)/2)
  width:Math.min(Style.space(680),parent.width-Style.space(40));height:Math.min(Style.space(600),parent.height-Style.space(40))
@@ -31,7 +33,7 @@ Controls.Popup {
    T3PickerButton{objectName:"scheduledTaskNew";visible:!root.editing;implicitHeight:Style.space(28);text:T3I18n.tr("New task");enabled:root.projects.length>0;onClicked:root.edit(null)}
    T3IconButton{name:"x";tooltipText:T3I18n.tr("Close");onClicked:root.close()}
   }
-  Text{visible:!!root.view.error;Layout.fillWidth:true;text:T3I18n.error(root.view.error||"");color:Color.urgent;wrapMode:Text.Wrap}
+  Text{objectName:"scheduledTaskError";visible:!!root.view.error;Layout.fillWidth:true;text:root.view.error==="scheduled_task_definition_rejected"?T3I18n.tr("The server rejected this task definition. Check webhook signing fields and prompt templates; this server may require a signed webhook. Re-enter the secret to retry."):T3I18n.error(root.view.error||"");textFormat:Text.PlainText;color:Color.urgent;wrapMode:Text.Wrap}
   // List
   ListView{
    id:list;objectName:"scheduledTaskList";visible:!root.editing;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;model:root.tasks;spacing:Style.space(6)
@@ -43,7 +45,8 @@ Controls.Popup {
      T3Switch{checked:modelData.enabled;enabled:!root.view.busy;Accessible.name:T3I18n.tr("Enabled")+" · "+modelData.title;onToggled:root.bridge.scheduledTasksAction({action:"enable",id:modelData.id,enabled:checked})}
      ColumnLayout{Layout.fillWidth:true;spacing:Style.space(2)
       Text{Layout.fillWidth:true;text:modelData.title;color:root.fg;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
-      Text{Layout.fillWidth:true;text:root.describe(modelData.schedule)+(modelData.lastRunStatus==="failed"?" · "+T3I18n.tr("Last run failed"):modelData.lastRunStatus==="running"?" · "+T3I18n.tr("Running"):"")+(modelData.webhook&&modelData.webhook.url?" · "+modelData.webhook.url:"");color:modelData.lastRunStatus==="failed"?Color.urgent:root.muted;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+      Text{Layout.fillWidth:true;text:root.describe(modelData.schedule)+(modelData.lastRunStatus==="failed"?" · "+T3I18n.tr("Last run failed"):modelData.lastRunStatus==="running"?" · "+T3I18n.tr("Running"):"");color:modelData.lastRunStatus==="failed"?Color.urgent:root.muted;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+      Controls.TextArea{objectName:"scheduledTaskWebhookUrl";visible:!!(modelData.webhook&&modelData.webhook.url);Layout.fillWidth:true;readOnly:true;selectByMouse:true;wrapMode:TextEdit.WrapAnywhere;text:modelData.webhook?modelData.webhook.url||"":"";textFormat:TextEdit.PlainText;color:root.muted;font.pixelSize:Style.font.caption;background:null;padding:0}
      }
      T3IconButton{name:"play";tooltipText:T3I18n.tr("Run now");enabled:!root.view.busy;onClicked:root.bridge.scheduledTasksAction({action:"run",id:modelData.id})}
      T3IconButton{name:"pen-line";tooltipText:T3I18n.tr("Edit");onClicked:root.edit(modelData)}
@@ -77,10 +80,24 @@ Controls.Popup {
     Item{Layout.fillWidth:true}
    }
    Text{visible:!!root.editing&&root.editing.type==="webhook";Layout.fillWidth:true;wrapMode:Text.Wrap;color:root.muted;font.pixelSize:Style.font.caption;text:T3I18n.tr("Runs on each request to the task's webhook URL, shown after saving. The prompt may use {{body.path}} placeholders.")}
+   ColumnLayout{
+    visible:!!root.editing&&root.editing.type==="webhook";Layout.fillWidth:true
+    RowLayout{
+     T3Switch{objectName:"scheduledTaskSignatureEnabled";checked:!!root.editing&&root.editing.signatureEnabled;onToggled:root.editing=Object.assign({},root.editing,{signatureEnabled:checked})}
+     Text{text:T3I18n.tr("Require signature (HMAC-SHA256)");color:root.fg;font.pixelSize:Style.font.caption}
+    }
+    RowLayout{
+     visible:!!root.editing&&root.editing.signatureEnabled;Layout.fillWidth:true
+     Controls.TextField{id:signatureHeader;objectName:"scheduledTaskSignatureHeader";Layout.fillWidth:true;text:root.editing?root.editing.signatureHeader:"";onTextEdited:root.editing.signatureHeader=text;placeholderText:T3I18n.tr("Signature header");color:root.fg}
+     T3Select{objectName:"scheduledTaskSignatureEncoding";model:["hex","base64"];currentIndex:root.editing&&root.editing.signatureEncoding==="base64"?1:0;onActivated:function(i){root.editing=Object.assign({},root.editing,{signatureEncoding:i===1?"base64":"hex"})}}
+     Controls.TextField{id:signaturePrefix;objectName:"scheduledTaskSignaturePrefix";Layout.fillWidth:true;text:root.editing?root.editing.signaturePrefix:"";onTextEdited:root.editing.signaturePrefix=text;placeholderText:T3I18n.tr("Signature prefix (optional)");color:root.fg}
+    }
+    Controls.TextField{id:signatureSecret;objectName:"scheduledTaskSignatureSecret";visible:!!root.editing&&root.editing.signatureEnabled;Layout.fillWidth:true;echoMode:TextInput.Password;inputMethodHints:Qt.ImhSensitiveData|Qt.ImhNoPredictiveText;placeholderText:root.editing&&root.editing.hasSecret?T3I18n.tr("Signing secret (leave blank to keep stored secret)"):T3I18n.tr("Signing secret");color:root.fg}
+   }
    RowLayout{Layout.fillWidth:true
     Item{Layout.fillWidth:true}
-    T3PickerButton{implicitHeight:Style.space(30);primary:false;text:T3I18n.tr("Cancel");onClicked:root.editing=null}
-    T3PickerButton{objectName:"scheduledTaskSave";implicitHeight:Style.space(30);text:T3I18n.tr("Save");enabled:!root.view.busy&&!!title.text.trim()&&!!prompt.text.trim()&&!!root.editing&&!!root.editing.projectId&&!!root.editing.modelSelection&&(root.editing.workspaceStrategy.type!=="worktree"||!!baseRef.text.trim())&&(root.editing.workspaceStrategy.type!=="existing_worktree"||!!worktreePath.text.trim());onClicked:root.save()}
+    T3PickerButton{implicitHeight:Style.space(30);primary:false;text:T3I18n.tr("Cancel");onClicked:{signatureSecret.clear();root.editing=null}}
+    T3PickerButton{objectName:"scheduledTaskSave";implicitHeight:Style.space(30);text:T3I18n.tr("Save");enabled:(!root.editing||root.editing.type!=="webhook"||!root.editing.signatureEnabled||(!!signatureHeader.text.trim()&&(!!signatureSecret.text.trim()||root.editing.hasSecret)))&&!root.view.busy&&!!title.text.trim()&&!!prompt.text.trim()&&!!root.editing&&!!root.editing.projectId&&!!root.editing.modelSelection&&(root.editing.workspaceStrategy.type!=="worktree"||!!baseRef.text.trim())&&(root.editing.workspaceStrategy.type!=="existing_worktree"||!!worktreePath.text.trim());onClicked:root.save()}
    }
   }
  }
