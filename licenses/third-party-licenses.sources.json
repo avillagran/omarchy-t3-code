@@ -1,7 +1,7 @@
 {
   "target": "x86_64-unknown-linux-gnu",
   "rustcVersion": "1.99.1",
-  "cargoLockSha256": "851d1aadf4e3cbbcd2377c3a19d140b4db1eeb484d3bfd834422ea15ba64fe20",
+  "cargoLockSha256": "5c6ee3b3eb3cb1d5ff28f56d65f76d10a41ae2fdcfdb8f641660b6b44ad203d3",
   "dictateCargoLockSha256": "25ce899c713450cb864a417fd4364d9b0859034a75750bec76f5fe0723208b68",
   "nativeHelperSha256": "d1c3a97be83cad6eda01a02a975b61e65acc606d708b0e81c0b20dba0b6eb3fd",
   "inputs": {
@@ -10,6 +10,10 @@
     "cargo/adler2@2.0.1/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "cargo/aes@0.8.4/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
     "cargo/aes@0.8.4/LICENSE-MIT": "f7e8ab639afef15573680c97f796166835cbeb3865175882fea41c60d106b733",
+    "cargo/alloc-no-stdlib@3.0.0/LICENSE": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+    "cargo/alloc-stdlib@0.3.0/workspace-LICENSE": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+    "cargo/async-compression@0.4.52/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "cargo/async-compression@0.4.52/LICENSE-MIT": "88d1e3160df48926ad3310a8ec5699b502889565908f1be7e77cd21282c7a709",
     "cargo/atomic-waker@1.1.2/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "cargo/atomic-waker@1.1.2/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "cargo/atomic-waker@1.1.2/LICENSE-THIRD-PARTY": "6226d0632e2e1a80c23597e964da9812ae193c535fe058154afb034e94167aa5",
@@ -29,6 +33,9 @@
     "cargo/block-buffer@0.10.4/LICENSE-MIT": "d5c22aa3118d240e877ad41c5d9fa232f9c77d757d4aac0c2f943afc0a95e0ef",
     "cargo/block-padding@0.3.3/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
     "cargo/block-padding@0.3.3/LICENSE-MIT": "d5c22aa3118d240e877ad41c5d9fa232f9c77d757d4aac0c2f943afc0a95e0ef",
+    "cargo/brotli@9.1.1/LICENSE.BSD-3-Clause": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+    "cargo/brotli@9.1.1/LICENSE.MIT": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
+    "cargo/brotli-decompressor@6.2.0/LICENSE": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
     "cargo/bytemuck@1.25.2/LICENSE-APACHE": "e3ba223bb1423f0aad8c3dfce0fe3148db48926d41e6fbc3afbbf5ff9e1c89cb",
     "cargo/bytemuck@1.25.2/LICENSE-MIT": "9df9ba60a11af705f2e451b53762686e615d86f76b169cf075c3237730dbd7e2",
     "cargo/bytemuck@1.25.2/LICENSE-ZLIB": "84b34dd7608f7fb9b17bd588a6bf392bf7de504e2716f024a77d89f1b145a151",
@@ -48,6 +55,10 @@
     "cargo/cipher@0.4.4/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
     "cargo/cipher@0.4.4/LICENSE-MIT": "5c7bd92d1f096f12203dc1b601e3cb17484fa1b023e30b6b8edcc80e416237ec",
     "cargo/color_quant@1.1.0/LICENSE": "592dc80f1a865d20d61a2006a2d29ce34a2bc28cd7e868ab300fdeed6da154ca",
+    "cargo/compression-codecs@0.4.47/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "cargo/compression-codecs@0.4.47/LICENSE-MIT": "88d1e3160df48926ad3310a8ec5699b502889565908f1be7e77cd21282c7a709",
+    "cargo/compression-core@0.4.34/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "cargo/compression-core@0.4.34/LICENSE-MIT": "88d1e3160df48926ad3310a8ec5699b502889565908f1be7e77cd21282c7a709",
     "cargo/const-oid@0.9.6/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
     "cargo/const-oid@0.9.6/LICENSE-MIT": "bada9e7ed8dc00d63502053c455d7c8d7575dfb7e8277a2a832531844d900682",
     "cargo/cpufeatures@0.2.17/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
@@ -270,7 +281,7 @@
     "cargo/syn@3.0.9/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "cargo/sync_wrapper@1.0.2/LICENSE": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     "cargo/synstructure@0.14.0/LICENSE": "219920e865eee70b7dcfc948a86b099e7f4fe2de01bcca2ca9a20c0a033f2b59",
-    "cargo/t3-protocol@0.3.7/LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
+    "cargo/t3-protocol@0.3.8/LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
     "cargo/thiserror@2.0.21/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
     "cargo/thiserror@2.0.21/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "cargo/thiserror-impl@2.0.21/LICENSE-APACHE": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
@@ -282,6 +293,7 @@
     "cargo/tokio@1.53.3/LICENSE": "253cd04c6714889df2d32f3f64d669179a1c95c76ac43c40882c52eb06bc3552",
     "cargo/tokio-rustls@0.26.6/LICENSE-APACHE": "cc117d90b498b32b11a886f279b359da16a73c3b01efbb2f5cc004b20262334e",
     "cargo/tokio-rustls@0.26.6/LICENSE-MIT": "e20fa2b8e0a2565f24a792b94b4bf4b6c2b9d36f781d8a9516e218a036e6677a",
+    "cargo/tokio-util@0.7.20/LICENSE": "253cd04c6714889df2d32f3f64d669179a1c95c76ac43c40882c52eb06bc3552",
     "cargo/tower@0.5.3/LICENSE": "4249c8e6c5ebb85f97c77e6457c6fafc1066406eb8f1ef61e796fbdc5ff18482",
     "cargo/tower-http@0.6.11/LICENSE": "5049cf464977eff4b4fcfa7988d84e74116956a3eb9d5f1d451b3f828f945233",
     "cargo/tower-layer@0.3.3/LICENSE": "4249c8e6c5ebb85f97c77e6457c6fafc1066406eb8f1ef61e796fbdc5ff18482",
@@ -393,6 +405,6 @@
     "manifest.json": "75c27a9f6b999de2340a4be048c46cfc75d9894d1fea3339a90fb26b74fc142e",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe"
   },
-  "entries": 264,
-  "outputSha256": "c848712f8c991c56ad4a336002d60429669b0d35962ea480066c783321673237"
+  "entries": 272,
+  "outputSha256": "114d73c884d81628cf9ca5f026673f2d2d02e980760675134531e642cbbbb5b5"
 }

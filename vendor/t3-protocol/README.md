@@ -882,6 +882,22 @@ renderer-neutral blocks and spans with ot3's link rule, math kept as TeX.
 `plan_workflow` and `timeline` take the renderer as a parameter, so neither is
 tied to Qt.
 
+### Added in 0.3.8
+
+- **Compressed HTTP.** `request_json`, signed assets, documents and hub
+  screenshots now accept gzip and brotli instead of insisting on `identity`, so
+  a large thread shell costs a fraction of its size on the wire. Both decoders
+  are pure Rust and add no C build. Every limit (`request_json`'s 8 MiB, 64 MiB
+  bounded snapshots, asset and document limits) applies to the decompressed
+  size: bodies are streamed and reading stops at the first byte past the limit,
+  so a compression bomb ends in `too_large` or its path's equivalent. A
+  compressed body that does not decode reads as a broken body (`unreachable`,
+  `asset_unavailable`). Any other `Content-Encoding` stays `unsupported_encoding`.
+- **What stays uncompressed.** `/api/auth/*` and `/v1/*` documents, token
+  exchanges and the descriptor still send `Accept-Encoding: identity`, as does
+  the endless MJPEG stream. DPoP proofs, tickets and the WebSocket are unchanged.
+  A client passed to `with_http_client` keeps its own compression settings.
+
 ### Added in 0.3.5
 
 - **`awareness.view`** (109 domain functions): T3's agent phases per thread,
@@ -930,7 +946,8 @@ All additive; `Connection::new`, `with_http_client` and C ABI v2 behave as befor
   keeps 8 s connect, 12 s read/write and the 20 s `rpc` deadline
   (`rpc_with_timeout` for longer).
 - **HTTP details.** `Content-Type` is matched without case or parameters
-  (`Application/JSON; charset=utf-8`), `Content-Encoding: identity` without case.
+  (`Application/JSON; charset=utf-8`), `Content-Encoding: identity` without case
+  (gzip and brotli are decoded since 0.3.8, see above).
   `request_json_with_limit` sets one call's limit (1 byte to 64 MiB).
   `request_ok` accepts any 2xx without reading the body.
 - **Signed assets.** `Connection::asset_bytes(resource, limit)` /

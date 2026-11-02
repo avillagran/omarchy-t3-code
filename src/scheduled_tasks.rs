@@ -59,9 +59,25 @@ pub fn upsert_payload(input: &Value) -> Result<Value> {
         p["requireExisting"] = json!(true);
     } else {
         // T3 names a new task after its commandId (scheduled-task:<commandId>).
-        p["commandId"] = json!(format!("omarchy-task-{}", uuid::Uuid::new_v4()));
+        p["commandId"] = json!(input["commandId"].as_str().filter(|s| crate::valid_id(s)).map(str::to_owned).unwrap_or_else(|| format!("omarchy-task-{}", uuid::Uuid::new_v4())));
     }
     Ok(p)
+}
+fn upsert_error(error: &str) -> &'static str {
+    if crate::protocol::error_code(error) == "rpc_rejected" { "scheduled_task_definition_rejected" }
+    else { "scheduled_task_outcome_unknown" }
+}
+fn resolve_hooks(list: &mut Value, base: &str) {
+    let Ok(origin) = reqwest::Url::parse(base) else { return };
+    for task in list["tasks"].as_array_mut().into_iter().flatten() {
+        let hook = &mut task["webhook"];
+        if hook["url"].as_str().is_some_and(|s| !s.is_empty()) { continue; }
+        if let Some(path) = hook["path"].as_str().filter(|p| p.starts_with('/') && !p.starts_with("//")) {
+            if let Ok(url) = origin.join(path) {
+                if url.origin() == origin.origin() { hook["url"] = json!(url.as_str()); }
+            }
+        }
+    }
 }
 pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     let action = text(input, "action");
@@ -70,9 +86,10 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         "list" => tasks::list(&c()?)?,
         "upsert" => {
             let task = TaskUpsert::from_json(&upsert_payload(input)?)?;
+            task.payload().map_err(|_| "scheduled_task_definition_rejected")?;
             // A rejected definition can contain the submitted secret in a server
             // diagnostic. Never forward that diagnostic to the UI or logs.
-            tasks::upsert(&c()?, &task).map_err(|_| "scheduled_task_definition_rejected")?
+            tasks::upsert(&c()?, &task).map_err(|error| upsert_error(&error))?
         },
         "enable" => tasks::set_enabled(&c()?, &id(input)?, input["enabled"] == true)?,
         "delete" => tasks::delete(&c()?, &id(input)?)?,
@@ -80,13 +97,32 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         _ => return Err("invalid_command".into()),
     };
     // Every change answers with the fresh list, so the page never shows a stale row.
-    let list = if action == "list" { result } else { tasks::list(&c()?)? };
+    let mut list = if action == "list" { result } else { tasks::list(&c()?)? };
+    resolve_hooks(&mut list, &e.base_url);
     Ok(json!({"action":action,"tasks":list["tasks"]}))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn uncertain_save_keeps_identity_and_relative_hook_origin() {
+        let input = json!({"commandId":"omarchy-task-fixture","title":"Hook","prompt":"x","projectId":"p","modelSelection":{},"schedule":{"type":"webhook"}});
+        assert_eq!(upsert_payload(&input).unwrap()["commandId"], "omarchy-task-fixture");
+        assert_eq!(upsert_payload(&input).unwrap(), upsert_payload(&input).unwrap());
+    }
+    #[test]
+    fn upsert_failure_states_are_distinct() {
+        assert_eq!(upsert_error("rpc_timeout"), "scheduled_task_outcome_unknown");
+        assert_eq!(upsert_error("rpc_rejected: secret"), "scheduled_task_definition_rejected");
+    }
+    #[test]
+    fn relative_hooks_use_selected_origin_and_keep_t3_url() {
+        let mut list = json!({"tasks":[{"webhook":{"url":null,"path":"/api/hooks/one"}},{"webhook":{"url":"https://t3.example/hook"}}]});
+        resolve_hooks(&mut list, "https://o3.example/base");
+        assert_eq!(list["tasks"][0]["webhook"]["url"], "https://o3.example/api/hooks/one");
+        assert_eq!(list["tasks"][1]["webhook"]["url"], "https://t3.example/hook");
+    }
     #[test]
     fn schedules_and_payloads_follow_the_contract() {
         assert_eq!(schedule(&json!({"schedule":{"type":"interval","minutes":30}})).unwrap(), json!({"type":"interval","everyMs":1_800_000}));

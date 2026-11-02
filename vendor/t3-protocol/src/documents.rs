@@ -18,8 +18,8 @@ impl Connection {
         let response=self.http.get(url.clone()).timeout(Duration::from_secs(30)).send().map_err(|_|"document_unreachable")?;
         if !response.status().is_success(){return Err("document_unavailable".into())}
         let mime=response.headers().get("content-type").and_then(|v|v.to_str().ok()).unwrap_or("").split(';').next().unwrap_or("").to_string();
-        let mut bytes=vec![];response.take(4*1024*1024+1).read_to_end(&mut bytes).map_err(|_|"document_unavailable")?;
-        if bytes.len()>4*1024*1024{return Err("document_limit_4MiB".into())}
+        let mut bytes=vec![];
+        read_limited(response,4*1024*1024,&mut bytes).map_err(|e|match e{BodyError::TooLarge=>"document_limit_4MiB",BodyError::Unreadable=>"document_unavailable"})?;
         if matches!(mime.as_str(),"image/png"|"image/jpeg"|"image/gif"|"image/webp"){
             let valid=match mime.as_str(){"image/png"=>bytes.starts_with(b"\x89PNG\r\n\x1a\n"),"image/jpeg"=>bytes.starts_with(b"\xff\xd8\xff"),"image/gif"=>bytes.starts_with(b"GIF87a")||bytes.starts_with(b"GIF89a"),"image/webp"=>bytes.starts_with(b"RIFF")&&bytes.get(8..12)==Some(b"WEBP"),_=>false};
             if !valid{return Err("invalid_image".into())}

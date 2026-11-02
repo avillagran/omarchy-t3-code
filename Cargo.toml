@@ -7,7 +7,7 @@ license = "MIT"
 [dependencies]
 flate2 = "1"
 # lib-t3-rust branch o3/server-capabilities, pinned for reproducible vendoring.
-t3-protocol = { git = "https://github.com/avillagran/lib-t3-rust", rev = "046bfa946cc07c468b186fec10ee938f73e08f8e" }
+t3-protocol = { git = "https://github.com/avillagran/lib-t3-rust", rev = "6e17bb2276da5aee0912fbe084bc024819f65899" }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

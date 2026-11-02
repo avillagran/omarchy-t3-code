@@ -14,9 +14,10 @@ const MAX_TIMEOUT: Duration = Duration::from_secs(300);
 /// | request timeout (whole request, body included) | 12 s |
 /// | connect timeout | none (bounded by the request timeout) |
 /// | pool idle timeout | 90 s |
-/// | response limit for `request_json` | 8 MiB |
+/// | response limit for `request_json`, after decompression | 8 MiB |
 ///
-/// Proxies and redirects are always disabled; they are not options.
+/// Proxies and redirects are always disabled; they are not options. Responses
+/// are negotiated as gzip or brotli (see `Connection::request_json`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConnectionOptions {
     request_timeout: Duration,

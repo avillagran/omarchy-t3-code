@@ -89,7 +89,15 @@ const MAX_BYTES: u64 = 8 * 1024 * 1024;
 const THREAD_SNAPSHOT_MAX_BYTES: u64 = 64 * 1024 * 1024;
 // Shells contain all active thread summaries: 10,000 long titles already exceed
 // 8 MiB. Match the bounded thread budget without lifting unrelated frame limits.
-const SHELL_SNAPSHOT_MAX_BYTES: u64 = 64 * 1024 * 1024;
+const fn shell_snapshot_max_bytes(android: bool) -> u64 {
+    if android { 16 * 1024 * 1024 } else { 64 * 1024 * 1024 }
+}
+const SHELL_SNAPSHOT_MAX_BYTES: u64 = shell_snapshot_max_bytes(cfg!(target_os = "android"));
+#[test]
+fn mobile_shell_budget_is_lower_without_reducing_desktop() {
+    assert_eq!(shell_snapshot_max_bytes(true), 16 * 1024 * 1024);
+    assert_eq!(shell_snapshot_max_bytes(false), 64 * 1024 * 1024);
+}
 const GRANT: &str = "urn:ietf:params:oauth:grant-type:token-exchange";
 const ACCESS: &str = "urn:ietf:params:oauth:token-type:access_token";
 fn now() -> i64 {
@@ -134,6 +142,11 @@ fn endpoint(base: &Url, path: &str) -> Result<Url> {
     }
     Ok(u)
 }
+/// Auth and relay documents are small and hold tickets and bootstrap credentials,
+/// so they stay uncompressed, as the token exchanges do.
+fn carries_credentials(url: &Url) -> bool {
+    url.path().starts_with("/api/auth/") || url.path().starts_with("/v1/")
+}
 fn http() -> Result<Http> {
     ConnectionOptions::default().build_http_client()
 }
@@ -170,6 +183,7 @@ fn decode_with_limit(response: Response, max_bytes: u64) -> Result<Value> {
     if media_type(&response) != "application/json" {
         return Err("not_json".into());
     }
+    // The client strips the gzip and br it decoded; anything left it cannot read.
     if !response
         .headers()
         .get("content-encoding")
@@ -179,14 +193,52 @@ fn decode_with_limit(response: Response, max_bytes: u64) -> Result<Value> {
         return Err("unsupported_encoding".into());
     }
     let mut bytes = Zeroizing::new(Vec::new());
-    response
-        .take(max_bytes + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|_| "unreachable")?;
-    if bytes.len() as u64 > max_bytes {
-        return Err("too_large".into());
-    }
+    read_limited(response, max_bytes, &mut bytes).map_err(|e| match e {
+        BodyError::TooLarge => "too_large",
+        BodyError::Unreadable => "unreachable",
+    })?;
     serde_json::from_slice(&bytes).map_err(|_| "malformed".into())
+}
+/// Why a response body could not be read.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum BodyError {
+    /// Past the limit, or more than this device can allocate.
+    TooLarge,
+    /// A broken connection or a compressed stream that does not decode. Decoders
+    /// do not report these in a way that tells the two apart.
+    Unreadable,
+}
+/// Size of one read of a response body, and so of the most it can overshoot in transit.
+const BODY_CHUNK: usize = 16 * 1024;
+/// Reads `body` into `out`, failing at the first byte past `limit`.
+///
+/// A `Response` yields decoded bytes and only decompresses what is asked of it, so
+/// `limit` bounds the decompressed size whatever the size on the wire, and a
+/// compression bomb stops here. `out` never grows past `limit` either.
+pub(crate) fn read_limited(
+    mut body: impl Read,
+    limit: u64,
+    out: &mut Vec<u8>,
+) -> std::result::Result<(), BodyError> {
+    let mut chunk = [0; BODY_CHUNK];
+    loop {
+        let n = match body.read(&mut chunk) {
+            Ok(0) => return Ok(()),
+            Ok(n) => n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => return Err(BodyError::Unreadable),
+        };
+        let len = out.len();
+        if (len + n) as u64 > limit {
+            return Err(BodyError::TooLarge);
+        }
+        if out.capacity() - len < n {
+            let capacity = (len * 2).max(len + n).min(limit as usize);
+            out.try_reserve_exact(capacity - len)
+                .map_err(|_| BodyError::TooLarge)?;
+        }
+        out.extend_from_slice(&chunk[..n]);
+    }
 }
 
 /// Private material never implements Debug or Serialize. Persist only via the host's secure store.
@@ -317,7 +369,8 @@ impl Connection {
     }
     /// Allows a host to reuse its HTTP pool. The host must disable redirects and
     /// proxies (`ConnectionOptions::build_http_client` does). Responses keep the
-    /// default 8 MiB limit.
+    /// default 8 MiB limit. Its compression settings apply: a client built with
+    /// `no_gzip` and `no_brotli` asks for and receives plain bodies.
     pub fn with_http_client(
         http: Http,
         http_base: &str,
@@ -437,7 +490,8 @@ impl Connection {
     }
     /// Same-origin JSON request. Accepts `application/json` in any case and with
     /// parameters. The limit is the connection's (8 MiB unless configured), or
-    /// 64 MiB for protocol GETs of shell snapshots or `/api/orchestration/threads/<id>/bounded`.
+    /// 64 MiB for protocol GETs of shell snapshots or bounded threads.
+    /// Bodies may arrive gzip or brotli compressed; the limit applies after decoding.
     pub fn request_json(
         &self,
         method: &str,
@@ -497,8 +551,11 @@ impl Connection {
         let mut req = self
             .http
             .request(method.clone(), url.clone())
-            .header("Accept", "application/json")
-            .header("Accept-Encoding", "identity");
+            .header("Accept", "application/json");
+        // Everything else negotiates gzip and brotli through the client.
+        if carries_credentials(&url) {
+            req = req.header("Accept-Encoding", "identity");
+        }
         for (name, value) in self.credential.headers(method.as_str(), url.as_str())? {
             req = req.header(name, value);
         }
@@ -889,3 +946,35 @@ pub mod parity;
 pub mod quota_present;
 
 pub mod registry_icon;
+
+#[cfg(test)]
+mod body_tests {
+    use super::{read_limited, BodyError, BODY_CHUNK};
+    use std::io::Read;
+    /// An endless body, like a decoder working through a compression bomb.
+    struct Endless {
+        produced: usize,
+    }
+    impl Read for Endless {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.produced += buf.len();
+            Ok(buf.len())
+        }
+    }
+    #[test]
+    fn stops_an_endless_body_without_growing_past_the_limit() {
+        let limit = 1024 * 1024;
+        let (mut body, mut out) = (Endless { produced: 0 }, vec![]);
+        assert_eq!(read_limited(&mut body, limit, &mut out), Err(BodyError::TooLarge));
+        assert!(body.produced as u64 <= limit + BODY_CHUNK as u64, "{}", body.produced);
+        assert!(out.capacity() as u64 <= limit, "{}", out.capacity());
+    }
+    #[test]
+    fn the_limit_is_exact() {
+        let body = vec![7; 100_000];
+        let mut out = vec![];
+        assert_eq!(read_limited(body.as_slice(), 100_000, &mut out), Ok(()));
+        assert_eq!(out, body);
+        assert_eq!(read_limited(body.as_slice(), 99_999, &mut vec![]), Err(BodyError::TooLarge));
+    }
+}

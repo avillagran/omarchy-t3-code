@@ -46,6 +46,12 @@ for(const p of [...cargo.packages.filter(p=>ids.has(p.id)&&p.name!=='omarchy-t3-
  // whisper-rs-sys ships no license file; it is whisper-rs's Unlicense, and the
  // whisper.cpp sources it builds carry their own MIT notice (entry below).
  if(!texts.length&&p.name==='whisper-rs-sys'){const sibling=dictate.packages.find(q=>q.name==='whisper-rs');texts.push('LICENSE (whisper-rs)\n'+read(path.join(path.dirname(sibling.manifest_path),'LICENSE'),label+'/whisper-rs-LICENSE'));}
+ // alloc-stdlib's crate omits the workspace BSD notice; alloc-no-stdlib
+ // ships it from the same repository and dependency generation.
+ if(!texts.length&&p.name==='alloc-stdlib'){
+  const sibling=cargo.packages.find(q=>q.name==='alloc-no-stdlib'&&q.repository===p.repository&&q.license===p.license&&cargo.resolve.nodes.find(n=>n.id===p.id).dependencies.includes(q.id));
+  if(sibling)texts.push('LICENSE (alloc-no-stdlib workspace)\n'+read(path.join(path.dirname(sibling.manifest_path),'LICENSE'),label+'/workspace-LICENSE'));
+ }
  if(!texts.length||!p.license)throw Error('Missing exact license notice/SPDX metadata: '+label);
  entry(p.name,p.version,p.license,['desktop'],texts.join('\n\n'),p.repository||p.homepage||null);
 }

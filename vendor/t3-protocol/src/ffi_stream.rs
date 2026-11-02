@@ -13,8 +13,8 @@ pub(crate) const MAX_ITEMS: usize = 64;
 /// Streams per handle (shell, open thread, command output, config, preview, terminal,
 /// devices…), each with its own WebSocket: T3 serves one request per socket.
 pub(crate) const MAX_SUBSCRIPTIONS: usize = 8;
-/// Of those, shell or bounded-thread streams in the 64 MiB snapshot mode. Queued payload per handle
-/// stays under 2 × 72 MiB + 6 × 8 MiB = 192 MiB of serialized JSON.
+/// Two bounded-thread streams plus one separately counted shell. At most
+/// 3 × 72 MiB + 5 × 8 MiB = 256 MiB of serialized queued payload per handle.
 pub(crate) const MAX_LARGE_SUBSCRIPTIONS: usize = 2;
 /// Per-subscription bounds, fixed by its mode when it starts. Sizes are serialized JSON.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -258,6 +258,7 @@ pub(crate) fn with_capabilities(mut capabilities: Value) -> Value {
     for (key, value) in [
         ("maxSubscriptions", json!(MAX_SUBSCRIPTIONS)),
         ("maxLargeSubscriptions", json!(MAX_LARGE_SUBSCRIPTIONS)),
+        ("maxShellSubscriptions", json!(1)),
         ("queueMaxItems", json!(MAX_ITEMS)),
         ("queueMaxBytes", json!(Limits::NORMAL.queue)),
         ("itemMaxBytes", json!(Limits::NORMAL.item)),
@@ -302,9 +303,10 @@ pub(crate) fn admit(
     tag: &str,
     payload: &Value,
 ) -> Result<()> {
-    let large = || subscriptions.values().filter(|s| s.limits().large()).count();
+    let large = || subscriptions.values().filter(|s| s.limits().large() && s.shared.tag != "orchestration.subscribeShell").count();
     if subscriptions.len() >= MAX_SUBSCRIPTIONS
-        || Limits::of(tag, payload).large() && large() >= MAX_LARGE_SUBSCRIPTIONS
+        || (tag == "orchestration.subscribeShell" && subscriptions.values().any(|s| s.shared.tag == tag))
+        || (tag != "orchestration.subscribeShell" && Limits::of(tag, payload).large() && large() >= MAX_LARGE_SUBSCRIPTIONS)
     {
         return Err("subscription_limit".into());
     }
@@ -333,6 +335,18 @@ impl Drop for Subscription {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shell_plus_two_bounded_threads_fit() {
+        let payload = json!({"acceptBoundedSnapshot":true});
+        let mut active = HashMap::new();
+        active.insert("shell".into(), Arc::new(subscription(Shared::of("orchestration.subscribeShell", &json!({})))));
+        for n in 0..2 {
+            admit(&active, "orchestration.subscribeThread", &payload).unwrap();
+            active.insert(n.to_string(), Arc::new(subscription(Shared::of("orchestration.subscribeThread", &payload))));
+        }
+        assert!(admit(&active, "orchestration.subscribeThread", &payload).is_err());
+        assert!(admit(&active, "orchestration.subscribeShell", &json!({})).is_err());
+    }
     #[test]
     fn bounds_never_silently_drop_events() {
         let shared = Shared::default();

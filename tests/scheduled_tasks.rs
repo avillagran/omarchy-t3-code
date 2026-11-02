@@ -20,3 +20,25 @@ fn rejected_webhook_diagnostics_never_expose_the_submitted_secret() {
     assert_eq!(scheduled_tasks::run(&e, &input).unwrap_err(), "scheduled_task_definition_rejected");
     server.join().unwrap();
 }
+
+#[test]
+fn a_lost_upsert_response_is_unknown_and_retry_keeps_command_identity() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let server = thread::spawn(move || {
+        let mut ids = Vec::new();
+        for _ in 0..2 {
+            let (stream, _) = listener.accept().unwrap();
+            let mut ws = tungstenite::accept(stream).unwrap();
+            let request: Value = serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
+            ids.push(request["payload"]["commandId"].clone());
+            ws.close(None).unwrap();
+        }
+        assert_eq!(ids, vec![json!("omarchy-task-retry"), json!("omarchy-task-retry")]);
+    });
+    let connection = protocol::Connection::new(&base, None, protocol::Credential::bearer("fixture-only").unwrap()).unwrap();
+    let e = Environment { id:"fixture".into(), name:"Fixture".into(), base_url:base, token_file:"/unused".into(), write_token_file:None, bearer:None, connection_error:None, connection:Some(Arc::new(connection)) };
+    let input = json!({"action":"upsert","commandId":"omarchy-task-retry","title":"Hook","prompt":"x","projectId":"p","modelSelection":{"instanceId":"codex","model":"m"},"schedule":{"type":"webhook"}});
+    for _ in 0..2 { assert_eq!(scheduled_tasks::run(&e, &input).unwrap_err(), "scheduled_task_outcome_unknown"); }
+    server.join().unwrap();
+}

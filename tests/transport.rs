@@ -38,7 +38,8 @@ fn headers_and_failure_boundaries() {
     assert!(req.contains("authorization: bearer synthetic-test-token"));
     assert!(req.contains("x-t3-orchestration-protocol: 2"));
     assert!(req.contains("accept: application/json"));
-    assert!(req.contains("accept-encoding: identity"));
+    let encoding = req.lines().find(|line| line.starts_with("accept-encoding:")).unwrap();
+    assert!(encoding.contains("gzip") && encoding.contains("br"));
     for (status, typ, body, error) in [
         ("401 Unauthorized", "application/json", "{}", "unauthorized"),
         ("403 Forbidden", "application/json", "{}", "unauthorized"),

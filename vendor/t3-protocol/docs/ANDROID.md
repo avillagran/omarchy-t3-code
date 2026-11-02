@@ -582,6 +582,11 @@ non-numeric values, a zero timeout, a timeout over 300 s or `maxBytes` outside
 connect or pool-idle timeout. Options govern HTTP. Streams and RPC keep their
 own deadlines (see above).
 
+HTTP responses are negotiated as gzip or brotli from 0.3.8. Nothing changes in
+Kotlin: results are the decoded bytes, and `maxBytes` and every other limit count
+decoded bytes, so a small compressed body cannot exhaust memory. The decoders are
+pure Rust; the four ABIs need no extra native dependency.
+
 `fetchDescriptor` and `pairBearer` need no connection and send no credential
 until the descriptor is checked. `pairBearer` returns `{accessToken,
 tokenType, environmentId, descriptor, scope, expiresIn, connected}`. Store

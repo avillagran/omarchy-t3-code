@@ -136,13 +136,10 @@ impl Connection {
         }
         let mime = media_type(&response);
         let mut bytes = vec![];
-        response
-            .take(options.limit + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|_| codes.unavailable)?;
-        if bytes.len() as u64 > options.limit {
-            return Err(codes.too_large.into());
-        }
+        read_limited(response, options.limit, &mut bytes).map_err(|e| match e {
+            BodyError::TooLarge => codes.too_large,
+            BodyError::Unreadable => codes.unavailable,
+        })?;
         Ok(AssetBytes { bytes, mime })
     }
 }

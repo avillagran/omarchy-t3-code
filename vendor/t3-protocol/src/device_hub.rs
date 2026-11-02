@@ -120,6 +120,8 @@ impl Connection {
         let response = self
             .http
             .get(url)
+            // A decoder would hold frames back; JPEG does not compress anyway.
+            .header("Accept-Encoding", "identity")
             .timeout(Duration::from_secs(60 * 60 * 12))
             .send()
             .map_err(|_| "unreachable")?;
@@ -188,13 +190,10 @@ fn hub_bytes(response: reqwest::blocking::Response, limit: u64) -> Result<Vec<u8
         _ => return Err("device_screenshot_failed".into()),
     }
     let mut out = Vec::new();
-    response
-        .take(limit + 1)
-        .read_to_end(&mut out)
-        .map_err(|_| "device_screenshot_failed")?;
-    if out.len() as u64 > limit {
-        return Err("device_screenshot_too_large".into());
-    }
+    read_limited(response, limit, &mut out).map_err(|e| match e {
+        BodyError::TooLarge => "device_screenshot_too_large",
+        BodyError::Unreadable => "device_screenshot_failed",
+    })?;
     Ok(out)
 }
 
