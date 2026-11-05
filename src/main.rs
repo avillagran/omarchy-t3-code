@@ -40,6 +40,14 @@ fn emit(kind: &str, data: Value) {
     let _ = writeln!(stdout, "{out}");
     let _ = stdout.flush();
 }
+/// Sends `data` on a delta stream: whole the first time, then as a patch.
+fn emit_stream(kind: &str, stream: &mut json_delta::Stream, data: Value) {
+    let mut out = stream.frame(data);
+    out["type"] = json!(kind);
+    let mut stdout = io::stdout().lock();
+    let _ = writeln!(stdout, "{out}");
+    let _ = stdout.flush();
+}
 static SHARED_EDITOR_BUSY:std::sync::Mutex<()>=std::sync::Mutex::new(());
 fn draft_command(cmd:&Value)->bool {
     let key=text(cmd,"key");
@@ -210,8 +218,35 @@ fn open_thread(client: &Client, env: &str, id: &str) -> Result<Value> {
     let target=desktop_open::open(eid,id,u.as_str())?;
     Ok(json!({"ok":true,"target":target}))
 }
+/// Per-thread data the panel never reads; it can be most of a sidebar snapshot.
+/// `pullRequestBadge` keeps everything the badge and the pull request list use.
+fn trim_thread(t: &mut Value) {
+    if let Some(o) = t.as_object_mut() {
+        for k in ["pullRequests", "linkedPullRequest", "branchPullRequest"] {
+            o.remove(k);
+        }
+    }
+    let Some(badge) = t.get_mut("pullRequestBadge").filter(|b| b.is_object()) else {
+        return;
+    };
+    let trim = |link: &mut Value| {
+        if let Some(o) = link.as_object_mut() {
+            o.remove("endedWatch");
+        }
+        if let Some(author) = link.pointer_mut("/snapshot/author").and_then(Value::as_object_mut) {
+            author.remove("avatarUrl");
+        }
+    };
+    badge.get_mut("links").and_then(Value::as_array_mut).into_iter().flatten().for_each(trim);
+    if let Some(current) = badge.get_mut("current") {
+        trim(current);
+    }
+}
 fn view(snapshot: &Value, query: &str) -> Value {
     let mut v = snapshot.clone();
+    for t in v["threads"].as_array_mut().into_iter().flatten() {
+        trim_thread(t);
+    }
     let q = query.to_lowercase();
     if !q.is_empty() {
         v["threads"] = json!(snapshot["threads"]
@@ -227,6 +262,10 @@ fn view(snapshot: &Value, query: &str) -> Value {
             .to_lowercase()
             .contains(&q))
             .cloned()
+            .map(|mut t| {
+                trim_thread(&mut t);
+                t
+            })
             .collect::<Vec<_>>());
     }
     v
@@ -303,7 +342,7 @@ fn watch(client: Client) -> Result<()> {
     std::thread::spawn(move || {
         let mut input_visible=false;
         let mut mosaic_readers:Vec<live::Control>=Vec::new();
-        let mut mosaic_targets:Vec<Option<(String,String,i64)>>=vec![None;8];
+        let mut mosaic_targets:Vec<Option<(String,String,i64)>>=Vec::new();
         let mut keybinding_watches=keybinding_watch::Control::default();
         let mut device_watches=device_watch::Control::default();
         let mut device_screens=device_screen::Manager::default();
@@ -321,6 +360,7 @@ fn watch(client: Client) -> Result<()> {
                 continue;
             }
             if let Ok(mut v) = serde_json::from_str::<Value>(&line) {
+                if v["op"]=="stream-resync"{if let Some(id)=v["stream"].as_u64(){json_delta::request_resync(id);}}
                 if matches!(text(&v,"op"),"connection-cloud"|"connection-cloud-cancel"|"connection-cloud-install"){
                     let result=match text(&v,"op"){
                         "connection-cloud-cancel"=>cloud_manager.cancel(text(&v,"requestId")),
@@ -340,8 +380,11 @@ fn watch(client: Client) -> Result<()> {
                 }
                 if v["op"]=="mosaic-watch" || (v["op"]=="visible" && v["value"]==false) {
                     let targets=v["targets"].as_array().cloned().unwrap_or_default();
-                    if input_visible && !targets.is_empty() && mosaic_readers.is_empty(){
-                        mosaic_readers=(0..8).map(|_|live::Control::named(input_client.clone(),"mosaic-messages","mosaic-state")).collect();
+                    if input_visible {
+                        while mosaic_readers.len()<targets.len().min(24){
+                            mosaic_readers.push(live::Control::named(input_client.clone(),"mosaic-messages","mosaic-state"));
+                            mosaic_targets.push(None);
+                        }
                     }
                     for (slot,reader) in mosaic_readers.iter().enumerate(){
                         let target=if input_visible && v["op"]=="mosaic-watch"{targets.get(slot).and_then(|t|{
@@ -501,6 +544,8 @@ fn watch(client: Client) -> Result<()> {
     let mut next_build_cleanup = Instant::now() + build_cleanup::FIRST_CHECK;
     let mut disk_threshold: Option<Value> = None;
     let mut vault_automation = journal_vault::Automation::default();
+    // The sidebar snapshot travels as a delta against the previous one.
+    let mut snapshot_stream = json_delta::Stream::new();
     loop {
         if Instant::now() >= next_memory_sweep {
             memory_pressure::release_unused();
@@ -547,7 +592,7 @@ fn watch(client: Client) -> Result<()> {
                     let tasks = vault_automation.observe(&journal_vault::load_config(&journal_vault::Paths::current()), &state, Instant::now());
                     journal_vault::run_tasks(journal_vault::Paths::current(), tasks, |v| emit("vault", v));
                     if changed {
-                        emit("snapshot", view(&state, &query));
+                        emit_stream("snapshot", &mut snapshot_stream, view(&state, &query));
                     }
                 }
                 Err(e) => {
@@ -631,9 +676,12 @@ fn watch(client: Client) -> Result<()> {
             }
             "search" => {
                 query = text(&cmd, "query").chars().take(256).collect();
-                emit("snapshot", view(&state, &query));
+                emit_stream("snapshot", &mut snapshot_stream, view(&state, &query));
             }
             "memory-trim" => {memory_pressure::release_unused();}
+            // The panel lost the base of a patch; `request_resync` already marked
+            // the stream, so this frame carries the whole value.
+            "stream-resync" => {if cmd["stream"].as_u64()==Some(snapshot_stream.id()){emit_stream("snapshot", &mut snapshot_stream, view(&state, &query));}}
             "clear-select" => {selected=None;message_cache=None;}
             "select" => {
                 let env = text(&cmd, "environment").to_string();
@@ -727,6 +775,8 @@ fn run() -> Result<()> {
         "connections-view" => write::execute(&json!({"op":"connections-manage","action":"read"}))?,
         // One connections request on stdin, as Preferences sends it (save-route, rename, enabled, remove).
         "connections-manage" if args.len()==1 => {let mut raw=String::new();std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(),64*1024),&mut raw).map_err(|_|"invalid_command")?;let mut input:Value=serde_json::from_str(&raw).map_err(|_|"invalid_command")?;if !input.is_object()||text(&input,"op")!=""{return Err("invalid_command".into())}input["op"]=json!("connections-manage");write::execute(&input)?},
+        "backend-control" if args.len()==3 && args[1]=="start" => backend_service::start_as(&args[2])?,
+        "backend-control" if args.len()==3 && args[1]=="switch" => backend_service::switch_to(&args[2])?,
         "backend-control" if args.len()==2 => backend_service::control(&args[1])?,
         "scroll-config" => scroll::read(),
         "rewind-preview" if args.len()==4 => write::execute(&json!({"op":"rewind-preview","environment":args[1],"thread":args[2],"messageId":args[3]}))?,

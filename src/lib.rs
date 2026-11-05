@@ -1,3 +1,4 @@
+pub mod json_delta;
 pub mod remote_surfaces;
 pub mod remote_maintenance;
 pub mod quota_sources;

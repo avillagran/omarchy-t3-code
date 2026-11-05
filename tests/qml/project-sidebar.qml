@@ -24,6 +24,7 @@ ShellRoot {
    check(panel.projectLayout&&b.viewState.interfaceLayout==="projects","third mode activated and persisted by quick menu")
    var projects=tree.entries.filter(function(e){return e.kind==="project"})
    check(projects.length===2&&projects[0].title==="Alpha"&&projects[0].count===4,"repository grouped across hosts, projects alphabetically despite Beta having the latest reply")
+   check(tree.projectHosts(projects[0].projectKey).length===2,"grouped project identifies both hosts")
    var alpha=tree.entries.filter(function(e){return e.projectKey===projects[0].projectKey})
    check(alpha.map(function(e){return e.kind==="thread"?e.thread.id:e.kind==="project"?e.title:e.state}).join()==="Alpha,waiting,answer,working,older,build,done,done","project contains states and their ordered threads: "+alpha.map(function(e){return e.kind==="thread"?e.thread.id:e.state}).join())
    check(!keys.findChild(panel,"threadList").visible,"global state shelves hidden in project mode")

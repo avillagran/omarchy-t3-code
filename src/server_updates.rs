@@ -37,6 +37,7 @@ pub fn latest(channel_name: &str) -> Result<String> {
 pub fn route(environment: &str) -> std::result::Result<&'static str, &'static str> {
     if environment == "local" {
         let s = backend_service::status();
+        if s["nativeService"] == false { return Err("service_required") }
         return match (s["owner"].as_str(), s["installed"] == true, s["canControl"] == true) {
             (Some("gui"), ..) => Err("backend_owned_by_gui"),
             (_, false, _) => Err("service_required"),

@@ -14,6 +14,7 @@ import "../js/ProviderUpdates.js" as Updates
 import "../js/NativeKeybindings.js" as NativeKeys
 import "../js/UsageLimits.js" as Usage
 import "../js/PinOrder.js" as PinOrder
+import "../js/JsonDelta.js" as JsonDelta
 
 Singleton {
   id: root
@@ -26,11 +27,13 @@ Singleton {
   property var backendStart:({busy:false,error:"",status:""})
   property var localBackend:({owner:"unknown",running:false,canControl:false,installed:false})
   function refreshBackendStatus(){send({op:"backend-status"})}
-  function controlBackend(action){if(backendStart.busy)return;if(!worker.running){backendStart={busy:false,error:"disconnected",status:""};return;}backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,requestId:uuid()})}
+  signal backendChoiceRequested()
+  function backendChoice(id){var choices=localBackend.choices || [];return choices.find(function(c){return c.backend===id}) || (id==="t3"&&!choices.length?{available:true,canControl:localBackend.canControl,running:localBackend.running}:{available:false,canControl:false,running:false})}
+  function controlBackend(action,server){if(action==="start"&&!server){backendChoiceRequested();return;}if(backendStart.busy)return;if(!worker.running){backendStart={busy:false,error:"disconnected",status:""};return;}backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,server:server || "",requestId:uuid()})}
   signal copyFinished(string requestId,string error)
   function copyText(value){var id=uuid();send({op:"copy",kind:"text",text:value,requestId:id});return id}
   function copyImage(attachment){var id=uuid();send({op:"copy",kind:"image",environment:selectedEnvironment,thread:selectedThread,attachment:attachment,requestId:id});return id}
-  function startBackend(){controlBackend("start")}
+  function startBackend(server){controlBackend("start",server)}
   property int localRecoveryAttempts:0
   function recoverLocalBackend(){localRecoveryAttempts=30;refresh()}
   function acceptBackendStatus(value){
@@ -253,8 +256,8 @@ Singleton {
   property var mosaicTargets: []
   property var mosaicData: ({})
   property int mosaicSerial: 0
-  function watchMosaic(threads) {
-    var old=mosaicTargets,cache={},targets=threads.slice(0,8).map(function(t){
+  function watchMosaic(threads,limit) {
+    var old=mosaicTargets,cache={},targets=threads.slice(0,limit===24?24:8).map(function(t){
       var found=old.find(function(x){return x.key===t.key})
       var target=found || {key:t.key,environment:t.environmentId,thread:t.id,serial:++root.mosaicSerial}
       if(root.mosaicData[t.key])cache[t.key]=root.mosaicData[t.key]
@@ -2106,9 +2109,20 @@ Singleton {
     send({op: "select", environment: selectedEnvironment, thread: selectedThread, serial: requestedSerial})
   }
   function openThread(env, thread) { send({op: "open", environment: env, thread: thread}) }
+  // Delta streams (src/json_delta.rs): the last whole value per stream, and the
+  // streams already asked to resend it after a gap.
+  property var streamBases: ({})
+  property var streamResyncs: ({})
+  function acceptStream(event) {
+    var data=JsonDelta.receive(streamBases,event),key=event.type+"/"+event.stream
+    if(data===undefined){if(!streamResyncs[key]){streamResyncs[key]=true;send({op:"stream-resync",stream:event.stream})}return false}
+    delete streamResyncs[key];event.data=data;return true
+  }
   function receive(line) {
     try {
-      var event = JSON.parse(line); var data = event.data
+      var event = JSON.parse(line)
+      if (event.stream !== undefined && !acceptStream(event)) return
+      var data = event.data
       if(event.type==="mosaic-messages"||event.type==="mosaic-state"){receiveMosaic(event.type,data)}
       else if(event.type==="browser-surface"){BrowserSurface.receive(root,data)}
       else if(event.type==="preview-state"){Previews.receive(root,data)}
@@ -2255,6 +2269,7 @@ Singleton {
     stdinEnabled: true
     running: true
     onStarted: {
+      root.streamBases=({});root.streamResyncs=({})
       if(root.gitView.scope.requestId)root.requestGit()
       root.send({op:"rewind-list",requestId:root.uuid()})
       root.requestClientSettings();root.send({op: "visible", value: root.panelVisible}); root.send({op: "search", query: ""})

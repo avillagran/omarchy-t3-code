@@ -343,7 +343,7 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="omabridge-invite-handoff"{return crate::omabridge_install::handoff(input)}
     if input["op"]=="connections-manage"{return crate::connections::manage_connections(input)}
     if input["op"]=="window-layout" {return crate::window_layout::apply(input)}
-    if input["op"]=="backend-control" {return crate::backend_service::control(text(input,"action"))}
+    if input["op"]=="backend-control" {return if text(input,"action")=="start"&&!text(input,"server").is_empty(){crate::backend_service::start_as(text(input,"server"))}else if text(input,"action")=="switch"{crate::backend_service::switch_to(text(input,"server"))}else{crate::backend_service::control(text(input,"action"))}}
     if input["op"]=="backend-start" {return crate::backend_service::start()}
     if input["op"]=="scroll-config" {return Ok(scroll::read())}
     if input["op"]=="rewind-list"{return Ok(json!({"operations":crate::checkpoint_journal::list()?}))}

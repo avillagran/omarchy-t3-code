@@ -4,6 +4,7 @@ import QtQuick.Controls as Controls
 import Qt.labs.qmlmodels
 import qs.Commons
 import "../js/ProjectTree.js" as Tree
+import "../js/ModelSync.js" as ModelSync
 
 ListView {
     id:root
@@ -31,6 +32,11 @@ ListView {
     T3Wheel{flickable:root}
     Controls.ScrollBar.vertical:Controls.ScrollBar{}
     ListModel{id:treeModel;dynamicRoles:true}
+    function projectHosts(key) {
+        var group=(groups || []).find(function(g){return g.key===key})
+        var keys=group?(group.members || []).map(function(p){return p.key}):[key], seen={}
+        return threads.filter(function(t){if(keys.indexOf(t.projectKey)<0||seen[t.environmentId])return false;seen[t.environmentId]=true;return true}).map(function(t){return t.environmentId})
+    }
     function toggle(key){var next=Object.assign({},collapsed);if(next[key])delete next[key];else next[key]=true;bridge.rememberView({projectTreeCollapsed:next})}
     function activate(){var entry=entries[currentIndex];if(!entry)return;if(entry.kind==="thread")bridge.selectThread(entry.thread.environmentId,entry.thread.id);else toggle(entry.key)}
     function reveal(key){
@@ -39,15 +45,13 @@ ListView {
         var next=Object.assign({},collapsed),p="project/"+entry.projectKey;delete next[p];delete next[p+"/state/"+entry.state];bridge.rememberView({projectTreeCollapsed:next})
         Qt.callLater(function(){var i=root.entries.findIndex(function(r){return r.key===key});if(i>=0){root.currentIndex=i;root.positionViewAtIndex(i,ListView.Contain)}})
     }
+    // Rows keep their delegates; only rows whose content changed are reassigned.
+    property var treeSync:({keys:[],prints:{}})
     function sync(){
         if(updatesPaused)return
-        var old=treeModel.count&&currentIndex>=0&&currentIndex<treeModel.count?treeModel.get(currentIndex).row.key:""
-        entries.forEach(function(entry,i){
-            var at=-1;for(var j=i;j<treeModel.count;j++)if(treeModel.get(j).row.key===entry.key){at=j;break}
-            var row=entry.kind==="thread"?entry.thread:entry
-            if(at<0)treeModel.insert(i,{kind:entry.kind,row:row});else{if(at!==i)treeModel.move(at,i,1);treeModel.setProperty(i,"row",row)}
-        })
-        if(treeModel.count>entries.length)treeModel.remove(entries.length,treeModel.count-entries.length)
+        var old=currentIndex>=0&&currentIndex<treeSync.keys.length?treeSync.keys[currentIndex]:""
+        var kinds={};entries.forEach(function(entry){kinds[entry.key]=entry.kind})
+        ModelSync.sync(treeModel,entries.map(function(entry){return entry.kind==="thread"?entry.thread:entry}),treeSync,function(row){return row.key},function(row){return {kind:kinds[row.key],row:row}})
         var index=entries.findIndex(function(r){return r.key===old});if(index>=0)currentIndex=index
     }
     onEntriesChanged:sync()
@@ -76,6 +80,10 @@ ListView {
                     T3Icon{name:header.row.expanded?"chevron-down":"chevron-right";implicitWidth:Style.space(12);tint:root.dim}
                     T3Icon{visible:header.row.kind==="project";name:"folder-git-2";implicitWidth:Style.space(14);tint:Color.accent}
                     Text{objectName:"projectTreeHeaderTitle";Layout.fillWidth:true;text:header.row.kind==="project"?header.row.title:T3I18n.tr(header.row.title);color:header.row.kind==="project"?root.fg:root.dim;font.pixelSize:header.row.kind==="project"?Style.font.body:Style.font.caption;font.weight:header.row.kind==="project"?Font.Medium:Font.Normal;elide:Text.ElideRight;textFormat:Text.PlainText}
+                    Repeater {
+                        model:header.row.kind==="project"?root.projectHosts(header.row.projectKey):[]
+                        T3HostBadge{required property string modelData;bridge:root.bridge;environmentId:modelData}
+                    }
                     Text{text:String(header.row.count);color:root.dim;font.family:"monospace";font.pixelSize:Style.font.caption}
                 }
             }

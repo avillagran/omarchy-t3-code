@@ -21,6 +21,8 @@ Item {
   property bool panelVisible: true
   property bool pooled: false
   property bool keyboardCurrent: false
+  // A composite card can paint the focus outline around the whole target.
+  property bool keyboardFrame: true
   property string stateLabel: ""
   property string timeLabel: ""
   property color stateColor: Color.accent
@@ -236,9 +238,10 @@ Item {
   Rectangle {
     anchors.fill:parent;anchors.leftMargin:root.indent;anchors.topMargin:Style.space(root.slim?0:2);anchors.bottomMargin:Style.space(root.slim?0:2)
     radius:Style.space(6)
+    objectName:"threadSelectionBackground"
     // The open thread reads at a glance: a firm fill, a hairline and an accent bar.
     color: root.selected ? (root.focusLayout?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.10):Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.14)) : root.showActions ? Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.05) : root.showDraft?Qt.rgba(Color.accent.r,Color.accent.g,Color.accent.b,0.06):"transparent"
-    border.width:root.keyboardCurrent||root.selected?1:0;border.color:root.keyboardCurrent?Color.accent:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.22)
+    border.width:root.keyboardCurrent?(root.keyboardFrame?1:0):root.selected?1:0;border.color:root.keyboardCurrent?Color.accent:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.22)
     Behavior on color { enabled:T3Motion.enabled;ColorAnimation{duration: T3Motion.duration(130)}}
     Rectangle {
       objectName:"threadProjectWash"
@@ -329,8 +332,8 @@ Item {
         }
         // One-line rows: the host's icon in its colour, and its name when asked.
         RowLayout{objectName:"threadSlimHost";visible:root.slim&&root.showHost&&!root.focusLayout;spacing:Style.space(3)
-          T3Icon{name:root.hostLook.icon;tint:root.hostLook.color || root.dim;implicitWidth:Style.space(12);opacity:root.shelved&&!root.hostLook.color?0.7:1}
-          Text{visible:root.hostLook.showName;text:root.thread.environmentName || "";color:root.hostLook.color || root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
+          T3Icon{name:root.hostLook.icon;tint:root.hostLook.color || Color.accent;implicitWidth:Style.space(12);opacity:root.shelved&&!root.hostLook.color?0.7:1}
+          Text{visible:root.hostLook.showName;text:root.thread.environmentName || "";color:root.hostLook.color || Color.accent;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
         }
         T3PullRequestBadge{id:slimPRBadge;objectName:root.slim?"threadPullRequestBadge":"slimThreadPullRequestBadge";active:root.slim&&root.panelVisible&&!root.pooled;badge:root.thread.pullRequestBadge || null;visible:root.slim&&!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
         Controls.Button {
@@ -417,13 +420,10 @@ Item {
           text:root.threadGroup
           color:root.dim;font.pixelSize:Style.font.caption-Style.space(1);elide:Text.ElideRight;textFormat:Text.PlainText
         }
-        Rectangle {
+        T3HostBadge {
           id:focusHost;objectName:"threadFocusHost";visible:root.focusLayout
-          readonly property string hostName:root.thread.environmentName || ((root.bridge.state.environments || []).find(function(e){return e.id===root.thread.environmentId}) || {}).name || root.thread.environmentId || ""
-          implicitWidth:Math.min(hostText.implicitWidth+Style.space(10),Style.space(92));implicitHeight:Style.space(18)
-          radius:Style.space(4);color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.035)
-          border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.12)
-          Text{id:hostText;anchors.fill:parent;anchors.margins:Style.space(3);text:parent.hostName;color:root.hostLook.color || root.dim;font.family:"monospace";font.pixelSize:Style.font.caption-Style.space(2);elide:Text.ElideRight;verticalAlignment:Text.AlignVCenter;textFormat:Text.PlainText}
+          bridge:root.bridge;environmentId:root.thread.environmentId || ""
+          label:root.thread.environmentName || ((root.bridge.state.environments || []).find(function(e){return e.id===root.thread.environmentId}) || {}).name || root.thread.environmentId || ""
         }
       }
       RowLayout{
@@ -439,8 +439,8 @@ Item {
         T3Icon{objectName:"threadWorkspaceIcon";name:root.thread.branch?"folder-git-2":root.machineIcon;visible:root.thread.branch?!!root.thread.worktreePath:root.showScratchMachine;tint:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);implicitWidth:Style.space(12)}
         Text{objectName:"threadBranch";Layout.fillWidth:true;text:root.thread.branch||(root.showScratchMachine?root.thread.environmentName || "":"");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.4);font.pixelSize:Style.font.caption;elide:Text.ElideMiddle;textFormat:Text.PlainText}
         T3PullRequestBadge{id:threadPRBadge;active:!root.slim&&root.panelVisible&&!root.pooled;objectName:root.slim?"cardThreadPullRequestBadge":"threadPullRequestBadge";badge:root.thread.pullRequestBadge || null;visible:!!badge;onActivated:function(reference,multiple){root.hidePreview();root.pullRequestsRequested(root.thread,reference,multiple)};onPreviewOpened:root.hidePreview()}
-        T3Icon{objectName:"threadRemoteIcon";name:root.hostLook.icon;tint:root.hostLook.color || root.dim;implicitWidth:Style.space(12);visible:(root.showHost||root.thread.environmentId!=="local")&&!root.showScratchMachine}
-        Text{objectName:"threadHostName";visible:root.hostLook.showName&&!root.showScratchMachine;text:root.thread.environmentName || "";color:root.hostLook.color || root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
+        T3Icon{objectName:"threadRemoteIcon";name:root.hostLook.icon;tint:root.hostLook.color || Color.accent;implicitWidth:Style.space(12);visible:!root.focusLayout&&!root.showScratchMachine}
+        Text{objectName:"threadHostName";visible:!root.focusLayout&&!root.showScratchMachine;text:root.thread.environmentName || "";color:root.hostLook.color || Color.accent;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
         T3ProviderIcon{provider:root.modelInfo.instanceId?root.modelInfo:({driverKind:root.thread.provider,registryIcon:""});tint:root.dim;Layout.preferredWidth:Style.space(12);Layout.preferredHeight:Style.space(12)}
       }
     }

@@ -10,6 +10,7 @@ function state(t) {
     if (t.settled) return "settled"
     return s === "done" ? "done" : "idle"
 }
+function states() { return [{id:"waiting",label:"Waiting"},{id:"working",label:"Working"},{id:"failed",label:"Failed"},{id:"idle",label:"Pending"},{id:"done",label:"Done"},{id:"snoozed",label:"Snoozed"},{id:"settled",label:"Settled"}] }
 // grouped: threads sit under a header per state; otherwise straight under their project.
 function build(groups, threads, collapsed, grouped) {
     if (grouped === undefined) grouped = true
@@ -21,7 +22,7 @@ function build(groups, threads, collapsed, grouped) {
         lookup[key].threads.push(t)
     })
     projects.sort(function(a,b) { return alphabetic(a.title,b.title) || String(a.key).localeCompare(String(b.key)) })
-    var result = [], states = [{id:"waiting",label:"Waiting"},{id:"working",label:"Working"},{id:"failed",label:"Failed"},{id:"idle",label:"Pending"},{id:"done",label:"Done"},{id:"snoozed",label:"Snoozed"},{id:"settled",label:"Settled"}]
+    var result = [], sections = states()
     projects.forEach(function(p) {
         var projectKey = "project/" + p.key
         result.push({kind:"project",key:projectKey,title:p.title,count:p.threads.length,projectKey:p.key,expanded:!collapsed[projectKey]})
@@ -30,7 +31,7 @@ function build(groups, threads, collapsed, grouped) {
             p.threads.slice().sort(compareThreads).forEach(function(t) { result.push({kind:"thread",key:t.key,thread:t,projectKey:p.key,state:state(t)}) })
             return
         }
-        states.forEach(function(s) {
+        sections.forEach(function(s) {
             var rows = p.threads.filter(function(t) { return state(t) === s.id }).sort(compareThreads)
             if (!rows.length) return
             var key = projectKey + "/state/" + s.id

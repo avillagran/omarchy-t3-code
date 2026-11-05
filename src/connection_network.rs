@@ -35,7 +35,7 @@ pub fn serve_mapping(serve:&Value,dns:&str,port:u16,local_port:u16)->(&'static s
  let url=if port==443{format!("https://{}/",dns.trim_end_matches('.'))}else{format!("https://{}:{port}/",dns.trim_end_matches('.'))};("active",Some(url))
 }
 pub fn snapshot()->Result<Value>{
- let local=backend_service::status();let runtime=read_json(&t3_home().join("userdata/server-runtime.json")).unwrap_or(json!({}));
+ let local=backend_service::status();let runtime=read_json(&backend_service::local_profile().join("userdata/server-runtime.json")).unwrap_or(json!({}));
  let settings=match bytes(&settings_path())?{Some(raw)=>serde_json::from_slice::<Value>(&raw).map_err(|_|"malformed")?,None=>json!({})};
  let env=runtime_environment(runtime["pid"].as_u64().unwrap_or(0));
  let host=env["T3CODE_HOST"].as_str().or(runtime["host"].as_str());
@@ -52,7 +52,7 @@ pub fn snapshot()->Result<Value>{
   }
  }
  if let Some(url)=url{endpoints.push(json!({"id":"tailscale-https","name":"Tailscale HTTPS","url":url,"qrShareable":true}));}
- let manageable=local["canControl"]==true&&local["installed"]==true&&matches!(text(&local,"owner"),"headless"|"stopped");
+ let manageable=local["nativeService"]!=false&&local["canControl"]==true&&local["installed"]==true&&matches!(text(&local,"owner"),"headless"|"stopped");
  Ok(json!({"revision":revision()?,"local":local,"canManage":manageable,"mode":mode,"desiredMode":settings["serverExposureMode"].as_str().unwrap_or(mode),"tailscaleServeEnabled":enabled,"tailscaleServePort":serve_port,"tailscale":tail,"tailscaleMapping":mapping,"endpoints":endpoints,"warning":if enabled&&mapping!="active"{"tailscale_serve_not_active"}else{""}}))
 }
 pub fn launch_override(mode:&str,enabled:bool,port:u16)->Result<String>{
@@ -73,7 +73,7 @@ pub fn execute(input:&Value)->Result<Value>{
  let lock=fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).mode(0o600).custom_flags(libc::O_NOFOLLOW).open(dir.join(".ot3-connection-catalog.lock")).map_err(|_|"local_error")?;
  if unsafe{libc::flock(std::os::fd::AsRawFd::as_raw_fd(&lock),libc::LOCK_EX|libc::LOCK_NB)}!=0{return Err("connections_busy".into())}
  if revision()?!=text(input,"revision"){return Err("catalog_changed_reload".into())}
- let status=backend_service::status();if status["canControl"]!=true||status["installed"]!=true||!matches!(text(&status,"owner"),"headless"|"stopped"){return Err("backend_owned_by_gui".into())}
+ let status=backend_service::status();if status["nativeService"]==false||status["canControl"]!=true||status["installed"]!=true||!matches!(text(&status,"owner"),"headless"|"stopped"){return Err("backend_owned_by_gui".into())}
  let enabled=input["tailscaleServeEnabled"].as_bool().ok_or("invalid_command")?;let port=input["tailscaleServePort"].as_u64().filter(|p|*p>0&&*p<=65535).ok_or("invalid_command")? as u16;
  let config=launch_override(text(input,"mode"),enabled,port)?;
  if enabled{

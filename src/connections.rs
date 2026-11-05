@@ -156,19 +156,19 @@ fn fresh_token(token:&str)->bool {
     token_expiry_ms(token).is_some_and(|t|t>Utc::now().timestamp_millis()+3600*1000)
 }
 pub fn local_environment()->Result<Environment> {
-    let runtime=read_json(&t3_home().join("userdata/server-runtime.json")).map_err(|_|"t3_not_running")?;
+    let runtime=read_json(&crate::backend_service::local_profile().join("userdata/server-runtime.json")).map_err(|_|"t3_not_running")?;
     let origin=text(&runtime,"origin");validate_base(origin)?;
     let url=crate::Url::parse(origin).map_err(|_|"invalid_t3_runtime")?;
     if !matches!(url.host_str(),Some("127.0.0.1"|"localhost"|"[::1]"|"::1")) {return Err("invalid_t3_runtime".into())}
     if runtime["pid"].as_i64().is_none_or(|pid|pid<=0 || unsafe{libc::kill(pid as i32,0)}!=0) {return Err("t3_not_running".into())}
-    let token=xdg("XDG_DATA_HOME",".local/share").join("local.write.token");
+    let token=crate::backend_service::local_token();
     // A token from before the profile's signing key (T3's profile was recreated) no longer verifies.
     let signed_before_key=|| -> bool {let modified=|p:&Path|fs::metadata(p).and_then(|m|m.modified()).ok();
-        matches!((modified(&token),modified(&t3_home().join("userdata/secrets/server-signing-key.bin"))),(Some(t),Some(k)) if t<k)};
+        matches!((modified(&token),modified(&crate::backend_service::local_profile().join("userdata/secrets/server-signing-key.bin"))),(Some(t),Some(k)) if t<k)};
     if private_token(&token).is_err() || signed_before_key() || (!fresh_token(&private_token(&token)?) || !has_filesystem_read(&private_token(&token)?) || !has_scope(&private_token(&token)?,"settings:write") || !has_scope(&private_token(&token)?,"terminal:read") || !has_scope(&private_token(&token)?,"terminal:operate")) {
-        let cli=home().join(".t3/bin/t3");
+        let cli=crate::backend_service::local_cli();
         let mut cmd=Command::new("timeout");cmd.arg("12s").arg(if cli.exists(){cli.into_os_string()}else{"t3".into()});
-        let out=cmd.args(["auth","session","issue","--base-dir"]).arg(t3_home()).args(["--scope","orchestration:read","--scope","orchestration:operate","--scope","filesystem:read","--scope","settings:write","--scope","terminal:read","--scope","terminal:operate","--ttl","30d","--label","omarchy-t3-code","--token-only"]).output().map_err(|_|"t3_auth_unavailable")?;
+        let out=cmd.args(["auth","session","issue","--base-dir"]).arg(crate::backend_service::local_profile()).args(["--scope","orchestration:read","--scope","orchestration:operate","--scope","filesystem:read","--scope","settings:write","--scope","terminal:read","--scope","terminal:operate","--ttl","30d","--label","omarchy-t3-code","--token-only"]).output().map_err(|_|"t3_auth_unavailable")?;
         if !out.status.success(){return Err("t3_auth_unavailable".into())}
         let value=Zeroizing::new(out.stdout);let value=std::str::from_utf8(&value).map_err(|_|"t3_auth_unavailable")?.trim();
         if value.len()<16 || value.contains(char::is_whitespace){return Err("t3_auth_unavailable".into())}
@@ -346,7 +346,8 @@ fn build_environments()->Result<Vec<Environment>> {
         }
     }
     let bridge_config=crate::omabridge_route::config_bytes();
-    let signature=["userdata/server-runtime.json","userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).flatten().chain(bridge_config.iter().copied()).collect::<Vec<_>>();
+    let local_signature=fs::read(crate::backend_service::local_profile().join("userdata/server-runtime.json")).unwrap_or_default();
+    let signature=["userdata/server-runtime.json","userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).flatten().chain(local_signature.iter().copied()).chain(crate::backend_service::local_profile().to_string_lossy().as_bytes().iter().copied()).chain(bridge_config.iter().copied()).collect::<Vec<_>>();
     let signature=format!("{:x}",Sha256::digest(&signature));
     let cloud_signature=format!("{:x}",Sha256::digest(fs::read(t3_home().join("userdata/clerk-tokens.json")).unwrap_or_default()));
     if let Some(c)=cache.as_mut(){if c.signature==signature && c.cloud_signature==cloud_signature && Instant::now()<c.until && c.tunnels.values_mut().all(Tunnel::alive){return Ok(c.environments.clone())}}

@@ -7,6 +7,8 @@ Controls.ItemDelegate {
  property string iconName:"folder"
  property string description:""
  property string trailingText:""
+ property string hostEnvironment:""
+ property var hostBridge:null
  hoverEnabled:true
  padding:Style.space(12)
  implicitHeight:Style.space(description?56:42)
@@ -25,6 +27,7 @@ Controls.ItemDelegate {
    Text{Layout.fillWidth:true;text:root.text;color:Color.popups.text;font.pixelSize:Style.font.body;elide:Text.ElideRight;textFormat:Text.PlainText}
    Text{Layout.fillWidth:true;visible:!!root.description;text:root.description;color:Color.popups.text;opacity:0.5;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
   }
+  T3HostBadge{visible:!!root.hostEnvironment&&!!root.hostBridge;bridge:root.hostBridge || ({state:{},viewState:{},catalogs:{}});environmentId:root.hostEnvironment}
   Text{visible:!!root.trailingText;text:root.trailingText;color:Color.popups.text;opacity:0.5;font.pixelSize:Style.font.caption}
   T3Icon{name:"chevron-right";tint:Color.popups.text;opacity:0.35;implicitWidth:Style.space(14)}
  }

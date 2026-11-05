@@ -40,8 +40,7 @@ fn until(mut condition: impl FnMut() -> bool) {
     }
 }
 
-#[test]
-fn eight_mosaic_streams_across_hosts_deliver_updates_and_cancel_only_removed_tiles() {
+fn mosaic_streams_across_hosts(count:usize) {
     let root = std::env::temp_dir().join(format!("t3-mosaic-live-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(&root).unwrap();
     let stop = Arc::new(AtomicBool::new(false));
@@ -140,13 +139,14 @@ fn eight_mosaic_streams_across_hosts_deliver_updates_and_cancel_only_removed_til
     fixture.child = Some(child);
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
+        let mut frames = omarchy_t3_client::json_delta::Reader::default();
         for line in BufReader::new(output).lines().map_while(Result::ok) {
             if let Ok(value) = serde_json::from_str::<Value>(&line) {
-                let _ = tx.send(value);
+                let _ = tx.send(frames.resolve(value).expect("delta frame fits its base"));
             }
         }
     });
-    let targets: Vec<_> = (0..8)
+    let targets: Vec<_> = (0..count)
         .map(|i| {
             let host = if i % 2 == 0 { "a" } else { "b" };
             json!({"environment":host,"thread":format!("{host}{i}"),"serial":100+i})
@@ -156,7 +156,7 @@ fn eight_mosaic_streams_across_hosts_deliver_updates_and_cancel_only_removed_til
     writeln!(input, "{}", json!({"op":"mosaic-watch","targets":targets})).unwrap();
     let mut received = HashSet::new();
     let deadline = Instant::now() + Duration::from_secs(10);
-    while received.len() < 8 {
+    while received.len() < count {
         assert!(
             Instant::now() < deadline,
             "missing mosaic updates: {received:?}"
@@ -178,21 +178,21 @@ fn eight_mosaic_streams_across_hosts_deliver_updates_and_cancel_only_removed_til
             received.insert(serial);
         }
     }
-    assert_eq!(opened.load(Ordering::Relaxed), 8);
+    assert_eq!(opened.load(Ordering::Relaxed), count);
     writeln!(
         input,
         "{}",
         json!({"op":"mosaic-watch","targets":[targets[0]]})
     )
     .unwrap();
-    until(|| closed.load(Ordering::Relaxed) == 7);
+    until(|| closed.load(Ordering::Relaxed) == count-1);
     assert_eq!(
         opened.load(Ordering::Relaxed),
-        8,
+        count,
         "retained tile must not reconnect"
     );
     writeln!(input, "{}", json!({"op":"visible","value":false})).unwrap();
-    until(|| closed.load(Ordering::Relaxed) == 8);
+    until(|| closed.load(Ordering::Relaxed) == count);
     writeln!(input, "{}", json!({"op":"quit"})).unwrap();
     assert!(fixture.child.as_mut().unwrap().wait().unwrap().success());
     stop.store(true, Ordering::Relaxed);
@@ -200,3 +200,8 @@ fn eight_mosaic_streams_across_hosts_deliver_updates_and_cancel_only_removed_til
         server.join().unwrap();
     }
 }
+
+#[test]
+fn eight_mosaic_streams_across_hosts_deliver_updates_and_cancel_only_removed_tiles(){mosaic_streams_across_hosts(8)}
+#[test]
+fn board_streams_deliver_all_visible_states_beyond_eight_and_release_readers(){mosaic_streams_across_hosts(24)}

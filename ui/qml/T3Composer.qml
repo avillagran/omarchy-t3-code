@@ -276,8 +276,7 @@ Rectangle {
       objectName:"t3FocusComposerContext";Layout.fillWidth:true;visible:root.focusLayout;spacing:Style.space(8)
       T3Icon{name:"folder";implicitWidth:Style.space(13);tint:root.dim}
       Text{Layout.fillWidth:true;text:root.bridge.selectedProject || "";elide:Text.ElideRight;color:root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText}
-      T3Icon{name:"server";implicitWidth:Style.space(12);tint:Color.accent}
-      Text{objectName:"t3FocusComposerHost";Layout.maximumWidth:Style.space(120);text:((root.bridge.state.environments || []).find(function(e){return e.id===root.bridge.selectedEnvironment}) || {}).name || root.bridge.selectedEnvironment;color:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
+      T3HostBadge{objectName:"t3FocusComposerHost";bridge:root.bridge;environmentId:root.bridge.selectedEnvironment}
       T3BranchPicker{id:focusBranch;bridge:root.bridge;Layout.maximumWidth:Math.min(Style.space(190),root.width*0.35)}
     }
     Rectangle{Layout.fillWidth:true;implicitHeight:1;visible:root.focusLayout;color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.07)}

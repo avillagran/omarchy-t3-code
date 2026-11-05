@@ -124,9 +124,10 @@ fn shell_deltas_update_the_sidebar_and_reconnects_resume_from_the_cursor() {
     let (tx, rx) = mpsc::channel();
     let output = child.stdout.take().unwrap();
     thread::spawn(move || {
+        let mut frames = omarchy_t3_client::json_delta::Reader::default();
         for line in BufReader::new(output).lines().map_while(Result::ok) {
             if let Ok(v) = serde_json::from_str::<Value>(&line) {
-                let _ = tx.send(v);
+                let _ = tx.send(frames.resolve(v).expect("delta frame fits its base"));
             }
         }
     });

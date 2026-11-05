@@ -20,3 +20,28 @@ fn worker_restart_restores_presentation_without_account_or_transcript_data(){
 
 #[test]
 fn concurrent_private_json_saves_do_not_share_temporary_files(){let root=std::env::temp_dir().join(format!("t3-json-concurrent-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&root).unwrap();std::thread::scope(|scope|{for n in 0..8{let root=&root;scope.spawn(move||{for revision in 0..5{omarchy_t3_client::save_json(&root.join(format!("{n}.json")),&json!({"id":n,"revision":revision})).unwrap();}});}});for n in 0..8{let v=omarchy_t3_client::read_json(&root.join(format!("{n}.json"))).unwrap();assert_eq!(v["revision"],4);assert_eq!(v["id"],n);}std::fs::remove_dir_all(root).unwrap();}
+
+#[test]
+fn board_notes_and_live_preference_survive_a_worker_restart() {
+    let root=std::env::temp_dir().join(format!("t3-board-{}",uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&root).unwrap();
+    let notes=json!([{"key":"idea-1","text":"Una idea\n- [ ] una tarea\n- [x] otra"},{"key":"idea-2","text":"<b>texto literal</b>"}]);
+    run(&root,&[json!({"op":"ui-state-set","state":{"boardIdeas":notes,"boardLive":true}})]);
+    let restored=run(&root,&[]);
+    assert_eq!(restored["boardIdeas"],notes);
+    assert_eq!(restored["boardLive"],true);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn board_column_preferences_survive_restart_and_reject_unknown_fields(){
+    let root=std::env::temp_dir().join(format!("t3-board-columns-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&root).unwrap();
+    run(&root,&[json!({"op":"ui-state-set","state":{"boardShowPinned":false,"boardColumns":{"ideas":{"collapsed":true},"ready":{"order":"title","reverse":true,"collapsed":false,"live":true,"token":"private"},"settled":{"order":"updated","collapsed":true},"unknown":{"order":"title"},"working":{"order":"bad","reverse":"yes"}}}})]);
+    let state=run(&root,&[]);
+    assert_eq!(state["boardShowPinned"],false);
+    assert_eq!(state["boardColumns"]["ideas"],json!({"collapsed":true}));
+    assert_eq!(state["boardColumns"]["ready"],json!({"order":"title","reverse":true,"collapsed":false,"live":true}));
+    assert_eq!(state["boardColumns"]["settled"],json!({"order":"updated","collapsed":true}));
+    assert!(state["boardColumns"].get("unknown").is_none());assert_eq!(state["boardColumns"]["working"],json!({}));
+    assert!(!state.to_string().contains("private"));std::fs::remove_dir_all(root).unwrap();
+}

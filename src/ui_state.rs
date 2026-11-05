@@ -1,9 +1,36 @@
-//! Private desktop presentation state; never stores transcripts, drafts or credentials.
+//! Private desktop presentation state; stores board notes but never transcripts, chat drafts or credentials.
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
 use std::{fs, io::Read, os::unix::fs::PermissionsExt};
 pub fn sanitize(input: &Value) -> Value {
     let mut out = json!({"schemaVersion":1,"positions":{}});
+    if let Some(columns)=input["boardColumns"].as_object(){
+        let mut clean=serde_json::Map::new();
+        for (key,value) in columns.iter().take(16){
+            if !matches!(key.as_str(),"ideas"|"pinned"|"ready"|"input"|"waiting"|"working"|"failed"|"idle"|"done"|"snoozed"|"settled"){continue}
+            let mut settings=serde_json::Map::new();
+            if value["order"].as_str().is_some_and(|v|matches!(v,"sidebar"|"reply"|"updated"|"title"|"project"|"environmentName")){settings.insert("order".into(),value["order"].clone());}
+            for name in ["reverse","collapsed","live"]{if value[name].is_boolean(){settings.insert(name.into(),value[name].clone());}}
+            clean.insert(key.clone(),Value::Object(settings));
+        }
+        out["boardColumns"]=Value::Object(clean);
+    }
+    // Independent board notes are user-authored text, not transcript or credentials.
+    // Keep multiline text verbatim, with a total budget below the state-file limit.
+    if let Some(notes)=input["boardIdeas"].as_array().filter(|n|n.len()<=128){
+        let mut seen=std::collections::HashSet::new();
+        let mut bytes=0usize;
+        let mut clean=Vec::new();
+        for note in notes {
+            let (Some(key),Some(text))=(note["key"].as_str(),note["text"].as_str()) else {continue};
+            if !valid_id(key)||!seen.insert(key)||text.contains('\0'){continue}
+            bytes=bytes.saturating_add(text.len());
+            if bytes>600_000 {break}
+            clean.push(json!({"key":key,"text":text}));
+        }
+        out["boardIdeas"]=json!(clean);
+    }
+
     for key in [
         "autoCompactEnabled",
         "idleReleaseEnabled",
@@ -16,7 +43,7 @@ pub fn sanitize(input: &Value) -> Value {
         "english",
         "composerExpanded","detached",
         "screenshotButton","screenshotHidePanel","dictationButton",
-        "animationsEnabled","fpsMeter","mosaicOpen","quickRepliesButton",
+        "animationsEnabled","fpsMeter","mosaicOpen","quickRepliesButton","boardLive","boardShowPinned",
         "omabridgeIndicator","sharedDraftsEnabled","remoteDocumentsEnabled","remoteMaintenanceEnabled",
         "threadDetailsOpen","projectColors","projectChips","chipsExpanded",
     ] {

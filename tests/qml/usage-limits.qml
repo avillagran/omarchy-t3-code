@@ -34,6 +34,16 @@ ShellRoot {
    check(result.providers[0].accounts[0].hosts.indexOf("Laptop")>=0,"account origin retained")
    var unknown=provider("future",10,"future-key");unknown.driver="future-provider";sample.environments[0].providers.push(unknown)
    result=Usage.present(sample,now);check(result.providers.length===2,"future provider is data driven")
+   var codex=function(email,workspace,used,checked){return {instanceId:"codex",driver:"codex",enabled:true,installed:true,auth:{status:"authenticated",email:email,workspaceId:workspace},usageLimits:{checkedAt:checked,windows:[{id:"weekly",label:"Weekly",kind:"weekly",usedPercent:used}]}}}
+   var shared={environments:[{id:"m2",name:"M2",connected:true,providers:[codex("same@example.test","account-one",20,"2026-10-18T11:00:00Z")]},{id:"node",name:"NODE",connected:true,providers:[codex(" SAME@example.test ","account-one",35,"2026-10-18T12:00:00Z")]}]}
+   var sharedView=Usage.present(shared,now).providers[0]
+   check(sharedView.accounts.length===1,"one Codex account used on two hosts counts once")
+   check(sharedView.accounts[0].hosts.indexOf("M2")>=0&&sharedView.accounts[0].hosts.indexOf("NODE")>=0,"merged account retains both hosts")
+   check(sharedView.windows[0].availablePercent===65&&sharedView.windows[0].segments.length===1,"shared account uses newest reading once rather than averaging duplicates")
+   shared.environments[0].providers[0].auth.workspaceId="account-two"
+   check(Usage.present(shared,now).providers[0].accounts.length===2,"different workspaces remain separate even with the same email")
+   shared.environments[0].providers[0].auth={status:"authenticated",email:"other@example.test",workspaceId:"account-one"}
+   check(Usage.present(shared,now).providers[0].accounts.length===2,"different accounts are never merged by equal quota values")
    strip.providers=result.providers;phase=1
   }else if(phase===1){
    check(strip.visible && strip.visibleProviders.length===2,"native quota rows visible")
@@ -53,7 +63,7 @@ ShellRoot {
    check(warning && warning.opacity===1 && warning.tooltipText==="Fixture source unavailable","failure details live only in warning tooltip")
    check(strip.height<110,"compact provider rows use less than110 logical pixels for four windows: "+strip.height)
    compactHeight=strip.height
-   check(canvas.grabToImage(function(r){check(r.saveToFile("/tmp/ot3-usage-limits-compact.png"),"save capture");root.captured=true}),"request capture");phase=2
+   check(canvas.grabToImage(function(r){check(r.saveToFile("/var/tmp/ot3-usage-limits-compact.png"),"save capture");root.captured=true}),"request capture");phase=2
   }else if(phase===2){
    if(!root.captured)return
    var button=keys.findChild(strip,"quotaAccounts_opencode");keys.mouseClick(button,button.width/2,button.height/2)

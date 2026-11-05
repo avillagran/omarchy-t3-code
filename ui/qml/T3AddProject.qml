@@ -112,7 +112,7 @@ Controls.Popup {
       objectName:"existingProject_"+modelData.environmentId+"_"+modelData.id
       Layout.fillWidth:true;enabled:!root.locked
       text:modelData.title || modelData.workspaceRoot;description:modelData.workspaceRoot || "";iconName:"folder-git-2"
-      trailingText:root.environmentName(modelData.environmentId)
+      hostEnvironment:modelData.environmentId;hostBridge:root.bridge
       onClicked:root.openExisting(modelData)
      }
     }

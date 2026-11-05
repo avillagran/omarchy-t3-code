@@ -11,8 +11,10 @@ impl Control{
  pub fn new(client:Client)->Self{Self::named(client,"messages","live-state")}
  pub fn named(client:Client,messages:&'static str,status:&'static str)->Self{
   let (sender,receiver)=mpsc::channel();let this=Self{generation:Arc::new(AtomicU64::new(0)),connected:Arc::new(AtomicBool::new(false)),sender};let worker=this.clone();
-  std::thread::spawn(move||{let mut pending=None;loop{
+  std::thread::spawn(move||{let mut pending=None;let mut frames=json_delta::Stream::new();loop{
    let (generation,target)=match pending.take().or_else(||receiver.recv().ok()){Some(t)=>t,None=>break};let Some((env,thread,serial))=target else{continue};let mut backoff=reconnect::Backoff::default();let mut waiter=reconnect::Waiter::default();let mut woke=false;let mut rendered=RenderCache::new();
+   // Each target starts with a whole value; later frames are patches against it.
+   frames.reset();
    // Survives reconnects of this target: the envelope and the sequence it reflects.
    let mut held:Option<Value>=None;let mut sequence=0u64;
    'target: while worker.generation.load(Ordering::Relaxed)==generation{
@@ -25,7 +27,7 @@ impl Control{
      if held.is_none(){
       let fetched=client.bounded_thread(&e,&thread)?;
       if worker.generation.load(Ordering::Relaxed)!=generation{return Ok(())}
-      crate::emit(messages,json!({"serial":serial,"result":normalize_messages_cached(&fetched,&mut rendered)?}));
+      crate::emit_stream(messages,&mut frames,json!({"serial":serial,"result":normalize_messages_cached(&fetched,&mut rendered)?}));
       sequence=fetched["snapshotSequence"].as_u64().ok_or("missing_sequence")?;held=Some(fetched);
      }
      let envelope=held.as_mut().ok_or("missing_snapshot")?;
@@ -52,11 +54,11 @@ impl Control{
        }
       }
       // Only at chunk boundaries: a resumed replay never shows a half-applied state.
-      if dirty && boundary && emitted.elapsed()>=Duration::from_millis(75){crate::emit(messages,json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));dirty=false;emitted=Instant::now();}
+      if dirty && boundary && emitted.elapsed()>=Duration::from_millis(75){crate::emit_stream(messages,&mut frames,json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));dirty=false;emitted=Instant::now();}
       Ok(())
      });
      // Flush what arrived inside the last throttle window before the stream dropped.
-     if dirty && worker.generation.load(Ordering::Relaxed)==generation{crate::emit(messages,json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));}
+     if dirty && worker.generation.load(Ordering::Relaxed)==generation{crate::emit_stream(messages,&mut frames,json!({"serial":serial,"result":normalize_messages_cached(envelope,&mut rendered)?}));}
      streamed
     })();
     worker.connected.store(false,Ordering::Relaxed);

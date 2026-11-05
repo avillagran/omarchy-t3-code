@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "../js/SidebarModel.js" as Sidebar
+import "../js/ModelSync.js" as ModelSync
 import "../js/MarkdownLinks.js" as MarkdownLinks
 import "../js/MarkdownStyle.js" as MarkdownStyle
 import "../js/ProjectModel.js" as Projects
@@ -171,14 +172,14 @@ Item {
   function openProjectSettings(key){preferencesProjectKey=key;preferencesOpen=true;var loader=preferencesLoader;if(loader&&loader.item){loader.item.initialProjectKey=key;loader.item.selectInitialProject()}}
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
   onPullRequestsOpenChanged:{if(!pullRequestsOpen)prTarget=null;if(initialized){if(pullRequestsOpen)conversation.stopWheel();else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}}
-  function submitCurrent(){if(!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
+  function submitCurrent(){if(!boardOpen&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!documentPopup.visible)bridge.submit()}
   property string mosaicRevealKey: ""
   function revealSidebarThread(env,id) {
     if(!mosaicOpen)return
     mosaicRevealKey=env+"/"+id
     if(mosaicLoader.item)mosaicLoader.item.revealThread(mosaicRevealKey)
   }
-  function selectSidebarThread(env,id){pullRequestsOpen=false;revealSidebarThread(env,id);bridge.selectThread(env,id)}
+  function selectSidebarThread(env,id){boardOpen=false;pullRequestsOpen=false;revealSidebarThread(env,id);bridge.selectThread(env,id)}
   property bool initialized: false
   readonly property var mosaicView: mosaicLoader.item
   readonly property var conversationView: conversation
@@ -310,7 +311,7 @@ Item {
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
   readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
   readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
-  readonly property bool nativeKeysActive:shortcutActive&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
+  readonly property bool nativeKeysActive:shortcutActive&&!boardOpen&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
     function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.pinnedRows.concat(root.activeRows).concat(root.workingRows).concat(root.inputRows).concat(root.snoozedRows).concat(root.settledRows)}
     function onSettledLastThread(thread){
@@ -453,6 +454,28 @@ Item {
     }
     return rows
   }
+  // Board columns consume the sidebar's actual sections, including expanded children.
+  readonly property var boardSections:{
+    if(root.projectLayout){
+      var entries=ProjectTree.build(root.projectGroups,root.mosaicRows,{},true)
+      return ProjectTree.states().map(function(s){return {key:s.id,label:s.label,rows:root.nestRows(entries.filter(function(e){return e.kind==="thread"&&e.state===s.id}).map(function(e){return e.thread}))}})
+    }
+    var sections=[],separatePinned=bridge.viewState.boardShowPinned!==false,ready=root.activeRows,working=root.workingRows
+    if(root.sidebarGrouped&&!separatePinned){
+      var ordinary=root.inboxRows.filter(function(t){return !root.needsInput(t)})
+      var compare=root.rankFirst(function(a,b){return Sidebar.compareActive(Object.assign({},a,{pinned:false}),Object.assign({},b,{pinned:false}),root.workingShelf,bridge.inboxReturnState.returned,root.orderByReply)})
+      ready=root.nestRows(ordinary.filter(function(t){return !root.workingShelf||Sidebar.state(t)!=="working"}).sort(compare))
+      working=root.workingShelf?root.nestRows(ordinary.filter(function(t){return Sidebar.state(t)==="working"}).sort(root.rankFirst(function(a,b){return root.orderByReply?Sidebar.compareReply(a,b):(b.lastSentAt || b.startedAt || b.updatedAt || 0)-(a.lastSentAt || a.startedAt || a.updatedAt || 0)}))):[]
+    }
+    if(root.sidebarGrouped&&separatePinned)sections.push({key:"pinned",label:"Pinned ({count})",rows:root.pinnedRows})
+    sections.push({key:"ready",label:root.sidebarGrouped?"Ready ({count})":"All",rows:ready})
+    if(root.workingShelf)sections.push({key:"working",label:"Working ({count})",rows:working})
+    if(root.sidebarGrouped)sections.push({key:"input",label:"Waiting for input ({count})",rows:root.inputRows})
+    sections.push({key:"snoozed",label:"Snoozed ({count})",rows:root.snoozedRows})
+    sections.push({key:"settled",label:"Settled ({count})",rows:root.settledRows})
+    return sections
+  }
+  readonly property var boardThreads:{var seen={},rows=[];boardSections.forEach(function(s){s.rows.forEach(function(t){if(!seen[t.key]){seen[t.key]=true;rows.push(t)}})});return rows}
   property string statusFilter: bridge.viewState.statusFilter || "all"
   property string projectFilter: bridge.viewState.projectFilter || ""
   Connections{target:root.bridge;function onProjectOpened(environment,projectId,error){if(!error){root.statusFilter="all";root.projectFilter="";root.bridge.query=""}}}
@@ -473,7 +496,7 @@ Item {
   readonly property bool projectLayout: bridge.viewState.interfaceLayout === "projects"
   readonly property bool focusLayout: bridge.viewState.interfaceLayout === "focus"
   property bool boardOpen:false
-  onFocusLayoutChanged:if(!focusLayout)boardOpen=false
+
   readonly property bool compactRows: (bridge.viewState.threadRowSize || "compact") === "compact"
   readonly property bool titleMarquee: bridge.viewState.threadTitleOverflow === "marquee"
   readonly property bool projectWash: bridge.viewState.projectColors !== false
@@ -780,7 +803,7 @@ Item {
       rows.forEach(function(r) { wanted[r.key || r.id] = true })
       for (var k = ids.length - 1; k >= 0; k--) if (!wanted[ids[k]]) { model.remove(k); delete prints[ids[k]]; ids.splice(k, 1); changed = true }
       for (var i = 0; i < rows.length; i++) {
-        var row = rows[i], id = row.key || row.id, found = ids.indexOf(id), print = JSON.stringify(row)
+        var row = rows[i], id = row.key || row.id, found = ids[i] === id ? i : ids.indexOf(id), print = ModelSync.print(row)
         if (found < 0) { model.insert(i, {row: row}); ids.splice(i, 0, id); changed = true }
         else {
           if (found !== i) { model.move(found, i, 1); ids.splice(i, 0, ids.splice(found, 1)[0]); changed = true }
@@ -847,6 +870,7 @@ Item {
     if (dirty) stateChangedAt = changed
   }
   Connections { target: root.bridge; function onStateChanged() { root.trackThreadStates() } }
+  function threadTime(t){return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)}
   function stateColor(t) { return T3Palette.detailColor(Sidebar.detail(t)) }
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
   function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
@@ -940,11 +964,11 @@ Item {
       keyboardCurrent: ListView.view ? ListView.view.activeFocus && ListView.view.currentIndex===index : false
       stateColor:root.stateColor(modelData);stateLabel:root.status(modelData)
       sky:root.starfield;effects:root.threadEffects;stateChangedAt:root.stateChangedAt[modelData.key] || 0
-      timeLabel:root.orderByReply ? root.age(Sidebar.replyTime(modelData)) : modelData.working ? root.duration(modelData.startedAt) : modelData.snoozed&&modelData.snoozedUntil ? root.snoozeRemaining(modelData.snoozedUntil) : root.age(modelData.settled?modelData.settledSortAt || modelData.updatedAt:modelData.updatedAt)
+      timeLabel:root.threadTime(modelData)
       onInteractionChanged:function(active){root.holdSidebar(modelData.key,active)}
       providerGlyph:root.providerIcon(modelData.provider)
       onPullRequestsRequested:function(source,reference,multiple){root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
-      onThreadActivated:function(source){root.pullRequestsOpen=false;root.preferencesOpen=false;root.revealSidebarThread(source.environmentId,source.id)}
+      onThreadActivated:function(source){root.boardOpen=false;root.pullRequestsOpen=false;root.preferencesOpen=false;root.revealSidebarThread(source.environmentId,source.id)}
       onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
       onProjectSettingsRequested:function(key){root.openProjectSettings(key)}
       onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
@@ -1049,7 +1073,7 @@ Item {
       Shortcut{sequence:"Ctrl+R";enabled:!root.nativeKeybindingsEnabled&&root.shortcutActive&&root.browserFocused&&root.localShortcutAvailable("Ctrl+R");onActivated:if(root.browserWorkspaceItem)root.browserWorkspaceItem.refresh()}
       Shortcut{sequence:"Ctrl+J";enabled:!root.nativeKeybindingsEnabled&&(root.shortcutActive&&root.bridge.canOpenTerminal)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+J");onActivated:root.bridge.openTerminal()}
       Shortcut { sequence:"Ctrl+K";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+K");onActivated:root.focusSidebar() }
-      Shortcut { sequence:"Ctrl+L";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+L");onActivated:{if(root.browserFocused)root.focusBrowserUrl();else composerPanel.inputField.forceActiveFocus()} }
+      Shortcut { sequence:"Ctrl+L";enabled:!root.boardOpen&&(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+L");onActivated:{if(root.browserFocused)root.focusBrowserUrl();else composerPanel.inputField.forceActiveFocus()} }
       Shortcut { sequence:"Meta+E";enabled:(root.opened && !!root.bridge.selectedThread)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+E");onActivated:root.expandComposer() }
       Shortcut { sequence:"Meta+Return";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Meta+Return");onActivated:root.submitCurrent() }
       Shortcut { sequence:"Ctrl+Shift+A";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Shift+A");onActivated:composerPanel.attachFiles() }
@@ -1060,7 +1084,7 @@ Item {
       Shortcut { sequence:"Ctrl+Alt+Left";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Left");onActivated:root.resizePanel(root.panelWidth-40,root.panelHeight) }
       Shortcut { sequence:"Ctrl+Alt+Up";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Up");onActivated:root.resizePanel(root.panelWidth,root.panelHeight-30) }
       Shortcut { sequence:"Ctrl+Alt+Down";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("Ctrl+Alt+Down");onActivated:root.resizePanel(root.panelWidth,root.panelHeight+30) }
-      Shortcut { sequence:"F1";enabled:(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
+      Shortcut { sequence:"F1";enabled:!root.boardOpen&&(root.opened)&&!(root.bridge.keybindingCaptureActive || false)&&root.localShortcutAvailable("F1");onActivated:keyHelp.open() }
       T3DeferredPopup{parent:panelLayout.parent;id:usagePage;objectName:"usagePageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3UsagePage.qml");releaseWhenClosed:true;savedProperties:["period","metric"]}
       T3DeferredPopup{parent:panelLayout.parent;id:scheduledTasksPage;objectName:"scheduledTasksPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3ScheduledTasks.qml");}
       T3DeferredPopup{parent:panelLayout.parent;id:agentSessionsPage;objectName:"agentSessionsPageLoader";bridge:root.bridge;popupSource:Qt.resolvedUrl("T3AgentSessions.qml");}
@@ -1819,16 +1843,22 @@ Item {
                 name:root.bridge.backendStart.busy?"loader-circle":root.bridge.localBackend.running?"server":"play"
                 tint:root.bridge.backendStart.error?Color.urgent:root.bridge.localBackend.running?Color.accent:root.dim
                 tooltipText:root.bridge.backendStart.error?T3I18n.error(root.bridge.backendStart.error):root.bridge.localBackend.error?T3I18n.error(root.bridge.localBackend.error):T3I18n.tr(root.bridge.backendStart.busy?"Loading…":root.bridge.localBackend.running?"Local backend controls":"Start local backend")
-                enabled:root.bridge.localBackend.canControl&&!root.bridge.backendStart.busy
-                onClicked:root.bridge.localBackend.running?localBackendMenu.popup():root.bridge.startBackend()
+                enabled:!root.bridge.backendStart.busy&&(root.bridge.localBackend.canControl||(!root.bridge.localBackend.running&&(root.bridge.localBackend.choices || []).some(function(c){return c.available&&c.canControl})))
+                onClicked:localBackendMenu.popup()
+                Connections{target:root.bridge;function onBackendChoiceRequested(){if(root.opened&&!root.bridge.localBackend.running&&!root.bridge.backendStart.busy)localBackendMenu.popup()}}
                 Controls.Menu {
-                  id:localBackendMenu;objectName:"localBackendMenu";width:Style.space(260)
+                  id:localBackendMenu;objectName:"localBackendMenu";width:Style.space(280)
+                  y:-height-Style.space(6)
                   palette.window:Color.popups.background;palette.text:root.fg;palette.windowText:root.fg
                   background:Rectangle{color:Color.popups.background;radius:Style.space(7);border.width:1;border.color:root.dim}
-                  Controls.MenuItem{objectName:"localBackendStart";text:T3I18n.tr("Start local backend");enabled:root.bridge.localBackend.canControl&&!root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.startBackend()}
-                  Controls.MenuItem{objectName:"localBackendRestart";text:T3I18n.tr("Restart local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("restart")}
-                  Controls.MenuItem{objectName:"localBackendHosts";text:T3I18n.tr("Environments");onTriggered:root.openHosts(localBackendControl)}
-                  Controls.MenuItem{objectName:"localBackendStop";text:T3I18n.tr("Stop local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("stop")}
+                  Controls.MenuItem{objectName:"localBackendPrompt";text:T3I18n.tr("Which server do you want to start?");visible:!root.bridge.localBackend.running;height:visible?implicitHeight:0;enabled:false}
+                  Controls.MenuItem{objectName:"localBackendStartO3";text:T3I18n.tr("Start {server}",{server:"O3 Server"})+(root.bridge.backendChoice("o3").available?"":" · "+T3I18n.tr("Not installed"));visible:!root.bridge.localBackend.running;height:visible?implicitHeight:0;enabled:!root.bridge.localBackend.running&&root.bridge.backendChoice("o3").available&&root.bridge.backendChoice("o3").canControl&&!root.bridge.backendStart.busy;onTriggered:root.bridge.startBackend("o3")}
+                  Controls.MenuItem{objectName:"localBackendStart";text:T3I18n.tr("Start {server}",{server:"T3"})+(root.bridge.backendChoice("t3").available?"":" · "+T3I18n.tr("Not installed"));visible:!root.bridge.localBackend.running;height:visible?implicitHeight:0;enabled:!root.bridge.localBackend.running&&root.bridge.backendChoice("t3").available&&root.bridge.backendChoice("t3").canControl&&!root.bridge.backendStart.busy;onTriggered:root.bridge.startBackend("t3")}
+                  Controls.MenuItem{objectName:"localBackendSwitchO3";readonly property var choice:root.bridge.backendChoice("o3");visible:root.bridge.localBackend.running&&root.bridge.localBackend.backend!=="o3"&&choice.available;height:visible?implicitHeight:0;text:T3I18n.tr("Switch to {server}",{server:"O3 Server"});enabled:visible&&root.bridge.localBackend.canControl&&choice.canControl&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("switch","o3")}
+                  Controls.MenuItem{objectName:"localBackendSwitchT3";readonly property var choice:root.bridge.backendChoice("t3");visible:root.bridge.localBackend.running&&root.bridge.localBackend.backend!=="t3"&&choice.available;height:visible?implicitHeight:0;text:T3I18n.tr("Switch to {server}",{server:"T3"});enabled:visible&&root.bridge.localBackend.canControl&&choice.canControl&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("switch","t3")}
+                  Controls.MenuItem{objectName:"localBackendRestart";visible:root.bridge.localBackend.running;height:visible?implicitHeight:0;text:T3I18n.tr("Restart local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("restart")}
+                  Controls.MenuItem{objectName:"localBackendHosts";visible:root.bridge.localBackend.running;height:visible?implicitHeight:0;text:T3I18n.tr("Environments");onTriggered:root.openHosts(localBackendControl)}
+                  Controls.MenuItem{objectName:"localBackendStop";visible:root.bridge.localBackend.running;height:visible?implicitHeight:0;text:T3I18n.tr("Stop local backend");enabled:root.bridge.localBackend.canControl&&root.bridge.localBackend.running&&!root.bridge.backendStart.busy;onTriggered:root.bridge.controlBackend("stop")}
                 }
               }
               T3IconButton {objectName:"sidebarCompactToggle";name:root.sidebarGrouped?"layers":"list-ordered";tint:root.sidebarGrouped?Color.accent:root.dim;tooltipText:T3I18n.tr(root.sidebarGrouped?"Ungroup threads":"Group threads by state");onClicked:root.toggleGrouped()}
@@ -1907,8 +1937,16 @@ Item {
         Loader{objectName:"t3PullRequestsView";anchors.fill:parent;active:root.pullRequestsOpen&&root.opened&&!root.preferencesOpen;sourceComponent:Component{T3PullRequests{bridge:root.bridge;initialEntry:root.prTarget;onClosed:root.pullRequestsOpen=false}}}
         Loader {
           objectName:"t3FocusBoardLoader";anchors.fill:parent;z:19
-          active:root.focusLayout&&root.boardOpen&&root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen&&!root.mosaicOpen
-          sourceComponent:T3ThreadBoard{bridge:root.bridge;threads:root.mosaicRows;onClosed:root.boardOpen=false;onThreadRequested:function(t){root.boardOpen=false;root.bridge.selectThread(t.environmentId,t.id)}}
+          active:root.boardOpen&&root.opened&&!root.preferencesOpen&&!root.pullRequestsOpen&&!root.mosaicOpen
+          sourceComponent:T3ThreadBoard{bridge:root.bridge;sidebarContext:root;
+            onPullRequestsRequested:function(source,reference,multiple){root.boardOpen=false;root.bridge.selectThread(source.environmentId,source.id);root.prTarget=Object.assign({},reference,{environmentId:source.environmentId,multiple:multiple,references:Array.prototype.slice.call(source.pullRequestBadge.links)});root.pullRequestsOpen=true}
+            onFilterProjectRequested:function(key){var group=root.projectGroups.find(function(g){return g.members.some(function(p){return p.key===key})});if(group)root.projectFilter=root.projectFilter===group.key?"":group.key}
+            onProjectSettingsRequested:function(key){root.boardOpen=false;root.openProjectSettings(key)}
+            onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
+            onProjectContextRequested:function(source,item,px,py){projectMenu.showProject(source.projectKey,item,px,py)}
+            onProjectContextDismissed:projectMenu.dismissContext()
+            onSubthreadsToggled:function(source){root.toggleSubthreads(source)}
+            renderer:function(message,width){return root.renderMessage(message,width)};threads:root.boardThreads;sectionData:root.boardSections;onClosed:root.boardOpen=false;onIdeaRequested:function(text){sidebarActions.newThread();sidebarActions.initialPrompt=text};onThreadRequested:function(t){root.boardOpen=false;root.bridge.selectThread(t.environmentId,t.id)}}
         }
         Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         Loader {
@@ -1951,10 +1989,11 @@ Item {
                 onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
               }
             }
+            T3HostBadge {objectName:"t3HeaderHost";visible:!!root.bridge.selectedThread;bridge:root.bridge;environmentId:root.bridge.selectedEnvironment}
             T3IconButton {objectName:"t3MergeBack";visible:!!root.bridge.mergeBackTarget;name:"git-merge";enabled:!!root.bridge.mergeBackRunId&&!root.bridge.managementBusy&&!root.bridge.selectedInfo.working;tint:root.dim;tooltipText:!root.bridge.mergeBackRunId?T3I18n.tr("Complete a run in this fork before merging it back"):root.bridge.mergeBackTitle?T3I18n.tr("Merge this conversation back into {title}",{title:root.bridge.mergeBackTitle}):T3I18n.tr("Merge this conversation back into its source");onClicked:root.bridge.mergeBack()}
             T3IconButton {objectName:"t3ToggleThreadDetails";name:"square-menu";enabled:!!root.bridge.selectedThread;tint:root.threadDetailsOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread details")+" · Ctrl+Shift+B";onClicked:root.toggleThreadDetails()}
             T3IconButton {objectName:"t3OpenSidePanel";name:"panel-right";enabled:!!root.bridge.selectedThread;tint:root.sidePanelOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Side panel");onClicked:root.toggleSide()}
-            T3PickerButton{objectName:"t3OpenFocusBoard";visible:root.focusLayout;text:T3I18n.tr("Task board");primary:false;implicitHeight:Style.space(28);onClicked:root.boardOpen=true}
+            T3PickerButton{objectName:"t3OpenFocusBoard";visible:true;text:T3I18n.tr("Task board");primary:false;implicitHeight:Style.space(28);onClicked:root.boardOpen=true}
             T3IconButton {objectName:"t3OpenGit";name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
             T3IconButton {objectName:"t3OpenTerminal";name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
             T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"||(!root.panelAvailable&&root.windowMode==="tiled")?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
