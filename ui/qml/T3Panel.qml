@@ -60,7 +60,7 @@ Item {
     var current=String(bridge.draft.text||"");var next=current.trim()?current.replace(/\s+$/,"")+"\n\n"+quote+"\n\n":quote+"\n\n"
     bridge.patchDraft(bridge.selectedKey,{text:next});Qt.callLater(function(){composerPanel.inputField.forceActiveFocus();composerPanel.inputField.cursorPosition=composerPanel.inputField.length})
   }
-  function openPreferencesPage(page,environment){preferencesOpen=true;Qt.callLater(function(){var p=preferencesLoader.item;if(!p)return;if(environment)p.selectEnvironment(environment);p.page=page})}
+  function openPreferencesPage(page,environment){rememberPreferencesPage(page);preferencesOpen=true;Qt.callLater(function(){var p=preferencesLoader.item;if(!p)return;if(environment)p.selectEnvironment(environment);p.page=page})}
   // Command palette groups, built when it opens (T3 CommandPalette: actions, threads, projects, settings).
   function paletteGroups(){
     var b=bridge,thread=!!b.selectedThread,actions=[]
@@ -193,6 +193,9 @@ Item {
   function browserKeyFocus(){var item=nativeFocusItem;while(item){if(item.objectName==="t3BrowserWorkspace")return true;item=item.parent}return false}
   readonly property bool browserFocused:browserShown&&browserKeyFocus()
   property bool preferencesOpen:false
+  // Last settings page, kept in the view state so reopening or reloading the panel returns to it.
+  readonly property string preferencesPage:bridge.viewState.preferencesPage || "general"
+  function rememberPreferencesPage(page){if(page&&bridge.viewState.preferencesPage!==page)bridge.rememberView({preferencesPage:page})}
   property string preferencesProjectKey:""
   function openProjectSettings(key){preferencesProjectKey=key;preferencesOpen=true;var loader=preferencesLoader;if(loader&&loader.item){loader.item.initialProjectKey=key;loader.item.selectInitialProject()}}
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
@@ -1988,7 +1991,7 @@ Item {
             onSubthreadsToggled:function(source){root.toggleSubthreads(source)}
             renderer:function(message,width){return root.renderMessage(message,width)};threads:root.boardThreads;sectionData:root.boardSections;onClosed:root.boardOpen=false;onIdeaRequested:function(text){sidebarActions.newThread();sidebarActions.initialPrompt=text};onThreadRequested:function(t){root.boardOpen=false;root.bridge.selectThread(t.environmentId,t.id)}}
         }
-        Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
+        Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;page:root.preferencesPage;onPageChanged:root.rememberPreferencesPage(page);initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         Loader {
           id:mosaicLoader
           anchors.fill:parent;active:root.opened&&root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
