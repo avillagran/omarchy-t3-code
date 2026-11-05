@@ -28,6 +28,23 @@ malformed registry disables lifecycle control instead of launching a fallback.
 Without a registry, existing T3 installations retain their original behavior;
 the O3 choice is marked not installed.
 
+## Installed by install.sh
+
+Choosing O3 Server in `install.sh` (or `O3_SERVER=o3`) writes, only when each is absent:
+
+- `~/.local/share/o3-server/bin/o3-server`, the release pinned in
+  `integrations/o3-server/release` and installed by `bin/fetch-o3-server` (verified against the
+  pinned hash and the release's `SHA256SUMS`, like OmaBridge);
+- `~/.config/systemd/user/o3-server.service`, marked `# Written by the O3 Code installer.`:
+  `o3-server serve --no-bridge --base-dir ~/.local/share/o3-server/profile` with a matching
+  `T3CODE_HOME`, listening on `127.0.0.1:3773`, enabled at login. The bundled OmaBridge CLI keeps
+  the device's single bridge identity, so the embedded bridge stays off;
+- a registry with only `o3`, its default.
+
+Later runs update the pinned binary and restart only a unit carrying that marker. A unit or
+registry written by hand is kept as is; a registry without `o3` stops the installer instead of
+being rewritten. T3 is neither installed nor opened for O3 Server.
+
 An explicit choice is stored in the client state directory's
 `backend-choice.json`. Local transport discovery and credential issuance use
 that server's profile and CLI; saved remote connections and UI preferences stay
