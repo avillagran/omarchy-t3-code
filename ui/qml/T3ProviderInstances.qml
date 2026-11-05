@@ -91,11 +91,11 @@ ColumnLayout {
    Repeater{model:root.instances.filter(function(i){var s=root.setupOf(i.id);return !!s.state||!!s.error})
     ColumnLayout{required property var modelData;objectName:"providerSetup_"+modelData.id;Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);spacing:Style.space(6)
      readonly property var setup:root.setupOf(modelData.id)
-     readonly property var st:setup.state || ({})
+     readonly property var st:setup.state || ({});readonly property string flowPhase:st.phase || "";onFlowPhaseChanged:if(flowPhase==="succeeded")root.load()
      readonly property var interaction:st.interaction || null
      Text{Layout.fillWidth:true;wrapMode:Text.Wrap;textFormat:Text.PlainText;font.pixelSize:Style.font.caption;color:parent.setup.error||parent.st.phase==="failed"?Color.urgent:root.fg
       text:modelData.label+" · "+(parent.setup.error?T3I18n.error(parent.setup.error):parent.setup.kind==="install"?(parent.st.phase==="downloading"&&parent.st.totalBytes?T3I18n.tr("Downloading… {percent}%",{percent:Math.round(100*parent.st.downloadedBytes/parent.st.totalBytes)}):T3I18n.tr(({idle:"Not installed",downloading:"Downloading…",extracting:"Installing…",verifying:"Verifying…",succeeded:"Installed",failed:"Install failed",cancelled:"Install cancelled"})[parent.st.phase]||String(parent.st.phase||""))):T3I18n.tr(({idle:"Signed out",starting:"Starting sign-in…",waiting:"Waiting for you to sign in",verifying:"Verifying…",succeeded:"Signed in",failed:"Sign-in failed",cancelled:"Sign-in cancelled"})[parent.st.phase]||String(parent.st.phase||"")))+(parent.st.message?" · "+parent.st.message:"")}
-     RowLayout{visible:!!parent.interaction&&(parent.interaction.type==="browser"||parent.interaction.type==="deviceCode");spacing:Style.space(8)
+     RowLayout{visible:!!parent.interaction&&(parent.interaction.type==="browser"||parent.interaction.type==="deviceCode")&&["succeeded","failed","cancelled"].indexOf(parent.flowPhase)<0;spacing:Style.space(8)
       Text{visible:!!parent.parent.interaction&&parent.parent.interaction.type==="deviceCode";text:parent.parent.interaction?T3I18n.tr("Code: {code}",{code:parent.parent.interaction.userCode||""}):"";color:root.fg;font.family:"monospace";font.pixelSize:Style.font.body}
       T3PickerButton{objectName:"providerOpenSignIn_"+modelData.id;implicitHeight:Style.space(28);text:T3I18n.tr("Open sign-in page");onClicked:{var i=parent.parent.interaction;if(/^https?:\/\//i.test(i.url||""))Qt.openUrlExternally(i.url);if(i.type==="browser"&&i.requiresConsent)root.bridge.providerSetupAction(root.environment,modelData.id,{action:"respond",flowId:parent.parent.st.flowId,interactionId:i.id,response:{type:"browser",action:"accept"}})}}
      }
