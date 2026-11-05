@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Install/update O3 Code: the desktop app (bin/o3, its own process) and
-# its optional bar widget; reuse T3's existing profile and connections.
+# Install/update O3 Code: the desktop app (bin/o3, its own process), its optional
+# bar widget and the local server it drives: O3 Server or T3 Code nightly.
 set -euo pipefail
 # The brace group is parsed whole before it runs, so `curl | bash` never executes a partial download.
 {
@@ -26,11 +26,39 @@ if ((${#missing[@]})); then
 fi
 if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1; then rustup default stable; fi
 
-# ot3 is a client of T3 Code nightly: install it if absent, then open it once so it
-# writes its profile and the ~/.t3/bin/t3 CLI that ot3 drives.
+# The local server: O3 Server (a light native server) or T3 Code nightly. An existing
+# setup keeps its server; O3_SERVER=o3|t3 chooses, otherwise a new install asks on the
+# terminal and defaults to O3 Server. Remote connections work with either.
+config_root=${XDG_CONFIG_HOME:-$HOME/.config}
+registry=$config_root/omarchy-t3-code/backends.json
+o3_home=$HOME/.local/share/o3-server
+o3_bin=$o3_home/bin/o3-server
+o3_profile=$o3_home/profile
+o3_unit=$HOME/.config/systemd/user/o3-server.service
+registers_o3() { [[ -f $registry ]] && jq -e '.servers | any(.id == "o3")' "$registry" >/dev/null 2>&1; }
+server=${O3_SERVER:-}
+if [[ -z $server ]]; then
+  if registers_o3; then server=o3
+  elif [[ -f $registry || -x "$HOME/.t3/bin/t3" ]] || command -v t3code-nightly >/dev/null || command -v t3code >/dev/null; then server=t3
+  elif { : </dev/tty; } 2>/dev/null; then
+    printf '%s\n' 'Local server for O3 Code:' '  1) O3 Server: light native server (recommended)' '  2) T3 Code nightly: the Electron app and its server'
+    read -r -p 'Choose [1/2]: ' answer </dev/tty || answer=''
+    if [[ $answer == 2 ]]; then server=t3; else server=o3; fi
+  else server=o3
+  fi
+fi
+[[ $server == o3 || $server == t3 ]] || fail 'O3_SERVER must be o3 or t3.'
+# Never rewrite a registry this installer did not write: it is the user's configuration.
+if [[ $server == o3 && -f $registry ]] && ! registers_o3; then
+  fail "$registry does not register O3 Server; add it (docs/LOCAL_BACKENDS.md) or use O3_SERVER=t3."
+fi
+printf 'Local server: %s.\n' "$([[ $server == o3 ]] && echo 'O3 Server' || echo 'T3 Code nightly')"
+
+# With T3, O3 Code is a client of T3 Code nightly: install it if absent, then open it
+# once so it writes its profile and the ~/.t3/bin/t3 CLI that O3 Code drives.
 t3_package=t3code-nightly-bin
 t3_bootstrapped=0
-if [[ ! -x "$HOME/.t3/bin/t3" ]] && ! command -v t3code-nightly >/dev/null && ! command -v t3code >/dev/null; then
+if [[ $server == t3 && ! -x "$HOME/.t3/bin/t3" ]] && ! command -v t3code-nightly >/dev/null && ! command -v t3code >/dev/null; then
   printf 'Installing T3 Code nightly (%s).\n' "$t3_package"
   if pacman -Si "$t3_package" >/dev/null 2>&1; then sudo pacman -S --needed --noconfirm "$t3_package"
   elif command -v yay >/dev/null; then yay -S --needed --noconfirm "$t3_package"
@@ -38,7 +66,7 @@ if [[ ! -x "$HOME/.t3/bin/t3" ]] && ! command -v t3code-nightly >/dev/null && ! 
   else fail "Install T3 Code nightly ($t3_package) and run this installer again: https://t3.codes"
   fi
 fi
-if [[ ! -d "$t3_base/userdata" || ! -x "$HOME/.t3/bin/t3" ]]; then
+if [[ $server == t3 ]] && [[ ! -d "$t3_base/userdata" || ! -x "$HOME/.t3/bin/t3" ]]; then
   [[ -n ${WAYLAND_DISPLAY:-} ]] || fail 'Open T3 Code once from your desktop session, then run this installer again.'
   t3_app=$(command -v t3code-nightly || command -v t3code) || fail 'T3 Code is not on PATH; open it once, then run this installer again.'
   printf '%s\n' 'Opening T3 Code once to create its profile.'
@@ -63,8 +91,17 @@ release_ref=main
 if [[ $source_build != 1 ]]; then
   arch=$(uname -m)
   case "$arch" in aarch64|x86_64) ;; *) fail "No prebuilt package for $arch. Use OT3_BUILD_FROM_SOURCE=1.";; esac
-  release_json=$(curl -fsSL https://api.github.com/repos/avillagran/omarchy-t3-code/releases/latest)
-  release_ref=$(jq -er '.tag_name | select(test("^v[0-9][A-Za-z0-9._-]*$"))' <<< "$release_json") || fail 'No published binary release available. Use OT3_BUILD_FROM_SOURCE=1 to build main.'
+  # O3 Code is released as v0.3 and later, prereleases included; earlier tags are the
+  # T3-branded app. OT3_RELEASE=vX.Y.Z installs one release.
+  if [[ -n ${OT3_RELEASE:-} ]]; then
+    release_ref=$OT3_RELEASE
+  else
+    release_json=$(curl -fsSL 'https://api.github.com/repos/avillagran/omarchy-t3-code/releases?per_page=50')
+    release_ref=$(jq -er '[.[] | select(.draft | not) | .tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
+      | {tag: ., v: (ltrimstr("v") | split(".") | map(tonumber))} | select(.v[0] > 0 or .v[1] >= 3)]
+      | sort_by(.v) | last | .tag' <<< "$release_json") || fail 'No published O3 Code release available. Use OT3_BUILD_FROM_SOURCE=1 to build from source.'
+  fi
+  [[ $release_ref =~ ^v[0-9][A-Za-z0-9._-]*$ ]] || fail 'OT3_RELEASE must be a release tag such as v0.3.0.'
 fi
 
 plugin_id=io.github.avillagran.omarchy-t3-code
@@ -141,6 +178,14 @@ fi
 if [[ -x "$build_dir/bin/fetch-omabridge" ]]; then
   "$build_dir/bin/fetch-omabridge" || printf '%s\n' 'OmaBridge was not installed; connections use their saved routes. Rerun the installer to retry.' >&2
 fi
+# O3 Server is required when chosen: without it there is no local server.
+o3_updated=0
+if [[ $server == o3 ]]; then
+  o3_before=$("$o3_bin" --version 2>/dev/null || true)
+  [[ -x "$build_dir/bin/fetch-o3-server" ]] || fail 'This O3 Code release cannot install O3 Server; use O3_SERVER=t3.'
+  "$build_dir/bin/fetch-o3-server" || fail 'O3 Server was not installed. Rerun the installer to retry, or use O3_SERVER=t3.'
+  [[ $o3_before == "$("$o3_bin" --version)" ]] || o3_updated=1
+fi
 [[ -f "$build_dir/bin/libt3-document.so" ]] || fail 'The HTML preview did not build; check Qt development packages and retry.'
 omarchy plugin validate "$build_dir"
 if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi
@@ -149,6 +194,30 @@ if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi
 bridge_unit=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/omabridge-serve.service
 if [[ -f "$bridge_unit" ]] && grep -qF "$plugin_dir/bin/omabridge" "$bridge_unit" && command -v systemctl >/dev/null; then
   systemctl --user try-restart omabridge-serve.service || printf '%s\n' 'Could not restart the published OmaBridge service.' >&2
+fi
+# O3 Server runs as its own user service on 127.0.0.1:3773 with a separate profile; the
+# registry tells O3 Code to use it. Units and registries written elsewhere are kept.
+o3_marker='# Written by the O3 Code installer.'
+if [[ $server == o3 ]]; then
+  if [[ ! -e $o3_unit ]]; then
+    mkdir -p -- "$(dirname -- "$o3_unit")" "$o3_profile"
+    printf '%s\n' "$o3_marker" '[Unit]' 'Description=O3 Server, the local server of O3 Code' 'After=network.target' '' \
+      '[Service]' 'Type=simple' "Environment=\"T3CODE_HOME=$o3_profile\"" \
+      'Environment=PATH=%h/.local/share/mise/shims:%h/.local/bin:/usr/local/bin:/usr/bin:/bin' \
+      "ExecStart=\"$o3_bin\" serve --no-bridge --base-dir \"$o3_profile\"" 'Restart=on-failure' 'RestartSec=5' '' \
+      '[Install]' 'WantedBy=default.target' > "$o3_unit.new"
+    mv -f -- "$o3_unit.new" "$o3_unit"
+    systemctl --user daemon-reload
+    systemctl --user enable o3-server.service
+  elif ((o3_updated)) && grep -qxF "$o3_marker" "$o3_unit"; then
+    systemctl --user try-restart o3-server.service || printf '%s\n' 'Could not restart O3 Server on the updated binary.' >&2
+  fi
+  if [[ ! -e $registry ]]; then
+    mkdir -p -- "$(dirname -- "$registry")"
+    jq -n --arg profile "$o3_profile" --arg cli "$o3_bin" \
+      '{version: 1, default: "o3", servers: [{id: "o3", unit: "o3-server.service", profile: $profile, cli: $cli}]}' > "$registry.new"
+    mv -f -- "$registry.new" "$registry"
+  fi
 fi
 
 # Append the owned integration: replace only the agent shortcut; send stays inside the app.
@@ -169,7 +238,7 @@ fi
 status=$("$plugin_dir/bin/omarchy-t3-client" backend-status)
 if [[ $(jq -r '.owner' <<< "$status") == stopped ]]; then
   result=$("$plugin_dir/bin/omarchy-t3-client" backend-control start)
-  [[ $(jq -r '.error // empty' <<< "$result") == '' ]] || fail "Could not start T3's local backend: $(jq -r '.error' <<< "$result")"
+  [[ $(jq -r '.error // empty' <<< "$result") == '' ]] || fail "Could not start the local server: $(jq -r '.error' <<< "$result")"
 fi
 # The app: launcher entry, hidden start at login and `o3` (and the old `ot3`) on the PATH.
 "$plugin_dir/bin/o3" install-desktop
@@ -186,6 +255,10 @@ if [[ $t3_bootstrapped == 1 ]] && { : </dev/tty; } 2>/dev/null; then
   read -r -p 'Open T3 Code now? [y/N] ' answer </dev/tty || answer=''
   if [[ $answer == [yYsS]* ]]; then setsid -f "$t3_app" >/dev/null 2>&1 </dev/null; fi
 fi
-printf '%s\n' 'Installed. Press Super+Shift+A, open "O3 Code" from the app launcher or click O3 in the bar. Local/remotes and model favorites are inherited from T3.'
+if [[ $server == o3 ]]; then
+  printf '%s\n' 'Installed with O3 Server. Press Super+Shift+A, open "O3 Code" from the app launcher or click O3 in the bar.'
+else
+  printf '%s\n' 'Installed. Press Super+Shift+A, open "O3 Code" from the app launcher or click O3 in the bar. Local/remotes and model favorites are inherited from T3.'
+fi
 exit
 }

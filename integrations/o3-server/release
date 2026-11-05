@@ -1,0 +1,5 @@
+# O3 Server release that install.sh offers as the local server. The only place the
+# pinned version lives: bin/fetch-o3-server installs it. Update all lines together.
+version=v0.1.0
+sha256_aarch64=PENDING
+sha256_x86_64=PENDING
