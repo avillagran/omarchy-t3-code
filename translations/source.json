@@ -392,6 +392,8 @@
     "Open native terminal": "Open native terminal",
     "Run in terminal": "Run in terminal",
     "Copy code": "Copy code",
+    "Paste the code from the sign-in page": "Paste the code from the sign-in page",
+    "Send code": "Send code",
     "This subagent is managed by its provider and cannot receive messages. Open the parent chat or create a new chat.": "This subagent is managed by its provider and cannot receive messages. Open the parent chat or create a new chat.",
     "Open parent chat": "Open parent chat",
     "Search projects…": "Search projects…",
