@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "native-terminal", "embedded-terminal", "backend-smoke"], default="device-tools")
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "native-terminal", "embedded-terminal", "terminal-links", "backend-smoke"], default="device-tools")
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 evidence = Path(tempfile.mkdtemp(prefix="o3-device-panel-", dir="/var/tmp"))

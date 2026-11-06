@@ -140,7 +140,7 @@ Item {
     if(JSON.stringify(list)!==JSON.stringify(renderList))renderList=list
     if(!renderAttachment&&latest)renderAttachment=latest
   }
-  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.qmlCode={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
+  Connections{target:root.bridge;function onTerminalBrowserRequested(){Qt.callLater(function(){root.openSide("browser")})}function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.qmlCode={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
   // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
   // every 8 ms through the normal wheel path) and record the intervals
   // between presented frames; profileResult reads them back.

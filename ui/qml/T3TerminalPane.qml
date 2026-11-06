@@ -13,6 +13,7 @@ Rectangle {
   property string attachedKey: ""
   property bool applyingGrid: false
   readonly property var view: bridge.terminalViews[requestId] || {status:"connecting",error:""}
+  readonly property string linkError:(bridge.terminalLinkFailures || {})[JSON.stringify([attachedKey,terminalId])] || ""
   readonly property bool terminalFocused: !!terminal.item && terminal.item.activeFocus
   readonly property color fg: (Color.popups ? Color.popups.text : Color.foreground)
   color: (Color.popups ? Color.popups.background : Color.background)
@@ -26,10 +27,11 @@ Rectangle {
   function detach(){if(requestId){bridge.detachTerminal(requestId);requestId=""}}
   function paste(){clipboard.text="";clipboard.paste();if(terminal.item&&clipboard.text)terminal.item.paste(clipboard.text);clipboard.text=""}
   onCurrentChanged: if(current&&terminal.item)terminal.item.forceActiveFocus()
-  Component.onDestruction: detach()
+  Component.onDestruction:{if(typeof bridge.clearTerminalLinkFailure==="function")bridge.clearTerminalLinkFailure(attachedKey,terminalId);detach()}
   Connections {
     target: root.bridge; ignoreUnknownSignals: true
-    function onSelectedKeyChanged(){Qt.callLater(root.attach,false)}
+    function onSelectedKeyChanged(){attachLater.restart()}
+    function onTerminalPathMetadataChanged(){if(terminal.item)terminal.item.refreshLinkActivation()}
     function onTerminalViewEvent(request,data){
       if(request!==root.requestId || root.attachedKey!==root.bridge.selectedKey || !terminal.item)return
       if(data.kind==="primary-text"){terminal.item.paste(data.text || "");return}
@@ -55,14 +57,14 @@ Rectangle {
       T3IconButton { objectName: "t3TerminalClose"; name: "x"; tooltipText: T3I18n.tr("Close terminal"); enabled: !!root.requestId && root.bridge.canOpenTerminal; onClicked: root.bridge.closeTerminal(root.terminalId) }
     }
     Text {
-      Layout.fillWidth: true; Layout.margins: Style.space(5); visible: !!root.view.error
-      text: T3I18n.error(root.view.error || ""); color: Color.urgent; wrapMode: Text.Wrap; font.pixelSize: Style.font.caption
+      Layout.fillWidth: true; Layout.margins: Style.space(5); visible: !!root.view.error || !!root.linkError
+      text: T3I18n.error(root.view.error || root.linkError || ""); color: Color.urgent; wrapMode: Text.Wrap; font.pixelSize: Style.font.caption
     }
     Loader {
       id: terminal; objectName: "t3TerminalViewportLoader"
       Layout.fillWidth: true; Layout.fillHeight: true
       source: Qt.resolvedUrl("T3TerminalViewport.qml")
-      onLoaded: root.attach(false)
+      onLoaded:{terminal.item.linkAdmission=function(uri){return typeof root.bridge.canActivateTerminalLink==="function"?root.bridge.canActivateTerminalLink(uri,root.terminalId):terminal.item.nativeLinks.isTerminalUrl(uri)};root.attach(false)}
     }
     Text {
       Layout.fillWidth: true; Layout.margins: Style.space(12); visible: terminal.status===Loader.Error
@@ -78,9 +80,11 @@ Rectangle {
     function onPasteRequested(){root.paste()}
     function onPrimaryPasteRequested(){if(root.requestId)root.bridge.terminalInput(root.requestId,"primary")}
     function onSelectionChanged(){primarySelection.restart()}
-    function onLinkActivated(uri){root.bridge.openReference(uri)}
+    function onLinkActivated(uri,forceBrowser){if(root.attachedKey===root.bridge.selectedKey)root.bridge.openTerminalLink(uri,forceBrowser,root.terminalId)}
+    function onLinkHovered(uri){if(root.attachedKey===root.bridge.selectedKey&&typeof root.bridge.hoverTerminalLink==="function")root.bridge.hoverTerminalLink(uri,root.terminalId)}
     function onActiveFocusChanged(){if(terminal.item.activeFocus)root.bridge.activateTerminal(root.terminalId)}
   }
+  Timer { id: attachLater; interval: 0; onTriggered: root.attach(false) }
   Timer { id: primarySelection; interval: 100; onTriggered: if(terminal.item&&terminal.item.hasSelection)root.bridge.copyText(terminal.item.selectedText,true) }
   Controls.TextArea { id: clipboard; visible: false }
 }

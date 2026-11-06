@@ -30,14 +30,28 @@ side-panel interaction, theme and session layout. The legacy external frontend
 in `src/terminal.rs` remains available for existing explicit CLI/code actions;
 it is no longer the chat-header implementation.
 
-The terminal engine suite covers 50 Qt cases, including 40 native engine oracle
+The terminal engine suite covers 52 Qt cases, including 40 native engine oracle
 cases, with 20 separate native terminal-context producer cases. Private Qt interaction checks exercise the
 actual chat header, renderer, focus, Ctrl+J/Ctrl+D, draft retention and selection
 attachment. Rust checks cover the real terminal RPC and context persistence
 paths. These checks run with isolated profiles and displays, without live user
-projects. They do not establish complete wrapper parity: plain URL/path links,
-search, accessibility and the native picker/importer details are still being
-ported. The resource and importer limits in [TERMINAL_PANEL.md](TERMINAL_PANEL.md)
+projects. Source-derived link matching has 219 helper oracle calls and 273
+actual viewport cell checks. Another 22 isolated routing checks and an actual
+pane/viewport QML check cover URL/browser preferences, editor positions, hover
+admission, selection, modifiers and stale-thread replies. Plain first left click
+activates a link without changing selection; Ctrl or Meta forces the system
+browser for URLs. The generic Ctrl/Meta-only activation helper belongs to the
+markdown consumer, not the terminal surface.
+
+Resolved UNC/network paths are rejected before requesting metadata. Path actions
+require current thread and connection permissions. The first wrapper wiring uses
+a bounded 60-second metadata cache and rechecks metadata before opening an editor.
+This is a temporary fidelity gap: native positive metadata remains retained for
+the mounted thread and RPC session, including after its global cache TTL. Exact
+retention, invalidation and mounted-session identity remain to be ported. Switching
+the current side-panel tab also unloads its terminal frontend; preserving that
+frontend across tabs remains necessary for selection retention. Search,
+accessibility and native picker/importer details are still being ported. The resource and importer limits in [TERMINAL_PANEL.md](TERMINAL_PANEL.md)
 remain explicit.
 
 ## Run a command from a message

@@ -253,6 +253,39 @@ private slots:
             }
         }
     }
+    void nativeLinkPointerActionsKeepSelectionAndModifierSemantics() {
+        const QString root=qEnvironmentVariable("O3_TERMINAL_SOURCE");
+        QFile source(root+"/ui/js/NativeTerminalLinks.js");QVERIFY(source.open(QIODevice::ReadOnly));
+        QString program=QString::fromUtf8(source.readAll());program.remove(0,program.indexOf(QLatin1Char('\n'))+1);
+        TerminalSurface surface;surface.setWidth(400);surface.setHeight(64);surface.setGrid(40,4);
+        QQmlEngine engine;QQmlEngine::setObjectOwnership(&surface,QQmlEngine::CppOwnership);engine.globalObject().setProperty("terminal",engine.newQObject(&surface));
+        QVERIFY2(!engine.evaluate(program).isError(),"Generated native helper loads");
+        const auto api=engine.evaluate("var links=create(function(text,pattern,flags){return terminal.matchTerminalPattern(text,pattern,flags)}); links");QVERIFY(api.isObject());
+        surface.setLinkResolver(engine.evaluate("(function(row,column){return links.terminalLinkAtPositionWithRange(terminal.linkRows(row),row,column)})"));
+        surface.setLinkAdmission(engine.evaluate("(function(text){return links.isTerminalUrl(text)})"));
+        QSignalSpy activated(&surface,&TerminalSurface::linkActivated),selection(&surface,&TerminalSurface::selectionChanged),hovered(&surface,&TerminalSurface::linkHovered);
+        const auto mouse=[&](QEvent::Type type,QPointF position,Qt::MouseButtons buttons,Qt::KeyboardModifiers modifiers=Qt::NoModifier){QMouseEvent event(type,position,position,type==QEvent::MouseMove?Qt::NoButton:Qt::LeftButton,buttons,modifiers);QCoreApplication::sendEvent(&surface,&event);};
+        const auto seed=[&](){surface.reset();surface.feed("https://t3.codes next");surface.selectRange(0,17,0,21);activated.clear();selection.clear();hovered.clear();};
+        for (auto modifiers : {Qt::KeyboardModifiers(Qt::NoModifier),Qt::KeyboardModifiers(Qt::ControlModifier),Qt::KeyboardModifiers(Qt::MetaModifier),Qt::KeyboardModifiers(Qt::ControlModifier|Qt::MetaModifier),Qt::KeyboardModifiers(Qt::AltModifier)}) {
+            seed();const auto previous=surface.selectedText();
+            mouse(QEvent::MouseButtonPress,{1,1},Qt::LeftButton,modifiers);QCOMPARE(surface.selectedText(),previous);
+            mouse(QEvent::MouseButtonRelease,{1,1},Qt::NoButton,modifiers);
+            QCOMPARE(activated.size(),1);QCOMPARE(activated[0][0].toString(),QString("https://t3.codes"));QCOMPARE(activated[0][1].toBool(),bool(modifiers&(Qt::ControlModifier|Qt::MetaModifier)));QCOMPARE(surface.selectedText(),previous);QCOMPARE(selection.size(),0);
+        }
+        seed();mouse(QEvent::MouseButtonPress,{1,1},Qt::LeftButton,Qt::ShiftModifier);mouse(QEvent::MouseButtonRelease,{1,1},Qt::NoButton,Qt::ShiftModifier);QCOMPARE(activated.size(),0);
+        seed();mouse(QEvent::MouseButtonPress,{1,1},Qt::LeftButton);mouse(QEvent::MouseMove,{34,1},Qt::LeftButton);mouse(QEvent::MouseButtonRelease,{34,1},Qt::NoButton);QCOMPARE(activated.size(),0);QVERIFY(surface.selectedText().startsWith("http"));
+        seed();mouse(QEvent::MouseButtonPress,{1,1},Qt::LeftButton);mouse(QEvent::MouseMove,{3,1},Qt::LeftButton);mouse(QEvent::MouseButtonRelease,{3,1},Qt::NoButton);QCOMPARE(activated.size(),1);
+        seed();mouse(QEvent::MouseButtonPress,{1,1},Qt::LeftButton);mouse(QEvent::MouseButtonRelease,{1,1},Qt::NoButton);mouse(QEvent::MouseButtonDblClick,{1,1},Qt::LeftButton);mouse(QEvent::MouseButtonRelease,{1,1},Qt::NoButton);QCOMPARE(activated.size(),1);QVERIFY(!surface.selectedText().isEmpty());
+        seed();mouse(QEvent::MouseButtonPress,{1,1},Qt::LeftButton);surface.feed("\rhttps://changed.test");mouse(QEvent::MouseButtonRelease,{1,1},Qt::NoButton);QCOMPARE(activated.size(),0);
+        seed();QHoverEvent hover(QEvent::HoverMove,QPointF(1,1),QPointF(1,1),QPointF(1,1),Qt::NoModifier);QCoreApplication::sendEvent(&surface,&hover);QCOMPARE(surface.cursor().shape(),Qt::PointingHandCursor);
+        const auto received=[&](const QString &text){for(const auto &event:hovered)if(event[0].toString()==text)return true;return false;};
+        QTRY_VERIFY_WITH_TIMEOUT(received("https://t3.codes"),1000);
+        surface.reset();surface.feed("src/main.ts:12");hovered.clear();QCoreApplication::sendEvent(&surface,&hover);QVERIFY(surface.cursor().shape()!=Qt::PointingHandCursor);QTRY_VERIFY_WITH_TIMEOUT(received("src/main.ts:12"),1000);
+        surface.setLinkAdmission(engine.evaluate("(function(){return true})"));QCOMPARE(surface.cursor().shape(),Qt::PointingHandCursor);
+        surface.setLinkAdmission(engine.evaluate("(function(){return false})"));QVERIFY(surface.cursor().shape()!=Qt::PointingHandCursor);
+        surface.setLinkResolver(QJSValue());surface.setLinkAdmission(QJSValue());
+        surface.reset();surface.setGrid(10,4);surface.feed("\x1b]8;;https://explicit.test\x07" "abcdefghij\x1b]8;;\x07");activated.clear();mouse(QEvent::MouseButtonPress,{390,1},Qt::LeftButton);mouse(QEvent::MouseButtonRelease,{390,1},Qt::NoButton);QCOMPARE(activated.size(),0);mouse(QEvent::MouseButtonPress,{1,1},Qt::LeftButton);mouse(QEvent::MouseButtonRelease,{1,1},Qt::NoButton);QCOMPARE(activated.size(),1);QCOMPARE(activated[0][0].toString(),QString("https://explicit.test"));
+    }
     void qmlPluginLoadsByUriAndRelativeImport() {
         const QString root = qEnvironmentVariable("O3_TERMINAL_SOURCE"); QVERIFY(!root.isEmpty());
         QQmlEngine engine; engine.addImportPath(root + "/bin/qml");

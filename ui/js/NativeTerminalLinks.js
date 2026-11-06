@@ -304,6 +304,9 @@ function isWindowsAbsolutePath(value        )          {
 function isAbsolutePath(value        )          {
   return value.startsWith("/") || isWindowsAbsolutePath(value);
 }
+function isNetworkPath(value        )          {
+  return /^[\\/]{2}/.test(value);
+}
 function splitFilePathPosition(path        , hash = "")                   {
   const suffixMatch = path.match(POSITION_SUFFIX_CAPTURE_PATTERN);
   const match = suffixMatch ?? hash.match(POSITION_HASH_PATTERN);
@@ -363,5 +366,5 @@ function resolvePathLinkTarget(rawPath        , cwd        )         {
 
   return formatFilePathPosition(Object.assign({}, position, {path: resolvedPath}));
 }
-return {extractTerminalLinks:extractTerminalLinks,isTerminalUrl:isTerminalUrl,collectWrappedTerminalLinkLine:collectWrappedTerminalLinkLine,isTerminalLinkActivation:isTerminalLinkActivation,terminalLinkAtPositionWithRange:terminalLinkAtPositionWithRange,resolvePathLinkTarget:resolvePathLinkTarget};
+return {extractTerminalLinks:extractTerminalLinks,isTerminalUrl:isTerminalUrl,collectWrappedTerminalLinkLine:collectWrappedTerminalLinkLine,isTerminalLinkActivation:isTerminalLinkActivation,terminalLinkAtPositionWithRange:terminalLinkAtPositionWithRange,resolvePathLinkTarget:resolvePathLinkTarget,isNetworkPath:isNetworkPath};
 }

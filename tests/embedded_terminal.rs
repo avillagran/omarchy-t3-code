@@ -145,6 +145,10 @@ fn embedded_view_preserves_server_scope_utf8_order_and_detach_lifetime() {
     initial["command"] = json!("printf once");
     send(&mut input, initial);
     assert_eq!(
+        event("first", |v| v["kind"] == "context")["cwd"],
+        "/remote/work tree"
+    );
+    assert_eq!(
         event("first", |v| v["event"]["type"] == "snapshot")["data"],
         "HISTORY\r\n"
     );

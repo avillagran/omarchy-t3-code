@@ -9,6 +9,7 @@
 #include <QWheelEvent>
 #include <QTouchEvent>
 #include <QRegularExpression>
+#include <QCursor>
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -17,6 +18,10 @@
 namespace {
 static_assert(GHOSTTY_CELL_WIDE_NARROW == 0 && GHOSTTY_CELL_WIDE_WIDE == 1 && GHOSTTY_CELL_WIDE_SPACER_TAIL == 2 && GHOSTTY_CELL_WIDE_SPACER_HEAD == 3);
 constexpr auto EngineRevision = "9f62873bf195e4d8a762d768a1405a5f2f7b1697";
+bool javascriptWhitespace(QChar character) {
+    const auto value=character.unicode();
+    return (value>=0x09 && value<=0x0d) || value==0x20 || value==0xa0 || value==0x1680 || (value>=0x2000 && value<=0x200a) || value==0x2028 || value==0x2029 || value==0x202f || value==0x205f || value==0x3000 || value==0xfeff;
+}
 QColor color(GhosttyColorRgb c) { return QColor(c.r, c.g, c.b); }
 GhosttyColorRgb rgb(QColor c) { return {uint8_t(c.red()), uint8_t(c.green()), uint8_t(c.blue())}; }
 void require(GhosttyResult result, const char *operation) {
@@ -117,6 +122,11 @@ GhosttyMouseButton button(Qt::MouseButton value) {
 TerminalSurface::TerminalSurface(QQuickItem *parent) : QQuickPaintedItem(parent) {
     setAcceptedMouseButtons(Qt::AllButtons); setAcceptHoverEvents(true); setAcceptTouchEvents(true);
     setFlag(ItemAcceptsInputMethod, true); setClip(true); setAntialiasing(false);
+    m_linkHoverDelay.setSingleShot(true);
+    connect(&m_linkHoverDelay, &QTimer::timeout, this, [this] {
+        if (m_hasHoverPosition && isVisible() && !m_hoverCandidate.isEmpty()) emit linkHovered(m_hoverCandidate.value("text").toString());
+    });
+    connect(this, &QQuickItem::visibleChanged, this, [this] { if (!isVisible()) { m_hasHoverPosition=false; m_pressedLink.clear(); clearLinkHover(); } });
     m_font.setFamily("monospace"); m_font.setStyleHint(QFont::Monospace);
     m_font.setFixedPitch(true); m_font.setPixelSize(12); updateMetrics(); m_clock.start();
     GhosttyTerminalOptions options{uint16_t(m_columns), uint16_t(m_rows), 10000};
@@ -238,7 +248,7 @@ void TerminalSurface::refreshOrDefer() {
 void TerminalSurface::reset() {
     m_synchronized.stop(); m_selectionScroll.stop();
     ghostty_selection_gesture_reset(m_gesture, m_terminal);
-    ghostty_terminal_reset(m_terminal); m_dragging = false; m_encodedKeys.clear();
+    ghostty_terminal_reset(m_terminal); m_dragging = false; m_encodedKeys.clear(); m_pressedLink.clear(); m_clickCount=0; m_lastClickAt=-1; m_hasHoverPosition=false; clearLinkHover();
     bool blink = true; ghostty_terminal_set(m_terminal, GHOSTTY_TERMINAL_OPT_DEFAULT_CURSOR_BLINK, &blink);
     updateDefaultColors(); refresh();
 }
@@ -269,6 +279,9 @@ void TerminalSurface::refresh() {
         m_scrollback = history; m_scrollOffset = offset; emit scrollChanged();
     }
     require(ghostty_render_state_get(m_render, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &m_iterator), "row_iterator");
+    const bool sameWidth=m_linkColumns==m_columns;m_linkColumns=m_columns;
+    const auto previousText=m_linkRowText; const auto previousWraps=m_rowWraps; const auto previousTimes=m_linkRowChangedAt;
+    m_linkRowText.clear(); m_linkRowChangedAt.clear();
     m_frame.clear(); m_frame.reserve(size_t(m_rows)); m_rowWraps.clear();
     while (int(m_frame.size()) < m_rows && ghostty_render_state_row_iterator_next(m_iterator)) {
         require(ghostty_render_state_row_get(m_iterator, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &m_cells), "row_cells");
@@ -306,9 +319,16 @@ void TerminalSurface::refresh() {
             cell.width = wide == GHOSTTY_CELL_WIDE_WIDE ? 2 : wide == GHOSTTY_CELL_WIDE_SPACER_TAIL || wide == GHOSTTY_CELL_WIDE_SPACER_HEAD ? 0 : 1;
             row.push_back(std::move(cell));
         }
+        QString text;
+        // Native row.text includes spacer cells and trims JavaScript whitespace.
+        for (const auto &cell : row) text += cell.text.isEmpty() ? QStringLiteral(" ") : cell.text;
+        while (!text.isEmpty() && javascriptWhitespace(text.back())) text.chop(1);
+        const size_t index=m_frame.size();
+        const bool unchanged=sameWidth && index<previousText.size() && index<previousWraps.size() && index<previousTimes.size() && previousText[index]==text && previousWraps[index]==m_rowWraps[index];
+        m_linkRowText.push_back(text); m_linkRowChangedAt.push_back(unchanged ? previousTimes[index] : m_clock.elapsed());
         m_frame.push_back(std::move(row));
     }
-    m_blinkPhase = true; emit cursorChanged(); emit selectionChanged(); update();
+    m_blinkPhase = true; emit cursorChanged(); emit selectionChanged(); refreshLinkActivation(); update();
 }
 void TerminalSurface::setScrollOffset(int offset) {
     offset = qBound(0, offset, m_scrollback); if (offset == m_scrollOffset) return;
@@ -337,6 +357,7 @@ void TerminalSurface::paint(QPainter *painter) {
         painter->setPen(Qt::NoPen);
         painter->drawPolygon(QPolygonF{QPointF(base, box.top()), QPointF(point, box.center().y()), QPointF(base, box.bottom())});
     };
+    const auto linkRange=m_hoverLink.value("range").toMap();const auto linkStart=linkRange.value("start").toMap(),linkEnd=linkRange.value("end").toMap();
     for (size_t row = 0; row < m_frame.size(); ++row) {
         const auto &cells = m_frame[row];
         for (size_t col = 0; col < cells.size(); ++col) {
@@ -374,7 +395,8 @@ void TerminalSurface::paint(QPainter *painter) {
         }
         for (size_t col = 0; col < cells.size(); ++col) {
             const auto &cell = cells[col]; const qreal x = qreal(col) * m_cellWidth, y = qreal(row) * m_cellHeight;
-            if (cell.underline) painter->fillRect(QRectF(x, y + m_cellHeight - 2, m_cellWidth, 1), cell.foreground);
+            const bool linked=!m_hoverLink.isEmpty() && int(row)>=linkStart.value("y").toInt() && int(row)<=linkEnd.value("y").toInt() && (int(row)>linkStart.value("y").toInt() || int(col)>=linkStart.value("x").toInt()) && (int(row)<linkEnd.value("y").toInt() || int(col)<=linkEnd.value("x").toInt());
+            if (cell.underline || linked) painter->fillRect(QRectF(x, y + m_cellHeight - 2, m_cellWidth, 1), cell.foreground);
             if (cell.strike) painter->fillRect(QRectF(x, y + std::floor(m_cellHeight * .55), m_cellWidth, 1), cell.foreground);
             if (cell.overline) painter->fillRect(QRectF(x, y + 1, m_cellWidth, 1), cell.foreground);
         }
@@ -470,6 +492,62 @@ QVariantList TerminalSurface::linkRows(int row) const {
     }
     return result;
 }
+QVariantMap TerminalSurface::linkAt(const QPoint &point) const {
+    if (point.x()<0 || point.y()<0 || point.x()>=m_columns || point.y()>=int(m_frame.size())) return {};
+    const auto explicitUri=hyperlinkAt(point.y(),point.x());
+    if (!explicitUri.isEmpty()) {
+        QPoint first=point,last=point;
+        while (true) {
+            QPoint previous=first;
+            if (first.x()>0) --previous.rx();
+            else if (first.y()>0 && m_rowWraps[size_t(first.y())].second) {--previous.ry();previous.setX(m_columns-1);}
+            else break;
+            if (hyperlinkAt(previous.y(),previous.x())!=explicitUri) break;
+            first=previous;
+        }
+        while (true) {
+            QPoint next=last;
+            if (last.x()+1<m_columns) ++next.rx();
+            else if (last.y()+1<int(m_frame.size()) && m_rowWraps[size_t(last.y()+1)].second) {++next.ry();next.setX(0);}
+            else break;
+            if (hyperlinkAt(next.y(),next.x())!=explicitUri) break;
+            last=next;
+        }
+        return {{"text",explicitUri},{"range",QVariantMap{{"start",QVariantMap{{"x",first.x()},{"y",first.y()}}},{"end",QVariantMap{{"x",last.x()},{"y",last.y()}}}}}};
+    }
+    if (!m_linkResolver.isCallable()) return {};
+    const auto result=m_linkResolver.call({point.y(),point.x()});
+    if (result.isError()) {qWarning("Terminal link resolver failed");return {};}
+    return result.toVariant().toMap();
+}
+bool TerminalSurface::admitLink(const QString &text) const {
+    if (!m_linkAdmission.isCallable()) return true;
+    const auto result=m_linkAdmission.call({text});
+    return !result.isError() && result.toBool();
+}
+void TerminalSurface::clearLinkHover() {
+    m_linkHoverDelay.stop();
+    const bool candidate=!m_hoverCandidate.isEmpty(),repaint=!m_hoverLink.isEmpty();m_hoverCandidate.clear();m_hoverLink.clear();unsetCursor();if(repaint)update();
+    if (candidate) emit linkHovered(QString());
+}
+void TerminalSurface::refreshLinkActivation() {
+    if (!m_hasHoverPosition || !isVisible() || m_dragging || reportMouse(m_hoverModifiers) || !linkPointVisible(m_hoverPosition)) {
+        clearLinkHover(); if (m_hasHoverPosition && reportMouse(m_hoverModifiers)) setCursor(Qt::ArrowCursor); return;
+    }
+    const auto candidate=linkAt(positionAt(m_hoverPosition));
+    if (candidate!=m_hoverCandidate) {
+        m_linkHoverDelay.stop();m_hoverCandidate=candidate;emit linkHovered(QString());
+        if (!candidate.isEmpty()) {
+            const auto range=candidate.value("range").toMap();const int first=range.value("start").toMap().value("y").toInt(),last=range.value("end").toMap().value("y").toInt();
+            qint64 changedAt=0;for(int row=first;row<=last && row<int(m_linkRowChangedAt.size());++row)if(row>=0)changedAt=std::max(changedAt,m_linkRowChangedAt[size_t(row)]);
+            const int delay=int(std::max<qint64>(0,250-(m_clock.elapsed()-changedAt)));
+            if (delay) m_linkHoverDelay.start(delay);else emit linkHovered(candidate.value("text").toString());
+        }
+    }
+    const auto active=!candidate.isEmpty() && admitLink(candidate.value("text").toString()) ? candidate : QVariantMap();
+    if (active!=m_hoverLink) {m_hoverLink=active;update();}
+    if (active.isEmpty()) unsetCursor();else setCursor(Qt::PointingHandCursor);
+}
 // Qt JS lacks matchAll/named groups. Keep the native patterns and algorithm,
 // supplying PCRE matches with the same UTF16 positions and capture shape.
 QVariantList TerminalSurface::matchTerminalPattern(const QString &text, const QString &pattern, const QString &flags) const {
@@ -529,6 +607,7 @@ void TerminalSurface::encodeKey(QKeyEvent *event, GhosttyKeyAction action) {
     event->accept();
 }
 void TerminalSurface::keyPressEvent(QKeyEvent *event) {
+    m_hoverModifiers=event->modifiers();refreshLinkActivation();
     const auto mods = event->modifiers();
     if (!event->isAutoRepeat()) m_encodedKeys.remove(int(physicalKey(*event)));
     if (mods == Qt::ShiftModifier && !m_alternate && (event->key() == Qt::Key_PageUp || event->key() == Qt::Key_PageDown)) {
@@ -549,6 +628,7 @@ void TerminalSurface::keyPressEvent(QKeyEvent *event) {
     encodeKey(event, event->isAutoRepeat() ? GHOSTTY_KEY_ACTION_REPEAT : GHOSTTY_KEY_ACTION_PRESS);
 }
 void TerminalSurface::keyReleaseEvent(QKeyEvent *event) {
+    m_hoverModifiers=event->modifiers();refreshLinkActivation();
     if (!m_encodedKeys.remove(int(physicalKey(*event)))) { event->accept(); return; }
     encodeKey(event, GHOSTTY_KEY_ACTION_RELEASE);
 }
@@ -588,7 +668,7 @@ void TerminalSurface::sendMouse(GhosttyMouseAction action, GhosttyMouseButton mo
 bool TerminalSurface::reportMouse(Qt::KeyboardModifiers mods) const {
     return mouseTracking() && !(mods & (Qt::ShiftModifier | Qt::ControlModifier | Qt::MetaModifier));
 }
-void TerminalSurface::selectionEvent(GhosttySelectionGestureEventType type, const QPointF &point) {
+void TerminalSurface::selectionEvent(GhosttySelectionGestureEventType type, const QPointF &point, bool apply) {
     GhosttySelectionGestureEvent event = nullptr;
     require(ghostty_selection_gesture_event_new(nullptr, &event, type), "selection_gesture_event_new");
     GhosttyGridRef ref{}; const auto cell = positionAt(point);
@@ -598,7 +678,7 @@ void TerminalSurface::selectionEvent(GhosttySelectionGestureEventType type, cons
         GhosttySurfacePosition position{point.x(), point.y()};
         ghostty_selection_gesture_event_set(event, GHOSTTY_SELECTION_GESTURE_EVENT_OPT_POSITION, &position);
         if (type == GHOSTTY_SELECTION_GESTURE_EVENT_TYPE_PRESS) {
-            const uint64_t now = uint64_t(m_clock.nsecsElapsed()), interval = 500000000;
+            const uint64_t now = uint64_t(m_lastClickAt>=0 ? m_lastClickAt : m_clock.nsecsElapsed()), interval = 500000000;
             const double distance = 4;
             ghostty_selection_gesture_event_set(event, GHOSTTY_SELECTION_GESTURE_EVENT_OPT_TIME_NS, &now);
             ghostty_selection_gesture_event_set(event, GHOSTTY_SELECTION_GESTURE_EVENT_OPT_REPEAT_INTERVAL_NS, &interval);
@@ -610,45 +690,64 @@ void TerminalSurface::selectionEvent(GhosttySelectionGestureEventType type, cons
     }
     GhosttySelection selection = GHOSTTY_INIT_SIZED(GhosttySelection);
     const auto result = ghostty_selection_gesture_event(m_gesture, m_terminal, event, &selection);
-    if (result == GHOSTTY_SUCCESS) ghostty_terminal_set(m_terminal, GHOSTTY_TERMINAL_OPT_SELECTION, &selection);
+    if (result == GHOSTTY_SUCCESS && apply) ghostty_terminal_set(m_terminal, GHOSTTY_TERMINAL_OPT_SELECTION, &selection);
     else if (result != GHOSTTY_NO_VALUE) require(result, "selection_gesture_event");
-    ghostty_selection_gesture_event_free(event); refreshOrDefer();
+    ghostty_selection_gesture_event_free(event); if (apply) refreshOrDefer();
 }
 void TerminalSurface::mousePressEvent(QMouseEvent *event) {
-    forceActiveFocus();
+    forceActiveFocus();m_hoverModifiers=event->modifiers();m_hoverPosition=event->position();m_hasHoverPosition=true;
     if (reportMouse(event->modifiers())) {
+        clearLinkHover();
         sendMouse(GHOSTTY_MOUSE_ACTION_PRESS, button(event->button()), true, event->position(), event->modifiers(), true);
     } else if (event->button() == Qt::LeftButton) {
-        m_anchor = positionAt(event->position()); m_dragging = true; clearSelection();
-        selectionEvent(GHOSTTY_SELECTION_GESTURE_EVENT_TYPE_PRESS, event->position());
+        const qint64 now=m_clock.nsecsElapsed();
+        const bool repeats=m_lastClickAt>=0 && now-m_lastClickAt<=500000000 && std::hypot(event->position().x()-m_lastClickPosition.x(),event->position().y()-m_lastClickPosition.y())<=4;
+        m_clickCount=repeats ? (m_clickCount>=3 ? 1 : m_clickCount+1) : 1;m_lastClickAt=now;m_lastClickPosition=event->position();
+        m_anchor=positionAt(event->position());
+        m_pressedLink=!(event->modifiers()&Qt::ShiftModifier) && m_clickCount==1 && linkPointVisible(event->position()) ? linkAt(m_anchor) : QVariantMap();
+        m_linkPressPosition=event->position();m_dragging=m_pressedLink.isEmpty();
+        if (m_dragging) {clearLinkHover();clearSelection();}
+        // Record the first click for the engine's word/line gesture sequence,
+        // preserving the existing selection while a link activation is pending.
+        selectionEvent(GHOSTTY_SELECTION_GESTURE_EVENT_TYPE_PRESS,event->position(),m_dragging);
     } else if (event->button() == Qt::MiddleButton) Q_EMIT primaryPasteRequested();
     event->accept();
 }
 void TerminalSurface::mouseMoveEvent(QMouseEvent *event) {
+    m_hoverModifiers=event->modifiers();m_hoverPosition=event->position();m_hasHoverPosition=true;
+    if (!m_pressedLink.isEmpty()) {
+        if (std::hypot(event->position().x()-m_linkPressPosition.x(),event->position().y()-m_linkPressPosition.y())<=4) {event->accept();return;}
+        m_pressedLink.clear();m_dragging=true;clearSelection();clearLinkHover();
+    }
     if (reportMouse(event->modifiers())) {
         Qt::MouseButton pressed = event->buttons() & Qt::LeftButton ? Qt::LeftButton : event->buttons() & Qt::RightButton ? Qt::RightButton : Qt::MiddleButton;
         sendMouse(GHOSTTY_MOUSE_ACTION_MOTION, button(pressed), event->buttons() != Qt::NoButton, event->position(), event->modifiers(), event->buttons() != Qt::NoButton);
     } else if (m_dragging) {
         m_dragPoint = event->position(); selectionEvent(GHOSTTY_SELECTION_GESTURE_EVENT_TYPE_DRAG, m_dragPoint);
         if ((m_dragPoint.y() < 0 || m_dragPoint.y() > height()) && !m_selectionScroll.isActive()) m_selectionScroll.start();
-    }
+    } else refreshLinkActivation();
     event->accept();
 }
 void TerminalSurface::hoverMoveEvent(QHoverEvent *event) {
+    m_hoverPosition=event->position();m_hoverModifiers=event->modifiers();m_hasHoverPosition=true;
     if (reportMouse(event->modifiers()) && mode(1003)) sendMouse(GHOSTTY_MOUSE_ACTION_MOTION, GHOSTTY_MOUSE_BUTTON_UNKNOWN, false, event->position(), event->modifiers(), false);
-    event->accept();
+    refreshLinkActivation();event->accept();
 }
+void TerminalSurface::hoverLeaveEvent(QHoverEvent *event) {m_hasHoverPosition=false;clearLinkHover();event->accept();}
 void TerminalSurface::mouseReleaseEvent(QMouseEvent *event) {
+    m_hoverPosition=event->position();m_hoverModifiers=event->modifiers();m_hasHoverPosition=true;
+    if (!m_pressedLink.isEmpty() && event->button()==Qt::LeftButton) {
+        const auto pressed=m_pressedLink;m_pressedLink.clear();
+        selectionEvent(GHOSTTY_SELECTION_GESTURE_EVENT_TYPE_RELEASE,event->position(),false);
+        const bool same=linkPointVisible(event->position()) && linkAt(positionAt(event->position()))==pressed;
+        m_dragging=false;m_selectionScroll.stop();refreshLinkActivation();event->accept();
+        if (same) Q_EMIT linkActivated(pressed.value("text").toString(),bool(event->modifiers()&(Qt::ControlModifier|Qt::MetaModifier)));
+        return;
+    }
     if (reportMouse(event->modifiers())) {
         sendMouse(GHOSTTY_MOUSE_ACTION_RELEASE, button(event->button()), true, event->position(), event->modifiers(), event->buttons() != Qt::NoButton);
-    } else if (event->button() == Qt::LeftButton) {
-        if (m_dragging) selectionEvent(GHOSTTY_SELECTION_GESTURE_EVENT_TYPE_RELEASE, event->position());
-        const auto point = positionAt(event->position());
-        if (point == m_anchor && !hasSelection()) {
-            const auto uri = hyperlinkAt(point.y(), point.x()); if (!uri.isEmpty() && !(event->modifiers() & Qt::ShiftModifier)) Q_EMIT linkActivated(uri);
-        }
-    }
-    m_dragging = false; m_selectionScroll.stop(); event->accept();
+    } else if (event->button() == Qt::LeftButton && m_dragging) selectionEvent(GHOSTTY_SELECTION_GESTURE_EVENT_TYPE_RELEASE, event->position());
+    m_dragging = false; m_selectionScroll.stop();refreshLinkActivation();event->accept();
 }
 void TerminalSurface::mouseDoubleClickEvent(QMouseEvent *event) { mousePressEvent(event); }
 void TerminalSurface::wheelEvent(QWheelEvent *event) {
@@ -670,6 +769,7 @@ void TerminalSurface::touchEvent(QTouchEvent *event) {
     if (event->points().isEmpty()) { m_touchActive = false; event->accept(); return; }
     const auto &point = event->points().first();
     if (event->type() == QEvent::TouchBegin) {
+        m_hasHoverPosition=false;clearLinkHover();
         m_touchActive = true; m_touchMoved = false; m_touchOrigin = m_touchPrevious = point.position(); m_touchRemainder = 0;
     } else if (event->type() == QEvent::TouchUpdate && m_touchActive) {
         const auto position = point.position();
@@ -679,7 +779,20 @@ void TerminalSurface::touchEvent(QTouchEvent *event) {
             const int rows = int(delta); m_touchRemainder = delta - rows; m_touchPrevious = position;
             scrollRows(rows, position, event->modifiers());
         }
-    } else if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel) m_touchActive = false;
+    } else if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel) {
+        const bool tap=event->type()==QEvent::TouchEnd && m_touchActive && !m_touchMoved;m_touchActive=false;
+        if (tap) {
+            forceActiveFocus();
+            if (reportMouse(event->modifiers())) {
+                sendMouse(GHOSTTY_MOUSE_ACTION_PRESS,GHOSTTY_MOUSE_BUTTON_LEFT,true,point.position(),event->modifiers(),true);
+                sendMouse(GHOSTTY_MOUSE_ACTION_RELEASE,GHOSTTY_MOUSE_BUTTON_LEFT,true,point.position(),event->modifiers(),false);
+            } else {
+                const auto link=linkPointVisible(point.position()) ? linkAt(positionAt(point.position())) : QVariantMap();
+                if (!link.isEmpty()) {event->accept();Q_EMIT linkActivated(link.value("text").toString(),bool(event->modifiers()&(Qt::ControlModifier|Qt::MetaModifier)));return;}
+                clearSelection();
+            }
+        }
+    }
     event->accept();
 }
 

@@ -17,5 +17,5 @@
     "Array.at(-1) becomes copying slice; String.trimEnd uses the exact JavaScript whitespace set",
     "File position object spread becomes Object.assign; slash replaceAll becomes split/join"
   ],
-  "outputSha256": "4940794ec2251bc1082965fc00abe30465a1c3ab176e1bb84e541b9724f4c56a"
+  "outputSha256": "bef588dfce915be4faca20e31d1b77bfa61eb898c48a80a0f011873228e07160"
 }

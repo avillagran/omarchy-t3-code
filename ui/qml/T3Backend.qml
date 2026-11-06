@@ -4,6 +4,7 @@ import "../js/BrowserProfiles.js" as Profiles
 import "../js/BrowserImport.js" as ImportFlow
 import "../js/PreviewSessions.js" as Previews
 import "../js/BrowserSurface.js" as BrowserSurface
+import "../js/TerminalLinkRouting.js" as TerminalLinks
 import QtQuick 6.11
 import Quickshell
 import Quickshell.Io
@@ -684,7 +685,7 @@ Singleton {
     if(data.kind==="error")status="error"
     else if(data.kind==="reconnecting")status="reconnecting"
     else if(data.kind==="event")status=snapshot.status || (event.type==="exited"?"exited":event.type==="closed"?"closed":event.type==="error"?"error":status)
-    all[data.requestId]=Object.assign({},view,{status:status,error:data.error || "",label:snapshot.label || event.label || view.label || "",exitCode:event.exitCode===undefined?snapshot.exitCode:event.exitCode});terminalViews=all
+    all[data.requestId]=Object.assign({},view,{status:status,cwd:data.kind==="context"?data.cwd:view.cwd,error:data.error || "",label:snapshot.label || event.label || view.label || "",exitCode:event.exitCode===undefined?snapshot.exitCode:event.exitCode});terminalViews=all
     terminalViewEvent(data.requestId,data)
     if(event.type==="closed")removeTerminal(view.terminalId)
   }
@@ -1324,6 +1325,19 @@ Singleton {
   function closeInlineDocument(id){if(!id||!inlineDocuments[id])return;send({op:"document-close",requestId:id});var all=Object.assign({},inlineDocuments);delete all[id];inlineDocuments=all}
   function updateInlineDocument(id,values){if(!inlineDocuments[id])return;var all=Object.assign({},inlineDocuments);all[id]=Object.assign({},all[id],values);inlineDocuments=all}
   function clearInlineDocuments(){Object.keys(inlineDocuments).forEach(closeInlineDocument)}
+  property var terminalPathRequests:({})
+  property var terminalPathMetadata:({})
+  property var terminalUrlQueue:[]
+  property var terminalLinkFailures:({})
+  signal terminalBrowserRequested()
+  function openTerminalSystemUrl(uri){return Qt.openUrlExternally(uri)}
+  function openTerminalLink(uri,forceBrowser,terminalId){return TerminalLinks.open(root,uri,!!forceBrowser,terminalId)}
+  function hoverTerminalLink(uri,terminalId){TerminalLinks.hover(root,uri,terminalId)}
+  function canActivateTerminalLink(uri,terminalId){return TerminalLinks.allowed(root,uri,terminalId)}
+  function clearTerminalLinkFailure(key,terminalId){TerminalLinks.clearFailure(root,key,terminalId)}
+  Timer{interval:100;repeat:true;running:root.terminalUrlQueue.length>0;onTriggered:TerminalLinks.pump(root)}
+  Connections{target:root;function onSelectedKeyChanged(){TerminalLinks.reset(root)}function onPanelVisibleChanged(){if(!root.panelVisible)TerminalLinks.reset(root)}}
+  Connections{target:worker;function onRunningChanged(){if(!worker.running)TerminalLinks.reset(root)}}
   signal mediaRequested(var attachment)
   function openReference(link,attachment){
     var path=String(link || "");
@@ -1688,10 +1702,11 @@ Singleton {
   }
   function action(data) {
     if(data.op==="server-update"){if(data.error){var errors=Object.assign({},serverUpdateErrors);errors[data.environment]=data.error;serverUpdateErrors=errors}return}
+    if((data.op==="thread-details-read"||data.op==="thread-details-open-editor")&&TerminalLinks.pathReceipt(root,data))return
     if(data.op==="provider-update"||data.op==="thread-details-read"||data.op==="thread-details-open-editor"){detailsAction(data);return}
     if(data.op==="failure-context"||data.op==="tool-failure"){failureAction(data);return}
     if(data.op==="browser-import-sources"||data.op==="browser-import-read"||data.op==="browser-import-action"){ImportFlow.receipt(root,data);return}
-    if(data.op==="preview-action"){Previews.receipt(root,data);return}
+    if(data.op==="preview-action"){Previews.receipt(root,data);TerminalLinks.previewReceipt(root,data);return}
     if(data.op==="browser-profiles-read"||data.op==="browser-profiles-action"){Profiles.receipt(root,data);return}
     if(data.op==="devices-read"||data.op==="devices-action"){Devices.receipt(root,data);return}
     if(data.op==="licenses-read"){
