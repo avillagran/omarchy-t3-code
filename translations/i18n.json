@@ -2168,7 +2168,9 @@
     "Value": "Value",
     "Sensitive": "Sensitive",
     "Add variable": "Add variable",
-    "Remove provider instance?": "Remove provider instance?"
+    "Remove provider instance?": "Remove provider instance?",
+    "Terminal input": "Terminal input",
+    "Terminal scrollback": "Terminal scrollback"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4339,7 +4341,9 @@
     "Value": "Valor",
     "Sensitive": "Sensible",
     "Add variable": "Añadir variable",
-    "Remove provider instance?": "¿Eliminar instancia del proveedor?"
+    "Remove provider instance?": "¿Eliminar instancia del proveedor?",
+    "Terminal input": "Entrada de terminal",
+    "Terminal scrollback": "Historial de terminal"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6510,7 +6514,9 @@
     "Value": "Valor",
     "Sensitive": "Sensível",
     "Add variable": "Adicionar variável",
-    "Remove provider instance?": "Remover instância do provedor?"
+    "Remove provider instance?": "Remover instância do provedor?",
+    "Terminal input": "Entrada do terminal",
+    "Terminal scrollback": "Histórico do terminal"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8681,7 +8687,9 @@
     "Value": "Valeur",
     "Sensitive": "Sensible",
     "Add variable": "Ajouter une variable",
-    "Remove provider instance?": "Supprimer l’instance du fournisseur ?"
+    "Remove provider instance?": "Supprimer l’instance du fournisseur ?",
+    "Terminal input": "Saisie du terminal",
+    "Terminal scrollback": "Historique du terminal"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10852,7 +10860,9 @@
     "Value": "Wert",
     "Sensitive": "Vertraulich",
     "Add variable": "Variable hinzufügen",
-    "Remove provider instance?": "Anbieterinstanz entfernen?"
+    "Remove provider instance?": "Anbieterinstanz entfernen?",
+    "Terminal input": "Terminaleingabe",
+    "Terminal scrollback": "Terminalverlauf"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13023,7 +13033,9 @@
     "Value": "Valore",
     "Sensitive": "Sensibile",
     "Add variable": "Aggiungi variabile",
-    "Remove provider instance?": "Rimuovere l’istanza del provider?"
+    "Remove provider instance?": "Rimuovere l’istanza del provider?",
+    "Terminal input": "Input del terminale",
+    "Terminal scrollback": "Cronologia del terminale"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15194,7 +15206,9 @@
     "Value": "Waarde",
     "Sensitive": "Gevoelig",
     "Add variable": "Variabele toevoegen",
-    "Remove provider instance?": "Providerinstantie verwijderen?"
+    "Remove provider instance?": "Providerinstantie verwijderen?",
+    "Terminal input": "Terminalinvoer",
+    "Terminal scrollback": "Terminalgeschiedenis"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17365,7 +17379,9 @@
     "Value": "Wartość",
     "Sensitive": "Poufne",
     "Add variable": "Dodaj zmienną",
-    "Remove provider instance?": "Usunąć instancję dostawcy?"
+    "Remove provider instance?": "Usunąć instancję dostawcy?",
+    "Terminal input": "Wejście terminala",
+    "Terminal scrollback": "Historia terminala"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19536,7 +19552,9 @@
     "Value": "Значение",
     "Sensitive": "Конфиденциально",
     "Add variable": "Добавить переменную",
-    "Remove provider instance?": "Удалить экземпляр провайдера?"
+    "Remove provider instance?": "Удалить экземпляр провайдера?",
+    "Terminal input": "Ввод терминала",
+    "Terminal scrollback": "История терминала"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21707,7 +21725,9 @@
     "Value": "Значення",
     "Sensitive": "Конфіденційно",
     "Add variable": "Додати змінну",
-    "Remove provider instance?": "Видалити екземпляр провайдера?"
+    "Remove provider instance?": "Видалити екземпляр провайдера?",
+    "Terminal input": "Введення термінала",
+    "Terminal scrollback": "Історія термінала"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23878,7 +23898,9 @@
     "Value": "値",
     "Sensitive": "機密",
     "Add variable": "変数を追加",
-    "Remove provider instance?": "プロバイダーインスタンスを削除しますか？"
+    "Remove provider instance?": "プロバイダーインスタンスを削除しますか？",
+    "Terminal input": "ターミナル入力",
+    "Terminal scrollback": "ターミナルのスクロールバック"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26049,7 +26071,9 @@
     "Value": "값",
     "Sensitive": "민감 정보",
     "Add variable": "변수 추가",
-    "Remove provider instance?": "제공업체 인스턴스를 제거할까요?"
+    "Remove provider instance?": "제공업체 인스턴스를 제거할까요?",
+    "Terminal input": "터미널 입력",
+    "Terminal scrollback": "터미널 스크롤백"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28220,7 +28244,9 @@
     "Value": "值",
     "Sensitive": "敏感",
     "Add variable": "添加变量",
-    "Remove provider instance?": "移除提供商实例？"
+    "Remove provider instance?": "移除提供商实例？",
+    "Terminal input": "终端输入",
+    "Terminal scrollback": "终端回滚"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30391,7 +30417,9 @@
     "Value": "القيمة",
     "Sensitive": "حساس",
     "Add variable": "إضافة متغير",
-    "Remove provider instance?": "هل تريد إزالة نسخة المزوّد؟"
+    "Remove provider instance?": "هل تريد إزالة نسخة المزوّد؟",
+    "Terminal input": "إدخال الطرفية",
+    "Terminal scrollback": "سجل الطرفية"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32562,7 +32590,9 @@
     "Value": "Değer",
     "Sensitive": "Hassas",
     "Add variable": "Değişken ekle",
-    "Remove provider instance?": "Sağlayıcı örneği kaldırılsın mı?"
+    "Remove provider instance?": "Sağlayıcı örneği kaldırılsın mı?",
+    "Terminal input": "Terminal girişi",
+    "Terminal scrollback": "Terminal geçmişi"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34733,7 +34763,9 @@
     "Value": "Värde",
     "Sensitive": "Känsligt",
     "Add variable": "Lägg till variabel",
-    "Remove provider instance?": "Ta bort leverantörsinstans?"
+    "Remove provider instance?": "Ta bort leverantörsinstans?",
+    "Terminal input": "Terminalinmatning",
+    "Terminal scrollback": "Terminalhistorik"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36904,7 +36936,9 @@
     "Value": "Værdi",
     "Sensitive": "Følsom",
     "Add variable": "Tilføj variabel",
-    "Remove provider instance?": "Fjern udbyderinstans?"
+    "Remove provider instance?": "Fjern udbyderinstans?",
+    "Terminal input": "Terminalinput",
+    "Terminal scrollback": "Terminalhistorik"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39075,7 +39109,9 @@
     "Value": "Verdi",
     "Sensitive": "Sensitiv",
     "Add variable": "Legg til variabel",
-    "Remove provider instance?": "Fjerne leverandørinstans?"
+    "Remove provider instance?": "Fjerne leverandørinstans?",
+    "Terminal input": "Terminalinndata",
+    "Terminal scrollback": "Terminalhistorikk"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -41246,7 +41282,9 @@
     "Value": "Arvo",
     "Sensitive": "Arkaluonteinen",
     "Add variable": "Lisää muuttuja",
-    "Remove provider instance?": "Poistetaanko palveluntarjoajan instanssi?"
+    "Remove provider instance?": "Poistetaanko palveluntarjoajan instanssi?",
+    "Terminal input": "Päätteen syöte",
+    "Terminal scrollback": "Päätteen vierityshistoria"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -43417,6 +43455,8 @@
     "Value": "Hodnota",
     "Sensitive": "Citlivé",
     "Add variable": "Přidat proměnnou",
-    "Remove provider instance?": "Odebrat instanci poskytovatele?"
+    "Remove provider instance?": "Odebrat instanci poskytovatele?",
+    "Terminal input": "Vstup terminálu",
+    "Terminal scrollback": "Historie terminálu"
   }
 }

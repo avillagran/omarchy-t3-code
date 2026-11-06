@@ -50,8 +50,13 @@ This is a temporary fidelity gap: native positive metadata remains retained for
 the mounted thread and RPC session, including after its global cache TTL. Exact
 retention, invalidation and mounted-session identity remain to be ported. The terminal frontend stays mounted when switching between side-panel tool tabs,
 preserving its stream, renderer and selection while an app-browser link opens.
-Closing the side panel still detaches it. Search,
-accessibility and native picker/importer details are still being ported. The resource and importer limits in [TERMINAL_PANEL.md](TERMINAL_PANEL.md)
+Closing the side panel still detaches it. The native terminal source at nightly
+4288 has no terminal search action; search is not claimed as an upstream feature.
+The input exposes the native accessible name and its vertical scrollbar retains
+native geometry, row/page/Home/End keys, pointer tracking and numeric accessibility
+values. The scrollbar helpers match the pinned source over 768 geometry/pointer
+cases. Native picker/importer details and the metadata lifecycle described above
+remain fidelity work. The resource and importer limits in [TERMINAL_PANEL.md](TERMINAL_PANEL.md)
 remain explicit.
 
 ## Run a command from a message

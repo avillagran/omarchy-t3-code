@@ -2168,6 +2168,8 @@
     "Value": "Value",
     "Sensitive": "Sensitive",
     "Add variable": "Add variable",
-    "Remove provider instance?": "Remove provider instance?"
+    "Remove provider instance?": "Remove provider instance?",
+    "Terminal input": "Terminal input",
+    "Terminal scrollback": "Terminal scrollback"
   }
 }

@@ -1,6 +1,7 @@
 .pragma library
 // Original T3 Code c55db3e9c72fdf584f4b54192fb39beb88667b59.
 function create(nativeMatches) {
+const MIN_SCROLLBAR_THUMB_HEIGHT=18;
 function isMacPlatform(platform        )          {
   return /mac|iphone|ipad|ipod/i.test(platform);
 }
@@ -205,6 +206,39 @@ const GHOSTTY_CELL_WIDE = {
   spacerTail: 2,
   spacerHead: 3,
 }         ;
+function terminalScrollbarGeometry(
+  state                  ,
+  trackHeight        ,
+)                                   {
+  const total = Math.max(0, state.total);
+  const len = Math.max(0, Math.min(state.len, total));
+  const maxOffset = Math.max(0, total - len);
+  if (trackHeight <= 0 || len <= 0 || maxOffset === 0) return null;
+  const thumbHeight = Math.min(
+    trackHeight,
+    Math.max(MIN_SCROLLBAR_THUMB_HEIGHT, (trackHeight * len) / total),
+  );
+  const travel = Math.max(0, trackHeight - thumbHeight);
+  const offset = Math.max(0, Math.min(state.offset, maxOffset));
+  return {
+    thumbHeight,
+    thumbTop: travel * (offset / maxOffset),
+    maxOffset,
+  };
+}
+function terminalScrollbarOffsetAtPointer(
+  state                  ,
+  trackHeight        ,
+  pointerY        ,
+  pointerOffset        ,
+)         {
+  const geometry = terminalScrollbarGeometry(state, trackHeight);
+  if (geometry === null) return 0;
+  const travel = Math.max(0, trackHeight - geometry.thumbHeight);
+  if (travel === 0) return 0;
+  const thumbTop = Math.max(0, Math.min(pointerY - pointerOffset, travel));
+  return Math.round((thumbTop / travel) * geometry.maxOffset);
+}
 function terminalCellText(cell             )         {
   if (cell.wide === GHOSTTY_CELL_WIDE.spacerTail || cell.wide === GHOSTTY_CELL_WIDE.spacerHead) {
     return "";
@@ -366,5 +400,5 @@ function resolvePathLinkTarget(rawPath        , cwd        )         {
 
   return formatFilePathPosition(Object.assign({}, position, {path: resolvedPath}));
 }
-return {extractTerminalLinks:extractTerminalLinks,isTerminalUrl:isTerminalUrl,collectWrappedTerminalLinkLine:collectWrappedTerminalLinkLine,isTerminalLinkActivation:isTerminalLinkActivation,terminalLinkAtPositionWithRange:terminalLinkAtPositionWithRange,resolvePathLinkTarget:resolvePathLinkTarget,isNetworkPath:isNetworkPath};
+return {extractTerminalLinks:extractTerminalLinks,isTerminalUrl:isTerminalUrl,collectWrappedTerminalLinkLine:collectWrappedTerminalLinkLine,isTerminalLinkActivation:isTerminalLinkActivation,terminalLinkAtPositionWithRange:terminalLinkAtPositionWithRange,resolvePathLinkTarget:resolvePathLinkTarget,isNetworkPath:isNetworkPath,terminalScrollbarGeometry:terminalScrollbarGeometry,terminalScrollbarOffsetAtPointer:terminalScrollbarOffsetAtPointer};
 }
