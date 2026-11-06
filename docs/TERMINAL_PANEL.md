@@ -16,7 +16,7 @@ The `embedded_terminal` Rust integration fixture runs the actual desktop worker 
 
 Build the optional Wayland test image with `podman build -t localhost/o3-qml-wayland-tests:local -f tests/containers/qml-wayland.Containerfile tests/containers`. The runtime has the compositor's file capabilities removed so test containers retain `--cap-drop=ALL` and `no-new-privileges`.
 
-These checks are synthetic and do not establish installed application acceptance. Structured terminal selections in the composer, terminal picker/search, accessibility and complete native menu/link behavior remain separate source-parity work. The shared engine and working VT display do not by themselves establish every surrounding native terminal function.
+These checks are synthetic and do not establish installed application acceptance or complete wrapper parity. Context production and visible link/accessibility interactions have separate evidence; importer, cache lifecycle and drawer ownership remain unfinished. The engine alone does not establish every surrounding native terminal function.
 
 
 ## Structured context and local resource bounds
@@ -65,21 +65,25 @@ this does not establish unrestricted JavaScript JSON-string fidelity.
 
 ## Remaining native wrapper consumers
 
-The completed engine checks comprise 50 Qt test cases, including 40 source-engine
+The completed engine checks comprise 52 Qt test cases, including 40 source-engine
 oracle cases; the structured-context producer has 20 separate source cases.
-Link detection and cell hit ranges are being ported from the pinned native
-helpers, with explicit source provenance. They must pass the actual Qt helper
-and viewport-grid checks before the visible terminal is connected to them.
+Source-derived link detection and cell hit ranges pass 219 helper calls and 273
+actual viewport cell checks, with explicit provenance. The visible terminal is
+connected to them; private routing and QML checks cover preferences, metadata
+admission, editor positions and current-thread fencing. This does not establish
+the full pending-validation or mounted metadata lifecycle.
 The native terminal surface activates a link on a plain first left click,
 unless Shift is held. Its current drawer consumer uses Ctrl or Meta to force
 the system browser; the generic platform-exclusive modifier helper belongs to
 markdown link activation. It is not the terminal surface activation rule.
 
-The command from a message's **Run in terminal** action still uses the legacy
-external frontend. Routing this consumer into a fresh embedded terminal with
-the original command-delivery semantics remains required work, after terminal
-links, search, accessibility and picker fidelity. The legacy path is not a
-permanent parity exception.
+**Run in terminal** already creates an embedded tab and writes `command + "\r"`
+once after its first live snapshot. Native T3 can reuse eligible idle drawer
+terminals while excluding side-panel terminals; separate drawer ownership and
+eligible reuse remain fidelity work. The legacy external frontend is an explicit
+CLI path. The input and scrollback accessibility wrapper has its own private
+QML evidence and 768 native geometry/pointer comparisons. Nightly 4288 has no
+terminal search action; native picker/importer fidelity is still pending.
 
 Native file-path admission rejects UNC and mixed leading separators before any
 filesystem stat, requires an absolute or home-relative path, and enforces the
@@ -90,3 +94,13 @@ private RPC calls, including proof that rejected paths reach neither metadata
 nor editor RPCs. The current final-open stat is temporarily stricter than the
 native mounted-thread/session positive metadata cache. Porting that cache and
 its invalidation lifecycle remains required work after initial visible wiring.
+
+Consumer source intake is pinned to nightly 4288 commit
+`32a0531748c44b25072d7495ce0b9bd7e9450a87`. Read that commit with `git show` or a
+clean detached reference; an older working checkout is not current evidence.
+The actual drawer validates path links through `getFileMetadataQueryAtom` before
+opening the preferred editor. The original preferred-editor resolver and exact
+catalog order/labels have 598 source-derived cases at that commit. Missing cache
+entries expire after 60 seconds; known retained entries survive while the thread
+and physical RPC session remain mounted. Exact invalidation/reconnect handling
+and pending validation cancellation remain required work.
