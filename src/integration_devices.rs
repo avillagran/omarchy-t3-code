@@ -264,7 +264,7 @@ fn settings(raw: &Value) -> Result<Value> {
     )
 }
 fn digest(value: &Value) -> String {
-    format!("{:x}", Sha256::digest(value.to_string()))
+    format!("{:x}", Sha256::digest(crate::composer_context::canonical_json(value)))
 }
 fn remember(e: &Environment, permissions: Value, settings: Value, state: Value) -> Result<Value> {
     let id = uuid::Uuid::new_v4().to_string();

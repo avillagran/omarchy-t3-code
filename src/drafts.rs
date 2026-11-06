@@ -84,7 +84,7 @@ pub fn clean(v: &Value) -> Result<Value> {
         if let Some(key)=a.get("planOriginKey"){if !key.as_str().and_then(|s|s.split_once('/')).is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){return Err("invalid_draft".into())}}
         if a["planFollowUp"]==true {crate::write::validate_message(a)?;if a["op"]=="manage"&&(a["workspaceStrategy"].is_object()||a["launchWithMessage"]==true||!a["attachments"].as_array().is_some_and(Vec::is_empty)){return Err("invalid_draft".into())}}
         if a["op"]=="manage" {uuid::Uuid::parse_str(text_field(a,"sendRequestId")).map_err(|_| "invalid_draft")?;}
-        if a["planFollowUp"]!=true&&(out["context"].is_object()||a["context"]["version"]==1)&&crate::composer_context::clean(&a["context"])?!=out["context"]{return Err("invalid_draft".into())}
+        if a["planFollowUp"]!=true&&(out["context"].is_object()||a["context"]["version"]==1)&&!crate::composer_context::semantic_equal(&crate::composer_context::clean(&a["context"])?,&out["context"]){return Err("invalid_draft".into())}
         let mut attempt = json!({});
         for key in [
             "op",

@@ -101,3 +101,23 @@ fn unavailable_storage_keeps_both_prompts_and_retry_is_exact(){
  assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/a")["text"],"Current\n\nSource");assert_eq!(loaded(&root,"fixture/b")["text"],"");
  assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/a")["text"],"Current\n\nSource");std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn context_stash_survives_restart_and_remaps_colliding_terminal_references(){
+ let root=std::env::temp_dir().join(format!("ot3-stash-context-{}",uuid::Uuid::new_v4()));
+ let context=|body:&str|json!({"version":1,"records":[{"version":1,"kind":"terminal","contextId":"selection","label":"Terminal","terminalId":"terminal","terminalLabel":"Terminal","lineStart":1,"lineEnd":1,"text":body}]});
+ let a=saved(&root,"fixture/a",json!({"text":"[Terminal](t3-context://v1/terminal/selection)","context":context("source")}));
+ let stashed=result(&root,&command("stash","fixture/a",&a));assert!(stashed["error"].is_null(),"{stashed}");
+ assert!(loaded(&root,"fixture/a")["context"].is_null(),"clearing the prompt also clears its records");
+ let b=saved(&root,"fixture/b",json!({"text":"[Terminal](t3-context://v1/terminal/selection)","context":context("target")}));
+ let entry=&stashed["result"]["entries"][0];let mut restore=command("restore","fixture/b",&b);restore["id"]=entry["id"].clone();
+ let restored=result(&root,&restore);assert!(restored["error"].is_null(),"{restored}");
+ let after=loaded(&root,"fixture/b");let records=after["context"]["records"].as_array().unwrap();assert_eq!(records.len(),2);assert_eq!(records[0]["text"],"target");assert_eq!(records[1]["text"],"source");assert_ne!(records[1]["contextId"],"selection");
+ assert!(after["text"].as_str().unwrap().contains(&format!("t3-context://v1/terminal/{})",records[1]["contextId"].as_str().unwrap())));
+ assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/b"),after,"retry must retain the reminted identity");
+ let mut future=after.clone();future["context"]["records"].as_array_mut().unwrap().push(serde_json::from_str(r#"{"version":1,"kind":"future-kind","contextId":"future","label":"Future","payload":{"z":1,"a":2}}"#).unwrap());
+ future["text"]=json!(format!("{} [Future](t3-context://v1/future-kind/future)",future["text"].as_str().unwrap()));
+ let future=saved(&root,"fixture/b",future);let stashed=result(&root,&command("stash","fixture/b",&future));assert!(stashed["error"].is_null());
+ let mut restore=command("restore","fixture/a",&loaded(&root,"fixture/a"));restore["id"]=stashed["result"]["entries"][0]["id"].clone();assert!(result(&root,&restore)["error"].is_null());
+ let payload=loaded(&root,"fixture/a")["context"]["records"][2]["payload"].to_string();assert_eq!(payload,r#"{"z":1,"a":2}"#);
+}

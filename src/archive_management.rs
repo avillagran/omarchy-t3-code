@@ -56,7 +56,7 @@ fn includes(ids: &Option<Vec<String>>, project: &str) -> bool {
         .is_none_or(|ids| ids.iter().any(|p| p == project))
 }
 fn revision(row: &Value) -> String {
-    format!("{:x}",Sha256::digest(json!({"id":row["id"],"projectId":row["projectId"],"title":row["title"],"archivedAt":row["archivedAt"],"createdAt":row["createdAt"]}).to_string()))
+    format!("{:x}",Sha256::digest(crate::composer_context::canonical_json(&json!({"id":row["id"],"projectId":row["projectId"],"title":row["title"],"archivedAt":row["archivedAt"],"createdAt":row["createdAt"]}))))
 }
 pub fn present(raw: &Value, environment: &str, ids: Option<Vec<String>>) -> Result<Value> {
     if raw["schemaVersion"].as_u64().is_none_or(|n| n == 0)

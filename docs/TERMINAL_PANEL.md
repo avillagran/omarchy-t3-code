@@ -35,3 +35,25 @@ without discarding backups. Ordinary draft text/file metadata keeps its original
 750,000-byte aggregate allowance. Large valid contexts temporarily require more
 memory; idle process memory is unaffected. The separate O3 shared-editor and
 shared-draft synchronization budgets are not raised by this change.
+
+## Context persistence fidelity
+
+The client preserves incoming JSON object insertion order, including future-kind
+context payloads. Upstream projects an unknown record with `JSON.stringify`, so
+non-index property order inside that payload is meaningful recursively. Retry,
+queue-edit, shared-draft and stash comparisons retain that distinction. Ordinary
+object fields and integer-index property order remain structural. Structural
+revision hashes keep their previous sorted representation; already frozen outbox
+requests retain their original identity and file bytes on retry after an upgrade.
+Maintenance reports add an order-sensitive confirmation proof while retaining the
+legacy durable effect claim, preventing an upgrade from repeating a claimed effect.
+
+Stash and cross-thread prompt transfers persist context records with their inline
+references and clear both together. Conflicting standalone excerpts receive fresh
+identities and rewritten references. Conflicting attachment/annotation records
+with dependent screenshot identities currently fail atomically rather than
+performing the native dependent-record import. The private stash remains bounded
+to 8 MiB and 20 entries; a capacity failure leaves the composer intact. These
+importer differences and validation of every known non-terminal record kind are
+still open parity work; terminal-context coverage does not establish complete
+composer-context parity.

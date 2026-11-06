@@ -1,7 +1,7 @@
 {
   "target": "x86_64-unknown-linux-gnu",
   "rustcVersion": "1.99.1",
-  "cargoLockSha256": "132790f9895ca15d846d658a0b0f029917e6ce633d7b8bd5f807227e2dc42105",
+  "cargoLockSha256": "11e36ff030560dd0373ceeb8521d6b1342b831ee597429b9d17608d29680d9aa",
   "dictateCargoLockSha256": "413ae108b3bdff24dc821d3e465f2377f5bc4c169580ae4d07740a8e23cb9f9c",
   "nativeHelperSha256": "d1c3a97be83cad6eda01a02a975b61e65acc606d708b0e81c0b20dba0b6eb3fd",
   "inputs": {
@@ -71,6 +71,8 @@
     "cargo/ecdsa@0.16.9/LICENSE-MIT": "bdebaf9156a298f8fdab56dd26cb5144673de522d80f4c0d88e0039145f147f9",
     "cargo/elliptic-curve@0.13.8/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
     "cargo/elliptic-curve@0.13.8/LICENSE-MIT": "d27687b51f2874822c1530976b7e837eac4f308d94bf3dd42047011b7d437b47",
+    "cargo/equivalent@1.0.3/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "cargo/equivalent@1.0.3/LICENSE-MIT": "7365cc8878a1d7ce155a58c4ca09c3d7a6be413efa5334a80ea842912b669349",
     "cargo/fdeflate@0.3.7/LICENSE-APACHE": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     "cargo/fdeflate@0.3.7/LICENSE-MIT": "c77a4cf9da729987d0fe7ccd811e3bd27393914ddf3d23467c18cc22954513b3",
     "cargo/ff@0.13.1/LICENSE-APACHE": "3708458dee7f359ac6c9c5558023ed481be87e5372c43ebd7f2ca7ad23c12026",
@@ -79,6 +81,7 @@
     "cargo/find-msvc-tools@0.1.14/LICENSE-MIT": "378f5840b258e2779c39418f3f2d7b2ba96f1c7917dd6be0713f88305dbda397",
     "cargo/flate2@1.1.10/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "cargo/flate2@1.1.10/LICENSE-MIT": "025436edff4cfcdde17a5811fdea78892d8482efd1abdec5a17872d07a4f2112",
+    "cargo/foldhash@0.2.0/LICENSE": "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744",
     "cargo/form_urlencoded@1.2.2/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "cargo/form_urlencoded@1.2.2/LICENSE-MIT": "20c7855c364d57ea4c97889a5e8d98470a9952dade37bd9248b9a54431670e5e",
     "cargo/futures-channel@0.3.34/LICENSE-APACHE": "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
@@ -104,6 +107,8 @@
     "cargo/gif@0.14.2/LICENSE-MIT": "77257f3d2181236b1aee78920238062ae64efe13c5d858b2db126e79c9e1b14f",
     "cargo/group@0.13.0/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "cargo/group@0.13.0/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+    "cargo/hashbrown@0.17.1/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "cargo/hashbrown@0.17.1/LICENSE-MIT": "ff8f68cb076caf8cefe7a6430d4ac086ce6af2ca8ce2c4e5a2004d4552ef52a2",
     "cargo/hmac@0.12.1/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
     "cargo/hmac@0.12.1/LICENSE-MIT": "9e0dfd2dd4173a530e238cb6adb37aa78c34c6bc7444e0e10c1ab5d8881f63ba",
     "cargo/http@1.5.0/LICENSE-APACHE": "8bb1b50b0e5c9399ae33bd35fab2769010fa6c14e8860c729a52295d84896b7a",
@@ -134,6 +139,8 @@
     "cargo/image@0.25.10/LICENSE-MIT": "c77a4cf9da729987d0fe7ccd811e3bd27393914ddf3d23467c18cc22954513b3",
     "cargo/image-webp@0.2.4/LICENSE-APACHE": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     "cargo/image-webp@0.2.4/LICENSE-MIT": "c77a4cf9da729987d0fe7ccd811e3bd27393914ddf3d23467c18cc22954513b3",
+    "cargo/indexmap@2.14.2/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "cargo/indexmap@2.14.2/LICENSE-MIT": "ecc269ef87fd38a1d98e30bfac9ba964a9dbd9315c3770fed98d4d7cb5882055",
     "cargo/inout@0.1.4/LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
     "cargo/inout@0.1.4/LICENSE-MIT": "304b898acad7f02e03d6d8832d682a3b43ee729ab5d3a069af5a36979083b6b4",
     "cargo/ipnet@2.12.2/LICENSE-APACHE": "87d9feb9238c6bd8e0024fc4733b06cff036f89f36d93b7df1c8a0549bbb7a5b",
@@ -393,6 +400,6 @@
     "manifest.json": "c1b65c15f2d4328b5eafc20661c35671d12557df7c41375f3bee9178b13ed588",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe"
   },
-  "entries": 264,
-  "outputSha256": "56bdc9bbd7e1af5ade1a7015a454065fbd0b7d793918b604e17742bdd69b8774"
+  "entries": 268,
+  "outputSha256": "c0d89a99cfe83c0842c174b5b249f1700b6f6cb4dd09b712abfb34c7a6c064e1"
 }

@@ -143,7 +143,7 @@ pub fn present(config: &Value) -> Result<Value> {
         .filter(|e| available.iter().any(|id| id == &e["id"]))
         .collect::<Vec<_>>();
     Ok(
-        json!({"editors":editors,"keybindings":out,"issues":issues,"path":path,"revision":format!("{:x}",Sha256::digest(json!({"keybindings":config["keybindings"],"path":path}).to_string()))}),
+        json!({"editors":editors,"keybindings":out,"issues":issues,"path":path,"revision":format!("{:x}",Sha256::digest(crate::composer_context::canonical_json(&json!({"keybindings":config["keybindings"],"path":path}))))}),
     )
 }
 fn remember(e: &Environment, mut data: Value) -> Result<Value> {

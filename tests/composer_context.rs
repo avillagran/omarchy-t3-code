@@ -1,9 +1,15 @@
 use omarchy_t3_client::{composer_context, drafts, protocol, write, Environment};
 use serde_json::{json, Value};
-use std::{net::TcpListener, sync::Arc, thread};
+use std::{
+    net::TcpListener,
+    sync::{Arc, Mutex},
+    thread,
+};
+static ENV: Mutex<()> = Mutex::new(());
 
 #[test]
 fn terminal_context_survives_durable_drafts_and_exact_send_launch_retries() {
+    let _environment = ENV.lock().unwrap();
     let root = std::env::temp_dir().join(format!("o3-composer-context-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&root).unwrap();
     std::env::set_var("XDG_STATE_HOME", &root);
@@ -202,4 +208,95 @@ fn native_contexts_survive_four_slot_queue_draft_ipc_without_borrowing_legacy_bu
         .unwrap_err(),
         "draft_too_large"
     );
+}
+
+#[test]
+fn future_payload_order_is_retained_and_old_frozen_requests_replay_without_rewriting() {
+    use std::os::unix::fs::PermissionsExt;
+    let _environment = ENV.lock().unwrap();
+    let root = std::env::temp_dir().join(format!("o3-ordered-context-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir(&root).unwrap();
+    std::env::set_var("XDG_STATE_HOME", &root);
+    let text = "Inspect [Future](t3-context://v1/future-kind/future)";
+    let record = |payload: &str| {
+        let mut record =
+            json!({"version":1,"kind":"future-kind","contextId":"future","label":"Future"});
+        record["payload"] = serde_json::from_str(payload).unwrap();
+        json!({"version":1,"records":[record]})
+    };
+    let context = record(r#"{"2":"two","1":"one","z":1,"a":2}"#);
+    let old_context = record(r#"{"1":"one","2":"two","a":2,"z":1}"#);
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let server = thread::spawn(move || {
+        for index in 0..3 {
+            let (socket, _) = listener.accept().unwrap();
+            let mut ws = tungstenite::accept(socket).unwrap();
+            let request: Value =
+                serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
+            let payload = request["payload"]["context"]["records"][0]["payload"]
+                .as_object()
+                .unwrap();
+            let order = payload
+                .keys()
+                .filter(|key| key.as_str() == "z" || key.as_str() == "a")
+                .map(String::as_str)
+                .collect::<Vec<_>>();
+            assert_eq!(
+                order,
+                if index < 2 {
+                    vec!["z", "a"]
+                } else {
+                    vec!["a", "z"]
+                }
+            );
+            ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":{"sequence":index+1}}}).to_string().into())).unwrap();
+        }
+    });
+    let conn = protocol::Connection::new(
+        &base,
+        None,
+        protocol::Credential::bearer("synthetic-context-token").unwrap(),
+    )
+    .unwrap();
+    let env = Environment {
+        id: "fixture".into(),
+        name: "Fixture".into(),
+        base_url: base,
+        token_file: Default::default(),
+        write_token_file: None,
+        bearer: None,
+        connection_error: None,
+        connection: Some(Arc::new(conn)),
+    };
+    let command = json!({"op":"send","thread":"thread","environment":"fixture","requestId":uuid::Uuid::new_v4().to_string(),"text":text,"context":context,"attachments":[],"delivery":"auto"});
+    write::dispatch(&env, &command).unwrap();
+    let path = root
+        .join("omarchy-t3-code")
+        .join("outbox")
+        .join(format!("{}.json", command["requestId"].as_str().unwrap()));
+    let original_bytes = std::fs::read(&path).unwrap();
+    let mut changed = command.clone();
+    changed["context"] = old_context.clone();
+    assert_eq!(
+        write::dispatch(&env, &changed).unwrap_err(),
+        "retry_payload_changed"
+    );
+    let frozen = json!({"text":text,"context":old_context,"attachments":[],"attempt":command});
+    assert_eq!(drafts::clean(&frozen).unwrap_err(), "invalid_draft");
+    write::dispatch(&env, &command).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), original_bytes);
+    let mut old = command.clone();
+    let id = uuid::Uuid::new_v4().to_string();
+    old["requestId"] = json!(id);
+    old["context"] = old_context;
+    let mut persisted = json!({"environment":"fixture","command":{"type":"message.dispatch","threadId":"thread","messageId":format!("omarchy-{id}"),"text":text,"attachments":[],"createdBy":"user","creationSource":"web","dispatchMode":{"type":"start_immediately"},"deliveryIntent":"auto","context":old["context"],"commandId":format!("omarchy-{id}")}});
+    persisted.sort_all_objects();
+    let old_path = root.join("omarchy-t3-code/outbox").join(format!("{id}.json"));
+    let old_bytes = persisted.to_string().into_bytes();
+    std::fs::write(&old_path, &old_bytes).unwrap();
+    std::fs::set_permissions(&old_path, std::fs::Permissions::from_mode(0o600)).unwrap();
+    write::dispatch(&env, &old).unwrap();
+    assert_eq!(std::fs::read(&old_path).unwrap(), old_bytes);
+    server.join().unwrap();
 }

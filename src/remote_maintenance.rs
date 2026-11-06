@@ -1,6 +1,5 @@
 //! Bounded, single-use maintenance confirmations. No backend credential or path authority.
 use crate::*;
-use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     path::Path,
@@ -17,7 +16,7 @@ pub const SURFACES: &[&str] = &[
 ];
 pub type Backend = fn(&Value, &Value, &str) -> Result<Value>;
 fn hash(v: &Value) -> String {
-    format!("{:x}", Sha256::digest(v.to_string().as_bytes()))
+    crate::composer_context::stable_hash(v)
 }
 pub fn epoch(settings: &Value) -> Option<&str> {
     (settings["remoteMaintenanceEnabled"] == true)
@@ -158,12 +157,22 @@ impl Confirmations {
         if pending.at.elapsed() >= Duration::from_secs(60) {
             return Err("stale_report");
         }
+        // New order-sensitive proof strengthens confirmation checks, while the
+        // durable effect identity must still recognize claims made before it.
+        let mut claim_report = pending.report.clone();
+        if let Some(report) = claim_report["report"].as_object_mut() {
+            report.remove("nativeContextOrderFingerprint");
+        }
+        let legacy_id = hash(&claim_report["report"]);
+        claim_report["reportId"] = json!(legacy_id);
+        let mut claim_request = pending.request.clone();
+        claim_request["reportId"] = json!(legacy_id);
         let claim = hash(&json!([
             session,
             pending.epoch,
             pending.read_epoch,
-            pending.request,
-            pending.report
+            claim_request,
+            claim_report
         ]));
         // Persist the claim before invoking a mutating backend. Re-preparing the same
         // report after a lost reply/restart cannot run it again. Store is bounded.
@@ -310,6 +319,62 @@ mod tests {
         );
         fs::remove_dir_all(path).unwrap();
     }
+    #[test]
+    fn context_order_proof_does_not_replay_a_legacy_claim_and_still_fences_stale_reports() {
+        use sha2::{Digest, Sha256};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static CALLS: AtomicUsize = AtomicUsize::new(0);
+        fn ordered_backend(input: &Value, s: &Value, _: &str) -> Result<Value> {
+            if input["op"] == "report" {
+                let mut report = json!({"idleClaims":[{"threadId":"thread","fingerprint":"legacy-projection"}],"enabled":false});
+                if let Some(proof) = s.get("orderProof") {
+                    report["nativeContextOrderFingerprint"] = proof.clone();
+                }
+                Ok(report)
+            } else {
+                CALLS.fetch_add(1, Ordering::SeqCst);
+                Err("lost_reply".into())
+            }
+        }
+        fn prepare_ordered(c: &mut Confirmations, s: &Value) -> Value {
+            let report = report(ordered_backend, "compaction", s, "bearer").unwrap();
+            let request = json!({"surface":"compaction","action":"settings","settings":{"autoCompactEnabled":true},"reportId":report["reportId"]});
+            let prepared = c
+                .prepare(ordered_backend, s, "session", "bearer", &request)
+                .unwrap();
+            json!({"confirmationToken":prepared["confirmationToken"],"reportId":report["reportId"]})
+        }
+        let path = dir();
+        let mut s = settings();
+        let old_report = report(ordered_backend, "compaction", &s, "bearer").unwrap();
+        let old_request = json!({"surface":"compaction","action":"settings","settings":{"autoCompactEnabled":true},"reportId":old_report["reportId"]});
+        let mut old_material = json!([
+            "session",
+            "write-epoch",
+            "read-epoch",
+            old_request,
+            old_report
+        ]);
+        old_material.sort_all_objects();
+        let legacy_claim = format!("{:x}", Sha256::digest(old_material.to_string().as_bytes()));
+        super::super::remote_surfaces::claim(&path, &legacy_claim).unwrap();
+        s["orderProof"] = json!("new-order-proof");
+        let mut confirmations = Confirmations::default();
+        let token = prepare_ordered(&mut confirmations, &s);
+        assert_eq!(
+            confirmations.confirm(&path, ordered_backend, &s, "session", "bearer", &token),
+            Err("already_claimed")
+        );
+        assert_eq!(CALLS.load(Ordering::SeqCst), 0);
+        let token = prepare_ordered(&mut confirmations, &s);
+        s["orderProof"] = json!("changed-after-confirmation");
+        assert_eq!(
+            confirmations.confirm(&dir(), ordered_backend, &s, "session", "bearer", &token),
+            Err("stale_report")
+        );
+        assert_eq!(CALLS.load(Ordering::SeqCst), 0);
+    }
+
     #[test]
     fn pending_reports_and_claims_are_bounded() {
         let mut c = Confirmations::default();

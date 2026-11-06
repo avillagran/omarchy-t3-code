@@ -637,7 +637,7 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
  for row in grouped.iter_mut(){row["rev"]=json!(revision(row))}
  grouped
 }
-fn revision(row:&Value)->String{use std::hash::{Hash,Hasher};let mut h=std::collections::hash_map::DefaultHasher::new();row.to_string().hash(&mut h);format!("{:016x}",h.finish())}
+fn revision(row:&Value)->String{use std::hash::{Hash,Hasher};let mut h=std::collections::hash_map::DefaultHasher::new();crate::composer_context::canonical_json(row).hash(&mut h);format!("{:016x}",h.finish())}
 pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
     let rows = d["threads"].as_array().ok_or("malformed")?;
     let projects: HashMap<&str, &str> = d["projects"]

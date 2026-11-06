@@ -4,15 +4,44 @@
 use crate::drafts;
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::{fs, io::Read, os::{fd::AsRawFd, unix::fs::{OpenOptionsExt, PermissionsExt}}, path::PathBuf};
 const MAX_ENTRIES:usize=20;
 struct Store {path:PathBuf,data:Value,_lock:fs::File}
 fn has_content(d:&Value)->bool{!text(d,"text").trim().is_empty()||d["attachments"].as_array().is_some_and(|a|!a.is_empty())}
 fn locked(d:&Value)->bool{d["attempt"].is_object()||d["queueEdit"].is_object()||d["attachments"].as_array().into_iter().flatten().any(|f|f["uploading"]==true||f["error"].is_string())}
-fn empty(d:&Value)->Value{let mut d=d.clone();d["text"]=json!("");d["attachments"]=json!([]);d}
+fn empty(d:&Value)->Value{let mut d=d.clone();d["text"]=json!("");d["attachments"]=json!([]);if let Some(map)=d.as_object_mut(){map.remove("context");}d}
+// Stash transfers keep the records beside their references, including future
+// payload property order. Conflicting excerpts receive a new local identity.
+fn merge_context(next:&mut Value,chosen:&Value)->Result<String>{
+ let mut prompt=text(chosen,"prompt").to_owned();
+ if chosen["context"].is_null(){return Ok(prompt)}
+ let incoming=crate::composer_context::clean(&chosen["context"])?;
+ let mut context=if next["context"].is_null(){json!({"version":1,"records":[]})}else{crate::composer_context::clean(&next["context"])?};
+ if let Some(guest)=incoming.get("guest"){
+  if context.get("guest").is_some_and(|current|!crate::composer_context::semantic_equal(current,guest)){return Err("context_import_conflict".into())}
+  context["guest"]=guest.clone();
+ }
+ let records=context["records"].as_array_mut().unwrap();
+ for record in incoming["records"].as_array().unwrap(){
+  let mut record=record.clone();
+  if let Some(existing)=records.iter().find(|r|r["contextId"]==record["contextId"]){
+   let mut left=existing.clone();let mut right=record.clone();
+   for value in [&mut left,&mut right]{let map=value.as_object_mut().ok_or("invalid_message_context")?;map.remove("label");}
+   if crate::composer_context::semantic_equal(&left,&right){continue}
+   // Dependent screenshots and annotation aliases need coordinated remapping.
+   // Refuse that collision atomically until their native importer is available.
+   if matches!(text(&record,"kind"),"image"|"file"|"element"|"preview-annotation"){return Err("context_import_conflict".into())}
+   let old=text(&record,"contextId").to_owned();let new=format!("{}_{}",text(&record,"kind"),uuid::Uuid::new_v4());
+   prompt=prompt.replace(&format!("t3-context://v1/{}/{old})",text(&record,"kind")),&format!("t3-context://v1/{}/{new})",text(&record,"kind")));
+   record["contextId"]=json!(new);
+  }
+  records.push(record);
+ }
+ next["context"]=crate::composer_context::clean(&context)?;
+ Ok(prompt)
+}
 fn snippet(s:&str)->String{s.trim().chars().take(300).collect()}
-fn fingerprint(d:&Value)->String{format!("{:x}",Sha256::digest(d.to_string()))}
+fn fingerprint(d:&Value)->String{crate::composer_context::stable_hash(d)}
 impl Store{
  fn open(env:&str,project:&str)->Result<Self>{
   if !valid_id(env)||!valid_id(project){return Err("invalid_project".into())}
@@ -34,7 +63,7 @@ impl Store{
   let pending=self.data["pending"].clone();if !pending.is_object(){return Ok(json!({}))}
   // Validate the complete transaction before touching either composer. External
   // edits make recovery stop rather than clearing a newer prompt.
-  for c in pending["changes"].as_array().ok_or("draft_read_failed")?{let key=text(c,"key");self.key(key)?;let now=drafts::load(key)?;if now!=c["before"]&&now!=c["after"]{return Err("draft_changed".into())}}
+  for c in pending["changes"].as_array().ok_or("draft_read_failed")?{let key=text(c,"key");self.key(key)?;let now=drafts::load(key)?;if !crate::composer_context::semantic_equal(&now,&c["before"])&&!crate::composer_context::semantic_equal(&now,&c["after"]){return Err("draft_changed".into())}}
   let mut changes=json!({});
   for c in pending["changes"].as_array().unwrap(){let key=text(c,"key");drafts::save(key,&c["after"])?;changes[key]=c["after"].clone();}
   self.data["entries"]=pending["entries"].clone();self.data["lastRequestId"]=pending["requestId"].clone();self.data["lastChanges"]=changes.clone();self.data["pending"]=Value::Null;self.commit()?;Ok(changes)
@@ -64,7 +93,7 @@ pub fn execute(cmd:&Value)->Result<Value>{
  if store.data["lastRequestId"]==request{changes=store.data["lastChanges"].clone();}
  else if text(cmd,"action")!="list"{
   let current=drafts::load(key)?;let expected=drafts::clean(&cmd["draft"])?;
-  if current!=expected{return Err("draft_changed".into())}
+  if !crate::composer_context::semantic_equal(&current,&expected){return Err("draft_changed".into())}
 if locked(&current){return Err("draft_locked".into())}
   let mut entries=store.data["entries"].as_array().unwrap().clone();let mut steps=vec![];
   match text(cmd,"action"){
@@ -72,7 +101,7 @@ if locked(&current){return Err("draft_locked".into())}
     if !has_content(&current){return Err("draft_empty".into())}
     // Native cap, but never silently evict an existing user prompt.
     if entries.len()>=MAX_ENTRIES{return Err("draft_stash_full".into())}
-    entries.insert(0,json!({"id":request,"createdAt":chrono::Utc::now().to_rfc3339(),"prompt":current["text"],"attachments":current["attachments"]}));
+    entries.insert(0,json!({"id":request,"createdAt":chrono::Utc::now().to_rfc3339(),"prompt":current["text"],"attachments":current["attachments"],"context":current["context"]}));
     steps.push(json!({"key":key,"before":current,"after":empty(&current)}));
    },
    "restore"|"delete"=>{
@@ -82,11 +111,11 @@ if locked(&current){return Err("draft_locked".into())}
      let d=drafts::load(source_key)?;
      if fingerprint(&d)!=text(cmd,"fingerprint"){return Err("draft_changed".into())}
      if locked(&d){return Err("draft_locked".into())}
-     source=Some((source_key.to_owned(),d.clone()));json!({"prompt":d["text"],"attachments":d["attachments"]})
+     source=Some((source_key.to_owned(),d.clone()));json!({"prompt":d["text"],"attachments":d["attachments"],"context":d["context"]})
     }else{let index=entries.iter().position(|e|e["id"]==id).ok_or("draft_not_found")?;entries.remove(index)};
     if text(cmd,"action")=="restore"{
      if source.as_ref().is_some_and(|(src,_)|src==key){return Ok(json!({"entries":store.list(keys)?,"changes":changes}))}
-     let mut next=current.clone();let prompt=text(&chosen,"prompt");let before=text(&current,"text");
+     let mut next=current.clone();let imported=merge_context(&mut next,&chosen)?;let prompt=imported.as_str();let before=text(&current,"text");
      next["text"]=json!(if prompt.is_empty(){before.to_owned()}else if before.trim().is_empty(){prompt.to_owned()}else{format!("{}\n\n{prompt}",before.trim_end())});
      let files=next["attachments"].as_array_mut().unwrap();
      for f in chosen["attachments"].as_array().into_iter().flatten(){if !files.iter().any(|existing|existing["attachment"]["id"].is_string()&&existing["attachment"]["id"]==f["attachment"]["id"]){files.push(f.clone());}}

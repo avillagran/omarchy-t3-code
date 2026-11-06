@@ -172,7 +172,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         if path.exists() {
             // A lost acknowledgement may already have resolved the request. Replay
             // only the identical durable command, letting T3 deduplicate its ID.
-            if read_json(&path)?!=expected {return Err("retry_payload_changed".into())}
+            if !crate::composer_context::semantic_equal(&read_json(&path)?,&expected) {return Err("retry_payload_changed".into())}
             expected["command"].clone()
         } else {
             let snapshot=Client::shared()?.bounded_thread(e,thread)?;
@@ -224,7 +224,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
     }else{None};
     if interaction.is_some(){envelope["interactionMode"]=input["interactionMode"].clone();}
     let command=protocol::api::Command::from_json(&cmd)?;
-    if path.exists() {if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}}
+    if path.exists() {if !crate::composer_context::semantic_equal(&read_json(&path)?,&envelope) {return Err("retry_payload_changed".into())}}
     else { save_json(&path,&envelope)?; }
     let c=e.connection(true)?;
     if let Some(mode)=permissions{protocol::api::orchestration::dispatch(&c,&mode)?;}
@@ -320,7 +320,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     let receipt=path.with_extension("receipt.json");
     let non_replayable=tag==CREATE_NEW||tag==CLONE;
     if path.exists() {
-        if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}
+        if !crate::composer_context::semantic_equal(&read_json(&path)?,&envelope) {return Err("retry_payload_changed".into())}
         if non_replayable {return if receipt.exists(){read_json(&receipt)}else{Err("rpc_outcome_unknown".into())}}
     } else {save_json(&path,&envelope)?;}
     let command_project=command["projectId"].clone();
