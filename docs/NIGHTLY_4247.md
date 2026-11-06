@@ -2,6 +2,11 @@
 
 Target: [v0.1.8-nightly.20261106.4247](https://github.com/pingdotgg/t3code/releases/tag/v0.1.8-nightly.20261106.4247),
 commit `e136e8e3d4cb85a56463d449f1d3835313737e43` (2026-11-06).
+The overall target has advanced to [Nightly 4262](https://github.com/pingdotgg/t3code/releases/tag/v0.1.8-nightly.20261106.4262),
+commit `c55db3e9c72fdf584f4b54192fb39beb88667b59`. The feature behavior documented here
+was introduced in 4247; the server source comparison confirms the fresh-context
+routes are unchanged in 4262.
+
 The validated reference in `upstream/t3code.json` stays at 3726 until the remaining
 integration work passes. This document does not certify full parity.
 
@@ -61,20 +66,26 @@ and transcript marker updates; QML fresh-session, plan-flow and completion
 fixtures; 20 translation catalogs and vendor hashes. The new fixtures use
 synthetic servers and isolated state. No real provider session was restarted.
 
-O3 Server still lacks the fresh-context capability and provider reset behavior.
-Implementing and validating that path is required before claiming end-to-end
-O3 support. The server checkout also has unrelated goal-lifecycle changes in
-progress; server work must use an isolated branch.
+O3 Server has a candidate implementation on branch
+`feat/nightly-4247-fresh-context`, commit `4cee971`. It implements admission,
+durable detachment and history boundaries, with eight supervisor/transaction
+tests. Its capability remains unadvertised pending real Claude/Codex acceptance,
+differential checks and shared-state validation. This does not establish
+end-to-end O3 support. Server work is isolated from the unrelated goal-lifecycle
+changes in the owner's checkout.
 
 ## Remaining work
 
-The lexical inventory from 3726 to 4247 discovers 65 additional entries across
+The lexical inventory from 3726 to 4247 discovered 65 additional entries across
 RPCs, orchestration, HTTP, settings, and keybindings. Entries are unreviewed;
 referencing a name does not establish an implemented UI or equivalent behavior.
+Refreshing to 4262 adds `client-setting:toolCallVisibility` as missing and
+unreviewed. This scanner is a discovery aid; its counts must still be reconciled
+with the broader headless inventory in O3 Server.
 Regenerate the detailed local report with:
 
 ```sh
-node tools/upstream-drift.cjs --source /path/to/t3code --rev v0.1.8-nightly.20261106.4247 --write
+node tools/upstream-drift.cjs --source /path/to/t3code --rev v0.1.8-nightly.20261106.4262 --write
 ```
 
 Next integration areas include fresh-context execution in O3 Server, scheduled task

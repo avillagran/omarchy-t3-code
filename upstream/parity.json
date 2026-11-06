@@ -414,6 +414,11 @@
    "since": "v0.1.1-nightly.20261020.3386",
    "evidence": "tests/connection_preferences.rs; tests/qml/nightly.qml"
   },
+  "client-setting:toolCallVisibility": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4262"
+  },
   "client-setting:voiceMicrophone": {
    "status": "missing",
    "reviewed": false,
