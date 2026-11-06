@@ -645,6 +645,21 @@ fn eas_wire_hosts_and_bounded_settings_keep_credentials_private() {
 }
 
 #[test]
+fn per_platform_incomplete_discovery_matches_nightly_4275_status_schema() {
+    let fixture: Value = serde_json::from_str(include_str!("fixtures/device-status-4275.json")).unwrap();
+    for case in fixture["cases"].as_array().unwrap() {
+        let mut native = state();
+        native["hostStatuses"] = case["input"].clone();
+        let actual = devices::present_state(&native);
+        if case["expected"].is_null() {
+            assert!(actual.is_err(), "{case}");
+        } else {
+            assert_eq!(actual.unwrap()["hostStatuses"],case["expected"],"{case}");
+        }
+    }
+}
+
+#[test]
 fn eas_host_edits_preserve_private_credentials_and_unrelated_hosts() {
  let s=Server::new();
  s.settings.lock().unwrap()["easDeviceHosts"]=json!([

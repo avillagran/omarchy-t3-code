@@ -137,6 +137,13 @@ pub fn present_state(v: &Value) -> Result<Value> {
         }
         let mut out = json!({"status":status(&s["status"])?});
         if let Some(incomplete)=s.get("androidDiscoveryIncomplete"){out["androidDiscoveryIncomplete"]=json!(boolean(incomplete)?);}
+        if let Some(incomplete) = s.get("incompletePlatforms") {
+            let platforms = incomplete.as_array().ok_or("invalid_device_state")?;
+            if platforms.iter().any(|platform| !matches!(platform.as_str(), Some("ios" | "android"))) {
+                return Err("invalid_device_state".into());
+            }
+            out["incompletePlatforms"] = incomplete.clone();
+        }
         if let Some(detail) = present(s, "detail") {
             out["detail"] = json!(string(detail, 4096)?);
         }

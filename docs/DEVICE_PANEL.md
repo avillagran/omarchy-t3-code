@@ -6,9 +6,23 @@ The Devices tab renders native Android H.264 and iOS MJPEG sessions, forwards sc
 
 ## Verification
 
-Six Rust device-screen tests validate native payload coverage, destination capture, lifecycle reservations and frame/input helpers. The actual tools component is exercised in a rootless container with a private software X display by `python3 tools/test-device-panel-container device-tools`. It covers platform controls, location bounds, application targeting, pending state, scope changes and unsupported hosts. The browser workspace fixture also passes in that harness. Translation coverage is 20 locales with 2,126 keys each.
+Six Rust device-screen tests validate native payload coverage, destination capture, lifecycle reservations and frame/input helpers. The actual tools component is exercised in a rootless container with a private software X display by `python3 tools/test-device-panel-container device-tools`. It covers platform controls, location bounds, application targeting, pending state, scope changes and unsupported hosts. The browser workspace fixture also passes in that harness. The current recursive UI translation check covers 20 locales with 2,169 keys each.
 
 These fixtures use synthetic device details. They do not claim a live emulator, iOS host or installed application acceptance. The complete side-panel route now passes in a rootless private Sway compositor, including device inventory, frames, touch mapping and close. Deferred singleton construction fixes the fixture's initialization order; a Wayland compositor is required for the application's layer-shell surface. Strict client Clippy errors were repaired separately rather than suppressed.
+
+## Nightly 4275 discovery metadata
+
+The client retains `hostStatuses[hostId].incompletePlatforms` from nightly 4275
+instead of dropping it during snapshot normalization. The native array preserves
+order and duplicate entries; only `ios` and `android` values are accepted, and
+the older `androidDiscoveryIncomplete` flag remains available. Eighteen cases
+execute the actual native host-status schema with Effect 4.1.2. All nine device
+integration checks pass in the private Rust container runner.
+
+This checkpoint preserves the metadata for consumers. The full native behavior
+that keeps previously discovered devices during partial platform failures,
+restores discovery details and distinguishes stale entries after boot still
+requires backend and visible-control integration.
 
 ## Remaining source parity
 
