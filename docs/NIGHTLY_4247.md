@@ -67,7 +67,7 @@ fixtures; 20 translation catalogs and vendor hashes. The new fixtures use
 synthetic servers and isolated state. No real provider session was restarted.
 
 O3 Server has a candidate implementation on branch
-`feat/nightly-4247-fresh-context`, commit `2b204cf`. It advertises the capability after
+`feat/nightly-4247-fresh-context`, commit `b11a9a4`. It advertises the capability after
 ten supervisor tests, 60 cases executed from exact T3 source functions and eight
 real Claude/Codex turns. The same eight-turn scenario passes against the official
 T3 4262 binary. It preserves multi-thread sessions and canonical currency-qualified
@@ -75,7 +75,11 @@ context costs. Migration 80 and legacy 73 shared-history support are now validat
 14 container regressions and an offline O3 → T3 → O3 → T3 runtime handover preserve
 sixteen messages, both fresh markers, project pin/archive edits and thread metadata.
 The final copy passes the exact contracts (80 public records, 86 events, zero
-rejections, Effect 4.1.2). The live desktop-composer check remains; this does not
+rejections, Effect 4.1.2). The server also implements scheduled new-thread/continue/fresh-session execution,
+first-run binding, queued dispatch and task provenance. It includes dev through
+PR #48; 60 selected container regressions pass with default and minimal features.
+Six real scheduled Haiku turns complete on each runtime, although earlier reference
+inference-answer failures remain unexplained. The live desktop-composer check remains; this does not
 establish full-platform parity or a deployed feature. Server work is isolated from
 the unrelated goal-lifecycle changes in the owner's checkout.
 
@@ -93,8 +97,7 @@ Regenerate the detailed local report with:
 node tools/upstream-drift.cjs --source /path/to/t3code --rev v0.1.8-nightly.20261106.4262 --write
 ```
 
-Next integration areas include the desktop composer against the enabled O3 candidate, scheduled task
-session execution in O3 Server, pending questions outside the loaded transcript,
+Next integration areas include the desktop composer against the enabled O3 candidate, shared task/webhook storage and full scheduler lifecycle in O3 Server, pending questions outside the loaded transcript,
 secret-provider requests, dictation environment selection, and refreshed audits
 of historical UI differences. The validated upstream pin remains unchanged until the remaining integration and
 platform audit are complete. No live database was upgraded or service deployed.
