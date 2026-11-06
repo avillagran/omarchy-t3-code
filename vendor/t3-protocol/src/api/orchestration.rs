@@ -44,7 +44,7 @@ pub const DISPATCH_COMMAND: Function = api_fn! {
     name: "orchestration.dispatchCommand", module: "orchestration", tag: Some("orchestration.dispatchCommand"),
     kind: MutationWithCommandId, scope: Fixed("orchestration:operate"),
     args: [(type, ArgType::Command, required), (commandId, Id, required)],
-    payload: |a| Command::from_json(a.all())?.payload(),
+    payload: |a| CommandWithContext::from_json(a.all())?.payload(),
     open_args: true, variants: COMMAND_TYPES,
 };
 pub const LAUNCH_THREAD: Function = api_fn! {
@@ -138,6 +138,10 @@ pub const FUNCTIONS: &[Function] = &[
 /// `commandId`; after `rpc_outcome_unknown`, resend the same command.
 pub fn dispatch(conn: &Connection, command: &Command) -> Result<Value> {
     send(conn, &DISPATCH_COMMAND, command.payload()?)
+}
+/// Dispatch a command with the explicit nightly fresh-context extension.
+pub fn dispatch_with_context(conn:&Connection,command:&CommandWithContext)->Result<Value>{
+    send(conn,&DISPATCH_COMMAND,command.payload()?)
 }
 /// `orchestration.launchThread`: `{threadId, projection, resumed}`. Deduplicated by `commandId`.
 pub fn launch_thread(conn: &Connection, launch: &ThreadLaunch) -> Result<Value> {
@@ -385,8 +389,6 @@ pub struct MessageDispatch {
     pub usage_limit_recovery_request_id: Option<String>,
     pub delivery_intent: Option<String>,
     pub guest_message_id: Option<String>,
-    /// Start a new provider session without hiding the existing transcript.
-    pub fresh_context: Option<bool>,
 }
 impl MessageDispatch {
     /// A user message that starts immediately, with no attachments.
@@ -410,7 +412,6 @@ impl MessageDispatch {
             usage_limit_recovery_request_id: None,
             delivery_intent: None,
             guest_message_id: None,
-            fresh_context: None,
         }
     }
 }
@@ -611,7 +612,8 @@ impl Command {
     }
 
     /// The validated wire payload. Validation happens here, before any socket opens.
-    pub fn payload(&self) -> Result<Value> {
+    pub fn payload(&self) -> Result<Value> {self.payload_with_context(None)}
+    fn payload_with_context(&self,fresh_context:Option<bool>) -> Result<Value> {
         let cid = |c: &str| ids::id("commandId", c).map(str::to_string);
         let tid = |t: &str| ids::id("threadId", t).map(str::to_string);
         let simple = |kind: &str, c: &str, t: &str| -> Result<Value> { Ok(json!({"type":kind,"commandId":cid(c)?,"threadId":tid(t)?})) };
@@ -664,7 +666,7 @@ impl Command {
                     "messageId":ids::id("messageId", &m.message_id)?,"text":if m.guest_message_id.is_some() && m.text.is_empty() { String::new() } else { message_text("text", &m.text, &m.attachments)? },
                     "attachments":attachments("attachments", &m.attachments)?,"createdBy":one_of("createdBy", &m.created_by, ACTORS)?,
                     "creationSource":one_of("creationSource", &m.creation_source, CREATION_SOURCES)?,"dispatchMode":mode});
-                if let Some(fresh) = m.fresh_context { v["freshContext"] = json!(fresh); }
+                if let Some(fresh) = fresh_context { v["freshContext"] = json!(fresh); }
                 if let Some(c) = &m.context {
                     v["context"] = object("context", c)?;
                 }
@@ -951,7 +953,6 @@ impl Command {
                 m.usage_limit_recovery_request_id = r.opt_str("usageLimitRecoveryRequestId")?;
                 m.delivery_intent = r.opt_str("deliveryIntent")?;
                 m.guest_message_id = r.opt_str("guestMessageId")?;
-                m.fresh_context = r.opt_bool("freshContext")?;
                 Self::MessageDispatch(m)
             }
             "run.interrupt" => Self::RunInterrupt {
@@ -1213,4 +1214,21 @@ pub fn get_worktree_thread_ids(conn: &Connection, path: &str) -> Result<Value> {
 pub fn get_older_settled_threads(conn: &Connection, before: &Value, projects: Option<&[String]>, limit: u64) -> Result<Value> {
     let mut args=json!({"before":before,"limit":limit});if let Some(ids)=projects{args["projectIds"]=json!(ids);}
     GET_OLDER_SETTLED_THREADS.call(conn,&args,None)
+}
+
+/// Explicit extension of the legacy command value. The old Command enum and
+/// MessageDispatch struct retain their source-compatible public shapes.
+#[derive(Clone,Debug)]
+pub struct CommandWithContext {pub command:Command,pub fresh_context:Option<bool>}
+impl CommandWithContext {
+    pub fn from_json(value:&Value)->Result<Self>{
+        if value["type"]!="message.dispatch" {return Ok(Self{command:Command::from_json(value)?,fresh_context:None})}
+        let fresh_context=Reader::new(value)?.opt_bool("freshContext")?;
+        let legacy=Value::Object(value.as_object().ok_or("invalid_input")?.iter().filter(|(key,_)|key.as_str()!="freshContext").map(|(key,value)|(key.clone(),value.clone())).collect());
+        Ok(Self{command:Command::from_json(&legacy)?,fresh_context})
+    }
+    pub fn payload(&self)->Result<Value>{
+        if self.fresh_context.is_some()&&!matches!(self.command,Command::MessageDispatch(_)){return Err("invalid_fresh_context".into())}
+        self.command.payload_with_context(self.fresh_context)
+    }
 }

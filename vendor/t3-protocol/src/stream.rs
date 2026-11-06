@@ -21,7 +21,7 @@ pub fn cursor_of(tag:&str,item:&Value)->Option<u64>{
   "orchestration.subscribeShell" if item["kind"]=="snapshot"=>item["snapshot"]["snapshotSequence"].as_u64(),
   "orchestration.subscribeThread" if item["kind"]=="snapshot"=>item["snapshotSequence"].as_u64(),
   "orchestration.subscribeShell"|"orchestration.subscribeThread"|"subscribeWorktreeSetup"=>item["sequence"].as_u64(),
-  "terminal.attach"=>match item["type"].as_str(){
+  "terminal.attach"|"terminal.observe"=>match item["type"].as_str(){
    Some("snapshot"|"started"|"restarted")=>item["snapshot"]["sequence"].as_u64().or(item["sequence"].as_u64()),
    _=>item["sequence"].as_u64(),
   },
@@ -53,7 +53,7 @@ pub fn start_of(tag:&str,item:&Value)->Option<Start>{
  let replaced=match tag{
   "orchestration.subscribeShell"|"orchestration.subscribeThread"=>item["kind"]=="snapshot",
   "orchestration.subscribeCommandOutput"=>item["kind"]=="replace",
-  "terminal.attach"=>matches!(item["type"].as_str(),Some("snapshot"|"started"|"restarted")),
+  "terminal.attach"|"terminal.observe"=>matches!(item["type"].as_str(),Some("snapshot"|"started"|"restarted")),
   "subscribeServerConfig"=>item["type"]=="snapshot",
   "subscribeDeviceState"|"subscribeDiscoveredLocalServers"|"subscribeWorktreeSetup"|"server.getStorageCleanupReport"|"provider.install.subscribe"|"provider.auth.subscribe"=>true,
   "subscribePreviewEvents"|"git.runStackedAction"=>return Some(Start::Events),

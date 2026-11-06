@@ -1,5 +1,5 @@
 //! T3 scheduled tasks (scheduledTasks.*): list, create/edit, enable, run now, delete.
-use crate::{json, protocol::api::scheduled_tasks::{self as tasks, TaskUpsert}, text, Environment, Result};
+use crate::{json, protocol::api::scheduled_tasks::{self as tasks, TaskUpsertWithMode}, text, Environment, Result};
 use serde_json::Value;
 
 fn id(input: &Value) -> Result<String> {
@@ -73,7 +73,7 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     let read_tasks = || tasks::snapshot(&c()?);
     let result = match action {
         "list" => read_tasks()?,
-        "upsert" => tasks::upsert(&c()?, &TaskUpsert::from_json(&upsert_payload(input)?)?)?,
+        "upsert" => tasks::upsert_with_mode(&c()?, &TaskUpsertWithMode::from_json(&upsert_payload(input)?)?)?,
         "enable" => tasks::set_enabled(&c()?, &id(input)?, input["enabled"] == true)?,
         "delete" => tasks::delete(&c()?, &id(input)?)?,
         "run" => tasks::run_now(&c()?, &id(input)?)?,

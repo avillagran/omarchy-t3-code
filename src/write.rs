@@ -15,7 +15,7 @@ pub fn dispatch_command(e: &Environment, command: &Value) -> Result<Value> {
 /// The command JSON a caller built (and an outbox may hold) is parsed into the typed
 /// `Command`, which sends it unchanged; a malformed command fails before any socket opens.
 pub fn send_command(c: &protocol::Connection, command: &Value) -> Result<Value> {
-    protocol::api::orchestration::dispatch(c,&protocol::api::Command::from_json(command)?)
+    protocol::api::orchestration::dispatch_with_context(c,&protocol::api::CommandWithContext::from_json(command)?)
 }
 /// `server.updateSettings` for a whole `{patch, providerInstanceMutation?}` payload.
 pub fn update_settings(c: &protocol::Connection, payload: &Value) -> Result<Value> {
@@ -30,7 +30,7 @@ const CREATE_NEW: &str = protocol::api::projects::CREATE_NEW.name;
 const CLONE: &str = protocol::api::project_clone::START.name;
 /// What `manage` sends, typed before the outbox keeps it.
 enum Managed {
-    Dispatch(protocol::api::Command),
+    Dispatch(protocol::api::CommandWithContext),
     Launch(protocol::api::ThreadLaunch),
     Mutate(protocol::api::projects::ProjectMutation),
     CreateNew(String),
@@ -223,13 +223,13 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         Some(protocol::api::Command::InteractionModeSet{command_id:format!("omarchy-{id}-interaction-mode"),thread_id:thread.to_string(),interaction_mode:interaction_mode(input)?.to_string()})
     }else{None};
     if interaction.is_some(){envelope["interactionMode"]=input["interactionMode"].clone();}
-    let command=protocol::api::Command::from_json(&cmd)?;
+    let command=protocol::api::CommandWithContext::from_json(&cmd)?;
     if path.exists() {if !crate::composer_context::semantic_equal(&read_json(&path)?,&envelope) {return Err("retry_payload_changed".into())}}
     else { save_json(&path,&envelope)?; }
     let c=e.connection(true)?;
     if let Some(mode)=permissions{protocol::api::orchestration::dispatch(&c,&mode)?;}
     if let Some(mode)=interaction{protocol::api::orchestration::dispatch(&c,&mode)?;}
-    protocol::api::orchestration::dispatch(&c,&command)
+    protocol::api::orchestration::dispatch_with_context(&c,&command)
 }
 /// Explicit management actions. Native launches own workspace preparation and
 /// may durably accept an initial message; legacy thread.create remains metadata-only.
@@ -308,7 +308,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     // createNew and clone.start take no commandId: the envelope keeps it, the wire does not.
     let bare=||{let mut c=command.clone();if let Some(o)=c.as_object_mut(){o.remove("commandId");}c};
     let typed=match tag{
-        DISPATCH=>Managed::Dispatch(protocol::api::Command::from_json(&command)?),
+        DISPATCH=>Managed::Dispatch(protocol::api::CommandWithContext::from_json(&command)?),
         LAUNCH=>Managed::Launch(protocol::api::ThreadLaunch::from_json(&command)?),
         MUTATE=>Managed::Mutate(protocol::api::projects::ProjectMutation::from_json(&command)?),
         CREATE_NEW=>Managed::CreateNew(text(&command,"name").to_string()),
@@ -326,7 +326,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     let command_project=command["projectId"].clone();
     let c=e.connection(true)?;
     let response=match &typed {
-        Managed::Dispatch(command)=>protocol::api::orchestration::dispatch(&c,command)?,
+        Managed::Dispatch(command)=>protocol::api::orchestration::dispatch_with_context(&c,command)?,
         Managed::Launch(launch)=>protocol::api::orchestration::launch_thread(&c,launch)?,
         Managed::Mutate(mutation)=>protocol::api::projects::mutate(&c,mutation)?,
         Managed::CreateNew(name)=>protocol::api::projects::create_new(&c,name)?,

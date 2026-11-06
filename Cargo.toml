@@ -6,7 +6,7 @@ license = "MIT"
 
 [dependencies]
 flate2 = "1"
-t3-protocol = { git = "https://github.com/avillagran/lib-t3-rust", rev = "cedb80cf9de3f46493e38490b96f0a553d6bc3ff" }
+t3-protocol = { git = "https://github.com/avillagran/lib-t3-rust", rev = "394b4343a28cc8f62f856a7a4c3cb4c8527de4f6" }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }

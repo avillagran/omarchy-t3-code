@@ -58,3 +58,32 @@ fn fresh_session_marker_comes_from_the_user_turn_item_and_keeps_history() {
     let next=after["timeline"].as_array().unwrap().iter().find(|m|m["id"]=="new").unwrap();
     assert_ne!(next["rev"],before,"a marker update refreshes the visible row");
 }
+
+#[test]
+fn explicit_context_dispatch_preserves_all_optional_flags_and_opaque_order() {
+    let listener=TcpListener::bind("127.0.0.1:0").unwrap();
+    let base=format!("http://{}",listener.local_addr().unwrap());
+    let server=thread::spawn(move||{
+        for fresh in [None,Some(false),Some(true)] {
+            let mut accepted:Option<String>=None;
+            for _ in 0..2 {
+                let(socket,_)=listener.accept().unwrap();let mut ws=tungstenite::accept(socket).unwrap();
+                let frame=ws.read().unwrap();let text=frame.to_text().unwrap();
+                let request:Value=serde_json::from_str(text).unwrap();
+                let payload=&request["payload"];
+                assert_eq!(payload.get("freshContext").and_then(Value::as_bool),fresh);
+                assert!(text.contains("\"opaque\":{\"z\":1,\"a\":2}"));
+                if let Some(previous)=&accepted {assert_eq!(text,previous.as_str())}else{accepted=Some(text.to_owned())}
+                ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":{}}}).to_string().into())).unwrap();
+            }
+        }
+    });
+    let connection=protocol::Connection::new(&base,None,protocol::Credential::bearer("synthetic-context").unwrap()).unwrap();
+    for fresh in [None,Some(false),Some(true)] {
+        let mut command:Value=serde_json::from_str(r#"{"type":"message.dispatch","commandId":"command","threadId":"thread","messageId":"message","text":"hello","attachments":[],"dispatchMode":{"type":"queue_after_active"},"createdBy":"user","creationSource":"web","context":{"opaque":{"z":1,"a":2}}}"#).unwrap();
+        if let Some(fresh)=fresh{command["freshContext"]=json!(fresh);}
+        write::send_command(&connection,&command).unwrap();
+        write::send_command(&connection,&command).unwrap();
+    }
+    server.join().unwrap();
+}

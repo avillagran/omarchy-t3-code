@@ -21,9 +21,10 @@ The isolated owner test exercises actual bearer WebSockets, route/auth replaceme
 retirement during a held handshake, unrelated-environment preservation, physical
 failure/replacement, exact close identity and removal from the environment catalog.
 
-This foundation is opt-in. Terminal paths do not require file metadata in native
-T3; file-reference/markdown metadata caching and invalidation must use their actual
-consumer lifecycle. Unary ownership does not yet multiplex native subscriptions.
+This foundation is opt-in. At the exact nightly 4288 source pin, terminal path
+activation uses file metadata and native link validation. Terminal and
+file-reference/markdown caching and invalidation must follow their actual consumer
+lifecycles. Unary ownership does not yet multiplex native subscriptions.
 
 ## Native metadata lifecycle oracle
 
@@ -54,3 +55,17 @@ and selective in-flight invalidation. Position-like suffixes remain literal cach
 keys. Thread-retained entries are separate from the global budget, as in native
 T3. This state module is not yet connected to mounted consumer leases, query
 memoization, missing-entry refresh timers or terminal activation validation.
+
+## Shared SDK compatibility
+
+The exact SDK pin `394b4343a28cc8f62f856a7a4c3cb4c8527de4f6` preserves the
+shared reader contracts from `7cbad5d` alongside persistent sockets and reset
+credit observations. Its Rustdoc ledger preserves all 1,128 legacy public
+structural entries; the SDK runtime suite passes 414 tests across 61 targets.
+The original Kotlin positional/JVM API and all ABI 3 operations remain intact.
+
+Client dispatch uses the explicit `CommandWithContext` extension so legacy Rust
+`Command` and `MessageDispatch` shapes remain unchanged. Optional fresh-context
+flags preserve true, false and omission in direct wire dispatch, including repeat
+requests and opaque nested context key ordering. Stored accepted commands remain
+immutable; this SDK upgrade does not rewrite existing outbox entries.

@@ -57,7 +57,7 @@ pub const FUNCTIONS: &[DomainFn] = &[
     domain_fn! {
         name: "i18n.catalog", module: "i18n",
         args: [(locale, Text, required)],
-        returns: "object {locale, language, rtl, strings {source: translation}}: every string of the catalog for the locale as i18n.t gives it without args (1804 sources: ot3's 1796 and awareness.view's 8; 20 languages)",
+        returns: "object {locale, language, rtl, strings {source: translation}}: every string of the catalog for the locale as i18n.t gives it without args (2027 sources: Desktop additions and retained compatible sources; 20 languages)",
         run: |a| Ok(i18n::strings(a.req("locale")?)),
     },
     domain_fn! {

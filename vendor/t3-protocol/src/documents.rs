@@ -79,3 +79,14 @@ mod mcp_app_tests {
         assert!(super::mcp_app(&bad).is_none());
     }
 }
+
+impl Connection {
+    /// Text-only JSON read; image/media bytes use the existing binary asset channel.
+    pub fn document_text(&self,resource:Value)->Result<Value>{
+        if !matches!(resource["_tag"].as_str(),Some("media-file"|"workspace-file"|"attachment")){return Err("invalid_file".into())}
+        let asset=self.asset_bytes(resource,4*1024*1024)?;
+        if asset.mime.starts_with("image/")||asset.mime.starts_with("video/")||asset.mime.starts_with("audio/"){return Err("binary_operation".into())}
+        let contents=String::from_utf8(asset.bytes).map_err(|_|"unsupported_document")?;
+        Ok(json!({"contents":contents,"mimeType":asset.mime}))
+    }
+}
