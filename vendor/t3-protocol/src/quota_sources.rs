@@ -58,7 +58,15 @@ pub fn limits(raw: &Value) -> Option<Value> {
         if let Some(reset) = timestamp(&raw["resetCredits"], "nextExpiresAt") {
             out["resetCredits"]["nextExpiresAt"] = reset;
         }
-        // Redemption is intentionally not exposed by the read-only panel.
+        // Preserve the native optional TrimmedNonEmptyString exactly. It binds
+        // an explicit redemption to the credit shown in this observation.
+        if let Some(value) = raw["resetCredits"].get("nextCreditId") {
+            let id = value.as_str()?.trim_matches(crate::js::is_space);
+            if id.is_empty() {
+                return None;
+            }
+            out["resetCredits"]["nextCreditId"] = json!(id);
+        }
     }
     if let (Some(label), Some(url)) = (
         string(&raw["externalUsage"], "label", 256),

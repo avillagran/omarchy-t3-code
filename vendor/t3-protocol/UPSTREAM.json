@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/avillagran/lib-t3-rust",
-  "revision": "105e5d13f5a1920948a5af1b9ad5a9c8b468d7db",
+  "revision": "cedb80cf9de3f46493e38490b96f0a553d6bc3ff",
   "upstreamFiles": {
     "Cargo.lock": "1f0a10d67451ed51758587fb3f260dc1e5dfeda569b0f824bbebd8261e5d387a",
     "Cargo.toml": "b1f0244885b62685fd35ec58427267319f20394eefb73b27bede951dd99717cb",
@@ -91,7 +91,7 @@
     "src/pull_requests.rs": "16dcd1e1b34f0b0571cd64b692f646f6a7366734fe79a2888184668f8a23b960",
     "src/questions.rs": "47f6dfc72bfadfbb0b0f2e27cf144cbbc1e6f910506d92797df3db0e049bdee5",
     "src/queue.rs": "415f32ce87735c1a594a125aed73d5dee1e8f044181ea5b9888b46a4ca06f20e",
-    "src/quota_sources.rs": "6a4c0c8ca5cc11a6c7ba08167b780d14fdce2df515aee85a5d70c2a700d7e263",
+    "src/quota_sources.rs": "5157e8b44ac0572e05e4d8a4e3f859efd526e4f174c5bc78ff9101b7cd254373",
     "src/reconnect.rs": "cb42c9b941f6fd699c78fe59b915ab18bba73ff4fb374e9faeb8e8fcea02df1e",
     "src/scoped_settings.rs": "692aeb10554c30b9c5bae503a6931245e3da3f741bb9e03989bd14219b573dc8",
     "src/server_updates.rs": "39d08ff79568faddbbd84425b02b5cc4da1e21df19cfd629b0ed668b9959fb81",
