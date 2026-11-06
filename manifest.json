@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.avillagran.omarchy-t3-code",
   "name": "O3 Code",
-  "version": "0.2.24",
+  "version": "0.3.1",
   "author": "Andr\u00e9s Villagr\u00e1n",
   "license": "MIT",
   "description": "O3 Code: native Rust T3 chats, writing, attachments, activity and subscription quotas.",

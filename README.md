@@ -38,18 +38,35 @@ desktop session:
 curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/install.sh | bash
 ```
 
-The [installer](install.sh) installs runtime dependencies through
-Pacman and, when T3 Code is missing, **T3 Code nightly** (`t3code-nightly-bin`, from Omarchy's
-repository or the AUR through `yay`/`paru`). If T3 has never been opened it opens it once, so T3
-creates its profile and `t3` CLI. It then downloads verified **aarch64 / x86_64** binaries and installs O3 Code as a **desktop
+The [installer](install.sh) installs runtime dependencies through Pacman and asks which **local
+server** O3 Code drives:
+
+- **O3 Server** (recommended): [o3-server](https://github.com/avillagran/o3-server), a light native
+  server compatible with T3 Code clients. The installer downloads the pinned, checksum-verified
+  release to `~/.local/share/o3-server/bin/o3-server`, keeps its history in
+  `~/.local/share/o3-server/profile`, runs it as the `o3-server.service` user unit on
+  `127.0.0.1:3773` (no port is opened to the network) and registers it in
+  `~/.config/omarchy-t3-code/backends.json`. No T3 package or window is installed. Choose this on
+  low-memory devices.
+- **T3 Code nightly**: when T3 Code is missing it installs `t3code-nightly-bin` (from Omarchy's
+  repository or the AUR through `yay`/`paru`) and, if T3 has never been opened, opens it once so
+  T3 creates its profile and `t3` CLI.
+
+`O3_SERVER=o3` or `O3_SERVER=t3` (set on `bash`: `curl -fsSL … | O3_SERVER=o3 bash`) chooses
+without asking. Without a terminal to ask on, a new install uses O3 Server. An existing setup keeps
+its server: a device with T3 stays on T3, one with O3 Server stays on O3 Server, and a
+`backends.json` written by hand is never rewritten ([local servers](docs/LOCAL_BACKENDS.md)).
+
+It then downloads verified **aarch64 / x86_64** binaries of the newest O3 Code release (v0.3 or
+later, prereleases included; `OT3_RELEASE=vX.Y.Z` picks one) and installs O3 Code as a **desktop
 app**: an "O3 Code" entry in the app launcher, `o3` on your PATH, a hidden start at login and
 **Super+Shift+A** as your default agent on Omarchy's Lua configuration. It also enables the optional
 **bar widget**, which shows work/ready/input badges and minimizes the window to the bar
-(`OT3_BAR_WIDGET=0` installs the app alone). It reuses an existing T3 server or starts the native
-headless service when stopped. It also installs the pinned, checksum-verified
+(`OT3_BAR_WIDGET=0` installs the app alone). It reuses a running local server or starts the chosen
+one when stopped. It also installs the pinned, checksum-verified
 [OmaBridge](docs/CONNECTION_OMABRIDGE.md) CLI next to the client. Your T3 connections and data stay in place.
-The same command updates a clean Git installation. It may request your sudo
-password and restarts the Omarchy shell when finished.
+The same command updates a clean Git installation and the pinned O3 Server. It may request your sudo
+password (packages only) and restarts the Omarchy shell when finished.
 
 The app runs in **its own process**, not inside the Omarchy shell: if the bar gets stuck, Super+Shift+A
 and the launcher keep working, and restarting the shell does not close your chats. Installed from the

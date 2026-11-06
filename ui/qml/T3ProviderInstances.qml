@@ -99,6 +99,13 @@ ColumnLayout {
       Text{visible:!!parent.parent.interaction&&parent.parent.interaction.type==="deviceCode";text:parent.parent.interaction?T3I18n.tr("Code: {code}",{code:parent.parent.interaction.userCode||""}):"";color:root.fg;font.family:"monospace";font.pixelSize:Style.font.body}
       T3PickerButton{objectName:"providerOpenSignIn_"+modelData.id;implicitHeight:Style.space(28);text:T3I18n.tr("Open sign-in page");onClicked:{var i=parent.parent.interaction;if(/^https?:\/\//i.test(i.url||""))Qt.openUrlExternally(i.url);if(i.type==="browser"&&i.requiresConsent)root.bridge.providerSetupAction(root.environment,modelData.id,{action:"respond",flowId:parent.parent.st.flowId,interactionId:i.id,response:{type:"browser",action:"accept"}})}}
      }
+     // A CLI that signs in through a browser can show a code to paste back (Claude does when the
+     // browser runs on another device). It goes to the CLI's input as a terminal response.
+     RowLayout{visible:!!parent.interaction&&(parent.interaction.type==="browser"||parent.interaction.type==="terminal")&&["starting","waiting"].indexOf(parent.st.phase)>=0;spacing:Style.space(8)
+      function submit(){var code=signInCode.text.trim();if(!code)return;var owner=parent;root.bridge.providerSetupAction(root.environment,modelData.id,{action:"respond",flowId:owner.st.flowId,interactionId:owner.interaction.id,response:{type:"terminal",data:code+"\n"}});signInCode.text=""}
+      Controls.TextField{id:signInCode;objectName:"providerSignInCode_"+modelData.id;Layout.preferredWidth:Style.space(320);placeholderText:T3I18n.tr("Paste the code from the sign-in page");color:root.fg;onAccepted:parent.submit()}
+      T3PickerButton{objectName:"providerSendSignInCode_"+modelData.id;implicitHeight:Style.space(28);enabled:signInCode.text.trim().length>0;text:T3I18n.tr("Send code");onClicked:parent.submit()}
+     }
      ColumnLayout{id:credentialForm;visible:!!parent.interaction&&parent.interaction.type==="credentials";spacing:Style.space(4);property var values:({})
       Repeater{model:parent.interaction&&parent.interaction.fields?parent.interaction.fields:[]
        Controls.TextField{required property var modelData;Layout.preferredWidth:Style.space(280);placeholderText:modelData.label;echoMode:modelData.secret?TextInput.Password:TextInput.Normal;color:root.fg;onTextChanged:{var v=Object.assign({},credentialForm.values);v[modelData.name]=text;credentialForm.values=v}}}
