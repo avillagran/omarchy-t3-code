@@ -317,7 +317,7 @@ fn fixture_environments(p: &Path) -> Result<Vec<Environment>> {
     if !p.exists() {
         return Ok(vec![]);
     }
-    let d = read_json(&p)?;
+    let d = read_json(p)?;
     let envs: Vec<Environment> =
         serde_json::from_value(d["environments"].clone()).map_err(|_| "invalid_config")?;
     let mut ids = HashSet::new();

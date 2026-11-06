@@ -8,9 +8,10 @@ use std::{
     },
     time::Duration,
 };
+type Selection = (u64, Option<(String, String, String)>);
 pub struct Control {
     generation: Arc<AtomicU64>,
-    sender: mpsc::Sender<(u64, Option<(String, String, String)>)>,
+    sender: mpsc::Sender<Selection>,
 }
 impl Default for Control {
     fn default() -> Self {
@@ -20,7 +21,7 @@ impl Default for Control {
 impl Control {
     pub fn with_observer(observer: impl Fn(Value) + Send + 'static) -> Self {
         let generation = Arc::new(AtomicU64::new(0));
-        let (sender, receiver) = mpsc::channel::<(u64, Option<(String, String, String)>)>();
+        let (sender, receiver) = mpsc::channel::<Selection>();
         let current = generation.clone();
         std::thread::spawn(move || {
             let mut pending = None;

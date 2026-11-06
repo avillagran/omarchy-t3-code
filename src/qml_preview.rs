@@ -18,7 +18,8 @@ fn strip_comments(source:&str)->String{
  let b=source.as_bytes();let mut out=Vec::with_capacity(b.len());let mut i=0;let mut quote=0u8;
  while i<b.len(){
   let c=b[i];
-  if quote!=0{out.push(c);if c==b'\\'&&i+1<b.len(){out.push(b[i+1]);i+=2;continue}if c==quote{quote=0}i+=1;continue}
+  if quote!=0{out.push(c);if c==b'\\'&&i+1<b.len(){out.push(b[i+1]);i+=2;continue}
+  if c==quote{quote=0}i+=1;continue}
   if c==b'"'||c==b'\''||c==b'`'{quote=c;out.push(c);i+=1;continue}
   if c==b'/'&&b.get(i+1)==Some(&b'/'){while i<b.len()&&b[i]!=b'\n'{i+=1}continue}
   if c==b'/'&&b.get(i+1)==Some(&b'*'){i+=2;while i<b.len()&&!(b[i]==b'*'&&b.get(i+1)==Some(&b'/')){if b[i]==b'\n'{out.push(b'\n')}i+=1}i+=2;out.push(b' ');continue}
@@ -91,6 +92,7 @@ const FILE_ONLY:u64=EXECUTE|WRITE_FILE|READ_FILE|TRUNCATE|IOCTL_DEV;
 pub struct Sandbox{rules:Vec<(CString,u64)>}
 pub const READ:u64=READ_FILE|READ_DIR;
 pub const ALL:u64=u64::MAX;
+impl Default for Sandbox { fn default()->Self { Self::new() } }
 impl Sandbox{
  /// What the QML renderer needs: Qt and system libraries, fonts, its own plugin files and private frame directory.
  pub fn renderer(exe:&std::path::Path,frames:&std::path::Path)->Self{
@@ -119,7 +121,9 @@ impl Sandbox{
   unsafe{
    let abi=libc::syscall(CREATE_RULESET,std::ptr::null::<RulesetAttr>(),0usize,1u32);
    if abi<1{return Ok(())}
-   let mut fs:u64=(1<<13)-1;if abi>=2{fs|=1<<13}if abi>=3{fs|=TRUNCATE}if abi>=5{fs|=IOCTL_DEV}
+   let mut fs:u64=(1<<13)-1;if abi>=2{fs|=1<<13}
+   if abi>=3{fs|=TRUNCATE}
+   if abi>=5{fs|=IOCTL_DEV}
    // ABI 4: no TCP bind/connect; ABI 6: no abstract sockets or signals outside the domain.
    let attr=RulesetAttr{fs,net:if abi>=4{3}else{0},scoped:if abi>=6{3}else{0}};
    let size=if abi>=6{24}else if abi>=4{16}else{8};

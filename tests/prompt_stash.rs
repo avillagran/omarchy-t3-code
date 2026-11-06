@@ -38,7 +38,7 @@ fn saved(root:&std::path::Path,key:&str,d:Value)->Value{
  events.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"].clone()
 }
 fn command(action:&str,key:&str,d:&Value)->Value{json!({"op":"prompt-stash","action":action,"environment":"fixture","projectId":"project","keys":["fixture/a","fixture/b"],"key":key,"requestId":uuid::Uuid::new_v4().to_string(),"draft":d})}
-fn result(root:&std::path::Path,cmd:&Value)->Value{run(root,&[cmd.clone()]).into_iter().find(|e|e["type"]=="prompt-stash").unwrap()["data"].clone()}
+fn result(root:&std::path::Path,cmd:&Value)->Value{run(root,std::slice::from_ref(cmd)).into_iter().find(|e|e["type"]=="prompt-stash").unwrap()["data"].clone()}
 fn loaded(root:&std::path::Path,key:&str)->Value{run(root,&[json!({"op":"draft-load","key":key,"projectId":"project"})]).into_iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"].clone()}
 #[test]
 fn project_drawer_restores_across_threads_without_changing_target_configuration(){

@@ -73,7 +73,10 @@ impl Server {
                 let request: Value =
                     serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
                 // Background subscriptions the worker opens on its own.
-                if matches!(request["tag"].as_str(), Some("orchestration.subscribeShell" | "subscribeServerConfig")) {
+                if matches!(
+                    request["tag"].as_str(),
+                    Some("orchestration.subscribeShell" | "subscribeServerConfig")
+                ) {
                     continue;
                 }
                 assert_eq!(request["tag"], "server.getConfig");
@@ -237,7 +240,7 @@ impl Drop for Held {
 }
 fn view(s: &Server, d: &Data, r: &dyn Runtime) -> Value {
     import::read_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         &json!({"environment":"fixture"}),
         &d.home,
         &d.path,
@@ -247,7 +250,7 @@ fn view(s: &Server, d: &Data, r: &dyn Runtime) -> Value {
 }
 fn apply(s: &Server, d: &Data, input: &Value, r: &dyn Runtime) -> Result<Value> {
     import::apply_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         input,
         &d.home,
         &d.path,
@@ -682,7 +685,7 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
     assert!(!manager.can_import());
     assert_eq!(
         import::read_at(
-            &[s.env.clone()],
+            std::slice::from_ref(&s.env),
             &json!({"environment":"fixture"}),
             &d.home,
             &d.path,
@@ -692,7 +695,7 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
         "sessionUnavailable"
     );
     let v = browser_profiles::read_with_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         &json!({"environments":["fixture"]}),
         &d.path,
         Some(&manager),
@@ -700,7 +703,7 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
     .unwrap();
     assert_eq!(v["available"], true);
     let result = browser_profiles::apply_with_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         &json!({"viewId":v["viewId"],"action":"clear","profileId":"work","confirmed":true}),
         &d.path,
         Some(&manager),
@@ -781,7 +784,7 @@ fn imported_firefox_cookie_is_usable_by_real_qt_http_after_registration() {
     });
     let page = json!({"threadId":"thread","tabId":"proof","navStatus":{"_tag":"Success","url":format!("{}/proof",s.env.base_url),"title":"Proof"},"canGoBack":false,"canGoForward":false,"updatedAt":"","profileId":req["target"]["profileId"],"runtime":"desktop"});
     let origin = format!("{:x}", Sha256::digest(s.env.base_url.as_bytes()));
-    pool.show("fixture", &origin, &page, "proof", 640, 400, &json!(1))
+    pool.show("fixture", &origin, &page, "proof", (640, 400), &json!(1))
         .unwrap();
     let end = Instant::now() + Duration::from_secs(5);
     while s.proof_requests.lock().unwrap().is_empty() && Instant::now() < end {

@@ -80,7 +80,8 @@ fn run_frontend(e:&Environment,thread:&str,path:Option<&std::path::Path>,session
   if RESIZED.swap(false,Ordering::Relaxed){let next=size();if next!=last_size{c.terminal_resize(thread,terminal,next.0,next.1)?;last_size=next;}}
   let mut fd=libc::pollfd{fd:0,events:libc::POLLIN,revents:0};let count=unsafe{libc::poll(&mut fd,1,100)};
   if count<0{if io::Error::last_os_error().kind()==io::ErrorKind::Interrupted{continue}return Err("terminal_input_closed".into())}
-  if count==0{continue}if fd.revents&(libc::POLLHUP|libc::POLLERR|libc::POLLNVAL)!=0{break}
+  if count==0{continue}
+  if fd.revents&(libc::POLLHUP|libc::POLLERR|libc::POLLNVAL)!=0{break}
   let read=io::stdin().read(&mut buffer).map_err(|_|"terminal_input_closed")?;if read==0{break}
   pending.extend_from_slice(&buffer[..read]);
   // A UTF-8 character can cross read boundaries. Preserve it without replacement bytes.

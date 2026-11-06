@@ -347,7 +347,7 @@ fn build_environments()->Result<Vec<Environment>> {
     }
     let bridge_config=crate::omabridge_route::config_bytes();
     let local_signature=fs::read(crate::backend_service::local_profile().join("userdata/server-runtime.json")).unwrap_or_default();
-    let signature=["userdata/server-runtime.json","userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).flatten().chain(local_signature.iter().copied()).chain(crate::backend_service::local_profile().to_string_lossy().as_bytes().iter().copied()).chain(bridge_config.iter().copied()).collect::<Vec<_>>();
+    let signature=["userdata/server-runtime.json","userdata/connection-catalog.json","userdata/desktop-settings.json","userdata/environment-id"].iter().flat_map(|name|fs::read(t3_home().join(name)).unwrap_or_default()).chain(local_signature.iter().copied()).chain(crate::backend_service::local_profile().to_string_lossy().as_bytes().iter().copied()).chain(bridge_config.iter().copied()).collect::<Vec<_>>();
     let signature=format!("{:x}",Sha256::digest(&signature));
     let cloud_signature=format!("{:x}",Sha256::digest(fs::read(t3_home().join("userdata/clerk-tokens.json")).unwrap_or_default()));
     if let Some(c)=cache.as_mut(){if c.signature==signature && c.cloud_signature==cloud_signature && Instant::now()<c.until && c.tunnels.values_mut().all(Tunnel::alive){return Ok(c.environments.clone())}}

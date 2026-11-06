@@ -158,7 +158,8 @@ impl Server {
      socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();let mut peek=[0;512];let n=socket.peek(&mut peek).unwrap();
      if String::from_utf8_lossy(&peek[..n]).starts_with("GET /")&&!String::from_utf8_lossy(&peek[..n]).starts_with("GET /ws"){
       let mut header=vec![];let mut b=[0];while !header.ends_with(b"\r\n\r\n"){socket.read_exact(&mut b).unwrap();header.push(b[0]);}
-      let mut permissions=vec!["orchestration:read"];if ww.load(Ordering::Relaxed){permissions.push("settings:write");}if oo.load(Ordering::Relaxed){permissions.push("orchestration:operate");}
+      let mut permissions=vec!["orchestration:read"];if ww.load(Ordering::Relaxed){permissions.push("settings:write");}
+if oo.load(Ordering::Relaxed){permissions.push("orchestration:operate");}
       let body=if String::from_utf8_lossy(&peek[..n]).starts_with("GET /api/auth/session "){json!({"authenticated":true,"permissions":permissions})}else{json!({"threads":[],"projects":[]})}.to_string();write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();return
      }
      let mut ws=tungstenite::accept(socket).unwrap();let request:Value=serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();log.lock().unwrap().push(request.clone());let payload=&request["payload"];
@@ -171,7 +172,8 @@ impl Server {
        loop {
         let next=dd.lock().unwrap().clone();if next!=previous {if ws.send(tungstenite::Message::Text(json!({"_tag":"Chunk","requestId":"1","values":[next]}).to_string().into())).is_err(){return}previous=next;}
         match ws.read(){
-         Ok(tungstenite::Message::Text(s))=>{let v:Value=serde_json::from_str(&s).unwrap();if v["_tag"]=="Interrupt"{return}if v["_tag"]=="Ping"{let _=ws.send(tungstenite::Message::Text(json!({"_tag":"Pong"}).to_string().into()));}},
+         Ok(tungstenite::Message::Text(s))=>{let v:Value=serde_json::from_str(&s).unwrap();if v["_tag"]=="Interrupt"{return}
+if v["_tag"]=="Ping"{let _=ws.send(tungstenite::Message::Text(json!({"_tag":"Pong"}).to_string().into()));}},
          Ok(tungstenite::Message::Ping(bytes))=>{let _=ws.send(tungstenite::Message::Pong(bytes));},
          Err(tungstenite::Error::Io(e)) if matches!(e.kind(),std::io::ErrorKind::WouldBlock|std::io::ErrorKind::TimedOut)=>{},
          Ok(tungstenite::Message::Close(_))|Err(_)=>return,

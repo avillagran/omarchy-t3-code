@@ -129,7 +129,8 @@ impl Server {
           socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();let mut peek=[0;512];let n=socket.peek(&mut peek).unwrap();
           if String::from_utf8_lossy(&peek[..n]).starts_with("GET /") && !String::from_utf8_lossy(&peek[..n]).starts_with("GET /ws") {
             let mut header=vec![];let mut b=[0];while !header.ends_with(b"\r\n\r\n"){socket.read_exact(&mut b).unwrap();header.push(b[0]);}
-            let mut scopes=vec![];if aa.load(Ordering::Relaxed){scopes.push("orchestration:read");}if oo.load(Ordering::Relaxed){scopes.push("preview:operate");}
+            let mut scopes=vec![];if aa.load(Ordering::Relaxed){scopes.push("orchestration:read");}
+if oo.load(Ordering::Relaxed){scopes.push("preview:operate");}
             let http=String::from_utf8_lossy(&header).lines().next().unwrap_or("").to_owned();let page=http.starts_with("GET /page ")||http.starts_with("GET /next ")||http.starts_with("GET /clicked ");
             let body=if page{cc.lock().unwrap().push(json!({"http":http}));"<!doctype html><title>Fixture</title><style>body{margin:0;background:#203040}button{width:160px;height:80px}</style><button onclick=\"fetch('/clicked');document.body.style.background='green'\">Click</button>".to_string()}else if http.starts_with("GET /api/auth/session "){json!({"authenticated":true,"permissions":scopes,"private":"PRIVATE"}).to_string()}else{json!({"threads":[],"projects":[]}).to_string()};write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",if page{"text/html"}else{"application/json"},body.len(),body).unwrap();return;
           }
@@ -137,9 +138,14 @@ impl Server {
           let fixture_mode=mode.lock().unwrap().clone();
           let value=match request["tag"].as_str().unwrap(){
             "server.getConfig"=>json!({"environment":{"capabilities":{"serverBrowser":fixture_mode!="no-server"}},"settings":{"private":"PRIVATE"}}),
-            "preview.list"=>{assert_eq!(request["payload"],json!({"threadId":"thread"}));let n=lists.fetch_add(1,Ordering::Relaxed);let mut s=snapshot("a");if fixture_mode.starts_with("http:"){s["navStatus"]["url"]=json!(fixture_mode);}if fixture_mode=="server-tab"{s["runtime"]=json!("server");}if fixture_mode=="profile-less"{s.as_object_mut().unwrap().remove("profileId");}let native=s;if fixture_mode=="revoke-before-report"{oo.store(false,Ordering::Relaxed);}json!({"serverEpoch":if n==0||!fixture_mode.is_empty(){"one"}else{"two"},"revision":if n==0{4}else{0},"sessions":[native],"private":"PRIVATE"})},
+            "preview.list"=>{assert_eq!(request["payload"],json!({"threadId":"thread"}));let n=lists.fetch_add(1,Ordering::Relaxed);let mut s=snapshot("a");if fixture_mode.starts_with("http:"){s["navStatus"]["url"]=json!(fixture_mode);}
+if fixture_mode=="server-tab"{s["runtime"]=json!("server");}
+if fixture_mode=="profile-less"{s.as_object_mut().unwrap().remove("profileId");}let native=s;if fixture_mode=="revoke-before-report"{oo.store(false,Ordering::Relaxed);}json!({"serverEpoch":if n==0||!fixture_mode.is_empty(){"one"}else{"two"},"revision":if n==0{4}else{0},"sessions":[native],"private":"PRIVATE"})},
             "preview.open"|"preview.navigate"|"preview.resize"|"preview.adjust"|"preview.refresh"|"preview.close"=>{
-              assert!(oo.load(Ordering::Relaxed));if fixture_mode=="blocked"{while *mode.lock().unwrap()=="blocked"&&!ss.load(Ordering::Relaxed){thread::sleep(Duration::from_millis(5));}}if fixture_mode=="lost"{return;}if matches!(request["tag"].as_str(),Some("preview.refresh"|"preview.close")){Value::Null}else{let mut s=snapshot(if request["tag"]=="preview.open"{"created"}else{"a"});if request["tag"]=="preview.navigate"{s["navStatus"]["url"]=request["payload"]["url"].clone();}if fixture_mode=="malformed"{s["threadId"]=json!("other");}s}
+              assert!(oo.load(Ordering::Relaxed));if fixture_mode=="blocked"{while *mode.lock().unwrap()=="blocked"&&!ss.load(Ordering::Relaxed){thread::sleep(Duration::from_millis(5));}}
+if fixture_mode=="lost"{return;}
+if matches!(request["tag"].as_str(),Some("preview.refresh"|"preview.close")){Value::Null}else{let mut s=snapshot(if request["tag"]=="preview.open"{"created"}else{"a"});if request["tag"]=="preview.navigate"{s["navStatus"]["url"]=request["payload"]["url"].clone();}
+if fixture_mode=="malformed"{s["threadId"]=json!("other");}s}
             },
             "preview.reportStatus"=>{
               // A status admitted by the HTTP preflight can arrive after revocation.

@@ -1,3 +1,5 @@
+#[path = "support/http.rs"]
+mod http;
 use omarchy_t3_client::{protocol, quota_sources as quotas, Environment};
 use serde_json::{json, Value};
 use std::{
@@ -141,8 +143,7 @@ fn denied_session_never_opens_a_subscription() {
     let base = format!("http://{}", listener.local_addr().unwrap());
     let server = thread::spawn(move || {
         let (mut s, _) = listener.accept().unwrap();
-        let mut request = [0; 4096];
-        s.read(&mut request).unwrap();
+        http::read_headers(&mut s);
         let body = r#"{"authenticated":true,"permissions":[]}"#;
         write!(s,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
         drop(s);

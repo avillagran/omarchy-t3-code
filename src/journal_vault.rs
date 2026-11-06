@@ -149,7 +149,7 @@ pub fn origin_url(git_config: &str) -> Option<String> {
     for line in git_config.lines() {
         let line = line.trim();
         if line.starts_with('[') {
-            inside = line.replace(' ', "").replace('\t', "") == "[remote\"origin\"]";
+            inside = line.replace([' ', '\t'], "") == "[remote\"origin\"]";
             continue;
         }
         if inside {
@@ -549,7 +549,7 @@ pub fn inspect(path: &Path, expected: Option<&str>) -> Value {
         return json!({"state":"occupied","reason":"not-git"});
     }
     let remote = run_git(Some(path), &["remote", "get-url", "origin"], None, 10);
-    let remote = remote.ok.then(|| remote.stdout).filter(|r| !r.is_empty());
+    let remote = remote.ok.then_some(remote.stdout).filter(|r| !r.is_empty());
     let canonical = remote.as_deref().and_then(canonical_remote);
     let shown = remote.as_deref().map(redact_url);
     match (canonical, expected.and_then(canonical_remote)) {

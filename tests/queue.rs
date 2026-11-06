@@ -7,7 +7,8 @@ fn native_queue_actions_are_exact_and_edit_retry_is_stable(){
  let listener=TcpListener::bind("127.0.0.1:0").unwrap();let e=Environment{id:"fixture".into(),name:"Fixture".into(),base_url:format!("http://{}",listener.local_addr().unwrap()),token_file:token,write_token_file:None,bearer:None,connection_error:None,connection:None};
  let server=thread::spawn(move||{let mut edit=Value::Null;for (n,typ) in ["queued-run.cancel","queued-run.reorder","queued-message.promote-to-steer","queue.resume","queued-run.edit","queued-run.edit"].iter().enumerate(){
   let(stream,_)=listener.accept().unwrap();let mut ws=tungstenite::accept(stream).unwrap();let req:Value=serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();assert_eq!(req["tag"],"orchestration.dispatchCommand");let c=&req["payload"];assert_eq!(c["type"],*typ);assert_eq!(c["threadId"],"chat");assert!(c.get("modelSelection").is_none());
-  if n==1{assert_eq!(c["beforeRunId"],"earlier")}if n==2{assert_eq!(c["queuedRunId"],"queued");assert_eq!(c["targetRunId"],"active")}
+  if n==1{assert_eq!(c["beforeRunId"],"earlier")}
+if n==2{assert_eq!(c["queuedRunId"],"queued");assert_eq!(c["targetRunId"],"active")}
   if n>=4{assert_eq!(c["text"],"Edited queued text");assert_eq!(c["attachments"][0]["id"],"kept-file");assert_eq!(c["context"]["refs"],json!([]));if n==4{edit=c.clone()}else{assert_eq!(*c,edit)}}
   ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":{"sequence":n}}}).to_string().into())).unwrap();
  }});

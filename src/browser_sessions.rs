@@ -46,9 +46,10 @@ fn safe_error(error: &str) -> &str {
 fn error(output: &Output, request: &str, value: &str) {
     output(json!({"kind":"error","requestId":request,"error":safe_error(value)}));
 }
+type PendingReports = Arc<Mutex<HashMap<Key, Option<(Arc<Grant>, Value)>>>>;
 #[derive(Clone)]
 struct Reporter {
-    pending: Arc<Mutex<HashMap<Key, Option<(Arc<Grant>, Value)>>>>,
+    pending: PendingReports,
     resolve: Resolver,
     output: Output,
 }
@@ -623,8 +624,7 @@ impl Manager {
                                 text(&view, "originKey"),
                                 &view["snapshot"],
                                 request,
-                                w,
-                                h,
+                                (w, h),
                                 &zoom,
                             )?;
                             let process = pool

@@ -18,7 +18,7 @@ impl Store{
   if !valid_id(env)||!valid_id(project){return Err("invalid_project".into())}
   let dir=xdg("XDG_STATE_HOME",".local/state").join("prompt-stash");fs::create_dir_all(&dir).map_err(|_|"draft_save_failed")?;fs::set_permissions(&dir,fs::Permissions::from_mode(0o700)).map_err(|_|"draft_save_failed")?;
   let id=fingerprint(&json!([env,project]));
-  let lock=fs::OpenOptions::new().read(true).write(true).create(true).mode(0o600).open(dir.join(format!("{id}.lock"))).map_err(|_|"draft_save_failed")?;
+  let lock=fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).mode(0o600).open(dir.join(format!("{id}.lock"))).map_err(|_|"draft_save_failed")?;
   if unsafe{libc::flock(lock.as_raw_fd(),libc::LOCK_EX|libc::LOCK_NB)}!=0{return Err("drafts_busy".into())}
   let path=dir.join(format!("{id}.json"));
   let data=match fs::File::open(&path){
@@ -64,7 +64,8 @@ pub fn execute(cmd:&Value)->Result<Value>{
  if store.data["lastRequestId"]==request{changes=store.data["lastChanges"].clone();}
  else if text(cmd,"action")!="list"{
   let current=drafts::load(key)?;let expected=drafts::clean(&cmd["draft"])?;
-  if current!=expected{return Err("draft_changed".into())}if locked(&current){return Err("draft_locked".into())}
+  if current!=expected{return Err("draft_changed".into())}
+if locked(&current){return Err("draft_locked".into())}
   let mut entries=store.data["entries"].as_array().unwrap().clone();let mut steps=vec![];
   match text(cmd,"action"){
    "stash"=>{

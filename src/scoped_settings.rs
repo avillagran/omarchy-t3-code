@@ -34,7 +34,8 @@ pub fn execute_in(environments:&[Environment],input:&Value)->Result<Value>{
                 if project.is_some()&&(!project_capable||key=="worktreeCleanup"&&(config["environment"]["capabilities"]["projectWorktreeCleanup"]!=true||config["environment"]["capabilities"]["storageCleanup"]!=true)){return Err("project_settings_unsupported".into())}
                 let validation_config=project_catalog_config(config,&raw,project.as_ref());
                 let validated=if action=="clear"{json!({})}else{crate::native_settings::patch(input,Some(&validation_config))?};
-                let patch=if let Some(p)=&project{project_patch(&raw,p,key,&validated,action=="clear")?}else{if action=="clear"{return Err("invalid_settings".into())}if key=="idleCompaction"{crate::native_settings::idle_compaction_patch(&raw,&validated)?}else{crate::storage_settings::environment_patch(&raw,key,&validated)?}};
+                let patch=if let Some(p)=&project{project_patch(&raw,p,key,&validated,action=="clear")?}else{if action=="clear"{return Err("invalid_settings".into())}
+ if key=="idleCompaction"{crate::native_settings::idle_compaction_patch(&raw,&validated)?}else{crate::storage_settings::environment_patch(&raw,key,&validated)?}};
                 let before=raw.clone();
                 crate::write::update_settings(&e.connection(true)?,&patch)?;
                 raw=protocol::api::server::settings(&e.connection(true)?)?;

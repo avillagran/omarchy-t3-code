@@ -311,12 +311,21 @@ fn rename_during_native_cleanup_preserves_metadata_and_reports_uncertain_complet
     let _test = TEST.lock().unwrap();
     let a = Server::new("one");
     let (root, path) = fixture();
-    let view =
-        profiles::read_at(&[a.env.clone()], &json!({"environments":["one"]}), &path).unwrap();
+    let view = profiles::read_at(
+        std::slice::from_ref(&a.env),
+        &json!({"environments":["one"]}),
+        &path,
+    )
+    .unwrap();
     let mut changed = settings();
     changed["browserProfiles"][0]["name"] = json!("Changed while clearing");
     *a.edit.lock().unwrap() = Some((path.clone(), changed.clone()));
-    let result = profiles::apply_at(&[a.env.clone()], &action(&view, "remove"), &path).unwrap();
+    let result = profiles::apply_at(
+        std::slice::from_ref(&a.env),
+        &action(&view, "remove"),
+        &path,
+    )
+    .unwrap();
     assert_eq!(result["state"], "uncertain");
     assert_eq!(result["error"], "browser_profile_changed_reload");
     assert_eq!(
@@ -597,7 +606,7 @@ fn coordinator_clears_cold_local_partition_and_requires_matching_store_and_origi
         matches!(manager.begin("work",&path,&bad),Err(e) if e=="browser_profile_scope_changed")
     );
     let view = profiles::read_with_at(
-        &[env.clone()],
+        std::slice::from_ref(&env),
         &json!({"environments":["one"]}),
         &path,
         Some(&manager),

@@ -310,11 +310,11 @@ impl Pool {
         environment: &str,
         profile: &str,
         origin: &str,
-        width: u64,
-        height: u64,
+        size: (u64, u64),
         zoom: &Value,
         initialize_cookies: bool,
     ) -> Result<Session> {
+        let (width, height) = size;
         let root = self
             .config
             .executable
@@ -438,7 +438,8 @@ impl Pool {
                         let Some(view) = view.filter(|v| {
                             v.process == id
                                 && v.id == text(&value, "surfaceId")
-                                && json!([v.thread, v.tab]).to_string() == text(&value, "tabKey")
+                                && serde_json::to_string(&json!([v.thread, v.tab]))
+                                    .is_ok_and(|key| key == text(&value, "tabKey"))
                         }) else {
                             continue;
                         };
@@ -498,10 +499,10 @@ impl Pool {
         origin: &str,
         snapshot: &Value,
         view_id: &str,
-        width: u64,
-        height: u64,
+        size: (u64, u64),
         zoom: &Value,
     ) -> Result<()> {
+        let (width, height) = size;
         let snapshot = crate::preview_transport::snapshot(snapshot)?;
         if snapshot["runtime"] == "server" {
             return Err("server_browser_surface_required".into());
@@ -536,7 +537,8 @@ impl Pool {
             if self.sessions.len() >= 16 {
                 return Err("browser_guest_limit".into());
             }
-            let session = self.launch(environment, profile, origin, width, height, &zoom, false)?;
+            let session =
+                self.launch(environment, profile, origin, (width, height), &zoom, false)?;
             self.sessions.insert(key.clone(), session);
         }
         let session = self.sessions.get_mut(&key).unwrap();
@@ -761,7 +763,7 @@ impl Pool {
             if self.sessions.len() >= 16 {
                 return Err("browser_guest_limit".into());
             }
-            let session = self.launch(environment, profile, origin, 240, 240, &json!(1), true)?;
+            let session = self.launch(environment, profile, origin, (240, 240), &json!(1), true)?;
             self.sessions.insert(key.clone(), session);
         }
         let session = self.sessions.get_mut(&key).unwrap();

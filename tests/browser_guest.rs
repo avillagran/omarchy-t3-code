@@ -144,7 +144,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         let _ = tx.send(v);
     });
     let one = snapshot(&site, "one", "/one", "default");
-    pool.show("fixture", "origin", &one, "view-one", 640, 400, &json!(1))
+    pool.show("fixture", "origin", &one, "view-one", (640, 400), &json!(1))
         .unwrap();
     wait(&rx, "one", true);
     let first = wait(&rx, "view-one", false);
@@ -197,7 +197,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
     }
     assert!(changed, "real click must repaint the owned frame");
     let two = snapshot(&site, "two", "/two", "default");
-    pool.show("fixture", "origin", &two, "view-two", 640, 400, &json!(1))
+    pool.show("fixture", "origin", &two, "view-two", (640, 400), &json!(1))
         .unwrap();
     wait(&rx, "two", true);
     wait(&rx, "view-two", false);
@@ -214,8 +214,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "origin",
         &another_thread,
         "view-another-thread",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -232,8 +231,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "origin",
         &one,
         "view-restored",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -259,8 +257,15 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         .input("view-restored", &json!({"type":"key","key":65,"text":"a"}))
         .is_err());
     let work = snapshot(&site, "work", "/work", "work");
-    pool.show("fixture", "origin", &work, "view-work", 640, 400, &json!(1))
-        .unwrap();
+    pool.show(
+        "fixture",
+        "origin",
+        &work,
+        "view-work",
+        (640, 400),
+        &json!(1),
+    )
+    .unwrap();
     wait(&rx, "work", true);
     wait(&rx, "view-work", false);
     assert!(!site.request("/work").to_lowercase().contains("cookie:"));
@@ -271,8 +276,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "origin",
         &other,
         "view-other",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -288,8 +292,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
             "origin",
             &server,
             "no-server",
-            640,
-            400,
+            (640, 400),
             &json!(1)
         )
         .unwrap_err(),
@@ -311,8 +314,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "origin",
         &restored,
         "view-persisted",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -327,8 +329,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "new-origin",
         &restored,
         "view-new-origin",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -360,8 +361,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "new-origin",
         &cleared,
         "view-cleared",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -412,8 +412,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "origin",
         &private,
         "view-private",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -426,8 +425,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         "origin",
         &restarted,
         "view-private-restarted",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -571,8 +569,7 @@ fn private_import_channel_initializes_cold_profile_acknowledges_and_persists_wit
         "origin",
         &page,
         "view-imported",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -620,8 +617,7 @@ fn private_import_channel_initializes_cold_profile_acknowledges_and_persists_wit
         "origin",
         &page,
         "view-before-import",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -656,8 +652,7 @@ fn private_import_channel_initializes_cold_profile_acknowledges_and_persists_wit
         "origin",
         &page,
         "view-after-import",
-        640,
-        400,
+        (640, 400),
         &json!(1),
     )
     .unwrap();
@@ -697,8 +692,7 @@ fn private_import_channel_initializes_cold_profile_acknowledges_and_persists_wit
             "origin",
             &fresh,
             "view-new-app",
-            640,
-            400,
+            (640, 400),
             &json!(1),
         )
         .unwrap();

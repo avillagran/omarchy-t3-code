@@ -851,7 +851,8 @@ mod tests {
                 .unwrap();
         }
         let git_dir = root.join(".git");
-        for f in ["HEAD"] {
+        {
+            let f = "HEAD";
             std::fs::File::open(git_dir.join(f))
                 .unwrap()
                 .set_times(old)

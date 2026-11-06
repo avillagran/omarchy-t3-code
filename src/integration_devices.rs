@@ -38,7 +38,7 @@ fn string(value: &Value, max: usize) -> Result<&str> {
 fn required<'a>(v: &'a Value, key: &str, max: usize) -> Result<&'a str> {
     string(&v[key], max)
 }
-fn list<'a>(v: &'a Value, max: usize) -> Result<&'a Vec<Value>> {
+fn list(v: &Value, max: usize) -> Result<&Vec<Value>> {
     v.as_array()
         .filter(|a| a.len() <= max)
         .ok_or("invalid_device_state".into())

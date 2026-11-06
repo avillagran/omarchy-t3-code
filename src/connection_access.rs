@@ -8,9 +8,9 @@ use zeroize::Zeroizing;
 
 const SCOPES: &[&str] = &["orchestration:read","orchestration:operate","settings:write","providers:manage","environment:maintain","preview:operate","diagnostics:read","terminal:read","terminal:operate","source-control:write","filesystem:read","filesystem:write","access:read","access:write","relay:read","relay:write"];
 fn local_credential(path:&std::path::Path)->Result<Zeroizing<String>>{
-    if let Ok(meta)=fs::symlink_metadata(&path){
+    if let Ok(meta)=fs::symlink_metadata(path){
         if meta.is_file()&&meta.uid()==unsafe{libc::geteuid()}&&meta.mode()&0o077==0 {
-            if let Ok(token)=fs::read_to_string(&path){
+            if let Ok(token)=fs::read_to_string(path){
                 let token=Zeroizing::new(token);let parts=token.trim().split('.').collect::<Vec<_>>();
                 let payload=match parts.len(){2=>parts[0],3=>parts[1],_=>""};
                 if let Ok(bytes)=base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload){
@@ -31,7 +31,7 @@ fn local_credential(path:&std::path::Path)->Result<Zeroizing<String>>{
     if token.len()<16||token.contains(char::is_whitespace){return Err("t3_auth_invalid_response".into())}
     fs::create_dir_all(path.parent().unwrap()).map_err(|_|"local_error")?;
     let tmp=path.with_extension(format!("{}.tmp",uuid::Uuid::new_v4()));
-    let result:Result<()>=(||{let mut file=fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(&tmp).map_err(|_|"local_error")?;file.write_all(token.as_bytes()).and_then(|_|file.sync_all()).map_err(|_|"local_error")?;fs::rename(&tmp,&path).map_err(|_|"local_error")?;Ok(())})();
+    let result:Result<()>=(||{let mut file=fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(&tmp).map_err(|_|"local_error")?;file.write_all(token.as_bytes()).and_then(|_|file.sync_all()).map_err(|_|"local_error")?;fs::rename(&tmp,path).map_err(|_|"local_error")?;Ok(())})();
     if result.is_err(){let _=fs::remove_file(&tmp);}result?;
     Ok(Zeroizing::new(token.to_string()))
 }
