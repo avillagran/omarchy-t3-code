@@ -67,12 +67,14 @@ fixtures; 20 translation catalogs and vendor hashes. The new fixtures use
 synthetic servers and isolated state. No real provider session was restarted.
 
 O3 Server has a candidate implementation on branch
-`feat/nightly-4247-fresh-context`, commit `4cee971`. It implements admission,
-durable detachment and history boundaries, with eight supervisor/transaction
-tests. Its capability remains unadvertised pending real Claude/Codex acceptance,
-differential checks and shared-state validation. This does not establish
-end-to-end O3 support. Server work is isolated from the unrelated goal-lifecycle
-changes in the owner's checkout.
+`feat/nightly-4247-fresh-context`, commit `4e5fb01`. It now advertises the capability after ten supervisor tests,
+60 cases executed from exact T3 source functions, eight real Claude/Codex turns,
+and validation of a disposable shared-schema copy (81 records and 80 events,
+zero rejections with the reference's Effect 4.1.2). It preserves multi-thread
+sessions and canonical currency-qualified context costs. A native T3 runtime
+comparison, migration-80 acceptance and a live desktop-composer check remain;
+this does not establish full-platform parity or a deployed feature. Server work
+is isolated from the unrelated goal-lifecycle changes in the owner's checkout.
 
 ## Remaining work
 
