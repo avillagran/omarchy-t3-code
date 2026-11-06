@@ -5,7 +5,8 @@ import "UnderTest/ui/qml" 1.0 as Test
 ShellRoot {
   id: root
   property var backend: null
-  readonly property var panel: panelLoader.item
+  readonly property var side: panelLoader.item
+  readonly property var panel: side ? side.terminalItem : null
   Component.onCompleted: backend=Test.T3Backend
   property int phase: 0
   property string first: ""
@@ -15,7 +16,7 @@ ShellRoot {
   TestCase { id: keys; when: false }
   FloatingWindow {
     visible: true; implicitWidth: 900; implicitHeight: 650
-    Loader { id: panelLoader; anchors.fill: parent; active: !!root.backend; sourceComponent: Test.T3TerminalPanel { bridge: root.backend } }
+    Loader { id: panelLoader; anchors.fill: parent; active: !!root.backend; sourceComponent: Test.T3SidePanel { bridge: root.backend; tab: "terminal"; browserComponent: Component { Rectangle {} } } }
   }
   Connections { target: root.backend; ignoreUnknownSignals: true; function onSnapshotUpdated(){if(root.fixture)root.backend.state=root.fixture} }
   function pane(){return keys.findChild(panel,"t3TerminalPane_"+first)}
@@ -32,7 +33,11 @@ ShellRoot {
       check(viewport().rowText(0).indexOf("hello red")===0,"actual VT renderer consumes server output");check(b.terminalViews[request].label==="Fixture shell","native shell label is presented")
       viewport().selectRange(0,0,0,5);check(viewport().selectedText==="hello","real terminal text selection is available")
       b.receiveTerminalSurface({requestId:"stale",kind:"event",data:"WRONG"});check(viewport().rowText(0).indexOf("WRONG")<0,"stale scope output is ignored")
-      keys.findChild(panel,"t3TerminalSplit").clicked();phase=2
+      side.tab="browser";phase=10
+    }else if(phase===10){
+      check(!!viewport()&&pane().requestId===request,"browser tab retains the same terminal frontend and stream");check(viewport().selectedText==="hello","browser tab preserves terminal selection");side.tab="terminal";phase=11
+    }else if(phase===11){
+      check(pane().requestId===request&&viewport().selectedText==="hello","return to terminal preserves renderer and selection");keys.findChild(panel,"t3TerminalSplit").clicked();phase=2
     }else if(phase===2){
       check(b.terminalTab().terminalIds.length===2,"split creates a distinct native terminal session");check(!!pane(),"existing split keeps its terminal identity")
       keys.findChild(panel,"t3TerminalNew").clicked();check(b.terminalLayout.tabs.length===2,"new terminal adds a tab");phase=3
@@ -44,7 +49,7 @@ ShellRoot {
       check(requests.length===1,"each mounted pane owns exactly one stream")
       b.receiveTerminalSurface({requestId:requests[0],kind:"event",event:{type:"closed"}})
       check(b.terminalTab().terminalIds.length===1,"native closed event removes only its pane")
-      console.log("EMBEDDED_TERMINAL_QML_PASS: native VT rendering, labels, selection, tabs, splits, stream ownership and stale scopes");Qt.quit()
+      console.log("EMBEDDED_TERMINAL_QML_PASS: native VT rendering, labels, selection across tool tabs, terminal tabs, splits, stream ownership and stale scopes");Qt.quit()
     }
   } }
   Timer { interval: 12000; running: true; onTriggered: {console.error("EMBEDDED_TERMINAL_QML_FAIL timeout phase="+root.phase);Qt.exit(1)} }

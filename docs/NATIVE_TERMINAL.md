@@ -48,9 +48,9 @@ require current thread and connection permissions. The first wrapper wiring uses
 a bounded 60-second metadata cache and rechecks metadata before opening an editor.
 This is a temporary fidelity gap: native positive metadata remains retained for
 the mounted thread and RPC session, including after its global cache TTL. Exact
-retention, invalidation and mounted-session identity remain to be ported. Switching
-the current side-panel tab also unloads its terminal frontend; preserving that
-frontend across tabs remains necessary for selection retention. Search,
+retention, invalidation and mounted-session identity remain to be ported. The terminal frontend stays mounted when switching between side-panel tool tabs,
+preserving its stream, renderer and selection while an app-browser link opens.
+Closing the side panel still detaches it. Search,
 accessibility and native picker/importer details are still being ported. The resource and importer limits in [TERMINAL_PANEL.md](TERMINAL_PANEL.md)
 remain explicit.
 

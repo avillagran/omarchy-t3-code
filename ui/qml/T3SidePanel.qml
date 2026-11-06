@@ -5,7 +5,8 @@ import qs.Commons
 // Multi-purpose side panel next to the chat. Each tab is its own tool:
 // the preview browser, HTML renders made in this chat, the chat's agents
 // and device screens.
-// Only the visible tab is loaded.
+// Keep a mounted terminal frontend across tool tabs so its selection and
+// renderer state survive opening a link in the browser.
 Rectangle {
   id: root
   objectName: "t3SidePanel"
@@ -18,7 +19,7 @@ Rectangle {
   signal renderRequested(var attachment)
   signal closed()
   signal integrationsRequested()
-  readonly property var terminalItem: tab === "terminal" ? content.item : null
+  readonly property var terminalItem: terminalContent.item
   readonly property var browserItem: tab === "browser" ? content.item : null
   readonly property color fg: Color.popups.text
   // Opaque so the narrow-window sheet covers the chat.
@@ -68,11 +69,24 @@ Rectangle {
       T3IconButton { objectName: "t3SidePanelClose"; name: "x"; tooltipText: T3I18n.tr("Close side panel"); onClicked: root.closed() }
     }
     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08) }
-    Loader {
-      id: content
-      objectName: "t3SidePanelContent"
+    Item {
       Layout.fillWidth: true; Layout.fillHeight: true
-      sourceComponent: root.tab === "terminal" ? terminalTab : root.tab === "browser" ? root.browserComponent : root.tab === "renders" ? rendersTab : root.tab === "agents" ? agentsTab : devicesTab
+      Loader {
+        id: terminalContent
+        anchors.fill: parent
+        property bool visited: false
+        active: visited || root.tab === "terminal"
+        visible: root.tab === "terminal"
+        sourceComponent: terminalTab
+        onLoaded: visited = true
+      }
+      Loader {
+        id: content
+        objectName: "t3SidePanelContent"
+        anchors.fill: parent
+        active: root.tab !== "terminal"
+        sourceComponent: root.tab === "browser" ? root.browserComponent : root.tab === "renders" ? rendersTab : root.tab === "agents" ? agentsTab : devicesTab
+      }
     }
   }
   Component {
