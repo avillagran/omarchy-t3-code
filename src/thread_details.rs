@@ -32,6 +32,46 @@ fn terminal_physical_path(target: &str) -> &str {
     }
     path
 }
+fn javascript_space(value: char) -> bool {
+    matches!(value, '\u{9}'..='\u{d}' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}' | '\u{feff}')
+}
+fn windows_drive(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    bytes.len() >= 2
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && (bytes.len() == 2 || matches!(bytes[2], b'/' | b'\\'))
+}
+// Native getFileMetadataQueryAtom normalizes paths before checking admission.
+// In particular, no agent-authored UNC/network path may trigger a host stat.
+fn terminal_metadata_path(target: &str) -> Option<String> {
+    let raw = terminal_physical_path(target).trim_matches(javascript_space);
+    let root = raw == "/" || raw == "\\" || (raw.len() == 3 && windows_drive(raw));
+    let trimmed = if root {
+        raw
+    } else if raw.starts_with('/') {
+        raw.trim_end_matches('/')
+    } else {
+        raw.trim_end_matches(['/', '\\'])
+    };
+    let mut path = if trimmed.is_empty() {
+        raw.to_owned()
+    } else if trimmed.len() == 2 && windows_drive(trimmed) {
+        format!("{trimmed}\\")
+    } else {
+        trimmed.to_owned()
+    };
+    if windows_drive(&path) || path.starts_with("\\\\") {
+        path = path.replace('/', "\\").to_lowercase();
+    }
+    let network =
+        path.chars().take(2).count() == 2 && path.chars().take(2).all(|c| matches!(c, '/' | '\\'));
+    let absolute = path.starts_with('/')
+        || windows_drive(&path)
+        || path.starts_with("\\\\")
+        || path.starts_with("~/");
+    (absolute && !network && path.encode_utf16().count() <= 512).then_some(path)
+}
 fn terminal_metadata(
     e: &Environment,
     target: &str,
@@ -59,8 +99,10 @@ fn terminal_metadata(
     {
         return Err("permission_denied".into());
     }
-    let path = terminal_physical_path(target);
-    let metadata = protocol::api::filesystem::metadata(&connection, &[path.to_owned()])?;
+    let Some(path) = terminal_metadata_path(target) else {
+        return Ok(json!({"target":target,"path":null,"kind":null}));
+    };
+    let metadata = protocol::api::filesystem::metadata(&connection, std::slice::from_ref(&path))?;
     let kind = metadata["entries"][0]["kind"]
         .as_str()
         .filter(|kind| matches!(*kind, "file" | "directory"));

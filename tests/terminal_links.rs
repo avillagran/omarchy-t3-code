@@ -114,7 +114,7 @@ fn explicit_terminal_paths_require_fresh_scope_and_metadata_and_keep_editor_posi
         ),
         (
             r"C:\Users\Jane\project\main.ts:9:3",
-            r"C:\Users\Jane\project\main.ts",
+            r"c:\users\jane\project\main.ts",
         ),
         ("~/project/main.rs:1", "~/project/main.rs"),
         ("/work/project/file:١٢", "/work/project/file:١٢"),
@@ -134,6 +134,44 @@ fn explicit_terminal_paths_require_fresh_scope_and_metadata_and_keep_editor_posi
         assert_eq!(last["payload"], json!({"cwd":target,"editor":"zed"}));
         let metadata = &log[log.len() - 2];
         assert_eq!(metadata["payload"], json!({"paths":[path]}));
+    }
+    let fixture: Value =
+        serde_json::from_str(include_str!("../native/terminal/link-fixtures.json")).unwrap();
+    let metadata_cases = fixture["metadataCases"].as_array().unwrap();
+    assert_eq!(metadata_cases.len(), 22);
+    for case in metadata_cases {
+        let count = || {
+            calls
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|call| call["tag"] == "filesystem.getMetadata")
+                .count()
+        };
+        let before = count();
+        let command = json!({"thread":"thread","target":case["target"],"editor":"zed"});
+        let result = thread_details::read(&environment, &command).unwrap();
+        if let Some(expected) = case["expected"].as_str() {
+            assert_eq!(result["terminalLink"]["path"], expected, "{case}");
+            assert_eq!(count(), before + 1);
+            assert_eq!(
+                calls.lock().unwrap().last().unwrap()["payload"],
+                json!({"paths":[expected]})
+            );
+        } else {
+            assert!(result["terminalLink"]["kind"].is_null(), "{case}");
+            assert_eq!(count(), before, "rejected native paths must not be statted");
+            let prior = calls.lock().unwrap().len();
+            assert_eq!(
+                thread_details::open(&environment, &command).unwrap_err(),
+                "terminal_link_unavailable"
+            );
+            assert_eq!(
+                calls.lock().unwrap().len(),
+                prior,
+                "network paths must reach neither metadata nor editor RPC"
+            );
+        }
     }
     let opens = || {
         calls

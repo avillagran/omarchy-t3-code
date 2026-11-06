@@ -17,7 +17,21 @@ const original=Function('isMacPlatform',erase(sources[0])+'\nreturn {extractTerm
 const pathsFile='packages/shared/src/path.ts',fileLinksFile='packages/shared/src/fileLinks.ts';
 const paths=execFileSync('git',['-C',checkout,'show',`${revision}:${pathsFile}`],{encoding:'utf8'});
 const fileLinks=execFileSync('git',['-C',checkout,'show',`${revision}:${fileLinksFile}`],{encoding:'utf8'});
-original.resolvePathLinkTarget=Function(erase(paths)+'\n'+erase(fileLinks)+'\nreturn resolvePathLinkTarget;')();
+const pathApi=Function(erase(paths)+'\n'+erase(fileLinks)+'\nreturn {resolvePathLinkTarget,splitFilePathPosition,normalizeProjectPathForComparison,isAbsolutePath,isNetworkPath};')();
+original.resolvePathLinkTarget=pathApi.resolvePathLinkTarget;
+const metadataFile='apps/web/src/hooks/useFileMetadata.ts';
+const metadataSource=execFileSync('git',['-C',checkout,'show',`${revision}:${metadataFile}`],{encoding:'utf8'});
+const metadataStart=metadataSource.indexOf('export function getFileMetadataQueryAtom(');
+const metadataBlock=metadataSource.slice(metadataStart,metadataSource.indexOf('\n}',metadataStart)+2);
+const metadataQuery=Function('splitFilePathPosition','normalizeProjectPathForComparison','isAbsolutePath','isNetworkPath','resolvePathLinkTarget','projectEnvironment',erase(metadataBlock)+'\nreturn getFileMetadataQueryAtom;')(pathApi.splitFilePathPosition,pathApi.normalizeProjectPathForComparison,pathApi.isAbsolutePath,pathApi.isNetworkPath,pathApi.resolvePathLinkTarget,{fileMetadata:value=>value.input.path});
+const metadataCases=[
+ '/work/src/main.rs:12:7',String.raw`C:/Users/Jane/src/Main.TS:9:3`,'~/src/main.rs:12',String.raw`\\Server\Share\secret`,
+ '//server/share/secret',String.raw`/\server/share/secret`,String.raw`\/server/share/secret`,
+ '/work/folder///',String.raw`C:\Users\Jane\folder\\`,'C:','\\','/',' /work/folder/ ',
+ '\ufeff/work/file\ufeff','relative/file.ts:12','../file',
+ '/'+ '日'.repeat(511),'/'+ '日'.repeat(512),'/'+ '😀'.repeat(255),'/'+ '😀'.repeat(256),
+ '/work/file:١٢',String.raw`C:\Users\ΟΣ\Main.ts:2`
+].map(target=>({target,expected:metadataQuery('fixture',target)}));
 const cases=[];
 const wrap=name=>(...args)=>{const expected=original[name](...args);cases.push({method:name,args,expected});return expected;};
 const wrapped=(number,getLine)=>{const expected=original.collectWrappedTerminalLinkLine(number,getLine);const lines=[];for(let index=0;index<100;index++){const line=getLine(index);if(!line)break;lines.push({text:line.translateToString(false),isWrapped:!!line.isWrapped});}cases.push({method:'collectWrappedTerminalLinkLine',args:[number,lines],expected});return expected;};
@@ -31,7 +45,7 @@ for(const line of ['src/main.ts:١٢','src/main.ts:12:٣','GET /api?x=1\u0085nex
 for(const [raw,cwd] of [['~/src/main.ts:12:7','/home/dev/project'],['~\\src\\main.ts:12','C:\\Users\\Jane\\project'],['../src/main.ts:12','/workspace/project'],['C:/Users/Jane/main.ts:2:3','C:\\Users\\Jane\\project'],['src/main.ts:١٢','/workspace/project']])wrap('resolvePathLinkTarget')(raw,cwd);
 for(const platform of ['Linux x86_64','MacIntel','iPad','Win32',''])for(const ctrlKey of [false,true])for(const metaKey of [false,true]){const args=[{ctrlKey,metaKey},platform];cases.push({method:'isTerminalLinkActivation',args,expected:original.isTerminalLinkActivation(...args)});}
 const coreFile=path.join(path.dirname(output),'core.mjs');
-const extraSources=[{file:pathsFile,sha256:crypto.createHash('sha256').update(paths).digest('hex')},{file:fileLinksFile,sha256:crypto.createHash('sha256').update(fileLinks).digest('hex')}],viewportCases=[],grids=[],gridIds=new Map();
+const extraSources=[{file:metadataFile,sha256:crypto.createHash('sha256').update(metadataSource).digest('hex')},{file:pathsFile,sha256:crypto.createHash('sha256').update(paths).digest('hex')},{file:fileLinksFile,sha256:crypto.createHash('sha256').update(fileLinks).digest('hex')}],viewportCases=[],grids=[],gridIds=new Map();
 if(!fs.existsSync(coreFile))throw Error('Generate the pinned core modules with generate-terminal-fixtures.mjs in the output directory first');
 {
  globalThis.fetch=async url=>new Response(fs.readFileSync(new URL(url)));
@@ -66,5 +80,5 @@ if(!fs.existsSync(coreFile))throw Error('Generate the pinned core modules with g
  }
 
 }
-fs.writeFileSync(output,JSON.stringify({revision,sources:[...files.map((file,i)=>({file,sha256:crypto.createHash('sha256').update(sources[i]).digest('hex')})),...extraSources],cases,viewportCases,grids},null,2)+'\n');
+fs.writeFileSync(output,JSON.stringify({revision,sources:[...files.map((file,i)=>({file,sha256:crypto.createHash('sha256').update(sources[i]).digest('hex')})),...extraSources],cases,viewportCases,grids,metadataCases},null,2)+'\n');
 console.log(`${cases.length} native terminal-link oracle cases`);

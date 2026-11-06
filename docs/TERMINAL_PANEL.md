@@ -80,3 +80,13 @@ external frontend. Routing this consumer into a fresh embedded terminal with
 the original command-delivery semantics remains required work, after terminal
 links, search, accessibility and picker fidelity. The legacy path is not a
 permanent parity exception.
+
+Native file-path admission rejects UNC and mixed leading separators before any
+filesystem stat, requires an absolute or home-relative path, and enforces the
+512 UTF-16-unit metadata limit. Windows paths normalize separators and case for
+metadata while the selected editor receives the original position-bearing target.
+Twenty-two source-derived metadata cases exercise these rules through actual
+private RPC calls, including proof that rejected paths reach neither metadata
+nor editor RPCs. The current final-open stat is temporarily stricter than the
+native mounted-thread/session positive metadata cache. Porting that cache and
+its invalidation lifecycle remains required work after initial visible wiring.
