@@ -10,6 +10,9 @@ struct Target {
     profile: std::path::PathBuf,
     cli: std::path::PathBuf,
     registered: bool,
+    /// Both registered servers use this profile (O3 Code's native T3 fallback on O3
+    /// Server's profile); its runtime file then says which one is running.
+    shared: bool,
 }
 fn registry_path() -> std::path::PathBuf {
     xdg("XDG_CONFIG_HOME", ".config").join("backends.json")
@@ -27,6 +30,7 @@ fn targets() -> Result<(Vec<Target>, String)> {
                 profile: t3_home(),
                 cli: home().join(".t3/bin/t3"),
                 registered: false,
+                shared: false,
             }],
             "t3".into(),
         ));
@@ -50,9 +54,7 @@ fn targets() -> Result<(Vec<Target>, String)> {
         let profile = std::path::PathBuf::from(text(row, "profile"));
         let cli = std::path::PathBuf::from(text(row, "cli"));
         if !matches!(id, "o3" | "t3")
-            || result
-                .iter()
-                .any(|t| t.id == id || t.unit == unit || t.profile == profile)
+            || result.iter().any(|t| t.id == id || t.unit == unit)
             || unit.len() > 128
             || !unit.ends_with(".service")
             || !unit
@@ -70,7 +72,13 @@ fn targets() -> Result<(Vec<Target>, String)> {
             profile,
             cli,
             registered: true,
+            shared: false,
         });
+    }
+    if let [a, b] = result.as_mut_slice() {
+        let shared = a.profile == b.profile;
+        a.shared = shared;
+        b.shared = shared;
     }
     let default = text(&value, "default");
     if value["version"] != 1 || !result.iter().any(|t| t.id == default) {
@@ -158,12 +166,21 @@ fn alive(pid: u32) -> bool {
             .is_none_or(|s| s.rsplit_once(") ").is_none_or(|(_, s)| !s.starts_with('Z')))
 }
 fn runtime_pid(target: &Target) -> Option<u32> {
-    read_json(&target.profile.join("userdata/server-runtime.json"))
-        .ok()?
+    let runtime = read_json(&target.profile.join("userdata/server-runtime.json")).ok()?;
+    if target.shared && runtime_is_o3(&runtime) != (target.id == "o3") {
+        return None;
+    }
+    runtime
         .get("pid")?
         .as_u64()
         .and_then(|n| u32::try_from(n).ok())
         .filter(|p| alive(*p))
+}
+/// O3 Server marks its runtime's `serverVersion` with `o3-`; T3 does not.
+fn runtime_is_o3(runtime: &Value) -> bool {
+    runtime["serverVersion"]
+        .as_str()
+        .is_some_and(|v| v.starts_with("o3-"))
 }
 /// Pure ownership classifier, also exercised by fixture tests. Service ownership
 /// wins over desktop executable names: Electron can also run the headless CLI.
