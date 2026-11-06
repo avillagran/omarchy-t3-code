@@ -6,7 +6,8 @@
 
 var ACTIONS = ["identity-create", "invite", "invite-discard", "pair", "pair-retry",
                "pair-discard", "approve", "revoke", "publish", "unpublish", "relay-set", "rename",
-               "admin-set", "remote", "relay-host", "gateway-set", "grant-set", "bridge-consent-set"]
+               "admin-set", "remote", "relay-host", "gateway-set", "grant-set", "bridge-consent-set",
+               "mcp-grant", "mcp-revoke"]
 
 // What a managing device may ask a managed one; OmaBridge enforces the same list there.
 var REMOTE_ACTIONS = ["read", "rename", "relay-set", "publish", "unpublish", "revoke", "approve", "relay-host", "gateway-set"]
@@ -17,6 +18,7 @@ var ERROR_KEYS = {
     invalid_command: "omabridgeErrorOutdated",
     invalid_action: "omabridgeErrorOutdated",
     confirmation_required: "omabridgeErrorConfirmation",
+    omabridge_mcp_not_configured: "omabridgeMcpNotConfigured",
     local_error: "omabridgeErrorLocal",
     omabridge_identity_missing: "omabridgeErrorIdentityMissing",
     omabridge_not_published: "omabridgeErrorNotPublished",
@@ -161,8 +163,52 @@ function parseResponse(text, exitCode) {
             reachable: raw.gatewayCheck.reachable === true,
             sameEnvironment: raw.gatewayCheck.sameEnvironment === true ? true : raw.gatewayCheck.sameEnvironment === false ? false : null
         } : null,
-        remote: raw.remote && typeof raw.remote === "object" ? normalize(raw.remote) : null
+        remote: raw.remote && typeof raw.remote === "object" ? normalize(raw.remote) : null,
+        mcp: mcpConnection(raw.mcp),
+        mcpCode: raw.mcpCode && typeof raw.mcpCode === "object" && _text(raw.mcpCode.code) ? {
+            code: _text(raw.mcpCode.code), expires: Number(raw.mcpCode.expires) || 0, access: _text(raw.mcpCode.access)
+        } : null
     }
+}
+
+// How a dot or ChatGPT connects to this device's server through OmaBridge's MCP gateway.
+// The URL is not a secret: every request needs an OAuth token approved with a link code.
+function mcpConnection(raw) {
+    if (!raw || typeof raw !== "object") return null
+    var url = _text(raw.url)
+    return {
+        configured: raw.configured === true,
+        serving: raw.serving === true,
+        url: /^https:\/\/[^\s]+\/mcp$/.test(url) ? url : "",
+        grants: _list(raw.grants).filter(function(g) { return g && typeof g === "object" && _text(g.id) }).map(function(g) {
+            return {
+                id: _text(g.id), label: _text(g.label), client: _text(g.client),
+                access: g.access === "operate" ? "operate" : "read",
+                allProjects: g.allProjects === true, expires: Number(g.expires) || 0
+            }
+        })
+    }
+}
+
+function mcpSupported(features) {
+    return _list(features).indexOf("mcp-connect-v1") >= 0
+}
+
+function mcpReadRequest() {
+    return { action: "mcp-read" }
+}
+
+// One line for the gateway: ready only when it serves this device's server at a public address.
+function mcpStatusKey(mcp) {
+    if (!mcp) return "omabridgeChecking"
+    if (!mcp.configured) return "omabridgeMcpNotConfigured"
+    if (!mcp.serving) return "omabridgeMcpNotServing"
+    if (!mcp.url) return "omabridgeMcpNoUrl"
+    return "omabridgeMcpReady"
+}
+
+function mcpGrantValues(operate) {
+    return { access: operate ? "operate" : "read", label: "dot" }
 }
 
 // Page state from the last read: OmaBridge missing, too old for `manage`,
