@@ -41,6 +41,8 @@ let vcs = relay.rpc("server.discoverSourceControl", json!({}))?; // a tag `api` 
 The host supplies the current Clerk JWT issued for T3's relay template. A native
 OAuth CLI token and a browser's cached DPoP access token are not interchangeable
 with that JWT. A `RelayClient` can reuse relay authorization across environments.
+The opt-in [persistent unary RPC session API](docs/PERSISTENT_RPC.md) multiplexes
+concurrent calls on one socket with bounded requests and explicit lifecycle ownership.
 `Connection::upload_attachment(name, mime, size, reader)` streams host-owned file
 or Android content data through the same RPC grant and signed POST protocol.
 
