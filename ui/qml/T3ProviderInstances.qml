@@ -34,6 +34,9 @@ ColumnLayout {
  property var draftEnvironment:[]
  spacing:Style.space(12)
  function setupOf(id){return (bridge.providerSetup || {})[id] || ({})}
+ // A provider reports a new sign-in once the server has re-read it, which can land just after
+ // the flow ends; read the list again a moment later so the row does not keep "Sign in".
+ Timer{id:signedInReload;interval:3000;onTriggered:root.load()}
  function load(){if(bridge&&environment&&environment!=="*"&&typeof bridge.requestProviderInstances==="function")bridge.requestProviderInstances(environment,"read")}
  onEnvironmentChanged:{selectedId="";editor.close();confirmation.close();load()}
  Component.onCompleted:load()
@@ -91,7 +94,7 @@ ColumnLayout {
    Repeater{model:root.instances.filter(function(i){var s=root.setupOf(i.id);return !!s.state||!!s.error})
     ColumnLayout{required property var modelData;objectName:"providerSetup_"+modelData.id;Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);spacing:Style.space(6)
      readonly property var setup:root.setupOf(modelData.id)
-     readonly property var st:setup.state || ({});readonly property string flowPhase:st.phase || "";onFlowPhaseChanged:if(flowPhase==="succeeded")root.load()
+     readonly property var st:setup.state || ({});readonly property string flowPhase:st.phase || "";onFlowPhaseChanged:if(flowPhase==="succeeded"){root.load();signedInReload.restart()}
      readonly property var interaction:st.interaction || null
      Text{Layout.fillWidth:true;wrapMode:Text.Wrap;textFormat:Text.PlainText;font.pixelSize:Style.font.caption;color:parent.setup.error||parent.st.phase==="failed"?Color.urgent:root.fg
       text:modelData.label+" · "+(parent.setup.error?T3I18n.error(parent.setup.error):parent.setup.kind==="install"?(parent.st.phase==="downloading"&&parent.st.totalBytes?T3I18n.tr("Downloading… {percent}%",{percent:Math.round(100*parent.st.downloadedBytes/parent.st.totalBytes)}):T3I18n.tr(({idle:"Not installed",downloading:"Downloading…",extracting:"Installing…",verifying:"Verifying…",succeeded:"Installed",failed:"Install failed",cancelled:"Install cancelled"})[parent.st.phase]||String(parent.st.phase||""))):T3I18n.tr(({idle:"Signed out",starting:"Starting sign-in…",waiting:"Waiting for you to sign in",verifying:"Verifying…",succeeded:"Signed in",failed:"Sign-in failed",cancelled:"Sign-in cancelled"})[parent.st.phase]||String(parent.st.phase||"")))+(parent.st.message?" · "+parent.st.message:"")}
