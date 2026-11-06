@@ -33,6 +33,39 @@ Validation: 14 protocol API/stream tests, 123 client unit tests, three
 WebSocket integration tests, the scheduled-tasks QML fixture, and all 20
 translation catalogs. No running client/server or user task was modified.
 
+## Fresh sessions in the desktop composer
+
+`/clear` prepares the next message to start a new provider session in the same
+thread. It preserves visible history, offers an undo banner, and appears in slash
+completion when the server advertises `environment.capabilities.freshContext`
+and the current thread has messages. Selecting the completion arms directly;
+the whole-message command is case-insensitive. Questions and approvals retain
+ownership of the composer. Attachments prevent interpreting text as a command.
+
+Preparation is ephemeral and scoped by environment/thread. Once submitted,
+`freshContext` and the arm identity survive draft/outbox persistence and retries.
+A fresh-context message queues instead of steering an active run. Acceptance
+consumes only the captured arm, preserving an arm made while a send was in flight.
+Failures preserve the draft and intent. The native adapter checks the capability
+again before dispatch. The transcript marker comes from the server's
+`user_message.freshContext` turn item, without removing earlier messages.
+
+Protocol revision: `eeed1780c07aa4e92a4ac5376878457edd38be53`, on the same library
+branch as task modes. Reference behavior: `packages/shared/src/composerTrigger.ts`,
+`ChatView.logic.ts::planComposerTurn`, `chat/useComposerSend.ts`,
+`chat/freshSessionArms.ts`, and `chat/ChatComposer.tsx` at the target revision.
+
+Validation: five protocol command tests; two client integration tests covering
+capability rejection, queued wire payloads, exact retries, persisted attempts,
+and transcript marker updates; QML fresh-session, plan-flow and completion
+fixtures; 20 translation catalogs and vendor hashes. The new fixtures use
+synthetic servers and isolated state. No real provider session was restarted.
+
+O3 Server still lacks the fresh-context capability and provider reset behavior.
+Implementing and validating that path is required before claiming end-to-end
+O3 support. The server checkout also has unrelated goal-lifecycle changes in
+progress; server work must use an isolated branch.
+
 ## Remaining work
 
 The lexical inventory from 3726 to 4247 discovers 65 additional entries across
@@ -44,7 +77,7 @@ Regenerate the detailed local report with:
 node tools/upstream-drift.cjs --source /path/to/t3code --rev v0.1.8-nightly.20261106.4247 --write
 ```
 
-Next integration areas include fresh-context messages (`/clear`), scheduled task
+Next integration areas include fresh-context execution in O3 Server, scheduled task
 session execution in O3 Server, pending questions outside the loaded transcript,
 secret-provider requests, dictation environment selection, and refreshed audits
 of historical UI differences. Shared-state schema compatibility must be checked

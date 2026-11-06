@@ -2079,7 +2079,12 @@
     "The local server configuration is invalid.": "The local server configuration is invalid.",
     "New thread each run": "New thread each run",
     "Continue conversation": "Continue conversation",
-    "Fresh session each run": "Fresh session each run"
+    "Fresh session each run": "Fresh session each run",
+    "Fresh session": "Fresh session",
+    "Your next message starts a fresh session": "Your next message starts a fresh session",
+    "The agent won't see earlier messages in this thread.": "The agent won't see earlier messages in this thread.",
+    "Keep the current session": "Keep the current session",
+    "Start a fresh session; earlier messages stay visible": "Start a fresh session; earlier messages stay visible"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4161,7 +4166,12 @@
     "The local server configuration is invalid.": "La configuración del servidor local no es válida.",
     "New thread each run": "Nuevo hilo en cada ejecución",
     "Continue conversation": "Continuar conversación",
-    "Fresh session each run": "Nueva sesión en cada ejecución"
+    "Fresh session each run": "Nueva sesión en cada ejecución",
+    "Fresh session": "Nueva sesión",
+    "Your next message starts a fresh session": "Tu próximo mensaje inicia una nueva sesión",
+    "The agent won't see earlier messages in this thread.": "El agente no verá los mensajes anteriores de este hilo.",
+    "Keep the current session": "Mantener la sesión actual",
+    "Start a fresh session; earlier messages stay visible": "Iniciar una nueva sesión; los mensajes anteriores siguen visibles"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6243,7 +6253,12 @@
     "The local server configuration is invalid.": "A configuração do servidor local é inválida.",
     "New thread each run": "Nova conversa a cada execução",
     "Continue conversation": "Continuar conversa",
-    "Fresh session each run": "Nova sessão a cada execução"
+    "Fresh session each run": "Nova sessão a cada execução",
+    "Fresh session": "Nova sessão",
+    "Your next message starts a fresh session": "Sua próxima mensagem inicia uma nova sessão",
+    "The agent won't see earlier messages in this thread.": "O agente não verá as mensagens anteriores desta conversa.",
+    "Keep the current session": "Manter a sessão atual",
+    "Start a fresh session; earlier messages stay visible": "Iniciar nova sessão; mensagens anteriores continuam visíveis"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8325,7 +8340,12 @@
     "The local server configuration is invalid.": "La configuration du serveur local n’est pas valide.",
     "New thread each run": "Nouveau fil à chaque exécution",
     "Continue conversation": "Continuer la conversation",
-    "Fresh session each run": "Nouvelle session à chaque exécution"
+    "Fresh session each run": "Nouvelle session à chaque exécution",
+    "Fresh session": "Nouvelle session",
+    "Your next message starts a fresh session": "Votre prochain message démarre une nouvelle session",
+    "The agent won't see earlier messages in this thread.": "L’agent ne verra pas les messages précédents de ce fil.",
+    "Keep the current session": "Conserver la session actuelle",
+    "Start a fresh session; earlier messages stay visible": "Démarrer une nouvelle session ; les messages précédents restent visibles"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10407,7 +10427,12 @@
     "The local server configuration is invalid.": "Die Konfiguration des lokalen Servers ist ungültig.",
     "New thread each run": "Neuer Thread bei jedem Lauf",
     "Continue conversation": "Gespräch fortsetzen",
-    "Fresh session each run": "Neue Sitzung bei jedem Lauf"
+    "Fresh session each run": "Neue Sitzung bei jedem Lauf",
+    "Fresh session": "Neue Sitzung",
+    "Your next message starts a fresh session": "Deine nächste Nachricht startet eine neue Sitzung",
+    "The agent won't see earlier messages in this thread.": "Der Agent sieht frühere Nachrichten in diesem Thread nicht.",
+    "Keep the current session": "Aktuelle Sitzung beibehalten",
+    "Start a fresh session; earlier messages stay visible": "Neue Sitzung starten; frühere Nachrichten bleiben sichtbar"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12489,7 +12514,12 @@
     "The local server configuration is invalid.": "La configurazione del server locale non è valida.",
     "New thread each run": "Nuova conversazione a ogni esecuzione",
     "Continue conversation": "Continua conversazione",
-    "Fresh session each run": "Nuova sessione a ogni esecuzione"
+    "Fresh session each run": "Nuova sessione a ogni esecuzione",
+    "Fresh session": "Nuova sessione",
+    "Your next message starts a fresh session": "Il tuo prossimo messaggio avvia una nuova sessione",
+    "The agent won't see earlier messages in this thread.": "L’agente non vedrà i messaggi precedenti di questa conversazione.",
+    "Keep the current session": "Mantieni la sessione attuale",
+    "Start a fresh session; earlier messages stay visible": "Avvia una nuova sessione; i messaggi precedenti restano visibili"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14571,7 +14601,12 @@
     "The local server configuration is invalid.": "De configuratie van de lokale server is ongeldig.",
     "New thread each run": "Nieuw gesprek bij elke uitvoering",
     "Continue conversation": "Gesprek voortzetten",
-    "Fresh session each run": "Nieuwe sessie bij elke uitvoering"
+    "Fresh session each run": "Nieuwe sessie bij elke uitvoering",
+    "Fresh session": "Nieuwe sessie",
+    "Your next message starts a fresh session": "Je volgende bericht start een nieuwe sessie",
+    "The agent won't see earlier messages in this thread.": "De agent ziet eerdere berichten in dit gesprek niet.",
+    "Keep the current session": "Huidige sessie behouden",
+    "Start a fresh session; earlier messages stay visible": "Nieuwe sessie starten; eerdere berichten blijven zichtbaar"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16653,7 +16688,12 @@
     "The local server configuration is invalid.": "Konfiguracja lokalnego serwera jest nieprawidłowa.",
     "New thread each run": "Nowy wątek przy każdym uruchomieniu",
     "Continue conversation": "Kontynuuj rozmowę",
-    "Fresh session each run": "Nowa sesja przy każdym uruchomieniu"
+    "Fresh session each run": "Nowa sesja przy każdym uruchomieniu",
+    "Fresh session": "Nowa sesja",
+    "Your next message starts a fresh session": "Następna wiadomość rozpocznie nową sesję",
+    "The agent won't see earlier messages in this thread.": "Agent nie zobaczy wcześniejszych wiadomości w tym wątku.",
+    "Keep the current session": "Zachowaj bieżącą sesję",
+    "Start a fresh session; earlier messages stay visible": "Rozpocznij nową sesję; wcześniejsze wiadomości pozostaną widoczne"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18735,7 +18775,12 @@
     "The local server configuration is invalid.": "Недопустимая конфигурация локального сервера.",
     "New thread each run": "Новый чат при каждом запуске",
     "Continue conversation": "Продолжить разговор",
-    "Fresh session each run": "Новая сессия при каждом запуске"
+    "Fresh session each run": "Новая сессия при каждом запуске",
+    "Fresh session": "Новая сессия",
+    "Your next message starts a fresh session": "Следующее сообщение начнёт новую сессию",
+    "The agent won't see earlier messages in this thread.": "Агент не увидит предыдущие сообщения в этом чате.",
+    "Keep the current session": "Сохранить текущую сессию",
+    "Start a fresh session; earlier messages stay visible": "Начать новую сессию; предыдущие сообщения останутся видимыми"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20817,7 +20862,12 @@
     "The local server configuration is invalid.": "Конфігурація локального сервера недійсна.",
     "New thread each run": "Новий чат під час кожного запуску",
     "Continue conversation": "Продовжити розмову",
-    "Fresh session each run": "Новий сеанс під час кожного запуску"
+    "Fresh session each run": "Новий сеанс під час кожного запуску",
+    "Fresh session": "Новий сеанс",
+    "Your next message starts a fresh session": "Наступне повідомлення почне новий сеанс",
+    "The agent won't see earlier messages in this thread.": "Агент не бачитиме попередніх повідомлень у цьому чаті.",
+    "Keep the current session": "Зберегти поточний сеанс",
+    "Start a fresh session; earlier messages stay visible": "Почати новий сеанс; попередні повідомлення залишаться видимими"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22899,7 +22949,12 @@
     "The local server configuration is invalid.": "ローカルサーバーの設定が無効です。",
     "New thread each run": "実行ごとに新しいスレッド",
     "Continue conversation": "会話を続ける",
-    "Fresh session each run": "実行ごとに新しいセッション"
+    "Fresh session each run": "実行ごとに新しいセッション",
+    "Fresh session": "新しいセッション",
+    "Your next message starts a fresh session": "次のメッセージで新しいセッションを開始します",
+    "The agent won't see earlier messages in this thread.": "エージェントにはこのスレッドの以前のメッセージは表示されません。",
+    "Keep the current session": "現在のセッションを維持",
+    "Start a fresh session; earlier messages stay visible": "新しいセッションを開始し、以前のメッセージは表示したままにする"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24981,7 +25036,12 @@
     "The local server configuration is invalid.": "로컬 서버 구성이 올바르지 않습니다.",
     "New thread each run": "실행마다 새 스레드",
     "Continue conversation": "대화 계속",
-    "Fresh session each run": "실행마다 새 세션"
+    "Fresh session each run": "실행마다 새 세션",
+    "Fresh session": "새 세션",
+    "Your next message starts a fresh session": "다음 메시지로 새 세션을 시작합니다",
+    "The agent won't see earlier messages in this thread.": "에이전트는 이 스레드의 이전 메시지를 볼 수 없습니다.",
+    "Keep the current session": "현재 세션 유지",
+    "Start a fresh session; earlier messages stay visible": "새 세션을 시작하고 이전 메시지는 계속 표시"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27063,7 +27123,12 @@
     "The local server configuration is invalid.": "本地服务器配置无效。",
     "New thread each run": "每次运行新建对话",
     "Continue conversation": "继续对话",
-    "Fresh session each run": "每次运行新建会话"
+    "Fresh session each run": "每次运行新建会话",
+    "Fresh session": "新会话",
+    "Your next message starts a fresh session": "下一条消息将开始新会话",
+    "The agent won't see earlier messages in this thread.": "智能体不会看到此对话中的早期消息。",
+    "Keep the current session": "保留当前会话",
+    "Start a fresh session; earlier messages stay visible": "开始新会话；早期消息仍然可见"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29145,7 +29210,12 @@
     "The local server configuration is invalid.": "إعدادات الخادم المحلي غير صالحة.",
     "New thread each run": "محادثة جديدة عند كل تشغيل",
     "Continue conversation": "متابعة المحادثة",
-    "Fresh session each run": "جلسة جديدة عند كل تشغيل"
+    "Fresh session each run": "جلسة جديدة عند كل تشغيل",
+    "Fresh session": "جلسة جديدة",
+    "Your next message starts a fresh session": "رسالتك التالية تبدأ جلسة جديدة",
+    "The agent won't see earlier messages in this thread.": "لن يرى الوكيل الرسائل السابقة في هذه المحادثة.",
+    "Keep the current session": "الاحتفاظ بالجلسة الحالية",
+    "Start a fresh session; earlier messages stay visible": "بدء جلسة جديدة؛ تبقى الرسائل السابقة مرئية"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31227,7 +31297,12 @@
     "The local server configuration is invalid.": "Yerel sunucu yapılandırması geçersiz.",
     "New thread each run": "Her çalıştırmada yeni sohbet",
     "Continue conversation": "Sohbete devam et",
-    "Fresh session each run": "Her çalıştırmada yeni oturum"
+    "Fresh session each run": "Her çalıştırmada yeni oturum",
+    "Fresh session": "Yeni oturum",
+    "Your next message starts a fresh session": "Sonraki mesajınız yeni bir oturum başlatır",
+    "The agent won't see earlier messages in this thread.": "Aracı bu sohbetteki önceki mesajları görmez.",
+    "Keep the current session": "Geçerli oturumu koru",
+    "Start a fresh session; earlier messages stay visible": "Yeni oturum başlat; önceki mesajlar görünür kalır"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33309,7 +33384,12 @@
     "The local server configuration is invalid.": "Den lokala serverns konfiguration är ogiltig.",
     "New thread each run": "Ny tråd vid varje körning",
     "Continue conversation": "Fortsätt konversationen",
-    "Fresh session each run": "Ny session vid varje körning"
+    "Fresh session each run": "Ny session vid varje körning",
+    "Fresh session": "Ny session",
+    "Your next message starts a fresh session": "Ditt nästa meddelande startar en ny session",
+    "The agent won't see earlier messages in this thread.": "Agenten ser inte tidigare meddelanden i den här tråden.",
+    "Keep the current session": "Behåll aktuell session",
+    "Start a fresh session; earlier messages stay visible": "Starta en ny session; tidigare meddelanden förblir synliga"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35391,7 +35471,12 @@
     "The local server configuration is invalid.": "Den lokale servers konfiguration er ugyldig.",
     "New thread each run": "Ny tråd ved hver kørsel",
     "Continue conversation": "Fortsæt samtalen",
-    "Fresh session each run": "Ny session ved hver kørsel"
+    "Fresh session each run": "Ny session ved hver kørsel",
+    "Fresh session": "Ny session",
+    "Your next message starts a fresh session": "Din næste besked starter en ny session",
+    "The agent won't see earlier messages in this thread.": "Agenten ser ikke tidligere beskeder i denne tråd.",
+    "Keep the current session": "Behold den aktuelle session",
+    "Start a fresh session; earlier messages stay visible": "Start en ny session; tidligere beskeder forbliver synlige"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37473,7 +37558,12 @@
     "The local server configuration is invalid.": "Den lokale serverens konfigurasjon er ugyldig.",
     "New thread each run": "Ny tråd ved hver kjøring",
     "Continue conversation": "Fortsett samtalen",
-    "Fresh session each run": "Ny økt ved hver kjøring"
+    "Fresh session each run": "Ny økt ved hver kjøring",
+    "Fresh session": "Ny økt",
+    "Your next message starts a fresh session": "Den neste meldingen din starter en ny økt",
+    "The agent won't see earlier messages in this thread.": "Agenten ser ikke tidligere meldinger i denne tråden.",
+    "Keep the current session": "Behold gjeldende økt",
+    "Start a fresh session; earlier messages stay visible": "Start en ny økt; tidligere meldinger forblir synlige"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39555,7 +39645,12 @@
     "The local server configuration is invalid.": "Paikallisen palvelimen asetukset ovat virheelliset.",
     "New thread each run": "Uusi keskustelu joka ajolla",
     "Continue conversation": "Jatka keskustelua",
-    "Fresh session each run": "Uusi istunto joka ajolla"
+    "Fresh session each run": "Uusi istunto joka ajolla",
+    "Fresh session": "Uusi istunto",
+    "Your next message starts a fresh session": "Seuraava viestisi aloittaa uuden istunnon",
+    "The agent won't see earlier messages in this thread.": "Agentti ei näe tämän keskustelun aiempia viestejä.",
+    "Keep the current session": "Säilytä nykyinen istunto",
+    "Start a fresh session; earlier messages stay visible": "Aloita uusi istunto; aiemmat viestit pysyvät näkyvissä"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -41637,6 +41732,11 @@
     "The local server configuration is invalid.": "Konfigurace místního serveru je neplatná.",
     "New thread each run": "Nové vlákno při každém spuštění",
     "Continue conversation": "Pokračovat v konverzaci",
-    "Fresh session each run": "Nová relace při každém spuštění"
+    "Fresh session each run": "Nová relace při každém spuštění",
+    "Fresh session": "Nová relace",
+    "Your next message starts a fresh session": "Další zpráva zahájí novou relaci",
+    "The agent won't see earlier messages in this thread.": "Agent neuvidí předchozí zprávy v tomto vlákně.",
+    "Keep the current session": "Zachovat aktuální relaci",
+    "Start a fresh session; earlier messages stay visible": "Zahájit novou relaci; předchozí zprávy zůstanou viditelné"
   }
 }

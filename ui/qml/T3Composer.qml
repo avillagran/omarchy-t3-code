@@ -153,6 +153,7 @@ Rectangle {
     if(!completion || !bridge.suggestionItems[index])return false
     var item=bridge.suggestionItems[index];var before=root.viewText.slice(0,completion.start);var after=root.viewText.slice(completion.end)
     var insert=item.insert || "";root.commitView(before+insert+after);var cursor=before.length+insert.length
+    if(item.kind==="fresh-session")bridge.armFreshSession()
     closeCompletion();Qt.callLater(function(){editor.cursorPosition=cursor;dismissedCompletion=root.viewText+"/"+cursor;editor.forceActiveFocus();if(item.kind==="model"){root.showOptions=true;modelPicker.forceActiveFocus();modelPicker.popup.open()}});return true
   }
   function completionKey(event,step) {
@@ -272,6 +273,15 @@ Rectangle {
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(12) }
     height:root.expanded ? Math.max(0,root.height-Style.space(24)) : implicitHeight
     spacing: Style.space(8)
+    RowLayout {
+      objectName:"t3FreshSessionBanner";Layout.fillWidth:true;visible:root.bridge.freshSessionArmed===true&&root.bridge.approvals.length===0
+      T3Icon{name:"eraser";tint:Color.accent}
+      ColumnLayout{Layout.fillWidth:true;spacing:Style.space(2)
+        Text{Layout.fillWidth:true;text:T3I18n.tr("Your next message starts a fresh session");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+        Text{Layout.fillWidth:true;text:T3I18n.tr("The agent won't see earlier messages in this thread.");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+      }
+      T3IconButton{objectName:"t3KeepCurrentSession";name:"x";tooltipText:T3I18n.tr("Keep the current session");onClicked:root.bridge.disarmFreshSession(root.bridge.selectedKey)}
+    }
     RowLayout {
       objectName:"t3FocusComposerContext";Layout.fillWidth:true;visible:root.focusLayout;spacing:Style.space(8)
       T3Icon{name:"folder";implicitWidth:Style.space(13);tint:root.dim}

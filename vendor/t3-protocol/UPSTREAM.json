@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/avillagran/lib-t3-rust",
-  "revision": "5c236f49d0f7106b488184b2879a8a4a86c859ba",
+  "revision": "eeed1780c07aa4e92a4ac5376878457edd38be53",
   "upstreamFiles": {
     "Cargo.lock": "1f0a10d67451ed51758587fb3f260dc1e5dfeda569b0f824bbebd8261e5d387a",
     "Cargo.toml": "b1f0244885b62685fd35ec58427267319f20394eefb73b27bede951dd99717cb",
@@ -24,7 +24,7 @@
     "src/api/ids.rs": "0d4889b384f8783b272c068e03adbcac2e2f4cce160d041d4c2527bc20ab68a1",
     "src/api/mcp_apps.rs": "0514c9e65cf06a1214c4522dd05115320615e2856130d788a614720a98d840e3",
     "src/api/mod.rs": "e96d51d1b9f6c4a3bd1b7ebb4337ff192345ed29267e404185fe67e36856ba5b",
-    "src/api/orchestration.rs": "cef67b9347d7c75a8932092654c2a24f90f4c86e4b096b64d21fe7ba477b6c4d",
+    "src/api/orchestration.rs": "743a08edb82fccc127af94ec20034dfe12061b71c9aad67db61d63eba69bdd8a",
     "src/api/preview.rs": "b655240893285b18dfb9cf6f0e262b384c0f6008b954b8777dab03b8d91c9afb",
     "src/api/project_clone.rs": "f70f55a31a2ff0f7815aaeaf7e62f998c42a393928f0bac24e14ffb866678922",
     "src/api/projects.rs": "83cec80aa01ad8315063d0e017092fff93e342cc83b8cbb31e7096fd88e6eadb",

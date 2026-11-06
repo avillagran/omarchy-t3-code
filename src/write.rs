@@ -60,6 +60,7 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     const MACHINES:[&str;7]=["server","cloud","linux","desktop","laptop","mac-mini","mac-studio"];
     result["machine"]=json!([&config["settings"]["environmentIcon"],&config["environment"]["platform"]["machine"]].into_iter().filter_map(Value::as_str).find(|k|MACHINES.contains(k)).unwrap_or("server"));
     // The server's own version (environment.serverVersion), shown against the T3 revision ot3 is validated with.
+    result["freshContext"]=json!(config["environment"]["capabilities"]["freshContext"]==true);
     result["shellThreadFamilies"]=json!(config["shellThreadFamilies"]==true);
     result["guestSharingEnabled"]=json!(config["settings"]["guestSharingEnabled"]==true);
     result["serverVersion"]=json!(config["environment"]["serverVersion"].as_str().filter(|v|v.len()<=80&&v.chars().all(|c|c.is_ascii_alphanumeric()||".-+_".contains(c))));
@@ -184,8 +185,17 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
         validate_message(input)?;
         let mut c=json!({"type":"message.dispatch","threadId":thread,"messageId":format!("omarchy-{id}"),"text":protocol::composer::legacy_attachment_text(content,attachments),"attachments":attachments,"createdBy":"user","creationSource":"web","dispatchMode":{"type":if input["delivery"]=="queue" {"queue_after_active"} else {"start_immediately"}}});
+        if let Some(fresh) = input.get("freshContext") {
+            let fresh = fresh.as_bool().ok_or("invalid_fresh_context")?;
+            if fresh {
+                let config = protocol::api::server::config(&e.connection(true)?)?;
+                if config["environment"]["capabilities"]["freshContext"] != true { return Err("fresh_context_unsupported".into()); }
+                c["freshContext"] = json!(true);
+                if matches!(text(input,"delivery"), "steer" | "restart") { c["dispatchMode"] = json!({"type":"queue_after_active"}); }
+            }
+        }
         // T3's server-resolved dispatch: steer redirects the active run, auto starts or queues as the provider allows.
-        if input["delivery"]!="queue" {c["deliveryIntent"]=json!(if input["delivery"]=="steer" {"steer"} else {"auto"});}
+        if input["delivery"]!="queue" && !(c["freshContext"]==true&&matches!(text(input,"delivery"),"steer"|"restart")) {c["deliveryIntent"]=json!(if input["delivery"]=="steer" {"steer"} else {"auto"});}
         if input["modelSelection"].is_object() {c["modelSelection"]=input["modelSelection"].clone();}
         c
     };

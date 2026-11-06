@@ -2079,6 +2079,11 @@
     "The local server configuration is invalid.": "The local server configuration is invalid.",
     "New thread each run": "New thread each run",
     "Continue conversation": "Continue conversation",
-    "Fresh session each run": "Fresh session each run"
+    "Fresh session each run": "Fresh session each run",
+    "Fresh session": "Fresh session",
+    "Your next message starts a fresh session": "Your next message starts a fresh session",
+    "The agent won't see earlier messages in this thread.": "The agent won't see earlier messages in this thread.",
+    "Keep the current session": "Keep the current session",
+    "Start a fresh session; earlier messages stay visible": "Start a fresh session; earlier messages stay visible"
   }
 }

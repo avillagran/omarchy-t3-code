@@ -385,6 +385,8 @@ pub struct MessageDispatch {
     pub usage_limit_recovery_request_id: Option<String>,
     pub delivery_intent: Option<String>,
     pub guest_message_id: Option<String>,
+    /// Start a new provider session without hiding the existing transcript.
+    pub fresh_context: Option<bool>,
 }
 impl MessageDispatch {
     /// A user message that starts immediately, with no attachments.
@@ -408,6 +410,7 @@ impl MessageDispatch {
             usage_limit_recovery_request_id: None,
             delivery_intent: None,
             guest_message_id: None,
+            fresh_context: None,
         }
     }
 }
@@ -661,6 +664,7 @@ impl Command {
                     "messageId":ids::id("messageId", &m.message_id)?,"text":if m.guest_message_id.is_some() && m.text.is_empty() { String::new() } else { message_text("text", &m.text, &m.attachments)? },
                     "attachments":attachments("attachments", &m.attachments)?,"createdBy":one_of("createdBy", &m.created_by, ACTORS)?,
                     "creationSource":one_of("creationSource", &m.creation_source, CREATION_SOURCES)?,"dispatchMode":mode});
+                if let Some(fresh) = m.fresh_context { v["freshContext"] = json!(fresh); }
                 if let Some(c) = &m.context {
                     v["context"] = object("context", c)?;
                 }
@@ -947,6 +951,7 @@ impl Command {
                 m.usage_limit_recovery_request_id = r.opt_str("usageLimitRecoveryRequestId")?;
                 m.delivery_intent = r.opt_str("deliveryIntent")?;
                 m.guest_message_id = r.opt_str("guestMessageId")?;
+                m.fresh_context = r.opt_bool("freshContext")?;
                 Self::MessageDispatch(m)
             }
             "run.interrupt" => Self::RunInterrupt {

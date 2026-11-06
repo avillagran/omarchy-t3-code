@@ -74,7 +74,14 @@ Singleton {
   readonly property string interactionMode:interactionModeEnabled?(draft.interactionMode || selectedInfo.interactionMode || "default"):"default"
   property var planView:({plans:[],ready:null})
   property var planOperation:({busy:false,error:"",requestId:"",command:null})
-  readonly property var readyPlan:!rewindPending&&interactionModeEnabled&&interactionMode==="plan"&&!selectedInfo.working&&!questions.length&&!draft.attachments.length?planView.ready:null
+  // Like nightly, arming is local to this app session and scoped by environment/thread.
+  property var freshSessionArms:({})
+  readonly property bool freshSessionAvailable:catalog.freshContext===true&&transcript.some(function(m){return m.role==="user"||m.role==="assistant"})
+  readonly property bool freshSessionCommandAvailable:freshSessionAvailable&&!activeQuestion&&!approvals.length&&!questions.length&&!providerSubagent&&catalog.canWrite!==false
+  readonly property bool freshSessionArmed:freshSessionAvailable&&!!freshSessionArms[selectedKey]
+  function armFreshSession(){if(!freshSessionCommandAvailable)return;var arms=Object.assign({},freshSessionArms);arms[selectedKey]=uuid();freshSessionArms=arms}
+  function disarmFreshSession(key,arm){var arms=Object.assign({},freshSessionArms);if(arm&&arms[key]!==arm)return;delete arms[key];freshSessionArms=arms}
+  readonly property var readyPlan:!freshSessionArmed&&!rewindPending&&interactionModeEnabled&&interactionMode==="plan"&&!selectedInfo.working&&!questions.length&&!draft.attachments.length?planView.ready:null
   readonly property var readyPlanView:Object.assign({},planView,{ready:readyPlan,error:planOperation.error || planView.error || "",loading:planOperation.busy,canCancel:planOperation.error==="draft_save_failed"&&!!planOperation.command&&planOperation.command.op==="manage"&&!managementRequest})
   function chooseInteractionMode(mode){
     if(!interactionModeEnabled||catalog.canWrite===false||providerSubagent||!selectedKey||draft.loading||draft.loadError||draft.busy||draft.attempt||draft.queueEdit||planOperation.busy||["default","plan"].indexOf(mode)<0)return
@@ -366,10 +373,12 @@ Singleton {
   property bool suggestionsLoading: false
   property string suggestionsError: ""
   property string suggestionRequest: ""
+  property bool suggestionClear:false
   property var sessionPositions: ({})
   function dismissSuggestions() { suggestionRequest="";suggestionItems=[];suggestionsLoading=false;suggestionsError="" }
   function requestSuggestions(kind,query,instance) {
     suggestionRequest=uuid();suggestionItems=[];suggestionsError="";suggestionsLoading=true
+    suggestionClear=kind==="command"&&freshSessionCommandAvailable&&"clear".indexOf(query.toLowerCase())>=0
     send({op:"suggest",environment:selectedEnvironment,thread:selectedThread,requestId:suggestionRequest,kind:kind,query:query,instanceId:instance || ""})
   }
   property var approvals:[]
@@ -1102,6 +1111,7 @@ Singleton {
   function dispatchMode(alternate){
     if(!selectedInfo.activeRunId)return "auto"
     var preferred=approvals.length>0?"steer":followUpBehavior
+    if(freshSessionArmed)return "queue"
     return alternate===true?(preferred==="queue"?"steer":"queue"):preferred
   }
   function submit(startNewThread,workspaceStrategy,alternate) {
@@ -1112,11 +1122,13 @@ Singleton {
     if((startNewThread===true||draft.attempt&&draft.attempt.op==="manage")&&(activeQuestion||managementBusy||(managementRequest&&(!draft.attempt||managementRequest.requestId!==draft.attempt.requestId))||draft.queueEdit||(!draft.attempt&&!selectedInfo.projectId)))return
     if(activeQuestion){questionSubmitRequested();return}
     if (!selectedThread || draft.loading || draft.loadError || draft.busy || draft.attachments.some(function(f) { return f.uploading || f.error })) return
+    if(startNewThread!==true&&!draft.attempt&&!draft.queueEdit&&!draft.attachments.length&&freshSessionCommandAvailable&&/^\/clear\s*$/i.test(draft.text.trim())){armFreshSession();patchDraft(selectedKey,{text:""});flushDraft(selectedKey);return}
     if(!draft.attempt&&interactionModeEnabled&&/^\/(plan|default)$/.test(draft.text.trim())){chooseInteractionMode(draft.text.trim().slice(1));patchDraft(selectedKey,{text:""});flushDraft(selectedKey);return}
     if (!draft.attempt && !draft.text.trim() && draft.attachments.length === 0) return
     var attempt = draft.attempt || {op: "send", environment: selectedEnvironment, thread: selectedThread,
       requestId: uuid(), text: draft.text, attachments: draft.attachments.map(function(f) { return f.attachment }),
       modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: dispatchMode(alternate)}
+    if(startNewThread!==true&&!draft.attempt&&!draft.queueEdit&&freshSessionArmed){attempt.freshContext=true;attempt.freshSessionArm=freshSessionArms[selectedKey]}
     if(!draft.attempt&&draft.runtimeMode&&draft.runtimeMode!==selectedInfo.runtimeMode)attempt.runtimeMode=draft.runtimeMode
     if(!draft.attempt&&(interactionModeEnabled||selectedInfo.interactionMode==="plan"))attempt.interactionMode=interactionMode
     if(!draft.attempt&&draft.sourcePlanRef)attempt.sourcePlanRef=draft.sourcePlanRef
@@ -1945,7 +1957,7 @@ Singleton {
     }
     if (data.op === "suggest") {
       if (data.requestId !== suggestionRequest || data.environment+"/"+data.thread !== selectedKey) return
-      suggestionsLoading=false;suggestionsError=data.error || "";suggestionItems=data.result ? data.result.items || [] : [];return
+      suggestionsLoading=false;suggestionsError=data.error || "";var items=data.result ? data.result.items || [] : [];suggestionItems=suggestionClear&&freshSessionCommandAvailable?[{kind:"fresh-session",label:"/clear",description:T3I18n.tr("Start a fresh session; earlier messages stay visible"),insert:"",icon:"eraser"}].concat(items.filter(function(i){return i.label!=="/clear"})):items;return
     }
     if (data.op === "manage") {
       if (!managementRequest || data.requestId !== managementRequest.requestId) return
@@ -2025,6 +2037,7 @@ Singleton {
       if(data.error && data.error!=="rpc_outcome_unknown")forgetQueued(key,"omarchy-"+data.requestId)
       if (data.error) patchDraft(key, {busy: false, error: data.error, attempt: data.error === "rpc_outcome_unknown" ? d.attempt : null})
       else {
+        if(sentAttempt.freshContext)disarmFreshSession(key,sentAttempt.freshSessionArm)
         var acceptedInteraction=d.attempt.interactionMode
         if(acceptedInteraction){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===key?Object.assign({},t,{interactionMode:acceptedInteraction}):t})});snapshotUpdated()}
         var acceptedMode=d.attempt.runtimeMode

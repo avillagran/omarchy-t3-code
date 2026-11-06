@@ -2236,6 +2236,7 @@ Item {
                     visible:message.foldExpanded
                   anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin:Style.space(message.userMessage?12:4);rightMargin:Style.space(message.userMessage?12:4);topMargin:message.folded?message.foldHeaderHeight:message.verticalInset }
                     spacing: Style.space(6)
+                    Text{objectName:"t3FreshSessionRow";visible:message.userMessage&&modelData.freshContext===true;width:parent.width;text:T3I18n.tr("Fresh session");color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.6);font.pixelSize:Style.font.caption}
                     TextEdit {
                       id:messageText;objectName:"chatMessageText"
                       HoverHandler{objectName:"chatLinkCursor";cursorShape:messageText.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
