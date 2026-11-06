@@ -12,6 +12,7 @@ ShellRoot {
  property var forced:null
  property bool consent:false;property bool allHostsPending:false
  property var features:["control-socket","forward-through-server"]
+ property bool mcpConfigured:true;property var mcpGrants:[]
  function check(ok,msg){if(!ok){console.error("OMABRIDGE_MANAGE_QML_FAIL "+msg);Qt.exit(1)}}
  function snapshot(){return {available:true,version:"0.1.0",identity:true,device:{id:me,name:"alpha"},
   peers:[{id:vps,name:"vps",services:["t3"],remoteServices:[],public:["t3"],admin:false,managed:true,bridgeConsent:root.consent,remoteBridgeConsent:true},{id:guest,name:"charlie",services:["ssh"],remoteServices:["t3","ssh"],public:[],admin:false,managed:false,bridgeConsent:false,remoteBridgeConsent:false}],features:root.features,
@@ -25,6 +26,9 @@ ShellRoot {
   if(req.action==="bridge-consent-set"){root.consent=req.allowed;doc=snapshot()}
   if(req.action==="remote"){var r=snapshot();r.device={id:vps,name:"vps"};r.peers=[{id:me,name:"alpha",services:[],remoteServices:["t3"],public:[],admin:true,managed:false}];r.pending=root.allHostsPending?[{id:guest,name:"charlie",services:["t3"],expires:1792390449,allHosts:true}]:[];r.gateways=[{peer:me,name:"alpha",service:"t3",url:"https://gw.example.net:55944/",running:true,error:""}];doc.remote=r}
   if(req.action==="gateway-check")doc.gatewayCheck={reachable:true,sameEnvironment:true}
+  if(req.action==="mcp-grant"){doc.mcpCode={code:"ABCDE-FGHIJ-KLMNO-PQRST",expires:Math.floor(Date.now()/1000)+600,access:req.access};root.mcpGrants=[{id:"grant_dot1",label:"dot",client:"ChatGPT",access:req.access,allProjects:true,projects:0,sessions:null,created:1,expires:1893456000}]}
+  if(req.action==="mcp-revoke")root.mcpGrants=root.mcpGrants.filter(function(g){return g.id!==req.grant})
+  if(req.action==="mcp-read")doc.mcp=root.mcpConfigured?{configured:true,serving:true,url:"https://mcp.example.test:52372/mcp",linked:{server:"http://127.0.0.1:3773"},grants:root.mcpGrants}:{configured:false,serving:false,url:null,linked:null,grants:[]}
   return {doc:doc,code:0}
  }
  QtObject{id:b
@@ -134,7 +138,30 @@ ShellRoot {
    var dialog=find("omabridgeRemoteDialog").contentItem;
    check(row(dialog,"omabridgeRemotePending_"+root.guest).text.indexOf(view.t("omabridgeAllHostsRequest"))>=0&&!row(dialog,"omabridgeRemoteApprove_"+root.guest).visible,"a managing device sees all hosts and cannot approve it");
    find("omabridgeRemoteClose").clicked();
-   console.log("OMABRIDGE_MANAGE_QML_PASS: unconfirmed reads, confirmed approve/invite/unpublish, managed device and its public address check, shown-once invitation, readable errors, outdated OmaBridge, all-hosts invitation and bridge consent");Qt.quit()
+   check(!find("omabridgeMcpCard").visible,"no MCP card without mcp-connect-v1");
+   root.features=root.features.concat(["mcp-connect-v1"]);view.refresh();phase=40
+  }else if(phase===40){
+   var mcpRead=b.sent.filter(function(r){return r.action==="mcp-read"});check(mcpRead.length>0&&mcpRead[0].confirmed===undefined,"MCP state read, unconfirmed");
+   check(find("omabridgeMcpCard").visible&&find("omabridgeMcpStatus").text===view.t("omabridgeMcpReady"),"gateway ready shown");
+   check(find("omabridgeMcpUrl").text==="https://mcp.example.test:52372/mcp","link shown");
+   find("omabridgeMcpCopyLink").clicked();check(b.copied==="https://mcp.example.test:52372/mcp","link copied");
+   check(!find("omabridgeMcpOperate").checked,"read only by default");
+   var before=b.sent.length;find("omabridgeMcpCreateCode").clicked();
+   check(b.sent.length===before&&find("omabridgeConfirmDialog").opened,"a code is only created after confirming");
+   find("omabridgeConfirm").clicked();phase++
+  }else if(phase===41){
+   var grant=b.sent.filter(function(r){return r.action==="mcp-grant"}).pop();check(grant.confirmed===true&&grant.access==="read"&&grant.label==="dot","confirmed read-only code: "+JSON.stringify(grant));
+   check(find("omabridgeMcpCodeText").text==="ABCDE-FGHIJ-KLMNO-PQRST","code shown once created");
+   find("omabridgeMcpCopyCode").clicked();check(b.copied==="ABCDE-FGHIJ-KLMNO-PQRST","code copied");
+   var revoke=find("omabridgeMcpRevoke_grant_dot1");check(revoke&&revoke.visible,"connected client listed");
+   revoke.clicked();check(find("omabridgeConfirmDialog").opened,"revoking asks");find("omabridgeConfirm").clicked();phase++
+  }else if(phase===42){
+   var gone=b.sent.filter(function(r){return r.action==="mcp-revoke"}).pop();check(gone.confirmed===true&&gone.grant==="grant_dot1","confirmed revoke: "+JSON.stringify(gone));
+   check(!find("omabridgeMcpRevoke_grant_dot1"),"revoked client gone");
+   root.mcpConfigured=false;view.refresh();phase++
+  }else if(phase===43){
+   check(find("omabridgeMcpStatus").text===view.t("omabridgeMcpNotConfigured")&&!find("omabridgeMcpCreateCode").visible,"unset gateway explained, no code offered");
+   console.log("OMABRIDGE_MANAGE_QML_PASS: unconfirmed reads, confirmed approve/invite/unpublish, managed device and its public address check, shown-once invitation, readable errors, outdated OmaBridge, all-hosts invitation, bridge consent and MCP connection");Qt.quit()
   }
  }}
 }

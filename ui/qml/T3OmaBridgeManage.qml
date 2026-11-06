@@ -49,6 +49,10 @@ ColumnLayout {
     property var queueFinished: null
     // The last public gateway check, for the gateway section.
     property var gatewayCheck: null
+    // MCP gateway: how a dot or ChatGPT connects, and a code shown once until it expires.
+    property var mcp: null
+    property var mcpCode: null
+    readonly property bool mcpSupported: !!root.snapshot && OmaBridgeModel.mcpSupported(root.snapshot.features)
     // The invitation chosen for pairing, while its contents are inspected.
     property string inspectPath: ""
     property string errorCode: ""
@@ -355,6 +359,24 @@ ColumnLayout {
                 remoteSnapshot = response.remote;
             return;
         }
+        if (done === "read" && root.mcpSupported)
+            Qt.callLater(function () {
+                root.run(OmaBridgeModel.mcpReadRequest());
+            });
+        if (done === "mcp-read") {
+            mcp = response.mcp;
+            return;
+        } else if (done === "mcp-grant" || done === "mcp-revoke") {
+            if (done === "mcp-grant")
+                mcpCode = response.mcpCode;
+            status = t(done === "mcp-grant" ? "omabridgeMcpCodeCreated" : "omabridgeMcpRevoked");
+            if (confirmRequest && confirmRequest.action === done)
+                confirmDialog.close();
+            Qt.callLater(function () {
+                root.run(OmaBridgeModel.mcpReadRequest());
+            });
+            return;
+        }
         if (done === "invite") {
             created = response.created;
             // The client's output still holds the secret; replace it right away.
@@ -430,6 +452,15 @@ ColumnLayout {
         remoteDialog.close();
         inviteDialog.close();
         created = null;
+        mcpCode = null;
+    }
+    // A connection code is shown only while it can still be used.
+    Timer {
+        interval: 15000
+        repeat: true
+        running: !!root.mcpCode
+        onTriggered: if (root.mcpCode && root.mcpCode.expires * 1000 <= Date.now())
+            root.mcpCode = null
     }
     readonly property bool windowShown: Window.window ? Window.window.visible : true
     // Showing the window again re-reads, so changes made elsewhere appear.
@@ -674,6 +705,133 @@ ColumnLayout {
                 }
             }
           }
+        }
+
+        // A dot or ChatGPT connects to this device's server through the MCP gateway: copy the
+        // link, follow the steps, and approve it with a single-use code created here.
+        Card {
+            objectName: "omabridgeMcpCard"
+            visible: root.mcpSupported && !!root.device
+            Heading {
+                text: root.t("omabridgeMcpTitle")
+            }
+            Copy {
+                text: root.t("omabridgeMcpIntro")
+            }
+            Copy {
+                objectName: "omabridgeMcpStatus"
+                text: root.t(OmaBridgeModel.mcpStatusKey(root.mcp))
+                color: root.mcp && OmaBridgeModel.mcpStatusKey(root.mcp) !== "omabridgeMcpReady" ? theme.urgent : theme.textMuted
+            }
+            RowLayout {
+                visible: !!root.mcp && root.mcp.url !== ""
+                Layout.fillWidth: true
+                spacing: theme.gap
+                TextEdit {
+                    objectName: "omabridgeMcpUrl"
+                    Layout.fillWidth: true
+                    text: root.mcp ? root.mcp.url : ""
+                    readOnly: true
+                    selectByMouse: true
+                    color: theme.text
+                    font.family: "monospace"
+                    font.pixelSize: theme.caption
+                    wrapMode: TextEdit.WrapAnywhere
+                }
+                Action {
+                    objectName: "omabridgeMcpCopyLink"
+                    visible: typeof root.bridge.copyText === "function"
+                    text: root.t("omabridgeMcpCopyLink")
+                    onClicked: root.bridge.copyText(root.mcp.url)
+                }
+            }
+            ColumnLayout {
+                visible: !!root.mcp && root.mcp.url !== ""
+                Layout.fillWidth: true
+                spacing: Style.space(2)
+                Copy {
+                    text: root.t("omabridgeMcpStep1")
+                }
+                Copy {
+                    text: root.t("omabridgeMcpStep2")
+                }
+                Copy {
+                    text: root.t("omabridgeMcpStep3")
+                }
+            }
+            Check {
+                id: mcpOperate
+                objectName: "omabridgeMcpOperate"
+                visible: OmaBridgeModel.mcpStatusKey(root.mcp) === "omabridgeMcpReady"
+                text: root.t("omabridgeMcpAccessOperate")
+            }
+            Action {
+                objectName: "omabridgeMcpCreateCode"
+                visible: OmaBridgeModel.mcpStatusKey(root.mcp) === "omabridgeMcpReady"
+                primary: true
+                text: root.t("omabridgeMcpCreateCode")
+                onClicked: root.ask("mcp-grant", OmaBridgeModel.mcpGrantValues(mcpOperate.checked), root.t("omabridgeMcpCodeConfirm"), root.t("omabridgeMcpCodeDetail"))
+            }
+            RowLayout {
+                visible: !!root.mcpCode
+                Layout.fillWidth: true
+                spacing: theme.gap
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Copy {
+                        text: root.t("omabridgeMcpCode")
+                    }
+                    TextEdit {
+                        objectName: "omabridgeMcpCodeText"
+                        Layout.fillWidth: true
+                        text: root.mcpCode ? root.mcpCode.code : ""
+                        readOnly: true
+                        selectByMouse: true
+                        color: theme.text
+                        font.family: "monospace"
+                        font.pixelSize: theme.body
+                        font.bold: true
+                    }
+                    Copy {
+                        text: root.mcpCode ? root.tr("omabridgeMcpCodeValid", root.expiry(root.mcpCode.expires)) : ""
+                    }
+                }
+                Action {
+                    objectName: "omabridgeMcpCopyCode"
+                    visible: typeof root.bridge.copyText === "function"
+                    text: root.t("omabridgeMcpCopyCode")
+                    onClicked: root.bridge.copyText(root.mcpCode.code)
+                }
+            }
+            Copy {
+                visible: OmaBridgeModel.mcpStatusKey(root.mcp) === "omabridgeMcpReady"
+                text: root.t("omabridgeMcpSecurity")
+            }
+            Heading {
+                visible: !!root.mcp && root.mcp.grants.length > 0
+                text: root.t("omabridgeMcpConnections")
+            }
+            Repeater {
+                model: root.mcp ? root.mcp.grants : []
+                delegate: RowLayout {
+                    id: mcpGrantRow
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: theme.gap
+                    Copy {
+                        text: (mcpGrantRow.modelData.label || mcpGrantRow.modelData.client) + " · " + mcpGrantRow.modelData.client + " · " + root.t(mcpGrantRow.modelData.access === "operate" ? "omabridgeMcpAccessOperateShort" : "omabridgeMcpAccessReadShort") + " · " + root.t("omabridgeExpires") + " " + new Date(mcpGrantRow.modelData.expires * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+                        color: theme.text
+                    }
+                    Action {
+                        objectName: "omabridgeMcpRevoke_" + mcpGrantRow.modelData.id
+                        text: root.t("omabridgeMcpRevoke")
+                        onClicked: root.ask("mcp-revoke", {
+                            grant: mcpGrantRow.modelData.id
+                        }, root.tr("omabridgeMcpRevokeConfirm", mcpGrantRow.modelData.label || mcpGrantRow.modelData.client), root.t("omabridgeMcpRevokeDetail"))
+                    }
+                }
+            }
         }
 
         // How this device reaches peers it cannot dial directly (NAT, private IPs).
