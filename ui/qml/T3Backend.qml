@@ -633,10 +633,60 @@ Singleton {
     if(message.streaming||!block.command)return false
     openTerminal(block.command);return true
   }
+  property var terminalLayouts: (viewState || {}).terminalLayouts || ({})
+  property var terminalViews: ({})
+  property var terminalCommands: ({})
+  readonly property var terminalLayout: terminalLayouts[selectedKey] || {tabs:[],active:""}
+  signal terminalViewEvent(string requestId,var event)
+  function setTerminalLayout(layout){var all=Object.assign({},terminalLayouts);all[selectedKey]=layout;terminalLayouts=all;rememberView({terminalLayouts:all})}
+  function terminalTab(){return terminalLayout.tabs.find(function(t){return t.id===root.terminalLayout.active}) || null}
   function openTerminal(command){
-    if(!canOpenTerminal||terminalOperation.busy)return
-    var id=uuid();terminalOperation={busy:true,error:"",requestId:id,key:selectedKey}
-    send({op:"terminal-open",environment:selectedEnvironment,thread:selectedThread,requestId:id,command:typeof command==="string"?command:undefined})
+    if(!canOpenTerminal)return
+    if(typeof command==="string"&&command.length)newTerminal(false,command)
+    else if(!terminalLayout.tabs.length)newTerminal(false)
+    terminalOpened()
+  }
+  function newTerminal(split,command,vertical){
+    if(!canOpenTerminal)return
+    var layout=terminalLayout,tabs=layout.tabs.slice(),active=terminalTab(),id="term-o3-"+uuid()
+    if(split&&active){
+      if(active.terminalIds.length>=8)return
+      tabs=tabs.map(function(t){return t.id===active.id?Object.assign({},t,{terminalIds:t.terminalIds.concat([id]),activeTerminalId:id,vertical:!!vertical}):t})
+    }else{
+      if(tabs.length>=16)return
+      active={id:id,terminalIds:[id],activeTerminalId:id,vertical:false};tabs.push(active)
+    }
+    if(typeof command==="string"&&command.length){var pending=Object.assign({},terminalCommands);pending[id]=command;terminalCommands=pending}
+    setTerminalLayout({tabs:tabs,active:active.id});terminalOpened()
+  }
+  function activateTerminalTab(id){if(terminalLayout.tabs.some(function(t){return t.id===id}))setTerminalLayout(Object.assign({},terminalLayout,{active:id}))}
+  function activateTerminal(id){if(terminalTab()&&terminalTab().activeTerminalId===id)return;setTerminalLayout(Object.assign({},terminalLayout,{tabs:terminalLayout.tabs.map(function(t){return t.terminalIds.indexOf(id)>=0?Object.assign({},t,{activeTerminalId:id}):t})}))}
+  function attachTerminal(id,columns,rows,restart){
+    if(!canOpenTerminal)return ""
+    var request=uuid(),all=Object.assign({},terminalViews),pending=Object.assign({},terminalCommands),command=pending[id]
+    delete pending[id];terminalCommands=pending
+    all[request]={key:selectedKey,terminalId:id,status:"connecting",error:""};terminalViews=all
+    send({op:"terminal-surface-attach",requestId:request,environment:selectedEnvironment,thread:selectedThread,terminalId:id,columns:columns,rows:rows,restart:!!restart,command:command})
+    return request
+  }
+  function terminalInput(request,op,data){var view=terminalViews[request];if(!canOpenTerminal||!view||view.key!==selectedKey)return;send(Object.assign({op:"terminal-surface-"+op,requestId:request},data || {}))}
+  function detachTerminal(request){if(!request)return;send({op:"terminal-surface-detach",requestId:request});var all=Object.assign({},terminalViews);delete all[request];terminalViews=all}
+  function closeTerminal(id){
+    Object.keys(terminalViews).forEach(function(request){var view=root.terminalViews[request];if(view.terminalId===id&&view.key===root.selectedKey)root.terminalInput(request,"close")})
+  }
+  function removeTerminal(id){
+    var layout=terminalLayout,tabs=layout.tabs.map(function(t){var ids=t.terminalIds.filter(function(v){return v!==id});return Object.assign({},t,{terminalIds:ids,activeTerminalId:ids.indexOf(t.activeTerminalId)>=0?t.activeTerminalId:ids[0] || ""})}).filter(function(t){return t.terminalIds.length})
+    setTerminalLayout({tabs:tabs,active:tabs.some(function(t){return t.id===layout.active})?layout.active:tabs.length?tabs[0].id:""})
+  }
+  function receiveTerminalSurface(data){
+    var view=terminalViews[data.requestId];if(!view||view.key!==selectedKey)return
+    var all=Object.assign({},terminalViews),event=data.event || {},snapshot=event.snapshot || {},status=view.status
+    if(data.kind==="error")status="error"
+    else if(data.kind==="reconnecting")status="reconnecting"
+    else if(data.kind==="event")status=snapshot.status || (event.type==="exited"?"exited":event.type==="closed"?"closed":event.type==="error"?"error":status)
+    all[data.requestId]=Object.assign({},view,{status:status,error:data.error || "",label:snapshot.label || event.label || view.label || "",exitCode:event.exitCode===undefined?snapshot.exitCode:event.exitCode});terminalViews=all
+    terminalViewEvent(data.requestId,data)
+    if(event.type==="closed")removeTerminal(view.terminalId)
   }
   property string windowLayoutError:""
   property var windowLayoutOperation:({busy:false})
@@ -2142,6 +2192,7 @@ Singleton {
       else if(event.type==="preview-state"){Previews.receive(root,data)}
       else if(event.type==="devices-state"){Devices.receiveState(root,data)}
       else if(event.type==="device-surface"){receiveDeviceSurface(data)}
+      else if(event.type==="terminal-surface"){receiveTerminalSurface(data)}
       else if(event.type==="keybindings-changed"){invalidateKeybindings(data)}
       else if(event.type==="connection-cloud"){
         if(data.requestId!==connectionCloud.requestId)return

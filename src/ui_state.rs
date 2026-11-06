@@ -58,7 +58,7 @@ pub fn sanitize(input: &Value) -> Value {
         if roots.iter().all(|v|v.as_str().is_some_and(|s|s.starts_with('/')&&s.len()<=2048&&!s.chars().any(char::is_control))){out["remoteMaintenanceRoots"]=json!(roots);}
     }
     for (key,min,max) in [("idleReleaseMinutes",1,1440),("autoCompactFallbackMinutes",1,1440),("autoCompactMinTokens",1000,1000000)] {if let Some(n)=input[key].as_u64().filter(|n|*n>=min&&*n<=max){out[key]=json!(n)}}
-    if let Some(map)=input["idleReleaseProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if value.is_null()||value.as_u64().is_some_and(|n|(1..=1440).contains(&n)){clean.insert(key.clone(),value.clone());}}}out["idleReleaseProviderMinutes"]=Value::Object(clean);}
+    if let Some(map)=input["idleReleaseProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p))&&(value.is_null()||value.as_u64().is_some_and(|n|(1..=1440).contains(&n))){clean.insert(key.clone(),value.clone());}}out["idleReleaseProviderMinutes"]=Value::Object(clean);}
     if let Some(map)=input["autoCompactProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if valid_id(key)||key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if let Some(n)=value.as_u64().filter(|n|*n>=1&&*n<=1440){clean.insert(key.clone(),json!(n));}}}out["autoCompactProviderMinutes"]=Value::Object(clean);}
     if let Some(map)=input["projectTreeCollapsed"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(4096){if k.starts_with("project/")&&k.len()<=2200&&!k.chars().any(char::is_control){if let Some(b)=v.as_bool(){clean.insert(k.clone(),json!(b));}}}out["projectTreeCollapsed"]=Value::Object(clean);}
     // Provider sign-in notices hidden per host, by the set of providers they named.
@@ -77,9 +77,33 @@ pub fn sanitize(input: &Value) -> Value {
     if let Some(map)=input["sidebarProjectGroupingOverrides"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.len()<=2200&&!k.chars().any(char::is_control)&&matches!(v.as_str(),Some("inherit"|"repository"|"repository_path"|"separate")){clean.insert(k.clone(),v.clone());}}out["sidebarProjectGroupingOverrides"]=Value::Object(clean);}
     // The user's thread groups: "env/thread" (threadGroups) or a whole project,
     // "env/project" (groupProjects), to a short group name.
-    for key in ["threadGroups","groupProjects"]{if let Some(map)=input[key].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(2048){if !k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){continue}if let Some(name)=v.as_str().map(str::trim).filter(|n|!n.is_empty()&&n.chars().count()<=48&&!n.chars().any(char::is_control)){clean.insert(k.clone(),json!(name));}}out[key]=Value::Object(clean);}}
+    for key in ["threadGroups","groupProjects"]{if let Some(map)=input[key].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(2048){if !k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){continue}
+    if let Some(name)=v.as_str().map(str::trim).filter(|n|!n.is_empty()&&n.chars().count()<=48&&!n.chars().any(char::is_control)){clean.insert(k.clone(),json!(name));}}out[key]=Value::Object(clean);}}
+    // Terminal layout stores identifiers only; history and processes stay on the server.
+    if let Some(map)=input["terminalLayouts"].as_object(){
+        let mut clean=serde_json::Map::new();
+        let mut bytes=0;
+        for (key,layout) in map.iter().take(512){
+            if !key.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){continue}
+            let Some(tabs)=layout["tabs"].as_array().filter(|v|v.len()<=16) else {continue};
+            let mut kept=Vec::new();
+            for tab in tabs {
+                let (Some(id),Some(active),Some(ids))=(tab["id"].as_str(),tab["activeTerminalId"].as_str(),tab["terminalIds"].as_array()) else {continue};
+                if ids.is_empty()||ids.len()>8||protocol::terminal::session("layout",id).is_err()||!ids.iter().all(|id|id.as_str().is_some_and(|id|protocol::terminal::session("layout",id).is_ok()))||!ids.iter().any(|id|id==active){continue}
+                kept.push(json!({"id":id,"terminalIds":ids,"activeTerminalId":active,"vertical":tab["vertical"]==true}));
+            }
+            let active=layout["active"].as_str().filter(|id|kept.iter().any(|tab|tab["id"]==*id)).or_else(||kept.first().and_then(|tab|tab["id"].as_str())).unwrap_or("");
+            let value=json!({"tabs":kept,"active":active});
+            bytes+=key.len()+value.to_string().len();
+            if bytes>256*1024 {break}
+            clean.insert(key.clone(),value);
+        }
+        out["terminalLayouts"]=Value::Object(clean);
+    }
     // Per host: machine icon, colour swatch and whether threads show its name.
-    if let Some(map)=input["hostStyles"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(64){if !valid_id(k){continue}let mut style=serde_json::Map::new();if let Some(i)=v["icon"].as_str().filter(|i|matches!(*i,"server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){style.insert("icon".into(),json!(i));}if let Some(c)=v["color"].as_str().filter(|c|c.is_empty()||(c.len()==7&&c.starts_with('#')&&c[1..].chars().all(|h|h.is_ascii_hexdigit()))){style.insert("color".into(),json!(c));}if let Some(b)=v["showName"].as_bool(){style.insert("showName".into(),json!(b));}clean.insert(k.clone(),Value::Object(style));}out["hostStyles"]=Value::Object(clean);}
+    if let Some(map)=input["hostStyles"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(64){if !valid_id(k){continue}let mut style=serde_json::Map::new();if let Some(i)=v["icon"].as_str().filter(|i|matches!(*i,"server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){style.insert("icon".into(),json!(i));}
+    if let Some(c)=v["color"].as_str().filter(|c|c.is_empty()||(c.len()==7&&c.starts_with('#')&&c[1..].chars().all(|h|h.is_ascii_hexdigit()))){style.insert("color".into(),json!(c));}
+    if let Some(b)=v["showName"].as_bool(){style.insert("showName".into(),json!(b));}clean.insert(k.clone(),Value::Object(style));}out["hostStyles"]=Value::Object(clean);}
     if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
     if matches!(input["starfieldMode"].as_str(),Some("auto"|"full"|"light"|"off")){out["starfieldMode"]=input["starfieldMode"].clone();}
     for (key,allowed) in [("interfaceLayout",&["classic","focus","projects"][..]),("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..]),("sidebarStyle",&["sober","vivid"][..])] {
@@ -232,6 +256,13 @@ pub fn save_memory_policy(surface: &str, patch: &Value) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn terminal_layout_retains_ids_without_history_or_credentials() {
+        let clean=sanitize(&json!({"terminalLayouts":{"remote/thread":{"active":"missing","tabs":[{"id":"tab-1","terminalIds":["term-1","term-2"],"activeTerminalId":"term-2","vertical":true,"history":"private history","token":"private token"},{"id":"bad","terminalIds":["bad\n"],"activeTerminalId":"bad\n"}],"history":"private history"},"invalid":{"tabs":[]}}}));
+        assert_eq!(clean["terminalLayouts"]["remote/thread"],json!({"active":"tab-1","tabs":[{"id":"tab-1","terminalIds":["term-1","term-2"],"activeTerminalId":"term-2","vertical":true}]}));
+        assert!(clean["terminalLayouts"].get("invalid").is_none());
+        assert!(!clean.to_string().contains("private"));
+    }
     #[test]
     fn shared_drafts_are_explicit_and_default_off(){
         let owner="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run device QML in a private software display, without live desktop/profile access."""
+"""Run side-panel QML in a private software display, without live desktop/profile access."""
 import argparse
 import os
 from pathlib import Path
@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "native-terminal"], default="device-tools")
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "native-terminal", "embedded-terminal", "backend-smoke"], default="device-tools")
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 evidence = Path(tempfile.mkdtemp(prefix="o3-device-panel-", dir="/var/tmp"))
@@ -22,19 +22,42 @@ for name in Commons Ui plugins services; do ln -s "/usr/share/omarchy/shell/$nam
 ln -s "$1" /tmp/qml/UnderTest
 printf '%s\n' '//@ pragma OmarchyLoadPatch' '//@ pragma RespectSystemStyle' > /tmp/qml/shell.qml
 cat "$1/tests/qml/$2.qml" >> /tmp/qml/shell.qml
-Xvfb :9 -screen 0 1280x1024x24 -nolisten tcp -extension GLX > /evidence/display.log 2>&1 &
-display_pid=$!
-for attempt in $(seq 1 50); do
-  kill -0 "$display_pid" || exit 1
-  if test -S /tmp/.X11-unix/X9; then break; fi
-  sleep 0.02
-done
-DISPLAY=:9 QT_QPA_PLATFORM=xcb QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=OmarchyT3 QML_IMPORT_PATH="$1/ui/style" timeout 25 quickshell -p /tmp/qml/shell.qml > /evidence/qml.log 2>&1
+if test "$3" = wayland; then
+  printf '%s\n' 'output * mode 1280x1024' 'seat seat0 fallback true' 'input * xkb_layout us' 'focus_follows_mouse no' > /tmp/sway.conf
+  WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_HEADLESS_OUTPUTS=1 WLR_LIBINPUT_NO_DEVICES=1 LD_LIBRARY_PATH=/opt/sway-runtime/usr/lib /opt/sway-runtime/usr/bin/sway --config /tmp/sway.conf > /evidence/display.log 2>&1 &
+  display_pid=$!
+  for attempt in $(seq 1 100); do
+    kill -0 "$display_pid" || exit 1
+    for socket in /tmp/runtime/wayland-*; do
+      if test -S "$socket"; then WAYLAND_DISPLAY="${socket##*/}"; break; fi
+    done
+    if test -n "${WAYLAND_DISPLAY:-}"; then break; fi
+    sleep 0.02
+  done
+  QT_QPA_PLATFORM=wayland; export WAYLAND_DISPLAY QT_QPA_PLATFORM
+else
+  Xvfb :9 -screen 0 1280x1024x24 -nolisten tcp -extension GLX > /evidence/display.log 2>&1 &
+  display_pid=$!
+  for attempt in $(seq 1 50); do
+    kill -0 "$display_pid" || exit 1
+    if test -S /tmp/.X11-unix/X9; then break; fi
+    sleep 0.02
+  done
+  DISPLAY=:9 QT_QPA_PLATFORM=xcb; export DISPLAY QT_QPA_PLATFORM
+fi
+QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=OmarchyT3 QML_IMPORT_PATH="$1/ui/style:$1/bin/qml" timeout 25 quickshell -p /tmp/qml/shell.qml > /evidence/qml.log 2>&1
 '''
 command = ["podman", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
 for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "XDG_CONFIG_HOME":"/tmp/config", "XDG_STATE_HOME":"/tmp/state", "XDG_DATA_HOME":"/tmp/data", "LIBGL_ALWAYS_SOFTWARE":"1", "__EGL_VENDOR_LIBRARY_FILENAMES":"/usr/share/glvnd/egl_vendor.d/50_mesa.json"}.items():
     command += ["--env", f"{key}={value}"]
-command += ["-v", "/usr:/usr:ro", "-v", "/etc/fonts:/etc/fonts:ro", "-v", f"{root}:{root}:ro", "-v", f"{evidence}:/evidence:rw", "docker.io/library/archlinux:latest", "bash", "-c", script, "device-panel", str(root), args.fixture]
+client_link = root / "bin/omarchy-t3-client"
+client_target = client_link.resolve()
+client_binary = Path(os.environ.get("OMARCHY_T3_TEST_BINARY", str(client_target)))
+if client_binary.is_file():
+    command += ["-v", f"{client_binary}:{client_target}:ro"]
+display="wayland" if args.fixture in ["side-panel", "native-terminal"] else "x11"
+container_image="localhost/o3-qml-wayland-tests:local" if display=="wayland" else "docker.io/library/archlinux:latest"
+command += ["-v", "/usr:/usr:ro", "-v", "/etc/fonts:/etc/fonts:ro", "-v", f"{root}:{root}:ro", "-v", f"{evidence}:/evidence:rw", container_image, "bash", "-c", script, "device-panel", str(root), args.fixture, display]
 result = subprocess.run(command, capture_output=True, text=True, timeout=45)
 log = (evidence / "qml.log").read_text() if (evidence / "qml.log").exists() else result.stdout + result.stderr
 print(f"Device panel container evidence: {evidence}")

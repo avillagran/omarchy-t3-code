@@ -395,6 +395,8 @@ thread adds `orchestration:operate`) and `device::list_scope` (`updateTool` or
 | `terminal.open` | same | `terminal::open(conn, &TerminalOpen)` | mutation · set | `terminal:operate` | 20 s | `threadId`, `terminalId`, `cwd`, `worktreePath`?, `cols`?, `rows`?, `env`?, `providerInstanceId`? |
 | `terminal.write` | same | `terminal::write(conn, thread_id, terminal_id, data)` | mutation · never | `terminal:operate` | 20 s | `threadId`, `terminalId`, `data` |
 | `terminal.resize` | same | `terminal::resize(conn, thread_id, terminal_id, cols, rows)` | mutation · set | `terminal:operate` | 20 s | `threadId`, `terminalId`, `cols`, `rows` |
+| `terminal.clear` | same | `terminal::clear(conn, thread_id, terminal_id)` | mutation · set | `terminal:operate` | 20 s | `threadId`, `terminalId` |
+| `terminal.close` | same | `terminal::close(conn, thread_id, terminal_id?, delete_history?)` | mutation · set | `terminal:operate` | 20 s | `threadId`, `terminalId`?, `deleteHistory`? |
 
 Merged with what the library already had, so each payload has one builder:
 

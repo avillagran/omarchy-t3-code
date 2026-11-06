@@ -2125,6 +2125,18 @@
     "Terminate app": "Terminate app",
     "Tinted glass": "Tinted glass",
     "Upside down": "Upside down",
-    "VoiceOver": "VoiceOver"
+    "VoiceOver": "VoiceOver",
+    "Clear terminal": "Clear terminal",
+    "Close terminal": "Close terminal",
+    "Connecting…": "Connecting…",
+    "Copy selection": "Copy selection",
+    "Exited": "Exited",
+    "New terminal": "New terminal",
+    "Open a terminal to run commands in this conversation.": "Open a terminal to run commands in this conversation.",
+    "Paste": "Paste",
+    "Restart terminal": "Restart terminal",
+    "Split terminal": "Split terminal",
+    "Split terminal vertically": "Split terminal vertically",
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "The terminal renderer is unavailable. Rebuild the desktop client."
   }
 }

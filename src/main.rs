@@ -20,6 +20,7 @@ mod remote_maintenance_host;
 mod server_update;
 mod session_audit_cache;
 mod shell_watch;
+mod terminal_surface;
 mod ui_state;
 mod worktree_setup;
 use omarchy_t3_client::write;
@@ -527,6 +528,7 @@ fn watch(client: Client) -> Result<()> {
         let mut keybinding_watches = keybinding_watch::Control::default();
         let mut device_watches = device_watch::Control::default();
         let mut device_screens = device_screen::Manager::default();
+        let mut terminal_surfaces = terminal_surface::Manager::default();
         let browser_observer = browser_manager.clone();
         let preview_watches =
             preview_watch::Control::with_observer(move |data| browser_observer.observe(data));
@@ -648,6 +650,7 @@ fn watch(client: Client) -> Result<()> {
                         preview_watches.clear();
                         browser_manager.hide();
                         device_screens.stop();
+                        terminal_surfaces.stop();
                         document_thread_key = key;
                     }
                 }
@@ -664,6 +667,7 @@ fn watch(client: Client) -> Result<()> {
                         keybinding_watches.clear();
                         device_watches.clear();
                         device_screens.stop();
+                        terminal_surfaces.stop();
                         preview_watches.clear();
                         browser_manager.hide();
                     }
@@ -687,6 +691,7 @@ fn watch(client: Client) -> Result<()> {
                     preview_watches.clear();
                     browser_manager.hide();
                     device_screens.stop();
+                    terminal_surfaces.stop();
                 }
                 if v["op"] == "devices-watch" {
                     device_watches.select(&v, input_visible);
@@ -713,6 +718,10 @@ fn watch(client: Client) -> Result<()> {
                     if v["op"] == "command-output-stop" {
                         continue;
                     }
+                }
+                if text(&v, "op").starts_with("terminal-surface-") {
+                    terminal_surfaces.request(&v, input_visible);
+                    continue;
                 }
                 if matches!(
                     text(&v, "op"),
@@ -1675,7 +1684,7 @@ fn run() -> Result<()> {
             )
             .map_err(|_| "invalid_command")?;
             let mut input: Value = serde_json::from_str(&raw).map_err(|_| "invalid_command")?;
-            if !input.is_object() || text(&input, "op") != "" {
+            if !input.is_object() || !text(&input, "op").is_empty() {
                 return Err("invalid_command".into());
             }
             input["op"] = json!("connections-manage");

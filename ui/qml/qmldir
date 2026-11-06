@@ -165,3 +165,6 @@ T3PairingQr 1.0 T3PairingQr.qml
 T3ThreadBoard 1.0 T3ThreadBoard.qml
 T3ProjectSidebar 1.0 T3ProjectSidebar.qml
 T3HostBadge 1.0 T3HostBadge.qml
+
+T3TerminalPanel 1.0 T3TerminalPanel.qml
+T3TerminalPane 1.0 T3TerminalPane.qml

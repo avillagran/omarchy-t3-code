@@ -1,11 +1,11 @@
 {
   "repository": "https://github.com/avillagran/lib-t3-rust",
-  "revision": "eeed1780c07aa4e92a4ac5376878457edd38be53",
+  "revision": "0272a37f3f938209d16ebd797a99e476d9118f4c",
   "upstreamFiles": {
     "Cargo.lock": "1f0a10d67451ed51758587fb3f260dc1e5dfeda569b0f824bbebd8261e5d387a",
     "Cargo.toml": "b1f0244885b62685fd35ec58427267319f20394eefb73b27bede951dd99717cb",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
-    "README.md": "2a3b45284b1a15cad07406cd40b6d7ed6f540c3b5f6b422ad38d93b7601eca6e",
+    "README.md": "8fe67853c24001d7c343cd6421c4dd835b3e4c1c192b3b51ec94186703067e49",
     "data/i18n.json": "f9f6ee013ea93da62a085232026da49fa78ec1beabea8ba4688fe95489eb36d7",
     "data/provider-drivers.json": "9e45cb6547de2d46b3f30b88fdc15ba877942693206ecc631409b851a07616e5",
     "data/storage-rule-cases.json": "2bbab2df2bbd689f1b2d49dee79f65a47645ca5d42bb0eac4372634d85789f4b",
@@ -37,7 +37,7 @@
     "src/api/server.rs": "a00264661cfc340a78dbd8e12c652c1e05d0b78284e332e77869f74bd765dfd7",
     "src/api/shell.rs": "d3427458b85bb758650fc517dd90a38de95a2058fb58a7cda860c8c977e2d27e",
     "src/api/streams.rs": "c8219b06ac2539efc76d215b6e4a05f3ca20a3c460887432592b7775f622b5ac",
-    "src/api/terminal.rs": "37f1c2bfdee391d0677aea81bc824ccd11c2bb4d8f0be340c47967f6dabb1951",
+    "src/api/terminal.rs": "f0dc1591d168072ed87126b30355cff3ddfa73079c53463cadb0368ce98b5eb4",
     "src/api/vcs.rs": "3629b23aedca2e9902243e4752e1f2caae114dd64fc956f294a1857506022ca1",
     "src/api/worktree_setup.rs": "d9f5174953569495444d9cff55dcff21defdcb276e53266e8d9983ba58b5d8ba",
     "src/approvals.rs": "a0aa30a75163d84521c12be78a79386ae0b1dac3e487ba56ddb3b0df7cab7917",

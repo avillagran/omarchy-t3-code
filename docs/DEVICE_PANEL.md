@@ -8,7 +8,7 @@ The Devices tab renders native Android H.264 and iOS MJPEG sessions, forwards sc
 
 Six Rust device-screen tests validate native payload coverage, destination capture, lifecycle reservations and frame/input helpers. The actual tools component is exercised in a rootless container with a private software X display by `python3 tools/test-device-panel-container device-tools`. It covers platform controls, location bounds, application targeting, pending state, scope changes and unsupported hosts. The browser workspace fixture also passes in that harness. Translation coverage is 20 locales with 2,126 keys each.
 
-These fixtures use synthetic device details. They do not claim a live emulator, iOS host, full old side-panel route or installed application acceptance. The old route fixture currently fails resolving its backend singleton in the isolated harness. Strict client Clippy also reports pre-existing library errors; neither gate is waived.
+These fixtures use synthetic device details. They do not claim a live emulator, iOS host or installed application acceptance. The complete side-panel route now passes in a rootless private Sway compositor, including device inventory, frames, touch mapping and close. Deferred singleton construction fixes the fixture's initialization order; a Wayland compositor is required for the application's layer-shell surface. Strict client Clippy errors were repaired separately rather than suppressed.
 
 ## Remaining source parity
 

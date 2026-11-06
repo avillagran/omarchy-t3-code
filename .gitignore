@@ -30,4 +30,5 @@ __pycache__/
 
 # Local dictation helper build output.
 /bin/ot3-dictate
+/bin/qml/
 /native/dictate/target/

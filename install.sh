@@ -155,9 +155,15 @@ else
   [[ $(tar -xOf "$downloads/$asset" COMMIT) == "$expected_commit" ]] || fail 'Binary and source revisions differ.'
   mkdir "$downloads/unpacked"
   tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so bin/libt3-qml-preview.so bin/libt3-browser.so bin/t3-browser-secret
+  terminal_runtime=()
+  # Older source releases do not contain the embedded terminal surface.
+  if [[ -f "$build_dir/ui/qml/T3TerminalViewport.qml" ]]; then
+    tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/qml/O3/Terminal/libo3terminal.so bin/qml/O3/Terminal/qmldir bin/qml/O3/Terminal/Ghostty-LICENSE bin/qml/O3/Terminal/GHOSTTY_VERSION
+    terminal_runtime+=("$downloads/unpacked/bin/qml/O3/Terminal/libo3terminal.so")
+  fi
   # The dictation helper is optional: packages built without CMake lack it.
   tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/ot3-dictate 2>/dev/null || true
-  ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" "$downloads/unpacked/bin/libt3-qml-preview.so" "$downloads/unpacked/bin/libt3-browser.so" "$downloads/unpacked/bin/t3-browser-secret" $([[ -f $downloads/unpacked/bin/ot3-dictate ]] && printf '%s' "$downloads/unpacked/bin/ot3-dictate") > "$downloads/libraries"
+  ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" "$downloads/unpacked/bin/libt3-qml-preview.so" "$downloads/unpacked/bin/libt3-browser.so" "$downloads/unpacked/bin/t3-browser-secret" "${terminal_runtime[@]}" $([[ -f $downloads/unpacked/bin/ot3-dictate ]] && printf '%s' "$downloads/unpacked/bin/ot3-dictate") > "$downloads/libraries"
   if rg -q 'not found' "$downloads/libraries"; then
     cat "$downloads/libraries" >&2
     fail 'Runtime libraries do not match this package; update Omarchy or use OT3_BUILD_FROM_SOURCE=1.'
@@ -172,6 +178,13 @@ else
   for file in libt3-document.so libt3-qml-preview.so libt3-browser.so t3-browser-secret; do
     install -m755 "$downloads/unpacked/bin/$file" "$build_dir/bin/$file"
   done
+  if ((${#terminal_runtime[@]})); then
+    install -dm755 "$build_dir/bin/qml/O3/Terminal"
+    install -m755 "${terminal_runtime[0]}" "$build_dir/bin/qml/O3/Terminal/libo3terminal.so"
+    for file in qmldir Ghostty-LICENSE GHOSTTY_VERSION; do
+      install -m644 "$downloads/unpacked/bin/qml/O3/Terminal/$file" "$build_dir/bin/qml/O3/Terminal/$file"
+    done
+  fi
   if [[ -f $downloads/unpacked/bin/ot3-dictate ]]; then install -m755 "$downloads/unpacked/bin/ot3-dictate" "$build_dir/bin/ot3-dictate"; fi
 fi
 # OmaBridge is bundled but optional: without it, connections keep their saved routes.
@@ -187,6 +200,11 @@ if [[ $server == o3 ]]; then
   [[ $o3_before == "$("$o3_bin" --version)" ]] || o3_updated=1
 fi
 [[ -f "$build_dir/bin/libt3-document.so" ]] || fail 'The HTML preview did not build; check Qt development packages and retry.'
+if [[ -f "$build_dir/ui/qml/T3TerminalViewport.qml" ]]; then
+  for file in libo3terminal.so qmldir Ghostty-LICENSE GHOSTTY_VERSION; do
+    [[ -s "$build_dir/bin/qml/O3/Terminal/$file" ]] || fail 'The embedded terminal did not build; check Qt development packages and retry.'
+  done
+fi
 omarchy plugin validate "$build_dir"
 if [[ -n "$stage" ]]; then mv -- "$stage" "$plugin_dir"; stage=''; fi
 # A device published with the bundled binary (OmaBridge's own unit) keeps

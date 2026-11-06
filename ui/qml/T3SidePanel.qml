@@ -18,11 +18,13 @@ Rectangle {
   signal renderRequested(var attachment)
   signal closed()
   signal integrationsRequested()
+  readonly property var terminalItem: tab === "terminal" ? content.item : null
   readonly property var browserItem: tab === "browser" ? content.item : null
   readonly property color fg: Color.popups.text
   // Opaque so the narrow-window sheet covers the chat.
   color: Color.popups.background
   readonly property var tabs: [
+    {id: "terminal", icon: "terminal", label: "Terminal"},
     {id: "browser", icon: "globe", label: "Browser"},
     {id: "renders", icon: "code", label: "Renders"},
     {id: "agents", icon: "bot", label: "Agents"},
@@ -31,9 +33,17 @@ Rectangle {
   ColumnLayout {
     anchors.fill: parent; spacing: 0
     RowLayout {
-      objectName: "t3SidePanelTabs"
-      Layout.fillWidth: true; Layout.preferredHeight: Style.space(38)
+      objectName: "t3SidePanelHeader"
+      Layout.fillWidth: true; Layout.fillHeight: false; Layout.preferredHeight: Style.space(38); Layout.maximumHeight: Style.space(38)
       Layout.leftMargin: Style.space(8); Layout.rightMargin: Style.space(6); spacing: Style.space(2)
+      Flickable {
+        id: tabsViewport
+        Layout.fillWidth: true; Layout.fillHeight: true
+        contentWidth: tabStrip.implicitWidth; contentHeight: height; clip: true
+        flickableDirection: Flickable.HorizontalFlick
+        RowLayout {
+          id: tabStrip; objectName: "t3SidePanelTabs"
+          height: tabsViewport.height; spacing: Style.space(2)
       Repeater {
         model: root.tabs
         Rectangle {
@@ -53,7 +63,8 @@ Rectangle {
           }
         }
       }
-      Item { Layout.fillWidth: true }
+        }
+      }
       T3IconButton { objectName: "t3SidePanelClose"; name: "x"; tooltipText: T3I18n.tr("Close side panel"); onClicked: root.closed() }
     }
     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08) }
@@ -61,7 +72,7 @@ Rectangle {
       id: content
       objectName: "t3SidePanelContent"
       Layout.fillWidth: true; Layout.fillHeight: true
-      sourceComponent: root.tab === "browser" ? root.browserComponent : root.tab === "renders" ? rendersTab : root.tab === "agents" ? agentsTab : devicesTab
+      sourceComponent: root.tab === "terminal" ? terminalTab : root.tab === "browser" ? root.browserComponent : root.tab === "renders" ? rendersTab : root.tab === "agents" ? agentsTab : devicesTab
     }
   }
   Component {
@@ -95,6 +106,10 @@ Rectangle {
         onClosed: root.closed()
       }
     }
+  }
+  Component {
+    id: terminalTab
+    T3TerminalPanel { bridge: root.bridge }
   }
   Component {
     id: agentsTab

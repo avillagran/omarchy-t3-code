@@ -309,7 +309,7 @@ Item {
   readonly property var lastUserMessage:(bridge.transcript || []).filter(function(m){return m.role==="user"}).slice(-1)[0] || null
   readonly property var nativeFocusItem:panelLayout.Window.activeFocusItem
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
-  readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
+  readonly property var nativeShortcutContext:({terminalFocus:!!(root.sidePanelItem&&root.sidePanelItem.terminalItem&&root.sidePanelItem.terminalItem.terminalFocused),terminalOpen:root.sideShown&&root.sideTab==="terminal",previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
   readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!boardOpen&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
@@ -335,6 +335,7 @@ Item {
     if(command==="preview.refresh")return browserShown&&!!bridge.previewState&&!!bridge.previewState.snapshot&&bridge.previewWatch.canOperate&&!bridge.previewWatch.busy
     if(["preview.zoomIn","preview.zoomOut","preview.resetZoom"].indexOf(command)>=0)return browserShown&&!!bridge.browserSurface.interactive
     if(command==="terminal.toggle")return bridge.canOpenTerminal===true
+    if(["terminal.new","terminal.split","terminal.splitVertical","terminal.close"].indexOf(command)>=0)return root.sideShown&&root.sideTab==="terminal"&&bridge.canOpenTerminal===true
     if(command==="diff.toggle")return bridge.canOpenGit===true
     if(command==="modelPicker.toggle")return composerPanel.modelPickerAvailable
     if(command==="composer.mode")return composerPanel.permissionPickerAvailable
@@ -368,7 +369,10 @@ Item {
     else if(command==="preview.focusUrl")focusBrowserUrl()
     else if(command==="preview.refresh"){if(browserWorkspaceItem)browserWorkspaceItem.refresh()}
     else if(command==="preview.zoomIn"||command==="preview.zoomOut"||command==="preview.resetZoom")bridge.browserControl(command==="preview.zoomIn"?"zoom-in":command==="preview.zoomOut"?"zoom-out":"zoom-reset")
-    else if(command==="terminal.toggle")bridge.openTerminal()
+    else if(command==="terminal.toggle"){if(root.sideShown&&root.sideTab==="terminal")root.closeSide();else bridge.openTerminal()}
+    else if(command==="terminal.new")bridge.newTerminal(false)
+    else if(command==="terminal.split"||command==="terminal.splitVertical")bridge.newTerminal(true,undefined,command==="terminal.splitVertical")
+    else if(command==="terminal.close"){var tab=bridge.terminalTab();if(tab)bridge.closeTerminal(tab.activeTerminalId)}
     else if(command==="diff.toggle"){if(workingPopup.visible)workingPopup.close();else{bridge.requestWorkingReview("working-tree","",bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}}
     else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort"||command==="composer.branch")composerPanel.nativeModelControl(command)
     else if(command==="thread.undo"){if(!bridge.undoThreadAction||!bridge.undoThreadAction())bridge.requestRewindPreview(lastUserMessage.id)}
@@ -393,7 +397,7 @@ Item {
   readonly property var managedToplevel:ToplevelManager.toplevels.values.find(function(t){return t.title===desktop.title&&t.appId===Quickshell.appId}) || null
   onManagedToplevelChanged:if(opened&&detached&&managedToplevel){applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})}
   readonly property bool shortcutActive:opened&&(!detached||!!(managedToplevel&&managedToplevel.activated))
-  Connections{target:root.bridge;function onTerminalOpened(){if(!root.detached)root.close()}}
+  Connections{target:root.bridge;function onTerminalOpened(){root.openSide("terminal")}}
   // A chat opened with a prompt to review (for example from OmaBridge) is shown at once.
   Connections{target:root.bridge;function onPromptedChatStarted(){root.preferencesOpen=false;root.open()}}
   // The bar panel covers the screen, so step aside while a screenshot is taken.
