@@ -2076,6 +2076,9 @@
     "The selected server is not installed.": "The selected server is not installed.",
     "Another local server is already running.": "Another local server is already running.",
     "The local server could not start.": "The local server could not start.",
-    "The local server configuration is invalid.": "The local server configuration is invalid."
+    "The local server configuration is invalid.": "The local server configuration is invalid.",
+    "New thread each run": "New thread each run",
+    "Continue conversation": "Continue conversation",
+    "Fresh session each run": "Fresh session each run"
   }
 }

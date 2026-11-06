@@ -221,6 +221,7 @@ pub struct Shape {
 }
 const STATE: &[&str] = &["snapshot"];
 pub const SHAPES: &[Shape] = &[
+    Shape { function: &super::scheduled_tasks::SUBSCRIBE, item_key: None, items: &[], starts: &[], cursor: None, ends: &[], first_item: None },
     Shape {
         function: &SUBSCRIBE_SHELL,
         item_key: Some("kind"),

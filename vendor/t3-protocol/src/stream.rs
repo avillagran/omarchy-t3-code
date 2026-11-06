@@ -107,7 +107,7 @@ impl Connection {
      let kind=v["_tag"].as_str().unwrap_or("").to_owned();
      match kind.as_str(){
       "Chunk" if v["requestId"]=="1"=>{let Value::Array(values)=v["values"].take() else {return Err("malformed_stream".into())};for mut item in values{if tag=="orchestration.subscribeThread"{crate::wire::expand_ids(&mut item)?;}receive(Tick::Item(item))?;}receive(Tick::ChunkEnd)?;ws.send(Message::Text(json!({"_tag":"Ack","requestId":"1"}).to_string().into())).map_err(|_|"disconnected")?;},
-      "Exit" if v["requestId"]=="1"=>return Err("stream_closed".into()),
+      "Exit" if v["requestId"]=="1"=>return Err(if v["exit"]["_tag"]=="Failure"{crate::rejection(&v["exit"]["cause"])}else{"stream_closed".into()}),
       "Ping"=>ws.send(Message::Text(json!({"_tag":"Pong"}).to_string().into())).map_err(|_|"disconnected")?,
       _=>{}
      }

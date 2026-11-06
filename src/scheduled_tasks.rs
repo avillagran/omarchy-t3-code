@@ -48,6 +48,11 @@ pub fn upsert_payload(input: &Value) -> Result<Value> {
     let workspace=crate::protocol::api::orchestration::WorkspaceStrategy::from_json(&strategy)?.to_json()?;
     let mode = text(input, "runtimeMode");
     let mut p = json!({"title":title,"prompt":prompt,"enabled":input["enabled"]!=false,"schedule":schedule(input)?,"projectId":project,"threadId":input.get("threadId").unwrap_or(&Value::Null),"workspaceStrategy":workspace,"modelSelection":input["modelSelection"],"runtimeMode":if mode.is_empty(){"approval-required"}else{mode},"interactionMode":input["interactionMode"].as_str().unwrap_or("default"),"createdBy":"user","creationSource":"web"});
+    if let Some(mode) = input.get("threadMode").filter(|v| !v.is_null()) {
+        let mode = mode.as_str().filter(|m| matches!(*m, "new_thread" | "continue" | "fresh_session")).ok_or("invalid_thread_mode")?;
+        p["threadMode"] = json!(mode);
+        if mode == "new_thread" { p["threadId"] = Value::Null; }
+    }
     if input["id"].is_string() {
         p["id"] = json!(id(input)?);
         p["requireExisting"] = json!(true);
@@ -60,8 +65,14 @@ pub fn upsert_payload(input: &Value) -> Result<Value> {
 pub fn run(e: &Environment, input: &Value) -> Result<Value> {
     let action = text(input, "action");
     let c = || e.connection(true);
+    let config = crate::protocol::api::server::config(&c()?)?;
+    let thread_modes = config["environment"]["capabilities"]["scheduledTaskThreadModes"] == true;
+    if action == "upsert" && input.get("threadMode").is_some_and(|v| !v.is_null()) && !thread_modes {
+        return Err("scheduled_task_thread_modes_unsupported".into());
+    }
+    let read_tasks = || tasks::snapshot(&c()?);
     let result = match action {
-        "list" => tasks::list(&c()?)?,
+        "list" => read_tasks()?,
         "upsert" => tasks::upsert(&c()?, &TaskUpsert::from_json(&upsert_payload(input)?)?)?,
         "enable" => tasks::set_enabled(&c()?, &id(input)?, input["enabled"] == true)?,
         "delete" => tasks::delete(&c()?, &id(input)?)?,
@@ -69,8 +80,8 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         _ => return Err("invalid_command".into()),
     };
     // Every change answers with the fresh list, so the page never shows a stale row.
-    let list = if action == "list" { result } else { tasks::list(&c()?)? };
-    Ok(json!({"action":action,"tasks":list["tasks"]}))
+    let list = if action == "list" { result } else { read_tasks()? };
+    Ok(json!({"action":action,"tasks":list["tasks"],"supportsThreadModes":thread_modes}))
 }
 
 #[cfg(test)]
@@ -89,6 +100,21 @@ mod tests {
         let p = upsert_payload(&json!({"id":"task-1","title":"x","prompt":"y","projectId":"p","modelSelection":{},"schedule":{"type":"webhook"}})).unwrap();
         assert_eq!(p["requireExisting"], true);
         assert!(upsert_payload(&json!({"title":"","prompt":"y","projectId":"p","modelSelection":{},"schedule":{"type":"webhook"}})).is_err());
+    }
+    #[test]
+    fn thread_modes_preserve_unbound_fresh_sessions_and_legacy_bound_tasks() {
+        let mut input=json!({"title":"Daily","prompt":"Review","projectId":"p","modelSelection":{"instanceId":"codex","model":"m"},"schedule":{"type":"interval","minutes":60},"threadId":"bound"});
+        assert!(upsert_payload(&input).unwrap().get("threadMode").is_none());
+        for mode in ["new_thread", "continue", "fresh_session"] {
+            input["threadMode"]=json!(mode);
+            let payload=upsert_payload(&input).unwrap();
+            assert_eq!(payload["threadMode"],mode);
+            assert_eq!(payload["threadId"],if mode=="new_thread"{Value::Null}else{json!("bound")});
+        }
+        input["threadId"]=Value::Null;
+        assert_eq!(upsert_payload(&input).unwrap()["threadMode"],"fresh_session");
+        input["threadMode"]=json!("unknown");
+        assert!(upsert_payload(&input).is_err());
     }
     #[test]
     fn task_edits_preserve_workspace_and_require_a_worktree_base() {

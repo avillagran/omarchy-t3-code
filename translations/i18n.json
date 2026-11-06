@@ -2076,7 +2076,10 @@
     "The selected server is not installed.": "The selected server is not installed.",
     "Another local server is already running.": "Another local server is already running.",
     "The local server could not start.": "The local server could not start.",
-    "The local server configuration is invalid.": "The local server configuration is invalid."
+    "The local server configuration is invalid.": "The local server configuration is invalid.",
+    "New thread each run": "New thread each run",
+    "Continue conversation": "Continue conversation",
+    "Fresh session each run": "Fresh session each run"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4155,7 +4158,10 @@
     "The selected server is not installed.": "El servidor seleccionado no está instalado.",
     "Another local server is already running.": "Ya hay otro servidor local en ejecución.",
     "The local server could not start.": "No se pudo iniciar el servidor local.",
-    "The local server configuration is invalid.": "La configuración del servidor local no es válida."
+    "The local server configuration is invalid.": "La configuración del servidor local no es válida.",
+    "New thread each run": "Nuevo hilo en cada ejecución",
+    "Continue conversation": "Continuar conversación",
+    "Fresh session each run": "Nueva sesión en cada ejecución"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6234,7 +6240,10 @@
     "The selected server is not installed.": "O servidor selecionado não está instalado.",
     "Another local server is already running.": "Outro servidor local já está em execução.",
     "The local server could not start.": "Não foi possível iniciar o servidor local.",
-    "The local server configuration is invalid.": "A configuração do servidor local é inválida."
+    "The local server configuration is invalid.": "A configuração do servidor local é inválida.",
+    "New thread each run": "Nova conversa a cada execução",
+    "Continue conversation": "Continuar conversa",
+    "Fresh session each run": "Nova sessão a cada execução"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8313,7 +8322,10 @@
     "The selected server is not installed.": "Le serveur sélectionné n’est pas installé.",
     "Another local server is already running.": "Un autre serveur local est déjà en cours d’exécution.",
     "The local server could not start.": "Le serveur local n’a pas pu démarrer.",
-    "The local server configuration is invalid.": "La configuration du serveur local n’est pas valide."
+    "The local server configuration is invalid.": "La configuration du serveur local n’est pas valide.",
+    "New thread each run": "Nouveau fil à chaque exécution",
+    "Continue conversation": "Continuer la conversation",
+    "Fresh session each run": "Nouvelle session à chaque exécution"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10392,7 +10404,10 @@
     "The selected server is not installed.": "Der ausgewählte Server ist nicht installiert.",
     "Another local server is already running.": "Ein anderer lokaler Server läuft bereits.",
     "The local server could not start.": "Der lokale Server konnte nicht gestartet werden.",
-    "The local server configuration is invalid.": "Die Konfiguration des lokalen Servers ist ungültig."
+    "The local server configuration is invalid.": "Die Konfiguration des lokalen Servers ist ungültig.",
+    "New thread each run": "Neuer Thread bei jedem Lauf",
+    "Continue conversation": "Gespräch fortsetzen",
+    "Fresh session each run": "Neue Sitzung bei jedem Lauf"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12471,7 +12486,10 @@
     "The selected server is not installed.": "Il server selezionato non è installato.",
     "Another local server is already running.": "Un altro server locale è già in esecuzione.",
     "The local server could not start.": "Impossibile avviare il server locale.",
-    "The local server configuration is invalid.": "La configurazione del server locale non è valida."
+    "The local server configuration is invalid.": "La configurazione del server locale non è valida.",
+    "New thread each run": "Nuova conversazione a ogni esecuzione",
+    "Continue conversation": "Continua conversazione",
+    "Fresh session each run": "Nuova sessione a ogni esecuzione"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14550,7 +14568,10 @@
     "The selected server is not installed.": "De geselecteerde server is niet geïnstalleerd.",
     "Another local server is already running.": "Er draait al een andere lokale server.",
     "The local server could not start.": "De lokale server kon niet worden gestart.",
-    "The local server configuration is invalid.": "De configuratie van de lokale server is ongeldig."
+    "The local server configuration is invalid.": "De configuratie van de lokale server is ongeldig.",
+    "New thread each run": "Nieuw gesprek bij elke uitvoering",
+    "Continue conversation": "Gesprek voortzetten",
+    "Fresh session each run": "Nieuwe sessie bij elke uitvoering"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16629,7 +16650,10 @@
     "The selected server is not installed.": "Wybrany serwer nie jest zainstalowany.",
     "Another local server is already running.": "Inny lokalny serwer już działa.",
     "The local server could not start.": "Nie udało się uruchomić lokalnego serwera.",
-    "The local server configuration is invalid.": "Konfiguracja lokalnego serwera jest nieprawidłowa."
+    "The local server configuration is invalid.": "Konfiguracja lokalnego serwera jest nieprawidłowa.",
+    "New thread each run": "Nowy wątek przy każdym uruchomieniu",
+    "Continue conversation": "Kontynuuj rozmowę",
+    "Fresh session each run": "Nowa sesja przy każdym uruchomieniu"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18708,7 +18732,10 @@
     "The selected server is not installed.": "Выбранный сервер не установлен.",
     "Another local server is already running.": "Другой локальный сервер уже запущен.",
     "The local server could not start.": "Не удалось запустить локальный сервер.",
-    "The local server configuration is invalid.": "Недопустимая конфигурация локального сервера."
+    "The local server configuration is invalid.": "Недопустимая конфигурация локального сервера.",
+    "New thread each run": "Новый чат при каждом запуске",
+    "Continue conversation": "Продолжить разговор",
+    "Fresh session each run": "Новая сессия при каждом запуске"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20787,7 +20814,10 @@
     "The selected server is not installed.": "Вибраний сервер не встановлено.",
     "Another local server is already running.": "Інший локальний сервер уже запущено.",
     "The local server could not start.": "Не вдалося запустити локальний сервер.",
-    "The local server configuration is invalid.": "Конфігурація локального сервера недійсна."
+    "The local server configuration is invalid.": "Конфігурація локального сервера недійсна.",
+    "New thread each run": "Новий чат під час кожного запуску",
+    "Continue conversation": "Продовжити розмову",
+    "Fresh session each run": "Новий сеанс під час кожного запуску"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22866,7 +22896,10 @@
     "The selected server is not installed.": "選択したサーバーはインストールされていません。",
     "Another local server is already running.": "別のローカルサーバーが既に実行中です。",
     "The local server could not start.": "ローカルサーバーを起動できませんでした。",
-    "The local server configuration is invalid.": "ローカルサーバーの設定が無効です。"
+    "The local server configuration is invalid.": "ローカルサーバーの設定が無効です。",
+    "New thread each run": "実行ごとに新しいスレッド",
+    "Continue conversation": "会話を続ける",
+    "Fresh session each run": "実行ごとに新しいセッション"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24945,7 +24978,10 @@
     "The selected server is not installed.": "선택한 서버가 설치되어 있지 않습니다.",
     "Another local server is already running.": "다른 로컬 서버가 이미 실행 중입니다.",
     "The local server could not start.": "로컬 서버를 시작할 수 없습니다.",
-    "The local server configuration is invalid.": "로컬 서버 구성이 올바르지 않습니다."
+    "The local server configuration is invalid.": "로컬 서버 구성이 올바르지 않습니다.",
+    "New thread each run": "실행마다 새 스레드",
+    "Continue conversation": "대화 계속",
+    "Fresh session each run": "실행마다 새 세션"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27024,7 +27060,10 @@
     "The selected server is not installed.": "未安装所选服务器。",
     "Another local server is already running.": "另一个本地服务器已在运行。",
     "The local server could not start.": "无法启动本地服务器。",
-    "The local server configuration is invalid.": "本地服务器配置无效。"
+    "The local server configuration is invalid.": "本地服务器配置无效。",
+    "New thread each run": "每次运行新建对话",
+    "Continue conversation": "继续对话",
+    "Fresh session each run": "每次运行新建会话"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29103,7 +29142,10 @@
     "The selected server is not installed.": "الخادم المحدد غير مثبت.",
     "Another local server is already running.": "هناك خادم محلي آخر قيد التشغيل بالفعل.",
     "The local server could not start.": "تعذر تشغيل الخادم المحلي.",
-    "The local server configuration is invalid.": "إعدادات الخادم المحلي غير صالحة."
+    "The local server configuration is invalid.": "إعدادات الخادم المحلي غير صالحة.",
+    "New thread each run": "محادثة جديدة عند كل تشغيل",
+    "Continue conversation": "متابعة المحادثة",
+    "Fresh session each run": "جلسة جديدة عند كل تشغيل"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31182,7 +31224,10 @@
     "The selected server is not installed.": "Seçilen sunucu yüklü değil.",
     "Another local server is already running.": "Başka bir yerel sunucu zaten çalışıyor.",
     "The local server could not start.": "Yerel sunucu başlatılamadı.",
-    "The local server configuration is invalid.": "Yerel sunucu yapılandırması geçersiz."
+    "The local server configuration is invalid.": "Yerel sunucu yapılandırması geçersiz.",
+    "New thread each run": "Her çalıştırmada yeni sohbet",
+    "Continue conversation": "Sohbete devam et",
+    "Fresh session each run": "Her çalıştırmada yeni oturum"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33261,7 +33306,10 @@
     "The selected server is not installed.": "Den valda servern är inte installerad.",
     "Another local server is already running.": "En annan lokal server körs redan.",
     "The local server could not start.": "Den lokala servern kunde inte startas.",
-    "The local server configuration is invalid.": "Den lokala serverns konfiguration är ogiltig."
+    "The local server configuration is invalid.": "Den lokala serverns konfiguration är ogiltig.",
+    "New thread each run": "Ny tråd vid varje körning",
+    "Continue conversation": "Fortsätt konversationen",
+    "Fresh session each run": "Ny session vid varje körning"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35340,7 +35388,10 @@
     "The selected server is not installed.": "Den valgte server er ikke installeret.",
     "Another local server is already running.": "En anden lokal server kører allerede.",
     "The local server could not start.": "Den lokale server kunne ikke starte.",
-    "The local server configuration is invalid.": "Den lokale servers konfiguration er ugyldig."
+    "The local server configuration is invalid.": "Den lokale servers konfiguration er ugyldig.",
+    "New thread each run": "Ny tråd ved hver kørsel",
+    "Continue conversation": "Fortsæt samtalen",
+    "Fresh session each run": "Ny session ved hver kørsel"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37419,7 +37470,10 @@
     "The selected server is not installed.": "Den valgte serveren er ikke installert.",
     "Another local server is already running.": "En annen lokal server kjører allerede.",
     "The local server could not start.": "Den lokale serveren kunne ikke starte.",
-    "The local server configuration is invalid.": "Den lokale serverens konfigurasjon er ugyldig."
+    "The local server configuration is invalid.": "Den lokale serverens konfigurasjon er ugyldig.",
+    "New thread each run": "Ny tråd ved hver kjøring",
+    "Continue conversation": "Fortsett samtalen",
+    "Fresh session each run": "Ny økt ved hver kjøring"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39498,7 +39552,10 @@
     "The selected server is not installed.": "Valittua palvelinta ei ole asennettu.",
     "Another local server is already running.": "Toinen paikallinen palvelin on jo käynnissä.",
     "The local server could not start.": "Paikallista palvelinta ei voitu käynnistää.",
-    "The local server configuration is invalid.": "Paikallisen palvelimen asetukset ovat virheelliset."
+    "The local server configuration is invalid.": "Paikallisen palvelimen asetukset ovat virheelliset.",
+    "New thread each run": "Uusi keskustelu joka ajolla",
+    "Continue conversation": "Jatka keskustelua",
+    "Fresh session each run": "Uusi istunto joka ajolla"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -41577,6 +41634,9 @@
     "The selected server is not installed.": "Vybraný server není nainstalován.",
     "Another local server is already running.": "Jiný místní server již běží.",
     "The local server could not start.": "Místní server se nepodařilo spustit.",
-    "The local server configuration is invalid.": "Konfigurace místního serveru je neplatná."
+    "The local server configuration is invalid.": "Konfigurace místního serveru je neplatná.",
+    "New thread each run": "Nové vlákno při každém spuštění",
+    "Continue conversation": "Pokračovat v konverzaci",
+    "Fresh session each run": "Nová relace při každém spuštění"
   }
 }
