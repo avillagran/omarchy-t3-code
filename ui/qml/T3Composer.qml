@@ -47,7 +47,7 @@ Rectangle {
   property var viewRefs:[]
   property string viewText:""
   property bool syncingEditor:false
-  readonly property string referenceSource:"!?\\[[^\\]\\n]*\\]\\(t3-context://v1/[a-z]+/[^)\\s]+\\)"
+  readonly property string referenceSource:"!?\\[[^\\]\\n]*\\]\\(t3-context://v1/[a-z][a-z0-9-]{0,39}/[^)\\s]+\\)"
   function splitReferences(source){var refs=[];var text=String(source || "").replace(new RegExp(referenceSource,"g"),function(m){refs.push(m);return "\ufffc"});return {text:text,refs:refs}}
   function joinReferences(view,refs){var i=0;return String(view).replace(/\ufffc/g,function(){return i<refs.length?refs[i++]:""})}
   function sourceText(){return joinReferences(viewText,viewRefs)}
@@ -61,14 +61,14 @@ Rectangle {
   // Qt SVG (Tiny 1.2) has no rgba(): colours are hex, opacity a separate attribute.
   function svgColor(col){var hex=function(v){var h=Math.round(v*255).toString(16);return h.length<2?"0"+h:h};return "#"+hex(col.r)+hex(col.g)+hex(col.b)}
   function chipImage(ref){
-    var m=/^(!?)\[([^\]]*)\]\(t3-context:\/\/v1\/([a-z]+)\/([^)]+)\)$/.exec(ref) || ["","","",""," "]
+    var m=/^(!?)\[([^\]]*)\]\(t3-context:\/\/v1\/([a-z][a-z0-9-]{0,39})\/([^)]+)\)$/.exec(ref) || ["","","",""," "]
     var attachment=(draft.attachments || []).map(function(a){return a.attachment || {}}).find(function(a){return a.id===m[4]}) || {}
     var name=m[2] || attachment.name || m[3],size=sizeText(attachment.sizeBytes)
     chipName.text=name;chipSize.text=size
     var h=Math.round(Style.space(22)),pad=Math.round(Style.space(7)),icon=Math.round(Style.space(13)),gap=Math.round(Style.space(5))
     var nameW=Math.ceil(Math.min(chipName.advanceWidth,Style.space(200))),sizeW=size?Math.ceil(chipSize.advanceWidth)+gap:0
     var w=pad+icon+gap+nameW+sizeW+pad,f=chipName.font.pixelSize,ink=svgColor(fg),accent=svgColor(Color.accent),family=escapeHtml(chipName.font.family),baseline=(h/2+f*0.35).toFixed(1)
-    var glyph=m[1]==="!"?'<rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="'+accent+'" stroke-width="1.3"/><circle cx="5" cy="5" r="1.3" fill="'+accent+'"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>'
+    var glyph=m[3]==="terminal"?'<rect x="1.5" y="2" width="11" height="10" rx="1.5" fill="none" stroke="'+accent+'" stroke-width="1.2"/><path d="M4 5l2 2-2 2m3 0h3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>':m[1]==="!"?'<rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="'+accent+'" stroke-width="1.3"/><circle cx="5" cy="5" r="1.3" fill="'+accent+'"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>'
       :'<path d="M3 1.5h5l3.5 3.5v7.5h-8.5z" fill="none" stroke="'+accent+'" stroke-width="1.3"/>'
     // Drawn at the screen's scale (at least 2x) and shown at its logical size, so it stays sharp.
     var scale=Math.max(2,Math.ceil(editor.Screen.devicePixelRatio || 1))
@@ -131,8 +131,10 @@ Rectangle {
   Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.cursorPosition=root.viewPosition(cursor);editor.forceActiveFocus()})}}
   property int historyIndex: -1
   property string historyScratch: ""
-  readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
-  Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";saveQuietPeriod.stop()} }
+  property var historyScratchContext:null
+  readonly property var promptHistoryEntries: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return {text:String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim(),context:m.context || null}}).filter(function(m){return !!m.text}).reverse()
+  readonly property var promptHistory:promptHistoryEntries.map(function(m){return m.text})
+  Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";root.historyScratchContext=null;saveQuietPeriod.stop()} }
   property var completion: null
   property int completionIndex: 0
   property string dismissedCompletion: ""
@@ -201,11 +203,11 @@ Rectangle {
     if (Math.abs(editor.cursorRectangle.y-edge.y)>1) return false
     if (direction < 0) {
       if (historyIndex+1 >= promptHistory.length) return false
-      if (historyIndex < 0) historyScratch=root.draft.text
-      historyIndex++;bridge.edit(promptHistory[historyIndex])
+      if (historyIndex < 0){historyScratch=root.draft.text;historyScratchContext=root.draft.context || null}
+      historyIndex++;bridge.patchDraft(bridge.selectedKey,{text:promptHistory[historyIndex],context:promptHistoryEntries[historyIndex].context})
     } else {
       if (historyIndex < 0) return false
-      historyIndex--;bridge.edit(historyIndex < 0 ? historyScratch : promptHistory[historyIndex])
+      historyIndex--;bridge.patchDraft(bridge.selectedKey,{text:historyIndex < 0 ? historyScratch : promptHistory[historyIndex],context:historyIndex < 0 ? historyScratchContext : promptHistoryEntries[historyIndex].context})
     }
     Qt.callLater(function(){editor.cursorPosition=direction<0?0:editor.length});return true
   }

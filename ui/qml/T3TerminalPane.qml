@@ -32,6 +32,7 @@ Rectangle {
     function onSelectedKeyChanged(){Qt.callLater(root.attach,false)}
     function onTerminalViewEvent(request,data){
       if(request!==root.requestId || root.attachedKey!==root.bridge.selectedKey || !terminal.item)return
+      if(data.kind==="primary-text"){terminal.item.paste(data.text || "");return}
       if(data.kind==="event"){
         if(data.reset)terminal.item.reset()
         var event=data.event || {},grid=event.snapshot || event
@@ -47,6 +48,7 @@ Rectangle {
       Text { Layout.fillWidth: true; text: root.view.label || T3I18n.tr("Terminal"); textFormat: Text.PlainText; elide: Text.ElideRight; color: root.fg; font.pixelSize: Style.font.caption }
       Text { visible: root.view.status!=="running"; text: root.view.status==="exited"?T3I18n.tr("Exited"):root.view.status==="reconnecting"?T3I18n.tr("Reconnecting…"):root.view.status==="error"?T3I18n.tr("Error"):T3I18n.tr("Connecting…"); color: Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.6); font.pixelSize: Style.font.caption }
       T3IconButton { objectName: "t3TerminalCopy"; name: "copy"; tooltipText: T3I18n.tr("Copy selection"); enabled: !!terminal.item && terminal.item.hasSelection; onClicked: terminal.item.copySelection() }
+      T3IconButton { objectName: "t3TerminalAttach"; name: "message-square"; tooltipText: T3I18n.tr("Add selection to prompt"); enabled: !!terminal.item && terminal.item.hasSelection && !!root.bridge.catalog && root.bridge.catalog.canWrite; onClicked: root.bridge.appendTerminalSelection(root.terminalId,root.view.label || T3I18n.tr("Terminal"),terminal.item.selectionRange,terminal.item.selectedText) }
       T3IconButton { objectName: "t3TerminalPaste"; name: "clipboard"; tooltipText: T3I18n.tr("Paste"); enabled: !!root.requestId && root.bridge.canOpenTerminal; onClicked: root.paste() }
       T3IconButton { objectName: "t3TerminalClear"; name: "eraser"; tooltipText: T3I18n.tr("Clear terminal"); enabled: !!root.requestId && root.bridge.canOpenTerminal; onClicked: root.bridge.terminalInput(root.requestId,"clear") }
       T3IconButton { objectName: "t3TerminalRestart"; name: "rotate-cw"; tooltipText: T3I18n.tr("Restart terminal"); enabled: root.bridge.canOpenTerminal; visible: root.view.status==="exited" || root.view.status==="error"; onClicked: root.attach(true) }
@@ -74,8 +76,11 @@ Rectangle {
     function onGridChanged(columns,rows){if(root.requestId&&!root.applyingGrid)root.bridge.terminalInput(root.requestId,"resize",{columns:columns,rows:rows})}
     function onCopyRequested(text){root.bridge.copyText(text)}
     function onPasteRequested(){root.paste()}
+    function onPrimaryPasteRequested(){if(root.requestId)root.bridge.terminalInput(root.requestId,"primary")}
+    function onSelectionChanged(){primarySelection.restart()}
     function onLinkActivated(uri){root.bridge.openReference(uri)}
     function onActiveFocusChanged(){if(terminal.item.activeFocus)root.bridge.activateTerminal(root.terminalId)}
   }
+  Timer { id: primarySelection; interval: 100; onTriggered: if(terminal.item&&terminal.item.hasSelection)root.bridge.copyText(terminal.item.selectedText,true) }
   Controls.TextArea { id: clipboard; visible: false }
 }

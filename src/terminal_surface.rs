@@ -65,6 +65,30 @@ fn dimensions(v: &Value) -> Result<(u16, u16)> {
         .ok_or("invalid_terminal_size")?;
     Ok((cols as u16, rows as u16))
 }
+// Keep each RPC inside the server limit without splitting a UTF-8 code point.
+fn write_input(
+    connection: &protocol::Connection,
+    target: &Target,
+    data: &str,
+    cancel: &AtomicBool,
+) -> Result<Value> {
+    if data.is_empty() || data.len() > 1024 * 1024 {
+        return Err("invalid_terminal_input".into());
+    }
+    let mut offset = 0;
+    while offset < data.len() {
+        if cancel.load(Ordering::Relaxed) {
+            return Err("terminal_disconnected".into());
+        }
+        let mut end = (offset + 65536).min(data.len());
+        while !data.is_char_boundary(end) {
+            end -= 1;
+        }
+        connection.terminal_write(&target.thread, &target.terminal, &data[offset..end])?;
+        offset = end;
+    }
+    Ok(Value::Null)
+}
 impl Manager {
     pub fn stop(&mut self) {
         self.sessions.clear();
@@ -174,10 +198,11 @@ fn run(
             }
             // Execute a code-block request once after the initial live snapshot.
             if let Some(command) = initial.take() {
-                if let Err(error) = writer_conn.terminal_write(
-                    &writer_target.thread,
-                    &writer_target.terminal,
+                if let Err(error) = write_input(
+                    &writer_conn,
+                    &writer_target,
                     &format!("{command}\r"),
+                    &writer_cancel,
                 ) {
                     emit(
                         &writer_target,
@@ -194,11 +219,16 @@ fn run(
                 break;
             }
             let result = match text(&v, "op") {
-                "terminal-surface-write" => writer_conn.terminal_write(
-                    &writer_target.thread,
-                    &writer_target.terminal,
+                "terminal-surface-write" => write_input(
+                    &writer_conn,
+                    &writer_target,
                     text(&v, "data"),
+                    &writer_cancel,
                 ),
+                "terminal-surface-primary" => crate::clipboard::primary_text().map(|text| {
+                    emit(&writer_target, json!({"kind":"primary-text","text":text}));
+                    Value::Null
+                }),
                 "terminal-surface-resize" => dimensions(&v).and_then(|(cols, rows)| {
                     writer_conn.terminal_resize(
                         &writer_target.thread,

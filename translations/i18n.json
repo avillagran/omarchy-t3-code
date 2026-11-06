@@ -2137,7 +2137,8 @@
     "Restart terminal": "Restart terminal",
     "Split terminal": "Split terminal",
     "Split terminal vertically": "Split terminal vertically",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "The terminal renderer is unavailable. Rebuild the desktop client."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "The terminal renderer is unavailable. Rebuild the desktop client.",
+    "Add selection to prompt": "Add selection to prompt"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4277,7 +4278,8 @@
     "Restart terminal": "Reiniciar terminal",
     "Split terminal": "Dividir terminal",
     "Split terminal vertically": "Dividir terminal verticalmente",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "El renderizador de terminal no está disponible. Vuelve a compilar el cliente de escritorio."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "El renderizador de terminal no está disponible. Vuelve a compilar el cliente de escritorio.",
+    "Add selection to prompt": "Añadir selección al mensaje"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6417,7 +6419,8 @@
     "Restart terminal": "Reiniciar terminal",
     "Split terminal": "Dividir terminal",
     "Split terminal vertically": "Dividir terminal verticalmente",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "O renderizador de terminal não está disponível. Recompile o cliente de desktop."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "O renderizador de terminal não está disponível. Recompile o cliente de desktop.",
+    "Add selection to prompt": "Adicionar seleção ao prompt"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8557,7 +8560,8 @@
     "Restart terminal": "Redémarrer le terminal",
     "Split terminal": "Diviser le terminal",
     "Split terminal vertically": "Diviser le terminal verticalement",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Le moteur du terminal est indisponible. Recompilez le client de bureau."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Le moteur du terminal est indisponible. Recompilez le client de bureau.",
+    "Add selection to prompt": "Ajouter la sélection au message"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10697,7 +10701,8 @@
     "Restart terminal": "Terminal neu starten",
     "Split terminal": "Terminal teilen",
     "Split terminal vertically": "Terminal vertikal teilen",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Der Terminalrenderer ist nicht verfügbar. Erstelle den Desktopclient neu."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Der Terminalrenderer ist nicht verfügbar. Erstelle den Desktopclient neu.",
+    "Add selection to prompt": "Auswahl zum Prompt hinzufügen"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12837,7 +12842,8 @@
     "Restart terminal": "Riavvia terminale",
     "Split terminal": "Dividi terminale",
     "Split terminal vertically": "Dividi terminale verticalmente",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Il motore del terminale non è disponibile. Ricompila il client desktop."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Il motore del terminale non è disponibile. Ricompila il client desktop.",
+    "Add selection to prompt": "Aggiungi selezione al messaggio"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14977,7 +14983,8 @@
     "Restart terminal": "Terminal herstarten",
     "Split terminal": "Terminal splitsen",
     "Split terminal vertically": "Terminal verticaal splitsen",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "De terminalrenderer is niet beschikbaar. Bouw de desktopclient opnieuw."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "De terminalrenderer is niet beschikbaar. Bouw de desktopclient opnieuw.",
+    "Add selection to prompt": "Selectie aan prompt toevoegen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17117,7 +17124,8 @@
     "Restart terminal": "Uruchom terminal ponownie",
     "Split terminal": "Podziel terminal",
     "Split terminal vertically": "Podziel terminal pionowo",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Moduł renderowania terminala jest niedostępny. Przebuduj klienta komputerowego."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Moduł renderowania terminala jest niedostępny. Przebuduj klienta komputerowego.",
+    "Add selection to prompt": "Dodaj zaznaczenie do polecenia"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19257,7 +19265,8 @@
     "Restart terminal": "Перезапустить терминал",
     "Split terminal": "Разделить терминал",
     "Split terminal vertically": "Разделить терминал по вертикали",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Модуль отображения терминала недоступен. Пересоберите настольный клиент."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Модуль отображения терминала недоступен. Пересоберите настольный клиент.",
+    "Add selection to prompt": "Добавить выделение в запрос"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21397,7 +21406,8 @@
     "Restart terminal": "Перезапустити термінал",
     "Split terminal": "Розділити термінал",
     "Split terminal vertically": "Розділити термінал вертикально",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Модуль відображення термінала недоступний. Перезберіть настільний клієнт."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Модуль відображення термінала недоступний. Перезберіть настільний клієнт.",
+    "Add selection to prompt": "Додати виділення до запиту"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23537,7 +23547,8 @@
     "Restart terminal": "ターミナルを再起動",
     "Split terminal": "ターミナルを分割",
     "Split terminal vertically": "ターミナルを縦に分割",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "ターミナルの描画エンジンがありません。デスクトップクライアントを再ビルドしてください。"
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "ターミナルの描画エンジンがありません。デスクトップクライアントを再ビルドしてください。",
+    "Add selection to prompt": "選択範囲をプロンプトに追加"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -25677,7 +25688,8 @@
     "Restart terminal": "터미널 다시 시작",
     "Split terminal": "터미널 분할",
     "Split terminal vertically": "터미널 세로 분할",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "터미널 렌더러를 사용할 수 없습니다. 데스크톱 클라이언트를 다시 빌드하세요."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "터미널 렌더러를 사용할 수 없습니다. 데스크톱 클라이언트를 다시 빌드하세요.",
+    "Add selection to prompt": "선택 영역을 프롬프트에 추가"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27817,7 +27829,8 @@
     "Restart terminal": "重启终端",
     "Split terminal": "拆分终端",
     "Split terminal vertically": "垂直拆分终端",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "终端渲染器不可用。请重新构建桌面客户端。"
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "终端渲染器不可用。请重新构建桌面客户端。",
+    "Add selection to prompt": "将选中内容添加到提示词"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29957,7 +29970,8 @@
     "Restart terminal": "إعادة تشغيل الطرفية",
     "Split terminal": "تقسيم الطرفية",
     "Split terminal vertically": "تقسيم الطرفية عموديًا",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "عارض الطرفية غير متاح. أعد بناء عميل سطح المكتب."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "عارض الطرفية غير متاح. أعد بناء عميل سطح المكتب.",
+    "Add selection to prompt": "إضافة التحديد إلى الطلب"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32097,7 +32111,8 @@
     "Restart terminal": "Terminali yeniden başlat",
     "Split terminal": "Terminali böl",
     "Split terminal vertically": "Terminali dikey böl",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminal işleyicisi kullanılamıyor. Masaüstü istemcisini yeniden derleyin."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminal işleyicisi kullanılamıyor. Masaüstü istemcisini yeniden derleyin.",
+    "Add selection to prompt": "Seçimi isteme ekle"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34237,7 +34252,8 @@
     "Restart terminal": "Starta om terminal",
     "Split terminal": "Dela terminal",
     "Split terminal vertically": "Dela terminal vertikalt",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminalens renderare är inte tillgänglig. Bygg om skrivbordsklienten."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminalens renderare är inte tillgänglig. Bygg om skrivbordsklienten.",
+    "Add selection to prompt": "Lägg till markering i prompten"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36377,7 +36393,8 @@
     "Restart terminal": "Genstart terminal",
     "Split terminal": "Opdel terminal",
     "Split terminal vertically": "Opdel terminal lodret",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminalens gengivelse er ikke tilgængelig. Byg skrivebordsklienten igen."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminalens gengivelse er ikke tilgængelig. Byg skrivebordsklienten igen.",
+    "Add selection to prompt": "Føj markering til prompt"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -38517,7 +38534,8 @@
     "Restart terminal": "Start terminalen på nytt",
     "Split terminal": "Del terminal",
     "Split terminal vertically": "Del terminal vertikalt",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminalens gjengiver er utilgjengelig. Bygg skrivebordsklienten på nytt."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Terminalens gjengiver er utilgjengelig. Bygg skrivebordsklienten på nytt.",
+    "Add selection to prompt": "Legg til utvalg i ledeteksten"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -40657,7 +40675,8 @@
     "Restart terminal": "Käynnistä pääte uudelleen",
     "Split terminal": "Jaa pääte",
     "Split terminal vertically": "Jaa pääte pystysuunnassa",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Päätteen piirto-ohjelma ei ole käytettävissä. Käännä työpöytäasiakas uudelleen."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Päätteen piirto-ohjelma ei ole käytettävissä. Käännä työpöytäasiakas uudelleen.",
+    "Add selection to prompt": "Lisää valinta kehotteeseen"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -42797,6 +42816,7 @@
     "Restart terminal": "Restartovat terminál",
     "Split terminal": "Rozdělit terminál",
     "Split terminal vertically": "Rozdělit terminál svisle",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "Vykreslování terminálu není dostupné. Znovu sestavte desktopového klienta."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "Vykreslování terminálu není dostupné. Znovu sestavte desktopového klienta.",
+    "Add selection to prompt": "Přidat výběr do zadání"
   }
 }

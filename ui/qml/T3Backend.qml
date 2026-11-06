@@ -31,7 +31,7 @@ Singleton {
   function backendChoice(id){var choices=localBackend.choices || [];return choices.find(function(c){return c.backend===id}) || (id==="t3"&&!choices.length?{available:true,canControl:localBackend.canControl,running:localBackend.running}:{available:false,canControl:false,running:false})}
   function controlBackend(action,server){if(action==="start"&&!server){backendChoiceRequested();return;}if(backendStart.busy)return;if(!worker.running){backendStart={busy:false,error:"disconnected",status:""};return;}backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,server:server || "",requestId:uuid()})}
   signal copyFinished(string requestId,string error)
-  function copyText(value){var id=uuid();send({op:"copy",kind:"text",text:value,requestId:id});return id}
+  function copyText(value,primary){var id=uuid();send({op:"copy",kind:"text",text:value,primary:primary===true,requestId:id});return id}
   function copyImage(attachment){var id=uuid();send({op:"copy",kind:"image",environment:selectedEnvironment,thread:selectedThread,attachment:attachment,requestId:id});return id}
   function startBackend(server){controlBackend("start",server)}
   property int localRecoveryAttempts:0
@@ -459,8 +459,8 @@ Singleton {
   }
   function beginQueueEdit(item) {
     if(rewindPending||item.available===false||draft.busy||draft.attempt||draft.loading||draft.loadError||draft.queueEdit||queueOperation.command||draft.attachments.some(function(f){return f.uploading}))return
-    var backup={text:draft.text,attachments:draft.attachments,modelSelection:draft.modelSelection,delivery:draft.delivery}
-    patchDraft(selectedKey,{text:item.text,attachments:(item.attachments || []).map(function(a){return {name:a.name,attachment:a,retained:true,uploading:false}}),queueEdit:{runId:item.runId,messageId:item.messageId,context:item.context,backup:backup},error:""})
+    var backup={text:draft.text,context:draft.context || null,attachments:draft.attachments,modelSelection:draft.modelSelection,delivery:draft.delivery}
+    patchDraft(selectedKey,{text:item.text,context:item.context&&item.context.version===1?item.context:null,attachments:(item.attachments || []).map(function(a){return {name:a.name,attachment:a,retained:true,uploading:false}}),queueEdit:{runId:item.runId,messageId:item.messageId,context:item.context,backup:backup},error:""})
     flushDraft(selectedKey)
   }
   function cancelQueueEdit() {
@@ -541,7 +541,7 @@ Singleton {
   property var catalogLoading: ({})
   function ensureSidebarCatalogs(){if(panelVisible)(state.environments || []).filter(function(e){return e.state==="ready"}).forEach(function(e){root.ensureCatalog(e.id)})}
   function ensureCatalog(env){if(!env || catalogs[env] || catalogLoading[env])return;var pending=Object.assign({},catalogLoading);pending[env]=true;catalogLoading=pending;send({op:"catalog",environment:env})}
-  function discardDraft(key){var d=drafts[key];if(!d || d.busy || d.loading || d.attempt || d.loadError)return;patchDraft(key,{text:"",attachments:[],error:""});flushDraft(key)}
+  function discardDraft(key){var d=drafts[key];if(!d || d.busy || d.loading || d.attempt || d.loadError)return;patchDraft(key,{text:"",context:null,attachments:[],error:""});flushDraft(key)}
   // Capture sidebar order before Settle changes grouping. A selection epoch also
   // prevents an away-and-back navigation during the RPC from being overridden.
   property int selectionEpoch:0
@@ -881,7 +881,7 @@ Singleton {
   readonly property var selectedInfo: state.threads.find(function(t) { return t.key === root.selectedKey }) || ({})
   readonly property bool providerSubagent: selectedInfo.providerSubagent===true
   function openParentThread(){if(selectedInfo.parentThreadId)selectThread(selectedEnvironment,selectedInfo.parentThreadId)}
-  readonly property var draft: drafts[selectedKey] || ({text: "", attachments: [], modelSelection: selectedInfo.modelSelection || null, delivery: "auto", busy: false, error: "", attempt: null})
+  readonly property var draft: drafts[selectedKey] || ({text: "", context:null, attachments: [], modelSelection: selectedInfo.modelSelection || null, delivery: "auto", busy: false, error: "", attempt: null})
   readonly property var catalog: catalogs[selectedEnvironment] || ({models: [], canWrite: false})
   function uuid() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) { var r = Math.floor(Math.random()*16); return (c === "x" ? r : (r&3)|8).toString(16) }) }
   // Session-only edit history includes attachment descriptors. Never delete an
@@ -890,7 +890,7 @@ Singleton {
   property var draftCursors:({})
   signal draftRestored(string key,int start,int end)
   function rememberDraftCursor(start,end){if(!selectedKey)return;var all=Object.assign({},draftCursors);all[selectedKey]={start:start,end:end};draftCursors=all}
-  function editSnapshot(key,d){var cursor=draftCursors[key] || {start:(d.text || "").length,end:(d.text || "").length};return {text:d.text || "",attachments:(d.attachments || []).filter(function(f){return !f.uploading}),start:cursor.start,end:cursor.end}}
+  function editSnapshot(key,d){var cursor=draftCursors[key] || {start:(d.text || "").length,end:(d.text || "").length};return {text:d.text || "",context:d.context || null,attachments:(d.attachments || []).filter(function(f){return !f.uploading}),start:cursor.start,end:cursor.end}}
   function resetUndo(key){var all=Object.assign({},draftUndo);delete all[key];draftUndo=all}
   function saveUndo(key,before,after,kind){
     var all=Object.assign({},draftUndo),h=all[key] || {past:[],future:[]},now=Date.now()
@@ -914,16 +914,18 @@ Singleton {
     var h=draftUndo[selectedKey];if(!h)return false;var from=(redo?h.future:h.past).slice();if(!from.length)return false
     var restored=from.pop(),current=editSnapshot(selectedKey,draft),all=Object.assign({},draftUndo)
     all[selectedKey]=redo?{past:h.past.concat([current]),future:from}:{past:from,future:h.future.concat([current])};draftUndo=all
-    patchDraft(selectedKey,{text:restored.text,attachments:restored.attachments,error:""},false)
+    patchDraft(selectedKey,{text:restored.text,context:restored.context || null,attachments:restored.attachments,error:""},false)
     draftRestored(selectedKey,restored.start,restored.end);return true
   }
   function patchDraft(key, values, historyKind) {
+    var prior=drafts[key],context=prior&&prior.context
+    if(values.text!==undefined&&values.context===undefined&&context&&context.version===1)values=Object.assign({},values,{context:{version:1,records:(context.records || []).filter(function(r){return String(values.text).indexOf("t3-context://v1/"+r.kind+"/"+r.contextId+")")>=0})}})
     var all = Object.assign({}, drafts)
-    all[key] = Object.assign({text: "", attachments: [], modelSelection: null, delivery: "auto", busy: false, error: "", attempt: null}, all[key] || {}, values)
+    all[key] = Object.assign({text: "", context:null, attachments: [], modelSelection: null, delivery: "auto", busy: false, error: "", attempt: null}, all[key] || {}, values)
     var previous=drafts[key]
     if(historyKind!==false && previous && !previous.loading && !previous.loadError && ((values.text!==undefined&&values.text!==previous.text)||(values.attachments!==undefined&&JSON.stringify(values.attachments)!==JSON.stringify(previous.attachments))))saveUndo(key,previous,all[key],historyKind)
     drafts = all
-    if (!all[key].loading && !all[key].loadError && ["text","attachments","modelSelection","runtimeMode","interactionMode","sourcePlanRef","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
+    if (!all[key].loading && !all[key].loadError && ["text","context","attachments","modelSelection","runtimeMode","interactionMode","sourcePlanRef","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
       var dirty=Object.assign({},dirtyDrafts);dirty[key]=true;dirtyDrafts=dirty;saveDrafts.restart()
       var updated=Object.assign({},drafts);updated[key]=Object.assign({},updated[key],{saveState:"saving",saveRevision:""});drafts=updated
     }
@@ -1114,6 +1116,35 @@ Singleton {
   function attachmentReference(a) {
     return (a.type==="image"?"!":"")+"["+(String(a.name).replace(/[\[\]\\\n\r]/g," ").replace(/\s+/g," ").trim().slice(0,200)||a.type)+"](t3-context://v1/"+a.type+"/"+a.id+")"
   }
+  function messageContext(d){
+    if(!d.context || d.context.version!==1)return null
+    var records=(d.context.records || []).filter(function(r){return String(d.text || "").indexOf("t3-context://v1/"+r.kind+"/"+r.contextId+")")>=0})
+    ;(d.attachments || []).forEach(function(f){var a=f.attachment;if(!a||records.some(function(r){return r.contextId===a.id}))return;records.push({version:1,contextId:a.id,kind:a.type,label:a.name,attachmentId:a.id,name:a.name,mimeType:a.mimeType,sizeBytes:a.sizeBytes})})
+    return {version:1,records:records}
+  }
+  function terminalContextText(value){
+    var text=String(value || "").replace(/\r\n/g,"\n").replace(/^\n+|\n+$/g,"")
+    if(text.length<=64000)return text
+    var marker="\n… truncated …",end=64000-marker.length
+    if(/[\uD800-\uDBFF]/.test(text.charAt(end-1)))end--
+    return text.slice(0,end)+marker
+  }
+  function appendTerminalSelection(terminalId,label,range,value){
+    if(!selectedThread || !catalog.canWrite || draft.loading || draft.loadError || draft.busy || draft.attempt || !range)return false
+    var text=terminalContextText(value)
+    if(!text)return false
+    var start=Number(range.lineStart),end=Number(range.lineEnd)
+    if(!isFinite(start)||!isFinite(end)||start<0||end<start)return false
+    var clean=String(label || T3I18n.tr("Terminal")).trim().slice(0,255);if(/[\uD800-\uDBFF]$/.test(clean))clean=clean.slice(0,-1)
+    var display=clean+(start===end?" line "+start:" lines "+start+"-"+end)
+    display=display.replace(/[\[\]\\\r\n]/g," ").replace(/\s+/g," ").trim().slice(0,200)
+    if(/[\uD800-\uDBFF]$/.test(display))display=display.slice(0,-1)
+    var id="terminal_"+uuid(),records=(draft.context&&draft.context.records || []).slice()
+    if(records.length>=200){patchDraft(selectedKey,{error:"invalid_message_context"});return false}
+    records.push({version:1,contextId:id,kind:"terminal",label:display,terminalId:terminalId,terminalLabel:clean,lineStart:start,lineEnd:end,text:text})
+    var before=draft.text || "",next=before+(before&&!/\s$/.test(before)?" ":"")+"["+display+"](t3-context://v1/terminal/"+id+") "
+    patchDraft(selectedKey,{text:next,context:{version:1,records:records},error:""});clipboardInserted(selectedKey,next.length);return true
+  }
   function pasteClipboard(start,end) {
     if(!selectedThread || draft.loading || draft.busy || draft.attempt || draft.loadError)return
     var id=uuid(), requests=Object.assign({},clipboardRequests)
@@ -1176,7 +1207,7 @@ Singleton {
     if(!draft.attempt&&interactionModeEnabled&&/^\/(plan|default)$/.test(draft.text.trim())){chooseInteractionMode(draft.text.trim().slice(1));patchDraft(selectedKey,{text:""});flushDraft(selectedKey);return}
     if (!draft.attempt && !draft.text.trim() && draft.attachments.length === 0) return
     var attempt = draft.attempt || {op: "send", environment: selectedEnvironment, thread: selectedThread,
-      requestId: uuid(), text: draft.text, attachments: draft.attachments.map(function(f) { return f.attachment }),
+      requestId: uuid(), text: draft.text, context:messageContext(draft), attachments: draft.attachments.map(function(f) { return f.attachment }),
       modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: dispatchMode(alternate)}
     if(startNewThread!==true&&!draft.attempt&&!draft.queueEdit&&freshSessionArmed){attempt.freshContext=true;attempt.freshSessionArm=freshSessionArms[selectedKey]}
     if(!draft.attempt&&draft.runtimeMode&&draft.runtimeMode!==selectedInfo.runtimeMode)attempt.runtimeMode=draft.runtimeMode
@@ -1188,11 +1219,11 @@ Singleton {
     if(startNewThread===true&&!draft.attempt)attempt=Object.assign({},attempt,{op:"manage",action:"new-thread",sendRequestId:uuid(),title:T3I18n.tr("New chat"),projectId:selectedInfo.projectId,runtimeMode:draft.runtimeMode || selectedInfo.runtimeMode,branch:selectedInfo.branch,worktreePath:selectedInfo.worktreePath,workspaceStrategy:workspaceStrategy,launchWithMessage:true,interactionMode:interactionMode,delivery:"auto"})
     if(!draft.attempt && draft.queueEdit){
       if(!queue.items.some(function(q){return q.runId===root.draft.queueEdit.runId})){patchDraft(selectedKey,{error:"queued_message_no_longer_pending"});return}
-      attempt=Object.assign({},attempt,{op:"queue",action:"edit",runId:draft.queueEdit.runId,context:draft.queueEdit.context})
+      attempt=Object.assign({},attempt,{op:"queue",action:"edit",runId:draft.queueEdit.runId,context:messageContext(draft) || draft.queueEdit.context})
     }
     if (attempt.op === "send") messageSubmitted(selectedKey)
     trackQueued(attempt)
-    patchDraft(selectedKey, {busy: true, attempt: attempt, error: ""}); flushDraft(selectedKey,attempt)
+    patchDraft(selectedKey, {busy: true, context:attempt.context || null, attempt: attempt, error: ""}); flushDraft(selectedKey,attempt)
   }
   function stop() {
     if(providerSubagent)return
@@ -2028,7 +2059,7 @@ Singleton {
         else if(creation.workspaceStrategy){
           // Native launch durably accepts the initial message and defers its
           // execution until workspace preparation completes.
-          patchDraft(sourceKey,{text:"",attachments:[],attempt:null,busy:false,error:""});resetUndo(sourceKey);flushDraft(sourceKey)
+          patchDraft(sourceKey,{text:"",context:null,attachments:[],attempt:null,busy:false,error:""});resetUndo(sourceKey);flushDraft(sourceKey)
         } else {
           var destination=data.environment+"/"+data.result.threadId
           var attempt=Object.assign({},source.attempt,{op:"send",requestId:source.attempt.sendRequestId,thread:data.result.threadId,delivery:"auto",moveSource:sourceKey,creationRequestId:source.attempt.requestId})
@@ -2093,7 +2124,7 @@ Singleton {
         if(acceptedInteraction){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===key?Object.assign({},t,{interactionMode:acceptedInteraction}):t})});snapshotUpdated()}
         var acceptedMode=d.attempt.runtimeMode
         if(acceptedMode){snapshotAboutToChange();state=Object.assign({},state,{threads:state.threads.map(function(t){return t.key===key?Object.assign({},t,{runtimeMode:acceptedMode}):t})});snapshotUpdated()}
-        patchDraft(key, {text: "", attachments: [], busy: false, attempt: null, runtimeMode:null,interactionMode:null,sourcePlanRef:null,error: ""},false); resetUndo(key);flushDraft(key); refresh()
+        patchDraft(key, {text: "", context:null, attachments: [], busy: false, attempt: null, runtimeMode:null,interactionMode:null,sourcePlanRef:null,error: ""},false); resetUndo(key);flushDraft(key); refresh()
         if(sentAttempt.navigateAfterSend&&selectedKey===sentAttempt.planOriginKey)selectThread(data.environment,data.thread)
       }
     } else if (data.op === "stop") patchDraft(key, {stopping: false, error: data.error || ""})
@@ -2271,7 +2302,7 @@ Singleton {
             else {
               if(submission.moveSource){
                 var source=drafts[submission.moveSource]
-                if(source&&source.attempt&&source.attempt.requestId===submission.creationRequestId){if(source.attempt.planFollowUp)patchDraft(submission.moveSource,{attempt:null,busy:false,error:""});else{patchDraft(submission.moveSource,{text:"",attachments:[],attempt:null,busy:false,error:""});resetUndo(submission.moveSource)}flushDraft(submission.moveSource)}
+                if(source&&source.attempt&&source.attempt.requestId===submission.creationRequestId){if(source.attempt.planFollowUp)patchDraft(submission.moveSource,{attempt:null,busy:false,error:""});else{patchDraft(submission.moveSource,{text:"",context:null,attachments:[],attempt:null,busy:false,error:""});resetUndo(submission.moveSource)}flushDraft(submission.moveSource)}
               }
               var command=Object.assign({},submission);delete command.moveSource;delete command.creationRequestId;send(command)
             }

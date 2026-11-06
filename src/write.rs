@@ -113,6 +113,7 @@ pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
 }
 pub fn validate_message(input:&Value)->Result<()> {
     let content=text(input,"text");
+    if let Some(context)=input.get("context").filter(|c|!c.is_null()){crate::composer_context::clean(context)?;}
     let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
         if (content.trim().is_empty() && attachments.is_empty()) || content.chars().count()>120000 || attachments.len()>100 {return Err("invalid_message".into())}
         for a in attachments {
@@ -151,6 +152,10 @@ fn launch_command(input:&Value,thread:&str)->Result<Value>{
         validate_message(input)?;
         let message=uuid::Uuid::parse_str(text(input,"sendRequestId")).map_err(|_|"invalid_request_id")?;
         command["initialMessage"]=json!({"messageId":format!("omarchy-{message}"),"text":protocol::composer::legacy_attachment_text(text(input,"text"),input["attachments"].as_array().unwrap()),"attachments":input["attachments"]});
+        if let Some(context)=input.get("context").filter(|c|!c.is_null()){
+            command["initialMessage"]["context"]=crate::composer_context::for_message(context,text(input,"text"))?;
+            command["initialMessage"]["text"]=input["text"].clone();
+        }
     }
     Ok(command)
 }
@@ -185,6 +190,10 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
         validate_message(input)?;
         let mut c=json!({"type":"message.dispatch","threadId":thread,"messageId":format!("omarchy-{id}"),"text":protocol::composer::legacy_attachment_text(content,attachments),"attachments":attachments,"createdBy":"user","creationSource":"web","dispatchMode":{"type":if input["delivery"]=="queue" {"queue_after_active"} else {"start_immediately"}}});
+        if let Some(context)=input.get("context").filter(|c|!c.is_null()){
+            c["context"]=crate::composer_context::for_message(context,content)?;
+            c["text"]=json!(content);
+        }
         if let Some(fresh) = input.get("freshContext") {
             let fresh = fresh.as_bool().ok_or("invalid_fresh_context")?;
             if fresh {

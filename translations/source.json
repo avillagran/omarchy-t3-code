@@ -2137,6 +2137,7 @@
     "Restart terminal": "Restart terminal",
     "Split terminal": "Split terminal",
     "Split terminal vertically": "Split terminal vertically",
-    "The terminal renderer is unavailable. Rebuild the desktop client.": "The terminal renderer is unavailable. Rebuild the desktop client."
+    "The terminal renderer is unavailable. Rebuild the desktop client.": "The terminal renderer is unavailable. Rebuild the desktop client.",
+    "Add selection to prompt": "Add selection to prompt"
   }
 }

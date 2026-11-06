@@ -21,6 +21,7 @@ pub fn clean(v: &Value) -> Result<Value> {
         return Err("draft_too_large".into());
     }
     let mut out = json!({"text":text,"attachments":[],"modelSelection":null,"delivery":if v["delivery"]=="queue"{"queue"}else{"auto"},"attempt":null});
+    if let Some(context)=v.get("context").filter(|c|!c.is_null()) {out["context"]=crate::composer_context::clean(context)?;}
     if let Some(ids)=v.get("recoveryIds"){
         let ids=ids.as_array().filter(|ids|ids.len()<=1024).ok_or("invalid_draft")?;
         let mut seen=std::collections::HashSet::new();
@@ -66,8 +67,9 @@ pub fn clean(v: &Value) -> Result<Value> {
     if v["queueEdit"].is_object(){
         let q=&v["queueEdit"];if !valid_id(text_field(q,"runId")){return Err("invalid_draft".into())}
         let b=&q["backup"];
-        let backup=clean(&json!({"text":b["text"],"attachments":b["attachments"],"modelSelection":b["modelSelection"],"delivery":b["delivery"]}))?;
-        out["queueEdit"]=json!({"runId":q["runId"],"messageId":q["messageId"],"context":q["context"],"backup":backup});
+        let backup=clean(&json!({"text":b["text"],"context":b["context"],"attachments":b["attachments"],"modelSelection":b["modelSelection"],"delivery":b["delivery"]}))?;
+        let context=if q["context"]["version"]==1{crate::composer_context::clean(&q["context"])?}else{q["context"].clone()};
+        out["queueEdit"]=json!({"runId":q["runId"],"messageId":q["messageId"],"context":context,"backup":backup});
     }
     if v["attempt"].is_object() {
         let a = &v["attempt"];
@@ -82,6 +84,7 @@ pub fn clean(v: &Value) -> Result<Value> {
         if let Some(key)=a.get("planOriginKey"){if !key.as_str().and_then(|s|s.split_once('/')).is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){return Err("invalid_draft".into())}}
         if a["planFollowUp"]==true {crate::write::validate_message(a)?;if a["op"]=="manage"&&(a["workspaceStrategy"].is_object()||a["launchWithMessage"]==true||!a["attachments"].as_array().is_some_and(Vec::is_empty)){return Err("invalid_draft".into())}}
         if a["op"]=="manage" {uuid::Uuid::parse_str(text_field(a,"sendRequestId")).map_err(|_| "invalid_draft")?;}
+        if a["planFollowUp"]!=true&&(out["context"].is_object()||a["context"]["version"]==1)&&crate::composer_context::clean(&a["context"])?!=out["context"]{return Err("invalid_draft".into())}
         let mut attempt = json!({});
         for key in [
             "op",
@@ -128,7 +131,7 @@ pub fn clean(v: &Value) -> Result<Value> {
         if approvals.len()>32 || v["approvals"].to_string().len()>96000 {return Err("invalid_draft".into())}
         out["approvals"]=v["approvals"].clone();
     }
-    if out.to_string().len() > 750000 {
+    if crate::composer_context::serialized_bytes(&crate::composer_context::ordinary_draft(&out))? > 750000 || crate::composer_context::serialized_bytes(&out)? > crate::composer_context::MAX_DRAFT_BYTES {
         return Err("draft_too_large".into());
     }
     Ok(out)
@@ -144,10 +147,10 @@ pub fn load(key: &str) -> Result<Value> {
         Err(_) => return Err("draft_read_failed".into()),
     };
     let mut bytes = vec![];
-    file.take(800001)
+    file.take(crate::composer_context::MAX_DRAFT_BYTES as u64 + 65537)
         .read_to_end(&mut bytes)
         .map_err(|_| "draft_read_failed")?;
-    if bytes.len() > 800000 {
+    if bytes.len() > crate::composer_context::MAX_DRAFT_BYTES + 65536 {
         return Err("draft_read_failed".into());
     }
     let doc: Value = serde_json::from_slice(&bytes).map_err(|_| "draft_read_failed")?;

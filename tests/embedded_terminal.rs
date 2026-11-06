@@ -32,6 +32,10 @@ fn wait(mut check: impl FnMut() -> bool) {
 fn embedded_view_preserves_server_scope_utf8_order_and_detach_lifetime() {
     let root = std::env::temp_dir().join(format!("o3-embedded-terminal-{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(&root).unwrap();
+    fs::create_dir(root.join("bin")).unwrap();
+    let paste = root.join("bin/wl-paste");
+    fs::write(&paste, "#!/bin/sh\n[ \"$*\" = \"--primary --no-newline --type text\" ] || exit 7\nprintf 'PRIMARY café\\n'\n").unwrap();
+    fs::set_permissions(&paste, fs::Permissions::from_mode(0o755)).unwrap();
     let token = root.join("token");
     fs::write(&token, "synthetic-terminal-token").unwrap();
     fs::set_permissions(&token, fs::Permissions::from_mode(0o600)).unwrap();
@@ -87,6 +91,14 @@ fn embedded_view_preserves_server_scope_utf8_order_and_detach_lifetime() {
     let mut child = Child(
         Command::new(env!("CARGO_BIN_EXE_omarchy-t3-client"))
             .arg("watch")
+            .env(
+                "PATH",
+                format!(
+                    "{}:{}",
+                    root.join("bin").display(),
+                    std::env::var("PATH").unwrap()
+                ),
+            )
             .env("HOME", root.join("home"))
             .env("T3CODE_HOME", root.join("native"))
             .env("XDG_CONFIG_HOME", root.join("config"))
@@ -182,6 +194,30 @@ fn embedded_view_preserves_server_scope_utf8_order_and_detach_lifetime() {
     assert!(calls.iter().any(|r| r["tag"] == "terminal.resize"
         && r["payload"]["cols"] == 120
         && r["payload"]["rows"] == 40));
+    let large = format!("{}😀{}", "a".repeat(65535), "é".repeat(40000));
+    send(
+        &mut input,
+        json!({"op":"terminal-surface-write","requestId":"first","data":large}),
+    );
+    send(
+        &mut input,
+        json!({"op":"terminal-surface-primary","requestId":"first"}),
+    );
+    assert_eq!(
+        event("first", |v| v["kind"] == "primary-text")["text"],
+        "PRIMARY café\n"
+    );
+    let received = requests
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r["tag"] == "terminal.write")
+        .skip(2)
+        .map(|r| r["payload"]["data"].as_str().unwrap().to_owned())
+        .collect::<Vec<_>>();
+    assert!(received.len() > 1);
+    assert!(received.iter().all(|chunk| chunk.len() <= 65536));
+    assert_eq!(received.concat(), large);
     disconnect.store(true, Ordering::Relaxed);
     event("first", |v| v["event"]["type"] == "snapshot");
     assert_eq!(

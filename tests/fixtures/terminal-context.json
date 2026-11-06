@@ -1,0 +1,319 @@
+{
+  "revision": "c55db3e9c72fdf584f4b54192fb39beb88667b59",
+  "sources": [
+    {
+      "path": "apps/web/src/lib/composerContextRecords.ts",
+      "sha256": "b03fa2813047e0285dd774d81bfd2003c1df99726d65292382b12ed699df4b29"
+    },
+    {
+      "path": "apps/web/src/lib/terminalContext.ts",
+      "sha256": "c64b6eb7da2b7eeb5c1d0978eec36c14c812ad5819e443dd24e89fba79c52bf9"
+    },
+    {
+      "path": "packages/shared/src/composerContextReferences.ts",
+      "sha256": "6f892cb25ea101c5248b8df53ad7d084a3a6554fd397c9a2c9a9c33796197849"
+    }
+  ],
+  "cases": [
+    {
+      "input": {
+        "prefix": "\r\n\n",
+        "repeat": 0,
+        "suffix": "hello\r\nworld\n\n"
+      },
+      "expected": {
+        "length": 11,
+        "md5": "9195d0beb2a889e1be05ed6bb1954837",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63975,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "89dc93714dfed8bece939a7c88dd52f9",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63976,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "78b6499930e93927ae9079a1b14c5997",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63977,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "237f5b03e0ca5091fb3f82f0cd6323f9",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63978,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "bcaadbb85f33419ed88eedca6c6bb15a",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63979,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "62cb76b7215340e1fc2f04982cddb600",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63980,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "bd2c0db0b0d7307a6e9303f7684a109a",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63981,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "67ce5a669533d81941d916794b912025",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63982,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "a3e1f504cda1c82af109d182d85fc245",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63983,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "4fa48fa49a51e6de15236243465d9ede",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63984,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "90b1b473fd6061f92977dbea51e56c38",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63985,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 63999,
+        "md5": "9fd22410798be6f2a9330a15d0156f96",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63986,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "6e74ca0e0ece555e8ff1f7215af18817",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63987,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "6e74ca0e0ece555e8ff1f7215af18817",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63988,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "6e74ca0e0ece555e8ff1f7215af18817",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63989,
+        "suffix": "😀tailtailtailtailtailtailtailtailtailtailtailtail"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "6e74ca0e0ece555e8ff1f7215af18817",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63998,
+        "suffix": "😀"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "27aab207eac615e72303d8802d239088",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 63999,
+        "suffix": "😀"
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "6e74ca0e0ece555e8ff1f7215af18817",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 64000,
+        "suffix": ""
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "7ef740e89aaa626f1049ce1c312c0140",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    },
+    {
+      "input": {
+        "prefix": "",
+        "repeat": 64001,
+        "suffix": ""
+      },
+      "expected": {
+        "length": 64000,
+        "md5": "6e74ca0e0ece555e8ff1f7215af18817",
+        "lineStart": 2,
+        "lineEnd": 50,
+        "label": "Terminal 1 lines 2-50",
+        "contextId": "terminal_fixture"
+      }
+    }
+  ]
+}

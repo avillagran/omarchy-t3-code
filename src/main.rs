@@ -543,7 +543,8 @@ fn watch(client: Client) -> Result<()> {
             .map_while(std::result::Result::ok)
         {
             binary_update::touch();
-            if line.len() > 1024 * 1024 {
+            // Queue state retains four native contexts; an operation may carry a fifth copy.
+            if line.len() > 256 * 1024 * 1024 {
                 continue;
             }
             if let Ok(mut v) = serde_json::from_str::<Value>(&line) {

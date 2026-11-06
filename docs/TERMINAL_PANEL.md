@@ -17,3 +17,21 @@ The `embedded_terminal` Rust integration fixture runs the actual desktop worker 
 Build the optional Wayland test image with `podman build -t localhost/o3-qml-wayland-tests:local -f tests/containers/qml-wayland.Containerfile tests/containers`. The runtime has the compositor's file capabilities removed so test containers retain `--cap-drop=ALL` and `no-new-privileges`.
 
 These checks are synthetic and do not establish installed application acceptance. Structured terminal selections in the composer, terminal picker/search, accessibility and complete native menu/link behavior remain separate source-parity work. The shared engine and working VT display do not by themselves establish every surrounding native terminal function.
+
+
+## Structured context and local resource bounds
+
+A terminal selection becomes a native inline reference and a versioned context
+record. Drafts, frozen retries, queued edits and recall retain the record separately
+from message text. The native producer normalizes CRLF, removes trailing blank
+lines and reserves space for its exact truncation marker; it avoids splitting a
+surrogate pair at the 64,000 UTF-16-unit text bound.
+
+Each native context retains the upstream 200-record and 16-million serialized
+UTF-16-unit limits. Queue editing can hold four contexts: the current draft,
+frozen attempt, original queued message and backup draft. Local draft storage is
+bounded to 200 MiB and worker IPC to 256 MiB so these allowed contexts survive
+without discarding backups. Ordinary draft text/file metadata keeps its original
+750,000-byte aggregate allowance. Large valid contexts temporarily require more
+memory; idle process memory is unaffected. The separate O3 shared-editor and
+shared-draft synchronization budgets are not raised by this change.
