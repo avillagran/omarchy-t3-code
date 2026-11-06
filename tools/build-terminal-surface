@@ -4,7 +4,9 @@ set -eu
 cd -- "$(dirname -- "$0")/.."
 task_sdk="$(tools/build-ghostty-vt)"
 mkdir -p bin/qml/O3/Terminal
-task_build_dir="$(mktemp -d /var/tmp/o3-terminal-build-XXXXXXXX)"
+task_build_root="${O3_TERMINAL_BUILD_ROOT:-/var/tmp}"
+mkdir -p -- "$task_build_root"
+task_build_dir="$(mktemp -d "$task_build_root/o3-terminal-build-XXXXXXXX")"
 exec 9>/var/tmp/o3-build/o3-parity-compile.lock
 flock 9
 task_moc="$(pkg-config --variable=libexecdir Qt6Core)/moc"

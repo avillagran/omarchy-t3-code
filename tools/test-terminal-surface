@@ -12,7 +12,9 @@ options = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 subprocess.run([str(root / "tools/build-terminal-surface")], check=True)
 sdk = Path(subprocess.check_output([str(root / "tools/build-ghostty-vt")], text=True).strip())
-build = Path(tempfile.mkdtemp(prefix="o3-terminal-native-test-", dir="/var/tmp"))
+build_root = Path(os.environ.get("O3_TERMINAL_BUILD_ROOT", "/var/tmp"))
+build_root.mkdir(parents=True, exist_ok=True)
+build = Path(tempfile.mkdtemp(prefix="o3-terminal-native-test-", dir=build_root))
 build.chmod(0o700)
 moc = subprocess.check_output(["pkg-config", "--variable=libexecdir", "Qt6Core"], text=True).strip() + "/moc"
 subprocess.run([moc, str(root / "native/terminal/tests.cpp"), "-o", str(build / "tests.moc")], check=True)
@@ -46,7 +48,13 @@ if options.oracle_source:
     print(oracle.stdout + oracle.stderr)
     if oracle.returncode:
         raise SystemExit(oracle.returncode)
-    args += ["--env", "O3_TERMINAL_ORACLE=/evidence/oracle/fixtures.json"]
+    link_oracle = subprocess.run([*args, image, "node", str(root / "tools/generate-terminal-link-fixtures.mjs"), str(source),
+                                  "/evidence/oracle/link-fixtures.json"], capture_output=True, text=True, timeout=60)
+    print(link_oracle.stdout + link_oracle.stderr)
+    if link_oracle.returncode:
+        raise SystemExit(link_oracle.returncode)
+    args += ["--env", "O3_TERMINAL_ORACLE=/evidence/oracle/fixtures.json",
+             "--env", "O3_TERMINAL_LINK_ORACLE=/evidence/oracle/link-fixtures.json"]
 result = subprocess.run([*args, image, str(build / "terminal-tests"), "-o", "/evidence/results.txt,txt"], capture_output=True, text=True, timeout=60)
 print(f"Terminal native evidence: {evidence}")
 log = (evidence / "results.txt").read_text() if (evidence / "results.txt").exists() else result.stdout + result.stderr

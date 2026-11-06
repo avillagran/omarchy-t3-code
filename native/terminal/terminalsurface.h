@@ -72,6 +72,8 @@ public:
     Q_INVOKABLE QString rowText(int row) const;
     Q_INVOKABLE QVariantMap cellAt(int row, int column) const;
     Q_INVOKABLE QString hyperlinkAt(int row, int column) const;
+    Q_INVOKABLE QVariantList linkRows(int row) const;
+    Q_INVOKABLE QVariantList matchTerminalPattern(const QString &text, const QString &pattern, const QString &flags) const;
 signals:
     void input(const QString &data);
     void gridChanged(int columns, int rows);
@@ -105,7 +107,7 @@ private:
     struct Cell {
         QString text;
         QColor foreground, background, underlineColor;
-        int width = 1;
+        int width = 1, rawWide = 0;
         bool bold = false, italic = false, invisible = false, strike = false;
         bool overline = false, selected = false;
         int underline = 0;
@@ -137,6 +139,7 @@ private:
     bool m_touchActive = false, m_touchMoved = false;
     qreal m_touchRemainder = 0;
     std::vector<std::vector<Cell>> m_frame;
+    std::vector<std::pair<bool, bool>> m_rowWraps;
     QSet<int> m_encodedKeys;
     void updateMetrics();
     void updateGrid();

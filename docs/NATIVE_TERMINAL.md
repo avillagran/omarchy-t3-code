@@ -30,8 +30,8 @@ side-panel interaction, theme and session layout. The legacy external frontend
 in `src/terminal.rs` remains available for existing explicit CLI/code actions;
 it is no longer the chat-header implementation.
 
-The current source oracle covers 50 native terminal-engine cases and 20 native
-terminal-context producer cases. Private Qt interaction checks exercise the
+The terminal engine suite covers 50 Qt cases, including 40 native engine oracle
+cases, with 20 separate native terminal-context producer cases. Private Qt interaction checks exercise the
 actual chat header, renderer, focus, Ctrl+J/Ctrl+D, draft retention and selection
 attachment. Rust checks cover the real terminal RPC and context persistence
 paths. These checks run with isolated profiles and displays, without live user

@@ -8,12 +8,14 @@
 #include <QPainter>
 #include <QWheelEvent>
 #include <QTouchEvent>
+#include <QRegularExpression>
 #include <algorithm>
 #include <cmath>
 #include <functional>
 #include <linux/input-event-codes.h>
 
 namespace {
+static_assert(GHOSTTY_CELL_WIDE_NARROW == 0 && GHOSTTY_CELL_WIDE_WIDE == 1 && GHOSTTY_CELL_WIDE_SPACER_TAIL == 2 && GHOSTTY_CELL_WIDE_SPACER_HEAD == 3);
 constexpr auto EngineRevision = "9f62873bf195e4d8a762d768a1405a5f2f7b1697";
 QColor color(GhosttyColorRgb c) { return QColor(c.r, c.g, c.b); }
 GhosttyColorRgb rgb(QColor c) { return {uint8_t(c.red()), uint8_t(c.green()), uint8_t(c.blue())}; }
@@ -267,9 +269,14 @@ void TerminalSurface::refresh() {
         m_scrollback = history; m_scrollOffset = offset; emit scrollChanged();
     }
     require(ghostty_render_state_get(m_render, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &m_iterator), "row_iterator");
-    m_frame.clear(); m_frame.reserve(size_t(m_rows));
+    m_frame.clear(); m_frame.reserve(size_t(m_rows)); m_rowWraps.clear();
     while (int(m_frame.size()) < m_rows && ghostty_render_state_row_iterator_next(m_iterator)) {
         require(ghostty_render_state_row_get(m_iterator, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &m_cells), "row_cells");
+        GhosttyRow rawRow{}; bool wraps = false, continuation = false;
+        require(ghostty_render_state_row_get(m_iterator, GHOSTTY_RENDER_STATE_ROW_DATA_RAW, &rawRow), "raw_row");
+        require(ghostty_row_get(rawRow, GHOSTTY_ROW_DATA_WRAP, &wraps), "row_wrap");
+        require(ghostty_row_get(rawRow, GHOSTTY_ROW_DATA_WRAP_CONTINUATION, &continuation), "row_continuation");
+        m_rowWraps.emplace_back(wraps, continuation);
         std::vector<Cell> row; row.reserve(size_t(m_columns));
         while (int(row.size()) < m_columns && ghostty_render_state_row_cells_next(m_cells)) {
             Cell cell; cell.foreground = m_frameForeground; cell.background = m_frameBackground;
@@ -295,6 +302,7 @@ void TerminalSurface::refresh() {
             GhosttyCell raw{}; GhosttyCellWide wide = GHOSTTY_CELL_WIDE_NARROW;
             require(ghostty_render_state_row_cells_get(m_cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_RAW, &raw), "cell_raw");
             require(ghostty_cell_get(raw, GHOSTTY_CELL_DATA_WIDE, &wide), "cell_wide");
+            cell.rawWide = int(wide);
             cell.width = wide == GHOSTTY_CELL_WIDE_WIDE ? 2 : wide == GHOSTTY_CELL_WIDE_SPACER_TAIL || wide == GHOSTTY_CELL_WIDE_SPACER_HEAD ? 0 : 1;
             row.push_back(std::move(cell));
         }
@@ -445,6 +453,40 @@ QString TerminalSurface::hyperlinkAt(int row, int column) const {
     return QString::fromUtf8(encoded([&](char *data, size_t capacity, size_t *written) {
         return ghostty_grid_ref_hyperlink_uri(&ref, reinterpret_cast<uint8_t *>(data), capacity, written);
     }));
+}
+// Materialize only the hovered logical line. Other viewport entries stay null,
+// preserving source row coordinates without allocating maps for the entire grid.
+QVariantList TerminalSurface::linkRows(int row) const {
+    if (row < 0 || row >= int(m_frame.size())) return {};
+    int first = row, last = row;
+    while (first > 0 && m_rowWraps[size_t(first)].second) --first;
+    while (last + 1 < int(m_frame.size()) && m_rowWraps[size_t(last + 1)].second) ++last;
+    QVariantList result;
+    for (int index = 0; index < int(m_frame.size()); ++index) {
+        if (index < first || index > last) { result.push_back(QVariant()); continue; }
+        QVariantList cells;
+        for (const auto &cell : m_frame[size_t(index)]) cells.push_back(QVariantMap{{"text", cell.text}, {"wide", cell.rawWide}});
+        result.push_back(QVariantMap{{"cells", cells}, {"wrapsToNext", m_rowWraps[size_t(index)].first}, {"isWrapContinuation", m_rowWraps[size_t(index)].second}});
+    }
+    return result;
+}
+// Qt JS lacks matchAll/named groups. Keep the native patterns and algorithm,
+// supplying PCRE matches with the same UTF16 positions and capture shape.
+QVariantList TerminalSurface::matchTerminalPattern(const QString &text, const QString &pattern, const QString &flags) const {
+    QRegularExpression::PatternOptions options = QRegularExpression::NoPatternOption;
+    if (flags.contains(QLatin1Char('i'))) options |= QRegularExpression::CaseInsensitiveOption;
+    const QRegularExpression expression(pattern, options);
+    if (!expression.isValid()) { qWarning("Invalid terminal link pattern"); return {}; }
+    QVariantList result;
+    auto iterator = expression.globalMatch(text);
+    const auto names = expression.namedCaptureGroups();
+    while (iterator.hasNext()) {
+        const auto match = iterator.next();
+        QVariantMap groups;
+        for (int index = 1; index < names.size(); ++index) if (!names[index].isEmpty() && match.hasCaptured(index)) groups.insert(names[index], match.captured(index));
+        result.push_back(QVariantMap{{"0", match.captured()}, {"index", match.capturedStart()}, {"groups", groups}});
+    }
+    return result;
 }
 void TerminalSurface::emitBytes(const QByteArray &bytes) { if (!bytes.isEmpty()) emit input(QString::fromUtf8(bytes)); }
 void TerminalSurface::output(GhosttyTerminal, void *data, const uint8_t *bytes, size_t length) {

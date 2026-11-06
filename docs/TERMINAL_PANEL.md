@@ -56,4 +56,27 @@ performing the native dependent-record import. The private stash remains bounded
 to 8 MiB and 20 entries; a capacity failure leaves the composer intact. These
 importer differences and validation of every known non-terminal record kind are
 still open parity work; terminal-context coverage does not establish complete
-composer-context parity.
+composer-context parity. Arbitrary future payload strings containing a lone
+escaped UTF-16 surrogate also remain unsupported by the Rust JSON decoder;
+paired Unicode strings are retained. A private watch probe confirmed that the
+paired-string command receives its draft acknowledgement while a lone-surrogate
+JSON command does not. The terminal producer avoids creating such half-pairs;
+this does not establish unrestricted JavaScript JSON-string fidelity.
+
+## Remaining native wrapper consumers
+
+The completed engine checks comprise 50 Qt test cases, including 40 source-engine
+oracle cases; the structured-context producer has 20 separate source cases.
+Link detection and cell hit ranges are being ported from the pinned native
+helpers, with explicit source provenance. They must pass the actual Qt helper
+and viewport-grid checks before the visible terminal is connected to them.
+The native terminal surface activates a link on a plain first left click,
+unless Shift is held. Its current drawer consumer uses Ctrl or Meta to force
+the system browser; the generic platform-exclusive modifier helper belongs to
+markdown link activation. It is not the terminal surface activation rule.
+
+The command from a message's **Run in terminal** action still uses the legacy
+external frontend. Routing this consumer into a fresh embedded terminal with
+the original command-delivery semantics remains required work, after terminal
+links, search, accessibility and picker fidelity. The legacy path is not a
+permanent parity exception.

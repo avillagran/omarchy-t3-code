@@ -4,6 +4,7 @@
 #include <QMouseEvent>
 #include <QHoverEvent>
 #include <QFile>
+#include <QCryptographicHash>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -204,6 +205,53 @@ private slots:
         surface.feed(QStringLiteral("\x1b[?2026l")); QCOMPARE(surface.rowText(0), QStringLiteral("aftere"));
         surface.feed(QStringLiteral("\x1b[?2026h\x1b[Htimeout"));
         QTRY_COMPARE_WITH_TIMEOUT(surface.rowText(0), QStringLiteral("timeout"), 1000);
+    }
+    void pinnedTerminalLinkAlgorithmUsesNamedUnicodeMatches() {
+        const QString root = qEnvironmentVariable("O3_TERMINAL_SOURCE");
+        QFile source(root + "/ui/js/NativeTerminalLinks.js"); QVERIFY(source.open(QIODevice::ReadOnly));
+        const auto bytes = source.readAll();
+        QFile provenance(root + "/ui/js/NativeTerminalLinks.sources.json"); QVERIFY(provenance.open(QIODevice::ReadOnly));
+        const auto metadata = QJsonDocument::fromJson(provenance.readAll()).object();
+        QCOMPARE(QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex()), metadata["outputSha256"].toString());
+        QString program = QString::fromUtf8(bytes); program.remove(0, program.indexOf(QLatin1Char('\n')) + 1);
+        TerminalSurface surface; QQmlEngine engine;
+        QQmlEngine::setObjectOwnership(&surface, QQmlEngine::CppOwnership);
+        engine.globalObject().setProperty("terminal", engine.newQObject(&surface));
+        const auto loaded = engine.evaluate(program); QVERIFY2(!loaded.isError(), qPrintable(loaded.toString()));
+        auto runner = engine.evaluate(R"JS((function(test) {
+            var api = create(function(text,pattern,flags) { var result=terminal.matchTerminalPattern(text,pattern,flags); terminalTrace.push({pattern:pattern,flags:flags,matches:result}); return result });
+            terminalTrace=[];
+            var args = test.args;
+            if (test.grid) args[0]=terminalGrids[args[0]];
+            if (test.method === "collectWrappedTerminalLinkLine") {
+                var lines = args[1];
+                args[1] = function(index) { var line = lines[index]; if (!line) return null; return {isWrapped:line.isWrapped,translateToString:function(trim) { return trim ? line.text.replace(/\s+$/u, "") : line.text }} };
+            }
+            return api[test.method].apply(null,args);
+        }))JS");
+        QVERIFY2(runner.isCallable(), qPrintable(runner.toString()));
+        QFile fixtures(qEnvironmentVariable("O3_TERMINAL_LINK_ORACLE", root + "/native/terminal/link-fixtures.json")); QVERIFY(fixtures.open(QIODevice::ReadOnly));
+        const auto data = QJsonDocument::fromJson(fixtures.readAll()).object();
+        const auto cases = data["cases"].toArray();
+        engine.globalObject().setProperty("terminalGrids", engine.toScriptValue(data["grids"].toVariant()));
+        QCOMPARE(cases.size(), 219);
+        for (const QJsonValue test : cases) {
+            const auto result = runner.call({engine.toScriptValue(test.toVariant())});
+            QVERIFY2(!result.isError(), qPrintable(result.toString()+" stack="+result.property("stack").toString()+" case="+QString::fromUtf8(QJsonDocument(test.toObject()).toJson(QJsonDocument::Compact))));
+            const auto actual = QJsonValue::fromVariant(result.toVariant());
+            QVERIFY2(actual == test["expected"], qPrintable(QString::fromUtf8(QJsonDocument(test.toObject()).toJson(QJsonDocument::Compact)) + " actual=" + engine.evaluate("JSON.stringify").call({result}).toString()+" trace="+engine.evaluate("JSON.stringify(terminalTrace)").toString()));
+        }
+        const auto viewports = data["viewportCases"].toArray(); QCOMPARE(viewports.size(), 5);
+        for (const QJsonValue viewport : viewports) {
+            surface.reset(); surface.setGrid(viewport["cols"].toInt(), viewport["rows"].toInt()); surface.feed(viewport["vt"].toString());
+            for (const QJsonValue point : viewport["points"].toArray()) {
+                const int row = point["row"].toInt(), column = point["column"].toInt();
+                const QVariantMap input{{"method", "terminalLinkAtPositionWithRange"}, {"args", QVariantList{surface.linkRows(row), row, column}}};
+                const auto result = runner.call({engine.toScriptValue(input)});
+                QVERIFY2(!result.isError(), qPrintable(result.toString()));
+                QVERIFY2(QJsonValue::fromVariant(result.toVariant()) == point["expected"], qPrintable(viewport["vt"].toString()+" row="+QString::number(row)+" column="+QString::number(column)));
+            }
+        }
     }
     void qmlPluginLoadsByUriAndRelativeImport() {
         const QString root = qEnvironmentVariable("O3_TERMINAL_SOURCE"); QVERIFY(!root.isEmpty());

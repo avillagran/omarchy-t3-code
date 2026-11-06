@@ -1,0 +1,21 @@
+{
+  "revision": "c55db3e9c72fdf584f4b54192fb39beb88667b59",
+  "files": {
+    "apps/web/src/terminal-links.ts": "5ff40a4e42ceb44c52bdc0fc73dac257d0ff1a3d07a576a1745cf40d745254ef",
+    "packages/shared/src/keybindingMatching.ts": "5fabb13bd0b8d6f80532d0d2583f936705ed3f41c0eed9e6f43590ae52a9d19c",
+    "apps/web/src/terminal/ghostty/surface.ts": "0d453660ac6945ef4baaf464e02b92d1a7567801db42ae90480fd8f191cab750",
+    "apps/web/src/terminal/ghostty/core.ts": "ff0618b21dd2a0fbcdbf9ec7f9ed1cd2b27b1a0282f9bd4a73f19e2c8513ae76",
+    "packages/shared/src/path.ts": "5d8e50477165341bff87df2c12208b87f6f4d1363b3497d141de1ed0cdb3261c",
+    "packages/shared/src/fileLinks.ts": "a3fc61051a12bc886a2ce61387f505a79a42d94ad1b30486bc03d3b5b5cd265d"
+  },
+  "adaptations": [
+    "TypeScript erasure and module factory for Qt JS",
+    "RegExp matchAll uses a Qt PCRE matcher with named groups and UTF16 offsets",
+    "Array.toSorted becomes copying sort",
+    "RegExp source/flags are serialized directly to avoid Qt slash re-escaping",
+    "Whitespace classes use the exact JavaScript set while decimal escapes remain ASCII",
+    "Array.at(-1) becomes copying slice; String.trimEnd uses the exact JavaScript whitespace set",
+    "File position object spread becomes Object.assign; slash replaceAll becomes split/join"
+  ],
+  "outputSha256": "4940794ec2251bc1082965fc00abe30465a1c3ab176e1bb84e541b9724f4c56a"
+}
