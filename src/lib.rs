@@ -77,6 +77,7 @@ pub mod server_capabilities;
 pub mod server_updates;
 pub mod reconnect;
 pub mod rpc_sessions;
+pub mod file_metadata_cache;
 /// Any attachment's bytes through its signed asset URL (assets.createUrl), at
 /// most `limit` bytes. The grant authorizes the GET itself, as for images,
 /// so no credential header is needed.

@@ -45,3 +45,12 @@ through a transient user unit. `O3_NATIVE_ORACLE_ROOT` selects its private evide
 location. Source and dependencies mount read-only; module aliases and Vitest
 caches live in container `/tmp`. This verifies the native reference behavior;
 it does not by itself establish the O3 cache or pending-validation port.
+
+The isolated O3 `file_metadata_cache` state has 17 targeted cases corresponding
+to the native cache scenarios plus retention-reader ownership, global-budget,
+partial-seeding and stale-mount guards. It uses actual socket IDs, a 1024-entry
+global insertion-order cache, positive mounted-thread retention, 60-second misses
+and selective in-flight invalidation. Position-like suffixes remain literal cache
+keys. Thread-retained entries are separate from the global budget, as in native
+T3. This state module is not yet connected to mounted consumer leases, query
+memoization, missing-entry refresh timers or terminal activation validation.
