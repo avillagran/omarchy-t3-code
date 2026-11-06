@@ -42,9 +42,28 @@ struct Target {
     hub_base: String,
 }
 
+type DeviceKey = (String, String, String);
+type ActiveActions = Arc<Mutex<std::collections::HashSet<DeviceKey>>>;
+
 #[derive(Default)]
 pub struct Manager {
     current: Option<Session>,
+    actions: ActiveActions,
+}
+
+struct ActionLease {
+    active: ActiveActions,
+    key: DeviceKey,
+}
+impl ActionLease {
+    fn acquire(active: &ActiveActions, key: DeviceKey) -> Option<Self> {
+        let mut pending=active.lock().unwrap();
+        if pending.len()>=16 || !pending.insert(key.clone()) { return None; }
+        Some(Self{active:active.clone(),key})
+    }
+}
+impl Drop for ActionLease {
+    fn drop(&mut self) { self.active.lock().unwrap().remove(&self.key); }
 }
 
 fn surface(request_id: &str, data: Value) {
@@ -80,7 +99,15 @@ impl Manager {
                 let device = session.device.lock().unwrap().clone();
                 let detail = text(v, "op") == "device-screen-detail";
                 let action = v["action"].clone();
+                let key=(target.environment.clone(),target.host_id.clone(),device.clone());
+                let Some(lease)=ActionLease::acquire(&self.actions,key) else {
+                    surface(&target.request_id,json!({"kind":"action-error","error":"device_action_pending"}));
+                    return;
+                };
                 std::thread::spawn(move || {
+                    // Hiding or reopening the viewer does not cancel a host command.
+                    // Keep its reservation until the RPC settles, including failures.
+                    let _lease=lease;
                     let result = (|| -> Result<Value> {
                         let env = crate::env_by_id(&target.environment)?;
                         let c = env.connection(true)?;
@@ -90,8 +117,9 @@ impl Manager {
                         let mut payload = action_payload(&action)?;
                         payload["hostId"] = json!(target.host_id);
                         payload["deviceId"] = json!(device);
-                        device_api::action(&c, &device_api::DeviceAction::from_json(&payload).map_err(|_| "invalid_device_action")?)?;
-                        device_api::detail(&c, &device, Some(&target.host_id))
+                        // The native action already returns the updated detail. A second
+                        // read could fail after a successful nonrepeatable operation.
+                        device_api::action(&c, &device_api::DeviceAction::from_json(&payload).map_err(|_| "invalid_device_action")?)
                     })();
                     match result {
                         Ok(detail) => surface(&target.request_id, json!({"kind":"detail","detail":detail})),
@@ -138,20 +166,15 @@ impl Manager {
 
 /// The device.action variants the panel offers, checked before they reach the hub.
 pub fn action_payload(a: &Value) -> Result<Value> {
-    let bad = || "invalid_device_action".to_string();
-    Ok(match text(a, "type") {
-        "setAppearance" => json!({"type":"setAppearance","value":a["value"].as_str().filter(|v| matches!(*v, "light" | "dark")).ok_or_else(bad)?}),
-        "setTextSize" => json!({"type":"setTextSize","value":a["value"].as_str().filter(|v| matches!(*v, "small" | "default" | "large" | "extra-large")).ok_or_else(bad)?}),
-        "setOrientation" => json!({"type":"setOrientation","value":a["value"].as_str().filter(|v| matches!(*v, "portrait" | "landscape_left" | "portrait_upside_down" | "landscape_right")).ok_or_else(bad)?}),
-        "setToggle" => json!({"type":"setToggle","setting":a["setting"].as_str().filter(|v| matches!(*v, "reduceMotion" | "increaseContrast" | "reduceTransparency" | "showBorders" | "voiceOver" | "networkEnabled")).ok_or_else(bad)?,"value":a["value"].as_bool().ok_or_else(bad)?}),
-        "openUrl" => {
-            let url = a["url"].as_str().map(str::trim).filter(|u| !u.is_empty() && u.len() <= 4096 && !u.chars().any(char::is_control)).ok_or_else(bad)?;
-            json!({"type":"openUrl","url":url})
-        }
-        "shake" => json!({"type":"shake"}),
-        "clearLocation" => json!({"type":"clearLocation"}),
-        _ => return Err(bad()),
-    })
+    if !a.is_object() || a.get("hostId").is_some() || a.get("deviceId").is_some() {
+        return Err("invalid_device_action".into());
+    }
+    let mut input=a.clone();
+    input["deviceId"]=json!("captured-device");
+    let mut payload=device_api::DeviceAction::from_json(&input).and_then(|action|action.payload())
+        .map_err(|_|"invalid_device_action".to_string())?;
+    payload.as_object_mut().unwrap().remove("deviceId");
+    Ok(payload)
 }
 
 fn target(v: &Value) -> Result<Target> {
@@ -501,7 +524,7 @@ mod tests {
 }
 #[cfg(test)]
 mod action_tests {
-    use super::action_payload;
+    use super::{action_payload, ActionLease, Manager};
     use serde_json::json;
     #[test]
     fn only_known_actions_pass() {
@@ -510,5 +533,33 @@ mod action_tests {
         assert_eq!(action_payload(&json!({"type":"setToggle","setting":"networkEnabled","value":false})).unwrap()["value"], false);
         assert!(action_payload(&json!({"type":"sendPush"})).is_err());
         assert_eq!(action_payload(&json!({"type":"openUrl","url":" https://t3.codes "})).unwrap()["url"], "https://t3.codes");
+    }
+    #[test]
+    fn every_native_device_tool_action_retains_its_payload_without_editable_target_fields() {
+        for action in [
+            json!({"type":"setLocation","latitude":0.0,"longitude":-180.0}),
+            json!({"type":"setPermission","appId":"example.app","permission":"camera","decision":"grant"}),
+            json!({"type":"setLiquidGlass","value":"tinted"}),
+            json!({"type":"setColorFilter","value":"blue-yellow"}),
+            json!({"type":"launchApp","appId":"example.app"}),
+            json!({"type":"terminateApp","appId":"example.app"}),
+            json!({"type":"sendPush","appId":"example.app","payload":{"aps":{"alert":"Synthetic"}}}),
+        ] { assert_eq!(action_payload(&action).unwrap(),action); }
+        assert!(action_payload(&json!({"type":"setLocation","latitude":90.1,"longitude":0.0})).is_err());
+        assert!(action_payload(&json!({"type":"launchApp","appId":"example.app","deviceId":"foreign"})).is_err());
+        assert!(action_payload(&json!({"type":"launchApp","appId":"example.app","hostId":"foreign"})).is_err());
+    }
+    #[test]
+    fn closing_a_view_does_not_release_an_inflight_device_command() {
+        let mut manager=Manager::default();
+        let key=("environment".into(),"host".into(),"device".into());
+        let command=ActionLease::acquire(&manager.actions,key.clone()).unwrap();
+        manager.stop();
+        assert!(ActionLease::acquire(&manager.actions,key.clone()).is_none());
+        let other=ActionLease::acquire(&manager.actions,("environment".into(),"host".into(),"other-device".into())).unwrap();
+        drop(command);
+        assert!(ActionLease::acquire(&manager.actions,key).is_some());
+        drop(other);
+        assert!(manager.actions.lock().unwrap().is_empty());
     }
 }

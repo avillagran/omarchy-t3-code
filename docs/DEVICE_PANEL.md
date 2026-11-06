@@ -1,0 +1,15 @@
+# Embedded device panel
+
+The Devices tab renders native Android H.264 and iOS MJPEG sessions, forwards scaled pointer/keyboard input, and exposes host commands through the captured session target. Commands use the protocol action decoder; editable payloads cannot override the host or device. At most one action per environment/host/device runs at a time, including commands still running after the view closes.
+
+`T3DeviceTools.qml` exposes foreground application launch/terminate, URLs, appearance, text size, Android orientation, supported accessibility settings, location and application permissions. iOS-only shake, Liquid Glass, color filters and push controls are conditional on platform. Host commands require a local or SSH host, and unknown settings remain disabled. No command is automatically retried.
+
+## Verification
+
+Six Rust device-screen tests validate native payload coverage, destination capture, lifecycle reservations and frame/input helpers. The actual tools component is exercised in a rootless container with a private software X display by `python3 tools/test-device-panel-container device-tools`. It covers platform controls, location bounds, application targeting, pending state, scope changes and unsupported hosts. The browser workspace fixture also passes in that harness. Translation coverage is 20 locales with 2,126 keys each.
+
+These fixtures use synthetic device details. They do not claim a live emulator, iOS host, full old side-panel route or installed application acceptance. The old route fixture currently fails resolving its backend singleton in the isolated harness. Strict client Clippy also reports pre-existing library errors; neither gate is waived.
+
+## Remaining source parity
+
+Guided host installation/update, application installation, accessibility overlays, device event logs, recording/capture, fold/duo controls, 3D presentation and floating device windows remain separate implementation work. Backend platform capability errors must remain explicit rather than displaying successful placeholder behavior.

@@ -1424,7 +1424,8 @@ Singleton {
   property var deviceFrame:({url:"",revision:0,width:0,height:0})
   function openDeviceScreen(environment,device,hubBasePath,open){
     var id=uuid()
-    deviceScreen={requestId:id,stage:"starting",error:"",target:{environment:environment,hostId:device.hostId,deviceId:device.id,platform:device.platform,name:device.name || device.id},input:false,decoder:false,config:null}
+    deviceScreen={requestId:id,stage:"starting",error:"",target:{environment:environment,hostId:device.hostId,deviceId:device.id,platform:device.platform,name:device.name || device.id,hostKind:device.hostKind || "",hostDiagnostics:device.hostDiagnostics || ""},input:false,decoder:false,config:null}
+    deviceSettings={busy:false,error:"",detail:null}
     deviceFrame={url:"",revision:0,width:0,height:0}
     send({op:"device-screen-open",requestId:id,environment:environment,thread:selectedThread,hostId:device.hostId,deviceId:device.id,platform:device.platform,hubBasePath:hubBasePath || "",open:!!open})
   }
@@ -1433,7 +1434,7 @@ Singleton {
     if(!deviceScreen.requestId)return
     send({op:"device-screen-close",requestId:deviceScreen.requestId,endSession:!!endSession,shutdown:!!shutdown})
     if(endSession)deviceScreen=Object.assign({},deviceScreen,{stage:"closing"})
-    else{deviceScreen={requestId:"",stage:"idle",error:"",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0}}
+    else{deviceScreen={requestId:"",stage:"idle",error:"",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0};deviceSettings={busy:false,error:"",detail:null}}
   }
   // Settings of the open device (device.detail) and actions on it (device.action).
   property var deviceSettings:({busy:false,error:"",detail:null})
@@ -1446,7 +1447,7 @@ Singleton {
     else if(d.kind==="detail")deviceSettings={busy:false,error:"",detail:d.detail||null}
     else if(d.kind==="action-error")deviceSettings=Object.assign({},deviceSettings,{busy:false,error:d.error||"device_action_failed"})
     else if(d.kind==="error")deviceScreen=Object.assign({},deviceScreen,{stage:"error",error:d.error || "device_stream_failed"})
-    else if(d.kind==="closed"||d.kind==="stopped"){deviceScreen={requestId:"",stage:"idle",error:d.error || "",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0}}
+    else if(d.kind==="closed"||d.kind==="stopped"){deviceScreen={requestId:"",stage:"idle",error:d.error || "",target:null,input:false,decoder:false,config:null};deviceFrame={url:"",revision:0,width:0,height:0};deviceSettings={busy:false,error:"",detail:null}}
   }
   property var licenseView:({busy:false,error:"",data:null,requestId:""})
   property var licenseNotice:({busy:false,error:"",manifestId:"",entryKey:"",noticeText:"",requestId:""})

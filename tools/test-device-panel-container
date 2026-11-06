@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Run device QML in a private software display, without live desktop/profile access."""
+import argparse
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "native-terminal"], default="device-tools")
+args = parser.parse_args()
+root = Path(__file__).resolve().parent.parent
+evidence = Path(tempfile.mkdtemp(prefix="o3-device-panel-", dir="/var/tmp"))
+evidence.chmod(0o700)
+script = r'''
+set -eu
+umask 077
+mkdir -p /tmp/home /tmp/runtime /tmp/qml /tmp/.X11-unix
+chmod 700 /tmp/runtime
+chmod 1777 /tmp/.X11-unix
+for name in Commons Ui plugins services; do ln -s "/usr/share/omarchy/shell/$name" "/tmp/qml/$name"; done
+ln -s "$1" /tmp/qml/UnderTest
+printf '%s\n' '//@ pragma OmarchyLoadPatch' '//@ pragma RespectSystemStyle' > /tmp/qml/shell.qml
+cat "$1/tests/qml/$2.qml" >> /tmp/qml/shell.qml
+Xvfb :9 -screen 0 1280x1024x24 -nolisten tcp -extension GLX > /evidence/display.log 2>&1 &
+display_pid=$!
+for attempt in $(seq 1 50); do
+  kill -0 "$display_pid" || exit 1
+  if test -S /tmp/.X11-unix/X9; then break; fi
+  sleep 0.02
+done
+DISPLAY=:9 QT_QPA_PLATFORM=xcb QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=OmarchyT3 QML_IMPORT_PATH="$1/ui/style" timeout 25 quickshell -p /tmp/qml/shell.qml > /evidence/qml.log 2>&1
+'''
+command = ["podman", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
+for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "XDG_CONFIG_HOME":"/tmp/config", "XDG_STATE_HOME":"/tmp/state", "XDG_DATA_HOME":"/tmp/data", "LIBGL_ALWAYS_SOFTWARE":"1", "__EGL_VENDOR_LIBRARY_FILENAMES":"/usr/share/glvnd/egl_vendor.d/50_mesa.json"}.items():
+    command += ["--env", f"{key}={value}"]
+command += ["-v", "/usr:/usr:ro", "-v", "/etc/fonts:/etc/fonts:ro", "-v", f"{root}:{root}:ro", "-v", f"{evidence}:/evidence:rw", "docker.io/library/archlinux:latest", "bash", "-c", script, "device-panel", str(root), args.fixture]
+result = subprocess.run(command, capture_output=True, text=True, timeout=45)
+log = (evidence / "qml.log").read_text() if (evidence / "qml.log").exists() else result.stdout + result.stderr
+print(f"Device panel container evidence: {evidence}")
+if result.returncode or "QML_PASS" not in log or any(error in log for error in ["QML_FAIL", "ReferenceError", "TypeError", "Binding loop"]):
+    print(log)
+    if (evidence / "display.log").exists(): print((evidence / "display.log").read_text())
+    raise SystemExit(result.returncode or 1)
+print("\n".join(line for line in log.splitlines() if "QML_PASS" in line))
