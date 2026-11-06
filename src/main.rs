@@ -409,6 +409,7 @@ fn watch(client: Client) -> Result<()> {
     let external = local_quotas::ExternalHttp::shared()?;
     emit("ui-state", ui_state::load());
     let (tx, rx) = mpsc::channel::<Value>();
+    rpc_sessions::set_events(tx.clone());
     let compactor = auto_compact::Control::new(tx.clone());
     let idle_releaser = idle_release::Control::new(tx.clone());
     let updater = server_update::Control::new();
@@ -1381,6 +1382,7 @@ fn watch(client: Client) -> Result<()> {
             Err(_) => return Ok(()),
         };
         match text(&cmd, "op") {
+            "rpc-session-state" => emit("rpc-session-state",cmd.clone()),
             "ui-state-set" => {
                 if let Err(error) = ui_state::save(&cmd["state"]) {
                     emit("ui-state-error", json!({"error":error}));

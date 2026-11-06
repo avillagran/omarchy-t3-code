@@ -458,6 +458,7 @@ fn build_environments()->Result<Vec<Environment>> {
         else if result.iter().any(|e|e.connection_error.is_some()&&!retry.contains_key(&e.id)){Instant::now()+Duration::from_secs(3)}
         else{retry.values().map(|r|r.0).min().unwrap_or_else(Instant::now).max(Instant::now()+Duration::from_secs(3))};
     *cache=Some(Cache{signature,remote_signature,cloud_signature,until,environments:result.clone(),routes,tunnels,catalog,retry});
+    crate::rpc_sessions::reconcile(&result);
     Ok(result)
 }
 
