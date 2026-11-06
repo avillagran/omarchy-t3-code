@@ -27,7 +27,7 @@ in Rust’s connection and never enter terminal launcher arguments.
 lifetime. `native/terminal/terminalsurface.cpp` renders and encodes through the
 pinned Ghostty C ABI. `T3TerminalPanel.qml` and `T3TerminalPane.qml` supply the
 side-panel interaction, theme and session layout. The legacy external frontend
-in `src/terminal.rs` remains available for existing explicit CLI/code actions;
+in `src/terminal.rs` remains available for existing explicit CLI actions;
 it is no longer the chat-header implementation.
 
 The terminal engine suite covers 52 Qt cases, including 40 native engine oracle
@@ -62,10 +62,15 @@ anything. As in T3 Code, only a closed, single-line shell fence without control
 or invisible formatting characters offers the run action. Streaming, incomplete
 or multiline blocks remain readable and copyable.
 
-A code action opens a fresh T3 terminal in the current chat's environment and
-project/worktree directory, so it cannot write into an unrelated running job.
-The command travels to the native frontend through a private one-use file,
-not a launcher shell argument. It is written once after the terminal attaches;
-an uncertain write is never retried automatically. The chat header and Ctrl+J use the embedded panel described above. The legacy
-code-action frontend remains a separate path; closing its window detaches
-without killing its shell.
+A code action opens a fresh embedded terminal tab in the current chat's
+environment and project/worktree directory. The command travels through the
+existing private desktop worker IPC and is written once as `command + "\r"`
+after the initial live terminal snapshot. An uncertain write is never replayed
+automatically. The chat header and Ctrl+J use the same embedded panel.
+
+Native T3 code actions target the drawer and may reuse an idle drawer-owned
+terminal, excluding terminals owned by the side panel. O3 currently exposes the
+embedded side-panel ownership path and creates a fresh terminal for code actions;
+separate drawer ownership and eligible idle-drawer reuse remain fidelity work.
+The legacy external frontend is still an explicit CLI path. Closing either
+frontend detaches without killing its server shell.
