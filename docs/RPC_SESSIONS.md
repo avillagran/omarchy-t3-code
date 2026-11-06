@@ -24,3 +24,24 @@ failure/replacement, exact close identity and removal from the environment catal
 This foundation is opt-in. Terminal paths do not require file metadata in native
 T3; file-reference/markdown metadata caching and invalidation must use their actual
 consumer lifecycle. Unary ownership does not yet multiplex native subscriptions.
+
+## Native metadata lifecycle oracle
+
+The actual nightly 4288 `fileMetadata.test.ts` and production
+`fileMetadata.ts`/query runtime/connection modules pass all 12 native tests in a
+private container. The staging tool reads commit
+`32a0531748c44b25072d7495ce0b9bd7e9450a87` and records a hash for each of its 737
+source/test files; it never copies an older working tree. The original tests use
+their own fake RPC/session/Clock boundaries. The cache algorithm is unmodified.
+
+Prepare a dedicated dependency cache from `tests/native-file-metadata-deps` using
+`npm ci --ignore-scripts --no-audit --no-fund` inside a private rootless container,
+with a private HOME and no host authentication/profile mounts. The lock records
+Effect/@effect-vitest 4.1.2, Vitest 5.0.5 and native @noble/hashes 1.8.0. Dependency
+acquisition may access the registry; actual tests always have `--network=none`.
+
+Run `python3 tools/test-native-file-metadata-container T3_CHECKOUT DEPENDENCY_CACHE`
+through a transient user unit. `O3_NATIVE_ORACLE_ROOT` selects its private evidence
+location. Source and dependencies mount read-only; module aliases and Vitest
+caches live in container `/tmp`. This verifies the native reference behavior;
+it does not by itself establish the O3 cache or pending-validation port.
