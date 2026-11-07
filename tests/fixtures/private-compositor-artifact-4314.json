@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "kind": "official-arch-sway-regular-files",
+  "packages": [
+    {
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/sway-1%3A1.12-4-x86_64.pkg.tar.zst",
+      "file": "sway-1:1.12-4-x86_64.pkg.tar.zst",
+      "bytes": 5322330,
+      "sha256": "5704cfc9eba9804116c665cb4450352bf5a240c1a8300b36aca3218116648443"
+    },
+    {
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/sway-1%3A1.12-4-x86_64.pkg.tar.zst.sig",
+      "file": "sway-1:1.12-4-x86_64.pkg.tar.zst.sig",
+      "bytes": 119,
+      "sha256": "f5e7c027c76db34dee0b853501a62a2ade163d671044ae1d2ead40dadbdbe45b"
+    },
+    {
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/wlroots0.20-0.20.2-1-x86_64.pkg.tar.zst",
+      "file": "wlroots0.20-0.20.2-1-x86_64.pkg.tar.zst",
+      "bytes": 543055,
+      "sha256": "8b1da3fbf29cc45908d8de771bd22a5813b298a9049462df5b8952f23c3ffb8f"
+    },
+    {
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/wlroots0.20-0.20.2-1-x86_64.pkg.tar.zst.sig",
+      "file": "wlroots0.20-0.20.2-1-x86_64.pkg.tar.zst.sig",
+      "bytes": 566,
+      "sha256": "a66c7204264def11f7a2dfeefe090fd69fb984a462a13695062baea914fde85f"
+    },
+    {
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/libliftoff-0.5.0-1-x86_64.pkg.tar.zst",
+      "file": "libliftoff-0.5.0-1-x86_64.pkg.tar.zst",
+      "bytes": 19996,
+      "sha256": "59cf08c21500673a14287b83b89b6db5389134cc24c97d9222c7cddefa639ccf"
+    },
+    {
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/libliftoff-0.5.0-1-x86_64.pkg.tar.zst.sig",
+      "file": "libliftoff-0.5.0-1-x86_64.pkg.tar.zst.sig",
+      "bytes": 566,
+      "sha256": "1cae42cee00d930f9f0b8aa293da9a1dca74c30409759918af551527e1cbe6ce"
+    }
+  ],
+  "signatureVerification": "gpgv using dearmored official installed archlinux keyring; all three packages good signatures",
+  "files": [
+    {
+      "path": "usr/bin/sway",
+      "bytes": 616664,
+      "sha256": "7ba78b7531a3b3cb1852b3b1e464b4458cce1749c6c0fe3c6fb4b16ece9d5b9c",
+      "package": "sway-1:1.12-4-x86_64.pkg.tar.zst"
+    },
+    {
+      "path": "usr/bin/swaymsg",
+      "bytes": 30928,
+      "sha256": "8cde6e424950be9be0e7916202fca2a60806460b970a533c39d2ed2b9e2cad66",
+      "package": "sway-1:1.12-4-x86_64.pkg.tar.zst"
+    },
+    {
+      "path": "usr/share/licenses/sway/LICENSE",
+      "bytes": 1061,
+      "sha256": "bd35722bff46327f5eded1d211207277bbe043d2a22048b282c42ef801593b8b",
+      "package": "sway-1:1.12-4-x86_64.pkg.tar.zst"
+    },
+    {
+      "path": "usr/lib/libwlroots-0.20.so",
+      "bytes": 1378496,
+      "sha256": "7edca9a7d65855addda68e29ba5db94d57c803eb5fa7d0f86db3136b90ca9837",
+      "package": "wlroots0.20-0.20.2-1-x86_64.pkg.tar.zst"
+    },
+    {
+      "path": "usr/share/licenses/wlroots0.20/LICENSE",
+      "bytes": 1140,
+      "sha256": "35d427c043dcafe8893b9e7247348f599847c81d9a067703587c80707f3d58df",
+      "package": "wlroots0.20-0.20.2-1-x86_64.pkg.tar.zst"
+    },
+    {
+      "path": "usr/lib/libliftoff.so.0",
+      "member": "usr/lib/libliftoff.so.0.5.0",
+      "bytes": 34704,
+      "sha256": "f062e3f341937c84e40979406a494f35f00f20a3de208a39070dadba04cfe08f",
+      "package": "libliftoff-0.5.0-1-x86_64.pkg.tar.zst"
+    },
+    {
+      "path": "usr/share/licenses/libliftoff/LICENSE",
+      "member": "usr/share/licenses/libliftoff/LICENSE",
+      "bytes": 1066,
+      "sha256": "9b230152f28fc7898665f40da7c311a1bf238a68b12cc39d9c83bbfc117a7b6b",
+      "package": "libliftoff-0.5.0-1-x86_64.pkg.tar.zst"
+    }
+  ],
+  "scope": "Private fixture dependency acquisition only; no product distribution or public browser selection. All three archive detached signatures verified with gpgv; no install scripts or image/rootfs export."
+}
