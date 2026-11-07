@@ -86,6 +86,7 @@ pub mod file_metadata_cache;
 pub mod file_metadata_admission;
 pub mod file_metadata_wire;
 pub mod file_metadata_runtime;
+pub mod thread_activity;
 /// Any attachment's bytes through its signed asset URL (assets.createUrl), at
 /// most `limit` bytes. The grant authorizes the GET itself, as for images,
 /// so no credential header is needed.
@@ -747,6 +748,7 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         // Match native isProviderNativeSubagentThread; MCP children remain writable.
         if t["lineage"]["relationshipToParent"]=="subagent" && t["creationSource"]=="provider" {row["providerSubagent"]=json!(true);}
         for (key,value) in protocol::sidebar::sort_timestamps(t).as_object().unwrap(){row[key]=value.clone();}
+        if let Some(clock)=crate::thread_activity::shell_clock(t){row["activityClock"]=clock;}
         result.push(row);
     }
     result.sort_by(|a, b| {

@@ -1,0 +1,14 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "hashes": {
+    "apps/web/src/timestampFormat.ts": "fce7b51aff43c82eaec465064466c97d220626362b4603b7cf91d75b1c511e66",
+    "apps/web/src/components/sidebar/SidebarThreadRow.tsx": "2ae3a33bc8897bc88369d1f105955a6fc552585ca7c3165df31ae7e43ddba996",
+    "packages/contracts/src/settings.ts": "d6441e2560891ddec76d444f5ea835fd0f6b60c6c0bb63a6557f358401cb9fe2"
+  },
+  "execution": "Whole timestampFormat.ts and original RelativeTimeLabel method with injected useNowMinute",
+  "qtAdaptations": [
+    "TypeScript erasure",
+    "Shared minute hook becomes an explicit minute snapshot argument"
+  ],
+  "outputSha256": "88a06638a9ea6fe0a77528f1ec7f7762caa06d75ae1b04a6c84ce9ce3ba4a100"
+}

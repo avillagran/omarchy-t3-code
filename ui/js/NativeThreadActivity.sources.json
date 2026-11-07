@@ -1,0 +1,14 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "hashes": {
+    "packages/client-runtime/src/state/threadSort.ts": "52a7ff2bc25fad376b67dc84bdda5bc01536230aa58eef5f264f202550c2b805",
+    "apps/web/src/components/sidebar/SidebarThreadRow.tsx": "2ae3a33bc8897bc88369d1f105955a6fc552585ca7c3165df31ae7e43ddba996",
+    "packages/client-runtime/src/state/models.ts": "d83e6539f7b5f09a34ab2b224d58d6f1d3f92611620f52fe0cfbaca67a061f28"
+  },
+  "execution": "Whole native threadSort.ts imported after TypeScript erasure; native Date.parse",
+  "qtAdaptations": [
+    "TypeScript erasure",
+    "ES module exports become Qt library exports"
+  ],
+  "outputSha256": "0bcb2842b47f03c66a1270296f2d6b731ebb0f09ec7cced1750c878a4c868daf"
+}

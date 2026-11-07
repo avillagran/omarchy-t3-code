@@ -15,6 +15,8 @@ import "../js/ProjectTree.js" as ProjectTree
 import "../js/WheelMotion.js" as Motion
 import "../js/NativeKeybindings.js" as Native
 import "../js/KeybindingLabels.js" as KeyLabels
+import "../js/NativeThreadActivity.js" as ThreadActivity
+import "../js/NativeThreadRelativeTime.js" as ThreadRelativeTime
 
 Item {
   id: root
@@ -41,6 +43,9 @@ Item {
       checkpoints: { var value = root.bridge.metadataCheckpoints; return value && value.environment === environment && value.thread === thread ? value.data : null }
     }
   }
+  property string rowMinute: new Date().toISOString().slice(0,16)
+  property var rowClockUnsubscribe: null
+  function subscribeRowClock(){rowClockUnsubscribe=T3ThreadClock.subscribe(function(){root.rowMinute=T3ThreadClock.getSnapshot()});rowMinute=T3ThreadClock.getSnapshot()}
   property var prTarget:null
   property bool pullRequestsOpen:false
   // Multi-purpose side panel next to the chat (T3SidePanel): browser,
@@ -405,7 +410,7 @@ Item {
     else if(command==="thread.editQueuedMessage"){var items=bridge.queue.items;bridge.beginQueueEdit(items[items.length-1]);composerPanel.inputField.forceActiveFocus()}
   }
   function localShortcutAvailable(sequence){return !nativeKeybindingsEnabled||!nativeShortcuts.claimsSequence(sequence)}
-  Component.onCompleted: { initialized = true;syncConversation();syncMetadataLease() }
+  Component.onCompleted: { initialized = true;syncConversation();syncMetadataLease();subscribeRowClock() }
   property bool panelOpen:false
   // Run as the desktop app (app/shell.qml). The bar popup ("panel") needs the
   // bar's place, which the app learns from the bar widget; without it, a window.
@@ -683,7 +688,7 @@ Item {
       restoringConversation = true; restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})
     } else {documentPopup.close();bridge.closeDocument();conversation.stopWheel();captureState()}
   }
-  Component.onDestruction: captureState()
+  Component.onDestruction: {if(typeof rowClockUnsubscribe==="function")rowClockUnsubscribe();captureState()}
   property real clockNow: Date.now()
   Timer { interval: 1000; repeat: true; running: root.opened && root.bridge.state.threads.some(function(t){return !!t.working||!!t.snoozed}); onTriggered: root.clockNow = Date.now() }
   function duration(start) {
@@ -894,7 +899,16 @@ Item {
     if (dirty) stateChangedAt = changed
   }
   Connections { target: root.bridge; function onStateChanged() { root.trackThreadStates() } }
-  function threadTime(t){return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)}
+  function threadTime(t){
+    if(t.activityClock){
+      if(t.working)return root.duration(t.startedAt)
+      var timestamp=t.settled?ThreadActivity.resolveSettledThreadTimestamp(t.activityClock):ThreadActivity.resolveThreadActivityTimestamp(t.activityClock)
+      var label=ThreadRelativeTime.relativeLabel({timestamp:timestamp},root.rowMinute)
+      return label===null?"":label==="now"?T3I18n.tr("now"):label
+    }
+    // Legacy shells retain their existing clock encoding and display fallback.
+    return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)
+  }
   function stateColor(t) { return T3Palette.detailColor(Sidebar.detail(t)) }
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
   function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }

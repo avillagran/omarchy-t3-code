@@ -2,6 +2,8 @@ singleton T3Backend 1.0 T3Backend.qml
 BarWidget 1.0 BarWidget.qml
 T3Panel 1.0 T3Panel.qml
 T3FileMetadataLease 1.0 T3FileMetadataLease.qml
+T3ThreadClockOwner 1.0 T3ThreadClockOwner.qml
+singleton T3ThreadClock 1.0 T3ThreadClock.qml
 QuotaStrip 1.0 QuotaStrip.qml
 WorkIndicator 1.0 WorkIndicator.qml
 PinnedKeyboardPanel 1.0 PinnedKeyboardPanel.qml
