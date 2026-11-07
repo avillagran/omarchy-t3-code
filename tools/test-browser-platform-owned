@@ -3,7 +3,8 @@
 import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
 from runtime_artifacts import snapshot
 from pathlib import Path
-parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--runtime',type=Path);parser.add_argument('--services',type=Path);options=parser.parse_args()
+parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);options=parser.parse_args()
+if options.cross_cohort and not options.runtime:parser.error('cross-cohort requires native runtime')
 if bool(options.runtime)!=bool(options.services):parser.error('runtime and services must be supplied together')
 root=Path(__file__).resolve().parent.parent
 if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
@@ -77,6 +78,7 @@ finally:
  if keyboard is not None and keyboard.poll() is None:keyboard.terminate();keyboard.wait(timeout=3)
  display.terminate();display.wait(timeout=3);log.close()
 ''']
+if options.cross_cohort:args[3:3]=['--env','O3_NATIVE_GUI_CROSS=1']
 if options.runtime:
  args[args.index('--memory=512m')]='--memory=3g';args[args.index('--pids-limit=96')]='--pids-limit=384'
  args[3:3]=['--security-opt=seccomp=unconfined','-v',str(runtime)+':/electron:ro','--env','O3_NATIVE_GUI_POOL=1']

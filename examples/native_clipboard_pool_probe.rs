@@ -17,11 +17,17 @@ fn stage(value: &str) {
     std::io::stdout().flush().unwrap();
 }
 fn receive(events: &mpsc::Receiver<Value>, id: Option<u64>) -> Value {
+    receive_for(events, id, "tab")
+}
+fn receive_for(events: &mpsc::Receiver<Value>, id: Option<u64>, tab: &str) -> Value {
     let until = Instant::now() + Duration::from_secs(15);
     loop {
         let value = events
             .recv_timeout(until.saturating_duration_since(Instant::now()))
             .unwrap();
+        if value["tabId"] != tab {
+            continue;
+        }
         if id.is_none() && value["type"] == "attached" {
             return value;
         }
@@ -41,6 +47,17 @@ fn command(
     method: &str,
     params: Value,
 ) -> Value {
+    command_for(pool, events, id, "tab", session, method, params)
+}
+fn command_for(
+    pool: &mut Pool,
+    events: &mpsc::Receiver<Value>,
+    id: &mut u64,
+    tab: &str,
+    session: Option<&str>,
+    method: &str,
+    params: Value,
+) -> Value {
     *id += 1;
     let mut frame = json!({"id":id,"method":method,"params":params});
     if let Some(session) = session {
@@ -49,10 +66,10 @@ fn command(
     pool.private_command(
         "owned",
         "origin",
-        &json!({"type":"cdp","threadId":"thread","tabId":"tab","message":frame.to_string()}),
+        &json!({"type":"cdp","threadId":"thread","tabId":tab,"message":frame.to_string()}),
     )
     .unwrap();
-    let result = receive(events, Some(*id));
+    let result = receive_for(events, Some(*id), tab);
     assert!(result.get("error").is_none(), "{result}");
     result["result"].clone()
 }
@@ -73,6 +90,43 @@ fn evaluate(
     );
     assert!(result.get("exceptionDetails").is_none(), "{result}");
     result["result"]["value"].clone()
+}
+fn evaluate_for(
+    pool: &mut Pool,
+    events: &mpsc::Receiver<Value>,
+    id: &mut u64,
+    tab: &str,
+    session: &str,
+    expression: &str,
+) -> Value {
+    let result = command_for(
+        pool,
+        events,
+        id,
+        tab,
+        Some(session),
+        "Runtime.evaluate",
+        json!({"expression":expression,"returnByValue":true,"awaitPromise":true}),
+    );
+    assert!(result.get("exceptionDetails").is_none(), "{result}");
+    result["result"]["value"].clone()
+}
+fn tap(pool: &mut Pool, surface: &str, x: u32, y: u32) {
+    for event in [
+        json!({"type":"press","x":x,"y":y,"button":1,"buttons":1}),
+        json!({"type":"release","x":x,"y":y,"button":1,"buttons":0}),
+    ] {
+        pool.input(surface, &event).unwrap();
+    }
+}
+fn paste(pool: &mut Pool, surface: &str) {
+    tap(pool, surface, 30, 30);
+    for event in [
+        json!({"type":"key","key":86,"text":"v","modifiers":0x04000000}),
+        json!({"type":"keyup","key":86,"text":"v","modifiers":0x04000000}),
+    ] {
+        pool.input(surface, &event).unwrap();
+    }
 }
 fn main() {
     let gui = Arc::new(Mutex::new(
@@ -176,6 +230,7 @@ fn main() {
         json!(["undefined", "undefined", "undefined"])
     );
     evaluate(&mut pool,&events,&mut id,session,"document.body.innerHTML=\"<textarea id='target' style='position:fixed;left:10px;top:10px;width:200px;height:60px'></textarea><button id='write' style='position:fixed;left:250px;top:10px;width:150px;height:60px'>Write</button>\";write.onclick=async event=>{window.trusted=event.isTrusted&&navigator.userActivation.isActive;try{await navigator.clipboard.writeText('native product current clipboard');window.writeResult='ok'}catch(error){window.writeResult=error.name}};0");
+    evaluate(&mut pool,&events,&mut id,session,"(()=>{const button=document.createElement('button');button.id='imageWrite';button.textContent='Image';button.style='position:fixed;left:250px;top:100px;width:150px;height:60px';button.onclick=async event=>{window.imageTrusted=event.isTrusted&&navigator.userActivation.isActive;try{const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;const context=canvas.getContext('2d');context.fillStyle='#123456';context.fillRect(0,0,2,2);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);window.imageResult='ok'}catch(error){window.imageResult=error.name}};document.body.appendChild(button);return 0})()");
     pool.show(
         "owned",
         "origin",
@@ -234,8 +289,192 @@ fn main() {
     }
     assert_eq!(value, json!(["ok", true]));
     stage("write-ok");
+    assert_eq!(input.next().unwrap().unwrap(), "image");
+    for event in [
+        json!({"type":"press","x":280,"y":130,"button":1,"buttons":1}),
+        json!({"type":"release","x":280,"y":130,"button":1,"buttons":0}),
+    ] {
+        pool.input("surface", &event).unwrap();
+    }
+    for _ in 0..200 {
+        value = evaluate(
+            &mut pool,
+            &events,
+            &mut id,
+            session,
+            "[window.imageResult,window.imageTrusted]",
+        );
+        if value == json!(["ok", true]) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(value, json!(["ok", true]));
+    stage("image-ok");
+    let final_profile = if std::env::var_os("O3_NATIVE_GUI_CROSS").is_some() {
+        assert_eq!(input.next().unwrap().unwrap(), "cross");
+        evaluate(
+            &mut pool,
+            &events,
+            &mut id,
+            session,
+            "window.writeResult=null;0",
+        );
+        tap(&mut pool, "surface", 280, 30);
+        for _ in 0..200 {
+            value = evaluate(&mut pool, &events, &mut id, session, "window.writeResult");
+            if value == "ok" {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(value, "ok");
+        stage("cross-write-A");
+        assert_eq!(input.next().unwrap().unwrap(), "cross-paste-B");
+        let mut secondary = snapshot.clone();
+        secondary["tabId"] = json!("other");
+        secondary["profileId"] = json!("secondary");
+        pool.ensure_private("owned", "origin", &secondary, (640, 480), &json!(1))
+            .unwrap();
+        receive_for(&events, None, "other");
+        assert_eq!(pool.process_count(), 2);
+        let targets = command_for(
+            &mut pool,
+            &events,
+            &mut id,
+            "other",
+            None,
+            "Target.getTargets",
+            json!({}),
+        );
+        let target = targets["targetInfos"][0]["targetId"].as_str().unwrap();
+        let attached = command_for(
+            &mut pool,
+            &events,
+            &mut id,
+            "other",
+            None,
+            "Target.attachToTarget",
+            json!({"targetId":target,"flatten":true}),
+        );
+        let other = attached["sessionId"].as_str().unwrap();
+        command_for(
+            &mut pool,
+            &events,
+            &mut id,
+            "other",
+            Some(other),
+            "Page.navigate",
+            json!({"url":format!("http://127.0.0.1:{port}/")}),
+        );
+        for _ in 0..200 {
+            if evaluate_for(
+                &mut pool,
+                &events,
+                &mut id,
+                "other",
+                other,
+                "document.readyState==='complete'&&location.protocol==='http:'",
+            ) == true
+            {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(
+            evaluate_for(
+                &mut pool,
+                &events,
+                &mut id,
+                "other",
+                other,
+                "[typeof require,typeof process,typeof Buffer]"
+            ),
+            json!(["undefined", "undefined", "undefined"])
+        );
+        evaluate_for(
+            &mut pool,
+            &events,
+            &mut id,
+            "other",
+            other,
+            r#"document.body.innerHTML="<textarea id='target' style='position:fixed;left:10px;top:10px;width:200px;height:60px'></textarea><button id='write' style='position:fixed;left:250px;top:10px;width:150px;height:60px'>Write B</button>";write.onclick=async event=>{window.trusted=event.isTrusted&&navigator.userActivation.isActive;try{await navigator.clipboard.writeText('native secondary clipboard');window.writeResult='ok'}catch(error){window.writeResult=error.name}};0"#,
+        );
+        pool.show(
+            "owned",
+            "origin",
+            &secondary,
+            "secondary-surface",
+            (640, 480),
+            &json!(1),
+        )
+        .unwrap();
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            let frame = ui
+                .recv_timeout(until.saturating_duration_since(Instant::now()))
+                .unwrap();
+            if frame["kind"] == "frame" && frame["requestId"] == "secondary-surface" {
+                break;
+            }
+        }
+        paste(&mut pool, "secondary-surface");
+        for _ in 0..200 {
+            value = evaluate_for(&mut pool, &events, &mut id, "other", other, "target.value");
+            if value == "native product current clipboard" {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(value, "native product current clipboard");
+        tap(&mut pool, "secondary-surface", 280, 30);
+        for _ in 0..200 {
+            value = evaluate_for(
+                &mut pool,
+                &events,
+                &mut id,
+                "other",
+                other,
+                "[window.writeResult,window.trusted]",
+            );
+            if value == json!(["ok", true]) {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(value, json!(["ok", true]));
+        stage("cross-write-B");
+        assert_eq!(input.next().unwrap().unwrap(), "cross-paste-A");
+        pool.show(
+            "owned",
+            "origin",
+            &snapshot,
+            "surface",
+            (640, 480),
+            &json!(1),
+        )
+        .unwrap();
+        evaluate(&mut pool, &events, &mut id, session, "target.value='';0");
+        paste(&mut pool, "surface");
+        for _ in 0..200 {
+            value = evaluate(&mut pool, &events, &mut id, session, "target.value");
+            if value == "native secondary clipboard" {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(value, "native secondary clipboard");
+        stage("cross-ok");
+        assert_eq!(input.next().unwrap().unwrap(), "close-A");
+        pool.close_profile("owned", "default").unwrap();
+        assert_eq!(pool.process_count(), 1);
+        stage("A-closed");
+        "secondary"
+    } else {
+        "default"
+    };
     assert_eq!(input.next().unwrap().unwrap(), "close");
-    pool.close_profile("owned", "default").unwrap();
+    pool.close_profile("owned", final_profile).unwrap();
     assert_eq!(pool.process_count(), 0);
     stop.store(true, Ordering::SeqCst);
     server.join().unwrap();

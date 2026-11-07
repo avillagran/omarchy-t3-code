@@ -5,6 +5,7 @@
 #include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMimeData>
 #include <QPainter>
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -213,18 +214,76 @@ int main(int argc, char **argv) {
     peer.write("{\"op\":\"read\",\"id\":2}\n");
     CHECK(QJsonDocument::fromJson(response(peer)).object()["text"] ==
           "native product current clipboard");
+    focus(window.title());
+    CHECK(waitFor([&] { return window.isActive(); }));
+    native.write("image\n");
+    CHECK(response(native) == "image-ok");
+    CHECK(waitFor([] {
+      const auto *mime = QGuiApplication::clipboard()->mimeData();
+      return mime && mime->hasImage();
+    }));
+    focus("Owned synthetic clipboard peer");
+    auto verifyImage = [&](const QByteArray &bytes) {
+      const auto value = QJsonDocument::fromJson(bytes).object();
+      CHECK(value["width"] == 2 && value["height"] == 2 && value["red"] == 18 &&
+            value["green"] == 52 && value["blue"] == 86 &&
+            value["alpha"] == 255);
+    };
+    peer.write("{\"op\":\"read-image\",\"id\":4}\n");
+    verifyImage(response(peer));
+    const bool cross = qEnvironmentVariableIsSet("O3_NATIVE_GUI_CROSS");
+    if (cross) {
+      focus(window.title());
+      CHECK(waitFor([&] { return window.isActive(); }));
+      native.write("cross\n");
+      CHECK(response(native) == "cross-write-A");
+      CHECK(waitFor([] {
+        return QGuiApplication::clipboard()->ownsClipboard() &&
+               QGuiApplication::clipboard()->text() ==
+                   "native product current clipboard";
+      }));
+      native.write("cross-paste-B\n");
+      CHECK(response(native) == "cross-write-B");
+      CHECK(waitFor([] {
+        return QGuiApplication::clipboard()->ownsClipboard() &&
+               QGuiApplication::clipboard()->text() ==
+                   "native secondary clipboard";
+      }));
+      focus("Owned synthetic clipboard peer");
+      peer.write("{\"op\":\"read\",\"id\":5}\n");
+      CHECK(QJsonDocument::fromJson(response(peer)).object()["text"] ==
+            "native secondary clipboard");
+      focus(window.title());
+      CHECK(waitFor([&] { return window.isActive(); }));
+      native.write("cross-paste-A\n");
+      CHECK(response(native) == "cross-ok");
+      native.write("close-A\n");
+      CHECK(response(native) == "A-closed");
+      focus("Owned synthetic clipboard peer");
+      peer.write("{\"op\":\"read\",\"id\":6}\n");
+      CHECK(QJsonDocument::fromJson(response(peer)).object()["text"] ==
+            "native secondary clipboard");
+    }
     native.write("close\n");
     CHECK(response(native) == "pool-closed");
     native.write("quit\n");
     CHECK(native.waitForFinished(3000) && native.exitCode() == 0);
     CHECK(waitFor([&] { return !admitted(); }));
-    peer.write("{\"op\":\"read\",\"id\":3}\n");
-    CHECK(QJsonDocument::fromJson(response(peer)).object()["text"] ==
-          "native product current clipboard");
+    if (cross) {
+      peer.write("{\"op\":\"read\",\"id\":3}\n");
+      CHECK(QJsonDocument::fromJson(response(peer)).object()["text"] ==
+            "native secondary clipboard");
+      puts("NATIVE_GUI_CROSS_COHORT_PASS A-to-B B-to-A "
+           "old-retirement-preserves-new-copy");
+    } else {
+      peer.write("{\"op\":\"read-image\",\"id\":3}\n");
+      verifyImage(response(peer));
+    }
     peer.write("{\"op\":\"quit\"}\n");
     CHECK(peer.waitForFinished(2000));
     puts("NATIVE_GUI_POOL_CLIPBOARD_PASS actual-Pool authenticated-FDs "
-         "GUI-seat native-paste trusted-write current-offer-after-worker-exit");
+         "GUI-seat native-paste trusted-text-PNG-write "
+         "current-offer-after-worker-exit");
   }
   delete member;
   puts("BROWSER_GUI_PLATFORM_PASS exact-worker foreign-peer transferred-fd "
