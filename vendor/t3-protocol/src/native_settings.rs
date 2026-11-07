@@ -4,6 +4,7 @@ use crate::util::*;
 use serde_json::{json, Value};
 pub const MODEL_KEYS: &[(&str, &str)] = &[
     ("defaultModelSelection", "Model"),
+    ("fallbackModelSelection", "Fallback model"),
     ("textGenerationModelSelection", "Text generation model"),
     ("sourceControlWriterModelSelection", "Source control writer model"),
     ("reviewGuideModelSelection", "Review guide model"),
@@ -33,6 +34,7 @@ pub fn model_selection(value: &Value) -> Result<Value> {
 pub fn description(key: &str) -> &'static str {
     match key {
         "defaultModelSelection"=>"Default model for new threads. Projects can override it.",
+        "fallbackModelSelection"=>"Used for new threads when the default model's provider is out of usage.",
         "observability.otlpTracesUrl"=>"Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.",
         "defaultRuntimeMode"=>"Default permissions for new threads. Projects can override them.",
         "defaultThreadEnvMode"=>"Where new threads start. Projects and their t3.json can override it.",

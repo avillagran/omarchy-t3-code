@@ -27,3 +27,17 @@ requires backend and visible-control integration.
 ## Remaining source parity
 
 Guided host installation/update, application installation, accessibility overlays, device event logs, recording/capture, fold/duo controls, 3D presentation and floating device windows remain separate implementation work. Backend platform capability errors must remain explicit rather than displaying successful placeholder behavior.
+
+## Shared SEMU v2 decoder checkpoint
+
+The client pins published SDK `88411c6ef894ae8463f1ee1423b06f8d0e81b2f7`
+with122 exact crate inputs and no private patches. Its frame parser recognizes
+16-byte SEMU v1 and24-byte SEMU v2 headers; the latter timestamp bytes are no
+longer sent to H.264. The actual pinned hub0.19.1 writer/parser provides338
+observations, with documented legacy empty-v1 compatibility. The combined SDK
+passes422 Rust tests, C ABI, actual JNI and baseline-aware Clippy inside
+`android-sandbox`. Cargo dependencies and Android/JNI/Kotlin sources are unchanged.
+
+Real emulator frame, input and view-close acceptance still requires its own
+frozen client/server/Qt proof. Decoder corpus success and a booted inventory entry
+do not establish that full UI flow.

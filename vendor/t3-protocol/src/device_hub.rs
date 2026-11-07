@@ -238,14 +238,21 @@ impl<R: Read> Iterator for MjpegFrames<R> {
     }
 }
 
-/// One Android access unit: `SEMU` magic, version, flags (bit 0 = keyframe),
-/// two reserved bytes and a big-endian u64 presentation time, then H.264
-/// Annex-B data.
+/// One Android access unit behind a recognized `SEMU` metadata header.
+/// Version 1 has a 16-byte header; version 2 adds an eight-byte server timestamp.
+/// The returned payload borrows the original Annex-B bytes without metadata.
+/// Empty version-1 headers remain accepted for existing callers. Truncated
+/// version-2 headers and unrecognized versions are not access units.
 pub fn parse_semu(packet: &[u8]) -> Option<(bool, &[u8])> {
     if packet.len() < 16 || packet[..4] != [0x53, 0x45, 0x4d, 0x55] {
         return None;
     }
-    Some((packet[5] & 1 == 1, &packet[16..]))
+    let header = match packet[4] {
+        1 => 16,
+        2 if packet.len() > 24 => 24,
+        _ => return None,
+    };
+    Some((packet[5] & 1 == 1, &packet[header..]))
 }
 
 /// Input from the panel, in screen-normalized coordinates (0..1).
