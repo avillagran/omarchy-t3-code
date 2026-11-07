@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Run only owned-supervisor tests in private rootless Podman with an explicit CLI fixture."""
+import os,subprocess,json,pathlib,tempfile,argparse
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--server-fixture",type=pathlib.Path,required=True)
+options=parser.parse_args()
+fixture=options.server_fixture.resolve()
+if not fixture.is_file():raise SystemExit("Server fixture must be an explicit immutable file")
+if subprocess.check_output(["podman","info","--format","{{.Host.Security.Rootless}}"],text=True).strip()!="true":raise SystemExit("Rootless Podman is required")
+root=pathlib.Path(__file__).resolve().parent.parent
+out=pathlib.Path(tempfile.mkdtemp(prefix="o3-owned-proof-",dir=os.environ.get("O3_TEST_ARTIFACT_ROOT","/var/tmp")))
+print("Owned supervisor evidence: "+str(out),flush=True)
+env=dict(os.environ,CARGO_BUILD_JOBS='2')
+p=subprocess.run(['flock','/var/tmp/o3-build/o3-parity-compile.lock','cargo','test','--locked','--offline','--lib','--test','owned_backend','--no-run','--message-format=json'],cwd=root,env=env,stdout=(out/'compile.jsonl').open('w'),stderr=(out/'compile.log').open('w'))
+if p.returncode:raise SystemExit(p.returncode)
+items=[json.loads(l) for l in (out/'compile.jsonl').read_text().splitlines()];bins=[(i['target']['name'],i['executable']) for i in items if i.get('executable') and i.get('profile',{}).get('test')];assert len(bins)==2,bins
+target=str(pathlib.Path(bins[0][1]).parent.parent)
+args=['podman','run','--rm','--pull=never','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--read-only','--tmpfs','/tmp:rw,exec,size=1g,mode=1777','--tmpfs','/var/tmp:rw,size=1g,mode=1777','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--memory=3g','-v',target+':'+target+':ro','-v','/usr:/usr:ro','-v',str(root)+':'+str(root)+':ro','-v',str(fixture)+':/fixture/o3-server:ro','--env','HOME=/tmp/home','--env','TMPDIR=/tmp','docker.io/library/archlinux:latest','python3','-c',r'''
+import os,json,subprocess,sys
+os.mkdir('/tmp/home',0o700)
+for name,binary in json.loads(sys.argv[1]):
+ args=[binary,'--test-threads=1']
+ if name!='owned_backend':args.insert(1,'owned_backend::tests')
+ r=subprocess.run(args,timeout=60)
+ if r.returncode:sys.exit(r.returncode)
+''',json.dumps(bins)]
+p=subprocess.run(args,stdout=(out/'runtime.log').open('w'),stderr=subprocess.STDOUT,timeout=150);(out/'result.json').write_text(json.dumps({'returncode':p.returncode,'bins':bins}));raise SystemExit(p.returncode)
