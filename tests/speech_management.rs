@@ -105,6 +105,8 @@ fn actual_dispatch_uses_current_write_authority_and_correlates_native_mutation_f
                     "200 OK",
                     json!({"supported":false,"reason":"Synthetic unsupported platform"}),
                 ),
+                "/api/voice/models?benchmarks=1" => ("200 OK", json!({"models":[]})),
+                "/api/voice/models/prepare" => ("200 OK", Value::Null),
                 "/api/voice/models/download" => (
                     "400 Bad Request",
                     json!({"_tag":"EnvironmentRequestInvalidError","code":"invalid_request","reason":"speech_busy","traceId":"synthetic-trace"}),
@@ -151,6 +153,16 @@ fn actual_dispatch_uses_current_write_authority_and_correlates_native_mutation_f
         invoke("status", json!({})).unwrap()["value"]["supported"],
         false
     );
+    // The SDK JSON-content flag does not change the already selected write
+    // identity, including models and explicit model preparation.
+    assert_eq!(
+        invoke("models", json!({"benchmarks":true})).unwrap(),
+        json!({"ok":true,"value":{"models":[]}})
+    );
+    assert_eq!(
+        invoke("prepare", json!({})).unwrap(),
+        json!({"ok":true,"value":null})
+    );
     assert_eq!(
         invoke("download", json!({"modelId":"synthetic"})).unwrap_err(),
         "permission_denied"
@@ -188,6 +200,9 @@ fn actual_dispatch_uses_current_write_authority_and_correlates_native_mutation_f
         invoke("status", json!({})).unwrap_err(),
         "permission_denied"
     );
+    for action in ["models", "prepare"] {
+        assert_eq!(invoke(action, json!({})).unwrap_err(), "permission_denied");
+    }
     let count = calls.lock().unwrap().len();
     assert_eq!(
         invoke("future", json!({})).unwrap_err(),
