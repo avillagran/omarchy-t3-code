@@ -1,8 +1,14 @@
 # Qt device-byte consumer for the original PCM processor
 
+**Scope correction (2026-11-07):** this unregistered adapter matches Node
+26.13.0, whose V8 math differs from the actual admitted Electron renderer.
+The renderer comparison in `NATIVE-PCM-CAPTURE-4314.md` supersedes any native
+browser parity interpretation of the observations below. No microphone
+consumer selects this adapter.
+
 `native/voice/pcmdsp.cpp` consumes device-format bytes described by `QAudioFormat`
 and executes the complete pinned native worklet in a private QJSEngine. It uses
-the same unchanged V8 math dependency as the accepted
+the same unchanged V8 math dependency as the historical Node comparison in the
 [capture resource](NATIVE-PCM-CAPTURE-4314.md). Original channel averaging,
 resampling, phase, metering, chunks, flush and duration limits execute in that
 resource. C++ supplies the device and MessagePort boundaries.

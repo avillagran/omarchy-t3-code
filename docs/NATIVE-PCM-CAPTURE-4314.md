@@ -14,7 +14,29 @@ global constructors or prototypes. Hardware capture and the Qt implementations
 of those media dependencies are still pending. The separate callback comparison
 below covers the complete browser capture producer with controlled primitives.
 
-## Exact math dependency
+## Renderer correction (2026-11-07)
+
+The exact admitted Electron 44.10.1 renderer reports Chromium 152.0.7977.169
+and V8 15.2.124.45-electron.0. Running the complete original modules there
+demonstrates that Node 26.13.0 is not an equivalent numeric oracle: 64 of 73
+coefficient cases and five PCM cases differ. The prior Node/Qt observations
+below remain valid only for that pair of engines. They do not accept the C++
+DSP adapter as a native browser capture implementation. That adapter is
+unregistered and has no microphone consumer.
+
+The entire compiled `NativePcmCapture.js` resource, using the actual renderer
+Math implementation, matches all 73 original-module cases byte for byte,
+including 24,582 math observations and all 4,800,000 limit samples.
+`tools/test-native-pcm-renderer` records both that positive comparison and the
+explicit negative Node reference comparison in one private sandboxed renderer.
+It does not claim an AudioWorklet graph, microphone or consent integration.
+
+Chromium capture also includes browser-selected audio processing. A raw Qt
+audio source plus a resampler cannot establish that layer. The next capture
+consumer therefore uses the complete original browser producer and actual
+Chromium MediaStream/AudioContext/AudioWorklet primitives.
+
+## Historical Node math dependency
 
 Qt's ambient libm produced different filter coefficients and five different PCM
 outputs in the initial corpus. The implementation now uses the complete,
