@@ -11,8 +11,8 @@ constructor callback. Original bodies and callback ordering are retained.
 `createDsp` takes explicit AudioWorklet and math dependencies. `createCapture`
 takes explicit browser/media/blob/timer dependencies. Neither factory changes
 global constructors or prototypes. Hardware capture and the Qt implementations
-of those media dependencies are still pending; the browser capture lifecycle
-has been compiled but is not covered by the DSP comparison below.
+of those media dependencies are still pending. The separate callback comparison
+below covers the complete browser capture producer with controlled primitives.
 
 ## Exact math dependency
 
@@ -62,10 +62,25 @@ python3 tools/build-native-voice --component capture \
   --node /path/to/pinned/node
 python3 tools/test-native-pcm-qt --native /path/to/pinned/t3code \
   --node /path/to/pinned/node
+python3 tools/test-native-pcm-qt --component lifecycle \
+  --native /path/to/pinned/t3code --node /path/to/pinned/node
 ```
+
+The lifecycle comparison executes the complete original `browserPcmCapture.ts`
+directly in Node and its compiled resource in QJSEngine. The same controlled
+browser primitives drive 25 sequences: preparation refusal, already-aborted
+signals, permission refusal and late permission after cancellation, selected
+microphone constraints, module/resume failure or cancellation, exact buffered
+blob bytes, streaming feed, final flush, stop timeout, processor error, device
+disconnect, both duration-limit producers, cancellation during pending stop,
+repeat stop/cancel and recording URI ownership. Event order, cleanup callbacks,
+remaining timers, result/error strings and buffered bytes must match exactly.
+The module/resume cancellation cases assert that the intended asynchronous
+boundary was entered before cancellation. These synthetic browser primitives
+do not establish Qt device acquisition or actual microphone permission behavior.
 
 The default `--component controller` continues to generate the previously
 accepted voice controller byte-for-byte. The compiler lock gains only the
 pinned arrow transform required by capture. Device enumeration/acquisition,
-browser callback lifecycle, independent consent, real audio transport and
-microphone acceptance still require their actual consumers and validation.
+independent consent, real audio transport and microphone acceptance still
+require their actual consumers and validation.
