@@ -83,7 +83,9 @@ try:
                                   time.monotonic()+30, cancelled=proxy_cancel)
             except Exception as error:
                 # Retain a category only; neither raw protocol nor text appears.
-                proxy_errors.append(type(error).__name__)
+                category = str(error) if isinstance(error, (transport.TransportError, boundary_module.BoundaryError)) else type(error).__name__
+                proxy_errors.append(category)
+                print(json.dumps({'kind':'typed-boundary-failure','category':category}),flush=True)
             finally:
                 for endpoint in (upstream, downstream):
                     if endpoint is not None:
