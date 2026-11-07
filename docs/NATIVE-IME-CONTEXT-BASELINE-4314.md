@@ -305,3 +305,26 @@ FD count returned to baseline, and the actual page/plugin IME suite passed.
 The source-matched follow-up receipts are recorded separately in
 `tests/fixtures/gui-receive-reset-proof-4314.json`; the earlier channel ledger is
 unchanged. No fixture tree or external process was deleted.
+
+## Actual Rust sender and GUI registration
+
+`gui_input_context::Lease` now registers the separate context socket with the real
+GUI member, using the already-admitted engine pidfd and renderer ancestry. The
+registration channel still carries ownership metadata and FD capabilities only.
+The new socket carries bounded typed state and authenticated GUI metadata requests;
+it has no durable queue, context history, reconnect or replay. Known protocol
+objects alone are canonicalized for this closed schema; unknown native payloads
+are not reordered. An invalid UTF-8 byte offset produces a matching scoped
+invalidation rather than retaining stale text or globally clearing a newer view.
+
+The Rust library and actual worker example passed strict Clippy and were frozen
+under the shared compile lock with `runtime_artifacts.snapshot` in
+`gui-input-context-worker-p0h80bpj`. The fixture was never executed on the host.
+The private `browser-input-method-5jgjj_4a` run then passed registration, kernel
+identity/pidfd and renderer ancestry, the GUI-originated scoped request, actual
+`T3BrowserPage` query delivery, invalidation, malformed-offset refusal, recovery,
+and explicit registration retirement while the worker was still alive. Its
+renderer/engine are deliberately owned synthetic processes; this does not replace
+the separately recorded live Electron-to-Qt proof or claim the product Wayland
+factory is connected. The source and immutable binary receipts are recorded in
+`tests/fixtures/gui-input-worker-proof-4314.json`.

@@ -180,6 +180,35 @@ pub fn register(
     })
 }
 impl Session {
+    pub(crate) fn register_input_context(
+        &mut self,
+        id: &str,
+        engine: i32,
+        rights: &[i32],
+    ) -> std::io::Result<libc::pid_t> {
+        let body = self.metadata("register-input-context", id, Some(engine))?;
+        let row = self.exchange(&body, rights)?;
+        if row["type"] == "input-context-registered"
+            && row["cohort"] == id
+            && row.as_object().is_some_and(|row| row.len() == 2)
+        {
+            Ok(self.parent)
+        } else {
+            Err(std::io::Error::other("browser_input_context_unavailable"))
+        }
+    }
+    pub(crate) fn retire_input_context(&mut self, id: &str) -> std::io::Result<()> {
+        let body = self.metadata("retire-input-context", id, None)?;
+        let row = self.exchange(&body, &[])?;
+        if row["type"] == "input-context-retired"
+            && row["cohort"] == id
+            && row.as_object().is_some_and(|row| row.len() == 2)
+        {
+            Ok(())
+        } else {
+            Err(std::io::Error::other("browser_input_context_unavailable"))
+        }
+    }
     fn metadata(&self, op: &str, id: &str, engine: Option<i32>) -> std::io::Result<Vec<u8>> {
         let mut row = std::collections::BTreeMap::from([
             ("binding", serde_json::json!(self.binding)),

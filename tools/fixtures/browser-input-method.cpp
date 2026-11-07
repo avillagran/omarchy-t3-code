@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QQuickItem>
@@ -171,6 +172,7 @@ Product.T3BrowserPage {
    nativeInputBinding:{connection:"fixture-connection",surface:"fixture-surface",tab:"fixture-tab",frame:"fixture-frame"},
    nativeInputContent:{x:0,y:0,width:16,height:16}})
  function showFixtureFrame(){page=Object.assign({},page,{url:"file:///tmp/owned-browser-ime-frame.png",width:16,height:16})}
+ function admitInputContext(cohort){page=Object.assign({},page,{nativeInputBinding:{connection:cohort+":owned-wayland-socket",surface:"owned-surface",tab:"owned-tab",frame:"owned-frame"}})}
  property var records:[]
  onInput:function(token,event){records=records.concat([{token:token,event:event}]);if(event.text==="rotate")page=Object.assign({},page,{requestId:"page-replacement"})}
 })",
@@ -358,6 +360,70 @@ ClipboardPlatform {
   ::close(gate[0]);
   CHECK(QMetaObject::invokeMethod(platform,"retireWorker",Q_ARG(QString,binding)));
   CHECK(QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size()==baseline);
+  if (qEnvironmentVariableIsSet("O3_INPUT_CONTEXT_WORKER")) {
+    page->setProperty("interactive",true);
+    native->forceActiveFocus();
+    QProcess sender;
+    auto environment=QProcessEnvironment::systemEnvironment();
+    environment.insert("O3_GUI_CLIPBOARD_ENDPOINT",QString::fromUtf8(endpoint));
+    sender.setProcessEnvironment(environment);
+    sender.start(QString::fromLocal8Bit(qgetenv("O3_INPUT_CONTEXT_WORKER")),{});
+    CHECK(sender.waitForStarted(3000));
+    QString owner;
+    CHECK(QMetaObject::invokeMethod(platform,"bindWorker",Q_RETURN_ARG(QString,owner),Q_ARG(qint64,sender.processId())));
+    CHECK(!owner.isEmpty());
+    sender.write("go\n");
+    QByteArray metadata;
+    QJsonArray events;
+    auto phase=[&](const QString &kind) {
+      return waitFor([&] {
+        metadata+=sender.readAllStandardOutput();
+        CHECK(metadata.size()<=4096);
+        while(metadata.contains('\n')) {
+          const auto at=metadata.indexOf('\n');
+          events.append(QJsonDocument::fromJson(metadata.left(at)).object());
+          metadata.remove(0,at+1);
+          CHECK(events.size()<=16);
+        }
+        for(const auto &value:events)if(value.toObject()["kind"]==kind)return true;
+        return false;
+      });
+    };
+    CHECK(phase("input-context-registered"));
+    const auto cohort=events.first().toObject()["cohort"].toString();
+    CHECK(!cohort.isEmpty());
+    CHECK(QMetaObject::invokeMethod(page,"admitInputContext",Q_ARG(QVariant,QVariant(cohort))));
+    native->forceActiveFocus();
+    CHECK(waitFor([&]{return native->hasActiveFocus() && native->property("inputEnabled").toBool();}));
+    sender.write("publish\n");
+    CHECK(phase("input-state-published"));
+    CHECK(waitFor([&]{return native->property("contextAvailable").toBool();}));
+    QInputMethodQueryEvent actual(Qt::ImSurroundingText|Qt::ImCursorPosition|Qt::ImCursorRectangle);
+    QCoreApplication::sendEvent(native,&actual);
+    CHECK(actual.value(Qt::ImSurroundingText).toString().size()==7);
+    CHECK(actual.value(Qt::ImCursorPosition).toInt()==7);
+    CHECK(actual.value(Qt::ImCursorRectangle).toRectF().width()==0);
+    sender.write("invalidate\n");
+    CHECK(phase("input-state-invalidated"));
+    CHECK(waitFor([&]{return !native->property("contextAvailable").toBool();}));
+    sender.write("retire\n");
+    CHECK(phase("input-state-republished"));
+    CHECK(waitFor([&]{return native->property("contextAvailable").toBool();}));
+    sender.write("invalid-state\n");
+    CHECK(phase("input-invalid-state-refused"));
+    CHECK(waitFor([&]{return !native->property("contextAvailable").toBool();}));
+    sender.write("restore\n");
+    CHECK(phase("input-state-restored"));
+    CHECK(waitFor([&]{return native->property("contextAvailable").toBool();}));
+    sender.write("finish\n");
+    CHECK(phase("input-channel-retired"));
+    CHECK(sender.state()==QProcess::Running);
+    CHECK(!native->property("contextAvailable").toBool());
+    sender.write("exit\n");
+    CHECK(waitFor([&]{return sender.state()==QProcess::NotRunning;}));
+    CHECK(sender.exitCode()==0);
+    puts("BROWSER_RUST_CONTEXT_REGISTRATION_PASS actual-worker engine-ancestry pidfd scoped-GUI-request private-state invalidation retirement");
+  }
   delete platform;
   puts("BROWSER_REGISTRATION_REAL_RESET_PASS live-worker unread-reply exact-FD-count");
   page->setParentItem(nullptr);
