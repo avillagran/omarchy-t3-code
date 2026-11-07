@@ -10,7 +10,7 @@ if options.manager_server and not options.runtime:parser.error('manager proof re
 root=Path(__file__).resolve().parent.parent
 if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
 out=Path(tempfile.mkdtemp(prefix='browser-gui-platform-',dir='/home/node/BuildCache/o3-desktop-next'));print('GUI platform evidence: '+str(out),flush=True)
-for name in ['clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
+for name in ['browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
 for name in ['browser-platform-owned.cpp','browser-platform-peer.py','browser-platform-process.qml','electron-clipboard-owner.cpp']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
 (out/'T3BrowserClipboardPlatform.qml').write_bytes((root/'ui/qml/T3BrowserClipboardPlatform.qml').read_bytes())
 if options.manager_server:
@@ -35,9 +35,9 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
  with (out/'compile.log').open('w') as log:
   moc=subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip()+'/moc'
-  for source,target in [('clipboardplatform.h','moc_clipboardplatform.cpp'),('plugin.cpp','plugin.moc')]:subprocess.run([moc,str(out/source),'-o',str(out/target)],check=True,stdout=log,stderr=subprocess.STDOUT)
-  flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Qml','Qt6Gui','wayland-client','xcb','xcb-xfixes','xcb-res'],text=True).split()
-  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror','-shared',str(out/'clipboardplatform.cpp'),str(out/'clipboardcohort.cpp'),str(out/'plugin.cpp'),str(out/'moc_clipboardplatform.cpp'),'-I'+str(out),'-o',str(qml/'libo3browserplatform.so'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+  for source,target in [('browserinputitem.h','moc_browserinputitem.cpp'),('clipboardplatform.h','moc_clipboardplatform.cpp'),('plugin.cpp','plugin.moc')]:subprocess.run([moc,str(out/source),'-o',str(out/target)],check=True,stdout=log,stderr=subprocess.STDOUT)
+  flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6Qml','Qt6Gui','wayland-client','xcb','xcb-xfixes','xcb-res'],text=True).split()
+  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror','-shared',str(out/'clipboardplatform.cpp'),str(out/'clipboardcohort.cpp'),str(out/'plugin.cpp'),str(out/'moc_clipboardplatform.cpp'),str(out/'moc_browserinputitem.cpp'),'-I'+str(out),'-o',str(qml/'libo3browserplatform.so'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'electron-clipboard-owner.cpp'),'-o',str(out/'clipboard-owner'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'browser-platform-owned.cpp'),'-o',str(out/'gui'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
  source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[root/'Cargo.toml',root/'Cargo.lock',*list((root/'examples').glob('*.rs'))])

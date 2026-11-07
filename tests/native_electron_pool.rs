@@ -56,6 +56,12 @@ fn product_pool_admits_native_guest_and_shares_visible_frames_with_cdp() {
             std::path::Path::new("/usr/bin/Xvfb"),
         )
         .unwrap();
+    let mapped = std::env::var_os("O3_TEST_MAPPED_NATIVE_HOST").is_some();
+    let config = if mapped {
+        config.with_mapped_native_host().unwrap()
+    } else {
+        config
+    };
     let (output, ui) = mpsc::channel();
     let (native, events) = mpsc::channel();
     let mut pool = Pool::new(config, move |event| {
@@ -137,7 +143,7 @@ fn product_pool_admits_native_guest_and_shares_visible_frames_with_cdp() {
         &events,
         40,
         "Runtime.evaluate",
-        json!({"expression":r#"document.body.innerHTML="<input id='field' style='position:absolute;left:10px;top:10px;width:200px;height:40px'><button id='button' style='position:absolute;left:250px;top:10px;width:100px;height:40px'>Count</button>";document.body.dataset.clicks='0';document.querySelector('#button').onclick=()=>document.body.dataset.clicks=String(Number(document.body.dataset.clicks)+1);0"#,"returnByValue":true}),
+        json!({"expression":r#"document.body.innerHTML="<input id='field' style='position:absolute;left:10px;top:10px;width:200px;height:40px'><button id='button' style='position:absolute;left:250px;top:10px;width:100px;height:40px'>Count</button>";window.imeEvents=[];for(const type of ['compositionstart','compositionupdate','compositionend'])document.querySelector('#field').addEventListener(type,event=>window.imeEvents.push({type:event.type,trusted:event.isTrusted}));document.body.dataset.clicks='0';document.querySelector('#button').onclick=()=>document.body.dataset.clicks=String(Number(document.body.dataset.clicks)+1);0"#,"returnByValue":true}),
         Some(session),
     );
     assert!(prepared.get("error").is_none());
@@ -153,11 +159,22 @@ fn product_pool_admits_native_guest_and_shares_visible_frames_with_cdp() {
         json!({"type":"key","key":65,"text":"a","modifiers":0}),
         json!({"type":"keyup","key":65,"text":"a","modifiers":0}),
         json!({"type":"text","text":"漢字🧪"}),
-        json!({"type":"composition","preedit":"にほん","selectionStart":3,"selectionEnd":3}),
-        json!({"type":"text","text":"日本"}),
     ] {
         pool.input("surface", &event).unwrap();
     }
+    pool.input(
+        "surface",
+        &json!({"type":"composition","preedit":"にほん","selectionStart":3,"selectionEnd":3}),
+    )
+    .unwrap();
+    if !mapped {
+        let rejected = receive(&ui, |row| row["kind"] == "input-rejected");
+        assert_eq!(rejected["error"], "browser_native_input_focus_required");
+        assert_eq!(rejected["requestId"], "surface");
+        assert_eq!(rejected["inputType"], "composition");
+    }
+    pool.input("surface", &json!({"type":"text","text":"日本"}))
+        .unwrap();
     let mut current = Value::Null;
     for id in 41..90 {
         current = cdp(
@@ -175,8 +192,37 @@ fn product_pool_admits_native_guest_and_shares_visible_frames_with_cdp() {
     }
     assert_eq!(
         current["result"]["result"]["value"], "a漢字🧪日本",
-        "actual pointer focus, key text, Unicode commit and composition replacement"
+        "native focus rejection preserves pointer/key input, Unicode commit and the existing page"
     );
+    let ime = cdp(
+        &mut pool,
+        &events,
+        95,
+        "Runtime.evaluate",
+        json!({"expression":"window.imeEvents","returnByValue":true}),
+        Some(session),
+    );
+    let ime = ime["result"]["result"]["value"].as_array().unwrap();
+    println!("NATIVE_IME_EVENTS mapped={mapped} {ime:?}");
+    if mapped {
+        assert!(
+            ime.iter()
+                .any(|row| row["type"] == "compositionstart" && row["trusted"] == true),
+            "mapped native host must produce actual trusted composition start"
+        );
+        assert!(
+            ime.iter().any(|row| row["type"] == "compositionend"),
+            "mapped native host must commit actual composition: {ime:?}"
+        );
+        receive(&ui, |row| {
+            row["kind"] == "frame" && row["nativeInput"] == true
+        });
+    } else {
+        assert!(
+            ime.is_empty(),
+            "unfocused native rejection must not inject a composition"
+        );
+    }
     for event in [
         json!({"type":"key","key":65,"text":"a","modifiers":0x04000000}),
         json!({"type":"keyup","key":65,"text":"a","modifiers":0x04000000}),

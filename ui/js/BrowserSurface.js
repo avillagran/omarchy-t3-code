@@ -35,8 +35,9 @@ function receive(b,d){
  if(cleaning(b,s.environment,s.profileId))return;
  if(d.environment&&d.environment!==s.environment||d.thread&&d.thread!==s.thread||d.tabId&&d.tabId!==s.tabId)return;
  if(d.kind==="shown"){b.browserSurface=Object.assign({},s,{interactive:!!d.canOperate,busy:!s.url,error:"",profileId:d.profileId||s.profileId,zoomFactor:d.zoomFactor||s.zoomFactor});return;}
+ if(d.kind==="input-rejected"){b.browserSurface=Object.assign({},s,{inputError:String(d.error||"invalid_browser_input")});return;}
  if(d.kind==="zoom"){b.browserSurface=Object.assign({},s,{zoomFactor:Number(d.value)||1});return;}
- if(d.kind==="frame"&&d.url&&Number(d.revision)>s.revision){b.browserSurface=Object.assign({},s,{url:d.url,revision:Number(d.revision),width:d.width,height:d.height,busy:false});return;}
+ if(d.kind==="frame"&&d.url&&Number(d.revision)>s.revision){b.browserSurface=Object.assign({},s,{url:d.url,revision:Number(d.revision),width:d.width,height:d.height,nativeInput:d.nativeInput===true,busy:false});return;}
  if(d.kind==="error"||d.kind==="closed")b.browserSurface=Object.assign({},s,{busy:false,interactive:false,error:d.error||"browser_unavailable"});
 }
 
