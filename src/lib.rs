@@ -1,3 +1,4 @@
+pub mod desktop_browser_ipc;
 pub mod owned_backend;
 mod pax_archive;
 pub mod frame_files;

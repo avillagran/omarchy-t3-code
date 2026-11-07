@@ -98,7 +98,10 @@ impl Owner {
         }
         let (mut writer, reader) =
             UnixStream::pair().map_err(|_| "owned_backend_ipc_unavailable")?;
-        let fd = reader.as_raw_fd();
+        let bootstrap_source =
+            crate::desktop_browser_ipc::duplicate_child_source(reader.as_raw_fd())
+                .map_err(|_| "owned_backend_ipc_unavailable")?;
+        let fd = bootstrap_source.as_raw_fd();
         let seed = Zeroizing::new(format!(
             "{}{}",
             uuid::Uuid::new_v4().simple(),
@@ -132,10 +135,7 @@ impl Owner {
                 {
                     return Err(std::io::Error::other("owned_backend_parent_gone"));
                 }
-                let flags = libc::fcntl(fd, libc::F_GETFD);
-                if flags < 0 || libc::fcntl(fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC) < 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
+                crate::desktop_browser_ipc::admit_child_source(bootstrap_source.as_raw_fd())?;
                 Ok(())
             });
         }
