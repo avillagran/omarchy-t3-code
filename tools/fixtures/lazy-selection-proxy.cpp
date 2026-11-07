@@ -36,7 +36,7 @@ class OfferedMime final:public QMimeData {
  QStringList formats()const override{return offered;}
  protected:QVariant retrieveData(const QString &mime,QMetaType type)const override{return retrieve(mime,type);}
 };
-struct Receiving {xcb_window_t window=0,owner=0;xcb_atom_t target=0;QByteArray data;bool active=false,done=false,failed=false,incremental=false;uint8_t format=0;};
+struct Receiving {xcb_window_t window=0,owner=0;xcb_atom_t target=0;QByteArray data;bool active=false,done=false,failed=false,incremental=false;uint8_t format=0;uint32_t limit=16*1024*1024;};
 struct Transfer {xcb_atom_t type;QByteArray bytes;qsizetype offset=0;qint64 deadline;quint64 lease;};
 int main(int argc,char **argv){
  QGuiApplication app(argc,argv);if(argc!=2)return 2;
@@ -52,26 +52,26 @@ int main(int argc,char **argv){
  const xcb_window_t owners[]={xcb_generate_id(connection),xcb_generate_id(connection)};
  for(auto owner:owners)xcb_create_window(connection,XCB_COPY_FROM_PARENT,owner,root,0,0,1,1,0,XCB_WINDOW_CLASS_INPUT_OUTPUT,XCB_COPY_FROM_PARENT,0,nullptr);
  xcb_xfixes_select_selection_input(connection,owners[0],clipboard,XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER|XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_WINDOW_DESTROY|XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_CLIENT_CLOSE);
- auto lifetime=std::make_shared<bool>(true);auto *system=QGuiApplication::clipboard();int ownerIndex=0;qint64 allowedUntil=-1;quint64 lease=0;quint64 dataReads=0,metadataReads=0,denied=0,foreign=0,synthetic=0,transferred=0,fetchedBytes=0,maxFetchedBytes=0,capDenied=0;bool alive=true,paused=false,publishing=false;xcb_timestamp_t selectedAt=0;
- QHash<quint64,Transfer> pending;Receiving receiving;xcb_window_t nativeOwner=0;xcb_timestamp_t nativeStamp=0;qint64 writeUntil=-1;quint64 publications=0,egressReads=0,egressBytes=0,egressDenied=0;QString lastEgressMime;bool lastEgressDuringPublish=false;
+ auto lifetime=std::make_shared<bool>(true);auto *system=QGuiApplication::clipboard();int ownerIndex=0;bool admitted=true;quint64 lease=0;quint64 dataReads=0,metadataReads=0,denied=0,foreign=0,synthetic=0,transferred=0,fetchedBytes=0,maxFetchedBytes=0,capDenied=0;bool alive=true,paused=false,publishing=false;xcb_timestamp_t selectedAt=0;
+ QHash<quint64,Transfer> pending;Receiving receiving;xcb_window_t nativeOwner=0;xcb_timestamp_t nativeStamp=0;quint64 publications=0,egressReads=0,egressBytes=0,egressDenied=0;QString lastEgressMime;bool lastEgressDuringPublish=false;
  std::function<void()> pump;std::function<void(xcb_window_t,xcb_timestamp_t)> publish;
 
  std::unique_ptr<NativeWaylandOffers> nativeOffers;if(qEnvironmentVariableIsSet("O3_TEST_NATIVE_OFFERS")){nativeOffers=std::make_unique<NativeWaylandOffers>();QElapsedTimer startup;startup.start();while(!nativeOffers->ready()&&startup.elapsed()<2000){QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents,2);QThread::msleep(1);}if(!nativeOffers->ready())return 2;}std::shared_ptr<const void> announcedOffer;bool announcedNative=false;
  auto reply=[](QJsonObject value){const auto line=QJsonDocument(value).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",line.constData());fflush(stdout);};
- auto announce=[&]{ownerIndex^=1;xcb_set_selection_owner(connection,owners[ownerIndex],clipboard,XCB_CURRENT_TIME);xcb_flush(connection);};
+ auto announce=[&]{if(!alive||!admitted)return;ownerIndex^=1;xcb_set_selection_owner(connection,owners[ownerIndex],clipboard,XCB_CURRENT_TIME);xcb_flush(connection);};
  auto changed=[&]{if(!publishing&&!system->ownsClipboard()){if(nativeOffers){const auto identity=nativeOffers->identity();if(announcedNative&&announcedOffer==identity)return;announcedNative=true;announcedOffer=identity;}nativeOwner=0;if(receiving.active){receiving.failed=true;receiving.done=true;}announce();}};
  const auto clipboardConnection=QObject::connect(system,&QClipboard::dataChanged,&app,changed);if(nativeOffers)nativeOffers->changed=changed;
  announce();
- auto valid=[&]{return alive&&allowedUntil>0&&allowedUntil>=clock.elapsed();};
+ auto valid=[&]{return alive&&admitted;};
  auto notify=[&](const xcb_selection_request_event_t &request,xcb_atom_t property){xcb_selection_notify_event_t response{};response.response_type=XCB_SELECTION_NOTIFY;response.time=request.time;response.requestor=request.requestor;response.selection=request.selection;response.target=request.target;response.property=property;xcb_send_event(connection,0,request.requestor,XCB_EVENT_MASK_NO_EVENT,reinterpret_cast<const char *>(&response));xcb_flush(connection);};
  auto client=[&](xcb_window_t requestor){xcb_res_client_id_spec_t spec{requestor,XCB_RES_CLIENT_ID_MASK_LOCAL_CLIENT_PID};auto *result=xcb_res_query_client_ids_reply(connection,xcb_res_query_client_ids(connection,1,&spec),nullptr);quint32 pid=0;if(result){auto ids=xcb_res_query_client_ids_ids_iterator(result);for(;ids.rem;xcb_res_client_id_value_next(&ids))if((ids.data->spec.mask&XCB_RES_CLIENT_ID_MASK_LOCAL_CLIENT_PID)&&xcb_res_client_id_value_value_length(ids.data)==1)pid=*xcb_res_client_id_value_value(ids.data);free(result);}return pid;};
- QByteArray input;
+ QByteArray input;QSocketNotifier *controlNotifier=nullptr;
  auto controls=[&]{char bytes[4096];ssize_t size=0;while((size=read(STDIN_FILENO,bytes,sizeof bytes))>0){input.append(bytes,size);if(input.size()>4096){alive=false;app.exit(2);return;}}
-  if(size==0){alive=false;allowedUntil=-1;pending.clear();app.quit();return;}
+  if(size==0){alive=false;admitted=false;pending.clear();if(qEnvironmentVariableIsSet("O3_TEST_KEEPER_EXIT")){if(controlNotifier)controlNotifier->setEnabled(false);}else app.quit();return;}
   int end;while((end=input.indexOf('\n'))>=0){const auto document=QJsonDocument::fromJson(input.left(end));input.remove(0,end+1);if(!document.isObject()){app.exit(2);return;}const auto row=document.object();const auto op=row["op"].toString();
-   if(op=="grant"){if(!valid())lease++;allowedUntil=clock.elapsed()+5000;}
-   else if(op=="revoke"){allowedUntil=-1;lease++;for(auto entry=pending.cbegin();entry!=pending.cend();++entry)xcb_change_property(connection,XCB_PROP_MODE_REPLACE,xcb_window_t(entry.key()>>32),xcb_atom_t(entry.key()),entry->type,8,0,nullptr);pending.clear();announce();if(row.contains("id"))reply({{"id",row["id"]},{"revoked",true}});}
-   else if(op=="human-copy"){writeUntil=clock.elapsed()+1000;if(row.contains("id"))reply({{"id",row["id"]},{"armed",true}});}
+   if(op=="grant"){/* Observation only: the native engine decides clipboard permissions. */}
+   else if(op=="revoke"){admitted=false;lease++;if(receiving.active){receiving.failed=true;receiving.done=true;}for(auto entry=pending.cbegin();entry!=pending.cend();++entry)xcb_change_property(connection,XCB_PROP_MODE_REPLACE,xcb_window_t(entry.key()>>32),xcb_atom_t(entry.key()),entry->type,8,0,nullptr);pending.clear();announce();if(row.contains("id"))reply({{"id",row["id"]},{"revoked",true}});}
+   else if(op=="human-copy"){if(row.contains("id"))reply({{"id",row["id"]},{"armed",true}});}
    else if(op=="pause"){paused=true;if(row.contains("id"))reply({{"id",row["id"]},{"paused",true}});}
    else if(op=="stats")reply({{"id",row["id"]},{"dataReads",qint64(dataReads)},{"metadataReads",qint64(metadataReads)},{"denied",qint64(denied)},{"foreign",qint64(foreign)},{"synthetic",qint64(synthetic)},{"bytes",qint64(transferred)},{"capDenied",qint64(capDenied)},{"fetchedBytes",qint64(fetchedBytes)},{"maxFetchedBytes",qint64(maxFetchedBytes)},{"activeTransfers",pending.size()},{"focused",window.isActive()},{"publications",qint64(publications)},{"egressReads",qint64(egressReads)},{"egressBytes",qint64(egressBytes)},{"egressDenied",qint64(egressDenied)},{"lastEgressMime",lastEgressMime},{"lastEgressDuringPublish",lastEgressDuringPublish},{"nativeOfferStreams",bool(nativeOffers)},{"streamBytes",nativeOffers?qint64(nativeOffers->streamedBytes):0},{"streamReservedPeak",nativeOffers?qint64(nativeOffers->maxRetainedBytes):0},{"streamLimitFailures",nativeOffers?qint64(nativeOffers->limitFailures):0},{"streamAssemblyCapacity",nativeOffers?qint64(nativeOffers->maxAssemblyCapacity):0},{"streamBufferEstimate",nativeOffers?qint64(nativeOffers->maxBufferEstimate):0}});
    else if(op=="quit"){alive=false;pending.clear();app.quit();return;}
@@ -79,10 +79,10 @@ int main(int argc,char **argv){
   }
  };
  fcntl(STDIN_FILENO,F_SETFL,fcntl(STDIN_FILENO,F_GETFL)|O_NONBLOCK);
- QSocketNotifier control(STDIN_FILENO,QSocketNotifier::Read);QObject::connect(&control,&QSocketNotifier::activated,&app,controls);
+ QSocketNotifier control(STDIN_FILENO,QSocketNotifier::Read);controlNotifier=&control;QObject::connect(&control,&QSocketNotifier::activated,&app,controls);
  QSocketNotifier events(xcb_get_file_descriptor(connection),QSocketNotifier::Read);
  auto receivedProperty=[&]{
-  const uint32_t limit=receiving.target==targets?512:16*1024*1024;
+  const uint32_t limit=receiving.limit;
   auto *property=xcb_get_property_reply(connection,xcb_get_property(connection,1,receiving.window,atom("OWNED_PROXY_RECEIVE"),XCB_GET_PROPERTY_TYPE_ANY,0,(limit+3)/4),nullptr);
   if(!property){receiving.failed=true;receiving.done=true;return;}
   const auto size=xcb_get_property_value_length(property);
@@ -97,7 +97,7 @@ int main(int argc,char **argv){
   const auto type=raw->response_type&0x7f;
   if(type==extension->first_event+XCB_XFIXES_SELECTION_NOTIFY){auto *event=reinterpret_cast<xcb_xfixes_selection_notify_event_t *>(raw);controls();if(event->owner==owners[ownerIndex])selectedAt=event->selection_timestamp;
    if(receiving.active&&event->owner!=receiving.owner){receiving.failed=true;receiving.done=true;}
-   if(event->owner&&event->owner!=owners[0]&&event->owner!=owners[1]){if(client(event->owner)==engine){nativeOwner=event->owner;nativeStamp=event->selection_timestamp;if(writeUntil>=clock.elapsed()||valid()){writeUntil=-1;const auto owner=nativeOwner,stamp=nativeStamp;QTimer::singleShot(0,&app,[&,owner,stamp,lifetime]{if(*lifetime)publish(owner,stamp);});}}else{nativeOwner=0;egressDenied++;announce();}}
+   if(event->owner&&event->owner!=owners[0]&&event->owner!=owners[1]){if(client(event->owner)==engine){nativeOwner=event->owner;nativeStamp=event->selection_timestamp;if(valid()){const auto owner=nativeOwner,stamp=nativeStamp;QTimer::singleShot(0,&app,[&,owner,stamp,lifetime]{if(*lifetime)publish(owner,stamp);});}}else{nativeOwner=0;egressDenied++;announce();}}
   }
   else if(type==XCB_SELECTION_NOTIFY&&receiving.active&&!receiving.done){const auto *event=reinterpret_cast<xcb_selection_notify_event_t *>(raw);if(event->requestor==receiving.window&&event->selection==clipboard&&event->target==receiving.target){if(event->property==XCB_ATOM_NONE){receiving.failed=true;receiving.done=true;}else receivedProperty();}}
   else if(type==XCB_SELECTION_REQUEST){const auto request=*reinterpret_cast<xcb_selection_request_event_t *>(raw);controls();
@@ -125,22 +125,27 @@ int main(int argc,char **argv){
   else if(type==XCB_DESTROY_NOTIFY){auto *event=reinterpret_cast<xcb_destroy_notify_event_t *>(raw);for(auto entry=pending.begin();entry!=pending.end();)if(xcb_window_t(entry.key()>>32)==event->window)entry=pending.erase(entry);else++entry;}
   free(raw);
  }if(xcb_connection_has_error(connection)){alive=false;pending.clear();app.exit(2);}};
- auto fetch=[&](xcb_atom_t target,xcb_window_t owner,xcb_timestamp_t stamp)->QByteArray{
-  if(receiving.active||!alive||nativeOwner!=owner||nativeStamp!=stamp||client(owner)!=engine)return {};
+ bool fetched=false;auto fetch=[&](xcb_atom_t target,xcb_window_t owner,xcb_timestamp_t stamp,uint32_t limit)->QByteArray{
+  fetched=false;
+  const auto epoch=lease;if(receiving.active||!valid()||nativeOwner!=owner||nativeStamp!=stamp||client(owner)!=engine)return {};
   auto *current=xcb_get_selection_owner_reply(connection,xcb_get_selection_owner(connection,clipboard),nullptr);const bool matched=current&&current->owner==owner;free(current);if(!matched)return {};
-  receiving=Receiving{};receiving.active=true;receiving.owner=owner;receiving.target=target;receiving.window=xcb_generate_id(connection);const uint32_t mask=XCB_EVENT_MASK_PROPERTY_CHANGE;xcb_create_window(connection,XCB_COPY_FROM_PARENT,receiving.window,root,0,0,1,1,0,XCB_WINDOW_CLASS_INPUT_OUTPUT,XCB_COPY_FROM_PARENT,XCB_CW_EVENT_MASK,&mask);xcb_convert_selection(connection,receiving.window,clipboard,target,atom("OWNED_PROXY_RECEIVE"),XCB_CURRENT_TIME);xcb_flush(connection);const auto deadline=clock.elapsed()+5000;
+  receiving=Receiving{};receiving.active=true;receiving.owner=owner;receiving.target=target;receiving.limit=limit;receiving.window=xcb_generate_id(connection);const uint32_t mask=XCB_EVENT_MASK_PROPERTY_CHANGE;xcb_create_window(connection,XCB_COPY_FROM_PARENT,receiving.window,root,0,0,1,1,0,XCB_WINDOW_CLASS_INPUT_OUTPUT,XCB_COPY_FROM_PARENT,XCB_CW_EVENT_MASK,&mask);xcb_convert_selection(connection,receiving.window,clipboard,target,atom("OWNED_PROXY_RECEIVE"),XCB_CURRENT_TIME);xcb_flush(connection);const auto deadline=clock.elapsed()+5000;
   while(alive&&!receiving.done&&clock.elapsed()<deadline){pump();QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents,2);if(!receiving.done)QThread::msleep(1);}
-  auto *after=xcb_get_selection_owner_reply(connection,xcb_get_selection_owner(connection,clipboard),nullptr);const bool stillOwner=after&&after->owner==owner;free(after);pump();const bool ok=stillOwner&&alive&&receiving.done&&!receiving.failed&&nativeOwner==owner&&nativeStamp==stamp;auto result=ok?receiving.data:QByteArray();xcb_destroy_window(connection,receiving.window);xcb_flush(connection);receiving=Receiving{};if(!ok)egressDenied++;return result;
+  auto *after=xcb_get_selection_owner_reply(connection,xcb_get_selection_owner(connection,clipboard),nullptr);const bool stillOwner=after&&after->owner==owner;free(after);pump();const bool ok=stillOwner&&valid()&&epoch==lease&&receiving.done&&!receiving.failed&&nativeOwner==owner&&nativeStamp==stamp;auto result=ok?receiving.data:QByteArray();xcb_destroy_window(connection,receiving.window);xcb_flush(connection);receiving=Receiving{};fetched=ok;if(!ok)egressDenied++;return result;
  };
  publish=[&](xcb_window_t owner,xcb_timestamp_t stamp){
-  if(!alive||nativeOwner!=owner||nativeStamp!=stamp)return;
+  if(!valid()||nativeOwner!=owner||nativeStamp!=stamp)return;
   if(receiving.active){QTimer::singleShot(10,&app,[&,owner,stamp,lifetime]{if(*lifetime)publish(owner,stamp);});return;}
-  const auto available=fetch(targets,owner,stamp);if(available.isEmpty()||available.size()%4||available.size()>512){egressDenied++;return;}
+  const auto available=fetch(targets,owner,stamp,512);if(available.isEmpty()||available.size()%4||available.size()>512){egressDenied++;return;}
   QVector<xcb_atom_t> supported;for(qsizetype i=0;i<available.size();i+=4){xcb_atom_t value;memcpy(&value,available.constData()+i,4);supported.append(value);}
   QHash<QString,xcb_atom_t> mapping;if(supported.contains(utf8))mapping.insert("text/plain",utf8);else if(supported.contains(text))mapping.insert("text/plain",text);else if(supported.contains(plain))mapping.insert("text/plain",plain);if(supported.contains(html))mapping.insert("text/html",html);if(supported.contains(png)){mapping.insert("image/png",png);mapping.insert("application/x-qt-image",png);}if(mapping.isEmpty())return;
-  const auto formats=mapping.keys();auto retrieve=[&,owner,stamp,mapping,lifetime](const QString &mime,QMetaType type)->QVariant{
-   if(!*lifetime||!mapping.contains(mime)||nativeOwner!=owner||nativeStamp!=stamp)return {};
-   lastEgressMime=mime;lastEgressDuringPublish=publishing;const auto body=fetch(mapping.value(mime),owner,stamp);egressReads++;egressBytes+=quint64(body.size());
+  // Keep only the current admitted engine-produced offer. Its bytes survive
+  // source-tab/engine retirement; no system clipboard contents are cached.
+  QHash<xcb_atom_t,QByteArray> bodies;qsizetype retained=0;
+  for(auto target:mapping){if(bodies.contains(target))continue;auto body=fetch(target,owner,stamp,uint32_t(16*1024*1024-retained));egressReads++;egressBytes+=quint64(body.size());if(!fetched){egressDenied++;return;}retained+=body.size();bodies.insert(target,std::move(body));}
+  const auto formats=mapping.keys();auto retrieve=[mapping,bodies](const QString &mime,QMetaType type)->QVariant{
+   if(!mapping.contains(mime))return {};
+   const auto body=bodies.value(mapping.value(mime));
    if(mime=="application/x-qt-image"){if(body.size()<24||body.left(8)!=QByteArray::fromHex("89504e470d0a1a0a"))return {};const auto number=[&](int at){return (quint32(quint8(body[at]))<<24)|(quint32(quint8(body[at+1]))<<16)|(quint32(quint8(body[at+2]))<<8)|quint32(quint8(body[at+3]));};const auto width=number(16),height=number(20);if(!width||!height||quint64(width)*height>4*1024*1024)return {};return QImage::fromData(body,"PNG");}
    if(type==QMetaType::fromType<QString>()){return QString::fromUtf8(body);}
    return body;

@@ -70,7 +70,7 @@ app.whenReady().then(async()=>{
  services=await create({event,showMessageBox:async(options,owner)=>{dialogs.push({options,owner:owner?.webContents.id});assert.equal(options.defaultId,1);assert.equal(options.cancelId,1);const response=choices.shift();assert.notEqual(response,undefined,'No unsolicited dialog');return {response,checkboxChecked:false}}});
  if(process.env.O3_TEST_INPUT_BASELINE==='1'){
   choices=Array(20).fill(1);
-  await require('./native-input-baseline.cjs')({tab,evaluate,command,producerCommand,seatFocus,services,dialogs,windows,server,producer,app,clipboard});return;
+  await require('./native-input-baseline.cjs')({tab,evaluate,command,producerCommand,seatFocus,services,dialogs,windows,server,producer,app,clipboard,proxyCommand,selectionProxy});return;
  }
  const writeCheck=await tab('writecheck','127.0.0.1');
  const denied="navigator.clipboard.readText().then(()=>false,()=>true)";
@@ -89,8 +89,9 @@ app.whenReady().then(async()=>{
  assert.equal(await evaluate(writeCheck,denied),true,'human copy does not grant programmatic clipboard read');assert.equal(dialogs.length,1);
  const one=await tab('one','127.0.0.1');
  await producerCommand({op:'text',text:'owned external clipboard one'});mainCalibration.externalUnfocusedMainRead=await clipboard.readText();if(visibleHost)await seatFocus(one.window.getTitle());mainCalibration.externalMainRead=await clipboard.readText();
+ const beforeBlocked=selectionProxy?await proxyCommand('stats'):null;
  assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2);
- assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2,'remembered Block');if(selectionProxy){const stats=await proxyCommand('stats');assert.equal(stats.dataReads,0,'no system content retrieval before native Allow');}
+ assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2,'remembered Block');if(selectionProxy){const stats=await proxyCommand('stats');assert.equal(stats.dataReads,beforeBlocked.dataReads,'native blocked programmatic reads add no system content retrieval');assert.equal(stats.streamBytes,beforeBlocked.streamBytes);}
  await navigate(one,'http://localhost:'+server.address().port+'/');
  const initialRead=await evaluate(one,'navigator.clipboard.readText()');if(!calibration)assert.equal(initialRead,'owned external clipboard one');assert.equal(dialogs.length,3);
  await producerCommand({op:'text',text:'owned external clipboard changed'});

@@ -12,6 +12,7 @@ import tempfile
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--runtime',type=Path,required=True)
 parser.add_argument('--services',type=Path,required=True)
+parser.add_argument('--keeper-exit',choices=['text','image'],help='Verify a fresh Qt receiver after actual engine exit')
 parser.add_argument('--input-baseline',type=Path,help='Lock-verified playwright-core fixture for actual native keyboard baselines')
 parser.add_argument('--native-offers',action='store_true',help='Stream real offers on the public Qt compositor connection')
 parser.add_argument('--selection-proxy',action='store_true',help='Isolated lazy private-X selection feasibility fixture')
@@ -20,7 +21,8 @@ parser.add_argument('--xwayland-guest',action='store_true',help='Keep Qt on Wayl
 parser.add_argument('--visible-host',action='store_true',help='Compare the visible native host topology')
 parser.add_argument('--wayland',action='store_true',help='Use the private headless Sway fixture instead of X11')
 options=parser.parse_args()
-if options.input_baseline and (not options.wayland or not options.visible_host):parser.error('--input-baseline requires --wayland --visible-host')
+if options.keeper_exit and not (options.input_baseline and options.selection_proxy):parser.error('--keeper-exit requires input baseline and selection proxy')
+if options.input_baseline and (not options.wayland or (not options.visible_host and not options.selection_proxy)):parser.error('--input-baseline requires --wayland --visible-host')
 if options.native_offers and not options.selection_proxy:parser.error('--native-offers requires --selection-proxy')
 if options.selection_proxy and (not options.wayland or not options.calibration_only):parser.error('--selection-proxy requires --wayland --calibration-only')
 if options.xwayland_guest and not options.wayland:parser.error('--xwayland-guest requires --wayland')
@@ -98,6 +100,7 @@ try:
  else:raise RuntimeError('Private X11 display unavailable')
  parent,child=socket.socketpair();inherited=fcntl.fcntl(child.fileno(),fcntl.F_DUPFD_CLOEXEC,64)
  env=dict(os.environ,DISPLAY=':9',QT_QPA_PLATFORM='xcb',O3_TEST_VISIBLE_HOST=sys.argv[2],O3_TEST_CLIPBOARD_CALIBRATION=sys.argv[4],O3_TEST_SELECTION_PROXY=sys.argv[5],O3_TEST_PRIVATE_FD=str(inherited),O3_TEST_PEER_PID=str(os.getpid()),O3_TEST_PRIVATE_INODE=os.readlink('/proc/self/fd/'+str(inherited)))
+ if sys.argv[8]!='none':env['O3_TEST_KEEPER_EXIT']=sys.argv[8]
  if sys.argv[7]=='1':env.update(O3_TEST_INPUT_BASELINE='1',O3_PRIVATE_INPUT_FIXTURE='1')
  if sys.argv[6]=='1':env['O3_TEST_NATIVE_OFFERS']='1'
  if wayland:
@@ -129,12 +132,30 @@ try:
  print(result.stdout,end='');print(result.stderr,end='')
  assert result.returncode==0,result.returncode
  assert 'NATIVE_ELECTRON_PROOF ' in result.stdout
+ if sys.argv[8]!='none':
+  # The actual engine has exited. The mapped GUI member keeps only its current
+  # engine-produced offer on its original compositor connection.
+  import select
+  peer=subprocess.Popen(['/proof/clipboard-owner'],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True)
+  def response():
+   assert select.select([peer.stdout],[],[],5)[0],'fresh Qt receiver timeout'
+   return json.loads(peer.stdout.readline())
+  assert response()['ready']
+  controlenv=dict(env,SWAYSOCK=str(next(pathlib.Path('/tmp/runtime').glob('sway-ipc*.sock'))),LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib')
+  subprocess.run(['/opt/sway-runtime/usr/bin/swaymsg','[title="Owned synthetic clipboard peer"]','focus'],env=controlenv,check=True,capture_output=True)
+  subprocess.run(['wtype','-k','Shift_L'],env=env,check=True);time.sleep(.1)
+  op='read' if sys.argv[8]=='text' else 'read-image'
+  peer.stdin.write(json.dumps({'op':op,'id':1})+'\n');peer.stdin.flush();current=response();assert current['active']
+  if op=='read':assert current['text']=='native current copy survives tab',current
+  else:assert [current[key] for key in ['width','height','red','green','blue','alpha']]==[2,2,18,52,86,255],current
+  print('GUI_CURRENT_OFFER_AFTER_ENGINE_EXIT '+json.dumps({'kind':sys.argv[8],'receiver':current,'engineReturnCode':result.returncode}))
+  peer.stdin.write('{"op":"quit"}\n');peer.stdin.flush();assert peer.wait(timeout=3)==0
 finally:
  if keyboard is not None:keyboard.terminate();keyboard.wait(timeout=5)
  if private_display is not None:private_display.terminate();private_display.wait(timeout=5)
  display.terminate();display.wait(timeout=5)
  if wayland:display_log.close();print(pathlib.Path('/tmp/sway.log').read_text())
-''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0','1' if options.selection_proxy else '0','1' if options.native_offers else '0','1' if options.input_baseline else '0']
+''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0','1' if options.selection_proxy else '0','1' if options.native_offers else '0','1' if options.input_baseline else '0',options.keeper_exit or 'none']
 with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=55)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
 raise SystemExit(result.returncode)
