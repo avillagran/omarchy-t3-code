@@ -28,7 +28,9 @@ ShellRoot {
   else if(phase===5){keys.keyClick(Qt.Key_Escape);phase=6}
   else if(phase===6){check(answers.length===3&&!answers[2].allow,"Escape blocks");testBridge.browserPermission={requestId:"four",origin:"https://closed.test"};phase=7}
   else if(phase===7){testBridge.browserPermission=null;phase=8}
-  else if(phase===8){check(!prompt.opened&&answers.length===3,"source cancellation does not fabricate a user choice");console.log("BROWSER_PERMISSION_QML_PASS: global modal, default Block, explicit Allow, Escape, current request identity and cancellation");Qt.quit()}
+  else if(phase===8){check(!prompt.opened&&answers.length===3,"source cancellation does not fabricate a user choice");testBridge.browserPermission={requestId:"native",origin:"https://native.test",nativeOptions:{message:"Native <b>literal</b> question",detail:"Actual source detail",buttons:["Open application","Cancel"],defaultId:1,cancelId:1}};phase=9}
+  else if(phase===9){check(keys.findChild(prompt,"browserClipboardAllow").text==="Open application"&&keys.findChild(prompt,"browserClipboardBlock").text==="Cancel","actual native choices preserved");check(keys.findChild(prompt,"browserPermissionMessage").text==="Native <b>literal</b> question\n\nActual source detail"&&keys.findChild(prompt,"browserPermissionMessage").textFormat===Text.PlainText,"native prompt is exact plain text");check(keys.findChild(prompt,"browserClipboardBlock").activeFocus,"native cancel remains default");keys.keyClick(Qt.Key_Return);phase=10}
+  else if(phase===10){check(answers.length===4&&!answers[3].allow&&answers[3].requestId==="native","native default cancellation targets exact request");console.log("BROWSER_PERMISSION_QML_PASS: global modal, default Block, explicit Allow, Escape, current request identity and cancellation");Qt.quit()}
  }}
  Timer{interval:7000;running:true;onTriggered:{console.error("BROWSER_PERMISSION_QML_FAIL timeout phase="+phase);Qt.exit(1)}}
 }

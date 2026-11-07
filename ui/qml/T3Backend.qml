@@ -2323,7 +2323,7 @@ Singleton {
       var data = event.data
       if(event.type==="mosaic-messages"||event.type==="mosaic-state"){receiveMosaic(event.type,data)}
       else if(event.type==="browser-surface"){
-        if(data.kind==="permission-request")root.browserPermission={requestId:data.requestId,environment:data.environment,origin:String(data.origin||"")}
+        if(data.kind==="permission-request")root.browserPermission={requestId:data.requestId,environment:data.environment,origin:String(data.origin||""),nativeOptions:data.nativeOptions||null}
         else if(data.kind==="permission-closed"){if(root.browserPermission&&root.browserPermission.requestId===data.requestId)root.browserPermission=null}
         else BrowserSurface.receive(root,data)
       }

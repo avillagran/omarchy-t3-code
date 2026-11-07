@@ -322,7 +322,7 @@ impl Manager {
                     let mut source = data;
                     source["requestId"] = json!(uuid::Uuid::new_v4().to_string());
                     callback_output(
-                        json!({"kind":"permission-request","requestId":source["requestId"],"environment":source["environment"],"origin":source["origin"]}),
+                        json!({"kind":"permission-request","requestId":source["requestId"],"environment":source["environment"],"origin":source["origin"],"nativeOptions":source["nativeOptions"]}),
                     );
                     *pending = Some(source);
                 }

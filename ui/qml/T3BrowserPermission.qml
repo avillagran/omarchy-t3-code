@@ -12,11 +12,12 @@ Item {
  readonly property Item defaultFocusItem:block
  property string requestId:""
  property string origin:""
+ property var nativeOptions:null
  function synchronize(){
   var prompt=bridge.browserPermission
   if(!prompt){requestId="";dialog.close();return}
   if(requestId===prompt.requestId)return
-  requestId=prompt.requestId;origin=String(prompt.origin||"")
+  requestId=prompt.requestId;origin=String(prompt.origin||"");nativeOptions=prompt.nativeOptions||null
   dialog.open()
  }
  function choose(allow){if(requestId){requestId="";bridge.answerBrowserPermission(allow===true)}dialog.close()}
@@ -35,11 +36,11 @@ Item {
   background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Color.accent}
   contentItem:ColumnLayout {
    spacing:Style.space(12)
-   Text{Layout.fillWidth:true;text:T3I18n.tr("{origin} wants to see text and images copied to the clipboard",{origin:root.origin.slice(0,300)+(root.origin.length>300?"…":"")});textFormat:Text.PlainText;color:Color.popups.text;font.pixelSize:Style.font.body;wrapMode:Text.Wrap}
+   Text{objectName:"browserPermissionMessage";Layout.fillWidth:true;text:root.nativeOptions?String(root.nativeOptions.message||"")+(root.nativeOptions.detail?"\n\n"+String(root.nativeOptions.detail):""):T3I18n.tr("{origin} wants to see text and images copied to the clipboard",{origin:root.origin.slice(0,300)+(root.origin.length>300?"…":"")});textFormat:Text.PlainText;color:Color.popups.text;font.pixelSize:Style.font.body;wrapMode:Text.Wrap}
    RowLayout{
     Layout.alignment:Qt.AlignRight
-    Button{objectName:"browserClipboardAllow";focusable:true;text:T3I18n.tr("Allow");onClicked:root.choose(true)}
-    Button{id:block;objectName:"browserClipboardBlock";focusable:true;text:T3I18n.tr("Block");onClicked:root.choose(false)}
+    Button{objectName:"browserClipboardAllow";focusable:true;text:root.nativeOptions?String(root.nativeOptions.buttons[0]):T3I18n.tr("Allow");onClicked:root.choose(true)}
+    Button{id:block;objectName:"browserClipboardBlock";focusable:true;text:root.nativeOptions?String(root.nativeOptions.buttons[1]):T3I18n.tr("Block");onClicked:root.choose(false)}
    }
   }
  }

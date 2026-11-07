@@ -83,6 +83,35 @@ impl Config {
             basic_store: false,
         })
     }
+    /// Explicit internal renderer opt-in. This does not advertise a capability
+    /// or change the default guest. Callers supply an isolated display/profile.
+    pub fn with_native_electron(
+        mut self,
+        runtime: &Path,
+        assets: &Path,
+        display: &str,
+    ) -> Result<Self> {
+        if !runtime.is_absolute() || !assets.is_absolute() || display.is_empty() {
+            return Err("invalid_browser_fixture".into());
+        }
+        self.environment
+            .insert("O3_BROWSER_ENGINE".into(), "native-electron".into());
+        self.environment
+            .insert("O3_NATIVE_ELECTRON_RUNTIME".into(), runtime.into());
+        self.environment
+            .insert("O3_NATIVE_ELECTRON_ASSETS".into(), assets.into());
+        self.environment.insert("DISPLAY".into(), display.into());
+        if self.basic_store {
+            if let Some(home) = self.environment.get(std::ffi::OsStr::new("HOME")) {
+                self.environment.insert(
+                    "O3_NATIVE_ELECTRON_DIAGNOSTICS".into(),
+                    Path::new(home).join("native-electron.log").into_os_string(),
+                );
+            }
+        }
+
+        Ok(self)
+    }
     /// Explicit fixture configuration, with no real user bus, keyring or browser.
     pub fn isolated(executable: PathBuf, root: &Path) -> Result<Self> {
         if !root.is_absolute() {
@@ -504,7 +533,12 @@ impl Pool {
             .executable
             .parent()
             .ok_or("browser_runtime_unavailable")?;
-        if !root.join("libt3-browser.so").is_file() {
+        let native_electron = self
+            .config
+            .environment
+            .get(std::ffi::OsStr::new("O3_BROWSER_ENGINE"))
+            .is_some_and(|engine| engine == "native-electron");
+        if !native_electron && !root.join("libt3-browser.so").is_file() {
             return Err("browser_runtime_unavailable".into());
         }
         let id = uuid::Uuid::new_v4().to_string();
@@ -631,6 +665,29 @@ impl Pool {
                     continue;
                 };
                 match text(&value, "type") {
+                    "native-dialog-request"
+                        if value["options"]["message"]
+                            .as_str()
+                            .is_some_and(|text| text.len() <= 16384)
+                            && value["options"]["buttons"]
+                                .as_array()
+                                .is_some_and(|buttons| {
+                                    buttons.len() == 2
+                                        && buttons.iter().all(|button| {
+                                            button.as_str().is_some_and(|text| text.len() <= 1024)
+                                        })
+                                })
+                            && value["options"]["defaultId"] == 1
+                            && value["options"]["cancelId"] == 1 =>
+                    {
+                        let request = text(&value, "requestId");
+                        let origin_value = text(&value, "origin");
+                        if uuid::Uuid::parse_str(request).is_ok() && origin_value.len() <= 8192 {
+                            receive(
+                                json!({"kind":"permission-request","environment":environment,"originKey":origin,"processId":id,"profileId":reader_profile,"nativeRequestId":request,"thread":value["threadId"],"tabId":value["tabId"],"origin":origin_value,"nativeOptions":value["options"]}),
+                            );
+                        }
+                    }
                     "permission-request" if value["permission"] == "clipboard-read" => {
                         let request = text(&value, "requestId");
                         let origin_value = text(&value, "origin");

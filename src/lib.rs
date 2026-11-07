@@ -1024,6 +1024,7 @@ pub mod browser_preferences;
 pub mod browser_profiles;
 
 pub mod browser_runtime;
+mod browser_electron;
 
 pub mod preview_transport;
 pub mod preview_actions;

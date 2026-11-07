@@ -6,6 +6,10 @@ const path=require('node:path');
 const http=require('node:http');
 const readline=require('node:readline');
 const {spawn}=require('node:child_process');
+const privateFd=Number(process.env.O3_TEST_PRIVATE_FD);assert(Number.isInteger(privateFd)&&privateFd>=64);
+assert.equal(require('./electron-private-fd.node').admit(privateFd,Number(process.env.O3_TEST_PEER_PID)),true);
+const privateSocket=new(require('node:net').Socket)({fd:privateFd,readable:true,writable:true});
+const descriptorFlags=/^flags:\s+([0-7]+)$/m.exec(fs.readFileSync('/proc/self/fdinfo/'+privateFd,'utf8'));assert(descriptorFlags&&(parseInt(descriptorFlags[1],8)&0o2000000),'actual private descriptor is close-on-exec before guests');
 const {app,BrowserWindow,clipboard,webContents,ipcMain,session:electronSessions}=require('electron');
 assert.equal(process.versions.electron,'44.10.1');
 app.setPath('userData','/tmp/electron-userdata');
@@ -71,6 +75,10 @@ app.whenReady().then(async()=>{
  const image=await evaluate(one,"navigator.clipboard.read().then(async items=>{const item=items.find(item=>item.types.includes('image/png'));if(!item)throw Error('No PNG');const blob=await item.getType('image/png');const image=await createImageBitmap(blob);const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);return {width:image.width,height:image.height,pixel:Array.from(context.getImageData(0,0,1,1).data)}})");assert.deepEqual(image,{width:2,height:2,pixel:[18,52,86,255]});
  const two=await tab('two','localhost');assert.equal(await evaluate(two,denied),true);assert.equal(dialogs.length,4,'native decisions stay in the actual session');
  const foreign=await two.contents.debugger.sendCommand('Target.getTargetInfo');let blocked=false;try{await command(one,'Target.attachToTarget',{targetId:foreign.targetInfo.targetId,flatten:true})}catch{blocked=true}assert(blocked,'native root relay rejects a foreign target');
+ const ownSocket=process.env.O3_TEST_PRIVATE_INODE;const descendants=new Set([process.pid]);let grew=true;
+ while(grew){grew=false;for(const pid of fs.readdirSync('/proc').filter(name=>/^\d+$/.test(name))){try{const stat=fs.readFileSync('/proc/'+pid+'/stat','utf8');const parent=Number(stat.slice(stat.lastIndexOf(')')+2).split(' ')[1]);if(descendants.has(parent)&&!descendants.has(Number(pid))){descendants.add(Number(pid));grew=true}}catch{}}}
+ assert(descendants.has(one.contents.getOSProcessId()),'actual guest renderer belongs to the owned process tree');
+ for(const name of fs.readdirSync('/proc').filter(name=>/^\d+$/.test(name))){const pid=Number(name);if(pid===process.pid||pid===Number(process.env.O3_TEST_PEER_PID))continue;let descriptors;try{descriptors=fs.readdirSync('/proc/'+pid+'/fd')}catch{continue}for(const fd of descriptors){let link;try{link=fs.readlinkSync('/proc/'+pid+'/fd/'+fd)}catch{continue}assert.notEqual(link,ownSocket,'private socket must not leak into any other private-namespace process, including reparented crash helpers')}}
  const scopeRealm={};require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname,'target-scope.js'),'utf8'),scopeRealm);
  const ownInfo=await one.contents.debugger.sendCommand('Target.getTargetInfo');
  let retired=false;const guard=scopeRealm.T3QtTargetScope.create(ownInfo.targetInfo.targetId,(...args)=>one.contents.debugger.sendCommand(...args),()=>retired=true);
@@ -81,7 +89,7 @@ app.whenReady().then(async()=>{
  const opaque=JSON.stringify({targetId:foreign.targetInfo.targetId,sessionId:'foreign-session',method:'Target.closeTarget'});
  const opaqueResult=await guard.sendCommand('Runtime.evaluate',{expression:JSON.stringify(opaque),returnByValue:true});assert.equal(opaqueResult.result.value,opaque,'opaque page strings stay unchanged');
  const guardedInfo=await guard.sendCommand('Target.getTargetInfo');assert.equal(guardedInfo.targetInfo.targetId,ownInfo.targetInfo.targetId);assert.equal(retired,false);guard.close();await assert.rejects(guard.sendCommand('Runtime.evaluate',{expression:'1'}),/Only this preview tab/);
- console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({electron:process.versions.electron,sandboxed:true,nativeContextIsolation:false,nodeGlobalsAbsent:true,dialogs:dialogs.map(row=>({message:row.options.message,buttons:row.options.buttons,defaultId:row.options.defaultId,cancelId:row.options.cancelId})),nativeAsyncWrite:nativeWrite,nativeDevtoolsCopy:copied,sanitizedGestureCopy:true,textRoundtrip:true,freshExternalText:true,externalPng:image,sessionIsolation:true,foreignRootAttachDenied:true,rawForeignTargetVisible:rawForeignVisible,physicalTargetScopeDenied:forbidden.length+1,opaqueRuntimePreserved:true}));
+ console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({electron:process.versions.electron,sandboxed:true,nativeContextIsolation:false,nodeGlobalsAbsent:true,dialogs:dialogs.map(row=>({message:row.options.message,buttons:row.options.buttons,defaultId:row.options.defaultId,cancelId:row.options.cancelId})),nativeAsyncWrite:nativeWrite,nativeDevtoolsCopy:copied,sanitizedGestureCopy:true,textRoundtrip:true,freshExternalText:true,externalPng:image,sessionIsolation:true,foreignRootAttachDenied:true,rawForeignTargetVisible:rawForeignVisible,physicalTargetScopeDenied:forbidden.length+1,privateFdCloexec:true,descendantSocketIsolation:true,privateNamespaceSocketIsolation:true,opaqueRuntimePreserved:true}));
  for(const window of windows){services.detach(window.__ownedProofKey);window.destroy()}
  await services.close();producer.stdin.end(JSON.stringify({op:'quit'})+'\n');server.close();app.exit(0);
 }).catch(error=>{console.error('NATIVE_ELECTRON_FIXTURE_FAILED',error?.stack||String(error),'PERMISSIONS',JSON.stringify(observedPermissions));for(const window of windows)if(!window.isDestroyed())window.destroy();producer?.kill();server?.close();app.exit(1)});

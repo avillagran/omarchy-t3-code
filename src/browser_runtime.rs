@@ -262,7 +262,12 @@ pub fn renderer() -> Result<()> {
     if let Some(fd) = private_fd {
         payload["privateBrowserFd"] = json!(fd);
     }
-    let result = run(&payload);
+    let result = if let Some((runtime, assets)) = crate::browser_electron::configured() {
+        payload["electronDirectory"] = json!(crate::browser_electron::directory(&payload)?);
+        crate::browser_electron::run(&payload, &runtime, &assets)
+    } else {
+        run(&payload)
+    };
     let _ = crate::frame_files::reclaim(&frames);
     result
 }

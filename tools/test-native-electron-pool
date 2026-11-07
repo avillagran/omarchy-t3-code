@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Run the reviewed actual product Pool with a private native Electron guest."""
+import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
+from pathlib import Path
+from runtime_artifacts import snapshot
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime',type=Path,required=True);parser.add_argument('--services',type=Path,required=True)
+options=parser.parse_args();root=Path(__file__).resolve().parent.parent
+runtime=options.runtime.resolve();services=options.services.resolve()
+manifest=json.loads((runtime.parent/'artifact.json').read_text())
+if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167':raise SystemExit('Exact verified runtime required')
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+out=Path(tempfile.mkdtemp(prefix='native-electron-pool-',dir='/home/node/BuildCache/o3-desktop-next'));print('Native Pool evidence: '+str(out),flush=True)
+app=out/'app';(app/'bin').mkdir(parents=True);assets=out/'electron';assets.mkdir()
+for name in ['native-electron-main.cjs','qt-target-scope.js','electron-private-fd.c']:(assets/name).write_bytes((root/'ui/browser'/name).read_bytes())
+(assets/'native-electron-services.cjs').write_bytes(services.read_bytes());(out/'electron-artifact.json').write_text(json.dumps(manifest)+'\n')
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+ fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
+ with (out/'addon-compile.log').open('w') as log:subprocess.run(['cc','-std=c11','-fPIC','-shared','-Wall','-Wextra','-Werror','-I/usr/include/node',str(assets/'electron-private-fd.c'),'-o',str(assets/'electron-private-fd.node')],check=True,stdout=log,stderr=subprocess.STDOUT)
+ env=dict(os.environ,CARGO_BUILD_JOBS='2')
+ with (out/'compile.jsonl').open('w') as log,(out/'compile.log').open('w') as errors:result=subprocess.run(['cargo','test','--locked','--offline','--test','native_electron_pool','--no-run','--message-format=json'],cwd=root,env=env,stdout=log,stderr=errors)
+ if result.returncode:raise SystemExit(result.returncode)
+ items=[json.loads(line) for line in (out/'compile.jsonl').read_text().splitlines()]
+ tests=[Path(item['executable']) for item in items if item.get('executable') and item.get('profile',{}).get('test')]
+ mains=[Path(item['executable']) for item in items if item.get('executable') and item['target']['name']=='omarchy-t3-client' and not item.get('profile',{}).get('test')]
+ if len(tests)!=1 or len(mains)!=1:raise SystemExit('Expected one reviewed target and product CLI')
+ debug=tests[0].parent.parent;frozen=debug.resolve().parent/('native-electron-pool-'+uuid.uuid4().hex)
+ records=snapshot(debug,tests+mains,frozen);(out/'runtime-artifacts.json').write_text(json.dumps(records,indent=2)+'\n')
+ for file in frozen.iterdir():
+  if file.is_file() and file.suffix=='.so':(app/'bin'/file.name).write_bytes(file.read_bytes())
+ (app/'bin/omarchy-t3-client').write_bytes((frozen/mains[0].relative_to(debug)).read_bytes());(app/'bin/omarchy-t3-client').chmod(0o500)
+ binary='/compiled/'+str(tests[0].relative_to(debug))
+(out/'adapter-artifacts.json').write_text(json.dumps({file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in assets.iterdir()},indent=2)+'\n')
+args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--pids-limit=384','--memory=3g','--tmpfs','/tmp:rw,exec,size=768m,mode=1777','--tmpfs','/run:rw,size=32m','-v',str(out)+':/fixture:ro','-v',str(runtime)+':/electron:ro','-v',str(frozen)+':/compiled:ro','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','docker.io/library/archlinux:latest','python3','-c',r'''
+import hashlib,json,os,pathlib,subprocess,sys,time
+os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700);os.mkdir('/tmp/.X11-unix',0o1777)
+for row in json.loads(pathlib.Path('/fixture/electron-artifact.json').read_text())['files']:
+ path=pathlib.Path('/electron')/row['path'];assert path.is_file() and not path.is_symlink()
+ with path.open('rb') as file:assert hashlib.file_digest(file,'sha256').hexdigest()==row['sha256']
+display=subprocess.Popen(['Xvfb',':9','-screen','0','1280x1024x24','-nolisten','tcp','-extension','GLX'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+try:
+ for _ in range(100):
+  if display.poll() is not None:raise RuntimeError('Private display exited')
+  if pathlib.Path('/tmp/.X11-unix/X9').is_socket():break
+  time.sleep(.02)
+ else:raise RuntimeError('Private display unavailable')
+ result=subprocess.run([sys.argv[1],'--exact','product_pool_admits_native_guest_and_shares_visible_frames_with_cdp','--test-threads=1','--nocapture'],timeout=55)
+ for trace in pathlib.Path('/tmp').glob('native-pool-*/home/native-electron.log'):print(trace.read_text())
+ sys.exit(result.returncode)
+finally:display.terminate();display.wait(timeout=5)
+''',binary]
+with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=75)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
