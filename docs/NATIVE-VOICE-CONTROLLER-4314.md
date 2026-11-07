@@ -76,7 +76,9 @@ are checked before and after the run. Run only this reviewed fixture with:
 python3 tools/test-device-panel-container voice-controller
 ```
 
-The capture/consent owner still needs to install real microphone and transport
-dependencies. Independent audio/cleanup consent, destination selection, network
-cancellation, their views and server engine/HTTP capability activation remain
-pending. The existing local dictation helper uses its own explicit settings.
+Independent audio/cleanup consent and actual capture-to-SDK buffered/streamed
+transport now have separate physical acceptance in `NATIVE-VOICE-ASYNC-4314.md`.
+The whole original browser platform also matches Qt across 500 boundary traces;
+see `NATIVE-VOICE-PLATFORM-4314.md`. A persistent worker still needs to install
+those real dependencies in this controller and connect their preference views.
+The existing local dictation helper uses its own explicit settings.

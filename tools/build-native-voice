@@ -13,16 +13,24 @@ parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--native',required=True,type=pathlib.Path)
 parser.add_argument('--compiler',required=True,type=pathlib.Path)
 parser.add_argument('--node',required=True,type=pathlib.Path)
-parser.add_argument('--component',choices=['controller','capture'],default='controller')
+parser.add_argument('--component',choices=['controller','capture','platform'],default='controller')
 args=parser.parse_args();root=pathlib.Path(__file__).resolve().parent.parent
 revision='83a3674ffd84ffb33de768210c806cb1ac53fd80'
 if subprocess.check_output(['git','-C',str(args.native),'rev-parse','HEAD'],text=True).strip()!=revision:raise SystemExit('Pinned native revision required')
 if subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
 evidence=pathlib.Path(tempfile.mkdtemp(prefix='native-voice-build-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));evidence.chmod(0o700)
 source=evidence/'source';source.mkdir(mode=0o700);output=evidence/'output';output.mkdir(mode=0o700)
-native_files=['packages/client-runtime/src/voice-input/controller.ts','packages/client-runtime/src/voice-input/transcription.ts','packages/shared/src/composerTrigger.ts'] if args.component=='controller' else ['apps/web/src/speech/pcmResampler.ts','apps/web/src/speech/pcmWorklet.ts','apps/web/src/speech/browserPcmCapture.ts']
-generator='tools/build-native-voice.mjs' if args.component=='controller' else 'tools/build-native-pcm.mjs'
-outputs=['ui/js/NativeVoice.js','ui/js/NativeVoice.sources.json','tests/fixtures/voice-unicode-4314.bin'] if args.component=='controller' else ['ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json']
+native_files={
+ 'controller':['packages/client-runtime/src/voice-input/controller.ts','packages/client-runtime/src/voice-input/transcription.ts','packages/shared/src/composerTrigger.ts'],
+ 'capture':['apps/web/src/speech/pcmResampler.ts','apps/web/src/speech/pcmWorklet.ts','apps/web/src/speech/browserPcmCapture.ts'],
+ 'platform':['apps/web/src/speech/browserVoiceInput.ts','packages/shared/src/speech.ts'],
+}[args.component]
+generator={'controller':'tools/build-native-voice.mjs','capture':'tools/build-native-pcm.mjs','platform':'tools/build-native-voice-platform.mjs'}[args.component]
+outputs={
+ 'controller':['ui/js/NativeVoice.js','ui/js/NativeVoice.sources.json','tests/fixtures/voice-unicode-4314.bin'],
+ 'capture':['ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json'],
+ 'platform':['ui/js/NativeVoiceInput.js','ui/js/NativeVoiceInput.sources.json'],
+}[args.component]
 for name in native_files:
  target=source/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((args.native/name).read_bytes());target.chmod(0o400)
 (source/'REVISION').write_text(revision+'\n');(source/'REVISION').chmod(0o400)

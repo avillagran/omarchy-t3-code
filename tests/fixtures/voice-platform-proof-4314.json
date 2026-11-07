@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "artifact": "/var/tmp/o3-build/native-voice-platform-ib6yl5h6/result.json",
+  "artifactSha256": "9c8a79b0de0ad404d5d1e567d5b25a9c04068fea4977f7cfba9e887b372d16cf",
+  "cases": 500,
+  "sourceSha256": {
+    "tools/fixtures/voice-platform-driver.js": "f59a2c75465487494c8f04c91677a9b555b74a2b87d77ac9fa4cc488880d3191",
+    "tools/fixtures/voice-platform-native.mjs": "c41bb820ce6fbb6251b937fff2f89963dc6ae4991e6ce3bee660e9ce3bf5ca3c",
+    "tools/fixtures/voice-platform-qt.cpp": "d9b3608dba77031ce400ce7db9ecc15e9d3182e214e53d9e8044aad8e7178412",
+    "tools/fixtures/effect-4.1.2.manifest.json": "f889586b74197d2c7fee3070ef475d81c1cabd80d6afdf08727ecf568bbe47ca",
+    "ui/js/NativeVoiceInput.js": "3ad236b788bedab5fad40b5d0d97a883bdecf7d445e63146690ffaeaf69e2c6c",
+    "ui/js/NativeVoiceInput.sources.json": "5e27900d4d5d1c5c9f6110621aaf0168d6ae98c7d58153787e2e34149efc1de2",
+    "ui/js/NativeVoice.js": "fbac3bb266c846b0e1fe5e1f11376c7ffc2ca5995284355f071e3b162e91d657",
+    "ui/js/NativeVoice.sources.json": "678a8388f607ed689a2f25adc4e2dde2e1626b159d3a6b06575bdbc4802df9ca",
+    "ui/js/VoicePlatform.js": "eda6ced1686f7b756e9aef84723dc269889d470821c74e0d965baccd6526684c",
+    "tools/voice-compiler/package-lock.json": "633412c3800e73de90e0015de7fc385c248fee76051d1e7e13e080350b3a8e22"
+  },
+  "outputRevision": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "scope": "Whole original browser platform/language declarations versus Qt, actual canonical Effect; synthetic capture/HTTP/SDK boundaries, no UI activation or microphone acceptance",
+  "publicVoiceUiActivated": false
+}
