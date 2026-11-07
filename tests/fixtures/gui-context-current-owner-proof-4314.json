@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "scope": "Synchronous actual-channel/engine/worker lifetime at Qt query; no compositor variant or public activation",
+  "positive": [
+    {
+      "artifact": "browser-native-context-query-yzr_zbw2",
+      "returncode": 0,
+      "runtimeLogSha256": "b0ee05318f0d02fed7f01db5f229e54109c8fd440eb54ba88149e716b366fcbd",
+      "artifactsSha256": "2ddb28afa50cc684b3433ecfdf9d78f971ff98460c542fb3b156c40d430a8b41"
+    },
+    {
+      "artifact": "browser-input-method-uio_wlyf",
+      "returncode": 0,
+      "runtimeLogSha256": "3c6172a6ad5008dc6935b63f3613fff9093d2f095b3f94909440911468fcaf63",
+      "artifactsSha256": "0170b4857f44c10fa3133c050d63e0a0dc9805cb4c1f214ac51dea7546f549b5"
+    }
+  ],
+  "negative": [
+    {
+      "artifact": "browser-input-method-pfanug1i",
+      "returncode": 1,
+      "note": "Initial global total-count failure without FD identity metadata; retained unclassified",
+      "runtimeLogSha256": "cfcd4167d5253a4ae6f52fa0660560382e1a5673ca4817d325ecbef51f2f7398"
+    },
+    {
+      "artifact": "browser-input-method-s3bddp6s",
+      "returncode": 1,
+      "note": "Owned registration identities reclaimed/canaries valid; anonymous multiplicity not yet identified",
+      "runtimeLogSha256": "737b0016763012ec9743195074f10e0e50ff8172a24f7111349f0757c11fd899"
+    },
+    {
+      "artifact": "browser-input-method-jh4ik4hb",
+      "returncode": 1,
+      "note": "Four extra anonymous descriptors, total19 to23",
+      "runtimeLogSha256": "6925da07781f98f4d7bbd1356cd8154a77fad044d51988031305b2c7312cc91a"
+    },
+    {
+      "artifact": "browser-input-method-sul9t54z",
+      "returncode": 1,
+      "note": "Four eventfds and four new Thread(pooled) actors after the logical imageReady baseline",
+      "runtimeLogSha256": "5ad700179b1fddb5ca5df020dd0e48c4db65d441c35e9aa07d5d6f6812435b12"
+    }
+  ],
+  "checks": 147,
+  "immediateQueriesPumpEvents": false,
+  "retainedWriterAfterWorkerDeath": true,
+  "staleOwnerCannotClearReplacement": true,
+  "ownedRegistrationIdentitiesReclaimed": true,
+  "canariesPreserved": true,
+  "totalFDCountEqualityRetained": true,
+  "renderBarrierObservedBeforeBaseline": true,
+  "finalEnumeratedFDCounts": [
+    22,
+    22
+  ],
+  "finalTotalFDCounts": [
+    23,
+    23
+  ],
+  "sourceHashes": {
+    "native/browser/browserinputchannel.h": "40d4132429dfca7a879935bd8b2638a3237ffb9acac9ab8dfa5956ffd7c741dd",
+    "native/browser/browserinputitem.h": "28e6be9a4df3b4e9dff21d97a5bf9c626a18aaa4e8cdd55cf383be6a41605753",
+    "native/browser/clipboardplatform.cpp": "2188afa1963c2dbc5afa3ffa5687e7cc2be248990bef1bac403e20637f05dc38",
+    "tools/fixtures/browser-native-context-query.cpp": "ebb582a9bedbefa2f40f9129dcef0dfb439ce417811a8907e7c2684bc6d0af35",
+    "tools/fixtures/browser-input-method.cpp": "a0c2bb4fdeddc74dd8fc096298ee54c798bd4f9d30dc8f9017dd07decfb3e447"
+  }
+}

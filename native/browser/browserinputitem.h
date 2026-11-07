@@ -12,6 +12,7 @@
 #include <QHash>
 #include <QPointer>
 #include <QList>
+#include <functional>
 
 class BrowserInputItem : public QQuickItem {
   Q_OBJECT
@@ -26,6 +27,7 @@ class BrowserInputItem : public QQuickItem {
   bool enabled = false, composing = false;
   QString token;
   BrowserInputContext context;
+  std::function<bool()> currentOwner;
   QMetaObject::Connection windowContextConnection;
   QMetaObject::Connection windowVisibilityConnection;
   QVariantMap bindingMetadata;
@@ -87,7 +89,7 @@ public:
   }
   bool inputEnabled() const { return enabled; }
   QString scopeToken() const { return token; }
-  bool contextAvailable() const { return context.available(); }
+  bool contextAvailable() const { return context.available() && (!currentOwner || currentOwner()); }
   bool nativeContextInteractive() const { return acceptsContext(); }
   static BrowserInputItem *nativeMount(const QString &scope) {
     const auto values = mounts().value(scope);
@@ -136,11 +138,14 @@ public:
     if (acceptsContext()) emit contextRequested(token);
   }
   bool admitBoundNativeContext(const BrowserInputContext::Binding &binding,
-                              const BrowserInputContext::State &state) {
-    return admitNativeContext(binding, nativeGeometry, state);
+                              const BrowserInputContext::State &state,
+                              std::function<bool()> owner) {
+    if (!owner) return false;
+    return admitNativeContext(binding, nativeGeometry, state,std::move(owner));
   }
   // C++ owner entry points, intentionally not invokable by page JavaScript.
   void bindNativeContext(const BrowserInputContext::Binding &binding) {
+    if (!context.matches(binding)) currentOwner={};
     context.bind(binding);
     if (binding.scope != token)
       context.clear();
@@ -148,10 +153,12 @@ public:
   }
   bool admitNativeContext(const BrowserInputContext::Binding &binding,
                           const BrowserInputContext::Geometry &geometry,
-                          const BrowserInputContext::State &state) {
+                          const BrowserInputContext::State &state,
+                          std::function<bool()> owner={}) {
     if (!acceptsContext() || binding.scope != token)
       return false;
     const bool admitted = context.admit(binding, geometry, state);
+    if (admitted) currentOwner=std::move(owner);
     notifyContext();
     return admitted;
   }
@@ -163,6 +170,7 @@ public:
   }
   void clearNativeContext() {
     context.clear();
+    currentOwner={};
     notifyContext();
   }
   void setInputEnabled(bool value) {
@@ -203,7 +211,7 @@ public:
     if (!enabled || !isVisible() || !hasActiveFocus() || !window() ||
         !window()->isVisible() || !window()->isActive() || token.isEmpty())
       return {};
-    return context.query(query);
+    return contextAvailable()?context.query(query):QVariant();
   }
 
 signals:

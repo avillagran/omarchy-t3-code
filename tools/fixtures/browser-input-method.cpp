@@ -25,6 +25,8 @@
 #include <poll.h>
 #include <cstring>
 #include <cerrno>
+#include <sys/stat.h>
+#include <atomic>
 #define CHECK(value)                                                           \
   do {                                                                         \
     if (!(value)) {                                                            \
@@ -40,6 +42,53 @@ static bool waitFor(const std::function<bool()> &ready) {
     QThread::msleep(2);
   }
   return ready();
+}
+struct OwnDescriptor {int fd;dev_t device;ino_t inode;QString kind;};
+static QList<OwnDescriptor> ownDescriptors() {
+  QList<OwnDescriptor> result;
+  for(const auto &entry:QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot)) {
+    bool valid=false;const int fd=entry.toInt(&valid);struct stat status{};
+    if(!valid || fstat(fd,&status))continue;
+    char target[256]{};const auto path=QByteArray("/proc/self/fd/")+entry.toLatin1();
+    const auto length=readlink(path.constData(),target,sizeof target);
+    const auto name=length>0?QByteArray(target,int(length)):QByteArray();
+    QString kind=S_ISSOCK(status.st_mode)?"socket":S_ISFIFO(status.st_mode)?"pipe":
+      name.contains("pidfd")?"pidfd":name.contains("memfd")?"memory-file":
+      name=="anon_inode:[eventfd]"?"eventfd":name=="anon_inode:[eventpoll]"?"eventpoll":
+      name=="anon_inode:[timerfd]"?"timerfd":name.startsWith("anon_inode:")?"anonymous-other":"regular-or-device";
+    result.append({fd,status.st_dev,status.st_ino,kind});
+  }
+  return result;
+}
+static bool sameIdentity(const OwnDescriptor &a,const OwnDescriptor &b) {
+  return a.device==b.device && a.inode==b.inode && a.kind==b.kind;
+}
+static void descriptorDelta(const QList<OwnDescriptor> &before,const QList<OwnDescriptor> &after) {
+  for(const auto &a:before) {
+    bool found=false;for(const auto &b:after)if(sameIdentity(a,b))found=true;
+    if(!found)fprintf(stderr,"OWN_FD_REMOVED fd=%d kind=%s dev=%llu inode=%llu\n",a.fd,qPrintable(a.kind),
+      (unsigned long long)a.device,(unsigned long long)a.inode);
+  }
+  for(const auto &a:after) {
+    bool found=false;for(const auto &b:before)if(sameIdentity(a,b))found=true;
+    if(!found)fprintf(stderr,"OWN_FD_ADDED fd=%d kind=%s dev=%llu inode=%llu\n",a.fd,qPrintable(a.kind),
+      (unsigned long long)a.device,(unsigned long long)a.inode);
+  }
+}
+static void descriptorSnapshot(const char *stage,const QList<OwnDescriptor> &values,int total) {
+  fprintf(stderr,"OWN_FD_SNAPSHOT stage=%s enumerated=%lld total=%d\n",stage,(long long)values.size(),total);
+  CHECK(values.size()<=128);
+  for(const auto &value:values)fprintf(stderr,"OWN_FD_ID stage=%s fd=%d kind=%s dev=%llu inode=%llu\n",
+    stage,value.fd,qPrintable(value.kind),(unsigned long long)value.device,(unsigned long long)value.inode);
+  const auto threads=QDir("/proc/self/task").entryList(QDir::Dirs|QDir::NoDotAndDotDot);
+  CHECK(threads.size()<=64);
+  for(const auto &thread:threads) {
+    QFile info(QString("/proc/self/task/%1/comm").arg(thread));
+    if(info.open(QIODevice::ReadOnly)) {
+      const auto name=info.read(64).trimmed();
+      fprintf(stderr,"OWN_THREAD stage=%s tid=%s name=%s\n",stage,qPrintable(thread),name.constData());
+    }
+  }
 }
 int main(int argc, char **argv) {
   QGuiApplication app(argc, argv);
@@ -323,8 +372,21 @@ ClipboardPlatform {
   CHECK(waitFor([&]{return platformComponent.status()!=QQmlComponent::Loading;}));
   auto *platform=platformComponent.create();
   CHECK(platform && waitFor([&]{return platform->property("available").toBool();}));
+  CHECK(page->property("ready").toBool());
+  std::atomic<bool> synchronized{false},presented{false};
+  const auto sync=QObject::connect(&window,&QQuickWindow::afterSynchronizing,&window,
+      [&]{synchronized.store(true);},Qt::DirectConnection);
+  const auto swap=QObject::connect(&window,&QQuickWindow::frameSwapped,&window,
+      [&]{if(synchronized.load())presented.store(true);},Qt::DirectConnection);
+  window.update();
+  CHECK(waitFor([&]{return presented.load();}));
+  QObject::disconnect(sync);QObject::disconnect(swap);
+  puts("OWN_RENDER_BASELINE_BARRIER image-ready after-synchronizing frame-swapped");
   const auto endpoint=platform->property("endpoint").toString().toUtf8();
+  int canary[2];CHECK(pipe2(canary,O_CLOEXEC)==0);
+  const auto baselineDescriptors=ownDescriptors();
   const auto baseline=QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size();
+  descriptorSnapshot("baseline",baselineDescriptors,int(baseline));
   int gate[2];CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,gate)==0);
   const auto worker=fork();CHECK(worker>=0);
   if(worker==0) {
@@ -340,6 +402,8 @@ ClipboardPlatform {
     if(send(peer,hello,sizeof hello-1,MSG_NOSIGNAL)!=sizeof hello-1)_exit(13);
     pollfd reply{peer,POLLIN,0};
     if(poll(&reply,1,3000)!=1)_exit(14);
+    if(send(gate[1],"a",1,MSG_NOSIGNAL)!=1)_exit(17);
+    if(recv(gate[1],&command,1,0)!=1)_exit(18);
     // Leave the admitted reply unread: Linux reports an actual peer reset.
     ::close(peer);
     if(send(gate[1],"c",1,MSG_NOSIGNAL)!=1)_exit(15);
@@ -351,6 +415,24 @@ ClipboardPlatform {
   CHECK(QMetaObject::invokeMethod(platform,"bindWorker",Q_RETURN_ARG(QString,binding),Q_ARG(qint64,qint64(worker))));
   CHECK(!binding.isEmpty());
   CHECK(send(gate[0],"g",1,MSG_NOSIGNAL)==1);
+  CHECK(waitFor([&]{return platform->property("workerAdmitted").toBool();}));
+  const auto admittedDescriptors=ownDescriptors();
+  QList<OwnDescriptor> registrationDescriptors;
+  for(const auto &entry:admittedDescriptors) {
+    bool own=false;
+    if(entry.kind=="socket") {
+      ucred peer{};socklen_t size=sizeof peer;
+      own=getsockopt(entry.fd,SOL_SOCKET,SO_PEERCRED,&peer,&size)==0 && peer.pid==worker && peer.uid==getuid();
+    } else if(entry.kind=="pidfd") {
+      QFile info(QString("/proc/self/fdinfo/%1").arg(entry.fd));
+      if(info.open(QIODevice::ReadOnly))
+        for(const auto &line:info.read(4096).split('\n'))
+          if(line.startsWith("Pid:"))own=line.mid(4).trimmed().toLongLong()==worker;
+    }
+    if(own)registrationDescriptors.append(entry);
+  }
+  CHECK(registrationDescriptors.size()==2);
+  CHECK(send(gate[0],"c",1,MSG_NOSIGNAL)==1);
   CHECK(waitFor([&]{return platform->property("everAdmitted").toBool() &&
       !platform->property("workerAdmitted").toBool() &&
       platform->property("_o3RegistrationReceiveError").toInt()==ECONNRESET;}));
@@ -359,7 +441,15 @@ ClipboardPlatform {
   int status=0;CHECK(waitpid(worker,&status,0)==worker && WIFEXITED(status) && WEXITSTATUS(status)==0);
   ::close(gate[0]);
   CHECK(QMetaObject::invokeMethod(platform,"retireWorker",Q_ARG(QString,binding)));
-  CHECK(QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size()==baseline);
+  const auto retiredDescriptors=ownDescriptors();
+  const auto retiredCount=QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size();
+  descriptorSnapshot("retired",retiredDescriptors,int(retiredCount));
+  descriptorDelta(baselineDescriptors,retiredDescriptors);
+  for(const auto &owned:registrationDescriptors)
+    for(const auto &remaining:retiredDescriptors)CHECK(!sameIdentity(owned,remaining));
+  CHECK(fcntl(canary[0],F_GETFD)>=0 && fcntl(canary[1],F_GETFD)>=0);
+  CHECK(retiredCount==baseline);
+  ::close(canary[0]);::close(canary[1]);
   if (qEnvironmentVariableIsSet("O3_INPUT_CONTEXT_WORKER")) {
     page->setProperty("interactive",true);
     native->forceActiveFocus();
