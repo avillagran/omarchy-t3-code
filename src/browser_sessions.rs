@@ -236,6 +236,17 @@ impl Manager {
         defaults: impl Fn() -> Result<Value> + Send + 'static,
         output: impl Fn(Value) + Send + Sync + 'static,
     ) -> Self {
+        Self::start_with_removal(config,resolve,defaults,output,|path|std::fs::remove_dir_all(path))
+    }
+    /// Explicit deletion adapter: tests quarantine validated partitions while
+    /// production keeps the real storage-removal implementation.
+    pub fn start_with_removal(
+        config:browser_guest::Config,
+        resolve:impl Fn(&str)->Result<Environment>+Send+Sync+'static,
+        defaults:impl Fn()->Result<Value>+Send+'static,
+        output:impl Fn(Value)+Send+Sync+'static,
+        remove:impl Fn(&Path)->std::io::Result<()>+Send+'static,
+    )->Self {
         let resolve: Resolver = Arc::new(resolve);
         let output: Output = Arc::new(output);
         let grants: Grants = Arc::new(Mutex::new(HashMap::new()));
@@ -419,11 +430,12 @@ impl Manager {
                                 )?;
                                 cleanup.locks.insert(environment.clone(), lock);
                             }
-                            crate::browser_runtime::clear_owned_storage(
+                            crate::browser_runtime::clear_owned_storage_with(
                                 &storage,
                                 &environment,
                                 &cleanup.profile,
                                 cleanup.locks.get(&environment).unwrap(),
+                                |path|remove(path),
                             )?;
                             cleanup.cleared.push(environment);
                             Ok(())

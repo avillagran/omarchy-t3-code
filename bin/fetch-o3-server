@@ -14,7 +14,18 @@ expected=$(field "sha256_$arch")
 target=${O3_SERVER_HOME:-$HOME/.local/share/o3-server}/bin/o3-server
 if [[ -x $target && $("$target" --version 2>/dev/null) == "o3-server ${version#v}" ]]; then exit 0; fi
 work=$(mktemp -d)
-trap 'rm -rf -- "$work"' EXIT
+cleanup() {
+  # Only the explicitly downloaded/extracted files belong to this operation.
+  rm -f -- "$work/SHA256SUMS" || true
+  if [[ -n ${asset:-} ]]; then rm -f -- "$work/$asset" || true; fi
+  unpacked=$work/unpacked/o3-server-$version-$arch-linux
+  if [[ ! -L "$work/unpacked" && ! -L "$unpacked" && -d "$unpacked" ]]; then
+    rm -f -- "$unpacked/o3-server" || true
+    rmdir -- "$unpacked" 2>/dev/null || true
+  fi
+  rmdir -- "$work/unpacked" "$work" 2>/dev/null || true
+}
+trap cleanup EXIT
 asset="o3-server-$version-$arch-linux.tar.gz"
 base_url=${OT3_O3_SERVER_RELEASE_URL:-https://github.com/avillagran/o3-server/releases/download}/$version
 curl -fsSL "$base_url/$asset" -o "$work/$asset"

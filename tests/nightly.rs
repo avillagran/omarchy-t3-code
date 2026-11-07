@@ -19,5 +19,5 @@ fn guest_owner_actions_preserve_the_exact_server_message_identity() {
  let server=thread::spawn(move||{for typ in ["message.dispatch","thread.guest-message.dismiss","thread.guest-share.close"] {let(s,_)=listener.accept().unwrap();let mut ws=tungstenite::accept(s).unwrap();let req:Value=serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();assert_eq!(req["tag"],"orchestration.dispatchCommand");let p=&req["payload"];assert_eq!(p["type"],typ);assert_eq!(p["threadId"],"chat");if typ!="thread.guest-share.close"{assert_eq!(p["guestMessageId"],"server-message")}
 if typ=="message.dispatch"{assert_eq!(p["text"],"");assert_eq!(p["attachments"],json!([]));}ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":{"sequence":1}}}).to_string().into())).unwrap();}});
  for action in ["guest-send","guest-dismiss","guest-close"] {nightly::execute(&e,&json!({"action":action,"thread":"chat","requestId":uuid::Uuid::new_v4().to_string(),"args":{"guestMessageId":"server-message","text":"ignored tampered text"}})).unwrap();}
- server.join().unwrap();let _=std::fs::remove_dir_all(root);
+ server.join().unwrap();
 }

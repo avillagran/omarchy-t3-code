@@ -109,7 +109,7 @@ fn drafts_survive_restart_isolate_chats_and_preserve_uncertain_identity() {
         events.iter().find(|e| e["type"] == "draft-loaded").unwrap()["data"]["draft"]["text"],
         text
     );
-    std::fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]
@@ -118,7 +118,7 @@ fn queued_edit_survives_restart_with_original_draft_and_retry(){
  let request=uuid::Uuid::new_v4().to_string();let draft=json!({"text":"Edit queue","attachments":[{"name":"kept.txt","retained":true,"attachment":{"id":"file","type":"file","name":"kept.txt","mimeType":"text/plain","sizeBytes":2}}],"queueEdit":{"runId":"queued","messageId":"message","backup":{"text":"Normal unsent draft","attachments":[],"delivery":"auto","modelSelection":null}},"attempt":{"op":"queue","action":"edit","runId":"queued","thread":"one","environment":"fixture","requestId":request,"text":"Edit queue","attachments":[]}});
  let events=run(&root,&[json!({"op":"draft-save","key":"fixture/one","revision":"edit","draft":draft})]);assert!(events.iter().find(|e|e["type"]=="draft-saved").unwrap()["data"]["error"].is_null());
  let events=run(&root,&[json!({"op":"draft-load","key":"fixture/one"})]);let loaded=&events.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"];
- assert_eq!(loaded["text"],"Edit queue");assert_eq!(loaded["queueEdit"]["backup"]["text"],"Normal unsent draft");assert_eq!(loaded["attachments"][0]["retained"],true);assert_eq!(loaded["attempt"]["requestId"],request);assert_eq!(loaded["attempt"]["action"],"edit");std::fs::remove_dir_all(root).unwrap();
+ assert_eq!(loaded["text"],"Edit queue");assert_eq!(loaded["queueEdit"]["backup"]["text"],"Normal unsent draft");assert_eq!(loaded["attachments"][0]["retained"],true);assert_eq!(loaded["attempt"]["requestId"],request);assert_eq!(loaded["attempt"]["action"],"edit");
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn questionnaire_answers_and_stable_retry_survive_restart_without_touching_promp
  let saved=run(&root,&[json!({"op":"draft-save","key":"fixture/one","revision":"q","draft":{"text":"Do not lose this prompt","questionnaires":questions}})]);
  assert!(saved.iter().find(|e|e["type"]=="draft-saved").unwrap()["data"]["error"].is_null());
  let events=run(&root,&[json!({"op":"draft-load","key":"fixture/one"})]);let loaded=&events.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"];
- assert_eq!(loaded["text"],"Do not lose this prompt");assert_eq!(loaded["questionnaires"],questions);std::fs::remove_dir_all(root).unwrap();
+ assert_eq!(loaded["text"],"Do not lose this prompt");assert_eq!(loaded["questionnaires"],questions);
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn permission_selection_and_send_intent_survive_restart(){
   let root=std::env::temp_dir().join(format!("ot3-mode-draft-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&root).unwrap();
   let id=uuid::Uuid::new_v4().to_string();let draft=json!({"text":"Safe draft","runtimeMode":mode,"attachments":[],"attempt":{"op":"send","environment":"fixture","thread":"one","requestId":id,"text":"Safe draft","attachments":[],"runtimeMode":mode}});
   let saved=run(&root,&[json!({"op":"draft-save","key":"fixture/one","revision":"mode","draft":draft})]);assert!(saved.iter().find(|e|e["type"]=="draft-saved").unwrap()["data"]["error"].is_null());
-  let loaded=run(&root,&[json!({"op":"draft-load","key":"fixture/one"})]);let d=&loaded.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"];assert_eq!(d["runtimeMode"],mode);assert_eq!(d["attempt"]["runtimeMode"],mode);assert_eq!(d["attempt"]["requestId"],id);std::fs::remove_dir_all(root).unwrap();
+  let loaded=run(&root,&[json!({"op":"draft-load","key":"fixture/one"})]);let d=&loaded.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"];assert_eq!(d["runtimeMode"],mode);assert_eq!(d["attempt"]["runtimeMode"],mode);assert_eq!(d["attempt"]["requestId"],id);
  }
 }
 
@@ -146,5 +146,5 @@ fn plan_handoff_persists_native_payload_without_replacing_original_draft(){
  let root=std::env::temp_dir().join(format!("ot3-plan-draft-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&root).unwrap();
  let key="fixture/one";let id=uuid::Uuid::new_v4().to_string();let sid=uuid::Uuid::new_v4().to_string();let draft=json!({"text":"Keep my draft","attachments":[],"interactionMode":"plan","attempt":{"op":"manage","action":"new-thread","environment":"fixture","thread":"one","projectId":"p","requestId":id,"sendRequestId":sid,"text":"PLEASE IMPLEMENT THIS PLAN:\n# Plan\nWork","attachments":[],"interactionMode":"default","sourcePlanRef":{"threadId":"one","planId":"plan","private":"must-not-persist"},"planFollowUp":true,"planOriginKey":key,"navigateAfterSend":true}});
  let events=run(&root,&[json!({"op":"draft-save","key":key,"revision":"plan","draft":draft}),json!({"op":"draft-load","key":key})]);let saved=&events.iter().find(|e|e["type"]=="draft-loaded").unwrap()["data"]["draft"];assert_eq!(saved["text"],"Keep my draft");assert_eq!(saved["interactionMode"],"plan");assert_eq!(saved["attempt"]["text"],"PLEASE IMPLEMENT THIS PLAN:\n# Plan\nWork");assert_eq!(saved["attempt"]["sourcePlanRef"],json!({"threadId":"one","planId":"plan"}));assert_eq!(saved["attempt"]["navigateAfterSend"],true);
- let mut invalid=draft.clone();invalid["attempt"]["planFollowUp"]=json!(false);let events=run(&root,&[json!({"op":"draft-save","key":"fixture/two","revision":"bad","draft":invalid})]);assert!(events.iter().any(|e|e["type"]=="draft-saved"&&e["data"]["error"]=="invalid_draft"));std::fs::remove_dir_all(root).unwrap();
+ let mut invalid=draft.clone();invalid["attempt"]["planFollowUp"]=json!(false);let events=run(&root,&[json!({"op":"draft-save","key":"fixture/two","revision":"bad","draft":invalid})]);assert!(events.iter().any(|e|e["type"]=="draft-saved"&&e["data"]["error"]=="invalid_draft"));
 }

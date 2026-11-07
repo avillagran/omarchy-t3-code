@@ -272,7 +272,7 @@ impl Session {
             let _ = reader.join();
         }
         if let Some(path) = self.frames.lock().unwrap().take() {
-            let _ = fs::remove_dir_all(path);
+            let _ = crate::frame_files::reclaim(&path);
         }
         let result = if success {
             Ok(())
@@ -909,6 +909,6 @@ mod import_verification_tests {
             verify_import(&path, &checks).is_err(),
             "missing persisted row cannot acknowledge an in-memory event"
         );
-        fs::remove_dir_all(root).unwrap();
+
     }
 }

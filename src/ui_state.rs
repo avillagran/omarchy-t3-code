@@ -320,7 +320,7 @@ mod tests {
         );
         fs::write(path(), "corrupt").unwrap();
         assert_eq!(load(), json!({"schemaVersion":1,"positions":{}}));
-        fs::remove_dir_all(root).unwrap();
+
     }
     #[test]
     fn animation_preferences_keep_known_choices_only() {

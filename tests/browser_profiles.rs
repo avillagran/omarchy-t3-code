@@ -1,3 +1,5 @@
+#[path="support/retaining_fs.rs"]
+mod retaining_fs;
 use omarchy_t3_client::{browser_profiles as profiles, protocol, Environment};
 use serde_json::{json, Value};
 use std::{
@@ -179,7 +181,7 @@ fn native_cleanup_acknowledgements_precede_metadata_removal_and_preserve_concurr
     let a = Server::new("one");
     let b = Server::new("two");
     let envs = [a.env.clone(), b.env.clone()];
-    let (root, path) = fixture();
+    let (_root, path) = fixture();
     let view = profiles::read_at(&envs, &json!({"environments":["one","two"]}), &path).unwrap();
     assert_eq!(view["available"], true);
     assert!(!view.to_string().contains("PRIVATE"));
@@ -205,7 +207,7 @@ fn native_cleanup_acknowledgements_precede_metadata_removal_and_preserve_concurr
         "browser_profile_view_expired"
     );
     assert_eq!(a.clears().len(), 1);
-    fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn lost_or_failed_cleanup_preserves_profile_and_never_automatically_replays() {
@@ -215,7 +217,7 @@ fn lost_or_failed_cleanup_preserves_profile_and_never_automatically_replays() {
         let b = Server::new("two");
         *b.mode.lock().unwrap() = mode.into();
         let envs = [a.env.clone(), b.env.clone()];
-        let (root, path) = fixture();
+        let (_root, path) = fixture();
         let before = fs::read(&path).unwrap();
         let view = profiles::read_at(&envs, &json!({"environments":["one","two"]}), &path).unwrap();
         let request = action(&view, "remove");
@@ -237,7 +239,7 @@ fn lost_or_failed_cleanup_preserves_profile_and_never_automatically_replays() {
         );
         assert_eq!(a.clears().len(), 1);
         assert_eq!(b.clears().len(), 1);
-        fs::remove_dir_all(root).unwrap();
+
     }
 }
 #[test]
@@ -304,13 +306,13 @@ fn fresh_scope_roles_profile_identity_and_builtin_guards_fail_before_dispatch() 
         profiles::apply_at(&envs, &action(&view, "remove"), &path).unwrap_err(),
         "browser_profile_scope_changed"
     );
-    fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn rename_during_native_cleanup_preserves_metadata_and_reports_uncertain_completion() {
     let _test = TEST.lock().unwrap();
     let a = Server::new("one");
-    let (root, path) = fixture();
+    let (_root, path) = fixture();
     let view = profiles::read_at(
         std::slice::from_ref(&a.env),
         &json!({"environments":["one"]}),
@@ -332,7 +334,7 @@ fn rename_during_native_cleanup_preserves_metadata_and_reports_uncertain_complet
         serde_json::from_slice::<Value>(&fs::read(&path).unwrap()).unwrap(),
         changed
     );
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]
@@ -438,7 +440,7 @@ fn actual_worker_routes_global_profile_cleanup_to_native_api_and_updates_only_is
     assert_eq!(server.clears().len(), 1);
     drop(child);
     reader.join().unwrap();
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]
@@ -500,7 +502,7 @@ fn local_qt_cleanup_includes_non_server_environments_and_retains_metadata_on_par
         b.capable.store(false, Ordering::Relaxed);
         b.allowed.store(false, Ordering::Relaxed);
         let envs = [a.env.clone(), b.env.clone()];
-        let (root, path) = fixture();
+        let (_root, path) = fixture();
         let local = Local {
             events: Arc::new(Mutex::new(vec![])),
             fail,
@@ -537,7 +539,7 @@ fn local_qt_cleanup_includes_non_server_environments_and_retains_metadata_on_par
                 .unwrap_err(),
             "browser_profile_view_expired"
         );
-        fs::remove_dir_all(root).unwrap();
+
     }
 }
 
@@ -577,7 +579,9 @@ fn coordinator_clears_cold_local_partition_and_requires_matching_store_and_origi
     let env = server.env.clone();
     let resolved = env.clone();
     let (tx, rx) = std::sync::mpsc::channel();
-    let manager = browser_sessions::Manager::start(
+    let deletion=retaining_fs::RetainingFs::new(root.clone());
+    let remover=deletion.clone();
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |id| {
             if id == resolved.id {
@@ -590,6 +594,7 @@ fn coordinator_clears_cold_local_partition_and_requires_matching_store_and_origi
         move |v| {
             let _ = tx.send(v);
         },
+        move |path|remover.remove(path),
     );
     let scopes = [Scope {
         environment: "one".into(),
@@ -620,6 +625,8 @@ fn coordinator_clears_cold_local_partition_and_requires_matching_store_and_origi
         profiles::apply_with_at(&[env], &action(&view, "remove"), &path, Some(&manager)).unwrap();
     assert_eq!(result["state"], "complete");
     assert!(!partition.exists());
+    let receipts=deletion.receipts();assert_eq!(receipts.len(),1);
+    assert_eq!(fs::read_to_string(receipts[0].1.join("Cookies")).unwrap(),"synthetic cookie");
     assert!(other.join("keep").exists());
     let started = rx.recv_timeout(Duration::from_secs(2)).unwrap();
     assert_eq!(started["kind"], "cleanup-started");
@@ -628,7 +635,7 @@ fn coordinator_clears_cold_local_partition_and_requires_matching_store_and_origi
     assert_eq!(ended["cleared"], json!(["one"]));
     assert_eq!(server.clears().len(), 0);
     manager.shutdown().unwrap();
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]
@@ -656,7 +663,9 @@ fn import_reservation_flushes_holds_exclusive_partition_and_rolls_back_new_targe
     let origin = format!("{:x}", Sha256::digest(env.base_url.as_bytes()));
     let resolved = env.clone();
     let (tx, rx) = std::sync::mpsc::channel();
-    let manager = browser_sessions::Manager::start(
+    let deletion=retaining_fs::RetainingFs::new(root.clone());
+    let remover=deletion.clone();
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |id| {
             if id == resolved.id {
@@ -669,6 +678,7 @@ fn import_reservation_flushes_holds_exclusive_partition_and_rolls_back_new_targe
         move |v| {
             let _ = tx.send(v);
         },
+        move |path|remover.remove(path),
     );
     let scopes = [Scope {
         environment: "one".into(),
@@ -731,6 +741,8 @@ fn import_reservation_flushes_holds_exclusive_partition_and_rolls_back_new_targe
         !partition.exists(),
         "registration failure can clear new target with same held lease/lock"
     );
+    let receipts=deletion.receipts();assert_eq!(receipts.len(),1);
+    assert!(receipts[0].1.join("storage/Cookies").exists(),"the filesystem double retains imported cookies");
     drop(lease);
     let mut ended = false;
     while let Ok(v) = rx.recv_timeout(Duration::from_secs(2)) {
@@ -744,5 +756,5 @@ fn import_reservation_flushes_holds_exclusive_partition_and_rolls_back_new_targe
     assert!(ended);
     assert!(browser_runtime::lock_profile(&storage, "one", "import-new").is_ok());
     manager.shutdown().unwrap();
-    fs::remove_dir_all(root).unwrap();
+
 }

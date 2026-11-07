@@ -81,7 +81,7 @@ PYTHON
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
+
     }
 }
 fn scope() -> Value {

@@ -79,5 +79,5 @@ fn persistent_and_incognito_storage_are_private_and_do_not_reuse_document_or_ele
         .unwrap_err(),
         "browser_storage_unavailable"
     );
-    fs::remove_dir_all(root).unwrap();
+
 }

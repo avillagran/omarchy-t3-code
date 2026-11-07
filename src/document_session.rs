@@ -9,7 +9,7 @@ impl Manager{
  pub fn send(&self,mut input:Value){if matches!(text(&input,"op"),"document-open"|"document-close"){self.generation.fetch_add(1,Ordering::SeqCst);}input["generation"]=json!(self.generation.load(Ordering::SeqCst));let _=self.tx.send(input);}
 }
 struct Session{child:Child,stdin:ChildStdin,dir:std::path::PathBuf,id:String}
-impl Drop for Session{fn drop(&mut self){let _=writeln!(self.stdin,"{{\"type\":\"close\"}}");let until=std::time::Instant::now()+std::time::Duration::from_millis(1500);while std::time::Instant::now()<until{if self.child.try_wait().ok().flatten().is_some(){break}thread::sleep(std::time::Duration::from_millis(10));}if self.child.try_wait().ok().flatten().is_none(){unsafe{libc::kill(-(self.child.id() as i32),libc::SIGKILL);}let _=self.child.kill();}let _=self.child.wait();let _=fs::remove_dir_all(&self.dir);}}
+impl Drop for Session{fn drop(&mut self){let _=writeln!(self.stdin,"{{\"type\":\"close\"}}");let until=std::time::Instant::now()+std::time::Duration::from_millis(1500);while std::time::Instant::now()<until{if self.child.try_wait().ok().flatten().is_some(){break}thread::sleep(std::time::Duration::from_millis(10));}if self.child.try_wait().ok().flatten().is_none(){unsafe{libc::kill(-(self.child.id() as i32),libc::SIGKILL);}let _=self.child.kill();}let _=self.child.wait();let _=frame_files::reclaim(&self.dir);}}
 fn launch(exe:&std::path::Path,doc:&Value,id:&str,generation:u64,current:Arc<AtomicU64>)->Result<Session>{
  let root=exe.parent().ok_or("viewer_unavailable")?;
  let qml=doc["qmlPreview"]==true;

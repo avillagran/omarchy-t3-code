@@ -617,7 +617,7 @@ fn slow_native_install_does_not_block_draft_durability_or_device_reads() {
         .any(|v| v["tag"] == "device.list"));
     drop(child);
     reader.join().unwrap();
-    std::fs::remove_dir_all(root).unwrap();
+
 }
 
 /// Native T3 sends optional fields as null once device support is on

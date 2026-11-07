@@ -24,5 +24,5 @@ fn native_sources_and_creation_are_environment_owned_and_never_replayed_blindly(
  let create=json!({"requestId":uuid::Uuid::new_v4().to_string(),"action":"create-project","name":"Fresh"});let result=write::manage(&e,&create).unwrap();assert_eq!(result["projectId"],"fresh");assert_eq!(write::manage(&e,&create).unwrap(),result);
  for source in ["github","url"]{let clone=json!({"requestId":uuid::Uuid::new_v4().to_string(),"action":"clone-project","source":source,"repository":"owner/repo","workspaceRoot":"/remote/Work/repo","createdAt":"2026-10-16T12:00:00.000Z"});let result=write::manage(&e,&clone).unwrap();assert_eq!(write::manage(&e,&clone).unwrap(),result);}
  let registered=write::manage(&e,&json!({"action":"add-project","requestId":uuid::Uuid::new_v4().to_string(),"workspaceRoot":"/remote/Work/repo"})).unwrap();assert_eq!(registered["projectId"],"registered-project","projects.mutate returns Project.id, not projectId");
- remote.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+ remote.join().unwrap();
 }

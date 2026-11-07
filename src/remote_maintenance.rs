@@ -294,7 +294,7 @@ mod tests {
             );
             assert!(!path.join("maintenance-claims.json").exists());
         }
-        let _ = fs::remove_dir_all(path);
+
     }
     #[test]
     fn lost_reply_is_unknown_and_restart_cannot_repeat_exact_report() {
@@ -317,7 +317,7 @@ mod tests {
             restarted.confirm(&path, backend, &s, "session", "b", &next),
             Err("already_claimed")
         );
-        fs::remove_dir_all(path).unwrap();
+
     }
     #[test]
     fn context_order_proof_does_not_replay_a_legacy_claim_and_still_fences_stale_reports() {
@@ -394,7 +394,7 @@ mod tests {
             super::super::remote_surfaces::claim(&path, &hash(&json!(129))),
             Err("store_limit")
         );
-        fs::remove_dir_all(path).unwrap();
+
         fn large(_: &Value, _: &Value, _: &str) -> Result<Value> {
             Ok(json!({"data":"x".repeat(65536)}))
         }
@@ -459,6 +459,6 @@ mod tests {
             c.confirm(&path, backend, &s, "session", "b", &token),
             Err("confirmation_required")
         );
-        fs::remove_dir_all(path).unwrap();
+
     }
 }

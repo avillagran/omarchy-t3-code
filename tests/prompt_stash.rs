@@ -58,7 +58,7 @@ fn project_drawer_restores_across_threads_without_changing_target_configuration(
  let list=result(&root,&list_cmd);let entry=&list["result"]["entries"][0];assert_eq!(entry["prompt"],d["text"],"stash outlives original thread membership");
  let mut restore=command("restore","fixture/b",&loaded(&root,"fixture/b"));restore["id"]=entry["id"].clone();restore["keys"]=json!(["fixture/b"]);
  assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/b")["text"],d["text"]);
- std::fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn stale_locked_or_oversize_restore_never_clears_source(){
@@ -71,7 +71,7 @@ fn stale_locked_or_oversize_restore_never_clears_source(){
  let id=uuid::Uuid::new_v4().to_string();saved(&root,"fixture/b",json!({"text":"Pending","attempt":{"op":"send","environment":"fixture","thread":"b","requestId":id,"text":"Pending"}}));
  let list=result(&root,&command("list","fixture/a",&a));assert!(list["result"]["entries"].as_array().unwrap().iter().any(|e|e["sourceKey"]=="fixture/b"&&e["locked"]==true));
  let mut wrong=command("list","fixture/a",&a);wrong["keys"]=json!(["other/b","fixture/a"]);assert_eq!(result(&root,&wrong)["error"],"invalid_draft_key");
- std::fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn interrupted_take_recovers_durable_destination_and_removal(){
@@ -83,7 +83,7 @@ fn interrupted_take_recovers_durable_destination_and_removal(){
  // Simulate a process dying after writing the destination, before consuming the stash.
  saved(&root,"fixture/a",after.clone());let list=result(&root,&command("list","fixture/a",&after));assert!(list["error"].is_null(),"{list}");assert_eq!(loaded(&root,"fixture/a"),after);
  let doc:Value=serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();assert!(doc["pending"].is_null());assert_eq!(doc["entries"],json!([]));
- std::fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn unavailable_storage_keeps_both_prompts_and_retry_is_exact(){
@@ -99,7 +99,7 @@ fn unavailable_storage_keeps_both_prompts_and_retry_is_exact(){
  assert_eq!(raw.iter().find(|d|d["key"]=="fixture/a").unwrap()["draft"],a);assert_eq!(raw.iter().find(|d|d["key"]=="fixture/b").unwrap()["draft"],b);
  std::fs::remove_dir(&path).unwrap();
  assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/a")["text"],"Current\n\nSource");assert_eq!(loaded(&root,"fixture/b")["text"],"");
- assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/a")["text"],"Current\n\nSource");std::fs::remove_dir_all(root).unwrap();
+ assert!(result(&root,&restore)["error"].is_null());assert_eq!(loaded(&root,"fixture/a")["text"],"Current\n\nSource");
 }
 
 #[test]

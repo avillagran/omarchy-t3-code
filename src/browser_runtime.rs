@@ -62,6 +62,14 @@ pub fn clear_owned_storage(
     profile: &str,
     lock: &ProfileLock,
 ) -> Result<()> {
+    clear_owned_storage_with(storage,environment,profile,lock,|path|fs::remove_dir_all(path))
+}
+/// Explicit filesystem deletion boundary. Tests can quarantine the validated
+/// partition and verify namespace changes without deleting its retained data.
+pub fn clear_owned_storage_with(
+    storage:&Path,environment:&str,profile:&str,lock:&ProfileLock,
+    remove:impl FnOnce(&Path)->std::io::Result<()>,
+)->Result<()> {
     use std::os::unix::fs::MetadataExt;
     let identity = partition(environment, profile)?;
     let name = text(&identity, "partition").trim_start_matches("persist:");
@@ -96,7 +104,7 @@ pub fn clear_owned_storage(
             _ => return Err("browser_profile_storage_unsafe".into()),
         }
     }
-    fs::remove_dir_all(path).map_err(|_| "browser_profile_clear_failed".into())
+    remove(&path).map_err(|_| "browser_profile_clear_failed".into())
 }
 pub fn partition(environment: &str, profile: &str) -> Result<Value> {
     if !crate::valid_id(environment) {
@@ -198,7 +206,7 @@ pub fn renderer() -> Result<()> {
     let frames = cache.join(uuid::Uuid::new_v4().to_string());
     let payload = prepare(payload, &storage, &frames)?;
     let result = run(&payload);
-    let _ = fs::remove_dir_all(frames);
+    let _ = crate::frame_files::reclaim(&frames);
     result
 }
 fn run(payload: &Value) -> Result<()> {

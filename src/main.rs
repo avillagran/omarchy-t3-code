@@ -1900,6 +1900,6 @@ mod notification_tests {
         let image = image::open(lines[position + 1]).unwrap();
         assert_eq!((image.width(), image.height()), (96, 96));
         assert!(args.contains("Input required"));
-        fs::remove_dir_all(root).unwrap();
+
     }
 }

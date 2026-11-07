@@ -236,7 +236,7 @@ impl Frames {
 }
 impl Drop for Frames {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.dir);
+        let _ = crate::frame_files::reclaim(&self.dir);
     }
 }
 

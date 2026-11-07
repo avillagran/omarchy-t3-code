@@ -178,7 +178,7 @@ fn run(
             text(&config, "scratchWorkspaceRoot"),
         )
     })?;
-    emit(&target, json!({"kind":"context","cwd":context["cwd"]}));
+    emit(target, json!({"kind":"context","cwd":context["cwd"]}));
     let mut payload =
         protocol::terminal::attach(&target.thread, &target.terminal, &context, size.0, size.1)?;
     payload["restartIfNotRunning"] = json!(restart);

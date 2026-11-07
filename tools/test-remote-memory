@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import contextlib
 """Isolated maintenance HTTP acceptance; no live host, credentials or phone."""
 import http.client
 import http.server
@@ -46,7 +47,7 @@ class Auth(http.server.BaseHTTPRequestHandler):
         pass
 
 
-with tempfile.TemporaryDirectory(prefix="remote-memory-", dir="/var/tmp") as temp:
+with contextlib.nullcontext(tempfile.mkdtemp(prefix="remote-memory-", dir="/var/tmp")) as temp:
     env = dict(os.environ, HOME=temp, XDG_STATE_HOME=temp + "/state", XDG_CONFIG_HOME=temp + "/config")
     state = Path(temp) / "state/omarchy-t3-code"
     state.mkdir(parents=True)

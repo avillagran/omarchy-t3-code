@@ -352,8 +352,9 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
     pool.close_profile("fixture", "default").unwrap();
     let lock =
         omarchy_t3_client::browser_runtime::lock_profile(&storage, "fixture", "default").unwrap();
-    omarchy_t3_client::browser_runtime::clear_owned_storage(&storage, "fixture", "default", &lock)
-        .unwrap();
+    let retained=root.join("retained-cleared-profile");
+    omarchy_t3_client::browser_runtime::clear_owned_storage_with(&storage,"fixture","default",&lock,|path|fs::rename(path,&retained)).unwrap();
+    assert!(retained.is_dir(),"the deletion double retains the old browser data");
     drop(lock);
     let cleared = snapshot(&site, "cleared", "/after-clear", "default");
     pool.show(
@@ -441,7 +442,7 @@ fn real_guest_pool_preserves_tabs_scopes_input_and_flushes_owned_processes() {
         0,
         "all private frame directories removed on shutdown"
     );
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]
@@ -707,5 +708,5 @@ fn private_import_channel_initializes_cold_profile_acknowledges_and_persists_wit
         "session cookie is cleared before first navigation of a new owner"
     );
     drop(restarted);
-    fs::remove_dir_all(root).unwrap();
+
 }

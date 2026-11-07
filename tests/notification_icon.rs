@@ -69,5 +69,5 @@ fn native_favicon_is_signed_cached_and_badged_with_safe_fallback() {
         .pixels()
         .any(|p| p[1] as u16 > p[0] as u16 * 2 && p[3] > 0));
     assert_eq!(custom.get_pixel(76, 64).0, [34, 160, 88, 255]);
-    fs::remove_dir_all(root).unwrap();
+
 }

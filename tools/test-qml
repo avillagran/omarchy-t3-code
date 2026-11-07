@@ -18,7 +18,7 @@ fi
 # QML previews wait out the renderer's 4 s endless-loop watchdog.
 task_timeout=12;case "$task_template" in qml-preview|mosaic-motion|mosaic-sidebar|brand-mark) task_timeout=24;; esac
 task_root=$(mktemp -d /var/tmp/t3-qml-test-XXXXXX)
-trap 'rm -rf -- "$task_root"' EXIT
+# Disposable test containers own these retained fixture artifacts.
 for task_dir in Commons Ui plugins services; do ln -s "/usr/share/omarchy/shell/$task_dir" "$task_root/$task_dir"; done
 ln -s "$task_repo" "$task_root/UnderTest"
 { printf '%s\n' '//@ pragma OmarchyLoadPatch' '//@ pragma RespectSystemStyle'; cat "$task_repo/tests/qml/$task_template.qml"; } > "$task_root/shell.qml"

@@ -135,5 +135,5 @@ fn canonical_encrypted_crud_and_native_pairing_preserve_other_routes() {
     assert!(read_catalog().unwrap()["githubRoutingPermissions"].as_array().is_some_and(|rows|!rows.is_empty()));
     assert!(!fs::read_to_string(&path).unwrap().contains("githubRoutingPermissions"));
     assert_eq!(write::execute(&json!({"op":"connections-manage","action":"github-update","revision":old_catalog_revision,"environmentId":"existing","permission":"off"})).unwrap_err(), "catalog_changed_reload");
-    fs::remove_dir_all(root).unwrap();
+
 }

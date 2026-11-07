@@ -12,7 +12,7 @@ fn native_question_response_retry_and_dismiss_are_exact(){
   ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":"1","exit":{"_tag":"Success","value":{"sequence":n}}}).to_string().into())).unwrap();
  }});
  let mut input=json!({"op":"question","action":"respond","thread":"chat","runtimeRequestId":opaque_request_id(),"requestId":uuid::Uuid::new_v4().to_string(),"answers":{"when":" before ","providers":["codex","other"],"details":""}});
- write::dispatch(&e,&input).unwrap();write::dispatch(&e,&input).unwrap();input["answers"]["when"]=json!("changed");assert_eq!(write::dispatch(&e,&input).unwrap_err(),"retry_payload_changed");input["requestId"]=json!(uuid::Uuid::new_v4().to_string());input["action"]=json!("dismiss");write::dispatch(&e,&input).unwrap();server.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+ write::dispatch(&e,&input).unwrap();write::dispatch(&e,&input).unwrap();input["answers"]["when"]=json!("changed");assert_eq!(write::dispatch(&e,&input).unwrap_err(),"retry_payload_changed");input["requestId"]=json!(uuid::Uuid::new_v4().to_string());input["action"]=json!("dismiss");write::dispatch(&e,&input).unwrap();server.join().unwrap();
 }
 #[test]
 fn pending_question_reaches_the_normalized_chat(){

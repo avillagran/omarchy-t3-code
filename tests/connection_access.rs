@@ -54,5 +54,5 @@ fn local_management_upgrades_and_reuses_the_current_client_credential(){
  let (mut e,server)=fixture_token(replies,&token);e.id="local".into();e.token_file=root.join("local.write.token");
  assert!(connection_access::execute(&e,&json!({"action":"read"})).is_ok());assert_eq!(std::fs::read_to_string(&e.token_file).unwrap(),token);assert_eq!(std::fs::metadata(&e.token_file).unwrap().mode()&0o777,0o600);
  let args=std::fs::read_to_string(root.join("arguments")).unwrap();assert!(args.contains("access:write")&&args.contains("relay:write"));std::fs::remove_file(&cli).unwrap();
- assert!(connection_access::execute(&e,&json!({"action":"read"})).is_ok(),"fresh management grant must be reused, not reissued on every refresh");server.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+ assert!(connection_access::execute(&e,&json!({"action":"read"})).is_ok(),"fresh management grant must be reused, not reissued on every refresh");server.join().unwrap();
 }

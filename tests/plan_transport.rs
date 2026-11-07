@@ -25,5 +25,5 @@ fn native_preparation_and_durable_mode_before_send_preserve_exact_retry_payload(
  write::dispatch(&env,&input).unwrap();write::dispatch(&env,&input).unwrap();server.join().unwrap();
  let calls=seen.lock().unwrap();assert_eq!(calls.len(),5);assert_eq!(calls[1]["payload"]["type"],"thread.interaction-mode.set");assert_eq!(calls[1]["payload"]["interactionMode"],"default");assert_eq!(calls[2]["payload"]["type"],"message.dispatch");assert_eq!(calls[2]["payload"]["sourcePlanRef"],prepared["sourcePlanRef"]);assert_eq!(calls[1],calls[3]);assert_eq!(calls[2],calls[4]);
  let before=calls.len();drop(calls);let mut changed=input.clone();changed["interactionMode"]=json!("plan");assert_eq!(write::dispatch(&env,&changed).unwrap_err(),"retry_payload_changed");assert_eq!(seen.lock().unwrap().len(),before);
- let mut invalid=input.clone();invalid["requestId"]=json!(uuid::Uuid::new_v4().to_string());invalid["interactionMode"]=json!("future");assert_eq!(write::dispatch(&env,&invalid).unwrap_err(),"invalid_interaction_mode");fs::remove_dir_all(root).unwrap();
+ let mut invalid=input.clone();invalid["requestId"]=json!(uuid::Uuid::new_v4().to_string());invalid["interactionMode"]=json!("future");assert_eq!(write::dispatch(&env,&invalid).unwrap_err(),"invalid_interaction_mode");
 }

@@ -26,7 +26,9 @@ if(name==='build-client'){const dir=path.dirname(process.argv[1]);fs.mkdirSync(p
 if(name==='omarchy-t3-client'){if(args[0]==='backend-status')console.log(JSON.stringify({owner:process.env.INSTALL_TEST_OWNER||'stopped'}));else console.log(JSON.stringify({status:'starting'}));}
 `;
 for(const name of ['systemctl','pacman','sudo','git','cargo','rustup','omarchy','omarchy-shell','hyprctl','build-client','omarchy-t3-client','ot3','o3','curl','ldd','uname'])fs.writeFileSync(path.join(bin,name),'#!'+process.execPath+'\n'+body,{mode:0o700});
-const base={...process.env,HOME:home,XDG_CONFIG_HOME:path.join(home,'.config'),PATH:bin+':'+process.env.PATH,T3CODE_HOME:path.join(home,'.t3'),INSTALL_TEST_ROOT:root,INSTALL_TEST_REPO:repo};
+fs.mkdirSync(path.join(root,'tmp'));
+fs.writeFileSync(path.join(bin,'rm'),'#!'+process.execPath+'\n'+fs.readFileSync(path.join(repo,'tools/fixtures/retaining-rm.cjs'),'utf8'),{mode:0o700});
+const base={...process.env,TMPDIR:path.join(root,'tmp'),HOME:home,XDG_CONFIG_HOME:path.join(home,'.config'),PATH:bin+':'+process.env.PATH,T3CODE_HOME:path.join(home,'.t3'),INSTALL_TEST_ROOT:root,INSTALL_TEST_REPO:repo};
 function run(extra={}){fs.writeFileSync(log,'');const result=spawnSync('bash',[path.join(repo,'install.sh')],{env:{...base,...extra},encoding:'utf8'});return {result,calls:fs.readFileSync(log,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)}}
 function called(calls,name,...parts){return calls.some(c=>c.name===name&&parts.every(p=>c.args.includes(p)))}
 try{
@@ -100,4 +102,8 @@ try{
  ({result,calls}=run({OT3_RELEASE:'v0.3.1'}));assert.equal(result.status,0,result.stderr);assert(!called(calls,'curl','https://api.github.com/repos/avillagran/omarchy-t3-code/releases?per_page=50'));
  ({result,calls}=run({OT3_RELEASE:'main;rm'}));assert.notEqual(result.status,0);assert(result.stderr.includes('OT3_RELEASE must be a release tag'));
  console.log('INSTALLER_PASS: dependencies, verified prebuilt install/enable and explicit source build, checksum/revision/library rejection, headless start, server choice (T3 kept, O3 Server by default without a terminal, pinned O3 Server install/update/restart, foreign unit and registry preserved, hash refusal), O3 release lookup and OT3_RELEASE, bundled OmaBridge pinned by hash, optional and restarted when published, preserved GUI server, repeat-safe binding/backup, rewritten-history migration and dirty-checkout refusal; no real system changes');
-}finally{console.log('Installer fixture directory: '+root)}
+}finally{
+ const receipts=fs.existsSync(path.join(root,'filesystem-delete-log'))?fs.readFileSync(path.join(root,'filesystem-delete-log'),'utf8').trim().split('\n').filter(Boolean).map(JSON.parse):[];
+ assert(receipts.length>0,'production installer cleanup must reach the recording filesystem boundary');
+ for(const receipt of receipts){assert(!fs.existsSync(receipt.target));assert(fs.statSync(receipt.destination).isDirectory());}
+console.log('Installer fixture directory: '+root)}

@@ -423,9 +423,12 @@ mod tests {
         fs::write(&path, "x".repeat(65537)).unwrap();
         assert!(statuses(&path).is_err());
         fs::remove_file(&path).unwrap();
-        std::os::unix::fs::symlink("/dev/zero", &path).unwrap();
+        let target=dir.join("owned-valid-ledger.json");
+        fs::write(&target,"{}").unwrap();
+        assert!(statuses(&target).is_ok());
+        std::os::unix::fs::symlink(&target, &path).unwrap();
         assert!(statuses(&path).is_err());
-        fs::remove_dir_all(dir).unwrap();
+
     }
     #[test]
     fn host_sync_status_preserves_native_outcomes_time_and_counts_without_backups() {

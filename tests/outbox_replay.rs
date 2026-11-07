@@ -104,7 +104,7 @@ fn outbox_commands_keep_canonical_payload_and_immutable_file_bytes_on_retry() {
         assert_eq!(next(), first, "a retry resends the same bytes");
         assert_eq!(std::fs::read(outbox(&root, &id)).unwrap(), stored);
     }
-    std::fs::remove_dir_all(root).unwrap();
+
 }
 
 /// Commands ot3 builds outside the outbox paths above: parsing them into `Command`

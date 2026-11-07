@@ -15,5 +15,5 @@ fn suggestions_use_server_workspace_and_cache_without_dispatching(){
   }
  });
  let input=json!({"thread":"chat","instanceId":"codex","kind":"path","query":""});let paths=suggestions::query(&e,&input).unwrap();assert_eq!(paths["items"][0]["insert"],"[My File.md](docs/My%20File.md) ");assert_eq!(paths["items"][1]["description"],"directory");
- let mut input=input;input["kind"]=json!("skill");let skills=suggestions::query(&e,&input).unwrap();assert_eq!(skills["items"][0]["insert"],"$review ");assert!(!skills.to_string().contains("private-path"));input["kind"]=json!("command");input["query"]=json!("compact");assert_eq!(suggestions::query(&e,&input).unwrap()["items"][0]["insert"],"/compact ");server.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+ let mut input=input;input["kind"]=json!("skill");let skills=suggestions::query(&e,&input).unwrap();assert_eq!(skills["items"][0]["insert"],"$review ");assert!(!skills.to_string().contains("private-path"));input["kind"]=json!("command");input["query"]=json!("compact");assert_eq!(suggestions::query(&e,&input).unwrap()["items"][0]["insert"],"/compact ");server.join().unwrap();
 }

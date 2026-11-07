@@ -64,7 +64,7 @@ fn native_approval_validates_once_and_replays_exactly_after_resolution() {
         "retry_payload_changed"
     );
     server.join().unwrap();
-    std::fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn approvals_reach_chat_and_disappear_on_live_resolution() {

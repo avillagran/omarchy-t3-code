@@ -1,3 +1,5 @@
+#[path="support/retaining_fs.rs"]
+mod retaining_fs;
 use omarchy_t3_client::{
     browser_cleanup::{Lease, Runtime, Scope},
     browser_cookies::ImportedCookie,
@@ -154,7 +156,7 @@ impl Data {
 }
 impl Drop for Data {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.root).unwrap();
+
     }
 }
 fn settings() -> Value {
@@ -429,7 +431,7 @@ fn real_qt_destination_imports_synthetic_firefox_and_registers_only_after_verifi
 fn actual_watch_routes_confirmed_import_to_qt_and_does_not_replay_consumed_view() {
     use std::{
         io::{BufRead, BufReader},
-        os::unix::fs::{symlink, PermissionsExt},
+        os::unix::fs::PermissionsExt,
         process::{Command, Stdio},
         time::Instant,
     };
@@ -441,12 +443,8 @@ fn actual_watch_routes_confirmed_import_to_qt_and_does_not_replay_consumed_view(
     fs::create_dir_all(&bin).unwrap();
     let executable = bin.join("omarchy-t3-client");
     fs::copy(env!("CARGO_BIN_EXE_omarchy-t3-client"), &executable).unwrap();
-    symlink(
-        repo.join("bin/libt3-browser.so"),
-        bin.join("libt3-browser.so"),
-    )
-    .unwrap();
-    symlink(repo.join("ui"), d.root.join("ui")).unwrap();
+    fs::copy(repo.join("bin/libt3-browser.so"),bin.join("libt3-browser.so")).unwrap();
+    copy_fixture_resources(&repo.join("ui"),&d.root.join("ui"));
     let token = d.root.join("token");
     fs::write(&token, "synthetic").unwrap();
     fs::set_permissions(&token, fs::Permissions::from_mode(0o600)).unwrap();
@@ -675,11 +673,14 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
     let config =
         browser_guest::Config::isolated(d.root.join("missing/bin/client"), &d.root).unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let deletion=retaining_fs::RetainingFs::new(d.root.clone());
+    let remover=deletion.clone();
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path|remover.remove(path),
     );
     assert!(manager.available());
     assert!(!manager.can_import());
@@ -710,6 +711,7 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
     )
     .unwrap();
     assert_eq!(result["state"], "complete");
+    assert!(deletion.receipts().is_empty(),"an absent partition requires no filesystem deletion");
     manager.shutdown().unwrap();
 }
 
@@ -833,4 +835,15 @@ fn expired_source_cookies_are_skipped_without_touching_target_or_metadata() {
     assert_eq!(result["skippedDomains"], json!(["example.test"]));
     assert!(!dest.events.lock().unwrap().contains(&"write".into()));
     assert_eq!(fs::read(&d.path).unwrap(), before);
+}
+
+// Copy read-only runtime resources into the fixture; never create host-pointing links.
+fn copy_fixture_resources(source:&std::path::Path,target:&std::path::Path){
+    fs::create_dir_all(target).unwrap();
+    for entry in fs::read_dir(source).unwrap(){
+        let entry=entry.unwrap();let kind=entry.file_type().unwrap();
+        assert!(!kind.is_symlink(),"fixture resources must not follow symbolic links");
+        if kind.is_dir(){copy_fixture_resources(&entry.path(),&target.join(entry.file_name()))}
+        else if kind.is_file(){fs::copy(entry.path(),target.join(entry.file_name())).unwrap();}
+    }
 }

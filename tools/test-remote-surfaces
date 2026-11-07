@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import contextlib
 """Isolated HTTP/CLI acceptance: synthetic auth, private state, no bridge or phone."""
 import base64
 import hashlib
@@ -51,7 +52,7 @@ def png():
             + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\xff")) + chunk(b"IEND", b""))
 
 
-with tempfile.TemporaryDirectory(prefix="remote-surfaces-http-") as temp:
+with contextlib.nullcontext(tempfile.mkdtemp(prefix="remote-surfaces-http-")) as temp:
     env = dict(os.environ, HOME=temp, XDG_STATE_HOME=temp + "/state", XDG_CONFIG_HOME=temp + "/config")
     state = Path(temp) / "state/omarchy-t3-code"
     state.mkdir(parents=True)

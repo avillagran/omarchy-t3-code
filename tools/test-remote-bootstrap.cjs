@@ -23,6 +23,6 @@ try{
  if(fs.existsSync(running))fs.unlinkSync(running);if(fs.existsSync(unit))fs.unlinkSync(unit);fs.unlinkSync(path.join(base,'userdata/server-runtime.json'));fs.mkdirSync(path.join(base,'ssh-launch/abc'),{recursive:true});fs.writeFileSync(path.join(base,'ssh-launch/abc/port'),'8643\n');
  r=run();assert.equal(r.status,0,r.stderr);assert(!r.log.includes('service install')&&!r.log.includes('--user start'),'no second server');assert(r.log.includes('wait-ready 8643'));assert(r.stdout.startsWith('{"port":8643}\nT3_AUTH\n'),r.stdout);
  fs.writeFileSync(path.join(base,'ssh-launch/abc/port'),'8643; rm -rf /');r=run();assert(r.log.includes('service install'),'malformed launcher ports are ignored');
- fs.rmSync(path.join(base,'ssh-launch'),{recursive:true});fs.writeFileSync(path.join(base,'userdata/server-runtime.json'),'{}');
+ fs.unlinkSync(path.join(base,'ssh-launch/abc/port'));fs.writeFileSync(path.join(base,'userdata/server-runtime.json'),'{}');
  console.log('REMOTE_BOOTSTRAP_PASS: running server reused; stopped native service started; absent service installed; readiness checked; profile/environment mismatch and readiness/start failures rejected; local-bin CLI fallback; T3 Desktop launcher port reused; per-device session subject with safe fallbacks');
-}finally{fs.rmSync(root,{recursive:true,force:true})}
+}finally{}

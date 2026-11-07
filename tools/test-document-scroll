@@ -22,5 +22,5 @@ p.stdout.on('data',v=>{out+=v;let n;while((n=out.indexOf('\n'))>=0){const line=o
  await sleep(700);const idle=frames;await sleep(500);assert.equal(frames,idle,'idle renderer must stop capturing');
  send({type:'close'});await sleep(300);assert(exited,'renderer must close');
  console.log('DOCUMENT_SCROLL_PASS: real wheel, changing frames, bounded idle and close');
- }catch(e){console.error(e);process.exitCode=1}finally{if(!exited)p.kill();fs.rmSync(dir,{recursive:true,force:true})}})();
+ }catch(e){console.error(e);process.exitCode=1}finally{if(!exited)p.kill();}})();
 NODE

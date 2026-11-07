@@ -23,7 +23,9 @@ fn cleanup_requires_the_exact_live_partition_lock_and_rejects_symlink_storage() 
     assert!(path.exists());
     let held = lock_profile(&storage, "local", "work").unwrap();
     assert!(matches!(lock_profile(&storage,"local","work"),Err(e) if e=="browser_profile_busy"));
-    clear_owned_storage(&storage, "local", "work", &held).unwrap();
+    let retained=root.join("retained-cleared-partition");
+    omarchy_t3_client::browser_runtime::clear_owned_storage_with(&storage,"local","work",&held,|selected|{assert_eq!(selected,path);fs::rename(selected,&retained)}).unwrap();
+    assert_eq!(fs::read_to_string(retained.join("site-data")).unwrap(),"fixture");
     assert!(!path.exists());
     drop(held);
     let held = lock_profile(&storage, "local", "work").unwrap();
@@ -38,5 +40,5 @@ fn cleanup_requires_the_exact_live_partition_lock_and_rejects_symlink_storage() 
     assert!(outside.join("keep").exists());
     drop(held);
     drop(other);
-    fs::remove_dir_all(root).unwrap();
+
 }

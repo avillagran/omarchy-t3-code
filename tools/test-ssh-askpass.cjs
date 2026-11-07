@@ -12,4 +12,4 @@ try {
  fs.writeFileSync(fake,'#!/bin/sh\nexit 1\n',{mode:0o755});
  const cancel=cp.spawnSync('bash',[helper,'Password:'],{env,encoding:'utf8'});assert.equal(cancel.status,1);assert.equal(cancel.stdout,'');
  console.log('SSH askpass checks passed: masked entry, escaped prompts and cancellation; no credential persistence.');
-} finally {fs.rmSync(dir,{recursive:true,force:true});}
+} finally {}

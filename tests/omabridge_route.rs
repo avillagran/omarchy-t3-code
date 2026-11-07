@@ -96,5 +96,5 @@ fn bearer_connections_prefer_verified_peers_and_fall_back_only_when_allowed(){
  std::env::set_var("OT3_FAKE_FORWARD","ok");
  fs::write(bridge::config_path(),r#"{"version":1,"routes":{"remote":{"peer":"nope"}}}"#).unwrap();
  assert_eq!(environments().unwrap()[0].base_url,"http://127.0.0.1:9");assert_eq!(bridge::execute(&json!({"action":"read"})).unwrap()["error"],"invalid_omabridge_routes");
- fs::remove_dir_all(root).unwrap();
+
 }

@@ -92,6 +92,6 @@ fn lifecycle_result_does_not_wait_for_remote_snapshot() {
     let _ = child.wait();
     let _ = release_tx.send(());
     let _ = server.join();
-    fs::remove_dir_all(root).unwrap();
+
     assert!(result.is_ok(), "{result:?}");
 }

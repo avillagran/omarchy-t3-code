@@ -244,6 +244,6 @@ mod tests {
         let used = disk_usage(&root.join("target"));
         assert!((64 * 1024..1024 * 1024).contains(&used), "{used}");
         assert!(status(&json!({}))["freeBytes"].as_u64().is_some());
-        std::fs::remove_dir_all(root).unwrap();
+
     }
 }

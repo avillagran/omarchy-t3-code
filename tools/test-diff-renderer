@@ -3,7 +3,7 @@
 set -euo pipefail
 cd -- "$(dirname -- "$0")/.."
 task_dir=$(mktemp -d /tmp/ot3-diff-test-XXXXXXXX)
-trap 'rm -rf -- "$task_dir"' EXIT
+# Disposable test containers own these retained fixture artifacts.
 OT3_REVIEW_DOCUMENT_CAPTURE="$task_dir/document.json" OT3_CHECKPOINT_DOCUMENT_CAPTURE="$task_dir/checkpoint.json" cargo test --release --quiet --test review_document
 node - "$task_dir" <<'JS'
 const fs=require('fs'),{spawn}=require('child_process'),assert=require('node:assert/strict'),crypto=require('crypto');

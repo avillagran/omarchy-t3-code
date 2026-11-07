@@ -562,6 +562,14 @@ pub fn inspect(path: &Path, expected: Option<&str>) -> Value {
 /// Clone into a missing or empty folder, or reuse a clone of the same remote.
 /// An occupied folder is never touched.
 pub fn clone(url: &str, path: &Path, ssh: Option<&str>) -> Result<Value> {
+    clone_with_io(url,path,ssh,|target|run_git(None,&["clone","--",url,target],ssh,300),|target|fs::remove_dir_all(target))
+}
+/// Explicit transport/filesystem boundaries preserve rollback ownership while
+/// tests retain partial clones in a quarantine instead of deleting their trees.
+pub fn clone_with_io(
+    url:&str,path:&Path,ssh:Option<&str>,
+    run:impl FnOnce(&str)->GitOutput,remove:impl FnOnce(&Path)->std::io::Result<()>,
+)->Result<Value> {
     let found = inspect(path, Some(url));
     match text(&found, "state") {
         "clone" => return Ok(json!({"reused":true})),
@@ -572,11 +580,11 @@ pub fn clone(url: &str, path: &Path, ssh: Option<&str>) -> Result<Value> {
         fs::create_dir_all(parent).map_err(|_| "vault_path_unwritable")?;
     }
     let target = path.to_string_lossy().to_string();
-    let out = run_git(None, &["clone", "--", url, &target], ssh, 300);
+    let out = run(&target);
     if !out.ok {
         // A partial clone into a folder that did not exist is ours to remove.
         if text(&found, "state") == "missing" {
-            let _ = fs::remove_dir_all(path);
+            let _ = remove(path);
         }
         return Err(classify(&out.stderr).into());
     }
@@ -588,53 +596,49 @@ pub fn clone(url: &str, path: &Path, ssh: Option<&str>) -> Result<Value> {
 fn rebasing(path: &Path) -> bool {
     path.join(".git/rebase-merge").exists() || path.join(".git/rebase-apply").exists()
 }
+/// Filesystem/command boundary shared by native recovery and retaining models.
+pub trait RebaseIo {
+    fn rebasing(&self)->bool;
+    fn run(&self,args:&[&str],seconds:u32)->GitOutput;
+    fn replace_managed(&self,file:&str,contents:&str)->Result<()>;
+}
+struct NativeRebase<'a>{path:&'a Path}
+impl RebaseIo for NativeRebase<'_> {
+    fn rebasing(&self)->bool{rebasing(self.path)}
+    fn run(&self,args:&[&str],seconds:u32)->GitOutput{run_git(Some(self.path),args,None,seconds)}
+    fn replace_managed(&self,file:&str,contents:&str)->Result<()>{
+        let target=self.path.join(file);confined(self.path,&target)?;replace(&target,contents)
+    }
+}
 /// `pull --rebase`; a stopped rebase is aborted so local commits stay intact.
-pub fn pull(path: &Path) -> Result<Value> {
-    if rebasing(path) {
-        return Err("vault_conflict".into());
-    }
-    let out = run_git(Some(path), &["pull", "--rebase", "--autostash", "--quiet"], None, 120);
-    if out.ok {
-        return Ok(json!({"pulled":true}));
-    }
-    if rebasing(path) {
-        if resolve_managed(path) {
-            return Ok(json!({"pulled":true,"merged":true}));
-        }
-        run_git(Some(path), &["rebase", "--abort"], None, 30);
-        return Err("vault_conflict".into());
+pub fn pull(path: &Path) -> Result<Value> {pull_with_io(&NativeRebase{path})}
+pub fn pull_with_io(io:&impl RebaseIo)->Result<Value>{
+    if io.rebasing(){return Err("vault_conflict".into())}
+    let out=io.run(&["pull","--rebase","--autostash","--quiet"],120);
+    if out.ok{return Ok(json!({"pulled":true}))}
+    if io.rebasing(){
+        if resolve_managed_with(io){return Ok(json!({"pulled":true,"merged":true}))}
+        io.run(&["rebase","--abort"],30);
+        return Err("vault_conflict".into())
     }
     Err(classify(&out.stderr).into())
 }
-/// A rebase stopped only on ot3-managed rows (Threads.md, the device table) is
-/// finished by merging rows from both sides; anything else is left to the person.
-fn resolve_managed(path: &Path) -> bool {
+/// The same merge loop runs against native Git or an explicit command model.
+fn resolve_managed_with(io:&impl RebaseIo)->bool{
     for _ in 0..20 {
-        if !rebasing(path) {
-            return true;
-        }
-        let conflicted = run_git(Some(path), &["diff", "--name-only", "--diff-filter=U"], None, 30).stdout;
-        let files: Vec<&str> = conflicted.lines().filter(|l| !l.is_empty()).collect();
-        if files.is_empty() || !files.iter().all(|f| managed(f)) {
-            return false;
-        }
+        if !io.rebasing(){return true}
+        let conflicted=io.run(&["diff","--name-only","--diff-filter=U"],30).stdout;
+        let files:Vec<&str>=conflicted.lines().filter(|l|!l.is_empty()).collect();
+        if files.is_empty()||!files.iter().all(|f|managed(f)){return false}
         for file in &files {
-            // In a rebase, stage 2 is the remote side and stage 3 this computer's commit.
-            let theirs = run_git(Some(path), &["show", &format!(":2:{file}")], None, 30);
-            let ours = run_git(Some(path), &["show", &format!(":3:{file}")], None, 30);
-            if !theirs.ok || !ours.ok {
-                return false;
-            }
-            let Some(merged) = merge_managed(file, &format!("{}\n", theirs.stdout), &format!("{}\n", ours.stdout)) else { return false };
-            let target = path.join(file);
-            if confined(path, &target).is_err() || replace(&target, &merged).is_err() || !run_git(Some(path), &["add", "--", file], None, 30).ok {
-                return false;
-            }
+            let theirs=io.run(&["show",&format!(":2:{file}")],30);
+            let ours=io.run(&["show",&format!(":3:{file}")],30);
+            if !theirs.ok||!ours.ok{return false}
+            let Some(merged)=merge_managed(file,&format!("{}\n",theirs.stdout),&format!("{}\n",ours.stdout)) else{return false};
+            if io.replace_managed(file,&merged).is_err()||!io.run(&["add","--",file],30).ok{return false}
         }
-        let next = run_git(Some(path), &["-c", "core.editor=true", "rebase", "--continue"], None, 60);
-        if !next.ok && !rebasing(path) {
-            return false;
-        }
+        let next=io.run(&["-c","core.editor=true","rebase","--continue"],60);
+        if !next.ok&&!io.rebasing(){return false}
     }
     false
 }
@@ -765,6 +769,10 @@ pub fn record_threads(vault: &Path, slug: &str, rows: &[ThreadRow]) -> Result<bo
 
 /// Commit whatever changed, rebase on the remote and push.
 pub fn commit_push(path: &Path, message: &str) -> Result<Value> {
+    commit_push_with_pull(path,message,pull)
+}
+/// Keep commit/status/push behavior while injecting the recovery transaction.
+pub fn commit_push_with_pull(path:&Path,message:&str,pull_repo:impl FnOnce(&Path)->Result<Value>)->Result<Value>{
     if rebasing(path) {
         return Err("vault_conflict".into());
     }
@@ -784,7 +792,7 @@ pub fn commit_push(path: &Path, message: &str) -> Result<Value> {
     if ahead == 0 {
         return Ok(json!({"committed":committed,"pushed":false}));
     }
-    pull(path)?;
+    pull_repo(path)?;
     let out = run_git(Some(path), &["push", "--quiet"], None, 120);
     if !out.ok {
         return Err(classify(&out.stderr).into());
@@ -1579,6 +1587,13 @@ pub fn read(paths: &Paths) -> Value {
 /// or reuse, install instructions, register the device, save. Each step reports
 /// its own state; a failed step stops the wizard without undoing earlier ones.
 pub fn setup(paths: &Paths, input: &Value) -> Result<Value> {
+    setup_with_clone(paths,input,clone)
+}
+/// Inject the clone/rollback boundary for filesystem-model tests.
+pub fn setup_with_clone(
+    paths:&Paths,input:&Value,
+    clone_vault:impl FnOnce(&str,&Path,Option<&str>)->Result<Value>,
+)->Result<Value> {
     let path = paths.expand(text(input, "path").trim()).display().to_string();
     if !valid_local_path(paths, &path) {
         return Err("vault_invalid_path".into());
@@ -1611,7 +1626,7 @@ pub fn setup(paths: &Paths, input: &Value) -> Result<Value> {
         return Ok(json!({"steps":steps,"complete":false}));
     }
     steps.push(json!({"id":"access","state":"done"}));
-    match clone(&url, &vault, ssh) {
+    match clone_vault(&url, &vault, ssh) {
         Ok(v) => steps.push(json!({"id":"clone","state":"done","reused":v["reused"]})),
         Err(e) => {
             fail(&mut steps, "clone", e);

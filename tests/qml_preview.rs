@@ -91,7 +91,7 @@ fn landlock_keeps_reads_writes_launches_and_tcp_inside_the_allowed_paths(){
  let listener=std::net::TcpListener::bind("127.0.0.1:0").unwrap();let port=listener.local_addr().unwrap().port();
  let net=sandboxed_shell(&format!("(exec 3<>/dev/tcp/127.0.0.1/{port}) 2>/dev/null && echo CONNECTED || echo refused"),None);
  let out=String::from_utf8_lossy(&net.stdout);assert!(out.contains("refused")&&!out.contains("CONNECTED"),"{out}");
- let _=std::fs::remove_dir_all(outside);let _=std::fs::remove_dir_all(frames);
+
 }
 
 /// The real renderer (needs `tools/build-document-viewer` and a built client in
@@ -114,10 +114,10 @@ fn renderer_cannot_read_files_outside_the_sandbox(){
   std::thread::spawn(move||{for line in BufReader::new(stdout).lines().map_while(Result::ok){let _=tx.send(line);}});
   let mut height=0;let mut framed=false;let until=Instant::now()+Duration::from_secs(15);
   while Instant::now()<until&&!framed{if let Ok(line)=rx.recv_timeout(Duration::from_millis(200)){let v:Value=serde_json::from_str(&line).unwrap_or(Value::Null);if let Some(h)=v["contentHeight"].as_u64(){height=height.max(h)}framed|=v["frame"].is_string();}}
-  let _=writeln!(stdin,"{{\"type\":\"close\"}}");drop(stdin);let _=child.wait();let _=std::fs::remove_dir_all(frames);
+  let _=writeln!(stdin,"{{\"type\":\"close\"}}");drop(stdin);let _=child.wait();
   assert!(framed,"renderer produced no frame (sandboxed: {sandboxed})");height
  };
- let open=measure(false);let sandboxed=measure(true);let _=std::fs::remove_dir_all(outside);
+ let open=measure(false);let sandboxed=measure(true);
  assert!(open>=300,"without the sandbox the probe image loads ({open})");
  assert!(sandboxed<200,"the sandboxed renderer must not read the file ({sandboxed})");
 }

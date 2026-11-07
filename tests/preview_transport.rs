@@ -874,7 +874,7 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
         thread::sleep(Duration::from_millis(10));
     }
     assert_eq!(fs::read_dir(frames).unwrap().count(), 0);
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]
@@ -1058,5 +1058,5 @@ fn actual_worker_observes_read_only_serializes_lifecycle_and_interrupts_when_hid
     let _ = child.0.kill();
     let _ = child.0.wait();
     reader.join().unwrap();
-    fs::remove_dir_all(root).unwrap();
+
 }

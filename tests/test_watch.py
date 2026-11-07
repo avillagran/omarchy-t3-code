@@ -1,3 +1,4 @@
+import contextlib
 """Production Rust worker integration: visibility, filtering and transcript cache."""
 import json, os, queue, subprocess, tempfile, threading, unittest
 from pathlib import Path
@@ -19,7 +20,7 @@ class WatchTest(unittest.TestCase):
                 else:data={'projection':{'messages':[{'id':'m1','role':'assistant','text':'**Hello**','createdAt':'2026-10-15T04:00:00Z'}]},'hasMoreHistory':True}
                 body=json.dumps(data).encode(); self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
         server=HTTPServer(('127.0.0.1',0),Handler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
-        with tempfile.TemporaryDirectory() as tmp:
+        with contextlib.nullcontext(tempfile.mkdtemp()) as tmp:
             root=Path(tmp);token=root/'token';token.write_text('synthetic-test-token');token.chmod(0o600)
             conf=root/'.config/omarchy-t3-code';conf.mkdir(parents=True)
             (conf/'environments.json').write_text(json.dumps({'environments':[{'id':'fixture','name':'Fixture','base_url':f'http://127.0.0.1:{server.server_port}','token_file':str(token)}]}))

@@ -91,5 +91,5 @@ fn git_failures_with_auth_words_are_rejections_not_missing_permissions() {
     assert_eq!(denied, "write_not_authorized: [source-control:write] The authenticated token is missing required scope: source-control:write.");
     assert_eq!(protocol::errors::required_scope(&denied), Some("source-control:write"));
     assert_eq!(protocol::errors::message(&denied), Some("The authenticated token is missing required scope: source-control:write."));
-    fs::remove_dir_all(root).unwrap();
+
 }
