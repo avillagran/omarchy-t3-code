@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Run exact native Electron services only with a private X11 clipboard/display."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import tempfile
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime',type=Path,required=True)
+parser.add_argument('--services',type=Path,required=True)
+options=parser.parse_args()
+root=Path(__file__).resolve().parent.parent
+runtime=options.runtime.resolve();services=options.services.resolve()
+manifest=json.loads((runtime.parent/'artifact.json').read_text())
+if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167':raise SystemExit('Verified exact official runtime required')
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+out=Path(tempfile.mkdtemp(prefix='native-electron-owned-',dir='/home/node/BuildCache/o3-desktop-next'));print('Native Electron evidence: '+str(out),flush=True)
+app=out/'app';app.mkdir()
+for name,path in {'native-electron-proof.cjs':root/'tools/fixtures/native-electron-proof.cjs','electron-sandbox-preload.cjs':root/'tools/fixtures/electron-sandbox-preload.cjs','native-electron-services.cjs':services}.items():(app/name).write_bytes(path.read_bytes())
+(out/'clipboard-owner.cpp').write_bytes((root/'tools/fixtures/electron-clipboard-owner.cpp').read_bytes())
+(out/'app-artifacts.json').write_text(json.dumps({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in app.iterdir()},indent=2)+'\n')
+(out/'runtime-artifact.json').write_text(json.dumps(manifest,indent=2)+'\n')
+flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Gui'],text=True))
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+ fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
+ with (out/'compile.log').open('w') as log:subprocess.run(['c++','-std=c++17','-fPIC',str(out/'clipboard-owner.cpp'),'-o',str(out/'clipboard-owner'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+(out/'clipboard-owner').chmod(0o500)
+(out/'clipboard-owner.json').write_text(json.dumps({'sha256':hashlib.sha256((out/'clipboard-owner').read_bytes()).hexdigest()})+'\n')
+args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--pids-limit=256','--memory=2g','--tmpfs','/tmp:rw,exec,size=512m,mode=1777','--tmpfs','/run:rw,size=32m','-v',str(out)+':/proof:ro','-v',str(runtime)+':/electron:ro','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','docker.io/library/archlinux:latest','python3','-c',r'''
+import hashlib,json,os,pathlib,subprocess,time
+os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700);os.mkdir('/tmp/.X11-unix',0o1777)
+manifest=json.loads(pathlib.Path('/proof/runtime-artifact.json').read_text())
+for row in manifest['files']:
+ path=pathlib.Path('/electron')/row['path'];assert path.is_file() and not path.is_symlink()
+ with path.open('rb') as file:assert hashlib.file_digest(file,'sha256').hexdigest()==row['sha256']
+display=subprocess.Popen(['Xvfb',':9','-screen','0','1280x1024x24','-nolisten','tcp','-extension','GLX'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+try:
+ for _ in range(100):
+  if display.poll() is not None:raise RuntimeError('Private X11 display exited')
+  if pathlib.Path('/tmp/.X11-unix/X9').is_socket():break
+  time.sleep(.02)
+ else:raise RuntimeError('Private X11 display unavailable')
+ env=dict(os.environ,DISPLAY=':9',QT_QPA_PLATFORM='xcb')
+ result=subprocess.run(['/electron/electron','--disable-setuid-sandbox','--disable-gpu','--ozone-platform=x11','/proof/app/native-electron-proof.cjs'],env=env,capture_output=True,text=True,timeout=40)
+ print(result.stdout,end='');print(result.stderr,end='')
+ assert result.returncode==0,result.returncode
+ assert 'NATIVE_ELECTRON_PROOF ' in result.stdout
+finally:display.terminate();display.wait(timeout=5)
+''']
+with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=55)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+raise SystemExit(result.returncode)
