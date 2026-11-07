@@ -36,7 +36,14 @@ function command(packet){
   case 'choose-cleanup':exact(packet,[...base,'enabled']);if(typeof packet.enabled!=='boolean')throw Error('Invalid cleanup choice');consent.chooseTranscriptCleanup(packet.enabled);result=snapshot();break;
   case 'pending-cloud':exact(packet,[...base,'destinationJson']);result={acknowledgement:opaque(acknowledgements,consent.pendingCloudAudioChoice(innerString(packet.destinationJson))),...snapshot()};break;
   case 'acknowledge':exact(packet,[...base,'acknowledgement']);if(typeof packet.acknowledgement!=='string'||!acknowledgements.has(packet.acknowledgement))throw Error('Unknown acknowledgement');acknowledgements.get(packet.acknowledgement)();acknowledgements.delete(packet.acknowledgement);result=snapshot();break;
-  case 'bind':exact(packet,[...base,'grantIdJson']);{const id=innerString(packet.grantIdJson);if(typeof id!=='string')throw Error('Invalid grant identity');result={binding:opaque(bindings,consent.bindAudioGrant(id))};}break;
+  case 'bind':exact(packet,[...base,'grantIdJson']);{
+   const id=innerString(packet.grantIdJson);if(typeof id!=='string')throw Error('Invalid grant identity');
+   const check=consent.bindAudioGrant(id),choice=consent.useAudioChoice();
+   // The recording derives its destination from this consent realm. A stale
+   // UI destination is never an independent authority to select an endpoint.
+   const destination=choice&&choice!=='off'&&choice.id===id&&check()?choice.destination:null;
+   result={binding:opaque(bindings,check),destinationJson:JSON.stringify(destination)};
+  }break;
   case 'check':exact(packet,[...base,'binding']);result={allowed:typeof packet.binding==='string'&&bindings.has(packet.binding)&&bindings.get(packet.binding)()===true};break;
   case 'release':exact(packet,[...base,'binding']);bindings.delete(packet.binding);break;
   case 'forget-ack':exact(packet,[...base,'acknowledgement']);acknowledgements.delete(packet.acknowledgement);break;

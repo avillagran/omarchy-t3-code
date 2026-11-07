@@ -67,6 +67,13 @@ fn main() {
     assert_eq!(first.snapshot().unwrap().choice_json, "null");
     let selected = choice(first.choose_audio(&environment).unwrap());
     let guard = first.bind_audio(&selected["id"].to_string()).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(guard.destination_json()).unwrap(),
+        selected["destination"]
+    );
+    let denied = first.bind_audio("\"not-the-current-grant\"").unwrap();
+    assert_eq!(denied.destination_json(), "null");
+    assert!(!denied.is_current());
     assert!(guard.is_current());
     let fresh = choice(second.choose_audio(&environment).unwrap());
     assert_ne!(fresh["id"], selected["id"]);
@@ -109,6 +116,7 @@ fn main() {
     let raw = first.snapshot().unwrap().choice_json;
     assert!(raw.contains(r"\ud800") && raw.contains(r"\udfff"));
     let legacy = first.bind_audio(r#""legacy\ud800""#).unwrap();
+    assert!(legacy.destination_json().contains(r"\udfff"));
     assert!(legacy.is_current());
     fs::rename(namespace, "/state/retained-grants").unwrap();
     fs::DirBuilder::new().mode(0o700).create(namespace).unwrap();

@@ -58,6 +58,14 @@ new original identity; a late acknowledgement can acknowledge only its own
 pending choice. Dropping an acknowledgement forgets its closure without
 promoting a pending grant. Cleanup uses the independent original key.
 
+Binding also returns the destination read inside that same consent realm after
+matching the requested identity and checking its original guard. Rust retains
+that inner JSON with the opaque binding. A denied or stale identity returns a
+null destination. A consumer must select its environment/provider/model from
+this bound destination and check the guard again before sending; independently
+cached UI preferences cannot supply an endpoint. Native UTF16 remains intact:
+an unrepresentable environment is unavailable, never a fallback server.
+
 Rust keeps inner grant/destination JSON as a string. This preserves raw native
 UTF16 across serde's UTF8 boundary for Qt to decode later. A dead helper,
 uncertain protocol, replaced namespace or failed storage read denies access.
@@ -84,6 +92,10 @@ MCP or CLI action.
   within one shared five-second budget, and invalid-addon startup.
   Build and strict all-target Clippy pass. All runtime execution is in a private
   rootless container; there is no host test execution.
+  The destination-binding follow-up passes the seven scenarios and strict
+  all-target checks with receipt `voice-consent-process-nc742q1b`: the selected
+  destination matches, a foreign identity returns null and denies, and raw UTF16
+  remains unchanged. This receipt includes the final three consumer files.
 - Effect's exact MIT notice is included in the compiled application catalog,
   now 273 entries, alongside the original T3 notice. The retained Electron graph
   continues to carry its original notices.

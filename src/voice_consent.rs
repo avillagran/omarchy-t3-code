@@ -99,6 +99,7 @@ pub struct ConsentOwner(Arc<Mutex<Worker>>);
 pub struct AudioGrantGuard {
     owner: Weak<Mutex<Worker>>,
     binding: String,
+    destination_json: String,
 }
 pub struct CloudAcknowledgement {
     owner: Weak<Mutex<Worker>>,
@@ -234,6 +235,10 @@ impl ConsentOwner {
         Ok(AudioGrantGuard {
             owner: Arc::downgrade(&self.0),
             binding: opaque(&result, "binding")?,
+            destination_json: result["destinationJson"]
+                .as_str()
+                .ok_or_else(failed)?
+                .into(),
         })
     }
     /// A monotonic notification hint. Authority always comes from a fresh check.
@@ -252,6 +257,12 @@ impl ConsentOwner {
     }
 }
 impl AudioGrantGuard {
+    /// Destination supplied by the same consent realm as this binding, never
+    /// copied independently from ordinary preferences or an old UI snapshot.
+    /// A null destination is unavailable and cannot select a transport.
+    pub fn destination_json(&self) -> &str {
+        &self.destination_json
+    }
     /// Invoke immediately before each SDK audio operation, together with current
     /// server authority. A dead helper, replaced namespace or read failure denies.
     pub fn is_current(&self) -> bool {
