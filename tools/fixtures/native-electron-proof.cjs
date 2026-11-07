@@ -76,9 +76,13 @@ app.whenReady().then(async()=>{
  if(!visibleHost)assert.equal(copied,false,'native DevTools copy context is not silently promoted to a human gesture');
  if(wayland){if(visibleHost)await seatFocus(writeCheck.window.getTitle());await clipboard.writeText('owned platform clipboard control');mainCalibration.ownRead=await clipboard.readText();const backend=await producerCommand({op:'read'});mainCalibration.qtReceived=backend.text;mainCalibration.qtFocused=backend.active;if(!calibration)assert.equal(backend.text,'owned platform clipboard control','main-process OS clipboard calibration with focused Qt receiver');}
  if(visibleHost){await seatFocus(writeCheck.window.getTitle());await writeCheck.window.webContents.executeJavaScript("document.querySelector('webview').focus()");}
+ if(selectionProxy){await seatFocus('Owned clipboard platform proxy');await proxyCommand('human-copy');}
  writeCheck.contents.focus();await new Promise(resolve=>setTimeout(resolve,60));writeCheck.contents.copy();
+ if(selectionProxy){let published;for(let i=0;i<80;i++){published=await proxyCommand('stats');if(published.publications)break;await new Promise(resolve=>setTimeout(resolve,10))}assert(published.publications>0,'actual admitted copy publishes a Qt offer');assert(published.egressReads<=5&&published.egressBytes<=16*1024*1024,'only bounded current native-copy data is exposed during Qt offer publication');console.log('NATIVE_COPY_PUBLICATION '+JSON.stringify(published));assert.equal(published.dataReads,0,'human copy does not read the system clipboard');}
+
  let copiedText;for(let count=0;count<(calibration?1:100);count++){copiedText=(await producerCommand({op:'read'})).text;if(copiedText==='owned sanitized gesture copy')break;await new Promise(resolve=>setTimeout(resolve,30))}
- if(!calibration)assert.equal(copiedText,'owned sanitized gesture copy','separate application receives actual explicit-human-copy clipboard bytes');assert.equal(dialogs.length,1,'explicit user copy adds no read prompt');
+ if(!calibration||selectionProxy)assert.equal(copiedText,'owned sanitized gesture copy','separate application receives actual explicit-human-copy clipboard bytes');assert.equal(dialogs.length,1,'explicit user copy adds no read prompt');
+ assert.equal(await evaluate(writeCheck,denied),true,'human copy does not grant programmatic clipboard read');assert.equal(dialogs.length,1);
  const one=await tab('one','127.0.0.1');
  await producerCommand({op:'text',text:'owned external clipboard one'});mainCalibration.externalUnfocusedMainRead=await clipboard.readText();if(visibleHost)await seatFocus(one.window.getTitle());mainCalibration.externalMainRead=await clipboard.readText();
  assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2);
