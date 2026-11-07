@@ -8,11 +8,11 @@ p.add_argument('--reference',required=True,type=pathlib.Path,help='Retained orig
 p.add_argument('--expect-reference-difference',action='store_true',help='Record the demonstrated Node/renderer difference instead of accepting Node as the renderer oracle')
 a=p.parse_args();root=pathlib.Path(__file__).resolve().parent.parent
 assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
-runtime=a.runtime.resolve();manifest=json.loads((runtime.parent/'artifact.json').read_text())
+runtime=a.runtime.resolve();manifest=json.loads((root/'ui/voice/electron-runtime-44.10.1-linux-x64.json').read_text())
 assert manifest['version']=='44.10.1'and manifest['archiveSha256']=='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
 out=pathlib.Path(tempfile.mkdtemp(prefix='native-pcm-renderer-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));out.chmod(0o700)
 source=out/'source';source.mkdir(mode=0o700);state=out/'state';state.mkdir(mode=0o700)
-files=['tools/test-native-pcm-renderer','tools/fixtures/pcm-renderer-main.cjs','tools/fixtures/pcm-renderer-preload.cjs','tools/fixtures/pcm-renderer.py','tools/fixtures/pcm-capture-driver.js','ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json'];fence={}
+files=['tools/test-native-pcm-renderer','tools/fixtures/pcm-renderer-main.cjs','tools/fixtures/pcm-renderer-preload.cjs','tools/fixtures/pcm-renderer.py','tools/fixtures/pcm-capture-driver.js','ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json','ui/voice/electron-runtime-44.10.1-linux-x64.json'];fence={}
 for name in files:
  data=(root/name).read_bytes();fence[name]=hashlib.sha256(data).hexdigest();target=source/pathlib.Path(name).name;target.write_bytes(data);target.chmod(0o400)
 meta=json.loads((root/'ui/js/NativePcmCapture.sources.json').read_text())
