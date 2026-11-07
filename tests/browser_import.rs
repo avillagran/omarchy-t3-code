@@ -400,7 +400,8 @@ fn real_qt_destination_imports_synthetic_firefox_and_registers_only_after_verifi
     .unwrap();
     let env = s.env.clone();
     let (tx, rx) = std::sync::mpsc::channel();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |id| {
             if id == env.id {
@@ -413,6 +414,7 @@ fn real_qt_destination_imports_synthetic_firefox_and_registers_only_after_verifi
         move |v| {
             let _ = tx.send(v);
         },
+        move |path| remover.remove(path),
     );
     let v = view(&s, &d, &manager);
     let req = request(&v, "new");
@@ -552,11 +554,13 @@ fn empty_native_import_neither_creates_qt_storage_nor_registers_metadata() {
     )
     .unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path| remover.remove(path),
     );
     let before = fs::read(&d.path).unwrap();
     let v = view(&s, &d, &manager);
@@ -596,11 +600,13 @@ fn existing_qt_profile_keeps_other_cookies_and_does_not_rewrite_metadata() {
     )
     .unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path| remover.remove(path),
     );
     let scopes = [Scope {
         environment: "fixture".into(),
@@ -769,11 +775,13 @@ fn imported_firefox_cookie_is_usable_by_real_qt_http_after_registration() {
     )
     .unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config.clone(),
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path| remover.remove(path),
     );
     let v = view(&s, &d, &manager);
     let req = request(&v, "new");

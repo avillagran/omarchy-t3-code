@@ -1,4 +1,4 @@
-use omarchy_t3_client::browser_runtime::{clear_owned_storage, lock_profile, partition};
+use omarchy_t3_client::browser_runtime::{clear_owned_storage_with, lock_profile, partition};
 use std::{fs, os::unix::fs::symlink};
 #[test]
 fn cleanup_requires_the_exact_live_partition_lock_and_rejects_symlink_storage() {
@@ -17,7 +17,7 @@ fn cleanup_requires_the_exact_live_partition_lock_and_rejects_symlink_storage() 
     fs::write(path.join("site-data"), "fixture").unwrap();
     let other = lock_profile(&storage, "local", "default").unwrap();
     assert_eq!(
-        clear_owned_storage(&storage, "local", "work", &other).unwrap_err(),
+        clear_owned_storage_with(&storage, "local", "work", &other, |_| panic!("invalid lock must not reach the removal adapter")).unwrap_err(),
         "browser_profile_storage_unsafe"
     );
     assert!(path.exists());
@@ -34,7 +34,7 @@ fn cleanup_requires_the_exact_live_partition_lock_and_rejects_symlink_storage() 
     fs::write(outside.join("keep"), "keep").unwrap();
     symlink(&outside, &path).unwrap();
     assert_eq!(
-        clear_owned_storage(&storage, "local", "work", &held).unwrap_err(),
+        clear_owned_storage_with(&storage, "local", "work", &held, |_| panic!("symlink storage must not reach the removal adapter")).unwrap_err(),
         "browser_profile_storage_unsafe"
     );
     assert!(outside.join("keep").exists());

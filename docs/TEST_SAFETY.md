@@ -48,3 +48,24 @@ Qt inputs and immutable artifacts are retained. It performs no tree deletion,
 uses no symlink fixtures, and launches only its explicitly frozen private server
 and Qt binaries. Shutdown addresses only those owned child processes and socket
 endpoints. This focused admission does not clear the full runtime-audit marker.
+
+## Browser transitive audit follow-up
+
+The real Qt coordinator fixture in `tests/preview_transport.rs` previously
+constructed the production `Manager::start` adapter and later called
+`cleanup.clear`. That path could reach physical recursive profile deletion.
+It now uses the existing explicit retaining adapter: the active renderer must
+still stop and flush, the selected partition must leave its original namespace,
+one quarantine receipt must exist, and the retained partition must remain a
+directory before the profile is reopened. This is orchestration and namespace
+coverage, not physical deletion coverage.
+
+All four real-manager import fixtures now inject the same retaining boundary,
+including possible import rollback. Invalid-lock and symlink-storage checks
+in `browser_profile_storage` pass an adapter that fails immediately if
+admission incorrectly reaches removal. These checks cannot fall through to the
+production recursive remover when an admission regression occurs.
+
+This follow-up does not clear `TEST_RUNTIME_AUDIT_PENDING`. In particular,
+whole-CLI test inputs, external command implementations and other transitive
+helpers still need review before broad collection is authorized.

@@ -1,3 +1,5 @@
+#[path = "support/retaining_fs.rs"]
+mod retaining_fs;
 use omarchy_t3_client::{preview_transport as preview, protocol, Environment};
 use serde_json::{json, Value};
 use std::{
@@ -533,7 +535,9 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
     let storage = config.storage_root();
     let e = server.env.clone();
     let (tx, rx) = mpsc::channel();
-    let manager = browser_sessions::Manager::start(
+    let deletion = retaining_fs::RetainingFs::new(root.clone());
+    let remover = deletion.clone();
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |id| {
             if id == e.id {
@@ -546,6 +550,7 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
         move |v| {
             let _ = tx.send(v);
         },
+        move |path| remover.remove(path),
     );
     let show = json!({"op":"browser-show","requestId":"surface-one","environment":"fixture","thread":"thread","tabId":"a","originKey":read["originKey"],"serverEpoch":"one","width":640,"height":400,"url":"file:///forged","profileId":"forged"});
     manager.request(show.clone(), true);
@@ -814,6 +819,9 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
         }
     }
     cleanup.clear("fixture").unwrap();
+    let receipts = deletion.receipts();
+    assert_eq!(receipts.len(), 1, "one physical removal is represented by one retained namespace change");
+    assert!(receipts[0].1.is_dir(), "profile contents remain available for review");
     let partition = omarchy_t3_client::browser_runtime::partition("fixture", "default").unwrap();
     assert!(
         !storage
@@ -824,7 +832,7 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
                     .trim_start_matches("persist:")
             )
             .exists(),
-        "active Qt profile flushed and removed under reservation"
+        "active Qt profile flushed and quarantined under reservation"
     );
     drop(cleanup);
     let mut reopened = show.clone();
