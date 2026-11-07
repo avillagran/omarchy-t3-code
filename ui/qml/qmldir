@@ -177,3 +177,5 @@ T3TerminalScrollbar 1.0 T3TerminalScrollbar.qml
 T3BrowserPermission 1.0 T3BrowserPermission.qml
 T3ModelFallback 1.0 T3ModelFallback.qml
 T3BrowserClipboardPlatform 1.0 T3BrowserClipboardPlatform.qml
+
+T3BrowserInputMethod 1.0 T3BrowserInputMethod.qml

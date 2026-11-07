@@ -9,8 +9,9 @@ exec 9>/var/tmp/o3-build/o3-parity-compile.lock
 flock 9
 task_moc="$(pkg-config --variable=libexecdir Qt6Core)/moc"
 "$task_moc" native/browser/clipboardplatform.h -o "$task_build_dir/moc_clipboardplatform.cpp"
+"$task_moc" native/browser/browserinputitem.h -o "$task_build_dir/moc_browserinputitem.cpp"
 "$task_moc" native/browser/plugin.cpp -o "$task_build_dir/plugin.moc"
-c++ -std=c++17 -Os -Wall -Wextra -Werror -fPIC -fvisibility=hidden -shared native/browser/clipboardplatform.cpp native/browser/clipboardcohort.cpp native/browser/plugin.cpp "$task_build_dir/moc_clipboardplatform.cpp" -Inative/browser -I"$task_build_dir" -o "$task_build_dir/libo3browserplatform.so" $(pkg-config --cflags --libs Qt6Qml Qt6Gui wayland-client xcb xcb-xfixes xcb-res)
+c++ -std=c++17 -Os -Wall -Wextra -Werror -fPIC -fvisibility=hidden -shared native/browser/clipboardplatform.cpp native/browser/clipboardcohort.cpp native/browser/plugin.cpp "$task_build_dir/moc_clipboardplatform.cpp" "$task_build_dir/moc_browserinputitem.cpp" -Inative/browser -I"$task_build_dir" -o "$task_build_dir/libo3browserplatform.so" $(pkg-config --cflags --libs Qt6Quick Qt6Qml Qt6Gui wayland-client xcb xcb-xfixes xcb-res)
 mkdir -p bin/qml/O3/Browser
 cp "$task_build_dir/libo3browserplatform.so" bin/qml/O3/Browser/libo3browserplatform.so.next
 mv bin/qml/O3/Browser/libo3browserplatform.so.next bin/qml/O3/Browser/libo3browserplatform.so

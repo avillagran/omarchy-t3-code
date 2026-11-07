@@ -31,9 +31,10 @@ async function capture(){
   const file='frame-'+(++revision%2)+'.png',target=path.join(data.frameDirectory,file),temporary=target+'.next';
   const fd=fs.openSync(temporary,fs.constants.O_WRONLY|fs.constants.O_CREAT|fs.constants.O_EXCL|fs.constants.O_NOFOLLOW,0o600);
   try{fs.writeFileSync(fd,png)}finally{fs.closeSync(fd)}fs.renameSync(temporary,target);
-  const size={width:png.readUInt32BE(16),height:png.readUInt32BE(20)};ui({type:'frame',file,revision,width:size.width,height:size.height,surfaceId:view,tabKey:identity});
+  const size={width:png.readUInt32BE(16),height:png.readUInt32BE(20)};ui({type:'frame',file,revision,width:size.width,height:size.height,surfaceId:view,tabKey:identity,nativeInput:!!tab.contents.focusedFrame});
  }catch(error){trace('frame-error-'+String(error?.name||'error')+'-'+String(error?.code||'none'));if(!closing&&privateAlive&&!tab.closed&&selected===identity&&surfaceId===view)shutdown('browser_frame_failed')}finally{capturing=false;if(dirty){dirty=false;setImmediate(capture)}}
 }
+function selectNativeHost(tab){if(data.ownedNativeHost!==true)return;trace('native-host-before-focusedFrame-'+Number(!!tab.contents.focusedFrame));for(const item of tabs.values()){if(item===tab){item.window.show();item.window.focus();item.contents.focus()}else item.window.hide()}trace('native-host-visible-'+Number(tab.window.isVisible())+'-focusedFrame-'+Number(!!tab.contents.focusedFrame))}
 function matches(tab,frame){return !tab.closed&&frame.instance===tab.instance&&frame.threadId===tab.key.threadId&&frame.tabId===tab.key.tabId}
 async function retire(tab,reason){if(tab.closed)return;if(tab.instance)privatePost(tab,'retired',{...(tab.lease?{lease:tab.lease}:{}),code:reason});tab.closed=true;tab.guard?.close();services?.detach(tab.key);for(const [id,dialog]of dialogs)if(dialog.tab===tab){dialogs.delete(id);dialog.reject(Error('native_dialog_unavailable'));ui({type:'permission-cancelled',requestId:id})}if(!tab.window.isDestroyed())tab.window.destroy()}
 async function shutdown(reason){trace(reason);if(closing)return;closing=true;for(const tab of tabs.values())await retire(tab,reason);pipe.destroy();for(const request of dialogs.values())request.reject(Error('native_dialog_unavailable'));dialogs.clear();try{await services?.close()}finally{app.exit(reason==='browser_closed'?0:1)}}
@@ -84,7 +85,7 @@ async function open(command){trace('open');
  const key=keyOf(command);let tab=tabs.get(key);if(tab&&!tab.closed)return tab;if(tab?.closed)tabs.delete(key);if(tabs.size>=MAX_TABS)throw Error('browser_tab_limit');
  const partition=await services.getPartition(data.environmentId,data.persistent,data.profileId);
  const nativeSession=await services.getSession(data.environmentId,data.persistent,data.profileId);
- const window=new BrowserWindow({show:false,useContentSize:true,width:data.width,height:data.height,webPreferences:{offscreen:true,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ const window=new BrowserWindow({show:false,useContentSize:true,width:data.width,height:data.height,webPreferences:{offscreen:data.ownedNativeHost!==true,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});
  const parent=window.webContents;
  parent.on('will-attach-webview',(event,preferences,parameters)=>{if(parameters.partition!==partition||parameters.src!=='about:blank'){event.preventDefault();return}preferences.sandbox=true;preferences.nodeIntegration=false;preferences.nodeIntegrationInSubFrames=false;preferences.contextIsolation=false;preferences.disableHtmlFullscreenWindowResize=true;delete preferences.preload});
  const attached=new Promise(resolve=>parent.once('did-attach-webview',(_event,contents)=>resolve(contents)));
@@ -105,19 +106,19 @@ async function control(command){
  if(closing)return;
  if(command.type==='close')return shutdown('browser_closed');
  if(command.type==='permission-decision'){const pending=dialogs.get(command.requestId);if(pending){dialogs.delete(command.requestId);command.remember===true?pending.resolve({response:command.allow===true?0:1,checkboxChecked:false}):pending.reject(Error('native_dialog_unavailable'))}return}
- if(command.type==='deactivate'){selected='';surfaceId='';for(const tab of tabs.values())services.setShown(tab.key,false);return}
+ if(command.type==='deactivate'){selected='';surfaceId='';for(const tab of tabs.values()){services.setShown(tab.key,false);if(data.ownedNativeHost===true)tab.window.hide()}return}
  if(command.type==='resize'){if(Number.isInteger(command.width)&&Number.isInteger(command.height)&&command.width>=240&&command.height>=240&&command.width<=3840&&command.height<=3840&&command.width*command.height<=3840*2160){data.width=command.width;data.height=command.height;for(const item of tabs.values())if(!item.closed)item.window.setContentSize(command.width,command.height);capture()}return}
  const human=['press','release','move','double','wheel','key','keyup','text','composition'].includes(command.type);
  let tab=tabs.get(human?selected:keyOf(command));
  if(command.type==='open'){
   tab=await open(command);if(command.automation===true)await automate(tab,command.automationInstance);
-  if(command.background!==true){selected=keyOf(tab.key);surfaceId=command.surfaceId||'';for(const item of tabs.values())services.setShown(item.key,item===tab);tab.contents.focus()}
+  if(command.background!==true){selected=keyOf(tab.key);surfaceId=command.surfaceId||'';for(const item of tabs.values())services.setShown(item.key,item===tab);tab.contents.focus();selectNativeHost(tab)}
   if(command.url&&navigationAllowed(command.url))await tab.contents.loadURL(command.url);capture();return;
  }
  if(!tab||tab.closed)return;
- if(human){if(tab.human&&tab.lease){await tab.human.accept(command);capture()}return}
+ if(human){if(tab.human&&tab.lease){const admittedKey=keyOf(tab.key),admittedView=surfaceId;try{await tab.human.accept(command)}catch(error){if(error?.message==='Input.imeSetComposition needs the preview to have focus.'||error?.message==="The page's focus is inside a cross-site frame, which takes typed input only while the preview has focus. Click the field first."){if(closing||tab.closed||selected!==admittedKey||surfaceId!==admittedView)return;ui({type:'input-rejected',surfaceId:admittedView,tabKey:admittedKey,inputType:command.type,error:'browser_native_input_focus_required'});return}throw error}capture()}return}
  if(command.type==='automation'){await automate(tab,command.automationInstance);return}
- if(command.type==='activate'){if(command.automation===true)await automate(tab,command.automationInstance);selected=keyOf(tab.key);surfaceId=command.surfaceId||'';for(const item of tabs.values())services.setShown(item.key,item===tab);tab.contents.focus()}
+ if(command.type==='activate'){if(command.automation===true)await automate(tab,command.automationInstance);selected=keyOf(tab.key);surfaceId=command.surfaceId||'';for(const item of tabs.values())services.setShown(item.key,item===tab);tab.contents.focus();selectNativeHost(tab)}
  else if(command.type==='close-tab'){await retire(tab,'browser_tab_closed');tabs.delete(keyOf(tab.key));if(selected===keyOf(tab.key))selected='';ui({type:'closed',...tab.key})}
  else if(command.type==='navigate'&&navigationAllowed(command.url))await tab.contents.loadURL(command.url);
  else if(command.type==='refresh'){command.bypassCache?tab.contents.reloadIgnoringCache():tab.contents.reload()}

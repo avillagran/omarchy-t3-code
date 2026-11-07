@@ -30,6 +30,7 @@ pub struct Config {
     cache: PathBuf,
     basic_store: bool,
     native_display: Option<PathBuf>,
+    mapped_native_host: bool,
     clipboard: Option<crate::gui_clipboard::Shared>,
 }
 impl Config {
@@ -84,6 +85,7 @@ impl Config {
             cache: crate::xdg("XDG_CACHE_HOME", ".cache"),
             basic_store: false,
             native_display: None,
+            mapped_native_host: false,
             clipboard: None,
         })
     }
@@ -107,6 +109,15 @@ impl Config {
         let mut owned = self.with_native_electron(runtime, assets, ":owned")?;
         owned.native_display = Some(x_server.into());
         Ok(owned)
+    }
+    /// Map the genuine native host only on this factory's owned display.
+    /// No existing desktop display or service is adopted by this option.
+    pub fn with_mapped_native_host(mut self) -> Result<Self> {
+        if self.native_display.is_none() {
+            return Err("browser_owned_display_required".into());
+        }
+        self.mapped_native_host = true;
+        Ok(self)
     }
     /// Explicit internal renderer opt-in on an already isolated display.
     pub fn with_native_electron(
@@ -168,6 +179,7 @@ impl Config {
             cache: root.join("cache/omarchy-t3-code"),
             basic_store: true,
             native_display: None,
+            mapped_native_host: false,
             clipboard: None,
         })
     }
@@ -580,7 +592,9 @@ impl Pool {
             .as_ref()
             .map(|_| crate::browser_engine_identity::Pending::new())
             .transpose()?;
-        let identity_fd = identity.as_ref().map(|pending| pending.source().as_raw_fd());
+        let identity_fd = identity
+            .as_ref()
+            .map(|pending| pending.source().as_raw_fd());
         let id = uuid::Uuid::new_v4().to_string();
         let mut private_source = None;
         let mut private_fd = None;
@@ -687,6 +701,9 @@ impl Pool {
                 .join("storage/Cookies"),
         };
         let mut payload = json!({"environmentId":environment,"profileId":profile,"width":width,"height":height,"zoomFactor":zoom,"initializeCookieStore":initialize_cookies||!restore,"restoreSessionCookies":restore});
+        if self.config.mapped_native_host && session._display.is_some() {
+            payload["ownedNativeHost"] = json!(true);
+        }
         if let Some(fd) = private_fd {
             payload["privateBrowserFd"] = json!(fd);
         }
@@ -699,12 +716,17 @@ impl Pool {
             .write_all(&(payload.len() as u64).to_be_bytes())
             .and_then(|_| session.input.write_all(&payload))
             .map_err(|_| "browser_runtime_closed")?;
-        session._engine = identity.map(|pending| pending.admit(session.child.id())).transpose()?;
+        session._engine = identity
+            .map(|pending| pending.admit(session.child.id()))
+            .transpose()?;
         if let (Some(gui), Some(display), Some(engine)) =
             (&self.config.clipboard, &session._display, &session._engine)
         {
             session._clipboard = Some(crate::gui_clipboard::register(
-                gui.clone(), &session.id, display, engine,
+                gui.clone(),
+                &session.id,
+                display,
+                engine,
             )?);
         }
 
@@ -785,6 +807,22 @@ impl Pool {
                             let _ = ready_tx.try_send(());
                         }
                     }
+                    "input-rejected" => {
+                        if text(&value, "error") != "browser_native_input_focus_required" {
+                            continue;
+                        }
+                        let view = active.lock().unwrap().clone();
+                        if let Some(view) = view.filter(|v| {
+                            v.process == id
+                                && v.id == text(&value, "surfaceId")
+                                && serde_json::to_string(&json!([v.thread, v.tab]))
+                                    .is_ok_and(|key| key == text(&value, "tabKey"))
+                        }) {
+                            receive(
+                                json!({"kind":"input-rejected","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"error":"browser_native_input_focus_required","inputType":value["inputType"]}),
+                            );
+                        }
+                    }
                     "frame" => {
                         let view = active.lock().unwrap().clone();
                         let Some(view) = view.filter(|v| {
@@ -814,7 +852,7 @@ impl Pool {
                             continue;
                         };
                         receive(
-                            json!({"kind":"frame","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"url":url.to_string(),"revision":value["revision"],"width":value["width"],"height":value["height"]}),
+                            json!({"kind":"frame","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"url":url.to_string(),"revision":value["revision"],"width":value["width"],"height":value["height"],"nativeInput":native_electron && value["nativeInput"] == true}),
                         );
                     }
                     "status" => {

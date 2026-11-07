@@ -161,7 +161,11 @@ pub fn prepare(mut payload: Value, storage: &Path, frames: &Path) -> Result<Valu
         "browserDefaultZoomFactor",
         &payload.get("zoomFactor").cloned().unwrap_or(json!(1)),
     )?;
+    let owned_native_host = payload["ownedNativeHost"] == true;
     payload = json!({"environmentId":payload["environmentId"],"profileId":payload["profileId"],"width":size["width"],"height":size["height"],"zoomFactor":zoom,"initializeCookieStore":payload["initializeCookieStore"]==true,"restoreSessionCookies":payload["restoreSessionCookies"]==true});
+    if owned_native_host {
+        payload["ownedNativeHost"] = json!(true);
+    }
     private_directory(frames)?;
     payload["partition"] = identity["partition"].clone();
     payload["persistent"] = identity["persistent"].clone();
@@ -264,7 +268,9 @@ pub fn renderer() -> Result<()> {
     if let Some(fd) = private_fd {
         payload["privateBrowserFd"] = json!(fd);
     }
-    if let Some(fd) = clipboard_identity { payload["privateClipboardIdentityFd"] = fd; }
+    if let Some(fd) = clipboard_identity {
+        payload["privateClipboardIdentityFd"] = fd;
+    }
     let result = if let Some((runtime, assets)) = crate::browser_electron::configured() {
         payload["electronDirectory"] = json!(crate::browser_electron::directory(&payload)?);
         crate::browser_electron::run(&payload, &runtime, &assets)

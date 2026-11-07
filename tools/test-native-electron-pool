@@ -4,7 +4,7 @@ import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
 from pathlib import Path
 from runtime_artifacts import snapshot
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--runtime',type=Path,required=True);parser.add_argument('--services',type=Path,required=True)
+parser.add_argument('--mapped-host',action='store_true');parser.add_argument('--runtime',type=Path,required=True);parser.add_argument('--services',type=Path,required=True)
 options=parser.parse_args();root=Path(__file__).resolve().parent.parent
 runtime=options.runtime.resolve();services=options.services.resolve()
 manifest=json.loads((runtime.parent/'artifact.json').read_text())
@@ -18,8 +18,12 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
  with (out/'addon-compile.log').open('w') as log:subprocess.run(['cc','-std=c11','-fPIC','-shared','-Wall','-Wextra','-Werror','-I/usr/include/node',str(assets/'electron-private-fd.c'),'-o',str(assets/'electron-private-fd.node')],check=True,stdout=log,stderr=subprocess.STDOUT)
  env=dict(os.environ,CARGO_BUILD_JOBS='2',CARGO_INCREMENTAL='0',CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target')
- with (out/'compile.jsonl').open('w') as log,(out/'compile.log').open('w') as errors:result=subprocess.run(['cargo','test','--locked','--offline','--test','native_electron_pool','--no-run','--message-format=json'],cwd=root,env=env,stdout=log,stderr=errors)
+ source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[root/'Cargo.toml',root/'Cargo.lock',root/'tests/native_electron_pool.rs'])
+ source_hashes={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}
+ (out/'rust-source-hashes.json').write_text(json.dumps(source_hashes,indent=2)+'\n')
+ with (out/'compile.jsonl').open('w') as log,(out/'compile.log').open('w') as errors:result=subprocess.run(['/home/node/.cargo/bin/cargo','test','--locked','--offline','--test','native_electron_pool','--no-run','--message-format=json'],cwd=root,env=env,stdout=log,stderr=errors)
  if result.returncode:raise SystemExit(result.returncode)
+ if source_hashes!={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}:raise SystemExit('Source changed during native Pool compile')
  items=[json.loads(line) for line in (out/'compile.jsonl').read_text().splitlines()]
  tests=[Path(item['executable']) for item in items if item.get('executable') and item.get('profile',{}).get('test')]
  mains=[Path(item['executable']) for item in items if item.get('executable') and item['target']['name']=='omarchy-t3-client' and not item.get('profile',{}).get('test')]
@@ -50,5 +54,6 @@ try:
  sys.exit(result.returncode)
 finally:display.terminate();display.wait(timeout=5)
 ''',binary]
+if options.mapped_host:args[3:3]=['--env','O3_TEST_MAPPED_NATIVE_HOST=1']
 with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=75)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)

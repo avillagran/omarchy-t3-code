@@ -31,7 +31,7 @@ exports.create=(contents,guard,nativeInput)=>{
    if(typeof event.preedit!=='string'||event.preedit.length>4096||!Number.isInteger(event.selectionStart)||!Number.isInteger(event.selectionEnd)||event.selectionStart<0||event.selectionEnd<event.selectionStart||event.selectionEnd>event.preedit.length)throw Error('invalid_browser_input');
    const params={text:event.preedit,selectionStart:event.selectionStart,selectionEnd:event.selectionEnd};
    if(event.replacementStart!==undefined){if(!Number.isInteger(event.replacementStart)||!Number.isInteger(event.replacementEnd)||event.replacementStart<0||event.replacementEnd<event.replacementStart)throw Error('invalid_browser_input');params.replacementStart=event.replacementStart;params.replacementEnd=event.replacementEnd}
-   return guard.sendCommand('Input.imeSetComposition',params);
+   return send('Input.imeSetComposition',params);
   }
   throw Error('invalid_browser_input');
  }});
