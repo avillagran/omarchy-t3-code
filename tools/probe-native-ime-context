@@ -19,7 +19,9 @@ parser.add_argument('--source-input', action='store_true', help='Separate origin
 parser.add_argument('--typed-edit', action='store_true', help='Observe a genuine fixed keyboard edit after focus')
 parser.add_argument('--require-surrounding', action='store_true', help='Separate stronger expectation; not assumed of the original')
 parser.add_argument('--typed-boundary', action='store_true', help='Observe native client protocol through authenticated owned sockets')
+parser.add_argument('--qt-query', action='store_true', help='Deliver current state by private descriptor to the real Qt query consumer')
 options = parser.parse_args()
+assert not options.qt_query or options.typed_boundary
 root = pathlib.Path(__file__).resolve().parent.parent
 if (root / 'tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING').exists():
     raise SystemExit('Native context runtime paused for popup lifetime review; source-only checks remain available')
@@ -62,6 +64,10 @@ for name in ['native-ime-context-peer.c', 'native-ime-context.cjs', 'native-ime-
              'input-method-unstable-v2.xml', 'input-method-unstable-v2.source.json',
              'wayland-context-boundary.py', 'wayland-context-transport.py']:
     (output / name).write_bytes((root / 'tools/fixtures' / name).read_bytes())
+if options.qt_query:
+    for source in ['native/browser/browserinputcontext.h','native/browser/browserinputitem.h',
+                   'tools/fixtures/browser-native-context-query.cpp']:
+        (output / pathlib.Path(source).name).write_bytes((root / source).read_bytes())
 protocol = json.loads((output / 'input-method-unstable-v2.source.json').read_text())
 assert hashlib.sha256((output / 'input-method-unstable-v2.xml').read_bytes()).hexdigest() == protocol['sha256']
 services = options.services.resolve()
@@ -86,12 +92,19 @@ for mode,name in [('client-header','input-method-client.h'),('private-code','inp
  subprocess.run(['wayland-scanner',mode,str(root/'input-method-unstable-v2.xml'),str(root/name)],check=True)
 flags=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client'],text=True).split()
 subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(root/'native-ime-context-peer.c'),str(root/'input-method-protocol.c'),'-o',str(root/'native-ime-context-peer'),*flags],check=True)
+if (root/'browser-native-context-query.cpp').exists():
+ moc=subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip()+'/moc'
+ subprocess.run([moc,str(root/'browserinputitem.h'),'-o',str(root/'moc_browserinputitem.cpp')],check=True)
+ flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6Qml','Qt6Gui'],text=True).split()
+ subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(root/'browser-native-context-query.cpp'),str(root/'moc_browserinputitem.cpp'),'-I/fixture','-o',str(root/'query'),*flags],check=True)
 ''']
 with open('/var/tmp/o3-build/o3-parity-compile.lock', 'a') as lock:
     fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
     with (output / 'compile.log').open('w') as log:
         subprocess.run(build_args, check=True, stdout=log, stderr=subprocess.STDOUT, timeout=30)
 (output / 'native-ime-context-peer').chmod(0o500)
+if options.qt_query:
+    (output / 'query').chmod(0o500)
 (output / 'runtime.json').write_bytes(runtime_pin_bytes)
 (output / 'intake-pins.json').write_text(json.dumps({
     'runtimeSource':str(runtime_pin.relative_to(root)),
@@ -106,7 +119,9 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock', 'a') as lock:
         for name in ['tools/probe-native-ime-context','tools/fixtures/native-ime-context-peer.c',
                      'tools/fixtures/native-ime-context.cjs','tools/fixtures/native-ime-context.py',
                      'tools/fixtures/wayland-context-boundary.py',
-                     'tools/fixtures/wayland-context-transport.py']}},indent=2)+'\n')
+                     'tools/fixtures/wayland-context-transport.py',
+                     'native/browser/browserinputcontext.h','native/browser/browserinputitem.h',
+                     'tools/fixtures/browser-native-context-query.cpp']}},indent=2)+'\n')
 artifacts = {file.name: hashlib.sha256(file.read_bytes()).hexdigest()
              for file in output.iterdir() if file.is_file()}
 (output / 'artifacts.json').write_text(json.dumps(artifacts, indent=2) + '\n')
@@ -135,6 +150,9 @@ if options.require_surrounding:
     (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
 if options.typed_boundary:
     args[3:3] = ['--env', 'O3_CONTEXT_TYPED_BOUNDARY=1']
+    (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
+if options.qt_query:
+    args[3:3] = ['--env', 'O3_CONTEXT_QT_QUERY=1']
     (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
 with (output / 'runtime.log').open('w') as log:
     result = subprocess.run(args, stdout=log, stderr=subprocess.STDOUT, timeout=40)
