@@ -6,8 +6,8 @@ use crate::{
     Environment, Result, Value,
 };
 use protocol::speech::{
-    CancellableSpeech, CloudKeys, CloudProvider, PostProcessRequest, RequestCancellation,
-    RequestFailure, RequestResult, TranscriptionOptions,
+    CancellableSpeech, CloudKeys, CloudProvider, LiveFailure, PostProcessRequest,
+    RequestCancellation, RequestFailure, RequestResult, SpeechStreamOpening, TranscriptionOptions,
 };
 use std::sync::Arc;
 
@@ -170,6 +170,36 @@ impl BoundSpeech {
                     .map(|(provider, model)| (*provider, model.as_deref())),
                 cancel,
                 || self.current(&owner),
+            )
+            .await
+    }
+    /// Acquire an opaque local-media ticket after fresh session authority. The
+    /// original platform starts its one-shot connection alongside capture
+    /// preparation; neither the ticket nor the WebSocket enters QML.
+    pub async fn prepare_stream(
+        &self,
+        options: &TranscriptionOptions,
+        cancel: &RequestCancellation,
+        owner: Arc<dyn Fn() -> bool + Send + Sync>,
+    ) -> std::result::Result<SpeechStreamOpening, LiveFailure> {
+        // Cloud speech has only the original buffered path. Never substitute a
+        // local stream for an explicitly consented cloud destination.
+        if self.is_cloud() {
+            return Err(LiveFailure::Protocol);
+        }
+        self.authorize(cancel, &|| owner())
+            .await
+            .map_err(|failure| match failure {
+                RequestFailure::Cancelled => LiveFailure::Cancelled,
+                RequestFailure::ConsentRevoked => LiveFailure::ConsentRevoked,
+                _ => LiveFailure::Transport,
+            })?;
+        let grant = self.grant.clone();
+        self.client
+            .prepare_speech_stream(
+                options,
+                cancel,
+                Arc::new(move || owner() && grant.is_current()),
             )
             .await
     }

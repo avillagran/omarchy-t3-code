@@ -6,15 +6,18 @@ use std::{
     pin::{pin, Pin},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, Weak,
     },
     task::{Context, Poll, Waker},
 };
 use zeroize::Zeroize;
 
+type CancelHook = dyn Fn() + Send + Sync;
+type CancelHooks = Vec<Option<Weak<CancelHook>>>;
 struct CancellationState {
     cancelled: AtomicBool,
     waiters: Mutex<Vec<Option<Waker>>>,
+    hooks: Mutex<CancelHooks>,
 }
 /// Permanent, cloneable cancellation. Dropping an in-flight operation drops its
 /// actual reqwest future and response; waiting for this token never sends data.
@@ -25,12 +28,26 @@ impl Default for RequestCancellation {
         Self(Arc::new(CancellationState {
             cancelled: AtomicBool::new(false),
             waiters: Mutex::new(vec![]),
+            hooks: Mutex::new(vec![]),
         }))
     }
 }
 impl RequestCancellation {
     pub fn cancel(&self) {
         self.0.cancelled.store(true, Ordering::Release);
+        let hooks = self
+            .0
+            .hooks
+            .lock()
+            .map(|mut values| std::mem::take(&mut *values))
+            .unwrap_or_default();
+        for hook in hooks
+            .into_iter()
+            .flatten()
+            .filter_map(|hook| hook.upgrade())
+        {
+            hook();
+        }
         let waiters = self
             .0
             .waiters
@@ -44,7 +61,10 @@ impl RequestCancellation {
     pub fn is_cancelled(&self) -> bool {
         self.0.cancelled.load(Ordering::Acquire)
     }
-    async fn run<F: Future>(&self, future: F) -> std::result::Result<F::Output, RequestFailure> {
+    pub(crate) async fn run<F: Future>(
+        &self,
+        future: F,
+    ) -> std::result::Result<F::Output, RequestFailure> {
         let mut cancelled = pin!(Cancelled {
             token: self,
             slot: None
@@ -57,6 +77,50 @@ impl RequestCancellation {
             work.as_mut().poll(context).map(Ok)
         })
         .await
+    }
+    pub(crate) fn register(&self, hook: Arc<CancelHook>) -> CancelRegistration {
+        let slot = if let Ok(mut values) = self.0.hooks.lock() {
+            if self.is_cancelled() {
+                None
+            } else {
+                let index = values
+                    .iter()
+                    .position(Option::is_none)
+                    .unwrap_or(values.len());
+                if index == values.len() {
+                    values.push(None)
+                }
+                values[index] = Some(Arc::downgrade(&hook));
+                Some(index)
+            }
+        } else {
+            None
+        };
+        if slot.is_none() {
+            hook()
+        }
+        CancelRegistration {
+            token: self.clone(),
+            slot,
+            _hook: hook,
+        }
+    }
+}
+pub(crate) struct CancelRegistration {
+    token: RequestCancellation,
+    slot: Option<usize>,
+    _hook: Arc<CancelHook>,
+}
+impl Drop for CancelRegistration {
+    fn drop(&mut self) {
+        if let (Some(index), Ok(mut values)) = (self.slot, self.token.0.hooks.lock()) {
+            if let Some(value) = values.get_mut(index) {
+                *value = None
+            }
+            while values.last().is_some_and(Option::is_none) {
+                values.pop();
+            }
+        }
     }
 }
 struct Cancelled<'a> {
@@ -124,7 +188,10 @@ pub type RequestResult<T> = std::result::Result<T, RequestFailure>;
 fn transport(value: &str) -> RequestFailure {
     RequestFailure::Transport(value.into())
 }
-fn admitted(cancel: &RequestCancellation, can_send: &impl Fn() -> bool) -> RequestResult<()> {
+pub(crate) fn admitted(
+    cancel: &RequestCancellation,
+    can_send: &impl Fn() -> bool,
+) -> RequestResult<()> {
     if cancel.is_cancelled() {
         Err(RequestFailure::Cancelled)
     } else {
@@ -149,6 +216,7 @@ pub struct CancellableSpeech {
 enum ResponseKind {
     Control,
     EmptyControl,
+    Ticket,
     Speech,
 }
 struct Request<'a> {
@@ -230,6 +298,37 @@ impl Connection {
     }
 }
 impl CancellableSpeech {
+    pub(crate) async fn stream_url(
+        &self,
+        cancel: &RequestCancellation,
+        can_send: &impl Fn() -> bool,
+    ) -> RequestResult<reqwest::Url> {
+        let value = self
+            .exchange(
+                Request {
+                    method: "POST",
+                    path: "/api/auth/websocket-ticket/media",
+                    body: None,
+                    binary: false,
+                    response: ResponseKind::Ticket,
+                },
+                cancel,
+                can_send,
+            )
+            .await?;
+        let ticket = zeroize::Zeroizing::new(
+            value["ticket"]
+                .as_str()
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| transport("malformed"))?
+                .to_owned(),
+        );
+        let mut url = endpoint(&self.base, "/ws/voice").map_err(RequestFailure::Transport)?;
+        url.set_scheme(if url.scheme() == "https" { "wss" } else { "ws" })
+            .map_err(|_| transport("invalid_endpoint"))?;
+        url.query_pairs_mut().append_pair("wsTicket", &ticket);
+        Ok(url)
+    }
     /// Fresh session for this exact write credential. The host checks its
     /// required scope before capture; a different read identity cannot grant it.
     pub async fn session(
@@ -355,7 +454,11 @@ impl CancellableSpeech {
             {
                 return Err(transport("unsupported_encoding"));
             }
-            let limit = if special { 65536 } else { 8 * 1024 * 1024 };
+            let limit = if special || matches!(input.response, ResponseKind::Ticket) {
+                65536
+            } else {
+                8 * 1024 * 1024
+            };
             let mut bytes = zeroize::Zeroizing::new(Vec::new());
             while let Some(chunk) = response
                 .chunk()

@@ -11,6 +11,8 @@ use std::{
 };
 use tungstenite::{client::IntoClientRequest, Message};
 use zeroize::Zeroizing;
+mod asynchronous;
+pub use asynchronous::{AsyncSpeechStream, SpeechStreamOpening};
 
 const CHUNK: usize = SAMPLE_RATE * 4;
 const WATCHDOG_MS: u64 = 120_000;

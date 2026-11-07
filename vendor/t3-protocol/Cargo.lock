@@ -1242,6 +1242,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "chrono",
+ "futures-util",
  "http-body",
  "p256",
  "pulldown-cmark",
@@ -1251,6 +1252,7 @@ dependencies = [
  "sha2",
  "socket2",
  "tokio",
+ "tokio-tungstenite",
  "tungstenite",
  "unicode-normalization",
  "uuid",
@@ -1315,6 +1317,22 @@ checksum = "c9cc2678c2cdd569ef8215e2afd7954ada2ae20b4fdd2c5fe6139a3b02d105db"
 dependencies = [
  "rustls",
  "tokio",
+]
+
+[[package]]
+name = "tokio-tungstenite"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d25a406cddcc431a75d3d9afc6a7c0f7428d4891dd973e4d54c56b46127bf857"
+dependencies = [
+ "futures-util",
+ "log",
+ "rustls",
+ "rustls-pki-types",
+ "tokio",
+ "tokio-rustls",
+ "tungstenite",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]

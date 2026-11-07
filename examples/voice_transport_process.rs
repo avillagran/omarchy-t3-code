@@ -2,8 +2,8 @@
 use omarchy_t3_client::{
     browser_native_display::Display,
     protocol::speech::{
-        decode_pcm_request, PostProcessRequest, RequestCancellation, RequestFailure,
-        TranscriptionOptions,
+        decode_pcm_request, LiveEvent, LiveFailure, PostProcessRequest, RequestCancellation,
+        RequestFailure, TranscriptionOptions,
     },
     voice_capture::{
         resources::{Assets, DescriptorArtifact, Runtime},
@@ -90,6 +90,49 @@ fn authorize(listener: &TcpListener, allowed: bool) {
         &mut socket,
         json!({"authenticated":true,"permissions":if allowed {vec!["orchestration:operate"]}else{vec![]}}),
     );
+}
+fn media_ticket(listener: &TcpListener) {
+    authorize(listener, true);
+    let (mut request, _) = accept(listener, "POST /api/auth/websocket-ticket/media ");
+    respond(&mut request, json!({"ticket":"synthetic-consented-media"}));
+}
+struct MediaUpgrade;
+impl tungstenite::handshake::server::Callback for MediaUpgrade {
+    fn on_request(
+        self,
+        request: &tungstenite::handshake::server::Request,
+        response: tungstenite::handshake::server::Response,
+    ) -> Result<
+        tungstenite::handshake::server::Response,
+        tungstenite::handshake::server::ErrorResponse,
+    > {
+        assert_eq!(
+            request.uri().to_string(),
+            "/ws/voice?wsTicket=synthetic-consented-media"
+        );
+        assert!(request.headers().get("authorization").is_none());
+        Ok(response)
+    }
+}
+fn media_socket(listener: &TcpListener) -> tungstenite::WebSocket<TcpStream> {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    let socket = loop {
+        match listener.accept() {
+            Ok((socket, _)) => break socket,
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                assert!(Instant::now() < deadline, "Consented media connect");
+                thread::sleep(Duration::from_millis(2));
+            }
+            Err(error) => panic!("{error}"),
+        }
+    };
+    socket
+        .set_read_timeout(Some(Duration::from_secs(3)))
+        .unwrap();
+    socket
+        .set_write_timeout(Some(Duration::from_secs(3)))
+        .unwrap();
+    tungstenite::accept_hdr(socket, MediaUpgrade).unwrap()
 }
 fn environment(base: &str) -> Environment {
     Environment {
@@ -284,6 +327,19 @@ fn main() {
     );
     server.join().unwrap();
 
+    // An explicitly selected cloud destination cannot acquire a local ticket.
+    let (socket, base) = listener();
+    let cloud_transport = selected(&owner, &base);
+    assert!(matches!(
+        rt.block_on(cloud_transport.prepare_stream(
+            &options,
+            &RequestCancellation::default(),
+            Arc::new(|| true)
+        )),
+        Err(LiveFailure::Protocol)
+    ));
+    assert!(matches!(socket.accept(),Err(error)if error.kind()==std::io::ErrorKind::WouldBlock));
+
     owner.choose_audio(&local).unwrap();
     let (socket, base) = listener();
     let (entered, ready) = mpsc::channel();
@@ -410,9 +466,135 @@ fn main() {
             .unwrap(),
         "captured recording transcript"
     );
+    server.join().unwrap();
+
+    // Feed the exact same real Chromium recording through the admitted async
+    // SDK stream. The private peer checks binary bytes, not an audio JSON DTO.
+    let expected_pcm = (pcm.len(), format!("{:x}", Sha256::digest(&pcm)));
+    let (socket, base) = listener();
+    let server = thread::spawn(move || {
+        media_ticket(&socket);
+        let mut stream = media_socket(&socket);
+        let start: Value = serde_json::from_str(stream.read().unwrap().to_text().unwrap()).unwrap();
+        assert_eq!(
+            start,
+            json!({"type":"start","options":serde_json::from_str::<Value>(&TranscriptionOptions::default().encode_json()).unwrap()})
+        );
+        stream
+            .send(tungstenite::Message::Text(
+                json!({"type":"ready"}).to_string().into(),
+            ))
+            .unwrap();
+        let mut actual = vec![];
+        let mut revision = 0;
+        loop {
+            let frame = stream.read().unwrap();
+            if frame.is_binary() {
+                actual.extend_from_slice(&frame.into_data());
+                assert!(actual.len() <= expected_pcm.0);
+                revision += 1;
+                stream
+                    .send(tungstenite::Message::Text(
+                        json!({"type":"update","revision":revision,"text":null})
+                            .to_string()
+                            .into(),
+                    ))
+                    .unwrap();
+            } else {
+                assert_eq!(
+                    serde_json::from_str::<Value>(frame.to_text().unwrap()).unwrap(),
+                    json!({"type":"finish"})
+                );
+                break;
+            }
+        }
+        assert_eq!(actual.len(), expected_pcm.0);
+        assert_eq!(format!("{:x}", Sha256::digest(&actual)), expected_pcm.1);
+        stream
+            .send(tungstenite::Message::Text(
+                json!({"type":"finished","text":"captured streamed transcript"})
+                    .to_string()
+                    .into(),
+            ))
+            .unwrap();
+        use zeroize::Zeroize;
+        actual.zeroize();
+    });
+    let stream_transport = selected(&owner, &base);
+    rt.block_on(async {
+        let opening = stream_transport
+            .prepare_stream(&options, &RequestCancellation::default(), Arc::new(|| true))
+            .await
+            .unwrap();
+        let mut stream = opening.connect().await.unwrap();
+        assert_eq!(stream.next_event().await.unwrap(), LiveEvent::Ready);
+        let mut samples: Vec<f32> = pcm
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|sample| f32::from_le_bytes(*sample))
+            .collect();
+        stream.feed(&samples).await.unwrap();
+        use zeroize::Zeroize;
+        samples.zeroize();
+        stream.request_finish().await.unwrap();
+        loop {
+            if let LiveEvent::Finished(text) = stream.next_event().await.unwrap() {
+                assert_eq!(text, "captured streamed transcript");
+                break;
+            }
+        }
+    });
+    server.join().unwrap();
     use zeroize::Zeroize;
     pcm.zeroize();
-    server.join().unwrap();
+
+    // Ticket acquisition is not permission for a later connection: reselection,
+    // even to the same destination, and permanent cancellation both fence it.
+    for cancel_before_connect in [false, true] {
+        let (socket, base) = listener();
+        let server = thread::spawn(move || {
+            media_ticket(&socket);
+            socket
+        });
+        let transport = selected(&owner, &base);
+        let cancel = RequestCancellation::default();
+        let opening = rt
+            .block_on(transport.prepare_stream(&options, &cancel, Arc::new(|| true)))
+            .unwrap();
+        let socket = server.join().unwrap();
+        if cancel_before_connect {
+            cancel.cancel();
+        } else {
+            owner.choose_audio(&local).unwrap();
+        }
+        assert!(matches!(
+            (rt.block_on(opening.connect()), cancel_before_connect),
+            (Err(LiveFailure::Cancelled), true) | (Err(LiveFailure::ConsentRevoked), false)
+        ));
+        assert!(
+            matches!(socket.accept(),Err(error)if error.kind()==std::io::ErrorKind::WouldBlock)
+        );
+    }
+    // Session permission denial must prevent the media ticket itself.
+    let (socket, base) = listener();
+    let server = thread::spawn(move || {
+        authorize(&socket, false);
+        socket
+    });
+    let transport = selected(&owner, &base);
+    assert!(matches!(
+        rt.block_on(transport.prepare_stream(
+            &options,
+            &RequestCancellation::default(),
+            Arc::new(|| true)
+        )),
+        Err(LiveFailure::Transport)
+    ));
+    let socket = server.join().unwrap();
+    assert!(matches!(socket.accept(),Err(error)if error.kind()==std::io::ErrorKind::WouldBlock));
+
+    let transport = selected(&owner, &base);
     let (socket, draft_base) = listener();
     fs::write(
         "/state/draft-write-token",
@@ -526,6 +708,6 @@ fn main() {
     assert_eq!(owner.close(), Cleanup::Confirmed);
     println!(
         "{}",
-        json!({"cases":11,"actualConsentRealm":true,"sameWriteCredential":true,"actualBinaryPcm":true,"reselectionDeniesBeforeConnect":true,"foreignResolverDenied":true,"revokedAuthorityNoAudio":true,"ownerLossNoRequest":true,"boundOpenRouterModel":true,"cancelledInferenceSocketClosed":true,"actualChromiumCapturedBytes":captured_bytes,"captureCleanupConfirmed":true,"cleanupUsesDraftEnvironmentAndCredential":true,"cleanupOwnerAndEnvironmentFenced":true,"independentCleanupReselectionDenies":true,"scope":"Actual consent/capture and cleanup to SDK transport with synthetic device/private servers; streaming and composer remain separate"})
+        json!({"cases":16,"actualConsentRealm":true,"sameWriteCredential":true,"actualBinaryPcm":true,"reselectionDeniesBeforeConnect":true,"foreignResolverDenied":true,"revokedAuthorityNoAudio":true,"ownerLossNoRequest":true,"boundOpenRouterModel":true,"cancelledInferenceSocketClosed":true,"actualChromiumCapturedBytes":captured_bytes,"captureCleanupConfirmed":true,"actualStreamedCaptureDigest":true,"streamTicketRevocationAndCancellationFence":true,"cloudNeverUsesLocalStream":true,"streamSessionDeniedBeforeTicket":true,"cleanupUsesDraftEnvironmentAndCredential":true,"cleanupOwnerAndEnvironmentFenced":true,"independentCleanupReselectionDenies":true,"scope":"Actual consent/capture and cleanup to SDK transport with synthetic device/private servers; composer and simultaneous live capture remain separate"})
     );
 }

@@ -42,8 +42,9 @@ also checks an operation-local lifetime between bounded 32 KiB frames, so the co
 cannot continue producing a recording merely because it retained the body after
 the response future was dropped. Buffered socket bytes already transmitted are
 not rolled back. `bytes` and `http-body` become explicit dependencies already
-present in the production graph; Tokio and socket2 are explicit test dependencies
-also already present in that graph. All compilation and runtime validation uses
+present in the production graph. Tokio, socket2 and futures-util are now explicit
+production dependencies for the shared async stream adapter; its sole new
+locked package is tokio-tungstenite 0.28.0. All compilation and runtime validation uses
 the official rootless `tools/android-sandbox` and its existing isolated cache.
 This Rust API does not add C/JNI voice entrypoints or activate a desktop client.
 
