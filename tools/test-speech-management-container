@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Run the reviewed voice dispatcher target with retained private loopback fixtures."""
+import fcntl,hashlib,json,os,pathlib,subprocess,tempfile
+from runtime_artifacts import snapshot
+
+root=pathlib.Path(__file__).resolve().parent.parent
+if subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+evidence=pathlib.Path(tempfile.mkdtemp(prefix='speech-management-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));evidence.chmod(0o700)
+source_files=['src/lib.rs','src/main.rs','src/write.rs','src/speech_management.rs','tests/speech_management.rs','tests/third_party_licenses.rs','licenses/third-party-licenses.json','licenses/third-party-licenses.sources.json','Cargo.toml','Cargo.lock','vendor/t3-protocol/UPSTREAM.json']
+fence={name:hashlib.sha256((root/name).read_bytes()).hexdigest()for name in source_files}
+lock=pathlib.Path('/var/tmp/o3-build/o3-parity-compile.lock')
+with lock.open('a')as owner:
+ fcntl.flock(owner,fcntl.LOCK_EX)
+ command=['cargo','test','--locked','--offline','--test','speech_management','--test','third_party_licenses','--no-run','--message-format=json']
+ with(evidence/'compile.jsonl').open('w')as stdout,(evidence/'compile.log').open('w')as stderr:result=subprocess.run(command,cwd=root,stdout=stdout,stderr=stderr)
+ if result.returncode:print(evidence);raise SystemExit(result.returncode)
+ artifacts=[json.loads(line)['executable']for line in(evidence/'compile.jsonl').read_text().splitlines()if json.loads(line).get('executable')and json.loads(line).get('profile',{}).get('test')]
+ if len(artifacts)!=2:raise SystemExit('Exactly the reviewed speech and license targets are required')
+ metadata=json.loads(subprocess.check_output(['cargo','metadata','--locked','--offline','--no-deps','--format-version=1'],cwd=root,text=True));debug=pathlib.Path(metadata['target_directory'])/'debug'
+ runtime=evidence/'runtime';records=snapshot(debug,[pathlib.Path(path)for path in artifacts],runtime);binaries=[str(runtime/pathlib.Path(path).relative_to(debug))for path in artifacts]
+ with(evidence/'strict.log').open('w')as log:strict=subprocess.run(['cargo','clippy','--locked','--offline','--all-targets','--','-D','warnings'],cwd=root,stdout=log,stderr=subprocess.STDOUT)
+ if strict.returncode:print(evidence);raise SystemExit(strict.returncode)
+ assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==digest for name,digest in fence.items()),'Source changed during compilation'
+state=evidence/'state';state.mkdir(mode=0o700)
+for name in['home','tmp','config','cache','data','runtime']:(state/name).mkdir(mode=0o700)
+command=['podman','--remote=false','run','--rm','--pull=never','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--read-only','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=128','--memory=2g','--ulimit','core=0','--workdir',str(root),'-v',f'{root}:{root}:ro','-v',f'{runtime}:{runtime}:ro','-v',f'{state}:/state:rw','-v','/usr:/usr:ro','--env','HOME=/state/home','--env','TMPDIR=/state/tmp','--env','XDG_CONFIG_HOME=/state/config','--env','XDG_CACHE_HOME=/state/cache','--env','XDG_DATA_HOME=/state/data','--env','XDG_RUNTIME_DIR=/state/runtime','localhost/o3-rust-tests:latest','python3','-c','import json,subprocess,sys; results=[subprocess.run([binary,"--test-threads=1","--nocapture"],timeout=60).returncode for binary in json.loads(sys.argv[1])];sys.exit(any(results))',json.dumps(binaries)]
+with(evidence/'runtime.log').open('w')as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=120)
+assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==digest for name,digest in fence.items()),'Source changed during runtime'
+(evidence/'result.json').write_text(json.dumps({'exit':result.returncode,'strictExit':strict.returncode,'sourceSha256':fence,'runtime':records,'scope':'Only reviewed speech_management and third_party_licenses targets; global client runtime audit remains open'},indent=2)+'\n')
+print(evidence);raise SystemExit(result.returncode)

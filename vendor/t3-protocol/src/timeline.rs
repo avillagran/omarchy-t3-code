@@ -370,6 +370,7 @@ pub fn conversation(projection: &Value, messages: &[Value], plan: &dyn Fn(&str) 
         }
     }
     rows.sort_by_key(|r| epoch(&r["createdAt"]));
+    crate::parity::message_actions(&mut rows);
     let mut grouped: Vec<Value> = vec![];
     for row in rows {
         if let Some(last) = grouped.last_mut() {

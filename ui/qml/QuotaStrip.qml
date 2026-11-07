@@ -2,10 +2,12 @@ import QtQuick 6.11
 import QtQuick.Layouts
 import qs.Commons
 import qs.Ui
+import "../js/NativeResetCredit.js" as Credit
 
 ColumnLayout {
   id: root
   required property var providers
+  property var creditBridge:null
   property var notices: []
   property var external: []
   property bool collapsed: true
@@ -13,7 +15,7 @@ ColumnLayout {
   signal refreshRequested()
   readonly property color fg: Color.popups.text
   readonly property color dim: Qt.rgba(fg.r,fg.g,fg.b,0.65)
-  readonly property var visibleProviders: providers.filter(function(p){return root.windows(p).length>0})
+  readonly property var visibleProviders: providers.filter(function(p){return root.windows(p).length>0 || (p.accounts || []).some(function(a){return a.resetCredits && a.resetCredits.availableCount>0})})
   readonly property string issueText:notices.concat(external.map(function(e){return e.label+" · "+e.url})).join("\n")
   function windows(p){if(p.windows)return p.windows;return [p.weekly,p.shortWindow].filter(function(w){return !!w}).map(function(w,i){return Object.assign({label:i===0?"Weekly":"Session",segments:[],expectedAvailable:p.expectedAvailable},w)})}
   visible: (visibleProviders.length>0 || issueText.length>0) && (showHeader || !collapsed)
@@ -115,6 +117,12 @@ ColumnLayout {
                 Layout.fillWidth:true;spacing:Style.space(2)
                 Text{Layout.fillWidth:true;text:account.modelData.label+(account.modelData.plan?" · "+account.modelData.plan:"");color:root.fg;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;wrapMode:Text.Wrap}
                 Text{Layout.fillWidth:true;text:account.modelData.hosts;color:root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;wrapMode:Text.Wrap}
+                RowLayout {
+                  visible:!!account.modelData.resetCredits && account.modelData.resetCredits.availableCount>0 && !!account.modelData.redeem
+                  Layout.fillWidth:true
+                  Text{Layout.fillWidth:true;text:account.modelData.resetCredits?Credit.resetCreditsSummary(account.modelData.resetCredits,Date.now()):"";color:root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;wrapMode:Text.Wrap}
+                  Button{objectName:"quotaUseResetCredit";text:T3I18n.tr("Use reset");enabled:!!root.creditBridge && !root.creditBridge.resetCreditBusy(account.modelData) && !!root.creditBridge.resetCreditAccess[account.modelData.redeem?account.modelData.redeem.environmentId:""];onClicked:root.creditBridge.requestResetCredit(account.modelData)}
+                }
                 Repeater{model:account.modelData.windows;Text{required property var modelData;Layout.fillWidth:true;text:modelData.label+": "+modelData.availablePercent+"%"+(modelData.reset?" · "+modelData.reset:"");color:root.dim;font.pixelSize:Style.font.caption;textFormat:Text.PlainText;wrapMode:Text.Wrap}}
               }
             }

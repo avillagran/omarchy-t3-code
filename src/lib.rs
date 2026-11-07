@@ -1,3 +1,12 @@
+pub mod gui_clipboard;
+pub mod browser_native_display;
+pub mod browser_engine_identity;
+pub mod browser_automation;
+pub mod desktop_browser_ipc;
+pub mod owned_backend;
+pub mod owned_runtime;
+mod pax_archive;
+pub mod frame_files;
 pub mod json_delta;
 pub mod remote_surfaces;
 pub mod remote_maintenance;
@@ -27,6 +36,8 @@ pub mod omabridge_install;
 pub mod omabridge_share;
 pub mod connection_github;
 pub mod native_settings;
+pub mod speech_management;
+pub mod voice_capture;
 pub mod session_memory;
 pub mod provider_instances;
 pub mod scoped_settings;
@@ -35,6 +46,7 @@ pub use t3_protocol::checkpoint_revert;
 pub mod checkpoint_journal;
 pub mod checkpoint_operations;
 pub mod drafts;
+pub mod composer_context;
 pub mod shared_drafts;
 pub mod shared_editor;
 pub use t3_protocol::prompt_recall;
@@ -75,6 +87,12 @@ pub mod shell_state;
 pub mod server_capabilities;
 pub mod server_updates;
 pub mod reconnect;
+pub mod rpc_sessions;
+pub mod file_metadata_cache;
+pub mod file_metadata_admission;
+pub mod file_metadata_wire;
+pub mod file_metadata_runtime;
+pub mod thread_activity;
 /// Any attachment's bytes through its signed asset URL (assets.createUrl), at
 /// most `limit` bytes. The grant authorizes the GET itself, as for images,
 /// so no credential header is needed.
@@ -311,13 +329,19 @@ pub fn environments() -> Result<Vec<Environment>> {
     if let Some(path) = std::env::var_os("OMARCHY_T3_FIXTURE_ENVIRONMENTS") {
         return fixture_environments(&PathBuf::from(path));
     }
-    connections::inherited_environments()
+    let mut result = connections::inherited_environments()?;
+    // An owned transport failure must not hide independent service/remote hosts.
+    if let Ok(Some(owned)) = owned_runtime::current_environment() {
+        result.retain(|environment| environment.id != owned_runtime::ENVIRONMENT_ID);
+        result.push(owned);
+    }
+    Ok(result)
 }
 fn fixture_environments(p: &Path) -> Result<Vec<Environment>> {
     if !p.exists() {
         return Ok(vec![]);
     }
-    let d = read_json(&p)?;
+    let d = read_json(p)?;
     let envs: Vec<Environment> =
         serde_json::from_value(d["environments"].clone()).map_err(|_| "invalid_config")?;
     let mut ids = HashSet::new();
@@ -446,7 +470,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
             let (attribution,raw)=prompt_recall::attribution(m);let id=text(m,"id").to_string();
             let cache_raw=if math{format!("\u{1}{raw}")}else{raw.to_string()};if !cache.get(&id).is_some_and(|c|c.0==cache_raw){let display=message_text::plain_qt(raw).unwrap_or_else(||raw.to_string());let blocks=protocol::code_blocks::parse(&display);let rendered=markdown_with_code_actions(&display,Some(&blocks));let search=markdown_search_text(&display);let images=markdown_images::descriptors(&display);cache.insert(id.clone(),(cache_raw,display,rendered,search,blocks,images));}
             let (_,display,rendered,search,blocks,images)=&cache[&id];
-            messages.push(json!({"id":text(m,"id"),"role":m["role"],"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"senderThreadId":if attribution==Some("agent"){m["senderThreadId"].as_str().filter(|id|valid_id(id)).map(String::from)}else{None},"inputIntent":if m["role"]=="user"{checkpoint_revert::message_item(&d["projection"],m).and_then(|i|i["inputIntent"].as_str()).map(String::from)}else{None},"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"tables":if m["role"]=="assistant"&&display.contains('|'){json!(markdown_tables(display))}else{json!([])},"createdAt":epoch(&m["createdAt"])}));
+            messages.push(json!({"id":text(m,"id"),"role":m["role"],"freshContext":m["role"]=="user"&&checkpoint_revert::message_item(&d["projection"],m).is_some_and(|i|i["freshContext"]==true),"revertReference":if m["role"]=="user"{checkpoint_revert::reference(&d["projection"],text(m,"id")).ok()}else{None},"canRewindMessage":checkpoint_revert::can_preview(&d["projection"],m),"context":m.get("context").and_then(|c|composer_context::clean(c).ok()),"recallableText":if m["role"]=="user"&&attribution.is_none(){json!(prompt_recall::recall(raw))}else{Value::Null},"attribution":attribution,"senderThreadId":if attribution==Some("agent"){m["senderThreadId"].as_str().filter(|id|valid_id(id)).map(String::from)}else{None},"inputIntent":if m["role"]=="user"{checkpoint_revert::message_item(&d["projection"],m).and_then(|i|i["inputIntent"].as_str()).map(String::from)}else{None},"forkRunId":if m["role"]=="assistant"&&m["streaming"]!=true&&m["runId"].is_string(){m["runId"].clone()}else{Value::Null},"streaming":m["streaming"]==true,"text":display,"searchText":if m["role"]=="user"{display}else{search},"attachments":m["attachments"].as_array().cloned().unwrap_or_default(),"rendered":rendered,"markdownImages":if m["role"]=="assistant"{images.clone()}else{vec![]},"fileReferences":file_references(display),"codeBlocks":blocks,"tables":if m["role"]=="assistant"&&display.contains('|'){json!(markdown_tables(display))}else{json!([])},"createdAt":epoch(&m["createdAt"])}));
         }
         // One fork action per run: on its last response.
         let mut seen_runs=HashSet::new();for m in messages.iter_mut().rev(){if let Some(run)=m["forkRunId"].as_str().map(str::to_string){if !seen_runs.insert(run){m["forkRunId"]=Value::Null;}}}
@@ -472,7 +496,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         // This thread's subagents, newest first: the composer bar shows the live
         // ones, the conversation cards and the Agents panel all of them.
         thread_state["subagents"]=json!(p["subagents"].as_array().into_iter().flatten().rev().take(48).map(subagent_summary).collect::<Vec<_>>());
-        Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
+        Ok(json!({"threadState":thread_state,"metadataCheckpoints":p["checkpoints"].as_array().map(|rows|rows.iter().map(|checkpoint|json!({"id":checkpoint["id"],"status":checkpoint["status"],"files":checkpoint["files"]})).collect::<Vec<_>>()),"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 
 /// One line of a subagent's free text (progress or result), whitespace collapsed.
@@ -636,7 +660,7 @@ pub fn conversation_timeline(projection:&Value,messages:&[Value])->Vec<Value>{
  for row in grouped.iter_mut(){row["rev"]=json!(revision(row))}
  grouped
 }
-fn revision(row:&Value)->String{use std::hash::{Hash,Hasher};let mut h=std::collections::hash_map::DefaultHasher::new();row.to_string().hash(&mut h);format!("{:016x}",h.finish())}
+fn revision(row:&Value)->String{use std::hash::{Hash,Hasher};let mut h=std::collections::hash_map::DefaultHasher::new();crate::composer_context::canonical_json(row).hash(&mut h);format!("{:016x}",h.finish())}
 pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
     let rows = d["threads"].as_array().ok_or("malformed")?;
     let projects: HashMap<&str, &str> = d["projects"]
@@ -736,6 +760,7 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         // Match native isProviderNativeSubagentThread; MCP children remain writable.
         if t["lineage"]["relationshipToParent"]=="subagent" && t["creationSource"]=="provider" {row["providerSubagent"]=json!(true);}
         for (key,value) in protocol::sidebar::sort_timestamps(t).as_object().unwrap(){row[key]=value.clone();}
+        if let Some(clock)=crate::thread_activity::shell_clock(t){row["activityClock"]=clock;}
         result.push(row);
     }
     result.sort_by(|a, b| {
@@ -1004,6 +1029,7 @@ pub mod browser_preferences;
 pub mod browser_profiles;
 
 pub mod browser_runtime;
+mod browser_electron;
 
 pub mod preview_transport;
 pub mod preview_actions;
@@ -1095,3 +1121,7 @@ mod reply_order_tests {
         assert_eq!(replied_at(&json!({"createdAt":10})),10000);
     }
 }
+
+pub mod new_thread_models;
+
+pub mod local_drafts;

@@ -1,0 +1,15 @@
+{
+  "revision": "32a0531748c44b25072d7495ce0b9bd7e9450a87",
+  "sources": {
+    "apps/web/src/hooks/FileMetadataThreadProvider.tsx": "86edf94471aa32eadc8222ad77ba9ef3fd1cbef84c6ca43baeda7212ce26b5c6",
+    "packages/shared/src/path.ts": "5d8e50477165341bff87df2c12208b87f6f4d1363b3497d141de1ed0cdb3261c"
+  },
+  "execution": "Whole native provider transformed with Rolldown1.2.16; injected React/Atom/command hooks; actual native path module",
+  "adaptations": [
+    "TypeScript erasure",
+    "Qt hook wrapper retains native useEffect callback",
+    "Object spread becomes Object.assign",
+    "Set spread becomes Array.from"
+  ],
+  "outputSha256": "bf5ca04e49d7f0f8547bd4631ef52e134cbcc9a5b2342a0510c858fd1c3f23dd"
+}

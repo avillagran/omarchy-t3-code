@@ -322,9 +322,7 @@ fn go_windows(body: &Value) -> Option<Vec<Value>> {
         {
             window["resetsAt"] = json!(reset);
         }
-        if window.get("resetsAt").is_none() {
-            return None;
-        }
+        window.get("resetsAt")?;
         windows.push(window);
     }
 
@@ -469,7 +467,9 @@ impl ExternalHttp {
     /// The process-wide client. Clones share its pool.
     pub fn shared() -> Result<Self> {
         static SHARED: std::sync::OnceLock<ExternalHttp> = std::sync::OnceLock::new();
-        if let Some(client) = SHARED.get() {return Ok(client.clone())}
+        if let Some(client) = SHARED.get() {
+            return Ok(client.clone());
+        }
         let client = Self::new()?;
         Ok(SHARED.get_or_init(|| client).clone())
     }
@@ -558,7 +558,13 @@ mod tests {
         let c = ExternalHttp::new().unwrap();
         let (base, h) = serve("200 OK", "application/json", "{\"threads\":[]}");
         assert_eq!(
-            c.fetch_headers(&base, "synthetic-test-token", false, &[("ChatGPT-Account-Id", "acct")]).unwrap(),
+            c.fetch_headers(
+                &base,
+                "synthetic-test-token",
+                false,
+                &[("ChatGPT-Account-Id", "acct")]
+            )
+            .unwrap(),
             json!({"threads":[]})
         );
         let req = h.join().unwrap().to_lowercase();
@@ -574,7 +580,10 @@ mod tests {
             ("302 Found", "text/html", "", "http_302"),
         ] {
             let (base, h) = serve(status, typ, body);
-            assert_eq!(c.fetch(&base, "synthetic-test-token", false).unwrap_err(), error);
+            assert_eq!(
+                c.fetch(&base, "synthetic-test-token", false).unwrap_err(),
+                error
+            );
             h.join().unwrap();
         }
     }

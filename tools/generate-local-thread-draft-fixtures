@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Run pinned native local-draft oracles in a retained private rootless container."""
+import argparse,hashlib,json,os,pathlib,subprocess,tempfile
+p=argparse.ArgumentParser(description=__doc__)
+p.add_argument('--checkout',type=pathlib.Path,required=True)
+p.add_argument('--reference-graph',type=pathlib.Path,required=True)
+p.add_argument('--deps',type=pathlib.Path,required=True)
+p.add_argument('--node',type=pathlib.Path,required=True)
+p.add_argument('--evidence-root',type=pathlib.Path,required=True)
+a=p.parse_args();revision='4cb6945dc60ed03f567dc5daafd083e52308e82b'
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+if subprocess.check_output(['git','-C',str(a.checkout),'rev-parse','HEAD'],text=True).strip()!=revision:raise SystemExit('Wrong native source revision')
+evidence=pathlib.Path(tempfile.mkdtemp(prefix='native-drafts-',dir=a.evidence_root));evidence.chmod(0o700);stage=evidence/'native';stage.mkdir()
+files=list(json.loads(a.reference_graph.read_text())['files'])+['apps/web/src/providerInstances.ts','apps/web/src/hooks/useHandleNewThread.ts','apps/web/src/lib/chatThreadActions.ts','apps/web/src/composerDraftStore.ts']
+hashes={}
+for file in dict.fromkeys(files):
+ if pathlib.PurePosixPath(file).is_absolute() or '..' in pathlib.PurePosixPath(file).parts:raise SystemExit('Invalid source path')
+ expected=subprocess.check_output(['git','-C',str(a.checkout),'show',revision+':'+file]);source=a.checkout/file
+ if source.read_bytes()!=expected:raise SystemExit('Changed source '+file)
+ destination=stage/file;destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes(expected);hashes[file]=hashlib.sha256(expected).hexdigest()
+if not (stage/'package.json').exists():(stage/'package.json').write_text('{"type":"module"}\n')
+(stage/'node_modules').symlink_to('/tmp/native-node_modules')
+(stage/'SOURCE.json').write_text(json.dumps({'revision':revision,'files':hashes},indent=2)+'\n')
+bootstrap=r'''
+import pathlib,subprocess
+modules=pathlib.Path('/tmp/native-node_modules');modules.mkdir(mode=0o700)
+for entry in pathlib.Path('/deps/node_modules').iterdir():
+ if entry.name!='@t3tools':(modules/entry.name).symlink_to(entry)
+(modules/'@t3tools').mkdir(mode=0o700)
+for package in ['contracts','shared','client-runtime']:(modules/'@t3tools'/package).symlink_to('/native/packages/'+package)
+raise SystemExit(subprocess.run(['/node/bin/node','/client/tools/generate-local-thread-draft-fixtures.mjs','/native','/out/fixtures.json']).returncode)
+'''
+root=pathlib.Path(__file__).resolve().parent.parent
+command=['podman','run','--rm','--pull=never','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--read-only','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=128','--memory=1g','--tmpfs','/tmp:rw,size=128m,mode=1777','--env','HOME=/tmp/home','-v','/usr:/usr:ro','-v',f'{a.node.resolve()}:/node:ro','-v',f'{a.deps.resolve()}:/deps:ro','-v',f'{stage}:/native:ro','-v',f'{root}:/client:ro','-v',f'{evidence}:/out:rw','docker.io/library/archlinux:latest','python3','-c',bootstrap]
+with (evidence/'oracle.log').open('w') as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT)
+(evidence/'result.json').write_text(json.dumps({'returncode':result.returncode,'revision':revision})+'\n');print(evidence);print((evidence/'oracle.log').read_text());raise SystemExit(result.returncode)

@@ -12,7 +12,7 @@ impl Renderer{
  }
  fn start(name:&str,source:&str)->Option<Self>{
   let Some(exe)=Self::exe()else{eprintln!("QML renderer not built; skipped");return None};
-  let frames=std::env::temp_dir().join(format!("ot3-qml-{name}-{}",std::process::id()));let _=std::fs::remove_dir_all(&frames);std::fs::create_dir_all(&frames).unwrap();
+  let frames=std::env::temp_dir().join(format!("ot3-qml-{name}-{}",uuid::Uuid::new_v4()));std::fs::create_dir_all(&frames).unwrap();
   let mut child=qml_preview::command(&exe,&frames).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().unwrap();
   let payload=json!({"qmlPreview":true,"contents":source,"theme":{"appearance":"dark"},"offscreen":true,"frameDirectory":frames,"width":730,"height":330}).to_string().into_bytes();
   let mut stdin=child.stdin.take().unwrap();stdin.write_all(&(payload.len() as u64).to_be_bytes()).unwrap();stdin.write_all(&payload).unwrap();
@@ -42,7 +42,7 @@ impl Renderer{
   None
  }
 }
-impl Drop for Renderer{fn drop(&mut self){let _=self.child.kill();let _=self.child.wait();let _=std::fs::remove_dir_all(&self.frames);}}
+impl Drop for Renderer{fn drop(&mut self){let _=self.child.kill();let _=self.child.wait();}}
 fn ticks_per_second()->f64{unsafe{libc::sysconf(libc::_SC_CLK_TCK) as f64}}
 
 const STATIC:&str="import QtQuick\nimport QtQuick.Controls\nRectangle { width: 400; height: 200; color: omarchy.surface\n Button { anchors.centerIn: parent; text: \"Hola\" } }";

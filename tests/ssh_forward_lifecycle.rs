@@ -113,5 +113,5 @@ os._exit(2)
     }
     assert!(!root.join(port.to_string()).exists(), "guardian cleaned up after abrupt owner exit");
     assert!(TcpStream::connect((std::net::Ipv4Addr::LOCALHOST,port)).is_err());
-    fs::remove_dir_all(root).unwrap();
+
 }

@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Compare pinned native header cases and actual Qt HTTPS interception privately."""
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import tempfile
+
+root = Path(__file__).resolve().parent.parent
+if subprocess.check_output(['podman', 'info', '--format', '{{.Host.Security.Rootless}}'], text=True).strip() != 'true':
+    raise SystemExit('Rootless Podman required')
+out = Path(tempfile.mkdtemp(prefix='teams-qt-', dir='/home/node/BuildCache/o3-desktop-next'))
+print('Teams Qt evidence: ' + str(out), flush=True)
+# Freeze only the exact source assets; no writable source/test mount.
+for name, path in {'teams-request-headers.h': root/'ui/browser/teams-request-headers.h', 'probe.cpp': root/'tools/fixtures/teams-headers-qt.cpp', 'probe.qml': root/'tools/fixtures/teams-headers-qt.qml', 'native.json': root/'tests/fixtures/teams-headers-4301.json'}.items():
+    data = path.read_bytes()
+    if name == 'probe.cpp': data = data.replace(b'../../ui/browser/teams-request-headers.h', b'teams-request-headers.h')
+    (out/name).write_bytes(data)
+(out/'sources.json').write_text(json.dumps({path.name:hashlib.sha256(path.read_bytes()).hexdigest() for path in out.iterdir() if path.is_file()}, indent=2)+'\n')
+flags = shlex.split(subprocess.check_output(['pkg-config', '--cflags', '--libs', 'Qt6Quick', 'Qt6WebEngineQuick', 'Qt6WebEngineCore'], text=True))
+with open('/var/tmp/o3-build/o3-parity-compile.lock', 'a') as lock:
+    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+    with (out/'compile.log').open('w') as log:
+        subprocess.run(['c++','-std=c++17','-fPIC',str(out/'probe.cpp'),'-o',str(out/'probe'),*flags], stdout=log, stderr=subprocess.STDOUT, check=True)
+(out/'probe').chmod(0o500)
+(out/'binary.json').write_text(json.dumps({'sha256':hashlib.sha256((out/'probe').read_bytes()).hexdigest()})+'\n')
+command = ['podman','run','--rm','--pull=never','--read-only','--network=none','--add-host=teams.microsoft.com:127.0.0.1','--add-host=teams.cloud.microsoft:127.0.0.1','--add-host=unrelated.invalid:127.0.0.1','--userns=keep-id','--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--pids-limit=256','--memory=1g','--tmpfs','/tmp:rw,exec,size=256m,mode=1777','--tmpfs','/run:rw,size=32m', '-v',str(out)+':/proof:ro','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp','--env','QT_QPA_PLATFORM=offscreen','--env','QT_QUICK_BACKEND=software','--env','QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --proxy-server=direct:// --proxy-bypass-list=*','docker.io/library/archlinux:latest','python3','-c',r'''
+import http.server,json,os,ssl,subprocess,threading
+os.mkdir('/tmp/home',0o700)
+subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout','/tmp/key.pem','-out','/tmp/cert.pem','-days','1','-subj','/CN=owned-fixture.invalid'],check=True,capture_output=True)
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        body=json.dumps({'userAgent':self.headers.get('User-Agent'),'host':self.headers.get('Host')}).encode()
+        self.send_response(200);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+    def log_message(self,*args): pass
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
+context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);context.load_cert_chain('/tmp/cert.pem','/tmp/key.pem')
+server.socket=context.wrap_socket(server.socket,server_side=True)
+worker=threading.Thread(target=server.serve_forever,daemon=True);worker.start()
+result=subprocess.run(['/proof/probe','/proof/native.json','/proof/probe.qml',str(server.server_port)],capture_output=True,text=True,timeout=25)
+print(result.stdout,end='');print(result.stderr,end='')
+server.shutdown();server.server_close();worker.join()
+assert result.returncode==0, result.returncode
+assert 'NATIVE_HEADER_CASES_PASS 49' in result.stdout
+rows=json.loads(next(line.split('PHYSICAL_HEADERS ',1)[1] for line in result.stdout.splitlines() if line.startswith('PHYSICAL_HEADERS ')))
+assert len(rows)==3
+assert [row['host'] for row in rows]==['teams.microsoft.com','teams.cloud.microsoft','unrelated.invalid']
+assert [row['userAgent'] for row in rows]==['FixtureAgent/1 Chrome/144.0.0']*2+['FixtureAgent/1 Electron/44.0.0 Chrome/144.0.0']
+assert all(row['globalUserAgent']=='FixtureAgent/1 Electron/44.0.0 Chrome/144.0.0' for row in rows)
+''']
+with (out/'runtime.log').open('w') as log: result = subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=40)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+raise SystemExit(result.returncode)

@@ -144,10 +144,7 @@ pub fn apply_at(
             return Err("browser_profile_changed_reload".into());
         }
     } else {
-        let target_exists = match target_path(path, &e.id, profile)?.symlink_metadata() {
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
-            _ => true,
-        };
+        let target_exists = !matches!(target_path(path, &e.id, profile)?.symlink_metadata(), Err(e) if e.kind() == std::io::ErrorKind::NotFound);
         if profiles.iter().any(|p| p["id"] == profile) || target_exists {
             return Err("profileNotSaved".into());
         }

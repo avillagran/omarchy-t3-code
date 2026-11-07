@@ -109,7 +109,7 @@ pub fn candidate(p: &Value, settings: &Value, environment: &str, now: i64) -> Va
                 "{}\0{}\0{}\0{}\0{}",
                 text(t, "id"),
                 text(session, "id"),
-                provider["nativeThreadRef"],
+                crate::composer_context::canonical_json(&provider["nativeThreadRef"]),
                 at,
                 session["createdAt"]
             )

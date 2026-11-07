@@ -1,0 +1,4 @@
+Full runtime collection is pending a transitive filesystem safety audit.
+Do not remove this marker or bypass the guard without reviewing all selected
+runtime paths. See docs/TEST_SAFETY.md. New runtime CI must check this marker
+before starting a broad suite, including direct cargo test invocations.

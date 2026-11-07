@@ -25,10 +25,8 @@ mod tests {
 
 // ot3's own catalog and its lookup (`ui/qml/T3I18n.qml`), shipped with the library.
 
-/// ot3's string catalog (`translations/i18n.json`, ot3 main 7b5b1de): 20
-/// locales of English source strings with `{name}` placeholders, plus the
-/// eight that `awareness.view` adds for its card titles and alert summaries
-/// (`{n} agents need attention`, `{n} need you`, …), which ot3 does not have.
+/// Desktop string catalog (55c0ce3), 20 locales with `{name}` placeholders.
+/// Retains previously exported sources, including awareness card/alert strings.
 pub const CATALOG_JSON: &str = include_str!("../data/i18n.json");
 /// ot3's language picker: the catalog's locales and their own names.
 pub const LANGUAGES: &[(&str, &str)] = &[("en","English"),("es","Español"),("pt","Português"),("fr","Français"),("de","Deutsch"),("it","Italiano"),("nl","Nederlands"),("pl","Polski"),("ru","Русский"),("uk","Українська"),("ja","日本語"),("ko","한국어"),("zh","中文"),("ar","العربية"),("tr","Türkçe"),("sv","Svenska"),("da","Dansk"),("no","Norsk"),("fi","Suomi"),("cs","Čeština")];

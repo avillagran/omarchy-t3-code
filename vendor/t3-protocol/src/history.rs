@@ -84,3 +84,11 @@ mod tests {
         assert!(e["projection"].get("runtimeRequests").is_none());
     }
 }
+
+impl crate::Connection {
+    /// Authenticated bounded history read, with compact ids expanded by transport.
+    pub fn history_page(&self,thread:&str,cursor:&str)->crate::Result<Value>{
+        crate::api::ids::id("threadId",thread)?;
+        self.request_json_with_limit("GET",&path(thread,cursor)?,None,true,8*1024*1024)
+    }
+}

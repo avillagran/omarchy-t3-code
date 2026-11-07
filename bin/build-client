@@ -10,6 +10,8 @@ cargo fetch --locked --target "$task_build_target" --manifest-path native/dictat
 node tools/build-licenses.cjs
 cargo build --release --locked
 install -m755 target/release/omarchy-t3-client bin/omarchy-t3-client
+# The embedded terminal uses the pinned Ghostty engine, with no shell ownership in Qt.
+tools/build-terminal-surface
 # Local dictation (whisper.cpp). Release packages set OT3_PORTABLE=1 so the CPU
 # code runs on every machine of the architecture, not only the builder's.
 if command -v cmake >/dev/null && command -v c++ >/dev/null; then

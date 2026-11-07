@@ -17,6 +17,7 @@ fn filesystem_references_follow_native_environment_classification(){
  assert!(markdown_images::workspace_path("%ñ").is_ok());
 }
 #[test]
+#[expect(clippy::result_large_err, reason = "The handshake callback must return Tungstenite ErrorResponse.")]
 fn native_media_grant_uses_exact_thread_and_host_path_and_no_credentials_on_asset_get(){
  let listener=TcpListener::bind("127.0.0.1:0").unwrap();let base=format!("http://{}",listener.local_addr().unwrap());
  let png=include_bytes!("fixtures/image.png").to_vec();let expected=png.clone();

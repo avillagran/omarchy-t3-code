@@ -1,0 +1,674 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "sources": {
+    "apps/desktop/src/preview/BrowserSession.ts": "9e66dd7d6c8d6e376d7f9a35ae1f58d82225fb5a5549781551baaba89adc3f03"
+  },
+  "filter": {
+    "urls": [
+      "https://teams.cloud.microsoft/*",
+      "https://teams.microsoft.com/*"
+    ]
+  },
+  "cases": [
+    {
+      "requestHeaders": {},
+      "expected": {}
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html"
+      },
+      "expected": {}
+    },
+    {
+      "requestHeaders": {
+        "User-Agent": "Mozilla/5.0"
+      },
+      "expected": {
+        "requestHeaders": {
+          "User-Agent": "Mozilla/5.0"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "Mozilla/5.0 Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "Mozilla/5.0 Electron/nightly+build Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "Electron/40.0.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "A Electron/1 Electron/2 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "A Electron/2 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "A Electron/ token",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "A Electron/ token",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "A electron/1 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "A electron/1 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "A Electron/1\tB",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "A\tB",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "A Electron/1 B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "A B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "A Electron/1B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "A",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "A Electron/1﻿B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "A﻿B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "User-Agent": "",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "User-Agent": "",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "Mozilla/5.0 Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "Mozilla/5.0 Electron/nightly+build Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "Electron/40.0.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "A Electron/1 Electron/2 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "A Electron/2 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "A Electron/ token",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "A Electron/ token",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "A electron/1 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "A electron/1 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "A Electron/1\tB",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "A\tB",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "A Electron/1 B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "A B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "A Electron/1B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "A",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "A Electron/1﻿B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "A﻿B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "user-agent": "",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "user-agent": "",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "Mozilla/5.0 Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "Mozilla/5.0 Electron/nightly+build Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "Electron/40.0.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "A Electron/1 Electron/2 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "A Electron/2 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "A Electron/ token",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "A Electron/ token",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "A electron/1 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "A electron/1 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "A Electron/1\tB",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "A\tB",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "A Electron/1 B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "A B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "A Electron/1B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "A",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "A Electron/1﻿B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "A﻿B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "USER-AGENT": "",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "USER-AGENT": "",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "Mozilla/5.0 Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "Mozilla/5.0 Electron/nightly+build Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "Mozilla/5.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "Electron/40.0.0 Chrome/144.0.0",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "Electron/40.0.0 Chrome/144.0.0",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "A Electron/1 Electron/2 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "A Electron/2 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "A Electron/ token",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "A Electron/ token",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "A electron/1 tail",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "A electron/1 tail",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "A Electron/1\tB",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "A\tB",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "A Electron/1 B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "A B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "A Electron/1B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "A",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "A Electron/1﻿B",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "A﻿B",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "Accept": "text/html",
+        "uSeR-aGeNt": "",
+        "X-Private-Fixture": "synthetic"
+      },
+      "expected": {
+        "requestHeaders": {
+          "Accept": "text/html",
+          "uSeR-aGeNt": "",
+          "X-Private-Fixture": "synthetic"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "User-Agent": "first Electron/1 value",
+        "user-agent": "second Electron/2 value"
+      },
+      "expected": {
+        "requestHeaders": {
+          "User-Agent": "first value",
+          "user-agent": "second Electron/2 value"
+        }
+      }
+    },
+    {
+      "requestHeaders": {
+        "__proto__": "header-value",
+        "User-Agent": "A Electron/1 B"
+      },
+      "expected": {
+        "requestHeaders": {
+          "__proto__": "header-value",
+          "User-Agent": "A B"
+        }
+      }
+    }
+  ]
+}

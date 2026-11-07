@@ -23,5 +23,5 @@ fn explicit_clipboard_paste_handles_text_and_signed_image_upload(){
  });
  let result=clipboard::paste(&json!({"capacity":100,"environment":"fixture"})).unwrap();assert_eq!(result["attachments"][0]["type"],"image");assert!(protocol::composer::attachment_reference(&result["attachments"][0]).contains("t3-context://v1/image/clip_image"));
  let file=root.join("fixture.txt");fs::write(&file,b"file!").unwrap();fs::write(root.join("types"),"text/uri-list\n").unwrap();fs::write(root.join("data"),reqwest::Url::from_file_path(file).unwrap().as_str()).unwrap();assert_eq!(clipboard::paste(&json!({"capacity":100,"environment":"fixture"})).unwrap()["attachments"][0]["type"],"file");server.join().unwrap();
- fs::write(root.join("types"),"text/uri-list\n").unwrap();fs::write(root.join("data"),"https://example.com/a").unwrap();assert_eq!(clipboard::paste(&json!({"capacity":100})).unwrap_err(),"invalid_clipboard_file");fs::remove_dir_all(root).unwrap();
+ fs::write(root.join("types"),"text/uri-list\n").unwrap();fs::write(root.join("data"),"https://example.com/a").unwrap();assert_eq!(clipboard::paste(&json!({"capacity":100})).unwrap_err(),"invalid_clipboard_file");
 }

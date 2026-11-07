@@ -15,12 +15,37 @@ import "../js/ProjectTree.js" as ProjectTree
 import "../js/WheelMotion.js" as Motion
 import "../js/NativeKeybindings.js" as Native
 import "../js/KeybindingLabels.js" as KeyLabels
+import "../js/NativeThreadActivity.js" as ThreadActivity
+import "../js/NativeThreadRelativeTime.js" as ThreadRelativeTime
 
 Item {
   id: root
   property var anchorItem: null
   property var bar: null
   required property var bridge
+  // The conversation remains mounted when its popup is hidden. Retain its
+  // metadata through visibility and virtualized-row changes, like ChatView.
+  // A selected-thread change destroys the old owner before mounting its successor.
+  property string metadataScope: bridge.selectedKey
+  onMetadataScopeChanged: { metadataLease.active = false; Qt.callLater(syncMetadataLease) }
+  function syncMetadataLease() {
+    metadataLease.active = bridge.previewWorkerReady && !!bridge.selectedThread
+  }
+  Connections { target: root.bridge; function onPreviewWorkerReadyChanged() { root.syncMetadataLease() } }
+  Loader {
+    id: metadataLease
+    active: false
+    sourceComponent: T3FileMetadataLease {
+      bridge: root.bridge
+      environment: root.bridge.selectedEnvironment
+      thread: root.bridge.selectedThread
+      cwd: root.bridge.selectedInfo.worktreePath || ((root.bridge.state.projects || []).find(function(p) { return p.id === root.bridge.selectedInfo.projectId && p.environmentId === root.bridge.selectedEnvironment }) || {}).workspaceRoot || ""
+      checkpoints: { var value = root.bridge.metadataCheckpoints; return value && value.environment === environment && value.thread === thread ? value.data : null }
+    }
+  }
+  property string rowMinute: new Date().toISOString().slice(0,16)
+  property var rowClockUnsubscribe: null
+  function subscribeRowClock(){rowClockUnsubscribe=T3ThreadClock.subscribe(function(){root.rowMinute=T3ThreadClock.getSnapshot()});rowMinute=T3ThreadClock.getSnapshot()}
   property var prTarget:null
   property bool pullRequestsOpen:false
   // Multi-purpose side panel next to the chat (T3SidePanel): browser,
@@ -140,7 +165,7 @@ Item {
     if(JSON.stringify(list)!==JSON.stringify(renderList))renderList=list
     if(!renderAttachment&&latest)renderAttachment=latest
   }
-  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.qmlCode={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
+  Connections{target:root.bridge;function onTerminalBrowserRequested(){Qt.callLater(function(){root.openSide("browser")})}function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.qmlCode={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
   // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
   // every 8 ms through the normal wheel path) and record the intervals
   // between presented frames; profileResult reads them back.
@@ -309,8 +334,8 @@ Item {
   readonly property var lastUserMessage:(bridge.transcript || []).filter(function(m){return m.role==="user"}).slice(-1)[0] || null
   readonly property var nativeFocusItem:panelLayout.Window.activeFocusItem
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
-  readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
-  readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
+  readonly property var nativeShortcutContext:({terminalFocus:!!(root.sidePanelItem&&root.sidePanelItem.terminalItem&&root.sidePanelItem.terminalItem.terminalFocused),terminalOpen:root.sideShown&&root.sideTab==="terminal",previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:!!bridge.localDraft,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
+  readonly property bool nativeModalOpen:browserPermission.opened||documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!boardOpen&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
     function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.pinnedRows.concat(root.activeRows).concat(root.workingRows).concat(root.inputRows).concat(root.snoozedRows).concat(root.settledRows)}
@@ -335,6 +360,7 @@ Item {
     if(command==="preview.refresh")return browserShown&&!!bridge.previewState&&!!bridge.previewState.snapshot&&bridge.previewWatch.canOperate&&!bridge.previewWatch.busy
     if(["preview.zoomIn","preview.zoomOut","preview.resetZoom"].indexOf(command)>=0)return browserShown&&!!bridge.browserSurface.interactive
     if(command==="terminal.toggle")return bridge.canOpenTerminal===true
+    if(["terminal.new","terminal.split","terminal.splitVertical","terminal.close"].indexOf(command)>=0)return root.sideShown&&root.sideTab==="terminal"&&bridge.canOpenTerminal===true
     if(command==="diff.toggle")return bridge.canOpenGit===true
     if(command==="modelPicker.toggle")return composerPanel.modelPickerAvailable
     if(command==="composer.mode")return composerPanel.permissionPickerAvailable
@@ -368,7 +394,10 @@ Item {
     else if(command==="preview.focusUrl")focusBrowserUrl()
     else if(command==="preview.refresh"){if(browserWorkspaceItem)browserWorkspaceItem.refresh()}
     else if(command==="preview.zoomIn"||command==="preview.zoomOut"||command==="preview.resetZoom")bridge.browserControl(command==="preview.zoomIn"?"zoom-in":command==="preview.zoomOut"?"zoom-out":"zoom-reset")
-    else if(command==="terminal.toggle")bridge.openTerminal()
+    else if(command==="terminal.toggle"){if(root.sideShown&&root.sideTab==="terminal")root.closeSide();else bridge.openTerminal()}
+    else if(command==="terminal.new")bridge.newTerminal(false)
+    else if(command==="terminal.split"||command==="terminal.splitVertical")bridge.newTerminal(true,undefined,command==="terminal.splitVertical")
+    else if(command==="terminal.close"){var tab=bridge.terminalTab();if(tab)bridge.closeTerminal(tab.activeTerminalId)}
     else if(command==="diff.toggle"){if(workingPopup.visible)workingPopup.close();else{bridge.requestWorkingReview("working-tree","",bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}}
     else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort"||command==="composer.branch")composerPanel.nativeModelControl(command)
     else if(command==="thread.undo"){if(!bridge.undoThreadAction||!bridge.undoThreadAction())bridge.requestRewindPreview(lastUserMessage.id)}
@@ -381,7 +410,7 @@ Item {
     else if(command==="thread.editQueuedMessage"){var items=bridge.queue.items;bridge.beginQueueEdit(items[items.length-1]);composerPanel.inputField.forceActiveFocus()}
   }
   function localShortcutAvailable(sequence){return !nativeKeybindingsEnabled||!nativeShortcuts.claimsSequence(sequence)}
-  Component.onCompleted: { initialized = true;syncConversation() }
+  Component.onCompleted: { initialized = true;syncConversation();syncMetadataLease();subscribeRowClock() }
   property bool panelOpen:false
   // Run as the desktop app (app/shell.qml). The bar popup ("panel") needs the
   // bar's place, which the app learns from the bar widget; without it, a window.
@@ -393,7 +422,7 @@ Item {
   readonly property var managedToplevel:ToplevelManager.toplevels.values.find(function(t){return t.title===desktop.title&&t.appId===Quickshell.appId}) || null
   onManagedToplevelChanged:if(opened&&detached&&managedToplevel){applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})}
   readonly property bool shortcutActive:opened&&(!detached||!!(managedToplevel&&managedToplevel.activated))
-  Connections{target:root.bridge;function onTerminalOpened(){if(!root.detached)root.close()}}
+  Connections{target:root.bridge;function onTerminalOpened(){root.openSide("terminal")}}
   // A chat opened with a prompt to review (for example from OmaBridge) is shown at once.
   Connections{target:root.bridge;function onPromptedChatStarted(){root.preferencesOpen=false;root.open()}}
   // The bar panel covers the screen, so step aside while a screenshot is taken.
@@ -430,14 +459,14 @@ Item {
   readonly property color healthy: Color.accent
   property string hostFilter: bridge.viewState.hostFilter || ""
   property var sidebarInteractionThreads:[]
-  readonly property var sidebarSourceThreads:sidebarUpdatesPaused?sidebarInteractionThreads:bridge.state.threads
+  readonly property var sidebarSourceThreads:sidebarUpdatesPaused?sidebarInteractionThreads:(bridge.threadItems || bridge.state.threads)
   readonly property var hostThreads: sidebarSourceThreads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.groupOf(t)===root.threadGroupFilter)})
   // Groups the user makes from a thread's menu (Groups): one name per thread.
   readonly property var threadGroups: bridge.viewState.threadGroups || ({})
   // A whole project can join a group too; a thread's own group wins.
   readonly property var groupProjects: bridge.viewState.groupProjects || ({})
   function groupOf(t) { return threadGroups[t.key] || groupProjects[t.projectKey] || "" }
-  readonly property var threadGroupMap: { var map = {}; bridge.state.threads.forEach(function(t) { var g = root.groupOf(t); if (g) map[t.key] = g }); return map }
+  readonly property var threadGroupMap: { var map = {}; (bridge.threadItems || bridge.state.threads).forEach(function(t) { var g = root.groupOf(t); if (g) map[t.key] = g }); return map }
   property string threadGroupFilter: bridge.viewState.threadGroupFilter || ""
   onThreadGroupFilterChanged: if(initialized && (bridge.viewState.threadGroupFilter || "")!==threadGroupFilter)bridge.rememberView({threadGroupFilter:threadGroupFilter})
   readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))
@@ -659,7 +688,7 @@ Item {
       restoringConversation = true; restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})
     } else {documentPopup.close();bridge.closeDocument();conversation.stopWheel();captureState()}
   }
-  Component.onDestruction: captureState()
+  Component.onDestruction: {if(typeof rowClockUnsubscribe==="function")rowClockUnsubscribe();captureState()}
   property real clockNow: Date.now()
   Timer { interval: 1000; repeat: true; running: root.opened && root.bridge.state.threads.some(function(t){return !!t.working||!!t.snoozed}); onTriggered: root.clockNow = Date.now() }
   function duration(start) {
@@ -870,10 +899,20 @@ Item {
     if (dirty) stateChangedAt = changed
   }
   Connections { target: root.bridge; function onStateChanged() { root.trackThreadStates() } }
-  function threadTime(t){return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)}
+  function threadTime(t){
+    if(t.activityClock){
+      if(t.working)return root.duration(t.startedAt)
+      var timestamp=t.settled?ThreadActivity.resolveSettledThreadTimestamp(t.activityClock):ThreadActivity.resolveThreadActivityTimestamp(t.activityClock)
+      var label=ThreadRelativeTime.relativeLabel({timestamp:timestamp},root.rowMinute)
+      return label===null?"":label==="now"?T3I18n.tr("now"):label
+    }
+    // Legacy shells retain their existing clock encoding and display fallback.
+    return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)
+  }
   function stateColor(t) { return T3Palette.detailColor(Sidebar.detail(t)) }
+  Connections{target:root.bridge;function onBrowserPermissionChanged(){if(root.bridge.browserPermission)root.open()}}
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
-  function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
+  function close() { if(browserPermission.opened)browserPermission.choose(false);documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
   function toggle() { opened ? close() : open() }
   // Above the sidebar footer button that opened it, kept inside the window.
   // y follows the popup's height, which is only known once its rows are laid out.
@@ -1021,7 +1060,7 @@ Item {
     }
   }
   Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.windowMode==="floating")root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
-  Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
+  Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;metadataLeaseId:metadataLease.item?metadataLease.item.leaseId:"";browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   Component{id:browserWorkspaceComponent;T3BrowserWorkspace{bridge:root.bridge;onClosed:root.closeSide();onPreferencesRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   PinnedKeyboardPanel {
     id: popup
@@ -1033,7 +1072,7 @@ Item {
     resizable: true
     onResized: function(w,h) { root.resizePanel(w/Style.space(1),h/Style.space(1)) }
     padding: 0
-    focusTarget: root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
+    focusTarget: browserPermission.opened ? browserPermission.defaultFocusItem : root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
     T3Starfield {
       id:sky;objectName:"t3Starfield"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
@@ -1283,6 +1322,7 @@ Item {
         }
       }
       Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.sideShown){root.closeSide()}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
+      T3BrowserPermission{id:browserPermission;popupHost:panelLayout;bridge:root.bridge}
       T3WorkspaceConfirmation {popupHost:panelLayout;bridge:root.bridge}
       T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || []; preferredProjectKey:Array.isArray(root.projectScope)?root.projectScope.length===1?root.projectScope[0]:"":root.projectScope }
       Controls.Popup {
@@ -2035,12 +2075,24 @@ Item {
             objectName:"t3HeaderUsage"
             anchors.left:parent.left;anchors.right:parent.right
             providers:root.bridge.providers
+            creditBridge:root.bridge
             notices:root.bridge.quotaNotices || []
             external:root.bridge.quotaExternal || []
             onRefreshRequested:root.bridge.refreshQuotas()
             // The reveal does the collapsing so the strip keeps its height.
             showHeader:false;collapsed:false
           }
+          }
+          T3ResetCreditConfirmation {bridge:root.bridge;popupHost:panelLayout}
+          Repeater {
+            model:Object.values(root.bridge.resetCreditOperations).filter(function(operation){return operation.busy || !!operation.status})
+            Text {
+              required property var modelData
+              objectName:"t3ResetCreditStatus"
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24)
+              text:modelData.account.label+": "+(modelData.busy?T3I18n.tr("Using reset credit…"):modelData.status)
+              textFormat:Text.PlainText;wrapMode:Text.Wrap;color:Color.popups.text;font.pixelSize:Style.font.caption
+            }
           }
           T3SubthreadBar {
             visible:root.bridge.subthread&&!root.composerExpanded
@@ -2236,6 +2288,7 @@ Item {
                     visible:message.foldExpanded
                   anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin:Style.space(message.userMessage?12:4);rightMargin:Style.space(message.userMessage?12:4);topMargin:message.folded?message.foldHeaderHeight:message.verticalInset }
                     spacing: Style.space(6)
+                    Text{objectName:"t3FreshSessionRow";visible:message.userMessage&&modelData.freshContext===true;width:parent.width;text:T3I18n.tr("Fresh session");color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.6);font.pixelSize:Style.font.caption}
                     TextEdit {
                       id:messageText;objectName:"chatMessageText"
                       HoverHandler{objectName:"chatLinkCursor";cursorShape:messageText.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
@@ -2505,6 +2558,10 @@ Item {
           T3PickerButton {
             objectName:"undoThreadSettle";Layout.alignment:Qt.AlignHCenter;primary:false
             visible:!!root.bridge.threadUndoNotice;text:T3I18n.tr("Undo settle");onClicked:root.bridge.undoThreadAction()
+          }
+          T3ModelFallback {
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter
+            bridge:root.bridge
           }
           T3UsageRecovery {
             Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter

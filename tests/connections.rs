@@ -44,7 +44,7 @@ fn t3_is_authoritative_for_origin_credentials_disabled_routes_and_reload() {
     fs::write(data.join("server-runtime.json"),json!({"origin":origin,"pid":std::process::id(),"startedAt":"recreated"}).to_string()).unwrap();
     let renewed=full.replace("synthetic-signature","renewed-signature");std::env::set_var("OT3_TEST_AUTH_TOKEN",&renewed);
     omarchy_t3_client::environments().unwrap();assert_eq!(fs::read_to_string(&token).unwrap().trim(),renewed);
-    fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn only_idle_ot3_sessions_from_this_device_are_retired(){

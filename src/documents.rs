@@ -9,15 +9,15 @@ pub fn read(e:&Environment,input:&Value)->Result<Value>{
  if input["attachment"]["generated"]=="qml"{return crate::qml_preview::page(input)}
  let resource=if input["attachment"].is_object(){let a=&input["attachment"];let id=text(a,"id");if !valid_id(id){return Err("invalid_file".into())}json!({"_tag":"attachment","attachmentId":id,"fileName":text(a,"name"),"mimeType":text(a,"mimeType"),"disposition":"inline"})}else{protocol::documents::resource(text(input,"thread"),text(input,"path"))?};
  let name=if input["attachment"].is_object(){text(&input["attachment"],"name")}else{text(input,"path")};
- let c=e.connection(true)?;
  let mut doc=if resource["_tag"]=="workspace-file" {
   // Asset grants only serve browser media. Text uses the native Files RPC,
   // including absolute host paths and the selected thread's worktree cwd.
   let cwd=text(input,"cwd");if cwd.is_empty(){return Err("invalid_workspace".into())}
+  if e.id=="local"{crate::file_metadata_runtime::authorize(&e.connection(false)?,"filesystem:read")?;}
   local_reference(e,cwd,text(input,"path"))?;
-  let doc=protocol::api::projects::read_file(&c,cwd,text(input,"path"),None)?;
+  let doc=crate::file_metadata_runtime::global().seeded_read(&e.id,&protocol::api::projects::READ_FILE,&json!({"cwd":cwd,"relativePath":text(input,"path")}),cwd,true)?;
   if doc["truncated"]==true||text(&doc,"contents").len()>4*1024*1024{return Err("document_limit_4MiB".into())}doc
- }else{c.document(resource)?};
+ }else{e.connection(true)?.document(resource)?};
  doc["internalReview"]=json!(false);
  doc["markdown"]=json!([".md",".markdown",".mdown",".mkd"].iter().any(|ext|name.to_ascii_lowercase().ends_with(ext))||text(&input["attachment"],"mimeType")=="text/markdown");
  if doc["markdown"]==true{doc["rendered"]=json!(rendered_markdown(text(&doc,"contents")))}

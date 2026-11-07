@@ -82,6 +82,9 @@ pub fn snapshot(v: &Value) -> Result<Value> {
         }
         out["zoomFactor"] = zoom.clone();
     }
+    if let Some(headless) = v.get("headless") {
+        out["headless"] = json!(boolean(headless)?);
+    }
     if let Some(owner) = v.get("automationOwner") {
         out["automationOwner"] = json!(string(owner, 2048, false)?);
     }
@@ -199,6 +202,10 @@ pub fn read(e: &Environment, thread: &str) -> Result<Value> {
 /// Authorize a local website surface from current native metadata. UI fields
 /// select a tab, never supply its URL/profile/ownership or native permissions.
 pub fn surface(e: &Environment, input: &Value) -> Result<Value> {
+    surface_for_owned(e, input, false)
+}
+/// Only the coordinator holding the real inherited browser source may opt in.
+pub(crate) fn surface_for_owned(e: &Environment, input: &Value, owned: bool) -> Result<Value> {
     if input["environment"] != e.id {
         return Err("preview_scope_changed".into());
     }
@@ -220,7 +227,7 @@ pub fn surface(e: &Environment, input: &Value) -> Result<Value> {
         .iter()
         .find(|s| s["tabId"] == tab)
         .ok_or("preview_tab_closed")?;
-    if snapshot["runtime"] == "server" {
+    if snapshot["runtime"] == "server" && (!owned || snapshot["headless"] == true) {
         return Err("server_browser_surface_required".into());
     }
     Ok(

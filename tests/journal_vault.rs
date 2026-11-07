@@ -1,4 +1,8 @@
 //! Memory/Obsidian on temporary bare repositories, clones and isolated HOMEs.
+#[path="support/retaining_fs.rs"]
+mod retaining_fs;
+#[path="support/rebase_git.rs"]
+mod rebase_git;
 use omarchy_t3_client::journal_vault::{self as v, HostFiles, HostTransport, Paths, Task};
 use serde_json::{json, Value};
 use std::{
@@ -18,7 +22,7 @@ fn root(name: &str) -> PathBuf {
     GIT.call_once(|| {
         fs::create_dir_all(&base).unwrap();
         let config = base.join("gitconfig");
-        fs::write(&config, "[user]\n\tname = Test\n\temail = test@example.invalid\n[init]\n\tdefaultBranch = main\n[commit]\n\tgpgsign = false\n").unwrap();
+        fs::write(&config, "[user]\n\tname = Test\n\temail = test@example.invalid\n[init]\n\tdefaultBranch = main\n[commit]\n\tgpgsign = false\n[gc]\n\tauto = 0\n").unwrap();
         std::env::set_var("GIT_CONFIG_GLOBAL", &config);
         std::env::set_var("GIT_CONFIG_NOSYSTEM", "1");
     });
@@ -44,8 +48,20 @@ fn device_with_vault(root: &Path, name: &str, url: &str) -> (Paths, PathBuf) {
     v::create(&vault, Some(url), None).unwrap();
     (paths, vault)
 }
+fn pull_retained(path:&Path)->omarchy_t3_client::Result<Value>{v::pull_with_io(&rebase_git::RetainingRebaseGit::new(path))}
+fn commit_push_retained(path:&Path,message:&str)->omarchy_t3_client::Result<Value>{v::commit_push_with_pull(path,message,pull_retained)}
+fn setup_retained(paths:&Paths,input:&Value)->omarchy_t3_client::Result<Value>{
+    v::setup_with_clone(paths,input,|url,target,ssh|v::clone_with_io(url,target,ssh,
+        |destination|v::run_git(None,&["clone","--",url,destination],ssh,300),
+        |owned|{
+            assert!(owned.starts_with(&paths.home));
+            if !owned.exists(){return Ok(())}
+            let retained=paths.home.join(format!("retained-partial-clone-{}",uuid::Uuid::new_v4()));
+            fs::rename(owned,retained)
+        }))
+}
 fn setup(paths: &Paths, url: &str) -> Value {
-    v::setup(paths, &json!({"path":"~/Obsidian/Dev","url":url})).unwrap()
+    setup_retained(paths, &json!({"path":"~/Obsidian/Dev","url":url})).unwrap()
 }
 fn step<'a>(result: &'a Value, id: &str) -> &'a Value {
     result["steps"].as_array().unwrap().iter().find(|s| s["id"] == id).unwrap_or_else(|| panic!("no step {id}: {result}"))
@@ -90,13 +106,13 @@ fn create_clone_pull_and_push_between_devices() {
     assert!(fs::read_to_string(node_vault.join("Machines.md")).unwrap().contains(&v::device_id()));
 
     fs::write(node_vault.join("Ideas.md"), "- una idea\n").unwrap();
-    assert_eq!(v::commit_push(&node_vault, "journal(dev-vault): idea").unwrap()["pushed"], true);
-    v::pull(&mac_vault).unwrap();
+    assert_eq!(commit_push_retained(&node_vault, "journal(dev-vault): idea").unwrap()["pushed"], true);
+    pull_retained(&mac_vault).unwrap();
     assert_eq!(fs::read_to_string(mac_vault.join("Ideas.md")).unwrap(), "- una idea\n");
     let status = v::status(&mac_vault);
     assert_eq!((status["ahead"].as_u64(), status["behind"].as_u64(), status["changes"].as_u64()), (Some(0), Some(0), Some(0)));
     // Nothing to commit: no empty commit, no push.
-    assert_eq!(v::commit_push(&mac_vault, "x").unwrap(), json!({"committed":false,"pushed":false}));
+    assert_eq!(commit_push_retained(&mac_vault, "x").unwrap(), json!({"committed":false,"pushed":false}));
 }
 
 #[test]
@@ -107,11 +123,16 @@ fn a_rebase_conflict_is_aborted_and_local_commits_kept() {
     let b_paths = Paths::under(&root.join("b"));
     setup(&b_paths, &url);
     let b = b_paths.home.join("Obsidian/Dev");
-    v::pull(&a).unwrap();
+    pull_retained(&a).unwrap();
     fs::write(a.join("Ideas.md"), "desde a\n").unwrap();
-    v::commit_push(&a, "a").unwrap();
+    commit_push_retained(&a, "a").unwrap();
     fs::write(b.join("Ideas.md"), "desde b\n").unwrap();
-    assert_eq!(v::commit_push(&b, "b").unwrap_err(), "vault_conflict");
+    let recovery=std::sync::Mutex::new(None);
+    assert_eq!(v::commit_push_with_pull(&b,"b",|path|{let io=rebase_git::RetainingRebaseGit::new(path);let result=v::pull_with_io(&io);*recovery.lock().unwrap()=Some(io);result}).unwrap_err(),"vault_conflict");
+    let recovery=recovery.into_inner().unwrap().unwrap();
+    assert!(recovery.requests().iter().any(|args|args==&["rebase","--abort"]));
+    assert!(!recovery.retained().is_empty());
+    assert!(recovery.retained().iter().all(|(_,path)|path.is_dir()));
     assert!(!b.join(".git/rebase-merge").exists() && !b.join(".git/rebase-apply").exists());
     assert_eq!(fs::read_to_string(b.join("Ideas.md")).unwrap(), "desde b\n");
     assert_eq!(git(&b, &["log", "-1", "--format=%s"]), "b");
@@ -178,7 +199,7 @@ fn project_stub_and_index_stay_inside_the_vault() {
     fs::create_dir_all(&outside).unwrap();
     let other = root.join("vault2");
     v::create(&other, None, None).unwrap();
-    fs::remove_dir_all(other.join("Projects")).unwrap();
+    fs::rename(other.join("Projects"), other.join("Projects-before-symlink-fixture")).unwrap();
     std::os::unix::fs::symlink(&outside, other.join("Projects")).unwrap();
     assert_eq!(v::ensure_project(&other, "evil", "t", "d").unwrap_err(), "vault_path_escape");
     assert!(files_under(&outside).is_empty() && fs::read_dir(&outside).unwrap().next().is_none());
@@ -355,14 +376,14 @@ fn an_occupied_folder_is_never_overwritten() {
     device_with_vault(&root, "y", &other);
     git(&root, &["clone", "-q", &other, &mac.home.join("Notes").display().to_string()]);
     assert_eq!(v::inspect(&mac.home.join("Notes"), Some(&url))["reason"], "other-remote");
-    let elsewhere = v::setup(&mac, &json!({"path":"~/Vaults/Dev","url":url})).unwrap();
+    let elsewhere = setup_retained(&mac, &json!({"path":"~/Vaults/Dev","url":url})).unwrap();
     assert_eq!(step(&elsewhere, "clone")["state"], "done");
     assert_eq!(fs::read_to_string(target.join("personal.md")).unwrap(), "mío\n");
     // A file at the path.
     fs::write(mac.home.join("file"), "x").unwrap();
     assert_eq!(v::inspect(&mac.home.join("file"), None)["reason"], "not-directory");
     // The home folder itself is refused.
-    assert_eq!(v::setup(&mac, &json!({"path":"~","url":url})).unwrap_err(), "vault_invalid_path");
+    assert_eq!(setup_retained(&mac, &json!({"path":"~","url":url})).unwrap_err(), "vault_invalid_path");
 }
 
 #[test]
@@ -371,7 +392,7 @@ fn missing_local_authentication_is_explained_not_copied() {
     let mac = Paths::under(&root.join("mac"));
     // An SSH that always refuses the key, as with no key on this computer.
     let refuse = "sh -c 'echo \"git@example.invalid: Permission denied (publickey).\" >&2; exit 255' --";
-    let result = v::setup(&mac, &json!({"path":"~/Obsidian/Dev","url":"git@example.invalid:me/dev-vault.git","sshCommand":refuse})).unwrap();
+    let result = setup_retained(&mac, &json!({"path":"~/Obsidian/Dev","url":"git@example.invalid:me/dev-vault.git","sshCommand":refuse})).unwrap();
     let access = step(&result, "access");
     assert_eq!((access["state"].as_str(), access["error"].as_str()), (Some("failed"), Some("vault_auth_missing")));
     assert_eq!(access["help"]["provider"], "ssh");
@@ -388,7 +409,7 @@ fn missing_local_authentication_is_explained_not_copied() {
     let help = v::auth_help("https://github.com/avillagran/dev-vault.git");
     assert_eq!(help["steps"], json!(["gh auth login", "gh auth setup-git"]));
     // Credentials typed into a URL are refused, never stored.
-    assert_eq!(v::setup(&mac, &json!({"path":"~/Obsidian/Dev","url":"https://x:tok@github.com/a/b.git"})).unwrap_err(), "vault_url_has_credentials");
+    assert_eq!(setup_retained(&mac, &json!({"path":"~/Obsidian/Dev","url":"https://x:tok@github.com/a/b.git"})).unwrap_err(), "vault_url_has_credentials");
     assert_eq!(v::save_config(&mac, &json!({"remote":{"kind":"custom-url","url":"https://tok@h/x"}})).unwrap_err(), "vault_url_has_credentials");
 }
 
@@ -425,7 +446,7 @@ fn mbp_m2_with_environment_node_writes_only_on_this_computer() {
     // URL above resolves to it. Every write lands in mbp-m2's HOME.
     device_with_vault(&root, "node-home", &url);
     let mac = Paths::under(&root.join("mbp-m2"));
-    let result = v::setup(&mac, &json!({"path":"~/Obsidian/Dev","url":url,"environment":"8b55eaad-3149-443c-953f-afd6dd002666"})).unwrap();
+    let result = setup_retained(&mac, &json!({"path":"~/Obsidian/Dev","url":url,"environment":"8b55eaad-3149-443c-953f-afd6dd002666"})).unwrap();
     assert_eq!(step(&result, "clone")["state"], "done");
     assert_eq!(node_files.files, before);
     assert!(node_files.calls.borrow().iter().all(|c| c.starts_with("metadata ") || c.starts_with("read ")));
@@ -576,12 +597,16 @@ fn concurrent_registry_writes_from_two_computers_merge_without_conflict() {
     let b_paths = Paths::under(&root.join("b"));
     setup(&b_paths, &url);
     let b = b_paths.home.join("Obsidian/Dev");
-    v::pull(&a).unwrap();
+    pull_retained(&a).unwrap();
     assert!(v::record_threads(&a, "ot3", &[row("from-a", "2026-10-23 10:00", "a")]).unwrap());
-    v::commit_push(&a, "a").unwrap();
+    commit_push_retained(&a, "a").unwrap();
     assert!(v::record_threads(&b, "ot3", &[row("from-b", "2026-10-23 11:00", "b")]).unwrap());
     // Same file, same lines touched on both sides: rows are merged, the push goes through.
-    assert_eq!(v::commit_push(&b, "b").unwrap()["pushed"], true);
+    let recovery=std::sync::Mutex::new(None);
+    assert_eq!(v::commit_push_with_pull(&b,"b",|path|{let io=rebase_git::RetainingRebaseGit::new(path);let result=v::pull_with_io(&io);*recovery.lock().unwrap()=Some(io);result}).unwrap()["pushed"],true);
+    let recovery=recovery.into_inner().unwrap().unwrap();
+    assert!(recovery.requests().iter().any(|args|args.contains(&"--continue".to_owned())));
+    assert!(!recovery.retained().is_empty());
     let merged = fs::read_to_string(b.join("Projects/ot3/Threads.md")).unwrap();
     assert!(merged.contains("t3-thread://v1/from-a") && merged.contains("t3-thread://v1/from-b"), "{merged}");
     assert!(!merged.contains("<<<<<<<"));
@@ -658,4 +683,18 @@ fn an_outdated_local_block_is_renewed_but_a_missing_one_is_not_added() {
     fs::remove_file(mac.home.join(".codex/AGENTS.md")).unwrap();
     assert!(!v::refresh_instructions(&mac, &config));
     assert_eq!(fs::read_to_string(&file).unwrap(), "mío\n");
+}
+
+#[test]
+fn failed_clone_rollback_uses_owned_namespace_and_retains_partial_data() {
+    let root=root("clone-rollback-model");let target=root.join("new-vault");let retained=root.join("retained-partial-clone");
+    let result=v::clone_with_io("https://example.invalid/vault.git",&target,None,
+        |destination|{assert_eq!(Path::new(destination),target);fs::create_dir(&target).unwrap();fs::write(target.join("partial"),b"retained").unwrap();v::GitOutput{ok:false,stdout:String::new(),stderr:"fatal: network unreachable".into()}},
+        |owned|{assert_eq!(owned,target);fs::rename(owned,&retained)});
+    assert!(result.is_err());assert!(!target.exists());assert_eq!(fs::read(retained.join("partial")).unwrap(),b"retained");
+    let existing=root.join("already-empty");fs::create_dir(&existing).unwrap();
+    assert!(v::clone_with_io("https://example.invalid/vault.git",&existing,None,
+        |_|{fs::write(existing.join("partial"),b"keep").unwrap();v::GitOutput{ok:false,stdout:String::new(),stderr:"fatal: network unreachable".into()}},
+        |_|panic!("preexisting namespace is never owned by clone rollback")).is_err());
+    assert_eq!(fs::read(existing.join("partial")).unwrap(),b"keep");
 }

@@ -1,13 +1,21 @@
 {
-  "commit": "3f9448747bb8848050dc2cacf83affa6f94a66a1",
+  "commit": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
   "files": {
-    "packages/shared/src/usageLimits.ts": "82d3bceeba83aa00790a6b8c3f9199314d2a175caa667c8028069c9a6df9f630"
+    "packages/shared/src/usageLimits.ts": "f183c8bbd0c438f06e6033b9e6355951c9ad906663c79aaf6cd9ef5fbf526889",
+    "packages/contracts/src/model.ts": "754f9f6611fadefcd72ccc1211102379a878026643092abca27e5f90fee00cf9"
+  },
+  "contractExport": {
+    "file": "tests/fixtures/reset-credit-4301.json",
+    "sha256": "e02c49e1133eb897561b0b5ef1a69c966f4441193f68340a11433458cc084f75",
+    "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b"
   },
   "adaptations": [
+    "Presentation-only module excludes exhaustedUsageWindow/resolveNewThreadModelSelection; model selection is separately scoped",
+    "Display names use real exported contracts from the canonical4301 module graph",
     "Original helpers retained after TypeScript erasure and import/export removal",
     "Qt object spread becomes Object.assign; toSorted becomes copying sort",
     "Dense contract arrays use map/reduce for Qt flatMap compatibility",
     "Original availability predicate inlined; DateTime ISO formatting uses native Date; no runtime dependencies"
   ],
-  "outputSha256": "bb053d422ce4f6927e45fce741825ae8ba361dc233fdd95e079c79fe6e9ec169"
+  "outputSha256": "0f6c064eb9752f1e477fa7b710d68f99357c6f1aee4aa73d24e4bf203543df9c"
 }

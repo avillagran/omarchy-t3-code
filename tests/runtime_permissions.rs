@@ -21,5 +21,5 @@ fn permissions_precede_messages_and_keep_the_same_identity_on_retry(){
  for mode in modes{let input=json!({"op":"send","requestId":uuid::Uuid::new_v4().to_string(),"thread":"thread","runtimeMode":mode,"text":"fixture prompt","attachments":[],"modelSelection":{"instanceId":"fixture","model":"fixture"}});write::dispatch(&env,&input).unwrap();write::dispatch(&env,&input).unwrap();let mut changed=input.clone();changed["runtimeMode"]=json!(if mode=="full-access"{"approval-required"}else{"full-access"});assert_eq!(write::dispatch(&env,&changed).unwrap_err(),"retry_payload_changed")}
  for mode in modes{write::manage(&env,&json!({"requestId":uuid::Uuid::new_v4().to_string(),"action":"new-thread","projectId":"p","title":"Fixture","modelSelection":{"instanceId":"fixture","model":"fixture"},"runtimeMode":mode})).unwrap();}
  assert_eq!(write::dispatch(&env,&json!({"op":"send","requestId":uuid::Uuid::new_v4().to_string(),"thread":"thread","runtimeMode":"invalid","text":"fixture prompt","attachments":[]})).unwrap_err(),"invalid_runtime_mode");
- worker.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+ worker.join().unwrap();
 }

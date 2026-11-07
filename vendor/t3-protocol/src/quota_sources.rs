@@ -52,13 +52,22 @@ pub fn limits(raw: &Value) -> Option<Value> {
         "unsupported" | "probeFailed"
     ) {
         out["unavailable"] = json!({"reason":raw["unavailable"]["reason"]});
+        copy(&mut out["unavailable"], &raw["unavailable"], &["message"], 1024);
     }
     if let Some(count) = raw["resetCredits"]["availableCount"].as_u64() {
         out["resetCredits"] = json!({"availableCount":count});
         if let Some(reset) = timestamp(&raw["resetCredits"], "nextExpiresAt") {
             out["resetCredits"]["nextExpiresAt"] = reset;
         }
-        // Redemption is intentionally not exposed by the read-only panel.
+        // Preserve the native optional TrimmedNonEmptyString exactly. It binds
+        // an explicit redemption to the credit shown in this observation.
+        if let Some(value) = raw["resetCredits"].get("nextCreditId") {
+            let id = value.as_str()?.trim_matches(crate::js::is_space);
+            if id.is_empty() {
+                return None;
+            }
+            out["resetCredits"]["nextCreditId"] = json!(id);
+        }
     }
     if let (Some(label), Some(url)) = (
         string(&raw["externalUsage"], "label", 256),

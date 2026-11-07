@@ -8,6 +8,22 @@ use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
     e.connection(true)?.rpc(tag,payload)
 }
+fn reset_credit_access(e: &Environment) -> Result<(protocol::Connection, bool)> {
+    let connection = e.connection(true)?;
+    let session = connection.request_json("GET", "/api/auth/session", None, false)?;
+    let allowed = session["authenticated"] == true
+        && session.get("permissions").or_else(|| session.get("scopes"))
+            .and_then(Value::as_array).is_some_and(|scopes| scopes.iter().any(|scope| scope == "providers:manage"));
+    Ok((connection, allowed))
+}
+fn consume_reset_credit(e: &Environment, input: &Value) -> Result<Value> {
+    let input = protocol::api::provider::ResetCreditInput::from_json(input)?;
+    let (connection, allowed) = reset_credit_access(e)?;
+    if !allowed { return Err("permission_denied".into()); }
+    // Redemption spends a credit. Neither transport uncertainty nor a later quota
+    // refresh is authority to repeat this mutation.
+    protocol::api::provider::consume_reset_credit(&connection, &input)
+}
 /// `orchestration.dispatchCommand` through the typed API, with the write token like `rpc`.
 pub fn dispatch_command(e: &Environment, command: &Value) -> Result<Value> {
     send_command(&e.connection(true)?,command)
@@ -15,7 +31,7 @@ pub fn dispatch_command(e: &Environment, command: &Value) -> Result<Value> {
 /// The command JSON a caller built (and an outbox may hold) is parsed into the typed
 /// `Command`, which sends it unchanged; a malformed command fails before any socket opens.
 pub fn send_command(c: &protocol::Connection, command: &Value) -> Result<Value> {
-    protocol::api::orchestration::dispatch(c,&protocol::api::Command::from_json(command)?)
+    protocol::api::orchestration::dispatch_with_context(c,&protocol::api::CommandWithContext::from_json(command)?)
 }
 /// `server.updateSettings` for a whole `{patch, providerInstanceMutation?}` payload.
 pub fn update_settings(c: &protocol::Connection, payload: &Value) -> Result<Value> {
@@ -30,7 +46,7 @@ const CREATE_NEW: &str = protocol::api::projects::CREATE_NEW.name;
 const CLONE: &str = protocol::api::project_clone::START.name;
 /// What `manage` sends, typed before the outbox keeps it.
 enum Managed {
-    Dispatch(protocol::api::Command),
+    Dispatch(protocol::api::CommandWithContext),
     Launch(protocol::api::ThreadLaunch),
     Mutate(protocol::api::projects::ProjectMutation),
     CreateNew(String),
@@ -53,6 +69,7 @@ fn sign_in(native: &Value) -> Value {
 pub fn catalog(e: &Environment) -> Result<Value> {
     let config = protocol::api::server::config(&e.connection(true)?)?;
     let mut result=protocol::models::catalog(&config);
+    result["newThreadContext"]=crate::new_thread_models::catalog_context(&config);
     for provider in result["providers"].as_array_mut().unwrap(){
         if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);provider["update"]=crate::provider_updates::advisory(native);provider["signIn"]=sign_in(native);}
     }
@@ -60,11 +77,14 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     const MACHINES:[&str;7]=["server","cloud","linux","desktop","laptop","mac-mini","mac-studio"];
     result["machine"]=json!([&config["settings"]["environmentIcon"],&config["environment"]["platform"]["machine"]].into_iter().filter_map(Value::as_str).find(|k|MACHINES.contains(k)).unwrap_or("server"));
     // The server's own version (environment.serverVersion), shown against the T3 revision ot3 is validated with.
+    result["freshContext"]=json!(config["environment"]["capabilities"]["freshContext"]==true);
     result["shellThreadFamilies"]=json!(config["shellThreadFamilies"]==true);
     result["guestSharingEnabled"]=json!(config["settings"]["guestSharingEnabled"]==true);
     result["serverVersion"]=json!(config["environment"]["serverVersion"].as_str().filter(|v|v.len()<=80&&v.chars().all(|c|c.is_ascii_alphanumeric()||".-+_".contains(c))));
     let permission=Client::shared()?.get(e,"/api/auth/session",false);
     result["canWrite"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="orchestration:operate"))));
+    result["canReadFiles"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="filesystem:read"))));
+    result["editors"]=json!(crate::thread_details::editors(&config));
     result["canShareGuest"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="access:write"))));
     if let Err(error)=permission{result["permissionError"]=json!(error);}
     Ok(result)
@@ -77,15 +97,29 @@ pub fn project_sources(e:&Environment)->Result<Value>{
 }
 pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
     let project=text(input,"projectId");if !valid_id(project){return Err("invalid_project".into())}
-    let raw=if input["action"]=="workspace-update" {
+    let mut raw=if input["action"]=="workspace-update" {
         if !matches!(input["mode"].as_str(),Some("local"|"worktree")){return Err("invalid_settings".into())}
         protocol::api::server::update_settings(&e.connection(true)?,&json!({"defaultThreadEnvMode":input["mode"]}),None)?
     }else if input["action"]=="workspace-read"{protocol::api::server::settings(&e.connection(true)?)?}else{return Err("invalid_settings".into())};
+    let mut new_projects_root=Value::Null;
+    let models=if input["modelDefaults"]==true {
+        let config=protocol::api::server::config(&e.connection(true)?)?;
+        raw=config["settings"].clone();new_projects_root=json!(config["newProjectsRoot"].as_str());Some(crate::new_thread_models::present(&config,project))
+    }else{None};
     let overrides=&raw["projectSettingsOverrides"][project];
     let mode=overrides["defaultThreadEnvMode"].as_str().or(raw["defaultThreadEnvMode"].as_str()).filter(|s|matches!(*s,"local"|"worktree"));
     let origin=overrides["newWorktreesStartFromOrigin"].as_bool().or(raw["newWorktreesStartFromOrigin"].as_bool()).unwrap_or(true);
-    let mut result=crate::native_settings::thread_defaults(&raw,project);
-    result["mode"]=json!(mode);result["startFromOrigin"]=json!(origin);Ok(result)
+    let mut result=if input["localDraft"]==true {
+        let mut hint=input["project"].clone();if !hint.is_object(){hint=json!({"id":project})}hint["id"]=json!(project);
+        let initial=crate::local_drafts::workspace_defaults(&raw,Some(&hint),None);
+        let file=if initial["consultProjectFile"]==true {
+            hint["workspaceRoot"].as_str().and_then(|cwd|protocol::api::projects::read_file(&e.connection(true).ok()?,cwd,"t3.json",Some(true)).ok()).filter(|file|file["exists"]!=false&&file["truncated"]!=true).and_then(|file|protocol::scoped_settings::project_file(text(&file,"contents")))
+        }else{None};
+        crate::local_drafts::workspace_defaults(&raw,Some(&hint),file.as_ref())
+    }else{crate::native_settings::thread_defaults(&raw,project)};
+    if input["localDraft"]==true{result["newProjectsRoot"]=new_projects_root;}
+    if input["localDraft"]!=true {result["mode"]=json!(mode);result["startFromOrigin"]=json!(origin);}
+    if let Some(models)=models{result["modelDefaults"]=models;}Ok(result)
 }
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
@@ -112,6 +146,7 @@ pub fn upload(e: &Environment, file_url: &str) -> Result<Value> {
 }
 pub fn validate_message(input:&Value)->Result<()> {
     let content=text(input,"text");
+    if let Some(context)=input.get("context").filter(|c|!c.is_null()){crate::composer_context::clean(context)?;}
     let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
         if (content.trim().is_empty() && attachments.is_empty()) || content.chars().count()>120000 || attachments.len()>100 {return Err("invalid_message".into())}
         for a in attachments {
@@ -146,10 +181,15 @@ fn launch_command(input:&Value,thread:&str)->Result<Value>{
     let title=text(input,"title").trim();
     if title.is_empty()||title.chars().count()>255{return Err("invalid_title".into())}
     let mut command=json!({"threadId":thread,"projectId":input["projectId"],"title":title,"modelSelection":input["modelSelection"],"runtimeMode":runtime_mode(input)?,"interactionMode":interaction_mode(input)?,"workspaceStrategy":workspace,"creationSource":"web"});
+    if input["generateTitle"]==true {command["generateTitle"]=json!(true);}
     if input["launchWithMessage"]==true {
         validate_message(input)?;
         let message=uuid::Uuid::parse_str(text(input,"sendRequestId")).map_err(|_|"invalid_request_id")?;
         command["initialMessage"]=json!({"messageId":format!("omarchy-{message}"),"text":protocol::composer::legacy_attachment_text(text(input,"text"),input["attachments"].as_array().unwrap()),"attachments":input["attachments"]});
+        if let Some(context)=input.get("context").filter(|c|!c.is_null()){
+            command["initialMessage"]["context"]=crate::composer_context::for_message(context,text(input,"text"))?;
+            command["initialMessage"]["text"]=input["text"].clone();
+        }
     }
     Ok(command)
 }
@@ -166,7 +206,7 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         if path.exists() {
             // A lost acknowledgement may already have resolved the request. Replay
             // only the identical durable command, letting T3 deduplicate its ID.
-            if read_json(&path)?!=expected {return Err("retry_payload_changed".into())}
+            if !crate::composer_context::semantic_equal(&read_json(&path)?,&expected) {return Err("retry_payload_changed".into())}
             expected["command"].clone()
         } else {
             let snapshot=Client::shared()?.bounded_thread(e,thread)?;
@@ -184,8 +224,21 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         let attachments=input["attachments"].as_array().ok_or("invalid_attachments")?;
         validate_message(input)?;
         let mut c=json!({"type":"message.dispatch","threadId":thread,"messageId":format!("omarchy-{id}"),"text":protocol::composer::legacy_attachment_text(content,attachments),"attachments":attachments,"createdBy":"user","creationSource":"web","dispatchMode":{"type":if input["delivery"]=="queue" {"queue_after_active"} else {"start_immediately"}}});
+        if let Some(context)=input.get("context").filter(|c|!c.is_null()){
+            c["context"]=crate::composer_context::for_message(context,content)?;
+            c["text"]=json!(content);
+        }
+        if let Some(fresh) = input.get("freshContext") {
+            let fresh = fresh.as_bool().ok_or("invalid_fresh_context")?;
+            if fresh {
+                let config = protocol::api::server::config(&e.connection(true)?)?;
+                if config["environment"]["capabilities"]["freshContext"] != true { return Err("fresh_context_unsupported".into()); }
+                c["freshContext"] = json!(true);
+                if matches!(text(input,"delivery"), "steer" | "restart") { c["dispatchMode"] = json!({"type":"queue_after_active"}); }
+            }
+        }
         // T3's server-resolved dispatch: steer redirects the active run, auto starts or queues as the provider allows.
-        if input["delivery"]!="queue" {c["deliveryIntent"]=json!(if input["delivery"]=="steer" {"steer"} else {"auto"});}
+        if input["delivery"]!="queue" && !(c["freshContext"]==true&&matches!(text(input,"delivery"),"steer"|"restart")) {c["deliveryIntent"]=json!(if input["delivery"]=="steer" {"steer"} else {"auto"});}
         if input["modelSelection"].is_object() {c["modelSelection"]=input["modelSelection"].clone();}
         c
     };
@@ -204,13 +257,13 @@ pub fn dispatch(e: &Environment, input: &Value) -> Result<Value> {
         Some(protocol::api::Command::InteractionModeSet{command_id:format!("omarchy-{id}-interaction-mode"),thread_id:thread.to_string(),interaction_mode:interaction_mode(input)?.to_string()})
     }else{None};
     if interaction.is_some(){envelope["interactionMode"]=input["interactionMode"].clone();}
-    let command=protocol::api::Command::from_json(&cmd)?;
-    if path.exists() {if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}}
+    let command=protocol::api::CommandWithContext::from_json(&cmd)?;
+    if path.exists() {if !crate::composer_context::semantic_equal(&read_json(&path)?,&envelope) {return Err("retry_payload_changed".into())}}
     else { save_json(&path,&envelope)?; }
     let c=e.connection(true)?;
     if let Some(mode)=permissions{protocol::api::orchestration::dispatch(&c,&mode)?;}
     if let Some(mode)=interaction{protocol::api::orchestration::dispatch(&c,&mode)?;}
-    protocol::api::orchestration::dispatch(&c,&command)
+    protocol::api::orchestration::dispatch_with_context(&c,&command)
 }
 /// Explicit management actions. Native launches own workspace preparation and
 /// may durably accept an initial message; legacy thread.create remains metadata-only.
@@ -237,7 +290,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
         },
         "new-thread" => {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
-            thread=format!("omarchy-thread-{id}");
+            thread=match input.get("targetThreadId") {Some(value)=>value.as_str().filter(|target|valid_id(target)).ok_or("invalid_id")?.to_owned(),None=>format!("omarchy-thread-{id}")};
             let mode=runtime_mode(input)?;
             if input["workspaceStrategy"].is_object(){(LAUNCH,launch_command(input,&thread)?)}else{(DISPATCH,json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":interaction_mode(input)?,"branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))}
         },
@@ -289,7 +342,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     // createNew and clone.start take no commandId: the envelope keeps it, the wire does not.
     let bare=||{let mut c=command.clone();if let Some(o)=c.as_object_mut(){o.remove("commandId");}c};
     let typed=match tag{
-        DISPATCH=>Managed::Dispatch(protocol::api::Command::from_json(&command)?),
+        DISPATCH=>Managed::Dispatch(protocol::api::CommandWithContext::from_json(&command)?),
         LAUNCH=>Managed::Launch(protocol::api::ThreadLaunch::from_json(&command)?),
         MUTATE=>Managed::Mutate(protocol::api::projects::ProjectMutation::from_json(&command)?),
         CREATE_NEW=>Managed::CreateNew(text(&command,"name").to_string()),
@@ -301,13 +354,13 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     let receipt=path.with_extension("receipt.json");
     let non_replayable=tag==CREATE_NEW||tag==CLONE;
     if path.exists() {
-        if read_json(&path)?!=envelope {return Err("retry_payload_changed".into())}
+        if !crate::composer_context::semantic_equal(&read_json(&path)?,&envelope) {return Err("retry_payload_changed".into())}
         if non_replayable {return if receipt.exists(){read_json(&receipt)}else{Err("rpc_outcome_unknown".into())}}
     } else {save_json(&path,&envelope)?;}
     let command_project=command["projectId"].clone();
     let c=e.connection(true)?;
     let response=match &typed {
-        Managed::Dispatch(command)=>protocol::api::orchestration::dispatch(&c,command)?,
+        Managed::Dispatch(command)=>protocol::api::orchestration::dispatch_with_context(&c,command)?,
         Managed::Launch(launch)=>protocol::api::orchestration::launch_thread(&c,launch)?,
         Managed::Mutate(mutation)=>protocol::api::projects::mutate(&c,mutation)?,
         Managed::CreateNew(name)=>protocol::api::projects::create_new(&c,name)?,
@@ -319,6 +372,8 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     Ok(result)
 }
 pub fn execute(input:&Value) -> Result<Value> {
+    if let Some(result)=crate::file_metadata_runtime::control(input){return result}
+    if input["op"]=="file-metadata-query"{return crate::file_metadata_runtime::query_command(input)}
     if matches!(text(input,"op"),"browser-profiles-read"|"browser-profiles-action"){return crate::browser_profiles::execute(input)}
     if input["op"]=="licenses-read"{return crate::third_party_licenses::read()}
     if input["op"]=="thread-search"{return crate::thread_search::search(input)}
@@ -352,6 +407,9 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="copy" {return clipboard::copy(input)}
     let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
     match text(input,"op") {
+        "speech"=>crate::speech_management::execute(&e,input),
+        "provider-reset-credit-access"=>reset_credit_access(&e).map(|(_,allowed)| json!({"canManageProviders":allowed})),
+        "provider-reset-credit"=>consume_reset_credit(&e,&input["input"]),
         "devices-read"=>crate::integration_devices::read(&e),
         "devices-action"=>crate::integration_devices::apply(&e,input),
         "connection-access"=>crate::connection_access::execute(&e,input),

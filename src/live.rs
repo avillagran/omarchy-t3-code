@@ -6,13 +6,15 @@ use omarchy_t3_client::*;
 use protocol::{api::streams,stream::advance};
 use serde_json::{json,Value};
 use std::{sync::{Arc,mpsc,atomic::{AtomicU64,AtomicBool,Ordering}},time::{Duration,Instant}};
-#[derive(Clone)]pub struct Control{generation:Arc<AtomicU64>,pub connected:Arc<AtomicBool>,sender:mpsc::Sender<(u64,Option<(String,String,i64)>)>}
+type Target = Option<(String,String,i64)>;
+type Selection = (u64,Target);
+#[derive(Clone)]pub struct Control{generation:Arc<AtomicU64>,pub connected:Arc<AtomicBool>,sender:mpsc::Sender<Selection>}
 impl Control{
  pub fn new(client:Client)->Self{Self::named(client,"messages","live-state")}
  pub fn named(client:Client,messages:&'static str,status:&'static str)->Self{
   let (sender,receiver)=mpsc::channel();let this=Self{generation:Arc::new(AtomicU64::new(0)),connected:Arc::new(AtomicBool::new(false)),sender};let worker=this.clone();
-  std::thread::spawn(move||{let mut pending=None;let mut frames=json_delta::Stream::new();loop{
-   let (generation,target)=match pending.take().or_else(||receiver.recv().ok()){Some(t)=>t,None=>break};let Some((env,thread,serial))=target else{continue};let mut backoff=reconnect::Backoff::default();let mut waiter=reconnect::Waiter::default();let mut woke=false;let mut rendered=RenderCache::new();
+  std::thread::spawn(move||{let mut pending=None;let mut frames=json_delta::Stream::new();while let Some((generation,target))=pending.take().or_else(||receiver.recv().ok()){
+   let Some((env,thread,serial))=target else{continue};let mut backoff=reconnect::Backoff::default();let mut waiter=reconnect::Waiter::default();let mut woke=false;let mut rendered=RenderCache::new();
    // Each target starts with a whole value; later frames are patches against it.
    frames.reset();
    // Survives reconnects of this target: the envelope and the sequence it reflects.

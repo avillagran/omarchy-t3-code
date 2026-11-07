@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Run side-panel QML in a private software display, without live desktop/profile access."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "browser-permission", "browser-permission-panel", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "thread-activity", "thread-row-activity", "backend-smoke", "reset-credit", "new-thread-model", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route", "voice-controller"], default="device-tools")
+args = parser.parse_args()
+root = Path(__file__).resolve().parent.parent
+if subprocess.check_output(["podman", "--remote=false", "info", "--format", "{{.Host.Security.Rootless}}"], text=True).strip() != "true":
+    raise SystemExit("Rootless Podman is required")
+evidence = Path(tempfile.mkdtemp(prefix="o3-device-panel-", dir="/var/tmp"))
+evidence.chmod(0o700)
+voice_fence={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in ["tools/test-device-panel-container","tests/qml/voice-controller.qml","tests/fixtures/browser-permission-worker.py","ui/qml/T3Backend.qml","ui/qml/T3Composer.qml","ui/js/NativeVoice.js","ui/js/NativeVoice.sources.json","ui/js/VoicePlatform.js"]} if args.fixture=="voice-controller" else None
+script = r'''
+set -eu
+test "$(ulimit -Hc)" = 0
+test "$(ulimit -Sc)" = 0
+umask 077
+mkdir -p /tmp/home /tmp/runtime /tmp/qml /tmp/.X11-unix
+chmod 700 /tmp/runtime
+chmod 1777 /tmp/.X11-unix
+for name in Commons Ui plugins services; do ln -s "/usr/share/omarchy/shell/$name" "/tmp/qml/$name"; done
+fixture_source="$1"
+if test "$2" = voice-controller; then
+  mkdir -p /tmp/voice-source/bin
+  ln -s "$1/ui" /tmp/voice-source/ui
+  ln -s "$1/upstream" /tmp/voice-source/upstream
+  ln -s "$1/manifest.json" /tmp/voice-source/manifest.json
+  ln -s /voice-inert-worker /tmp/voice-source/bin/omarchy-t3-client
+  fixture_source=/tmp/voice-source
+fi
+ln -s "$fixture_source" /tmp/qml/UnderTest
+printf '%s\n' '//@ pragma OmarchyLoadPatch' '//@ pragma RespectSystemStyle' > /tmp/qml/shell.qml
+cat "$1/tests/qml/$2.qml" >> /tmp/qml/shell.qml
+if test "$2" = voice-controller; then
+  test -x "$fixture_source/bin/omarchy-t3-client"
+  "$fixture_source/bin/omarchy-t3-client" --inert-preflight </dev/null
+  test -x /voice-inert-dictate
+fi
+if test "$3" = wayland; then
+  printf '%s\n' 'output * mode 1280x1024' 'seat seat0 fallback true' 'input * xkb_layout us' 'focus_follows_mouse no' > /tmp/sway.conf
+  WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_HEADLESS_OUTPUTS=1 WLR_LIBINPUT_NO_DEVICES=1 LD_LIBRARY_PATH=/opt/sway-runtime/usr/lib /opt/sway-runtime/usr/bin/sway --config /tmp/sway.conf > /evidence/display.log 2>&1 &
+  display_pid=$!
+  for attempt in $(seq 1 100); do
+    kill -0 "$display_pid" || exit 1
+    for socket in /tmp/runtime/wayland-*; do
+      if test -S "$socket"; then WAYLAND_DISPLAY="${socket##*/}"; break; fi
+    done
+    if test -n "${WAYLAND_DISPLAY:-}"; then break; fi
+    sleep 0.02
+  done
+  QT_QPA_PLATFORM=wayland; export WAYLAND_DISPLAY QT_QPA_PLATFORM
+  if test "$2" = browser-permission-panel; then
+    # Headless wlroots has no keyboard until an owned virtual device exists.
+    # Prime its private keymap before any app window exists, then hold it;
+    # never connect to the host display.
+    wtype -k Shift_L -s 20000 > /evidence/keyboard.log 2>&1 &
+  fi
+else
+  Xvfb :9 -screen 0 1280x1024x24 -nolisten tcp -extension GLX > /evidence/display.log 2>&1 &
+  display_pid=$!
+  for attempt in $(seq 1 50); do
+    kill -0 "$display_pid" || exit 1
+    if test -S /tmp/.X11-unix/X9; then break; fi
+    sleep 0.02
+  done
+  DISPLAY=:9 QT_QPA_PLATFORM=xcb; export DISPLAY QT_QPA_PLATFORM
+fi
+result=0
+QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=OmarchyT3 QML_IMPORT_PATH="$1/ui/style:$1/bin/qml" timeout 25 quickshell -p /tmp/qml/shell.qml > /evidence/qml.log 2>&1 || result=$?
+if test "$2" = browser-permission-panel; then
+  for socket in /tmp/runtime/sway-ipc*.sock; do
+    if test -S "$socket"; then
+      LD_LIBRARY_PATH=/opt/sway-runtime/usr/lib /opt/sway-runtime/usr/bin/swaymsg -s "$socket" -t get_seats > /evidence/seats.json
+      LD_LIBRARY_PATH=/opt/sway-runtime/usr/lib /opt/sway-runtime/usr/bin/swaymsg -s "$socket" -t get_inputs > /evidence/inputs.json
+    fi
+  done
+fi
+exit "$result"
+'''
+command = ["podman", "--remote=false", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--ulimit=core=0:0", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
+for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "XDG_CONFIG_HOME":"/tmp/config", "XDG_STATE_HOME":"/tmp/state", "XDG_DATA_HOME":"/tmp/data", "LIBGL_ALWAYS_SOFTWARE":"1", "__EGL_VENDOR_LIBRARY_FILENAMES":"/usr/share/glvnd/egl_vendor.d/50_mesa.json"}.items():
+    command += ["--env", f"{key}={value}"]
+if args.fixture in ["file-metadata", "thread-activity", "reset-credit", "new-thread-model", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"]:
+    command += ["--env", "QML_XHR_ALLOW_FILE_READ=1"]
+if args.fixture == "thread-activity":
+    command += ["--env", "TZ=UTC"]
+client_link = root / "bin/omarchy-t3-client"
+client_target = client_link.resolve()
+client_binary = Path(os.environ.get("OMARCHY_T3_TEST_BINARY", str(client_target)))
+if args.fixture == "thread-row-activity":
+    client_binary = root / "tests/fixtures/thread-activity-worker.py"
+if args.fixture in ["browser-permission", "browser-permission-panel", "voice-controller", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"]:
+    # T3I18n imports the global backend singleton even when the component's own
+    # bridge is local. Never start an incidental mutable Cargo debug executable.
+    client_binary = evidence / "permission-worker"
+    worker_fixture="local-thread-draft-worker.py" if args.fixture in ["local-thread-drafts","local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"] else "browser-permission-worker.py"
+    client_binary.write_bytes((root / "tests/fixtures" / worker_fixture).read_bytes())
+    client_binary.chmod(0o500)
+if args.fixture == "voice-controller":
+    # The incidental singleton must not execute the user's local dictation
+    # helper. This retained inert program emits no models and opens no audio.
+    dictate = evidence / "voice-inert-dictate"
+    dictate.write_text("#!/usr/bin/python3\nprint(" + repr(json.dumps({"models":[],"recorder":False})) + ")\n")
+    dictate.chmod(0o500)
+    command += ["-v", f"{client_binary}:/voice-inert-worker:ro"]
+    command += ["-v", f"{dictate}:/voice-inert-dictate:ro", "--env", "OMARCHY_T3_DICTATE=/voice-inert-dictate"]
+if client_binary.is_file() and args.fixture != "voice-controller":
+    command += ["-v", f"{client_binary}:{client_target}:ro"]
+display="wayland" if args.fixture in ["side-panel", "native-terminal", "thread-row-activity", "browser-permission-panel"] else "x11"
+container_image="localhost/o3-qml-wayland-tests:local" if display=="wayland" else "docker.io/library/archlinux:latest"
+command += ["-v", "/usr:/usr:ro", "-v", "/etc/fonts:/etc/fonts:ro", "-v", f"{root}:{root}:ro", "-v", f"{evidence}:/evidence:rw", container_image, "bash", "-c", script, "device-panel", str(root), args.fixture, display]
+if args.fixture == "local-thread-draft-clock":
+    command[3:3]=["--env","O3_LOCAL_DRAFT_CLOCK=1"]
+    script_index=command.index(script)
+    command[script_index]=script.replace("timeout 25 quickshell","timeout 140 quickshell")
+if args.fixture == "thread-row-activity":
+    # Exercise the real 60-second native tick rather than shortening its period.
+    script_index = command.index(script)
+    command[script_index] = script.replace("timeout 25 quickshell", "timeout 90 quickshell")
+result = subprocess.run(command, capture_output=True, text=True, timeout=155 if args.fixture=="local-thread-draft-clock" else 105 if args.fixture == "thread-row-activity" else 45)
+if voice_fence is not None:
+    assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==expected for name,expected in voice_fence.items()),"Voice source changed during runtime"
+(evidence / "result.json").write_text(json.dumps({"returncode":result.returncode,"fixture":args.fixture,**({"sourceSha256":voice_fence,"capture":"Synthetic in-memory recording/transcription; inert worker and local dictation helper; no microphone/network/auth/host display"} if voice_fence is not None else {})})+"\n")
+log = (evidence / "qml.log").read_text() if (evidence / "qml.log").exists() else result.stdout + result.stderr
+print(f"Device panel container evidence: {evidence}")
+if result.returncode or ("VOICE_CONTROLLER_QML_PASS" if args.fixture=="voice-controller" else "QML_PASS") not in log or any(error in log for error in ["QML_FAIL", "ReferenceError", "TypeError", "Binding loop"]):
+    print(log)
+    if (evidence / "display.log").exists(): print((evidence / "display.log").read_text())
+    raise SystemExit(result.returncode or 1)
+print("\n".join(line for line in log.splitlines() if "QML_PASS" in line))

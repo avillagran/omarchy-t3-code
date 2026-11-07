@@ -1,6 +1,6 @@
 [package]
 name = "t3-protocol"
-version = "0.3.6"
+version = "0.3.7"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/avillagran/lib-t3-rust"
@@ -24,3 +24,4 @@ sha2 = "0.10"
 tungstenite = { version = "0.28", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
 uuid = { version = "1", features = ["v4"] }
 zeroize = "1"
+unicode-normalization = "=0.1.25"

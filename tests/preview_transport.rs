@@ -1,3 +1,5 @@
+#[path = "support/retaining_fs.rs"]
+mod retaining_fs;
 use omarchy_t3_client::{preview_transport as preview, protocol, Environment};
 use serde_json::{json, Value};
 use std::{
@@ -129,7 +131,8 @@ impl Server {
           socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();let mut peek=[0;512];let n=socket.peek(&mut peek).unwrap();
           if String::from_utf8_lossy(&peek[..n]).starts_with("GET /") && !String::from_utf8_lossy(&peek[..n]).starts_with("GET /ws") {
             let mut header=vec![];let mut b=[0];while !header.ends_with(b"\r\n\r\n"){socket.read_exact(&mut b).unwrap();header.push(b[0]);}
-            let mut scopes=vec![];if aa.load(Ordering::Relaxed){scopes.push("orchestration:read");}if oo.load(Ordering::Relaxed){scopes.push("preview:operate");}
+            let mut scopes=vec![];if aa.load(Ordering::Relaxed){scopes.push("orchestration:read");}
+if oo.load(Ordering::Relaxed){scopes.push("preview:operate");}
             let http=String::from_utf8_lossy(&header).lines().next().unwrap_or("").to_owned();let page=http.starts_with("GET /page ")||http.starts_with("GET /next ")||http.starts_with("GET /clicked ");
             let body=if page{cc.lock().unwrap().push(json!({"http":http}));"<!doctype html><title>Fixture</title><style>body{margin:0;background:#203040}button{width:160px;height:80px}</style><button onclick=\"fetch('/clicked');document.body.style.background='green'\">Click</button>".to_string()}else if http.starts_with("GET /api/auth/session "){json!({"authenticated":true,"permissions":scopes,"private":"PRIVATE"}).to_string()}else{json!({"threads":[],"projects":[]}).to_string()};write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",if page{"text/html"}else{"application/json"},body.len(),body).unwrap();return;
           }
@@ -137,9 +140,14 @@ impl Server {
           let fixture_mode=mode.lock().unwrap().clone();
           let value=match request["tag"].as_str().unwrap(){
             "server.getConfig"=>json!({"environment":{"capabilities":{"serverBrowser":fixture_mode!="no-server"}},"settings":{"private":"PRIVATE"}}),
-            "preview.list"=>{assert_eq!(request["payload"],json!({"threadId":"thread"}));let n=lists.fetch_add(1,Ordering::Relaxed);let mut s=snapshot("a");if fixture_mode.starts_with("http:"){s["navStatus"]["url"]=json!(fixture_mode);}if fixture_mode=="server-tab"{s["runtime"]=json!("server");}if fixture_mode=="profile-less"{s.as_object_mut().unwrap().remove("profileId");}let native=s;if fixture_mode=="revoke-before-report"{oo.store(false,Ordering::Relaxed);}json!({"serverEpoch":if n==0||!fixture_mode.is_empty(){"one"}else{"two"},"revision":if n==0{4}else{0},"sessions":[native],"private":"PRIVATE"})},
+            "preview.list"=>{assert_eq!(request["payload"],json!({"threadId":"thread"}));let n=lists.fetch_add(1,Ordering::Relaxed);let mut s=snapshot("a");if fixture_mode.starts_with("http:"){s["navStatus"]["url"]=json!(fixture_mode);}
+if fixture_mode=="server-tab"{s["runtime"]=json!("server");}
+if fixture_mode=="profile-less"{s.as_object_mut().unwrap().remove("profileId");}let native=s;if fixture_mode=="revoke-before-report"{oo.store(false,Ordering::Relaxed);}json!({"serverEpoch":if n==0||!fixture_mode.is_empty(){"one"}else{"two"},"revision":if n==0{4}else{0},"sessions":[native],"private":"PRIVATE"})},
             "preview.open"|"preview.navigate"|"preview.resize"|"preview.adjust"|"preview.refresh"|"preview.close"=>{
-              assert!(oo.load(Ordering::Relaxed));if fixture_mode=="blocked"{while *mode.lock().unwrap()=="blocked"&&!ss.load(Ordering::Relaxed){thread::sleep(Duration::from_millis(5));}}if fixture_mode=="lost"{return;}if matches!(request["tag"].as_str(),Some("preview.refresh"|"preview.close")){Value::Null}else{let mut s=snapshot(if request["tag"]=="preview.open"{"created"}else{"a"});if request["tag"]=="preview.navigate"{s["navStatus"]["url"]=request["payload"]["url"].clone();}if fixture_mode=="malformed"{s["threadId"]=json!("other");}s}
+              assert!(oo.load(Ordering::Relaxed));if fixture_mode=="blocked"{while *mode.lock().unwrap()=="blocked"&&!ss.load(Ordering::Relaxed){thread::sleep(Duration::from_millis(5));}}
+if fixture_mode=="lost"{return;}
+if matches!(request["tag"].as_str(),Some("preview.refresh"|"preview.close")){Value::Null}else{let mut s=snapshot(if request["tag"]=="preview.open"{"created"}else{"a"});if request["tag"]=="preview.navigate"{s["navStatus"]["url"]=request["payload"]["url"].clone();}
+if fixture_mode=="malformed"{s["threadId"]=json!("other");}s}
             },
             "preview.reportStatus"=>{
               // A status admitted by the HTTP preflight can arrive after revocation.
@@ -527,7 +535,9 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
     let storage = config.storage_root();
     let e = server.env.clone();
     let (tx, rx) = mpsc::channel();
-    let manager = browser_sessions::Manager::start(
+    let deletion = retaining_fs::RetainingFs::new(root.clone());
+    let remover = deletion.clone();
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |id| {
             if id == e.id {
@@ -540,6 +550,7 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
         move |v| {
             let _ = tx.send(v);
         },
+        move |path| remover.remove(path),
     );
     let show = json!({"op":"browser-show","requestId":"surface-one","environment":"fixture","thread":"thread","tabId":"a","originKey":read["originKey"],"serverEpoch":"one","width":640,"height":400,"url":"file:///forged","profileId":"forged"});
     manager.request(show.clone(), true);
@@ -808,6 +819,9 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
         }
     }
     cleanup.clear("fixture").unwrap();
+    let receipts = deletion.receipts();
+    assert_eq!(receipts.len(), 1, "one physical removal is represented by one retained namespace change");
+    assert!(receipts[0].1.is_dir(), "profile contents remain available for review");
     let partition = omarchy_t3_client::browser_runtime::partition("fixture", "default").unwrap();
     assert!(
         !storage
@@ -818,7 +832,7 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
                     .trim_start_matches("persist:")
             )
             .exists(),
-        "active Qt profile flushed and removed under reservation"
+        "active Qt profile flushed and quarantined under reservation"
     );
     drop(cleanup);
     let mut reopened = show.clone();
@@ -868,7 +882,7 @@ fn authorized_coordinator_runs_real_qt_reports_native_status_and_applies_admitte
         thread::sleep(Duration::from_millis(10));
     }
     assert_eq!(fs::read_dir(frames).unwrap().count(), 0);
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]
@@ -1052,5 +1066,5 @@ fn actual_worker_observes_read_only_serializes_lifecycle_and_interrupts_when_hid
     let _ = child.0.kill();
     let _ = child.0.wait();
     reader.join().unwrap();
-    fs::remove_dir_all(root).unwrap();
+
 }

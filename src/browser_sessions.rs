@@ -46,9 +46,10 @@ fn safe_error(error: &str) -> &str {
 fn error(output: &Output, request: &str, value: &str) {
     output(json!({"kind":"error","requestId":request,"error":safe_error(value)}));
 }
+type PendingReports = Arc<Mutex<HashMap<Key, Option<(Arc<Grant>, Value)>>>>;
 #[derive(Clone)]
 struct Reporter {
-    pending: Arc<Mutex<HashMap<Key, Option<(Arc<Grant>, Value)>>>>,
+    pending: PendingReports,
     resolve: Resolver,
     output: Output,
 }
@@ -88,6 +89,22 @@ impl Reporter {
     }
 }
 enum Message {
+    PermissionDecision(Value),
+    PermissionWake,
+    BindPrivate {
+        environment: String,
+        origin: String,
+        receive: Output,
+        done: mpsc::Sender<Result<()>>,
+    },
+    UnbindPrivate(String, mpsc::Sender<()>),
+    PrivateCommand {
+        environment: String,
+        origin: String,
+        command: Value,
+        done: mpsc::Sender<Result<()>>,
+    },
+    ReconcilePrivate(Value, mpsc::Sender<Result<()>>),
     Show(Value, u64),
     Input(Value, u64),
     Control(Value, u64),
@@ -129,7 +146,7 @@ struct Cleanup {
     retained: std::collections::HashSet<String>,
 }
 struct CleanupLease {
-    sender: mpsc::SyncSender<Message>,
+    sender: Arc<mpsc::SyncSender<Message>>,
     id: String,
 }
 impl crate::browser_cleanup::Lease for CleanupLease {
@@ -182,7 +199,7 @@ impl Drop for CleanupLease {
 }
 #[derive(Clone)]
 pub struct Manager {
-    sender: mpsc::SyncSender<Message>,
+    sender: Arc<mpsc::SyncSender<Message>>,
     generation: Arc<AtomicU64>,
     desired: Arc<Mutex<Option<Value>>>,
     output: Output,
@@ -235,6 +252,19 @@ impl Manager {
         defaults: impl Fn() -> Result<Value> + Send + 'static,
         output: impl Fn(Value) + Send + Sync + 'static,
     ) -> Self {
+        Self::start_with_removal(config, resolve, defaults, output, |path| {
+            std::fs::remove_dir_all(path)
+        })
+    }
+    /// Explicit deletion adapter: tests quarantine validated partitions while
+    /// production keeps the real storage-removal implementation.
+    pub fn start_with_removal(
+        config: browser_guest::Config,
+        resolve: impl Fn(&str) -> Result<Environment> + Send + Sync + 'static,
+        defaults: impl Fn() -> Result<Value> + Send + 'static,
+        output: impl Fn(Value) + Send + Sync + 'static,
+        remove: impl Fn(&Path) -> std::io::Result<()> + Send + 'static,
+    ) -> Self {
         let resolve: Resolver = Arc::new(resolve);
         let output: Output = Arc::new(output);
         let grants: Grants = Arc::new(Mutex::new(HashMap::new()));
@@ -247,6 +277,14 @@ impl Manager {
         let storage = config.storage_root();
         let settings = config.client_settings_path();
         let (sender, receiver) = mpsc::sync_channel(256);
+        let sender = Arc::new(sender);
+        let permission_pending = Arc::new(Mutex::new(None::<Value>));
+        let callback_permissions = permission_pending.clone();
+        let callback_sender = Arc::downgrade(&sender);
+        let permission_automatic = Arc::new(Mutex::new(HashMap::<(String, String), Value>::new()));
+        let callback_automatic = permission_automatic.clone();
+        let permission_faults = Arc::new(Mutex::new(HashMap::<String, Value>::new()));
+        let callback_faults = permission_faults.clone();
         let ready = Arc::new(AtomicBool::new(true));
         let running = ready.clone();
         let generation = Arc::new(AtomicU64::new(0));
@@ -255,6 +293,65 @@ impl Manager {
         let (callback_grants, callback_output, callback_wanted) =
             (grants.clone(), output.clone(), desired.clone());
         let mut pool = browser_guest::Pool::new(config, move |data| {
+            if data["kind"] == "permission-request" {
+                let mut pending = callback_permissions.lock().unwrap();
+                if pending.is_some() {
+                    // Busy/failed prompts are not remembered as a user choice.
+                    let mut automatic = callback_automatic.lock().unwrap();
+                    if automatic.len() < 1024 {
+                        automatic.insert(
+                            (
+                                text(&data, "processId").into(),
+                                text(&data, "nativeRequestId").into(),
+                            ),
+                            data,
+                        );
+                    } else {
+                        callback_faults
+                            .lock()
+                            .unwrap()
+                            .insert(text(&data, "processId").into(), data);
+                    }
+                    drop(automatic);
+                    // A full actor queue already guarantees a future drain. Do
+                    // not block a reader that the actor may need to join.
+                    if let Some(sender) = callback_sender.upgrade() {
+                        let _ = sender.try_send(Message::PermissionWake);
+                    }
+                } else {
+                    let mut source = data;
+                    source["requestId"] = json!(uuid::Uuid::new_v4().to_string());
+                    callback_output(
+                        json!({"kind":"permission-request","requestId":source["requestId"],"environment":source["environment"],"origin":source["origin"],"nativeOptions":source["nativeOptions"]}),
+                    );
+                    *pending = Some(source);
+                }
+                return;
+            }
+            if matches!(
+                text(&data, "kind"),
+                "permission-cancelled" | "permission-source-closed"
+            ) {
+                if data["kind"] == "permission-source-closed" {
+                    callback_automatic
+                        .lock()
+                        .unwrap()
+                        .retain(|(process, _), _| process != text(&data, "processId"));
+                }
+                let mut pending = callback_permissions.lock().unwrap();
+                if pending.as_ref().is_some_and(|source| {
+                    source["processId"] == data["processId"]
+                        && (data["kind"] == "permission-source-closed"
+                            || source["nativeRequestId"] == data["nativeRequestId"])
+                }) {
+                    if let Some(source) = pending.take() {
+                        callback_output(
+                            json!({"kind":"permission-closed","requestId":source["requestId"]}),
+                        );
+                    }
+                }
+                return;
+            }
             if data["kind"] == "status" {
                 let s = &data["snapshot"];
                 let k = key(
@@ -268,7 +365,9 @@ impl Manager {
                         && g.process == text(&data, "processId")
                         && g.scope["originKey"] == data["originKey"]
                 }) {
-                    reporter.offer(k, grant, s.clone());
+                    if grant.scope["snapshot"]["runtime"] != "server" {
+                        reporter.offer(k, grant, s.clone());
+                    }
                 }
             } else {
                 let active = callback_wanted.lock().unwrap().clone();
@@ -292,20 +391,179 @@ impl Manager {
             }
             let _ready = Ready(running);
             let mut cleanups = HashMap::<String, Cleanup>::new();
+            let mut private_tabs = HashMap::<Key, String>::new();
             let mut active = None::<Value>;
             let mut epochs = HashMap::<String, (String, String)>::new();
             let mut revisions = HashMap::<(String, String), u64>::new();
             for message in receiver {
+                let automatic = permission_automatic
+                    .lock()
+                    .unwrap()
+                    .drain()
+                    .map(|(_, source)| source)
+                    .collect::<Vec<_>>();
+                for source in automatic {
+                    let _ = pool.permission_decision(&source, false, false);
+                }
+                let faults = permission_faults
+                    .lock()
+                    .unwrap()
+                    .drain()
+                    .map(|(_, source)| source)
+                    .collect::<Vec<_>>();
+                for source in faults {
+                    let environment = text(&source, "environment");
+                    let profile = text(&source, "profileId");
+                    if pool.process_id(environment, profile).as_deref()
+                        == Some(text(&source, "processId"))
+                    {
+                        let _ = pool.close_profile(environment, profile);
+                    }
+                }
                 if wanted.lock().unwrap().is_none() {
                     pool.hide();
                     active = None;
                 }
                 match message {
+                    Message::BindPrivate {
+                        environment,
+                        origin,
+                        receive,
+                        done,
+                    } => {
+                        let result =
+                            pool.bind_private_source(&environment, &origin, move |event| {
+                                receive(event)
+                            });
+                        let _ = done.send(result);
+                    }
+                    Message::UnbindPrivate(environment, done) => {
+                        invalidate(&mut pool, &grants, &environment);
+                        pool.unbind_private_source(&environment);
+                        private_tabs.retain(|(id, _, _), _| id != &environment);
+                        epochs.remove(&environment);
+                        revisions.retain(|(id, _), _| id != &environment);
+                        let _ = done.send(());
+                    }
+                    Message::PrivateCommand {
+                        environment,
+                        origin,
+                        command,
+                        done,
+                    } => {
+                        let _ = done.send(pool.private_command(&environment, &origin, &command));
+                    }
+                    Message::ReconcilePrivate(data, done) => {
+                        let result = (|| -> Result<()> {
+                            let environment = text(&data, "environment");
+                            let origin = text(&data, "originKey");
+                            if data["kind"] != "list"
+                                || data["canOperate"] != true
+                                || !pool.has_private_source(environment, origin)
+                            {
+                                return Err("preview_scope_changed".into());
+                            }
+                            let identity = (
+                                origin.to_owned(),
+                                text(&data["result"], "serverEpoch").to_owned(),
+                            );
+                            if identity.1.is_empty() {
+                                return Err("invalid_preview_state".into());
+                            }
+                            if epochs.get(environment).is_some_and(|old| old != &identity) {
+                                invalidate(&mut pool, &grants, environment);
+                                private_tabs.retain(|(id, _, _), _| id != environment);
+                            }
+                            let thread = text(&data, "thread");
+                            let revision = data["result"]["revision"]
+                                .as_u64()
+                                .ok_or("invalid_preview_state")?;
+                            if revisions
+                                .get(&(environment.into(), thread.into()))
+                                .is_some_and(|old| *old > revision)
+                            {
+                                return Ok(());
+                            }
+                            let preferences = defaults()?;
+                            let sessions = data["result"]["sessions"]
+                                .as_array()
+                                .ok_or("invalid_preview_state")?;
+                            let retained = sessions
+                                .iter()
+                                .filter(|session| {
+                                    session["runtime"] == "server" && session["headless"] != true
+                                })
+                                .map(|session| text(session, "tabId"))
+                                .collect::<std::collections::HashSet<_>>();
+                            let removed = private_tabs
+                                .iter()
+                                .filter(|((id, t, tab), _)| {
+                                    id == environment
+                                        && t == thread
+                                        && !retained.contains(tab.as_str())
+                                })
+                                .map(|(key, profile)| (key.clone(), profile.clone()))
+                                .collect::<Vec<_>>();
+                            for ((id, t, tab), profile) in removed {
+                                pool.close_tab(&id, &profile, &t, &tab)?;
+                                private_tabs.remove(&(id, t, tab));
+                            }
+                            for session in sessions {
+                                if session["runtime"] != "server" || session["headless"] == true {
+                                    continue;
+                                }
+                                let mut snapshot = session.clone();
+                                if snapshot.get("profileId").is_none() {
+                                    snapshot["profileId"] = json!(
+                                        crate::browser_preferences::default_profile(&preferences)
+                                    );
+                                }
+                                let size =
+                                    dimensions(&snapshot, &json!({"width":1280,"height":800}))?;
+                                let zoom = preferences
+                                    .get("browserDefaultZoomFactor")
+                                    .cloned()
+                                    .unwrap_or(json!(1));
+                                pool.ensure_private(environment, origin, &snapshot, size, &zoom)?;
+                                private_tabs.insert(
+                                    key(environment, thread, text(&snapshot, "tabId")),
+                                    text(&snapshot, "profileId").to_owned(),
+                                );
+                            }
+                            Ok(())
+                        })();
+                        let _ = done.send(result);
+                    }
+                    Message::PermissionWake => {}
+                    Message::PermissionDecision(input) => {
+                        let mut pending = permission_pending.lock().unwrap();
+                        let Some(source) = pending
+                            .as_ref()
+                            .filter(|source| {
+                                source["requestId"] == input["requestId"]
+                                    && input["allow"].is_boolean()
+                            })
+                            .cloned()
+                        else {
+                            continue;
+                        };
+                        pending.take();
+                        drop(pending);
+                        let _ = pool.permission_decision(&source, input["allow"] == true, true);
+                        worker_output(
+                            json!({"kind":"permission-closed","requestId":source["requestId"]}),
+                        );
+                    }
                     Message::Hide => {
                         pool.hide();
                         active = None;
                     }
                     Message::Shutdown(done) => {
+                        if let Some(source) = permission_pending.lock().unwrap().take() {
+                            worker_output(
+                                json!({"kind":"permission-closed","requestId":source["requestId"]}),
+                            );
+                        }
                         for grant in grants.lock().unwrap().values() {
                             grant.allowed.store(false, Ordering::SeqCst);
                         }
@@ -418,11 +676,12 @@ impl Manager {
                                 )?;
                                 cleanup.locks.insert(environment.clone(), lock);
                             }
-                            crate::browser_runtime::clear_owned_storage(
+                            crate::browser_runtime::clear_owned_storage_with(
                                 &storage,
                                 &environment,
                                 &cleanup.profile,
                                 cleanup.locks.get(&environment).unwrap(),
+                                |path| remove(path),
                             )?;
                             cleanup.cleared.push(environment);
                             Ok(())
@@ -553,7 +812,11 @@ impl Manager {
                         let request = text(&input, "requestId");
                         let result = (|| -> Result<Value> {
                             let e = resolve(text(&input, "environment"))?;
-                            let mut view = preview_transport::surface(&e, &input)?;
+                            let mut view = preview_transport::surface_for_owned(
+                                &e,
+                                &input,
+                                pool.has_private_source(&e.id, text(&input, "originKey")),
+                            )?;
                             if current.load(Ordering::SeqCst) != stamp {
                                 return Err("browser_view_changed".into());
                             }
@@ -623,8 +886,7 @@ impl Manager {
                                 text(&view, "originKey"),
                                 &view["snapshot"],
                                 request,
-                                w,
-                                h,
+                                (w, h),
                                 &zoom,
                             )?;
                             let process = pool
@@ -682,8 +944,13 @@ impl Manager {
                         let fresh = !control
                             && grant.validated.lock().unwrap().elapsed() < Duration::from_secs(5);
                         if !fresh {
-                            let result = resolve(&k.0)
-                                .and_then(|e| preview_transport::surface(&e, &grant.scope));
+                            let result = resolve(&k.0).and_then(|e| {
+                                preview_transport::surface_for_owned(
+                                    &e,
+                                    &grant.scope,
+                                    pool.has_private_source(&e.id, text(&grant.scope, "originKey")),
+                                )
+                            });
                             match result {
                                 Ok(v)
                                     if v["snapshot"]
@@ -790,7 +1057,12 @@ impl Manager {
                                         && thread == t
                                         && !result["sessions"].as_array().is_some_and(|ss| {
                                             ss.iter().any(|s| {
-                                                s["tabId"] == *tab && s["runtime"] != "server"
+                                                s["tabId"] == *tab
+                                                    && (s["runtime"] != "server"
+                                                        || pool.has_private_source(
+                                                            e,
+                                                            text(&data, "originKey"),
+                                                        ))
                                             })
                                         })
                                 })
@@ -827,6 +1099,10 @@ impl Manager {
                             .map(|(k, g)| (k.clone(), g.clone()))
                             .collect::<Vec<_>>();
                         for (k, grant) in targets {
+                            // The owned backend already executed its CDP command.
+                            if grant.scope["snapshot"]["runtime"] == "server" {
+                                continue;
+                            }
                             let profile = text(&grant.scope, "profileId");
                             let event = match text(&input, "action") {
                                 "close" => {
@@ -859,8 +1135,65 @@ impl Manager {
             import_assets,
         }
     }
+    /// Internal controller boundary. No stdin/UI command accepts callbacks or raw CDP.
+    pub(crate) fn bind_private(
+        &self,
+        environment: &str,
+        origin: &str,
+        receive: Output,
+    ) -> Result<()> {
+        let (done, wait) = mpsc::channel();
+        self.sender
+            .send(Message::BindPrivate {
+                environment: environment.into(),
+                origin: origin.into(),
+                receive,
+                done,
+            })
+            .map_err(|_| "browser_runtime_unavailable")?;
+        wait.recv().map_err(|_| "browser_runtime_unavailable")?
+    }
+    pub(crate) fn unbind_private(&self, environment: &str) {
+        let (done, wait) = mpsc::channel();
+        if self
+            .sender
+            .send(Message::UnbindPrivate(environment.into(), done))
+            .is_ok()
+        {
+            let _ = wait.recv();
+        }
+    }
+    pub(crate) fn private_command(
+        &self,
+        environment: &str,
+        origin: &str,
+        command: Value,
+    ) -> Result<()> {
+        let (done, wait) = mpsc::channel();
+        self.sender
+            .send(Message::PrivateCommand {
+                environment: environment.into(),
+                origin: origin.into(),
+                command,
+                done,
+            })
+            .map_err(|_| "browser_runtime_unavailable")?;
+        wait.recv().map_err(|_| "browser_runtime_unavailable")?
+    }
+    pub(crate) fn reconcile_private(&self, data: Value) -> Result<()> {
+        let (done, wait) = mpsc::channel();
+        self.sender
+            .send(Message::ReconcilePrivate(data.clone(), done))
+            .map_err(|_| "browser_runtime_unavailable")?;
+        wait.recv().map_err(|_| "browser_runtime_unavailable")??;
+        self.observe(data);
+        Ok(())
+    }
     pub fn request(&self, input: Value, visible: bool) {
         match text(&input, "op") {
+            "browser-permission" if input.to_string().len() <= 1000 => {
+                let _ = self.sender.try_send(Message::PermissionDecision(input));
+            }
             "browser-hide" => self.hide(),
             "browser-show" => {
                 if !visible {

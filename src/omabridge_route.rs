@@ -161,7 +161,8 @@ pub fn connect(route:&Route,deadline:Duration)->Result<(Child,String)>{
  let mut cmd=base(&bin,&route.state_dir,route.relay_url.as_deref());
  cmd.args(["forward","--peer",&route.peer,"--service",&route.service,"--listen","127.0.0.1:0"]).stdout(Stdio::piped());
  let parent=unsafe{libc::getpid()};
- unsafe{cmd.pre_exec(move ||{if libc::prctl(libc::PR_SET_PDEATHSIG,libc::SIGTERM)!=0{return Err(std::io::Error::last_os_error())}if libc::getppid()!=parent{libc::raise(libc::SIGTERM);}Ok(())});}
+ unsafe{cmd.pre_exec(move ||{if libc::prctl(libc::PR_SET_PDEATHSIG,libc::SIGTERM)!=0{return Err(std::io::Error::last_os_error())}
+ if libc::getppid()!=parent{libc::raise(libc::SIGTERM);}Ok(())});}
  let mut child=cmd.spawn().map_err(|_|"omabridge_unavailable")?;
  let stdout=child.stdout.take().ok_or("omabridge_unavailable")?;
  let (tx,rx)=mpsc::channel();

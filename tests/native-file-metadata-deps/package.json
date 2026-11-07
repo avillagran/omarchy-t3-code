@@ -1,0 +1,1 @@
+{"name": "native-file-metadata-oracle", "private": true, "type": "module", "dependencies": {"effect": "4.1.2", "@effect/vitest": "4.1.2", "vitest": "5.0.5", "@noble/hashes": "1.8.0"}}

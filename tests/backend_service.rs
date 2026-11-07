@@ -303,7 +303,7 @@ printf '{"pid":%s}' "$T3_TEST_PID" > "$profile/userdata/server-runtime.json"
     );
     std::env::set_var("PATH", old_path);
     refresh_connections();
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]

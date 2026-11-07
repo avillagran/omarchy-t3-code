@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Build the same libghostty-vt revision used by the pinned T3 release."""
+import fcntl
+import hashlib
+import os
+from pathlib import Path
+import platform
+import subprocess
+import sys
+import tarfile
+import urllib.request
+
+revision = "9f62873bf195e4d8a762d768a1405a5f2f7b1697"
+zig_version = "0.15.2"
+architectures = {
+    "x86_64": ("02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239", 53733924),
+    "aarch64": ("958ed7d1e00d0ea76590d27666efbf7a932281b3d7ba0c6b01b0ff26498f667f", 49471996),
+}
+architecture = {"AMD64": "x86_64", "arm64": "aarch64"}.get(platform.machine(), platform.machine())
+if platform.system() != "Linux" or architecture not in architectures:
+    raise SystemExit("The pinned Ghostty SDK builder requires x86_64 or aarch64 Linux.")
+zig_sha256, zig_bytes = architectures[architecture]
+root = Path(os.environ.get("O3_GHOSTTY_BUILD_ROOT", "/var/tmp/o3-build"))
+source = root / "ghostty-native-9f62873b"
+sdk = root / ("ghostty-vt-9f62873b-sdk" + ("-aarch64" if architecture == "aarch64" else ""))
+zig_name = f"zig-{architecture}-linux-{zig_version}"
+zig = root / zig_name / "zig"
+root.mkdir(parents=True, exist_ok=True)
+
+def run(args, **kwargs):
+    subprocess.run(args, check=True, stdout=sys.stderr, **kwargs)
+
+with (root / "o3-parity-compile.lock").open("a") as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    if not (source / ".git").exists():
+        source.mkdir(parents=True, exist_ok=True)
+        run(["git", "init", "--quiet", str(source)])
+        run(["git", "-C", str(source), "remote", "add", "origin", "https://github.com/ghostty-org/ghostty.git"])
+        run(["git", "-C", str(source), "fetch", "--depth=1", "origin", revision])
+        run(["git", "-C", str(source), "checkout", "--detach", revision])
+    head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+    if head != revision:
+        raise SystemExit(f"Ghostty source revision mismatch: {head}")
+    run(["git", "-C", str(source), "diff", "--quiet", "HEAD", "--"])
+    if not zig.exists():
+        archive = root / f"{zig_name}.tar.xz"
+        if not archive.exists():
+            print(f"Downloading Zig {zig_version}", file=sys.stderr)
+            with urllib.request.urlopen(f"https://ziglang.org/download/{zig_version}/{zig_name}.tar.xz", timeout=60) as response, archive.open("xb") as output:
+                while chunk := response.read(1024 * 1024):
+                    output.write(chunk)
+        if archive.stat().st_size != zig_bytes or hashlib.file_digest(archive.open("rb"), "sha256").hexdigest() != zig_sha256:
+            raise SystemExit(f"Zig archive verification failed: {archive}")
+        with tarfile.open(archive) as bundle:
+            for member in bundle.getmembers():
+                if member.name != zig_name and not member.name.startswith(zig_name + "/"):
+                    raise SystemExit("Invalid Zig archive member")
+            bundle.extractall(root, filter="data")
+    actual_zig = subprocess.check_output([str(zig), "version"], text=True).strip()
+    if actual_zig != zig_version:
+        raise SystemExit(f"Zig compiler mismatch: {actual_zig}")
+    stamp = sdk / "GHOSTTY_VERSION"
+    if not stamp.exists() or stamp.read_text().strip() != revision or not (sdk / "lib/libghostty-vt.a").is_file():
+        env = dict(os.environ, ZIG_GLOBAL_CACHE_DIR=str(root / "ghostty-zig-cache"))
+        run([str(zig), "build", "-j2", "-Demit-lib-vt=true", "-Doptimize=ReleaseSmall", "-Dstrip=true",
+             f"-Dlib-version-string=0.1.0-dev+{revision}", "-p", str(sdk)], cwd=source, env=env)
+        stamp.write_text(revision + "\n")
+    license_dir = sdk / "share/licenses/ghostty"
+    license_dir.mkdir(parents=True, exist_ok=True)
+    (license_dir / "LICENSE").write_bytes((source / "LICENSE").read_bytes())
+print(sdk)

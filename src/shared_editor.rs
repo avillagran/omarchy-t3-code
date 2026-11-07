@@ -497,7 +497,7 @@ pub fn project(authority: &str, cmd: &Value, environment: &str) -> Result<Value>
                 };
                 let expected = &transfer["before"][&k];
                 drafts::update(&k, |now| {
-                    if now != expected && now != &next {
+                    if !crate::composer_context::semantic_equal(now,expected) && !crate::composer_context::semantic_equal(now,&next) {
                         return Err("draft_changed".into());
                     }
                     Ok(next.clone())

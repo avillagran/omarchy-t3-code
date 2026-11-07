@@ -1,4 +1,10 @@
+#include "private-browser-pipe.h"
+#include "teams-request-headers.h"
+#include <QFileInfo>
+#include <memory>
 #include <QHash>
+#include <QUuid>
+#include <QtWebEngineCore/QWebEnginePermission>
 // Qt browser guest host. One process/partition, multiple tabs; Rust owns T3
 // authentication and lifecycle. No WebChannel or native QObject enters a page.
 #include <QGuiApplication>
@@ -35,6 +41,8 @@ class BrowserHost:public QObject {
  QTimer capture;
  std::atomic<bool> grabbing{false};
  int revision=0;
+ struct PendingPermission { QWebEnginePermission permission; QString thread; QString tab; };
+ QHash<QString,PendingPermission> pendingPermissions;
  bool ready=false;
  bool resetSessions=false;
  QQuickWebEngineProfile *profile=nullptr;
@@ -86,6 +94,32 @@ public:
   // Rust verifies persisted metadata (including SameSite) after final flush.
   auto previous=observedCookies.constFind(cookieKey(cookie,expectedDomain));if(previous!=observedCookies.constEnd()&&matchesCookie(previous.value()))cookieResult("present");
  }
+ Q_INVOKABLE void permission(const QWebEnginePermission &permission,const QString &thread,const QString &tab){
+  using Type=QWebEnginePermission::PermissionType;
+  if(permission.permissionType()!=Type::ClipboardReadWrite){
+   if(permission.permissionType()==Type::Geolocation||permission.permissionType()==Type::MouseLock)permission.grant();else permission.deny();
+   return;
+  }
+  auto origin=permission.origin().adjusted(QUrl::RemovePath|QUrl::RemoveQuery|QUrl::RemoveFragment|QUrl::RemoveUserInfo);
+  if(!permission.isValid()||origin.host().isEmpty()||(origin.scheme()!="http"&&origin.scheme()!="https")||pendingPermissions.size()>=64){permission.deny();permission.reset();return;}
+  if((origin.scheme()=="https"&&origin.port()==443)||(origin.scheme()=="http"&&origin.port()==80))origin.setPort(-1);
+  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
+  pendingPermissions.insert(id,{permission,thread,tab});
+  event({{"type","permission-request"},{"permission","clipboard-read"},{"requestId",id},{"threadId",thread},{"tabId",tab},{"origin",origin.toString(QUrl::FullyEncoded)}});
+ }
+ Q_INVOKABLE void cancelPermissions(const QString &thread,const QString &tab){
+  const auto ids=pendingPermissions.keys();
+  for(const auto &id:ids){const auto request=pendingPermissions.value(id);if(request.thread!=thread||request.tab!=tab)continue;
+   pendingPermissions.remove(id);request.permission.deny();request.permission.reset();
+   event({{"type","permission-cancelled"},{"requestId",id}});
+  }
+ }
+ void permissionDecision(const QJsonObject &command){
+  const auto id=command["requestId"].toString();auto found=pendingPermissions.find(id);if(found==pendingPermissions.end())return;
+  const auto permission=found->permission;pendingPermissions.erase(found);
+  if(command["allow"].toBool())permission.grant();else permission.deny();
+  if(!command["remember"].toBool())permission.reset();
+ }
  Q_INVOKABLE void requestFrame(){if(!capture.isActive())capture.start();}
  void attach(QQuickWindow *w){window=w;
   connect(w,&QQuickWindow::afterRendering,this,[this](){if(!grabbing.load())QMetaObject::invokeMethod(this,[this](){requestFrame();},Qt::QueuedConnection);},Qt::DirectConnection);
@@ -97,6 +131,7 @@ public:
  void command(const QJsonObject &command){
   if(!ready||!window)return;const QString type=command["type"].toString();
   if(type=="close"){QCoreApplication::quit();return;}
+  if(type=="permission-decision"){permissionDecision(command);return;}
   if(type=="import-cookie"){importCookie(command);return;}
   if(type=="resize"){const auto w=command["width"].toInt(),h=command["height"].toInt();if(w>=240&&h>=240&&w<=3840&&h<=3840&&qint64(w)*h<=3840*2160)window->resize(w,h);}
   else if(type=="press"||type=="release"||type=="move"||type=="double"){
@@ -118,19 +153,40 @@ public:
  }
 };
 extern "C" int t3_browser_main(const char *payload,const char *qml){
+ const auto data=QJsonDocument::fromJson(payload).object();
+ const bool privateRequested=data.contains("privateBrowserFd");
+ const int privateFd=data["privateBrowserFd"].toInt(-1);
+ // Admit before Qt/Chromium initialization, then make all helper execs close it.
+ if(privateRequested&&(!data["privateBrowserFd"].isDouble()||data["privateBrowserFd"].toDouble()!=privateFd||!PrivateBrowserPipe::admit(privateFd)))return 1;
  int argc=1;char name[]="omarchy-t3-browser";char *argv[]={name,nullptr};QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);QtWebEngineQuick::initialize();QGuiApplication app(argc,argv);
  app.setApplicationName("omarchy-t3-browser");app.setApplicationDisplayName("T3 Code · Browser");
  qInstallMessageHandler([](QtMsgType,const QMessageLogContext&,const QString &message){fprintf(stderr,"%s\n",qPrintable(message));});
- const auto data=QJsonDocument::fromJson(payload).object();
  BrowserHost host(data["frameDirectory"].toString(),!data["restoreSessionCookies"].toBool());
+ TeamsRequestHeaders::Interceptor teamsHeaders;
  QQuickWebEngineProfile profile;
  if(data["persistent"].toBool()){
   profile.setStorageName(data["partition"].toString());profile.setOffTheRecord(false);
   profile.setPersistentStoragePath(QDir(data["profileDirectory"].toString()).filePath("storage"));profile.setCachePath(QDir(data["profileDirectory"].toString()).filePath("cache"));
   profile.setHttpCacheType(QQuickWebEngineProfile::DiskHttpCache);profile.setPersistentCookiesPolicy(QQuickWebEngineProfile::ForcePersistentCookies);
  }else{profile.setOffTheRecord(true);profile.setHttpCacheType(QQuickWebEngineProfile::MemoryHttpCache);profile.setPersistentCookiesPolicy(QQuickWebEngineProfile::NoPersistentCookies);}
+ profile.setPersistentPermissionsPolicy(QQuickWebEngineProfile::PersistentPermissionsPolicy::StoreInMemory);
+ profile.setUrlRequestInterceptor(&teamsHeaders);
  host.attachProfile(&profile);
- QQmlApplicationEngine engine;engine.rootContext()->setContextProperty("browserHost",&host);engine.rootContext()->setContextProperty("browserProfile",&profile);engine.rootContext()->setContextProperty("browserData",data.toVariantMap());
+ std::unique_ptr<PrivateBrowserPipe> privatePipe;
+ QString privateSource;
+ if(privateRequested){
+  privatePipe=std::make_unique<PrivateBrowserPipe>(privateFd);if(!privatePipe->isOpen())return 1;
+  const auto directory=QFileInfo(QString::fromUtf8(qml)).absoluteDir();
+  for(const auto &name:{"private-cdp-bridge.js","native-browser-host.js","qt-guest-input.js","qt-target-scope.js","qt-owned-inspector.js"}){
+   QFile file(directory.filePath(QString::fromLatin1(name)));
+   if(!file.open(QIODevice::ReadOnly)||file.size()>16*1024*1024)return 1;
+   privateSource+=QString::fromUtf8(file.readAll())+'\n';
+  }
+ }
+ QQmlApplicationEngine engine;
+ engine.rootContext()->setContextProperty("browserPrivatePipe",static_cast<QObject*>(privatePipe.get()));
+ engine.rootContext()->setContextProperty("browserAutomationSource",privateSource);
+ engine.rootContext()->setContextProperty("browserHost",&host);engine.rootContext()->setContextProperty("browserProfile",&profile);engine.rootContext()->setContextProperty("browserData",data.toVariantMap());
  engine.load(QUrl::fromLocalFile(qml));if(engine.rootObjects().isEmpty())return 1;
  QObject::connect(&engine,&QQmlEngine::quit,&app,&QCoreApplication::quit);QObject::connect(&engine,&QQmlEngine::exit,&app,&QCoreApplication::exit);
  host.attach(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));fcntl(STDIN_FILENO,F_SETFL,fcntl(STDIN_FILENO,F_GETFL)|O_NONBLOCK);

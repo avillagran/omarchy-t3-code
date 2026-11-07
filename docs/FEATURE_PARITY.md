@@ -49,13 +49,11 @@ Also added: telemetry export endpoints with checks, resource history in the
 process view, live client activity reports, worktree setup progress and
 Initialize repository.
 
-Still different by design: the terminal opens in an Omarchy terminal instead
-of an embedded drawer; the theme follows Omarchy instead of T3's theme editor;
-T3 Connect's relay client is installed through the `t3 connect` CLI flow O3
-already drives; and ChatGPT profile import (moving Codex credentials between
-environments) is left to the T3 desktop app, since O3 never handles provider
-tokens. Workflows show their script (orchestration.getWorkflowScript) and can be
-stopped (orchestration.stopWorkflow) from the subagent bar.
+Terminal update (2026-11-06): the chat header and Ctrl+J now open the embedded
+Ghostty terminal side panel, with tabs/splits and structured selection context.
+The earlier external-window-only distinction is superseded. See
+[NATIVE_TERMINAL.md](NATIVE_TERMINAL.md) and [TERMINAL_PANEL.md](TERMINAL_PANEL.md)
+for current evidence and remaining wrapper/importer limitations.
 
 Subagents follow T3's presentation, with one deliberate addition. Delegated work
 shows in the conversation as its own cards: status, model, progress or result,
@@ -129,7 +127,7 @@ Native paths below are relative to `apps/web/src/` in the reference checkout.
 | Medium | Composer references | File/folder and skill lookup exist. Missing thread/PR suggestion kinds, rich context chips, assistant-selection citations and structured T3 clipboard contexts. The editor currently inserts textual Markdown references. | `components/chat/ComposerCommandMenu.tsx`, `ComposerPromptEditorTiptap.tsx`, `chat/AssistantSelectionToolbar.tsx`; `src/suggestions.rs` allows only path/skill/command, `ui/qml/T3Composer.qml`. |
 | Adapted | Project drafts/stash | Multi-entry project-scoped save/restore/delete and attachments are now implemented, shared between fullscreen and Edit right-click. Native floating stash badge/banner presentation differs. | `components/chat/ComposerStashMenu.tsx`, `ComposerStashBadge.tsx`; `ui/qml/T3ProjectDrafts.qml`, `T3Composer.qml`, `T3Backend.qml`; see current audit row 41. |
 | Medium | Workspace controls | Missing full branch/worktree picker, Git action controls, project-script runner/editor and editor picker inside the chat details UI. “New thread on this branch” already exists and should be preserved. | `components/chat/ThreadDetailsPanel.tsx`, `components/BranchToolbar.tsx`, `GitActionsControl.tsx`, `ProjectScriptsControl.tsx`; `ui/qml/T3SidebarActions.qml`, `T3Panel.qml`. |
-| Medium | Terminal | Native Omarchy terminal now attaches to the chat’s T3 shell (local or remote), with history, input and resize support. Embedded terminal drawer and terminal-selection context in the prompt remain unported. | `components/ThreadTerminalDrawer.tsx`, `components/chat/ComposerPendingTerminalContexts.tsx`; `src/terminal.rs`, `lib-t3-rust/src/terminal.rs`, `docs/NATIVE_TERMINAL.md`. |
+| Medium | Terminal | Embedded Ghostty side panel now attaches to the chat’s T3 shell (local or remote), with tabs/splits, history, input, resizing and native structured terminal-selection context. Remaining wrapper/importer fidelity is tracked in `docs/TERMINAL_PANEL.md`. | `components/ThreadTerminalDrawer.tsx`, `components/chat/ComposerPendingTerminalContexts.tsx`; `src/terminal.rs`, `lib-t3-rust/src/terminal.rs`, `docs/NATIVE_TERMINAL.md`. |
 | Medium | Relationships and automations | Parent and subagent lineage has an Agents side-panel tab and nested sidebar sub-threads; forks, context transfers and the thread automation editor are not in that panel yet. | `components/chat/ThreadRelationshipsControl.tsx`, `ThreadAutomationsPanel.tsx`; `ui/qml/T3AgentsPanel.qml`, `ui/js/SidebarModel.js`. |
 
 The Markdown/media/message-action gaps below remain valid. Sidebar hover actions,

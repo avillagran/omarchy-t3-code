@@ -108,14 +108,14 @@ Typed Kotlin wrappers are generated from the saved `describe`
 ([`bindings/android/describe.json`](../bindings/android/describe.json)). The
 generated [`T3Api.kt`](../bindings/android/kotlin/dev/avillagran/t3/T3Api.kt) sits
 next to `T3Client.kt` and ships in the AAR (`T3Api(client).vcs.refreshStatus(path)`);
-`cargo test --test api_describe` fails when the registry, the saved `describe` and
+`android-sandbox --sh 'cargo test --test api_describe'` fails when the registry, the saved `describe` and
 the wrappers disagree.
 
 The generator maps `integer` to `Long`, `number` to `Double`, `object` and
 `command` to `JSONObject`, `array` to `JSONArray` and the rest to `String`; a Kotlin
 keyword used as an argument is backquoted (`` `when` `` in the keybinding calls).
 Functions with `openArgs` (`dispatchCommand`, `projects.mutate`, `device.action`)
-take the whole variant as one `JSONObject`. `cargo test --test api_describe` checks
+take the whole variant as one `JSONObject`. `android-sandbox --sh 'cargo test --test api_describe'` checks
 `T3Api.kt` against `describe.json` byte for byte; `tools/compile-android-kotlin`
 compiles it with `T3Client.kt` against `android.jar` (as `tools/package-android`
 does) and `tools/test-kotlin-jni` runs it through JNI, which needs a JDK and `kotlinc`.
@@ -617,13 +617,13 @@ throw `T3Exception` with that code, like every other operation.
 
 ## Building from source
 
-On an x86_64 Linux build host, explicitly install Rust's four Android targets and
-the application's Android NDK. The build helper does not install or download SDKs
-or targets. Omi's checked build uses NDK 28.2.13676358 and API 24:
+Build and test only with the rootless [Android sandbox](SANDBOX.md). The image
+contains Rust's four Android targets and a JDK. Install/cache the application's
+NDK outside the project runtime and mount its SDK read-only. The checked build
+uses NDK 28.2.13676358 and API 24:
 
 ```sh
-rustup target add aarch64-linux-android x86_64-linux-android armv7-linux-androideabi i686-linux-android
-ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358" tools/build-android arm64-v8a x86_64 armeabi-v7a x86
+android-sandbox --sh 'tools/build-android arm64-v8a x86_64 armeabi-v7a x86'
 ```
 
 Set `CARGO_NET_OFFLINE=true` with an already populated Cargo cache or vendor
@@ -634,7 +634,7 @@ not Android libraries, even when the CPU matches.
 `tools/package-android` compiles the Kotlin adapter (`T3Client.kt` and `T3Api.kt`,
 through `tools/compile-android-kotlin`) and assembles an AAR. It needs
 `JAVA_HOME`, `ANDROID_JAR`, `KOTLIN_STDLIB` and `KOTLIN_COMPILER_CLASSPATH` pointing
-to explicitly installed/cached tools. Run it in the clean, committed release
+to explicitly installed/cached tools. Run it with `android-sandbox --sh 'tools/package-android'` in the clean, committed release
 checkout after building all four ABIs. It produces the versioned AAR and SHA-256
 checksum in `dist/`; it does not sign or publish an Android application.
 
@@ -653,6 +653,9 @@ run (`workflow_dispatch`), or a pull request that touches the Android bindings o
 the release tools, builds and packages the same way and only uploads both files as a
 workflow artifact, which is how the workflow is checked before a tag.
 
+All project commands below execute through `android-sandbox`; acquisition of
+toolchains is separate from compilation and runtime.
+
 Every push and pull request also runs the `kotlin` job of
 [`test.yml`](../.github/workflows/test.yml): `tools/compile-android-kotlin` against
 `android.jar`, then `tools/test-jni` and `tools/test-kotlin-jni` on x86_64, so no
@@ -660,13 +663,13 @@ Kotlin change is tagged without compiling.
 
 ## Validation
 
-- `cargo test --locked`: local HTTP/WebSocket fixtures cover exact event delivery,
+- `android-sandbox --sh 'cargo test --locked'`: local HTTP/WebSocket fixtures cover exact event delivery,
   long-poll concurrency, cancellation/Interrupt, queue bounds, attachment grants,
   transport options and proxy bypass, signed asset bytes, descriptor/pairing and
   bounded snapshots, through the Rust API and the JSON/binary ABI.
-- `tools/test-c-abi`: a real C caller links the static Rust archive.
-- `JAVA_HOME=... tools/test-jni`: real JNI/JVM calls, Unicode, error paths and ownership.
-- `tools/test-kotlin-jni`: canonical Kotlin adapter, typed errors, `call`/`describe`
+- `android-sandbox --sh 'tools/test-c-abi'`: a real C caller links the static Rust archive.
+- `android-sandbox --sh 'tools/test-jni'`: real JNI/JVM calls, Unicode, error paths and ownership.
+- `android-sandbox --sh 'tools/test-kotlin-jni'`: canonical Kotlin adapter, typed errors, `call`/`describe`
   and `domain` (sidebar, timeline, Markdown blocks, project chips, queue) through
   the generated wrappers, and concurrent close against a real native
   request; `StreamFixture` drives streams through a JDK-only fake WebSocket (chunk
@@ -678,3 +681,5 @@ Kotlin change is tagged without compiling.
 The upstream reference and inspected source paths are recorded in
 [UPSTREAM.md](UPSTREAM.md). Provider calls and real conversations are not used by
 these fixture tests.
+
+Terminal context, output, read-only observation and reconnect bindings: [TERMINAL.md](TERMINAL.md).

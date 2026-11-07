@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Acquire the exact official Electron application archive without host installation."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+version='44.10.1'
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+out=Path(tempfile.mkdtemp(prefix='electron-'+version+'-',dir='/home/node/BuildCache/o3-desktop-next'))
+print('Official Electron acquisition: '+str(out),flush=True)
+# Network belongs only to this acquisition step. Runtime proofs use network=none.
+command=['podman','run','--rm','--pull=never','--read-only','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64','--memory=512m','--tmpfs','/tmp:rw,size=64m,mode=1777','-v','/usr:/usr:ro','-v',str(out)+':/output:rw','--env','HOME=/tmp','docker.io/library/archlinux:latest','python3','-c',r'''
+import hashlib,json,os,pathlib,stat,urllib.request,zipfile
+version='44.10.1';asset='electron-v'+version+'-linux-x64.zip';root=pathlib.Path('/output')
+def download(url,path,maximum):
+ request=urllib.request.Request(url,headers={'User-Agent':'O3-Code-runtime-acquisition','Accept':'application/vnd.github+json' if 'api.github.com' in url else '*/*'})
+ digest=hashlib.sha256();count=0
+ with urllib.request.urlopen(request,timeout=45) as response,path.open('xb') as output:
+  if not response.url.startswith('https://'):raise RuntimeError('TLS redirect required')
+  while data:=response.read(1024*1024):
+   count+=len(data)
+   if count>maximum:raise RuntimeError('Official artifact exceeds acquisition bound')
+   output.write(data);digest.update(data)
+ return digest.hexdigest()
+api='https://api.github.com/repos/electron/electron/releases/tags/v'+version
+release_hash=download(api,root/'release.json',8*1024*1024);release=json.loads((root/'release.json').read_text())
+assert release['tag_name']=='v'+version and not release.get('draft')
+assets={row['name']:row for row in release['assets']}
+zip_url='https://github.com/electron/electron/releases/download/v'+version+'/'+asset
+sha_url='https://github.com/electron/electron/releases/download/v'+version+'/SHASUMS256.txt'
+assert assets[asset]['browser_download_url']==zip_url
+assert assets['SHASUMS256.txt']['browser_download_url']==sha_url
+sha_hash=download(sha_url,root/'SHASUMS256.txt',8*1024*1024)
+expected=next(line.split()[0] for line in (root/'SHASUMS256.txt').read_text().splitlines() if line.split()[-1].lstrip('*')==asset)
+actual=download(zip_url,root/asset,512*1024*1024)
+assert actual==expected and (root/asset).stat().st_size==assets[asset]['size'],'Official runtime checksum/size mismatch'
+records=[];names=set();total=0
+with zipfile.ZipFile(root/asset) as archive:
+ for info in archive.infolist():
+  path=pathlib.PurePosixPath(info.filename);mode=info.external_attr>>16
+  assert not path.is_absolute() and not any(part in ('.','..') for part in path.parts) and '\\' not in info.filename and '\x00' not in info.filename
+  assert path.parts and path.parts[0] not in ('usr','etc','home','root','proc','sys','dev','var','tmp'),'Application archive required; never extract an OS rootfs'
+  assert info.filename not in names;names.add(info.filename)
+  assert stat.S_IFMT(mode) in (0,stat.S_IFREG,stat.S_IFDIR),'Runtime archive links/special files require explicit review'
+  total+=info.file_size
+  assert total<=1024*1024*1024 and info.file_size<=512*1024*1024
+ runtime=root/'runtime';runtime.mkdir(mode=0o700)
+ for info in archive.infolist():
+  target=runtime.joinpath(*pathlib.PurePosixPath(info.filename).parts)
+  if info.is_dir():target.mkdir(parents=True,exist_ok=True,mode=0o700);continue
+  target.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+  descriptor=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+  digest=hashlib.sha256();count=0
+  with os.fdopen(descriptor,'wb') as output,archive.open(info) as source:
+   while data:=source.read(1024*1024):output.write(data);digest.update(data);count+=len(data)
+  assert count==info.file_size
+  target.chmod(0o500 if (info.external_attr>>16)&0o111 else 0o400)
+  records.append({'path':str(target.relative_to(runtime)),'sha256':digest.hexdigest(),'bytes':count})
+assert (runtime/'version').read_text().strip()==version
+assert (runtime/'electron').is_file()
+(root/'artifact.json').write_text(json.dumps({'version':version,'platform':'linux-x64','releaseUrl':release['html_url'],'releaseApiSha256':release_hash,'archiveUrl':zip_url,'archiveSha256':actual,'checksumManifestUrl':sha_url,'checksumManifestSha256':sha_hash,'bytes':(root/asset).stat().st_size,'files':records},indent=2)+'\n')
+print('OFFICIAL_ELECTRON_ARTIFACT_VERIFIED '+version+' '+actual)
+''']
+with (out/'acquisition.log').open('w') as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=480)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+raise SystemExit(result.returncode)

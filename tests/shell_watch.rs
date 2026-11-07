@@ -154,5 +154,5 @@ fn shell_deltas_update_the_sidebar_and_reconnects_resume_from_the_cursor() {
     child.wait().unwrap();
     stop.store(true, Ordering::Relaxed);
     server.join().unwrap();
-    fs::remove_dir_all(root).unwrap();
+
 }

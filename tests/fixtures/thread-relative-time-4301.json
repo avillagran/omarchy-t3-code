@@ -1,0 +1,190 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "hashes": {
+    "apps/web/src/timestampFormat.ts": "fce7b51aff43c82eaec465064466c97d220626362b4603b7cf91d75b1c511e66",
+    "apps/web/src/components/sidebar/SidebarThreadRow.tsx": "2ae3a33bc8897bc88369d1f105955a6fc552585ca7c3165df31ae7e43ddba996",
+    "packages/contracts/src/settings.ts": "d6441e2560891ddec76d444f5ea835fd0f6b60c6c0bb63a6557f358401cb9fe2"
+  },
+  "cases": [
+    {
+      "timestamp": null,
+      "nowMinute": "2026-11-07T12:00",
+      "result": null
+    },
+    {
+      "timestamp": "invalid",
+      "nowMinute": "2026-11-07T12:00",
+      "result": ""
+    },
+    {
+      "timestamp": "1970-01-01T00:00:00.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "20764d"
+    },
+    {
+      "timestamp": "2026-11-07T12:00:00.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "now"
+    },
+    {
+      "timestamp": "2026-11-07T11:59:01.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "now"
+    },
+    {
+      "timestamp": "2026-11-07T11:59:00.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "1m"
+    },
+    {
+      "timestamp": "2026-11-07T11:00:00.001Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "59m"
+    },
+    {
+      "timestamp": "2026-11-07T11:00:00.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "1h"
+    },
+    {
+      "timestamp": "2026-11-06T12:00:00.001Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "23h"
+    },
+    {
+      "timestamp": "2026-11-06T12:00:00.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-05T12:00:00.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "2d"
+    },
+    {
+      "timestamp": "2026-11-07T12:01:00.000Z",
+      "nowMinute": "2026-11-07T12:00",
+      "result": "now"
+    },
+    {
+      "timestamp": null,
+      "nowMinute": "2026-11-07T12:01",
+      "result": null
+    },
+    {
+      "timestamp": "invalid",
+      "nowMinute": "2026-11-07T12:01",
+      "result": ""
+    },
+    {
+      "timestamp": "1970-01-01T00:00:00.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "20764d"
+    },
+    {
+      "timestamp": "2026-11-07T12:00:00.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "1m"
+    },
+    {
+      "timestamp": "2026-11-07T11:59:01.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "1m"
+    },
+    {
+      "timestamp": "2026-11-07T11:59:00.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "2m"
+    },
+    {
+      "timestamp": "2026-11-07T11:00:00.001Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "1h"
+    },
+    {
+      "timestamp": "2026-11-07T11:00:00.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "1h"
+    },
+    {
+      "timestamp": "2026-11-06T12:00:00.001Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-06T12:00:00.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-05T12:00:00.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "2d"
+    },
+    {
+      "timestamp": "2026-11-07T12:01:00.000Z",
+      "nowMinute": "2026-11-07T12:01",
+      "result": "now"
+    },
+    {
+      "timestamp": null,
+      "nowMinute": "2026-11-08T12:00",
+      "result": null
+    },
+    {
+      "timestamp": "invalid",
+      "nowMinute": "2026-11-08T12:00",
+      "result": ""
+    },
+    {
+      "timestamp": "1970-01-01T00:00:00.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "20765d"
+    },
+    {
+      "timestamp": "2026-11-07T12:00:00.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-07T11:59:01.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-07T11:59:00.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-07T11:00:00.001Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-07T11:00:00.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-06T12:00:00.001Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "1d"
+    },
+    {
+      "timestamp": "2026-11-06T12:00:00.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "2d"
+    },
+    {
+      "timestamp": "2026-11-05T12:00:00.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "3d"
+    },
+    {
+      "timestamp": "2026-11-07T12:01:00.000Z",
+      "nowMinute": "2026-11-08T12:00",
+      "result": "23h"
+    }
+  ]
+}

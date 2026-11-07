@@ -356,7 +356,7 @@ fn native_rollback_ack_is_not_completion_recovery_is_atomic_and_uncertain_retry_
     assert_eq!(journal::list().unwrap().len(), 0);
     stop.store(true, Ordering::Relaxed);
     server.join().unwrap();
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]

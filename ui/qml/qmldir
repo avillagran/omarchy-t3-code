@@ -1,6 +1,9 @@
 singleton T3Backend 1.0 T3Backend.qml
 BarWidget 1.0 BarWidget.qml
 T3Panel 1.0 T3Panel.qml
+T3FileMetadataLease 1.0 T3FileMetadataLease.qml
+T3ThreadClockOwner 1.0 T3ThreadClockOwner.qml
+singleton T3ThreadClock 1.0 T3ThreadClock.qml
 QuotaStrip 1.0 QuotaStrip.qml
 WorkIndicator 1.0 WorkIndicator.qml
 PinnedKeyboardPanel 1.0 PinnedKeyboardPanel.qml
@@ -61,6 +64,7 @@ T3AddProject 1.0 T3AddProject.qml
 T3Connections 1.0 T3Connections.qml
 
 T3WorkspaceConfirmation 1.0 T3WorkspaceConfirmation.qml
+T3ResetCreditConfirmation 1.0 T3ResetCreditConfirmation.qml
 T3PickerRow 1.0 T3PickerRow.qml
 T3PickerField 1.0 T3PickerField.qml
 T3PickerButton 1.0 T3PickerButton.qml
@@ -121,6 +125,7 @@ T3BarIndicator 1.0 T3BarIndicator.qml
 T3RenderPanel 1.0 T3RenderPanel.qml
 T3SidePanel 1.0 T3SidePanel.qml
 T3DevicePanel 1.0 T3DevicePanel.qml
+T3DeviceTools 1.0 T3DeviceTools.qml
 T3BranchPicker 1.0 T3BranchPicker.qml
 T3CommandPalette 1.0 T3CommandPalette.qml
 T3ContextMeter 1.0 T3ContextMeter.qml
@@ -164,3 +169,13 @@ T3PairingQr 1.0 T3PairingQr.qml
 T3ThreadBoard 1.0 T3ThreadBoard.qml
 T3ProjectSidebar 1.0 T3ProjectSidebar.qml
 T3HostBadge 1.0 T3HostBadge.qml
+
+T3TerminalPanel 1.0 T3TerminalPanel.qml
+T3TerminalPane 1.0 T3TerminalPane.qml
+T3TerminalScrollbar 1.0 T3TerminalScrollbar.qml
+
+T3BrowserPermission 1.0 T3BrowserPermission.qml
+T3ModelFallback 1.0 T3ModelFallback.qml
+T3BrowserClipboardPlatform 1.0 T3BrowserClipboardPlatform.qml
+
+T3BrowserInputMethod 1.0 T3BrowserInputMethod.qml

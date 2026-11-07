@@ -85,7 +85,7 @@ fn private_token_permissions_and_symlink() {
     let link = dir.join("link");
     symlink(&p, &link).unwrap();
     assert!(private_token(&link).is_err());
-    std::fs::remove_dir_all(dir).unwrap();
+
 }
 
 #[test]

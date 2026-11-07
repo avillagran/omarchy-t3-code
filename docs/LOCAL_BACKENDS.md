@@ -22,7 +22,7 @@ config root is `~/.config`):
 
 These are installed user services, not shell command templates. The unit's
 `Environment=T3CODE_HOME=...`, including user drop-ins, must match its profile.
-The registry accepts only `o3` and `t3`, distinct profiles and unit names, and
+The registry accepts only `o3` and `t3`, distinct unit names, and
 absolute paths. Missing or incompatible installations remain unavailable. A
 malformed registry disables lifecycle control instead of launching a fallback.
 Without a registry, existing T3 installations retain their original behavior;
@@ -50,7 +50,30 @@ An explicit choice is stored in the client state directory's
 that server's profile and CLI; saved remote connections and UI preferences stay
 in the client profile. Each registered server has a separate local token file.
 A verified server already running at login takes precedence over a stale saved
-choice. A startup lock and live-runtime checks prevent competing launches.
+choice. A control lock and live-runtime checks serialize lifecycle actions and
+prevent competing launches.
+
+## Shared-profile webhook boundary
+
+Both registrations may explicitly name the same profile. The runtime identity
+then determines which server owns it. Before starting T3 on that profile, the
+client invokes the matching O3 CLI's `shared-profile-readiness --base-dir PROFILE`
+diagnostic. An older O3 CLI without this command cannot verify handover and the
+client reports that verification is unavailable.
+
+Legacy queued webhook deliveries and retained duplicate-protection claims block
+handover. These rows lack the original native request and cannot be converted
+losslessly by the client. Even claims with old expiry values remain significant
+because legacy admission checked their presence rather than expiry. The check
+never clears them. O3 remains available to preserve and reconcile that data.
+
+A switch checks readiness before stopping O3 and again after shutdown, so a
+delivery admitted during shutdown cannot be silently abandoned. A failed initial
+check leaves the running process alone; a failed post-shutdown check leaves both
+servers stopped and preserves the O3 selection. Unknown, failed or inconsistent
+reports also refuse the switch. This boundary covers the client's lifecycle
+controls; an external direct launch of T3 bypasses it. A clean report does not
+certify every aspect of shared-profile parity.
 
 Starting resets the chosen unit's failure limit and waits for its native runtime
 and HTTP readiness. Failure is reported without trying the other server. No
@@ -60,6 +83,9 @@ boot services. Installers must preserve the user's existing autostart policy.
 Native T3 network configuration and its updater are limited to the original T3
 unit/profile; custom/O3 units do not receive T3-specific launch/update overrides.
 
-Checks: `cargo test --test backend_service --test connection_network --test
-server_updates`, and QML fixtures `backend-choice`, `backend-start`,
-`backend-owner`. All lifecycle tests use isolated fake services/profiles.
+Checks include Rust targets `backend_service`, `backend_shared_profile`,
+`backend_handover`, `connection_network` and `server_updates`, plus QML fixtures
+`backend-choice`, `backend-start` and `backend-owner`. Execute them through the
+container runners described in [RUST-TESTS.md](RUST-TESTS.md). Lifecycle checks
+use private services/profiles, including a real temporary process that admits
+retained work while handling shutdown.

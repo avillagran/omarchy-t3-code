@@ -41,7 +41,7 @@ fn remote_folder_is_validated_on_remote_before_project_create() {
     });
     write::manage(&e,&json!({"action":"add-project","environment":"remote","workspaceRoot":"/home/node/Only on NODE","requestId":uuid::Uuid::new_v4().to_string()})).unwrap();
     server.join().unwrap();
-    std::fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn browse_paths_and_results_keep_native_scope() {

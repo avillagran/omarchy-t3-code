@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""Prove owned server descriptors through an actual Qt/native browser Host."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+import uuid
+from runtime_artifacts import snapshot
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--server-fixture',type=Path,required=True)
+parser.add_argument('--expected-sha256',required=True)
+parser.add_argument('--controller-only',action='store_true',help='Run only the reviewed real Runtime/Manager integration')
+options=parser.parse_args()
+fixture=options.server_fixture.resolve()
+if not fixture.is_file() or not fixture.stat().st_mode & 0o111:
+    raise SystemExit('Server fixture must be an explicit executable file')
+if len(options.expected_sha256)!=64 or any(c not in '0123456789abcdef' for c in options.expected_sha256):
+    raise SystemExit('An exact lowercase SHA-256 is required')
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':
+    raise SystemExit('Rootless Podman is required')
+root=Path(__file__).resolve().parent.parent
+out=Path(tempfile.mkdtemp(prefix='o3-owned-qt-',dir=os.environ.get('O3_TEST_ARTIFACT_ROOT','/var/tmp')))
+print('Owned supervisor evidence: '+str(out),flush=True)
+server=out/'o3-server'
+source_fd=os.open(fixture,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+with os.fdopen(source_fd,'rb') as source,server.open('xb') as target:
+    if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+        raise SystemExit('Server fixture must be a regular file')
+    while data:=source.read(1024*1024): target.write(data)
+server.chmod(0o500)
+with server.open('rb') as source: server_hash=hashlib.file_digest(source,'sha256').hexdigest()
+if server_hash!=options.expected_sha256: raise SystemExit('Server fixture SHA-256 mismatch; nothing executed')
+(out/'server-artifact.json').write_text(json.dumps({'sha256':server_hash,'bytes':server.stat().st_size})+'\n')
+for name,source in {
+    'guest.cpp':root/'tools/fixtures/owned-browser-pipe.cpp',
+    'product-host.cpp':root/'ui/browser/browser-host.cpp',
+    'image.cpp':root/'tools/fixtures/qt-image-proof.cpp',
+    'private-browser-pipe.h':root/'ui/browser/private-browser-pipe.h',
+    'teams-request-headers.h':root/'ui/browser/teams-request-headers.h',
+    'guest.qml':root/'tools/fixtures/owned-browser-pipe.qml',
+    'bridge.js':root/'ui/browser/private-cdp-bridge.js',
+    'host.js':root/'ui/browser/native-browser-host.js',
+}.items(): (out/name).write_bytes(source.read_bytes())
+(out/'platform.js').write_bytes((root/'ui/browser/qt-guest-input.js').read_bytes()+b'\n'+(root/'ui/browser/qt-target-scope.js').read_bytes())
+(out/'inputs.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['guest.cpp','product-host.cpp','image.cpp','guest.qml','bridge.js','host.js','platform.js','private-browser-pipe.h','teams-request-headers.h']},indent=2)+'\n')
+lock=Path(os.environ.get('O3_BUILD_LOCK','/var/tmp/o3-build/o3-parity-compile.lock'))
+lock.parent.mkdir(parents=True,exist_ok=True)
+with lock.open('a') as compile_lock:
+    fcntl.flock(compile_lock.fileno(),fcntl.LOCK_EX)
+    env=dict(os.environ,CARGO_BUILD_JOBS='2')
+    moc=subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip()+'/moc'
+    qt_log=(out/'qt-compile.log').open('w')
+    def qt_compile(args):
+        result=subprocess.run(args,stdout=qt_log,stderr=subprocess.STDOUT)
+        if result.returncode:
+            qt_log.close()
+            (out/'result.json').write_text(json.dumps({'stage':'qt-compile','returncode':result.returncode})+'\n')
+            raise SystemExit(result.returncode)
+    qt_compile([moc,str(out/'guest.cpp'),'-o',str(out/'owned-browser-pipe.moc')])
+    qt_compile([moc,str(out/'private-browser-pipe.h'),'-o',str(out/'moc_private_browser_pipe.cpp')])
+    qt_compile([moc,str(out/'product-host.cpp'),'-o',str(out/'browser-host.moc')])
+    import shlex
+    flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6WebEngineQuick','Qt6WebEngineCore'],text=True))
+    qt_compile(['c++','-std=c++17','-fPIC',str(out/'guest.cpp'),str(out/'moc_private_browser_pipe.cpp'),'-o',str(out/'qt-browser'),*flags])
+    qt_compile(['c++','-std=c++17','-fPIC','-shared',str(out/'product-host.cpp'),str(out/'moc_private_browser_pipe.cpp'),'-o',str(out/'libt3-browser.so'),*flags])
+    qt_compile(['c++','-std=c++17','-fPIC',str(out/'image.cpp'),'-o',str(out/'qt-image'),*flags])
+    qt_log.close()
+    (out/'qt-browser').chmod(0o500)
+    (out/'qt-artifact.json').write_text(json.dumps({'sha256':hashlib.sha256((out/'qt-browser').read_bytes()).hexdigest(),'bytes':(out/'qt-browser').stat().st_size,'qt':subprocess.check_output(['pkg-config','--modversion','Qt6WebEngineQuick'],text=True).strip()},indent=2)+'\n')
+    command=['cargo','test','--locked','--offline','--lib','--test','owned_browser_qt','--no-run','--message-format=json']
+    result=subprocess.run(command,cwd=root,env=env,stdout=(out/'compile.jsonl').open('w'),stderr=(out/'compile.log').open('w'))
+    if result.returncode: raise SystemExit(result.returncode)
+    items=[json.loads(line) for line in (out/'compile.jsonl').read_text().splitlines()]
+    binaries=[(item['target']['name'],item['executable']) for item in items if item.get('executable') and item.get('profile',{}).get('test')]
+    if len(binaries)!=2 or {name for name,_ in binaries}!={'omarchy_t3_client','owned_browser_qt'}: raise SystemExit('Expected only the selected library and owned-browser Qt target')
+    debug=Path(binaries[0][1]).parent.parent
+    runtime=debug.resolve().parent/('test-runtime-owned-'+uuid.uuid4().hex)
+    mains=[item['executable'] for item in items if item.get('executable') and item['target']['name']=='omarchy-t3-client' and not item.get('profile',{}).get('test')]
+    if len(mains)!=1: raise SystemExit('Expected the actual product CLI executable')
+    records=snapshot(debug,[Path(binary) for _,binary in binaries]+[Path(mains[0])],runtime)
+    app=out/'app';(app/'bin').mkdir(parents=True);(app/'ui/browser').mkdir(parents=True)
+    for source in runtime.iterdir():
+        if source.is_file() and source.suffix=='.so': (app/'bin'/source.name).write_bytes(source.read_bytes())
+    (app/'bin/omarchy-t3-client').write_bytes((runtime/Path(mains[0]).relative_to(debug)).read_bytes())
+    (app/'bin/omarchy-t3-client').chmod(0o500)
+    (app/'bin/libt3-browser.so').write_bytes((out/'libt3-browser.so').read_bytes())
+    assets=['T3BrowserSurface.qml','T3BrowserAutomation.qml','private-cdp-bridge.js','native-browser-host.js','qt-guest-input.js','qt-target-scope.js','qt-owned-inspector.js']
+    for name in assets: (app/'ui/browser'/name).write_bytes((root/'ui/browser'/name).read_bytes())
+    paths=[app/'bin/omarchy-t3-client',app/'bin/libt3-browser.so']+[app/'ui/browser'/name for name in assets]
+    (out/'app-artifacts.json').write_text(json.dumps({str(path.relative_to(out)):hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},indent=2)+'\n')
+    (out/'runtime-artifacts.json').write_text(json.dumps({'directory':str(runtime),'files':records},indent=2)+'\n')
+args=['podman','run','--rm','--pull=never','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--read-only','--tmpfs','/tmp:rw,exec,size=1g,mode=1777','--tmpfs','/var/tmp:rw,size=1g,mode=1777','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--memory=4g','--security-opt=seccomp=unconfined','-v',str(runtime)+':'+str(debug)+':ro','-v','/usr:/usr:ro','-v',str(root)+':'+str(root)+':ro','-v',str(out)+':/fixture:ro','-v','/etc/fonts:/etc/fonts:ro','--env','QT_QPA_PLATFORM=offscreen','--env','QT_QUICK_BACKEND=software','--env','QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu','--env','XDG_RUNTIME_DIR=/tmp','--env','HOME=/tmp/home','--env','TMPDIR=/tmp','docker.io/library/archlinux:latest','python3','-c',r'''
+import os,json,subprocess,sys
+os.mkdir('/tmp/home',0o700)
+for name,binary in json.loads(sys.argv[1]):
+    filters=[] if name=='omarchy_t3_client' and json.loads(sys.argv[2]) else ['browser_runtime::private_tests::private_descriptor_rejects_unadmitted_endpoints_and_malformed_fields','browser_guest::private::tests::late_inspector_frames_cannot_retire_successor_or_unrelated_guest','browser_guest::private::tests::admission_precedes_concurrent_command_and_turn_state_is_latched'] if name=='omarchy_t3_client' else (['actual_runtime_registers_global_observer_and_drives_the_product_manager'] if json.loads(sys.argv[2]) else ['actual_product_pool_shares_agent_and_visible_pages_without_background_selection','actual_runtime_registers_global_observer_and_drives_the_product_manager','authoritative_preview_open_reaches_native_qt_over_actual_owned_descriptors'])
+    for selected in filters:
+        args=[binary,'--test-threads=1']+(['--exact',selected] if selected else [])
+        result=subprocess.run(args,timeout=60)
+        if result.returncode: sys.exit(result.returncode)
+''',json.dumps(binaries),json.dumps(options.controller_only)]
+with (out/'runtime.log').open('w') as output:
+    result=subprocess.run(args,stdout=output,stderr=subprocess.STDOUT,timeout=150)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode,'binaries':binaries})+'\n')
+raise SystemExit(result.returncode)

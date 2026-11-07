@@ -1,0 +1,24 @@
+{
+  "revision": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "sourceFiles": {
+    "apps/web/src/speech/pcmResampler.ts": "933981998febcd721175c8e83b56570fb7cb42a0bc6d2a967f244ce1cc0881f5",
+    "apps/web/src/speech/pcmWorklet.ts": "cd93d59fc68414be05db6bae6808f20877245c79cec9253558e34040381e1983",
+    "apps/web/src/speech/browserPcmCapture.ts": "964d7cd563915d9e79900ee9940367d3ed990387a1c92f33be37e11dadae49af"
+  },
+  "node": "26.13.0",
+  "compilerLockSha256": "633412c3800e73de90e0015de7fc385c248fee76051d1e7e13e080350b3a8e22",
+  "compilerVersions": {
+    "core": "8.1.0",
+    "async": "8.0.1",
+    "fields": "8.0.1",
+    "catch": "8.0.1",
+    "arrow": "8.0.1"
+  },
+  "outputSha256": "82e67fc3e59f40b522492cd85ed340254ebb96fc2a664d796766be957f1f9c83",
+  "adaptations": [
+    "TypeScript erasure and import/export linkage; all three complete native modules retained",
+    "Standard Babel async/class-property/optional-catch-binding/arrow transforms for Qt",
+    "Explicit AudioWorklet/browser primitive dependencies supplied by the capture owner; no global changes"
+  ],
+  "scope": "Exact capture resource; numeric, browser callback, hardware, consent and transport acceptance are external to this manifest"
+}

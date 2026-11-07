@@ -292,5 +292,5 @@ fn production_transport_journals_scopes_permissions_exact_retry_and_observed_com
     assert_eq!(calls.lock().unwrap().len(), 5);
     stopped.store(true, Ordering::Relaxed);
     server.join().unwrap();
-    std::fs::remove_dir_all(state).unwrap();
+
 }

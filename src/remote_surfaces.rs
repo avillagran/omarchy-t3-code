@@ -645,7 +645,7 @@ mod tests {
     }
     impl Drop for Temp {
         fn drop(&mut self) {
-            let _ = fs::remove_dir_all(&self.0);
+
         }
     }
     fn published(dir: &Path) -> String {
@@ -898,8 +898,11 @@ mod tests {
     fn symlink_store_and_nonregular_files_refused() {
         let dir = Temp::new();
         fs::create_dir(&dir.0).unwrap();
-        std::os::unix::fs::symlink("/dev/null", dir.0.join("snapshots.json")).unwrap();
+        let target=dir.0.join("owned-target.json");
+        fs::write(&target,"[]").unwrap();
+        std::os::unix::fs::symlink(&target, dir.0.join("snapshots.json")).unwrap();
         assert_eq!(read_store(&dir.0), Err("store_unavailable"));
+        assert_eq!(fs::read_to_string(&target).unwrap(),"[]");
         fs::remove_file(dir.0.join("snapshots.json")).unwrap();
         fs::create_dir(dir.0.join("snapshots.json")).unwrap();
         assert_eq!(read_store(&dir.0), Err("store_limit"));
@@ -1184,7 +1187,7 @@ mod ingress_tests {
                 Ok(())
             });
             assert_eq!(result, Err("not_found"));
-            let _ = fs::remove_dir_all(dir);
+
         }
     }
     #[test]
@@ -1232,7 +1235,7 @@ mod configuration_tests {
         let f = fs::File::create(dir.join("snapshots.json")).unwrap();
         f.set_len(STORE_LIMIT + 1).unwrap();
         assert_eq!(read_store(&dir), Err("store_limit"));
-        fs::remove_dir_all(dir).unwrap();
+
     }
 }
 

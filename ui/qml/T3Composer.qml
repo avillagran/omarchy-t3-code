@@ -47,7 +47,7 @@ Rectangle {
   property var viewRefs:[]
   property string viewText:""
   property bool syncingEditor:false
-  readonly property string referenceSource:"!?\\[[^\\]\\n]*\\]\\(t3-context://v1/[a-z]+/[^)\\s]+\\)"
+  readonly property string referenceSource:"!?\\[[^\\]\\n]*\\]\\(t3-context://v1/[a-z][a-z0-9-]{0,39}/[^)\\s]+\\)"
   function splitReferences(source){var refs=[];var text=String(source || "").replace(new RegExp(referenceSource,"g"),function(m){refs.push(m);return "\ufffc"});return {text:text,refs:refs}}
   function joinReferences(view,refs){var i=0;return String(view).replace(/\ufffc/g,function(){return i<refs.length?refs[i++]:""})}
   function sourceText(){return joinReferences(viewText,viewRefs)}
@@ -61,14 +61,14 @@ Rectangle {
   // Qt SVG (Tiny 1.2) has no rgba(): colours are hex, opacity a separate attribute.
   function svgColor(col){var hex=function(v){var h=Math.round(v*255).toString(16);return h.length<2?"0"+h:h};return "#"+hex(col.r)+hex(col.g)+hex(col.b)}
   function chipImage(ref){
-    var m=/^(!?)\[([^\]]*)\]\(t3-context:\/\/v1\/([a-z]+)\/([^)]+)\)$/.exec(ref) || ["","","",""," "]
+    var m=/^(!?)\[([^\]]*)\]\(t3-context:\/\/v1\/([a-z][a-z0-9-]{0,39})\/([^)]+)\)$/.exec(ref) || ["","","",""," "]
     var attachment=(draft.attachments || []).map(function(a){return a.attachment || {}}).find(function(a){return a.id===m[4]}) || {}
     var name=m[2] || attachment.name || m[3],size=sizeText(attachment.sizeBytes)
     chipName.text=name;chipSize.text=size
     var h=Math.round(Style.space(22)),pad=Math.round(Style.space(7)),icon=Math.round(Style.space(13)),gap=Math.round(Style.space(5))
     var nameW=Math.ceil(Math.min(chipName.advanceWidth,Style.space(200))),sizeW=size?Math.ceil(chipSize.advanceWidth)+gap:0
     var w=pad+icon+gap+nameW+sizeW+pad,f=chipName.font.pixelSize,ink=svgColor(fg),accent=svgColor(Color.accent),family=escapeHtml(chipName.font.family),baseline=(h/2+f*0.35).toFixed(1)
-    var glyph=m[1]==="!"?'<rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="'+accent+'" stroke-width="1.3"/><circle cx="5" cy="5" r="1.3" fill="'+accent+'"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>'
+    var glyph=m[3]==="terminal"?'<rect x="1.5" y="2" width="11" height="10" rx="1.5" fill="none" stroke="'+accent+'" stroke-width="1.2"/><path d="M4 5l2 2-2 2m3 0h3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>':m[1]==="!"?'<rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="'+accent+'" stroke-width="1.3"/><circle cx="5" cy="5" r="1.3" fill="'+accent+'"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>'
       :'<path d="M3 1.5h5l3.5 3.5v7.5h-8.5z" fill="none" stroke="'+accent+'" stroke-width="1.3"/>'
     // Drawn at the screen's scale (at least 2x) and shown at its logical size, so it stays sharp.
     var scale=Math.max(2,Math.ceil(editor.Screen.devicePixelRatio || 1))
@@ -131,8 +131,10 @@ Rectangle {
   Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.cursorPosition=root.viewPosition(cursor);editor.forceActiveFocus()})}}
   property int historyIndex: -1
   property string historyScratch: ""
-  readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
-  Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";saveQuietPeriod.stop()} }
+  property var historyScratchContext:null
+  readonly property var promptHistoryEntries: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return {text:String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim(),context:m.context || null}}).filter(function(m){return !!m.text}).reverse()
+  readonly property var promptHistory:promptHistoryEntries.map(function(m){return m.text})
+  Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";root.historyScratchContext=null;saveQuietPeriod.stop()} }
   property var completion: null
   property int completionIndex: 0
   property string dismissedCompletion: ""
@@ -153,6 +155,7 @@ Rectangle {
     if(!completion || !bridge.suggestionItems[index])return false
     var item=bridge.suggestionItems[index];var before=root.viewText.slice(0,completion.start);var after=root.viewText.slice(completion.end)
     var insert=item.insert || "";root.commitView(before+insert+after);var cursor=before.length+insert.length
+    if(item.kind==="fresh-session")bridge.armFreshSession()
     closeCompletion();Qt.callLater(function(){editor.cursorPosition=cursor;dismissedCompletion=root.viewText+"/"+cursor;editor.forceActiveFocus();if(item.kind==="model"){root.showOptions=true;modelPicker.forceActiveFocus();modelPicker.popup.open()}});return true
   }
   function completionKey(event,step) {
@@ -200,11 +203,11 @@ Rectangle {
     if (Math.abs(editor.cursorRectangle.y-edge.y)>1) return false
     if (direction < 0) {
       if (historyIndex+1 >= promptHistory.length) return false
-      if (historyIndex < 0) historyScratch=root.draft.text
-      historyIndex++;bridge.edit(promptHistory[historyIndex])
+      if (historyIndex < 0){historyScratch=root.draft.text;historyScratchContext=root.draft.context || null}
+      historyIndex++;bridge.patchDraft(bridge.selectedKey,{text:promptHistory[historyIndex],context:promptHistoryEntries[historyIndex].context})
     } else {
       if (historyIndex < 0) return false
-      historyIndex--;bridge.edit(historyIndex < 0 ? historyScratch : promptHistory[historyIndex])
+      historyIndex--;bridge.patchDraft(bridge.selectedKey,{text:historyIndex < 0 ? historyScratch : promptHistory[historyIndex],context:historyIndex < 0 ? historyScratchContext : promptHistoryEntries[historyIndex].context})
     }
     Qt.callLater(function(){editor.cursorPosition=direction<0?0:editor.length});return true
   }
@@ -247,6 +250,7 @@ Rectangle {
   readonly property int modelIndex: models.findIndex(function(m) { return m.instanceId === root.selection.instanceId && m.model === root.selection.model })
   readonly property var descriptors: modelIndex >= 0 ? (models[modelIndex].descriptors || []) : []
   readonly property bool locked: !!(bridge.planOperation || {}).busy || !!draft.busy || !!draft.attempt || !!draft.loading || !!draft.loadError
+  readonly property bool voiceBlocksSubmission:bridge.voiceBlocksSubmission===true
   readonly property bool running: !!bridge.selectedInfo.activeRunId
   readonly property bool hasContent: !!draft.text.trim() || draft.attachments.length > 0
   readonly property bool stopMode: running && !hasContent && !draft.queueEdit
@@ -272,6 +276,15 @@ Rectangle {
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(12) }
     height:root.expanded ? Math.max(0,root.height-Style.space(24)) : implicitHeight
     spacing: Style.space(8)
+    RowLayout {
+      objectName:"t3FreshSessionBanner";Layout.fillWidth:true;visible:root.bridge.freshSessionArmed===true&&root.bridge.approvals.length===0
+      T3Icon{name:"eraser";tint:Color.accent}
+      ColumnLayout{Layout.fillWidth:true;spacing:Style.space(2)
+        Text{Layout.fillWidth:true;text:T3I18n.tr("Your next message starts a fresh session");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+        Text{Layout.fillWidth:true;text:T3I18n.tr("The agent won't see earlier messages in this thread.");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+      }
+      T3IconButton{objectName:"t3KeepCurrentSession";name:"x";tooltipText:T3I18n.tr("Keep the current session");onClicked:root.bridge.disarmFreshSession(root.bridge.selectedKey)}
+    }
     RowLayout {
       objectName:"t3FocusComposerContext";Layout.fillWidth:true;visible:root.focusLayout;spacing:Style.space(8)
       T3Icon{name:"folder";implicitWidth:Style.space(13);tint:root.dim}
@@ -433,7 +446,7 @@ Rectangle {
         Keys.onUpPressed: function(event) { event.accepted = root.completionKey(event,-1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(-1)) }
         Keys.onDownPressed: function(event) { event.accepted = root.completionKey(event,1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(1)) }
         Keys.onTabPressed: function(event) {event.accepted=root.completionVisible;if(event.accepted)root.chooseCompletion(root.completionIndex)}
-        Keys.onEscapePressed: function(event) {if(["starting","recording","transcribing"].indexOf(root.bridge.dictation.state)>=0){root.bridge.cancelDictation();event.accepted=true;return}event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
+        Keys.onEscapePressed: function(event) {if(root.voiceBlocksSubmission&&root.bridge.voiceController){root.bridge.voiceController.cancel();event.accepted=true;return}if(["starting","recording","transcribing"].indexOf(root.bridge.dictation.state)>=0){root.bridge.cancelDictation();event.accepted=true;return}event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
         KeyNavigation.priority: KeyNavigation.BeforeItem
         KeyNavigation.tab: expandEditorButton
         Keys.onReturnPressed: function(event) {root.handleEnter(event)}
@@ -774,7 +787,7 @@ Rectangle {
         objectName:"t3SendAndNewThread"
         name:"git-branch"
         tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Shift+Enter"
-        enabled:!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
+        enabled:!root.voiceBlocksSubmission&&!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
         onClicked:root.bridge.submit(true)
       }
       Rectangle {
@@ -797,7 +810,7 @@ Rectangle {
         T3Icon { anchors.centerIn: parent; name: primaryAction.iconName; tint: root.stopMode ? "white" : Color.popups.background; visible: root.stopMode ? !root.draft.stopping : !root.draft.busy && !root.uploading }
         MouseArea {
           id: sendMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-          enabled: root.stopMode ? !root.draft.stopping : !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
+          enabled: root.stopMode ? !root.draft.stopping : !root.voiceBlocksSubmission && (!root.bridge.localDraft || root.bridge.localDraftConnected(root.bridge.selectedInfo)) && !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
           onClicked: function(mouse) { primaryAction.activate((mouse.modifiers & Qt.ControlModifier) !== 0) }
         }
         Controls.ToolTip.visible: sendHover.hovered

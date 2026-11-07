@@ -324,16 +324,37 @@ mod guarded {
             newest,
         })
     }
-    fn remove(parent: &File, node: &Node) -> io::Result<()> {
-        let current = open(parent, &node.name)?;
-        let a = current.metadata()?;
-        let b = node.file.metadata()?;
-        same_mount(mount(&node.file)?, mount(&current)?)?;
-        if a.dev() != b.dev() || a.ino() != b.ino() {
-            return Err(io::Error::other("replaced directory entry"));
-        }
-        if b.is_dir() {
-            if names(&node.file)?
+    // The traversal is shared by the descriptor backend and an in-memory backend.
+    // Tests never invoke the descriptor backend's destructive operation.
+    trait RemovalFs {
+        type Handle;
+        fn verify(
+            &mut self,
+            parent: &Self::Handle,
+            node: &Self::Handle,
+            name: &std::ffi::OsStr,
+        ) -> io::Result<bool>;
+        fn names(&mut self, node: &Self::Handle) -> io::Result<Vec<std::ffi::OsString>>;
+        fn unlink(
+            &mut self,
+            parent: &Self::Handle,
+            name: &std::ffi::OsStr,
+            directory: bool,
+        ) -> io::Result<()>;
+    }
+    struct RemovalNode<H> {
+        handle: H,
+        name: std::ffi::OsString,
+        children: Vec<RemovalNode<H>>,
+    }
+    fn execute_removal<F: RemovalFs>(
+        fs: &mut F,
+        parent: &F::Handle,
+        node: &RemovalNode<F::Handle>,
+    ) -> io::Result<()> {
+        let directory = fs.verify(parent, &node.handle, &node.name)?;
+        if directory {
+            if fs.names(&node.handle)?
                 != node
                     .children
                     .iter()
@@ -343,24 +364,63 @@ mod guarded {
                 return Err(io::Error::other("changed directory"));
             }
             for child in &node.children {
-                remove(&node.file, child)?;
+                execute_removal(fs, &node.handle, child)?;
             }
-            if !names(&node.file)?.is_empty() {
+            if !fs.names(&node.handle)?.is_empty() {
                 return Err(io::Error::other("changed directory"));
             }
         }
-        let name = CString::new(node.name.as_bytes())?;
-        let rc = unsafe {
-            libc::unlinkat(
-                parent.as_raw_fd(),
-                name.as_ptr(),
-                if b.is_dir() { libc::AT_REMOVEDIR } else { 0 },
-            )
-        };
-        if rc != 0 {
-            return Err(io::Error::last_os_error());
+        fs.unlink(parent, &node.name, directory)
+    }
+    struct DescriptorFs<'a>(std::marker::PhantomData<&'a File>);
+    impl<'a> RemovalFs for DescriptorFs<'a> {
+        type Handle = &'a File;
+        fn verify(
+            &mut self,
+            parent: &&File,
+            node: &&File,
+            name: &std::ffi::OsStr,
+        ) -> io::Result<bool> {
+            let current = open(parent, name)?;
+            same_entry(node, &current)?;
+            Ok(node.metadata()?.is_dir())
         }
-        Ok(())
+        fn names(&mut self, node: &&File) -> io::Result<Vec<std::ffi::OsString>> {
+            names(node)
+        }
+        fn unlink(
+            &mut self,
+            parent: &&File,
+            name: &std::ffi::OsStr,
+            directory: bool,
+        ) -> io::Result<()> {
+            let name = CString::new(name.as_bytes())?;
+            let rc = unsafe {
+                libc::unlinkat(
+                    parent.as_raw_fd(),
+                    name.as_ptr(),
+                    if directory { libc::AT_REMOVEDIR } else { 0 },
+                )
+            };
+            if rc != 0 {
+                return Err(io::Error::last_os_error());
+            }
+            Ok(())
+        }
+    }
+    fn removal_node(node: &Node) -> RemovalNode<&File> {
+        RemovalNode {
+            handle: &node.file,
+            name: node.name.clone(),
+            children: node.children.iter().map(removal_node).collect(),
+        }
+    }
+    fn remove(parent: &File, node: &Node) -> io::Result<()> {
+        execute_removal(
+            &mut DescriptorFs(std::marker::PhantomData),
+            &parent,
+            &removal_node(node),
+        )
     }
     const QUARANTINE_PREFIX: &str = ".o3-cleanup-";
 
@@ -429,17 +489,14 @@ mod guarded {
         Ok(())
     }
     impl Tree {
-        #[cfg(test)]
-        pub fn remove(self) -> io::Result<()> {
-            self.remove_checked(|_| Ok(()))
-        }
         pub fn remove_checked(self, check: impl FnOnce(&Path) -> io::Result<()>) -> io::Result<()> {
-            self.remove_hooked(|| {}, check)
+            self.remove_with(|| {}, check, remove)
         }
-        pub(super) fn remove_hooked(
+        fn remove_with(
             mut self,
             before_rename: impl FnOnce(),
             check: impl FnOnce(&Path) -> io::Result<()>,
+            execute: impl FnOnce(&File, &Node) -> io::Result<()>,
         ) -> io::Result<()> {
             before_rename();
             let original = self.node.name.clone();
@@ -479,11 +536,197 @@ mod guarded {
             }
             // Children are resolved only beneath the reopened quarantine descriptor.
             // An interruption leaves a discoverable quarantine for manual recovery.
-            remove(&self.parent, &self.node).map_err(|error| {
+            execute(&self.parent, &self.node).map_err(|error| {
                 io::Error::other(format!(
                     "cleanup_outcome_unknown: {error}; inspect {}",
                     self.root.join(&quarantine).display()
                 ))
+            })
+        }
+    }
+    #[cfg(test)]
+    mod memory_tests {
+        use super::*;
+        use std::collections::BTreeMap;
+        #[derive(Default)]
+        pub(super) struct MemoryFs {
+            pub entries: BTreeMap<(usize, std::ffi::OsString), usize>,
+            directories: std::collections::BTreeSet<usize>,
+            mounts: BTreeMap<usize, u64>,
+            refused: std::collections::BTreeSet<usize>,
+            fail_unlink: Option<usize>,
+            unlinked: Vec<usize>,
+            next: usize,
+        }
+        impl MemoryFs {
+            pub(super) fn import(
+                &mut self,
+                _parent: &File,
+                node: &Node,
+            ) -> io::Result<RemovalNode<usize>> {
+                self.directories.insert(0);
+                self.mounts.insert(0, 1);
+                self.copy_node(0, node)
+            }
+            fn copy_node(&mut self, parent: usize, node: &Node) -> io::Result<RemovalNode<usize>> {
+                self.next += 1;
+                let id = self.next;
+                self.entries.insert((parent, node.name.clone()), id);
+                self.mounts.insert(id, 1);
+                if node.file.metadata()?.is_dir() {
+                    self.directories.insert(id);
+                }
+                let children = node
+                    .children
+                    .iter()
+                    .map(|n| self.copy_node(id, n))
+                    .collect::<io::Result<_>>()?;
+                Ok(RemovalNode {
+                    handle: id,
+                    name: node.name.clone(),
+                    children,
+                })
+            }
+            fn fixture() -> (Self, RemovalNode<usize>) {
+                let mut fs = Self::default();
+                fs.entries.insert((0, "target".into()), 1);
+                fs.entries.insert((1, "artifact".into()), 2);
+                fs.directories.extend([0, 1]);
+                fs.mounts.extend([(0, 1), (1, 1), (2, 1)]);
+                (
+                    fs,
+                    RemovalNode {
+                        handle: 1,
+                        name: "target".into(),
+                        children: vec![RemovalNode {
+                            handle: 2,
+                            name: "artifact".into(),
+                            children: vec![],
+                        }],
+                    },
+                )
+            }
+        }
+        impl RemovalFs for MemoryFs {
+            type Handle = usize;
+            fn verify(
+                &mut self,
+                parent: &usize,
+                node: &usize,
+                name: &std::ffi::OsStr,
+            ) -> io::Result<bool> {
+                if self.refused.contains(node) {
+                    return Err(io::Error::other("symlink refused"));
+                }
+                if self.entries.get(&(*parent, name.to_owned())) != Some(node) {
+                    return Err(io::Error::other("replaced directory entry"));
+                }
+                same_mount(
+                    *self.mounts.get(parent).unwrap(),
+                    *self.mounts.get(node).unwrap(),
+                )?;
+                Ok(self.directories.contains(node))
+            }
+            fn names(&mut self, node: &usize) -> io::Result<Vec<std::ffi::OsString>> {
+                let names = self
+                    .entries
+                    .keys()
+                    .filter(|(p, _)| p == node)
+                    .map(|(_, n)| n.clone())
+                    .collect::<Vec<_>>();
+                if names.iter().any(|n| n == ".git") {
+                    return Err(io::Error::other("nested git"));
+                }
+                Ok(names)
+            }
+            fn unlink(
+                &mut self,
+                parent: &usize,
+                name: &std::ffi::OsStr,
+                directory: bool,
+            ) -> io::Result<()> {
+                let key = (*parent, name.to_owned());
+                let id = *self
+                    .entries
+                    .get(&key)
+                    .ok_or_else(|| io::Error::other("missing entry"))?;
+                if self.fail_unlink == Some(id) {
+                    return Err(io::Error::other("injected unlink failure"));
+                }
+                if directory && !self.names(&id)?.is_empty() {
+                    return Err(io::Error::other("not empty"));
+                }
+                self.entries.remove(&key);
+                self.unlinked.push(id);
+                Ok(())
+            }
+        }
+        #[test]
+        fn virtual_execution_is_postorder_and_removes_only_snapshot_entries() {
+            let (mut fs, plan) = MemoryFs::fixture();
+            fs.entries.insert((0, "source.rs".into()), 9);
+            execute_removal(&mut fs, &0, &plan).unwrap();
+            assert_eq!(fs.unlinked, [2, 1]);
+            assert_eq!(fs.entries.get(&(0, "source.rs".into())), Some(&9));
+        }
+        #[test]
+        fn replacement_symlink_mount_and_changed_names_refuse_before_unlink() {
+            for case in 0..5 {
+                let (mut fs, plan) = MemoryFs::fixture();
+                match case {
+                    0 => {
+                        fs.entries.insert((0, "target".into()), 99);
+                    }
+                    1 => {
+                        fs.refused.insert(2);
+                    }
+                    2 => {
+                        fs.mounts.insert(2, 7);
+                    }
+                    3 => {
+                        fs.entries.insert((1, "new".into()), 3);
+                    }
+                    _ => {
+                        fs.entries.insert((1, ".git".into()), 3);
+                    }
+                }
+                assert!(execute_removal(&mut fs, &0, &plan).is_err());
+                assert!(fs.unlinked.is_empty());
+                assert!(fs.entries.contains_key(&(1, "artifact".into())));
+            }
+        }
+        #[test]
+        fn failed_unlink_stops_and_keeps_parent_for_recovery() {
+            for failure in [1, 2] {
+                let (mut fs, plan) = MemoryFs::fixture();
+                fs.fail_unlink = Some(failure);
+                assert!(execute_removal(&mut fs, &0, &plan).is_err());
+                assert!(fs.entries.contains_key(&(0, "target".into())));
+                assert_eq!(fs.unlinked, if failure == 1 { vec![2] } else { vec![] });
+            }
+        }
+    }
+    #[cfg(test)]
+    impl Tree {
+        pub(super) fn plan_checked(
+            self,
+            check: impl FnOnce(&Path) -> io::Result<()>,
+        ) -> io::Result<()> {
+            self.plan_hooked(|| {}, check)
+        }
+        pub(super) fn plan_hooked(
+            self,
+            before: impl FnOnce(),
+            check: impl FnOnce(&Path) -> io::Result<()>,
+        ) -> io::Result<()> {
+            let original = self.node.name.clone();
+            self.remove_with(before, check, |parent, node| {
+                let mut fs = memory_tests::MemoryFs::default();
+                let plan = fs.import(parent, node)?;
+                execute_removal(&mut fs, &0, &plan)?;
+                assert!(!fs.entries.contains_key(&(0, plan.name.clone())));
+                // The physical snapshot is retained; only the virtual filesystem was changed.
+                rename(parent, &node.name, &original)
             })
         }
     }
@@ -829,7 +1072,6 @@ mod tests {
             build_dirs(&root),
             vec![root.join("build"), root.join("cache"), root.join("target")]
         );
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn building_or_editing_counts_as_use() {
@@ -851,7 +1093,8 @@ mod tests {
                 .unwrap();
         }
         let git_dir = root.join(".git");
-        for f in ["HEAD"] {
+        {
+            let f = "HEAD";
             std::fs::File::open(git_dir.join(f))
                 .unwrap()
                 .set_times(old)
@@ -870,7 +1113,6 @@ mod tests {
             !due(last_file_change(&root, &builds), now_ms(), Some(2)),
             "a fresh build is use"
         );
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn thread_folders_carry_their_latest_activity() {
@@ -1105,11 +1347,15 @@ pub fn remote_report(shell: &Value, settings: &Value) -> Result<Value> {
     )
 }
 /// Caller re-reads native activity with its own bearer immediately before here.
-pub fn remote_run(shell: &Value, settings: &Value, expected: &Value) -> Result<Value> {
+fn remote_plan(shell: &Value, settings: &Value, expected: &Value) -> Result<Value> {
     let report = remote_report(shell, settings)?;
     if &report != expected {
         return Err("stale_report".into());
     }
+    Ok(report)
+}
+pub fn remote_run(shell: &Value, settings: &Value, expected: &Value) -> Result<Value> {
+    let report = remote_plan(shell, settings, expected)?;
     let mut removed = 0;
     for entry in report["entries"].as_array().ok_or("invalid_report")? {
         // Revalidate each tree's identity before removal as earlier removals may take time.
@@ -1200,28 +1446,28 @@ mod remote_tests {
             .set_times(std::fs::FileTimes::new().set_modified(previous))
             .unwrap();
         assert_eq!(
-            remote_run(&shell, &settings, &report),
+            remote_plan(&shell, &settings, &report),
             Err("stale_report".into()),
             "same length and restored mtime still change identity"
         );
         std::fs::write(root.join("target/debug/deep/artifact"), "new active build").unwrap();
         assert_eq!(
-            remote_run(&shell, &settings, &report),
+            remote_plan(&shell, &settings, &report),
             Err("stale_report".into())
         );
         assert!(root.join("target").exists());
         old(&root);
         let report = remote_report(&shell, &settings).unwrap();
-        assert_eq!(
-            remote_run(&shell, &settings, &report).unwrap()["removed"],
-            1
-        );
-        assert!(!root.join("target").exists());
+        assert_eq!(report["entries"].as_array().unwrap().len(), 1);
+        guarded::scan(&root, &root.join("target"))
+            .unwrap()
+            .plan_checked(|_| Ok(()))
+            .unwrap();
+        assert!(root.join("target/debug/deep/artifact").exists());
         assert_eq!(
             std::fs::read_to_string(root.join("target-orphan/keep")).unwrap(),
             "untouched"
         );
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn active_thread_and_changed_settings_prevent_remote_cleanup() {
@@ -1232,12 +1478,11 @@ mod remote_tests {
             remote_report(&shell, &settings).unwrap()["entries"],
             json!([])
         );
-        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert!(remote_plan(&shell, &settings, &report).is_err());
         shell["threads"] = json!([]);
         settings["buildCleanupCheckoutDays"] = Value::Null;
-        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert!(remote_plan(&shell, &settings, &report).is_err());
         assert!(root.join("target").exists());
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn nested_project_and_active_thread_are_protected_without_git_marker() {
@@ -1248,7 +1493,7 @@ mod remote_tests {
             remote_report(&shell, &settings).unwrap()["entries"],
             json!([])
         );
-        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert!(remote_plan(&shell, &settings, &report).is_err());
         shell["threads"] = json!([]);
         shell["projects"]
             .as_array_mut()
@@ -1259,7 +1504,6 @@ mod remote_tests {
             json!([])
         );
         assert!(protected_candidate(&shell, &root, &root.join("target")));
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn nested_git_directory_and_worktree_file_refuse_scan_and_delete() {
@@ -1274,10 +1518,9 @@ mod remote_tests {
                 std::fs::write(&marker, "gitdir: /not-followed").unwrap();
             }
             assert!(remote_report(&shell, &settings).is_err());
-            assert!(remote_run(&shell, &settings, &report).is_err());
-            assert!(tree.remove().is_err());
+            assert!(remote_plan(&shell, &settings, &report).is_err());
+            assert!(tree.plan_checked(|_| Ok(())).is_err());
             assert!(root.join("target/debug/deep/artifact").exists());
-            std::fs::remove_dir_all(root).unwrap();
         }
     }
     #[test]
@@ -1287,9 +1530,8 @@ mod remote_tests {
         std::os::unix::fs::symlink(root.join("Cargo.toml"), root.join("target/debug/link"))
             .unwrap();
         assert!(guarded::scan(&root, &root.join("target")).is_err());
-        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert!(remote_plan(&shell, &settings, &report).is_err());
         assert!(root.join("Cargo.toml").exists());
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn replaced_directory_between_scan_and_delete_preserves_replacement() {
@@ -1299,14 +1541,13 @@ mod remote_tests {
         std::fs::rename(root.join("target"), root.join("saved-output")).unwrap();
         std::fs::create_dir(root.join("target")).unwrap();
         std::fs::write(root.join("target/source.rs"), "precious").unwrap();
-        assert!(tree.remove().is_err());
-        assert!(remote_run(&shell, &settings, &report).is_err());
+        assert!(tree.plan_checked(|_| Ok(())).is_err());
+        assert!(remote_plan(&shell, &settings, &report).is_err());
         assert_eq!(
             std::fs::read_to_string(root.join("target/source.rs")).unwrap(),
             "precious"
         );
         assert!(root.join("saved-output/debug/deep/artifact").exists());
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn replaced_child_directory_is_not_traversed_during_deletion() {
@@ -1315,10 +1556,9 @@ mod remote_tests {
         std::fs::rename(root.join("target/debug"), root.join("saved-output")).unwrap();
         std::fs::create_dir(root.join("target/debug")).unwrap();
         std::fs::write(root.join("target/debug/source.rs"), "precious").unwrap();
-        assert!(tree.remove().is_err());
+        assert!(tree.plan_checked(|_| Ok(())).is_err());
         assert!(root.join("target/debug/source.rs").exists());
         assert!(root.join("saved-output/deep/artifact").exists());
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn symlink_replacement_after_scan_is_not_followed_during_deletion() {
@@ -1326,19 +1566,18 @@ mod remote_tests {
         let tree = guarded::scan(&root, &root.join("target")).unwrap();
         std::fs::rename(root.join("target"), root.join("saved-output")).unwrap();
         std::os::unix::fs::symlink(root.join("saved-output"), root.join("target")).unwrap();
-        assert!(tree.remove().is_err());
+        assert!(tree.plan_checked(|_| Ok(())).is_err());
         assert!(root.join("saved-output/debug/deep/artifact").exists());
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn rename_after_validation_never_traverses_moved_tree() {
         for replacement in [false, true] {
             let (root, _, _) = fixture();
-            let outside = root.with_extension("outside");
+            let outside = root.join("outside");
             std::fs::create_dir(&outside).unwrap();
             let saved = outside.join("saved-output");
             let tree = guarded::scan(&root, &root.join("target")).unwrap();
-            let result = tree.remove_hooked(
+            let result = tree.plan_hooked(
                 || {
                     std::fs::rename(root.join("target"), &saved).unwrap();
                     if replacement {
@@ -1360,8 +1599,6 @@ mod remote_tests {
                 );
             }
             assert!(guarded::leftovers(&root).unwrap().is_empty());
-            std::fs::remove_dir_all(root).unwrap();
-            std::fs::remove_dir_all(outside).unwrap();
         }
     }
     #[test]
@@ -1371,7 +1608,7 @@ mod remote_tests {
         std::fs::write(root.join("target/CACHEDIR.TAG"), "cache").unwrap();
         let tree = guarded::scan(&root, &root.join("target")).unwrap();
         let interrupted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            tree.remove_checked(|_| panic!("simulated interruption"))
+            tree.plan_checked(|_| panic!("simulated interruption"))
         }));
         assert!(interrupted.is_err());
         let leftovers = guarded::leftovers(&root).unwrap();
@@ -1392,14 +1629,13 @@ mod remote_tests {
             std::fs::read_to_string(root.join("target/debug/deep/artifact")).unwrap(),
             "old"
         );
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn quarantine_git_and_overlap_rechecks_restore_without_deletion() {
         for nested_git in [false, true] {
             let (root, mut shell, _) = fixture();
             let tree = guarded::scan(&root, &root.join("target")).unwrap();
-            let result = tree.remove_checked(|quarantine| {
+            let result = tree.plan_checked(|quarantine| {
                 if nested_git {
                     std::fs::write(quarantine.join("debug/.git"), "gitdir: /protected").unwrap();
                 } else {
@@ -1416,7 +1652,6 @@ mod remote_tests {
             assert!(result.is_err());
             assert!(root.join("target/debug/deep/artifact").exists());
             assert!(guarded::leftovers(&root).unwrap().is_empty());
-            std::fs::remove_dir_all(root).unwrap();
         }
     }
     #[test]
@@ -1424,7 +1659,7 @@ mod remote_tests {
         let (root, _, _) = fixture();
         let tree = guarded::scan(&root, &root.join("target")).unwrap();
         assert!(tree
-            .remove_checked(|_| {
+            .plan_checked(|_| {
                 std::fs::create_dir(root.join("target")).unwrap();
                 std::fs::write(root.join("target/precious"), "keep").unwrap();
                 Err(std::io::Error::other("stop before deletion"))
@@ -1437,51 +1672,6 @@ mod remote_tests {
         let leftovers = guarded::leftovers(&root).unwrap();
         assert_eq!(leftovers.len(), 1);
         assert!(leftovers[0].join("debug/deep/artifact").exists());
-        std::fs::remove_dir_all(root).unwrap();
-    }
-    #[test]
-    fn bind_mount_same_filesystem_is_refused_when_permitted() {
-        use std::os::unix::ffi::OsStrExt;
-        let (root, shell, settings) = fixture();
-        let source = root.join("mount-source");
-        let dest = root.join("target/debug/deep/mount");
-        std::fs::create_dir(&source).unwrap();
-        std::fs::create_dir(&dest).unwrap();
-        std::fs::write(source.join("source.rs"), "precious").unwrap();
-        let src = std::ffi::CString::new(source.as_os_str().as_bytes()).unwrap();
-        let dst = std::ffi::CString::new(dest.as_os_str().as_bytes()).unwrap();
-        let tree = guarded::scan(&root, &root.join("target")).unwrap();
-        let rc = unsafe {
-            libc::mount(
-                src.as_ptr(),
-                dst.as_ptr(),
-                std::ptr::null(),
-                libc::MS_BIND,
-                std::ptr::null(),
-            )
-        };
-        if rc != 0 {
-            let error = std::io::Error::last_os_error();
-            assert!(
-                matches!(
-                    error.raw_os_error(),
-                    Some(libc::EPERM | libc::EACCES | libc::ENOSYS)
-                ),
-                "{error}"
-            );
-            eprintln!(
-                "bind mount unavailable: {error}; simulated mount-ID regression covers refusal"
-            );
-        } else {
-            // Always unmount before assertions or fixture teardown.
-            let denied = guarded::scan(&root, &root.join("target")).is_err();
-            let report_denied = remote_report(&shell, &settings).is_err();
-            let deletion_denied = tree.remove().is_err();
-            assert_eq!(unsafe { libc::umount2(dst.as_ptr(), 0) }, 0);
-            assert!(denied && report_denied && deletion_denied);
-            assert!(source.join("source.rs").exists());
-        }
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn remote_walk_is_bounded_and_symlink_roots_are_denied() {
@@ -1491,10 +1681,9 @@ mod remote_tests {
         }
         old(&root);
         assert_eq!(remote_report(&shell, &settings), Err("report_limit".into()));
-        let link = root.with_extension("link");
+        let link = root.join("linked-root");
         std::os::unix::fs::symlink(&root, &link).unwrap();
         assert!(remote_report(&shell, &json!({"remoteMaintenanceRoots":[link]})).is_err());
         std::fs::remove_file(link).unwrap();
-        std::fs::remove_dir_all(root).unwrap();
     }
 }

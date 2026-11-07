@@ -219,7 +219,7 @@ impl Drop for Harness {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
         self.server.take().unwrap().join().unwrap();
-        let _ = fs::remove_dir_all(&self.root);
+
     }
 }
 #[test]
