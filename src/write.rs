@@ -407,6 +407,7 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="copy" {return clipboard::copy(input)}
     let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
     match text(input,"op") {
+        "speech"=>crate::speech_management::execute(&e,input),
         "provider-reset-credit-access"=>reset_credit_access(&e).map(|(_,allowed)| json!({"canManageProviders":allowed})),
         "provider-reset-credit"=>consume_reset_credit(&e,&input["input"]),
         "devices-read"=>crate::integration_devices::read(&e),
