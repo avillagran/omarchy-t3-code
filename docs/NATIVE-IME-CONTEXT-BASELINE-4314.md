@@ -38,6 +38,7 @@ establish absence of context updates.
 | `_wtnf17a` | Hosted webview receives the unchanged GuestInput pointer; native focusedFrame and document focus are true; real keyboard moves selection to UTF-16 offset 6. Native caret height is 18; no surrounding callback occurs. | Nonzero stronger full-context expectation retained. |
 | `75hj70ht` | Real keyboard appends a fixed character; known text changes from 6 to 7 UTF-16 units, with selection 7..7 and native key receipts. Eight native state updates still contain no surrounding callback. | Nonzero stronger full-context expectation retained. |
 | `sjm2u88s` | The same real edit and caret observations complete, followed by a compositor failure when the view closes before the observer popup. | Lifetime failure; not acceptance. |
+| `i6pu87gd` | Reviewed role-first teardown: real edit observed, popup retirement acknowledged before native deactivation, engine and observer exit normally. No surrounding callback is observed. | Observation baseline succeeds; no Qt-query or stronger full-context acceptance. |
 
 Names refer to `native-ime-context-<case>` artifacts. Read-only synthetic DOM
 snapshots diagnose focus and confirm the fixed edit; they never supply a Qt
@@ -92,7 +93,12 @@ runtime manifest and frozen seven-member compositor receipt. The small
 compositor members are copied to a fresh read-only snapshot before execution;
 self-reported acquisition receipts cannot authorize their identities. Earlier
 failed closes are not replayed or relabeled successful. Runtime acceptance of
-the changed lifetime remains unproved until that separate measured replay.
+the changed lifetime was then measured separately in `i6pu87gd`: popup-closed
+acknowledgement precedes native deactivation serial 9, with no fallback kill,
+probe return code zero and no new coredump. Its intake receipt records source
+HEAD 21223fe and both source-controlled manifest hashes. This accepts only that
+fixed-field normal-lifetime observation, not arbitrary compositor failure,
+engine death, complete Qt queries or the earlier stronger expectations.
 
 ## Concrete adaptation boundary
 
