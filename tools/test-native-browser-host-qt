@@ -17,12 +17,13 @@ inputs = {
     'probe.qml': root/'tools/fixtures/native-browser-host-probe.qml',
     'core.js': root/'ui/browser/private-cdp-bridge.js',
     'input.js': root/'ui/browser/qt-guest-input.js',
+    'scope.js': root/'ui/browser/qt-target-scope.js',
     'host.js': root/'ui/browser/native-browser-host.js',
     'sources.json': root/'ui/browser/native-browser-host.sources.json',
 }
 for name, source in inputs.items():
     shutil.copyfile(source, evidence/name)
-(evidence/'bridge.js').write_bytes((evidence/'core.js').read_bytes()+b'\n'+(evidence/'input.js').read_bytes())
+(evidence/'bridge.js').write_bytes((evidence/'core.js').read_bytes()+b'\n'+(evidence/'input.js').read_bytes()+b'\n'+(evidence/'scope.js').read_bytes())
 (evidence/'inputs.json').write_text(json.dumps({name: hashlib.sha256((evidence/name).read_bytes()).hexdigest() for name in inputs}, indent=2)+'\n')
 flags = shlex.split(subprocess.check_output(['pkg-config', '--cflags', '--libs', 'Qt6Quick', 'Qt6WebEngineQuick'], text=True))
 moc = subprocess.check_output(['pkg-config', '--variable=libexecdir', 'Qt6Core'], text=True).strip()+'/moc'
@@ -36,6 +37,10 @@ assert r.returncode==0
 value=json.loads(next(line.split('NATIVE_HOST_QT_RESULT ',1)[1] for line in r.stderr.splitlines() if 'NATIVE_HOST_QT_RESULT ' in line))
 assert value['target'] and value['maxInflight']==1
 assert not value.get('failure')
+assert [target['targetId'] for target in value['rootTargets']['targetInfos']]==[value['target']]
+assert len(value['denials'])==10 and all('Only this preview tab' in error for error in value['denials'])
+assert value['childValue']['result']['value']=='owned-child'
+assert not any(call['method']=='Target.attachToTarget' and call['params'].get('targetId')==value['foreign'] for call in value['calls'])
 assert value['inputs'][0]['result']['result']['value']=='界😀'
 assert value['imeRefusal']=='Input.imeSetComposition needs the preview to have focus.'
 assert not any(call['method']=='Input.imeSetComposition' for call in value['calls'])
