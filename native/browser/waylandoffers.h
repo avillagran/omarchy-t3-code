@@ -43,7 +43,7 @@ class NativeWaylandOffers final:public QObject {
   static const wl_registry_listener registryListener{global,removed};wl_registry_add_listener(registry,&registryListener,this);wl_display_flush(display);
   dispatch.setInterval(5);connect(&dispatch,&QTimer::timeout,this,[this]{pending();});dispatch.start();
  }
- ~NativeWaylandOffers()override{dispatch.stop();usable=false;for(auto &entry:known){if(entry.second->proxy){wl_data_offer_destroy(entry.second->proxy);entry.second->proxy=nullptr;}}selected.reset();known.clear();if(device){if(wl_proxy_get_version(reinterpret_cast<wl_proxy *>(device))>=2)wl_data_device_release(device);else wl_data_device_destroy(device);}if(manager)wl_data_device_manager_destroy(manager);if(registry)wl_registry_destroy(registry);if(queue)wl_event_queue_destroy(queue);}
+ ~NativeWaylandOffers()override{dispatch.stop();changed={};pending();usable=false;for(auto &entry:known){if(entry.second->proxy){wl_data_offer_destroy(entry.second->proxy);entry.second->proxy=nullptr;}}selected.reset();known.clear();if(device){if(wl_proxy_get_version(reinterpret_cast<wl_proxy *>(device))>=2)wl_data_device_release(device);else wl_data_device_destroy(device);}if(manager)wl_data_device_manager_destroy(manager);if(registry)wl_registry_destroy(registry);if(queue)wl_event_queue_destroy(queue);}
  bool ready()const{return usable;}
  std::shared_ptr<const void> identity()const{return selected;}
  QStringList formats(){pending();return selected&&!selected->invalid?selected->formats:QStringList();}

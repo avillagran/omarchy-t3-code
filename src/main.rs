@@ -405,7 +405,7 @@ fn device_pool(browser: browser_sessions::Manager) -> mpsc::SyncSender<Value> {
     sender
 }
 fn watch(client: Client) -> Result<()> {
-    let _gui_clipboard = gui_clipboard::start();
+    let gui_clipboard = gui_clipboard::start().map(|session| std::sync::Arc::new(std::sync::Mutex::new(session)));
     binary_update::spawn();
     let external = local_quotas::ExternalHttp::shared()?;
     emit("ui-state", ui_state::load());
@@ -514,7 +514,7 @@ fn watch(client: Client) -> Result<()> {
     let input_live = live.clone();
     let input_client = client.clone();
     let browser_manager = browser_sessions::Manager::start(
-        browser_guest::Config::native()?,
+        browser_guest::Config::native()?.with_gui_clipboard(gui_clipboard),
         |id| {
             environments()?
                 .into_iter()

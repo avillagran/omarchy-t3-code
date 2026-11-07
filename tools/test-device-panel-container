@@ -17,6 +17,8 @@ evidence = Path(tempfile.mkdtemp(prefix="o3-device-panel-", dir="/var/tmp"))
 evidence.chmod(0o700)
 script = r'''
 set -eu
+test "$(ulimit -Hc)" = 0
+test "$(ulimit -Sc)" = 0
 umask 077
 mkdir -p /tmp/home /tmp/runtime /tmp/qml /tmp/.X11-unix
 chmod 700 /tmp/runtime
@@ -66,7 +68,7 @@ if test "$2" = browser-permission-panel; then
 fi
 exit "$result"
 '''
-command = ["podman", "--remote=false", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
+command = ["podman", "--remote=false", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--ulimit=core=0:0", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
 for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "XDG_CONFIG_HOME":"/tmp/config", "XDG_STATE_HOME":"/tmp/state", "XDG_DATA_HOME":"/tmp/data", "LIBGL_ALWAYS_SOFTWARE":"1", "__EGL_VENDOR_LIBRARY_FILENAMES":"/usr/share/glvnd/egl_vendor.d/50_mesa.json"}.items():
     command += ["--env", f"{key}={value}"]
 if args.fixture in ["file-metadata", "thread-activity", "reset-credit", "new-thread-model", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"]:

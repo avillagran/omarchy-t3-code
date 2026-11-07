@@ -1,28 +1,40 @@
 #!/usr/bin/env python3
 """Test GUI-owned QML admission only on an isolated private Wayland display."""
-import fcntl,hashlib,json,os,subprocess,tempfile,uuid
+import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
 from runtime_artifacts import snapshot
 from pathlib import Path
+parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--runtime',type=Path);parser.add_argument('--services',type=Path);options=parser.parse_args()
+if bool(options.runtime)!=bool(options.services):parser.error('runtime and services must be supplied together')
 root=Path(__file__).resolve().parent.parent
 if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
 out=Path(tempfile.mkdtemp(prefix='browser-gui-platform-',dir='/home/node/BuildCache/o3-desktop-next'));print('GUI platform evidence: '+str(out),flush=True)
-for name in ['clipboardplatform.cpp','clipboardplatform.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
-for name in ['browser-platform-owned.cpp','browser-platform-peer.py','browser-platform-process.qml']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
+for name in ['clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
+for name in ['browser-platform-owned.cpp','browser-platform-peer.py','browser-platform-process.qml','electron-clipboard-owner.cpp']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
 (out/'T3BrowserClipboardPlatform.qml').write_bytes((root/'ui/qml/T3BrowserClipboardPlatform.qml').read_bytes())
+if options.runtime:
+ runtime=options.runtime.resolve();manifest=json.loads((runtime.parent/'artifact.json').read_text())
+ if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167':raise SystemExit('Verified official runtime required')
+ assets=out/'electron';assets.mkdir()
+ for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-scope.js','electron-private-fd.c']:(assets/name).write_bytes((root/'ui/browser'/name).read_bytes())
+ (assets/'native-electron-services.cjs').write_bytes(options.services.resolve().read_bytes());(out/'electron-artifact.json').write_text(json.dumps(manifest,indent=2)+'\n')
+ with (out/'addon-compile.log').open('w') as log:subprocess.run(['cc','-std=c11','-fPIC','-shared','-Wall','-Wextra','-Werror','-I/usr/include/node',str(assets/'electron-private-fd.c'),'-o',str(assets/'electron-private-fd.node')],check=True,stdout=log,stderr=subprocess.STDOUT)
 qml=out/'qml/O3/Browser';qml.mkdir(parents=True);(qml/'qmldir').write_bytes((root/'native/browser/qmldir').read_bytes())
 with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
  with (out/'compile.log').open('w') as log:
   moc=subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip()+'/moc'
   for source,target in [('clipboardplatform.h','moc_clipboardplatform.cpp'),('plugin.cpp','plugin.moc')]:subprocess.run([moc,str(out/source),'-o',str(out/target)],check=True,stdout=log,stderr=subprocess.STDOUT)
-  flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Qml','Qt6Gui','wayland-client'],text=True).split()
-  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror','-shared',str(out/'clipboardplatform.cpp'),str(out/'plugin.cpp'),str(out/'moc_clipboardplatform.cpp'),'-I'+str(out),'-o',str(qml/'libo3browserplatform.so'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+  flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Qml','Qt6Gui','wayland-client','xcb','xcb-xfixes','xcb-res'],text=True).split()
+  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror','-shared',str(out/'clipboardplatform.cpp'),str(out/'clipboardcohort.cpp'),str(out/'plugin.cpp'),str(out/'moc_clipboardplatform.cpp'),'-I'+str(out),'-o',str(qml/'libo3browserplatform.so'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'electron-clipboard-owner.cpp'),'-o',str(out/'clipboard-owner'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'browser-platform-owned.cpp'),'-o',str(out/'gui'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
  source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[root/'Cargo.toml',root/'Cargo.lock',*list((root/'examples').glob('*.rs'))])
  source_hashes={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}
  (out/'rust-source-hashes.json').write_text(json.dumps(source_hashes,indent=2)+'\n')
  with (out/'rust-compile.jsonl').open('w') as log,(out/'rust-compile.log').open('w') as errors:
-  build=subprocess.run(['/home/node/.cargo/bin/cargo','build','--locked','--offline','--bins','--example','gui_clipboard_probe','--example','engine_identity_peer','--message-format=json'],cwd=root,env=dict(os.environ,CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target',CARGO_INCREMENTAL='0',CARGO_BUILD_JOBS='2'),stdout=log,stderr=errors)
+  build_args=['/home/node/.cargo/bin/cargo','build','--locked','--offline','--bins','--example','gui_clipboard_probe','--example','engine_identity_peer','--message-format=json']
+  if options.runtime:build_args+=['--example','native_clipboard_pool_probe']
+  build=subprocess.run(build_args,cwd=root,env=dict(os.environ,CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target',CARGO_INCREMENTAL='0',CARGO_BUILD_JOBS='2'),stdout=log,stderr=errors)
  if build.returncode:raise SystemExit(build.returncode)
  if source_hashes!={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}:raise SystemExit('Source changed during GUI consumer compile')
  items=[json.loads(line) for line in (out/'rust-compile.jsonl').read_text().splitlines()];executables=[Path(item['executable']) for item in items if item.get('executable')]
@@ -34,24 +46,39 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  (out/'worker-libs').mkdir()
  for file in frozen.iterdir():
   if file.is_file() and file.suffix=='.so':(out/'worker-libs'/file.name).write_bytes(file.read_bytes())
+ if options.runtime:
+  pool=next(file for file in executables if file.name=='native_clipboard_pool_probe');(out/'native-pool-probe').write_bytes((frozen/pool.relative_to(debug)).read_bytes());(out/'native-pool-probe').chmod(0o500)
+  main=next(file for file in executables if file.name=='omarchy-t3-client');(out/'app/bin').mkdir(parents=True);(out/'app/bin/omarchy-t3-client').write_bytes((frozen/main.relative_to(debug)).read_bytes());(out/'app/bin/omarchy-t3-client').chmod(0o500)
+(out/'clipboard-owner').chmod(0o500)
 (out/'gui').chmod(0o500)
 (out/'artifacts.json').write_text(json.dumps({str(file.relative_to(out)):hashlib.sha256(file.read_bytes()).hexdigest() for file in out.rglob('*') if file.is_file()},indent=2)+'\n')
 args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--ulimit=core=0:0','--pids-limit=96','--memory=512m','--tmpfs','/tmp:rw,size=128m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(out)+':/fixture:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','QT_QPA_PLATFORM=wayland','--env','LD_LIBRARY_PATH=/fixture/worker-libs','localhost/o3-qml-wayland-tests:local','python3','-c',r'''
-import os,pathlib,resource,subprocess,time
+import hashlib,json,os,pathlib,resource,subprocess,time
 assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
 os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700)
-pathlib.Path('/tmp/sway.conf').write_text('xwayland disable\noutput * mode 1280x1024\nseat seat0 fallback true\n')
+if os.environ.get('O3_NATIVE_GUI_POOL')=='1':
+ for row in json.loads(pathlib.Path('/fixture/electron-artifact.json').read_text())['files']:
+  file=pathlib.Path('/electron')/row['path'];assert file.is_file() and not file.is_symlink()
+  with file.open('rb') as source:assert hashlib.file_digest(source,'sha256').hexdigest()==row['sha256']
+pathlib.Path('/tmp/sway.conf').write_text('xwayland disable\noutput * mode 1280x1024\nseat seat0 fallback true\ndefault_border none\nfor_window [title="Owned GUI Clipboard"] floating enable, resize set width 640 height 480, move position 100 100\nfor_window [title="Owned synthetic clipboard peer"] floating enable, move position 800 100\n')
 env=dict(os.environ,LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib',WLR_BACKENDS='headless',WLR_RENDERER='pixman',WLR_HEADLESS_OUTPUTS='1',WLR_LIBINPUT_NO_DEVICES='1')
-log=open('/tmp/sway.log','w');display=subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],env=env,stdout=log,stderr=subprocess.STDOUT)
+log=open('/tmp/sway.log','w');display=subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],env=env,stdout=log,stderr=subprocess.STDOUT);keyboard=None
 try:
  for _ in range(100):
   sockets=[file for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()]
   if sockets:break
   assert display.poll() is None;time.sleep(.02)
  else:raise AssertionError('private display unavailable')
- result=subprocess.run(['/fixture/gui'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),capture_output=True,text=True,timeout=25);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PLATFORM_PASS' in result.stdout
+ keyboard=subprocess.Popen(['wtype','-k','Shift_L','-s','25000'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ time.sleep(.05)
+ result=subprocess.run(['/fixture/gui'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),capture_output=True,text=True,timeout=40);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PLATFORM_PASS' in result.stdout
  result=subprocess.run(['quickshell','-p','/fixture/browser-platform-process.qml'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name,QML_IMPORT_PATH='/fixture/qml'),capture_output=True,text=True,timeout=15);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PROCESS_PASS' in result.stdout+result.stderr
-finally:display.terminate();display.wait(timeout=3);log.close()
+finally:
+ if keyboard is not None and keyboard.poll() is None:keyboard.terminate();keyboard.wait(timeout=3)
+ display.terminate();display.wait(timeout=3);log.close()
 ''']
-with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=35)
+if options.runtime:
+ args[args.index('--memory=512m')]='--memory=3g';args[args.index('--pids-limit=96')]='--pids-limit=384'
+ args[3:3]=['--security-opt=seccomp=unconfined','-v',str(runtime)+':/electron:ro','--env','O3_NATIVE_GUI_POOL=1']
+with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=60)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)

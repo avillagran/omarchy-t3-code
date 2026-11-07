@@ -30,6 +30,7 @@ pub struct Config {
     cache: PathBuf,
     basic_store: bool,
     native_display: Option<PathBuf>,
+    clipboard: Option<crate::gui_clipboard::Shared>,
 }
 impl Config {
     pub fn import_assets(&self) -> [PathBuf; 2] {
@@ -83,7 +84,14 @@ impl Config {
             cache: crate::xdg("XDG_CACHE_HOME", ".cache"),
             basic_store: false,
             native_display: None,
+            clipboard: None,
         })
+    }
+    /// Keep the actual GUI registration with this factory. Ordinary Qt guests
+    /// do not register an X cohort or request clipboard contents.
+    pub fn with_gui_clipboard(mut self, platform: Option<crate::gui_clipboard::Shared>) -> Self {
+        self.clipboard = platform;
+        self
     }
     /// Explicit internal opt-in with a private authenticated display owned by
     /// each cohort. This does not advertise or select a browser capability.
@@ -160,6 +168,7 @@ impl Config {
             cache: root.join("cache/omarchy-t3-code"),
             basic_store: true,
             native_display: None,
+            clipboard: None,
         })
     }
 }
@@ -284,6 +293,7 @@ impl ImportVerification {
 struct Session {
     _display: Option<crate::browser_native_display::Display>,
     _engine: Option<crate::browser_engine_identity::Engine>,
+    _clipboard: Option<crate::gui_clipboard::CohortLease>,
     child: Child,
     input: ChildStdin,
     id: String,
@@ -566,7 +576,10 @@ impl Pool {
             .as_ref()
             .map(|executable| crate::browser_native_display::Display::launch(executable))
             .transpose()?;
-        let identity = native_display.as_ref().map(|_| crate::browser_engine_identity::Pending::new()).transpose()?;
+        let identity = native_display
+            .as_ref()
+            .map(|_| crate::browser_engine_identity::Pending::new())
+            .transpose()?;
         let identity_fd = identity.as_ref().map(|pending| pending.source().as_raw_fd());
         let id = uuid::Uuid::new_v4().to_string();
         let mut private_source = None;
@@ -629,7 +642,9 @@ impl Pool {
                 if let Some(source) = &private_source {
                     crate::desktop_browser_ipc::admit_child_source(source.as_raw_fd())?;
                 }
-                if let Some(identity) = identity_fd { crate::desktop_browser_ipc::admit_child_source(identity)?; }
+                if let Some(identity) = identity_fd {
+                    crate::desktop_browser_ipc::admit_child_source(identity)?;
+                }
                 Ok(())
             });
         }
@@ -646,6 +661,7 @@ impl Pool {
         let mut session = Session {
             _display: native_display,
             _engine: None,
+            _clipboard: None,
             child,
             input,
             id: id.clone(),
@@ -674,7 +690,9 @@ impl Pool {
         if let Some(fd) = private_fd {
             payload["privateBrowserFd"] = json!(fd);
         }
-        if let Some(fd) = identity_fd { payload["privateClipboardIdentityFd"] = json!(fd); }
+        if let Some(fd) = identity_fd {
+            payload["privateClipboardIdentityFd"] = json!(fd);
+        }
         let payload = payload.to_string().into_bytes();
         session
             .input
@@ -682,6 +700,14 @@ impl Pool {
             .and_then(|_| session.input.write_all(&payload))
             .map_err(|_| "browser_runtime_closed")?;
         session._engine = identity.map(|pending| pending.admit(session.child.id())).transpose()?;
+        if let (Some(gui), Some(display), Some(engine)) =
+            (&self.config.clipboard, &session._display, &session._engine)
+        {
+            session._clipboard = Some(crate::gui_clipboard::register(
+                gui.clone(), &session.id, display, engine,
+            )?);
+        }
+
         let active = self.active.clone();
         let receive = self.receive.clone();
         let cache = self.config.cache.join("browser-sessions");
