@@ -3,7 +3,12 @@
 import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
 from runtime_artifacts import snapshot
 from pathlib import Path
-parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--reuse-manager-build',type=Path);parser.add_argument('--manager-ime',action='store_true');parser.add_argument('--manager-server',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);parser.add_argument('--retire-cohort-before-ime',action='store_true');parser.add_argument('--shm-megabytes',type=int,choices=[64,256],default=64);options=parser.parse_args()
+parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--reuse-manager-build',type=Path);parser.add_argument('--manager-ime',action='store_true');parser.add_argument('--manager-server',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);parser.add_argument('--retire-cohort-before-ime',action='store_true');parser.add_argument('--shm-megabytes',type=int,choices=[64,256],default=64)
+parser.add_argument('--compositor',type=Path,help='Reviewed regular-file compositor artifact; no image extraction')
+parser.add_argument('--arch-image',action='store_true',help='Use the admitted compositor with the existing Arch image')
+options=parser.parse_args()
+if (options.compositor or options.arch_image) and not options.reuse_manager_build:parser.error('compositor comparison requires the reviewed immutable manager build')
+if options.arch_image and not options.compositor:parser.error('Arch GUI comparison requires a regular-file compositor artifact')
 if options.retire_cohort_before_ime and not options.manager_ime:parser.error('cohort retirement requires private manager IME proof')
 if options.cross_cohort and not options.runtime:parser.error('cross-cohort requires native runtime')
 if bool(options.runtime)!=bool(options.services):parser.error('runtime and services must be supplied together')
@@ -56,10 +61,34 @@ if options.reuse_manager_build:
  args[3:3]=['-v',str(website)+':/fixture/native-ime-page.html:ro'];args[3:3]=['-v',str(fixture)+':/fixture/native-clipboard-manager.qml:ro']
  code_index=args.index('-c')+1;code=args[code_index]
  args[code_index]=manager_diagnostic_code(code)
+ compositor_receipt=None
+ if options.compositor:
+  compositor=options.compositor
+  if compositor.is_symlink() or not compositor.is_dir():raise SystemExit('Compositor must be an owned regular-file artifact')
+  compositor=compositor.resolve();manifest=compositor/'artifact.json'
+  if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size>131072:raise SystemExit('Bounded compositor receipt required')
+  compositor_receipt=json.loads(manifest.read_text())
+  if compositor_receipt.get('schema')!=1 or compositor_receipt.get('kind')!='official-arch-sway-regular-files':raise SystemExit('Reviewed official compositor artifact required')
+  expected={record['path']:record for record in compositor_receipt['files']}
+  required={'usr/bin/sway','usr/bin/swaymsg','usr/lib/libwlroots-0.20.so','usr/lib/libliftoff.so.0','usr/share/licenses/sway/LICENSE','usr/share/licenses/wlroots0.20/LICENSE','usr/share/licenses/libliftoff/LICENSE'}
+  if set(expected)!=required:raise SystemExit('Unexpected compositor member set')
+  for member in compositor.rglob('*'):
+   if member.is_symlink():raise SystemExit('Compositor artifact refuses symbolic links')
+   if member.is_dir():continue
+   relative=str(member.relative_to(compositor))
+   if relative=='artifact.json':continue
+   if relative not in expected or not member.is_file() or member.stat().st_uid!=os.getuid() or member.stat().st_size>4*1024*1024:raise SystemExit('Unowned or unexpected compositor member')
+   record=expected[relative]
+   if member.stat().st_size!=record['bytes'] or hashlib.sha256(member.read_bytes()).hexdigest()!=record['sha256']:raise SystemExit('Compositor member changed')
+  if not all((compositor/name).is_file() for name in required):raise SystemExit('Missing compositor member')
+  args[3:3]=['-v',str(compositor)+':/opt/sway-runtime:ro']
+ if options.arch_image:
+  args[args.index('localhost/o3-qml-wayland-tests:local')]='docker.io/library/archlinux:latest'
  if options.shm_megabytes!=64:args[3:3]=['--shm-size='+str(options.shm_megabytes)+'m']
  if options.retire_cohort_before_ime:args[3:3]=['--env','O3_RETIRE_COHORT_BEFORE_IME=1']
  (out/'inputs.json').write_text(json.dumps({'parent':str(parent),'parentArtifactManifestSha256':hashlib.sha256((parent/'artifacts.json').read_bytes()).hexdigest(),'qmlSha256':hashlib.sha256(fixture.read_bytes()).hexdigest(),'websiteSha256':hashlib.sha256(website.read_bytes()).hexdigest(),'nativeAssetOverlays':overlays,'guiSourceHashes':gui_hashes,'guiHead':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()},indent=2)+'\n')
  (out/'podman-command.json').write_text(json.dumps(args)+'\n')
+ if compositor_receipt is not None:(out/'compositor.json').write_text(json.dumps(compositor_receipt,indent=2)+'\n')
  with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=125)
  (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
 (out/'source-revision.json').write_text(json.dumps({'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()})+'\n')

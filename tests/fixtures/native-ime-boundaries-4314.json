@@ -223,8 +223,35 @@
       "driverSha256": "fb70fc317b2b5f2f13cdf7f52176cf2dfb171715ace935ff74dad4598ced600d",
       "image": "localhost/o3-qml-wayland-tests:local",
       "commandManifestSha256": "7919ce9b0a302d72cfcc4f29b08f7dfdf1912c3143f24703c028146f73aaa84a"
+    },
+    {
+      "artifact": "browser-gui-platform-co6jg5sq",
+      "scope": "Complete actual private Arch compositor/Qt/Page/Manager/Pool/native GuestInput editing and modal/custom-MIME clipboard pass; reviewed old0b server only.",
+      "returncode": 0,
+      "inputsManifestSha256": "ba51ba5c15f256aef784b3a3b441156d5106b2bb7a9cd17074a9c5d0ae58c7bb",
+      "nativeMainSha256": "0446a160a97065d9a9ce2cacb464e15ca34b7e432d299516ced6b21c2ae5534e",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "59146cb7eebdd044ec987ab0fc408a0ce470d7e2461f14a1291506586d8035e5",
+      "compositorManifestSha256": "a08b0e963bf8ae8ee8c7e2e3aea5bdde1c51a6185afb79e35b066084494aaae2"
+    },
+    {
+      "artifact": "browser-gui-platform-q7apedbq",
+      "scope": "Matched full Qt-image control with identical admitted compositor and input receipts; original renderer139 at composition remains.",
+      "returncode": 1,
+      "inputsManifestSha256": "ba51ba5c15f256aef784b3a3b441156d5106b2bb7a9cd17074a9c5d0ae58c7bb",
+      "nativeMainSha256": "0446a160a97065d9a9ce2cacb464e15ca34b7e432d299516ced6b21c2ae5534e",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "f3e444b820df11ea77dc94404b35d996c6b21ec8292407e53386c035bb042391",
+      "compositorManifestSha256": "a08b0e963bf8ae8ee8c7e2e3aea5bdde1c51a6185afb79e35b066084494aaae2"
     }
   ],
   "syntheticTimelineSha256": "26dc16f44fd609bac2ed665fddeb396a7a2d780a84b6fa53d2e6a1b869069f44",
-  "fullArchGuiContrast": "Not executed: no admitted regular-file compositor bundle identified; automatic image-mount review returned a generic rejection. No mount retry or rootfs export is permitted."
+  "fullArchGuiContrast": "Not executed: no admitted regular-file compositor bundle identified; automatic image-mount review returned a generic rejection. No mount retry or rootfs export is permitted.",
+  "completeGuiComparison": {
+    "sameInputsReceipt": true,
+    "normalizedArgumentCount": 76,
+    "onlyDifferingArgumentIndex": 72,
+    "difference": "container image; admitted regular-file compositor identical",
+    "publicSelectionEnabled": false
+  }
 }

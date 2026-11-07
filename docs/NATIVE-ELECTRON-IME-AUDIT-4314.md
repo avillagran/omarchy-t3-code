@@ -136,7 +136,8 @@ XID in both images immediately before composition: `d033s3mf` succeeds and
 PID/UID against the owned Xvfb and never changes focus or properties. Lack of
 native X11 window focus is therefore not a supported explanation for this pair.
 
-The complete GUI/Manager contrast on the passing image has not been executed.
+At checkpoint 9b5b201 the complete GUI/Manager contrast on the passing image
+had not been executed. The subsequent regular-package route below supplies it.
 Both images share the same two official Arch base layers. Their observed IDs are
 `1b9c2f3a1a72268cab659ab3f20956bb6ce730e8dd716fe90754ba03a8870e19`
 and `cf00ddb64a7d8e72a205fff49fbdaf443ecec648130b2e729320726575679462`.
@@ -146,6 +147,74 @@ local artifact paths. Automatic approval review rejected the proposed image
 mount with a generic reason; that route was stopped, no successful image mount
 or GUI counterpart ran, and no rootfs was exported. An unexecuted contrast is
 not acceptance of the destination package or a correction to the failing image.
+
+## Complete GUI comparison with an official regular-file compositor
+
+The later route acquires the ordinary official Arch Sway 1:1.12-4,
+wlroots0.20 0.20.2-1 and libliftoff 0.5.0-1 packages. All three detached
+signatures verify against the official installed Arch public keyring. Pinned
+archive hashes, retained MIT licenses and exact member hashes accompany the
+artifact. Only named regular executable, library and license members are
+streamed into a fresh owned directory. The libliftoff soname is a regular byte
+copy of its actual versioned member, not a link. No package scripts, host
+installation, image mounting or rootfs extraction participates.
+[`acquire-private-compositor`](../tools/acquire-private-compositor) records this
+bounded acquisition; `test-browser-platform-owned --compositor` verifies the
+complete regular-file member set before mounting it read-only.
+
+`browser-gui-platform-co6jg5sq` passes the actual Arch GUI/Manager flow with
+256 MiB shared memory: private compositor input-method-v2 events, actual Qt
+input-method producer, BrowserPage, immutable Manager/Pool, unchanged native
+GuestInput and the page's real editing events. It observes three-unit Japanese
+preedit and the two-unit final text. Input events are trusted; compositionend
+retains the existing native GuestInput's synthetic-event behavior rather than
+being relabeled trusted. Its native default Block/explicit Allow, remembered
+origins, fresh clipboard data and exact custom-MIME checks also pass.
+
+`browser-gui-platform-q7apedbq`, with the same newly admitted compositor,
+returns nonzero and reproduces renderer exit 139 at composition. Input receipts
+are byte-identical between these two cases. The 76 normalized Podman arguments
+differ only at index 72, the image. This closes the previously unexecuted full
+Arch consumer contrast; it does not fix or erase the Qt-image failure. Both
+cases retain the reviewed old-server 0b9a5d3 restriction. Neither establishes
+current-server integration, public packaging or all browser features.
+
+## Query requirements of the actual 4314 surfaces
+
+The requirement must distinguish two upstream consumers. In the pinned source,
+`previewRuntime.ts::rendersServerTabNatively` selects a hosted native webview for
+the primary environment's non-headless server tab. `HostedBrowserWebview.tsx`
+renders that actual `<webview>` and registers its real webContents with the
+desktop bridge; it does not carry a custom surrounding-text/caret query RPC.
+The ordinary native engine/platform owns that input context.
+
+The separate remote `ServerBrowserSurface.tsx` uses a canvas and screen-reader
+textarea. `resetInput` writes only U+200B and selects position 1..1. Its
+compositionend handler forwards committed event data and resets the sentinel;
+it receives no remote page surrounding text or caret rectangle. Requiring a
+full remote page context from that consumer would impose behavior absent from
+the original. This source distinction supersedes the earlier blanket statement
+that unavailable context queries alone must always block browser parity.
+
+The exact [Chromium 152 GTK context](https://github.com/chromium/chromium/blob/152.0.7977.169/ui/gtk/input_method_context_impl_gtk.cc) leaves `SetSurroundingText` empty and marks
+retrieve/delete-surrounding handlers unimplemented. GTK 3.24.52 expects UTF-8
+text and a byte cursor index, while TextInputClient provides UTF-16 ranges.
+A delegating GTK input module cannot recover text discarded at that boundary.
+The caret is different: TextInputClient provides screen-DIP bounds, which GTK
+caches and forwards during key dispatch relative to the client window and
+scaled into GTK logical units. A native-hosted local caret baseline is still
+needed before treating unknown Qt query variants as equivalent to that local
+platform behavior. No fabricated replacement or DOM geometry closes it.
+
+Another concrete native path exists in Chromium's
+[WaylandInputMethodContext](https://github.com/chromium/chromium/blob/152.0.7977.169/ui/ozone/platform/wayland/host/wayland_input_method_context.cc)
+and [ZwpTextInputV3 implementation](https://github.com/chromium/chromium/blob/152.0.7977.169/ui/ozone/platform/wayland/host/zwp_text_input_v3.cc): actual TextInputClient text is converted
+from UTF-16 to bounded UTF-8, trimmed around selection to 4,000 bytes, and
+published with byte cursor/anchor offsets; preedit is removed. Caret bounds are
+surface-relative. This is source evidence only. The current private X11 host
+does not become that Wayland consumer merely because the Qt frontend uses
+Wayland. No new engine flags or product hosting changes are admitted by this
+finding, and public selection remains disabled during scope and packaging review.
 
 Native surrounding-text/caret work must use existing engine APIs and actual
 lifecycle state. It may not replace those values with guessed DOM geometry,
