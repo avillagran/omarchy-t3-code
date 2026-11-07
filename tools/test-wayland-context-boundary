@@ -11,7 +11,8 @@ root = pathlib.Path(__file__).resolve().parent.parent
 assert subprocess.check_output(['podman', 'info', '--format', '{{.Host.Security.Rootless}}'], text=True).strip() == 'true'
 output = pathlib.Path(tempfile.mkdtemp(prefix='wayland-context-wire-', dir='/home/node/BuildCache/o3-desktop-next'))
 print(output, flush=True)
-sources = ['wayland-context-boundary.py', 'wayland-context-boundary-check.py', 'wayland-context-wire-client.c']
+sources = ['wayland-context-boundary.py', 'wayland-context-boundary-check.py', 'wayland-context-wire-client.c',
+           'wayland-context-transport.py', 'wayland-context-transport-check.py']
 for name in sources:
     (output / name).write_bytes((root / 'tools/fixtures' / name).read_bytes())
 pins = json.loads((root / 'tests/fixtures/wayland-context-wire-sources.json').read_text())
@@ -54,5 +55,8 @@ run = ['podman', 'run', '--rm', '--pull=never', '--read-only', '--network=none',
 (output / 'podman-command.json').write_text(json.dumps(run)+'\n')
 with (output / 'runtime.log').open('w') as log:
     result = subprocess.run(run, stdout=log, stderr=subprocess.STDOUT, timeout=30)
+    if result.returncode == 0:
+        run[-1] = '/fixture/wayland-context-transport-check.py'
+        result = subprocess.run(run, stdout=log, stderr=subprocess.STDOUT, timeout=30)
 (output / 'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
 raise SystemExit(result.returncode)
