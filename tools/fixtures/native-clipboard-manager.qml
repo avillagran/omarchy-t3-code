@@ -6,6 +6,8 @@ import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root
  readonly property bool exerciseIme:Quickshell.env("O3_NATIVE_GUI_IME")==="1"
+ readonly property bool retireCohortBeforeIme:Quickshell.env("O3_RETIRE_COHORT_BEFORE_IME")==="1"
+ property string workerBinding:""
  property bool imePhase:false
  property bool imeGuiFocused:false
  property bool imeFocusReady:false
@@ -82,7 +84,7 @@ ShellRoot {
   else if(event.stage==="allowed-one"){check(prompts===2&&choices===2,"actual explicit Allow settled");offer({op:"stats",id:14})}
   else if(event.stage==="allowed-cached"){check(prompts===2&&choices===2,"per-origin Allow remembered");offer({op:"stats",id:15})}
   else if(event.stage==="custom-written"){root.check(prompts===2,"cached native Allow governs custom write");focus("Owned synthetic clipboard peer","custom-inspect")}
-  else if(event.stage==="custom-read"){root.check(prompts===2,"cached native Allow governs fresh custom read");send({op:exerciseIme?"next-ime":"stop"})}
+  else if(event.stage==="custom-read"){root.check(prompts===2,"cached native Allow governs fresh custom read");if(root.retireCohortBeforeIme){platform.item.retireWorker(root.workerBinding);root.check(!platform.item.workerAdmitted,"actual clipboard cohort retirement before editor navigation");console.log("IME_DIAGNOSTIC_REAL_COHORT_RETIRED")}send({op:exerciseIme?"next-ime":"stop"})}
   else if(event.stage==="ime-ready"){root.check(exerciseIme&&nativeCanOperate,"actual writable native page");imePhase=true;focus(window.title,"gui-ime")}
   else if(event.stage==="ime-complete"){root.check(imePreeditSent&&imeCommitSent&&prompts===2,"actual compositor and native outcome");imeCompleted=true;imeClient.write("quit\n");imePointer.write("quit\n");send({op:"stop"})}
   else if(event.stage==="complete"){finished=true;offer({op:"quit"})}
@@ -102,7 +104,7 @@ ShellRoot {
    Test.T3BrowserPage {
     id:nativePage;anchors.fill:parent;visible:root.imePhase
     page:root.nativeFrame;interactive:root.nativeCanOperate&&root.imePhase
-    onInput:function(id,event){console.log("IME_PAGE_INPUT "+event.type);root.check(id===root.nativeFrame.requestId&&root.imePhase,"actual GUI surface input scope");root.send({op:"browser-input",requestId:id,event:event});if(event.type==="composition"&&event.preedit&&!root.imeCommitSent){root.imeCommitSent=true;imeCommit.restart()}}
+    onInput:function(id,event){console.log("IME_PAGE_INPUT "+event.type);root.check(id===root.nativeFrame.requestId&&root.imePhase,"actual GUI surface input scope");if(event.type==="composition"&&event.preedit)root.check(event.preedit==="にほん"&&event.preedit.length===3&&event.selectionStart===3&&event.selectionEnd===3&&event.replacementStart===undefined&&event.replacementEnd===undefined,"exact synthetic native preedit payload");root.send({op:"browser-input",requestId:id,event:event});if(event.type==="composition"&&event.preedit&&!root.imeCommitSent){root.imeCommitSent=true;imeCommit.restart()}}
     onInputMethodRejected:function(reason){root.check(false,"actual Qt input-method rejection "+reason)}
    }
    Test.T3BrowserPermission{id:prompt;bridge:brokerBridge;popupHost:host}
@@ -115,7 +117,7 @@ ShellRoot {
   environment:platform.item?({O3_GUI_CLIPBOARD_ENDPOINT:platform.item.endpoint}):({})
   stdinEnabled:true
   running:platform.status===Loader.Ready&&platform.item.available
-  onStarted:root.check(platform.item.bindWorker(worker.processId).length>0,"actual manager worker kernel binding")
+  onStarted:{root.workerBinding=platform.item.bindWorker(worker.processId);root.check(root.workerBinding.length>0,"actual manager worker kernel binding")}
   stdout:SplitParser{onRead:function(line){root.receive(line)}}
   onExited:function(code){root.check(code===0&&root.finished,"manager completed normally")}
  }

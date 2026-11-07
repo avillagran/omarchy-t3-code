@@ -38,6 +38,7 @@ if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootles
 out=Path(tempfile.mkdtemp(prefix='native-electron-owned-',dir='/home/node/BuildCache/o3-desktop-next'));print('Native Electron evidence: '+str(out),flush=True)
 app=out/'app';app.mkdir()
 for name,path in {'native-electron-proof.cjs':root/'tools/fixtures/native-electron-proof.cjs','electron-sandbox-preload.cjs':root/'tools/fixtures/electron-sandbox-preload.cjs','native-electron-services.cjs':services,'target-scope.js':root/'ui/browser/qt-target-scope.js'}.items():(app/name).write_bytes(path.read_bytes())
+if options.ime_baseline:(app/'native-ime-page.html').write_bytes((root/'tools/fixtures/native-ime-page.html').read_bytes())
 if options.input_baseline:
  fixture=options.input_baseline.resolve();ledger=json.loads((fixture/'artifact.json').read_text())
  if ledger['version']!='1.60.0' or ledger['lockRevision']!='4cb6945dc60ed03f567dc5daafd083e52308e82b' or ledger['integrity']!='sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA==':raise SystemExit('Exact Playwright keyboard fixture required')
@@ -95,7 +96,16 @@ if wayland:
  pathlib.Path('/tmp/sway.conf').write_text(('xwayland disable\n' if selection else 'xwayland force\n')+'exec /usr/bin/python3 /tmp/record-display.py\noutput * mode 1280x1024\nseat seat0 fallback true\ninput * xkb_layout us\nfocus_follows_mouse no\ndefault_border none\nfor_window [title="Owned Electron .*"] floating enable, resize set width 800 height 600, move position 100 100\n')
  compositor_env=dict(os.environ,WLR_BACKENDS='headless',WLR_RENDERER='pixman',WLR_HEADLESS_OUTPUTS='1',WLR_LIBINPUT_NO_DEVICES='1',LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib')
  display_log=open('/tmp/sway.log','w');display=subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],env=compositor_env,stdout=display_log,stderr=subprocess.STDOUT)
-else:display=subprocess.Popen(['Xvfb',':9','-screen','0','1280x1024x24','-nolisten','tcp','-extension','GLX'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+else:
+ display_auth=None;display_args=['Xvfb',':9','-screen','0','1280x1024x24','-nolisten','tcp','-extension','GLX']
+ if sys.argv[10]=='1':
+  display_auth=os.memfd_create('native-ime-display-auth',os.MFD_CLOEXEC|os.MFD_ALLOW_SEALING)
+  fields=[b'',b'',b'MIT-MAGIC-COOKIE-1',secrets.token_bytes(16)]
+  record=struct.pack('>H',65535)+b''.join(struct.pack('>H',len(field))+field for field in fields)
+  assert os.write(display_auth,record)==len(record)
+  fcntl.fcntl(display_auth,fcntl.F_ADD_SEALS,fcntl.F_SEAL_SEAL|fcntl.F_SEAL_SHRINK|fcntl.F_SEAL_GROW|fcntl.F_SEAL_WRITE)
+  display_auth_path='/proc/'+str(os.getpid())+'/fd/'+str(display_auth);display_args+=['-auth',display_auth_path]
+ display=subprocess.Popen(display_args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 try:
  for _ in range(100):
   if display.poll() is not None:raise RuntimeError('Private X11 display exited')
@@ -107,6 +117,7 @@ try:
  if sys.argv[8]!='none':env['O3_TEST_KEEPER_EXIT']=sys.argv[8]
  if sys.argv[7]=='1':env.update(O3_TEST_INPUT_BASELINE='1',O3_PRIVATE_INPUT_FIXTURE='1')
  if sys.argv[10]=='1':env['O3_PRIVATE_INPUT_FIXTURE']='1'
+ if not wayland and display_auth is not None:env['XAUTHORITY']=display_auth_path
  if sys.argv[6]=='1':env['O3_TEST_NATIVE_OFFERS']='1'
  if wayland:
   env.update(WAYLAND_DISPLAY=next(file.name for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()),QT_QPA_PLATFORM='wayland',O3_TEST_WAYLAND='1')
@@ -159,6 +170,7 @@ finally:
  if keyboard is not None:keyboard.terminate();keyboard.wait(timeout=5)
  if private_display is not None:private_display.terminate();private_display.wait(timeout=5)
  display.terminate();display.wait(timeout=5)
+ if not wayland and display_auth is not None:os.close(display_auth)
  if wayland:display_log.close();print(pathlib.Path('/tmp/sway.log').read_text())
 ''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0','1' if options.selection_proxy else '0','1' if options.native_offers else '0','1' if options.input_baseline else '0',options.keeper_exit or 'none','1' if options.custom_mime else '0','1' if options.ime_baseline else '0','1' if options.native_graphics else '0']
 with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=55)

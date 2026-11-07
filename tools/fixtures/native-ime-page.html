@@ -5,12 +5,19 @@
 // Observes native editing only; no expected text is inserted by this website.
 window.imeEvents=[];
 function observe(outcome,event){
- const bounds=field.getBoundingClientRect();
+ const bounds=field.getBoundingClientRect();window.imeBounds=[bounds.x,bounds.y,bounds.width,bounds.height];
  fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({outcome,text:field.value,focus:document.activeElement.tagName,target:event?.target?.tagName||'',x:event?.clientX,y:event?.clientY,bounds:[bounds.x,bounds.y,bounds.width,bounds.height],events:window.imeEvents})});
 }
-for(const type of ['compositionstart','compositionupdate','compositionend'])
- field.addEventListener(type,event=>{window.imeEvents.push({type:event.type,trusted:event.isTrusted});setTimeout(()=>observe(type==='compositionend'?'allowed':'ime-observation',event),30)});
-document.addEventListener('pointerdown',event=>setTimeout(()=>observe('ime-observation',event),0));
+function snapshot(event){
+ const selection=document.getSelection();
+ return {type:event.type,trusted:event.isTrusted,focused:document.hasFocus(),active:document.activeElement?.tagName||'',connected:field.isConnected,disabled:field.disabled,readOnly:field.readOnly,selectionStart:field.selectionStart,selectionEnd:field.selectionEnd,ranges:selection?.rangeCount||0,anchorType:selection?.anchorNode?.nodeType||0,inputType:event.inputType||'',valueUnits:field.value.length};
+}
+for(const type of ['focus','blur','beforeinput','input','compositionstart','compositionupdate','compositionend'])
+ field.addEventListener(type,event=>{window.imeEvents.push(snapshot(event));if(readySent&&type!=='compositionend'){
+  // Keep synthetic lifecycle metadata observable even if the renderer exits.
+  navigator.sendBeacon('/result',new Blob([JSON.stringify({outcome:'ime-observation',text:field.value,focus:document.activeElement.tagName,target:event.target.tagName,bounds:window.imeBounds||[],events:window.imeEvents})],{type:'application/json'}));
+ }if(type==='compositionend')setTimeout(()=>observe('allowed',event),30)});
+for(const type of ['pointerdown','pointerup','pointermove'])document.addEventListener(type,event=>{window.imeEvents.push({...snapshot(event),x:event.clientX,y:event.clientY,button:event.button,buttons:event.buttons,shift:event.shiftKey,control:event.ctrlKey,alt:event.altKey,meta:event.metaKey});if(type!=='pointermove')setTimeout(()=>observe('ime-observation',event),0)});
 field.addEventListener('input',event=>setTimeout(()=>observe('ime-observation',event),0));
 let readySent=false;
 const ready=()=>{if(!readySent&&document.activeElement===field){readySent=true;fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({outcome:'ime-page-ready'})})}};
