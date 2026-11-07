@@ -15,6 +15,15 @@
 #include <QThread>
 #include <cstdio>
 #include <cstdlib>
+#include <QDir>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <cstring>
+#include <cerrno>
 #define CHECK(value)                                                           \
   do {                                                                         \
     if (!(value)) {                                                            \
@@ -303,6 +312,54 @@ Product.T3BrowserPage {
     puts("BROWSER_COMPOSITOR_IME_PASS input-method-v2 text-input-v3 "
          "actual-T3BrowserPage unicode-preedit-commit");
   }
+  QQmlComponent platformComponent(&engine);
+  platformComponent.setData(R"(import O3.Browser 1.0
+ClipboardPlatform {
+ property bool everAdmitted:false
+ onWorkerAdmittedChanged:if(workerAdmitted)everAdmitted=true
+})",QUrl("file:///fixture/reset.qml"));
+  CHECK(waitFor([&]{return platformComponent.status()!=QQmlComponent::Loading;}));
+  auto *platform=platformComponent.create();
+  CHECK(platform && waitFor([&]{return platform->property("available").toBool();}));
+  const auto endpoint=platform->property("endpoint").toString().toUtf8();
+  const auto baseline=QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size();
+  int gate[2];CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,gate)==0);
+  const auto worker=fork();CHECK(worker>=0);
+  if(worker==0) {
+    ::close(gate[0]);
+    char command=0;
+    if(recv(gate[1],&command,1,0)!=1)_exit(11);
+    const int peer=socket(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0);
+    sockaddr_un address{};address.sun_family=AF_UNIX;
+    memcpy(address.sun_path+1,endpoint.constData(),size_t(endpoint.size()));
+    if(peer<0 || ::connect(peer,reinterpret_cast<sockaddr *>(&address),
+       socklen_t(offsetof(sockaddr_un,sun_path)+1+endpoint.size())))_exit(12);
+    const char hello[]="{\"op\":\"hello\",\"version\":1}";
+    if(send(peer,hello,sizeof hello-1,MSG_NOSIGNAL)!=sizeof hello-1)_exit(13);
+    pollfd reply{peer,POLLIN,0};
+    if(poll(&reply,1,3000)!=1)_exit(14);
+    // Leave the admitted reply unread: Linux reports an actual peer reset.
+    ::close(peer);
+    if(send(gate[1],"c",1,MSG_NOSIGNAL)!=1)_exit(15);
+    if(recv(gate[1],&command,1,0)!=1)_exit(16);
+    _exit(0);
+  }
+  ::close(gate[1]);
+  QString binding;
+  CHECK(QMetaObject::invokeMethod(platform,"bindWorker",Q_RETURN_ARG(QString,binding),Q_ARG(qint64,qint64(worker))));
+  CHECK(!binding.isEmpty());
+  CHECK(send(gate[0],"g",1,MSG_NOSIGNAL)==1);
+  CHECK(waitFor([&]{return platform->property("everAdmitted").toBool() &&
+      !platform->property("workerAdmitted").toBool() &&
+      platform->property("_o3RegistrationReceiveError").toInt()==ECONNRESET;}));
+  CHECK(kill(worker,0)==0);
+  CHECK(send(gate[0],"q",1,MSG_NOSIGNAL)==1);
+  int status=0;CHECK(waitpid(worker,&status,0)==worker && WIFEXITED(status) && WEXITSTATUS(status)==0);
+  ::close(gate[0]);
+  CHECK(QMetaObject::invokeMethod(platform,"retireWorker",Q_ARG(QString,binding)));
+  CHECK(QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size()==baseline);
+  delete platform;
+  puts("BROWSER_REGISTRATION_REAL_RESET_PASS live-worker unread-reply exact-FD-count");
   page->setParentItem(nullptr);
   delete page;
   window.hide();

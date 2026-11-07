@@ -189,7 +189,7 @@ struct ClipboardPlatform::State {
     }
     char bytes[4096];
     alignas(cmsghdr) char
-        ancillary[CMSG_SPACE(sizeof(ucred)) + CMSG_SPACE(sizeof(int) * 4)];
+        ancillary[CMSG_SPACE(sizeof(ucred)) + CMSG_SPACE(sizeof(int) * 4)]{};
     iovec data{bytes, sizeof bytes};
     msghdr message{};
     message.msg_iov = &data;
@@ -197,8 +197,19 @@ struct ClipboardPlatform::State {
     message.msg_control = ancillary;
     message.msg_controllen = sizeof ancillary;
     const auto size = recvmsg(peer, &message, MSG_DONTWAIT | MSG_CMSG_CLOEXEC);
-    if (size < 0 && (errno == EAGAIN || errno == EINTR))
+    if (size < 0) {
+      const auto failure=errno;
+      if (failure != EAGAIN && failure != EINTR) {
+        // Bounded transport health only; never retain registration bytes.
+        owner->setProperty("_o3RegistrationReceiveError",failure);
+        closePeer();
+      }
       return;
+    }
+    if (size == 0 && message.msg_controllen == 0) {
+      closePeer();
+      return;
+    }
     QVector<int> rights;
     struct CloseRights {
       QVector<int> &rights;

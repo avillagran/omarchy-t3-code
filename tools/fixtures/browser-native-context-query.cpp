@@ -279,8 +279,10 @@ int main(int argc, char **argv) {
     CHECK(!item.contextAvailable() && channel->available());
     CHECK(deliver(row));
     CHECK(item.contextAvailable());
+    emit item.contextRequested(item.scopeToken());
     ::close(pair[1]);
     CHECK(waitFor([&] { return !channel->available(); }));
+    CHECK(channel->receiveError()==ECONNRESET);
     CHECK(!item.contextAvailable());
     channel.reset();
 
