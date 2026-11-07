@@ -173,6 +173,13 @@ impl Config {
             format!("unix:path={}", root.join("no-session-bus").display()).into(),
         );
         environment.insert("LANG".into(), "C.UTF-8".into());
+        // Preserve the private harness's audited software-rendering choice
+        // across the renderer's intentionally cleared environment.
+        for key in ["LIBGL_ALWAYS_SOFTWARE", "__EGL_VENDOR_LIBRARY_FILENAMES"] {
+            if let Some(value) = std::env::var_os(key) {
+                environment.insert(key.into(), value);
+            }
+        }
         Ok(Self {
             executable,
             environment,
