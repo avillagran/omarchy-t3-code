@@ -133,7 +133,14 @@ struct ClipboardPlatform::State {
     if (renderer<=0 || parent(renderer)!=worker || !pidfdMatches(rights[1],pid)) return false;
     const int descriptor=rights[0], engine=rights[1];
     rights.clear(); // create consumes both handles on success and failure.
-    auto channel=BrowserInputChannel::create(descriptor,engine,worker,id);
+    const auto token=session;
+    auto life=active;
+    auto current=[this,token,life] {
+      if (!*life || session!=token || !admitted || !workerAlive() || peer<0) return false;
+      pollfd registration{peer,POLLHUP|POLLERR|POLLRDHUP,0};
+      return poll(&registration,1,0)==0;
+    };
+    auto channel=BrowserInputChannel::create(descriptor,engine,worker,id,std::move(current));
     if (!channel) return reply({{"type","rejected"},{"cohort",id},
                                 {"code","browser_input_context_unavailable"}});
     inputContexts.insert(id,std::move(channel));
@@ -142,16 +149,17 @@ struct ClipboardPlatform::State {
 
   explicit State(ClipboardPlatform *owner) : owner(owner) {}
   void closePeer() {
+    const bool wasAdmitted=admitted;
+    admitted=false;
+    session.clear(); // Invalidate all synchronous guards before teardown callbacks.
     cohorts.clear();
     inputContexts.clear();
-    session.clear();
     delete reader;
     reader = nullptr;
     if (peer >= 0)
       ::close(peer);
     peer = -1;
-    if (admitted) {
-      admitted = false;
+    if (wasAdmitted) {
       emit owner->workerAdmittedChanged();
     }
   }

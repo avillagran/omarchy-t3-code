@@ -328,3 +328,41 @@ renderer/engine are deliberately owned synthetic processes; this does not replac
 the separately recorded live Electron-to-Qt proof or claim the product Wayland
 factory is connected. The source and immutable binary receipts are recorded in
 `tests/fixtures/gui-input-worker-proof-4314.json`.
+
+## Synchronous ownership at query time
+
+The notification-only lifetime check had a real race: a Qt query could run after
+socket close or process death but before its queued `QSocketNotifier` retirement.
+Each admitted transport-backed cache now requires a weak channel guard, checked
+synchronously by `contextAvailable` and `inputMethodQuery`. It checks the actual
+engine pidfd and socket health; pending state/invalidation is not treated as proof
+that the older cache is current. Real registration also supplies its actual
+worker pidfd, registration-socket health, shared owner lifetime and admitted
+session identity. No thread counter or synthetic epoch substitutes for these
+resources. The registration invalidates its admitted session before teardown
+callbacks, so a reentrant query cannot observe another still-unretired context.
+
+`browser-native-context-query-yzr_zbw2` passed 147 checks. Immediate queries after
+socket close and after `waitpid` of the engine return unavailable without pumping
+events. A separate actual worker-death case deliberately retains a delegated
+writer FD and keeps the engine alive; the real worker pidfd still refuses the
+cached text before notification. An old channel's close preserves a replacement
+channel both before and after queued retirement. Input remains enabled independently
+of surrounding-text availability; this is an ownership check, not a clipboard or
+input permission policy.
+
+The final combined GUI run initially exposed a fixture-resource issue. The
+`pfanug1i`, `s3bddp6s`, `jh4ik4hb` and `sul9t54z` failures remain failures. The first
+had no identity metadata and is not retroactively relabeled. Later diagnostics
+proved that the actual registration socket/pidfd identities were reclaimed and
+canaries survived, while four eventfds and four Qt `Thread (pooled)` actors appeared
+after the baseline. Logical image readiness had not established a completed GUI
+raster presentation. The changed fixture waits for image readiness, actual
+`afterSynchronizing` and `frameSwapped` before measuring; it adds no product delay
+or policy change. In `browser-input-method-uio_wlyf`, those pooled actors and their
+eventfds already exist before the baseline, all remain unchanged afterwards, the
+live descriptor sets are 22/22, and total counts remain 23/23. Exact owned-identity
+reclamation, protected canaries and the original total-count equality all remain
+asserted. The real Rust registration, reset and actual page suites pass with the
+current production headers. Receipts and source fences are recorded separately in
+`tests/fixtures/gui-context-current-owner-proof-4314.json`.

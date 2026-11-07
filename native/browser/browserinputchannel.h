@@ -20,6 +20,7 @@ class BrowserInputChannel final : public QObject {
   int socket = -1, engine = -1;
   pid_t worker = 0;
   QString identity;
+  std::function<bool()> admissionCurrent;
   bool retiring=false;
   int receiveFailure=0;
   QSocketNotifier *reader = nullptr, *death = nullptr;
@@ -110,13 +111,15 @@ class BrowserInputChannel final : public QObject {
       state.surrounding=decoded.decoded;state.cursorByte=int(cursor);state.anchorByte=int(anchor);
     }
     if (!admitted.contains(binding.scope) && admitted.size()>=16) return false;
-    if (mount && mount->admitBoundNativeContext(binding,state)) {
+    QPointer<BrowserInputChannel> owner=this;
+    if (mount && mount->admitBoundNativeContext(binding,state,
+        [owner] {return owner && owner->cacheCurrent();})) {
       admitted.insert(binding.scope,Mount{binding,mount});
     }
     return true; // A retired GUI mount is never resurrected by state traffic.
   }
   void receive() {
-    if (!alive()) { retire(); return; }
+    if (!available()) { retire(); return; }
     char bytes[16384];
     alignas(cmsghdr) char control[CMSG_SPACE(sizeof(ucred))+CMSG_SPACE(16*sizeof(int))]{};
     iovec data{bytes,sizeof bytes};
@@ -150,8 +153,8 @@ class BrowserInputChannel final : public QObject {
     if (size<=0 || message.msg_flags&(MSG_TRUNC|MSG_CTRUNC) || !credential ||
         unexpected || !handle(QByteArray(bytes,int(size)))) retire();
   }
-  BrowserInputChannel(int descriptor,int pidfd,pid_t expected,QString id)
-      :socket(descriptor),engine(pidfd),worker(expected),identity(std::move(id)) {
+  BrowserInputChannel(int descriptor,int pidfd,pid_t expected,QString id,std::function<bool()> admission)
+      :socket(descriptor),engine(pidfd),worker(expected),identity(std::move(id)),admissionCurrent(std::move(admission)) {
     reader=new QSocketNotifier(socket,QSocketNotifier::Read,this);
     death=new QSocketNotifier(engine,QSocketNotifier::Read,this);
     connect(reader,&QSocketNotifier::activated,this,[this]{receive();});
@@ -164,7 +167,7 @@ public:
   // transferring these owned FDs; this member independently authenticates every
   // worker message. Failure always consumes and closes both supplied handles.
   static std::shared_ptr<BrowserInputChannel> create(int descriptor,int pidfd,
-      pid_t expected,const QString &identity) {
+      pid_t expected,const QString &identity,std::function<bool()> admission={}) {
     auto fail=[&]() { if(descriptor>=0)::close(descriptor);if(pidfd>=0&&pidfd!=descriptor)::close(pidfd);return std::shared_ptr<BrowserInputChannel>(); };
     int kind=0; socklen_t kindSize=sizeof kind;
     ucred peer{};socklen_t peerSize=sizeof peer;
@@ -180,10 +183,18 @@ public:
         setsockopt(descriptor,SOL_SOCKET,SO_PASSCRED,&enabled,sizeof enabled)) return fail();
     const int receiveBudget=32768;
     if (setsockopt(descriptor,SOL_SOCKET,SO_RCVBUF,&receiveBudget,sizeof receiveBudget)) return fail();
-    auto result=std::shared_ptr<BrowserInputChannel>(new BrowserInputChannel(descriptor,pidfd,expected,identity));
+    auto result=std::shared_ptr<BrowserInputChannel>(new BrowserInputChannel(descriptor,pidfd,expected,identity,std::move(admission)));
     return result->available()?result:std::shared_ptr<BrowserInputChannel>();
   }
-  bool available() const { return !retiring && socket>=0 && alive(); }
+  bool available() const { return !retiring && socket>=0 && alive() && (!admissionCurrent || admissionCurrent()); }
+  bool cacheCurrent() const {
+    if (!available()) return false;
+    // Query-time health cannot wait for a queued QSocketNotifier callback.
+    // Pending state/invalidation is also not evidence that the older cache is
+    // current; normal packet handling will notify Qt after the new state lands.
+    pollfd peer{socket,POLLIN|POLLHUP|POLLERR|POLLRDHUP,0};
+    return poll(&peer,1,0)==0;
+  }
   int receiveError() const { return receiveFailure; }
   void retire() {
     if (retiring) return;

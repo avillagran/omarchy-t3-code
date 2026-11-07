@@ -147,24 +147,24 @@ int main(int argc, char **argv) {
                          {"tab",lease.tab},{"frame",lease.frame}});
   item.setNativeContentRect(geometry.content);
   item.setFramePresentation(geometry.presentation);
-  CHECK(item.admitBoundNativeContext(lease,state));
+  CHECK(item.admitBoundNativeContext(lease,state,[]{return true;}));
   CHECK(item.inputMethodQuery(Qt::ImCursorRectangle).toRectF() == expectedRectangle);
   const auto metadata = item.nativeBinding();
   auto changed = metadata;
   changed["frame"] = "replacement-frame";
   item.setNativeBinding(changed);
   CHECK(!item.contextAvailable());
-  CHECK(!item.admitBoundNativeContext(lease,state));
+  CHECK(!item.admitBoundNativeContext(lease,state,[]{return true;}));
   item.setNativeBinding(metadata);
-  CHECK(item.admitBoundNativeContext(lease,state));
+  CHECK(item.admitBoundNativeContext(lease,state,[]{return true;}));
   changed = metadata;
   changed["unexpected"] = "not-retained";
   item.setNativeBinding(changed);
   CHECK(item.nativeBinding().isEmpty());
   CHECK(!item.contextAvailable());
-  CHECK(!item.admitBoundNativeContext(lease,state));
+  CHECK(!item.admitBoundNativeContext(lease,state,[]{return true;}));
   item.setNativeBinding(metadata);
-  CHECK(item.admitBoundNativeContext(lease,state));
+  CHECK(item.admitBoundNativeContext(lease,state,[]{return true;}));
   auto foreign = lease;
   for (auto member : {&BrowserInputContext::Binding::scope, &BrowserInputContext::Binding::connection,
                      &BrowserInputContext::Binding::surface, &BrowserInputContext::Binding::tab,
@@ -281,6 +281,8 @@ int main(int argc, char **argv) {
     CHECK(item.contextAvailable());
     emit item.contextRequested(item.scopeToken());
     ::close(pair[1]);
+    CHECK(!item.inputMethodQuery(Qt::ImSurroundingText).isValid());
+    CHECK(!item.contextAvailable());
     CHECK(waitFor([&] { return !channel->available(); }));
     CHECK(channel->receiveError()==ECONNRESET);
     CHECK(!item.contextAvailable());
@@ -325,10 +327,93 @@ int main(int argc, char **argv) {
     CHECK(item.contextAvailable());
     CHECK(kill(engine,SIGTERM)==0);
     CHECK(waitpid(engine,&status,0)==engine);
+    CHECK(!item.inputMethodQuery(Qt::ImSurroundingText).isValid());
+    CHECK(!item.contextAvailable());
     CHECK(waitFor([&] { return !lifetime->available() && !item.contextAvailable(); }));
     ::close(pair[1]);
     lifetime.reset();
     CHECK(QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size()==descriptorBaseline);
+  }
+  {
+    auto old=lease;old.connection="old-owner:socket";
+    auto replacement=lease;replacement.connection="new-owner:socket";
+    auto metadataFor=[](const BrowserInputContext::Binding &value) {
+      return QVariantMap{{"connection",value.connection},{"surface",value.surface},{"tab",value.tab},{"frame",value.frame}};
+    };
+    auto packetFor=[](const BrowserInputContext::Binding &value,const QByteArray &text) {
+      return QJsonDocument(QJsonObject{{"version",1},{"op","state"},
+        {"binding",QJsonObject{{"scope",value.scope},{"connection",value.connection},{"surface",value.surface},{"tab",value.tab},{"frame",value.frame}}},
+        {"state",QJsonObject{{"serial",1},{"hints",0},{"purpose",0},
+          {"surroundingUtf8",QString::fromLatin1(text.toBase64())},{"cursorByte",text.size()},{"anchorByte",text.size()}}}}).toJson(QJsonDocument::Compact);
+    };
+    int first[2],second[2];
+    CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,first)==0);
+    item.setNativeBinding(metadataFor(old));
+    auto previous=BrowserInputChannel::create(first[0],int(syscall(SYS_pidfd_open,getpid(),0)),getpid(),"old-owner");
+    CHECK(previous);
+    const auto oldPacket=packetFor(old,"old");
+    CHECK(send(first[1],oldPacket.constData(),size_t(oldPacket.size()),MSG_NOSIGNAL)==oldPacket.size());
+    CHECK(waitFor([&]{return item.contextAvailable();}));
+    CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,second)==0);
+    item.setNativeBinding(metadataFor(replacement));
+    auto newer=BrowserInputChannel::create(second[0],int(syscall(SYS_pidfd_open,getpid(),0)),getpid(),"new-owner");
+    CHECK(newer);
+    const auto newPacket=packetFor(replacement,"new");
+    CHECK(send(second[1],newPacket.constData(),size_t(newPacket.size()),MSG_NOSIGNAL)==newPacket.size());
+    CHECK(waitFor([&]{return item.contextAvailable();}));
+    ::close(first[1]);
+    CHECK(item.inputMethodQuery(Qt::ImSurroundingText).toString()=="new");
+    CHECK(waitFor([&]{return !previous->available();}));
+    CHECK(item.inputMethodQuery(Qt::ImSurroundingText).toString()=="new");
+    ::close(second[1]);
+    CHECK(!item.inputMethodQuery(Qt::ImSurroundingText).isValid());
+    CHECK(waitFor([&]{return !newer->available();}));
+
+    auto workerBinding=lease;workerBinding.connection="worker-lifetime:socket";
+    item.setNativeBinding(metadataFor(workerBinding));
+    const auto workerPacket=packetFor(workerBinding,"current");
+    int gate[2];CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,gate)==0);
+    const auto worker=fork();CHECK(worker>=0);
+    if(worker==0) {
+      ::close(gate[0]);
+      int endpoints[2];if(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,endpoints))_exit(21);
+      char marker='s';iovec data{&marker,1};
+      alignas(cmsghdr) char control[CMSG_SPACE(2*sizeof(int))]{};
+      msghdr message{};message.msg_iov=&data;message.msg_iovlen=1;message.msg_control=control;message.msg_controllen=sizeof control;
+      auto *header=CMSG_FIRSTHDR(&message);header->cmsg_level=SOL_SOCKET;header->cmsg_type=SCM_RIGHTS;header->cmsg_len=CMSG_LEN(2*sizeof(int));
+      memcpy(CMSG_DATA(header),endpoints,sizeof endpoints);
+      if(sendmsg(gate[1],&message,MSG_NOSIGNAL)!=1)_exit(22);
+      ::close(endpoints[0]);
+      if(recv(gate[1],&marker,1,0)!=1)_exit(23);
+      if(send(endpoints[1],workerPacket.constData(),size_t(workerPacket.size()),MSG_NOSIGNAL)!=workerPacket.size())_exit(24);
+      for(;;)pause();
+    }
+    ::close(gate[1]);
+    char marker=0;iovec data{&marker,1};
+    alignas(cmsghdr) char control[CMSG_SPACE(2*sizeof(int))]{};
+    msghdr message{};message.msg_iov=&data;message.msg_iovlen=1;message.msg_control=control;message.msg_controllen=sizeof control;
+    CHECK(recvmsg(gate[0],&message,MSG_CMSG_CLOEXEC)==1 && !(message.msg_flags&MSG_CTRUNC));
+    const auto *header=CMSG_FIRSTHDR(&message);
+    CHECK(header && header->cmsg_level==SOL_SOCKET && header->cmsg_type==SCM_RIGHTS && header->cmsg_len==CMSG_LEN(2*sizeof(int)));
+    int endpoints[2];memcpy(endpoints,CMSG_DATA(header),sizeof endpoints);
+    auto workerLife=std::shared_ptr<int>(new int(int(syscall(SYS_pidfd_open,worker,0))),[](int *fd){::close(*fd);delete fd;});
+    CHECK(*workerLife>=0);
+    auto guarded=BrowserInputChannel::create(endpoints[0],int(syscall(SYS_pidfd_open,getpid(),0)),worker,"worker-lifetime",
+      [workerLife]{pollfd descriptor{*workerLife,POLLIN,0};return poll(&descriptor,1,0)==0;});
+    CHECK(guarded);
+    CHECK(send(gate[0],"p",1,MSG_NOSIGNAL)==1);
+    CHECK(waitFor([&]{return item.contextAvailable();}));
+    CHECK(kill(worker,SIGKILL)==0);
+    int status=0;CHECK(waitpid(worker,&status,0)==worker);
+    // The parent deliberately retains a delegated writer FD. There is no EOF,
+    // and the engine is alive; only the actual worker pidfd can reject this cache.
+    pollfd transport{endpoints[0],POLLIN|POLLHUP|POLLERR|POLLRDHUP,0};
+    CHECK(poll(&transport,1,0)==0);
+    CHECK(!guarded->available());
+    CHECK(!item.inputMethodQuery(Qt::ImSurroundingText).isValid());
+    CHECK(!item.contextAvailable());
+    guarded->retire();
+    ::close(endpoints[1]);::close(gate[0]);
   }
   window.hide();
   QCoreApplication::processEvents();
