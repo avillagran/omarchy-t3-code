@@ -96,15 +96,19 @@ pub fn project_sources(e:&Environment)->Result<Value>{
 }
 pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
     let project=text(input,"projectId");if !valid_id(project){return Err("invalid_project".into())}
-    let raw=if input["action"]=="workspace-update" {
+    let mut raw=if input["action"]=="workspace-update" {
         if !matches!(input["mode"].as_str(),Some("local"|"worktree")){return Err("invalid_settings".into())}
         protocol::api::server::update_settings(&e.connection(true)?,&json!({"defaultThreadEnvMode":input["mode"]}),None)?
     }else if input["action"]=="workspace-read"{protocol::api::server::settings(&e.connection(true)?)?}else{return Err("invalid_settings".into())};
+    let models=if input["modelDefaults"]==true {
+        let config=protocol::api::server::config(&e.connection(true)?)?;
+        raw=config["settings"].clone();Some(crate::new_thread_models::present(&config,project))
+    }else{None};
     let overrides=&raw["projectSettingsOverrides"][project];
     let mode=overrides["defaultThreadEnvMode"].as_str().or(raw["defaultThreadEnvMode"].as_str()).filter(|s|matches!(*s,"local"|"worktree"));
     let origin=overrides["newWorktreesStartFromOrigin"].as_bool().or(raw["newWorktreesStartFromOrigin"].as_bool()).unwrap_or(true);
     let mut result=crate::native_settings::thread_defaults(&raw,project);
-    result["mode"]=json!(mode);result["startFromOrigin"]=json!(origin);Ok(result)
+    result["mode"]=json!(mode);result["startFromOrigin"]=json!(origin);if let Some(models)=models{result["modelDefaults"]=models;}Ok(result)
 }
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}

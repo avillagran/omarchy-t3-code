@@ -1115,3 +1115,5 @@ mod reply_order_tests {
         assert_eq!(replied_at(&json!({"createdAt":10})),10000);
     }
 }
+
+pub mod new_thread_models;

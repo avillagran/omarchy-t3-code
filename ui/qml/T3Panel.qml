@@ -2559,6 +2559,10 @@ Item {
             objectName:"undoThreadSettle";Layout.alignment:Qt.AlignHCenter;primary:false
             visible:!!root.bridge.threadUndoNotice;text:T3I18n.tr("Undo settle");onClicked:root.bridge.undoThreadAction()
           }
+          T3ModelFallback {
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter
+            bridge:root.bridge
+          }
           T3UsageRecovery {
             Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter
             bridge:root.bridge

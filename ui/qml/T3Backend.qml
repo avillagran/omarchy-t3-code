@@ -14,6 +14,7 @@ import "../js/SidebarModel.js" as Sidebar
 import "../js/ProviderUpdates.js" as Updates
 import "../js/NativeKeybindings.js" as NativeKeys
 import "../js/UsageLimits.js" as Usage
+import "../js/NativeNewThreadModel.js" as NewThreadModel
 import "../js/PinOrder.js" as PinOrder
 import "../js/JsonDelta.js" as JsonDelta
 
@@ -632,10 +633,11 @@ Singleton {
       var favorite=models.find(function(m){return (available.favorites || []).some(function(f){return f.provider===m.instanceId&&f.model===m.model})}) || models[0]
       if(favorite)selection={instanceId:favorite.instanceId,model:favorite.model,options:[]}
     }
-    if(!selection){managementError=T3I18n.tr("Select a model in an existing chat first.");pendingProjectOpen=null;projectOpened(pending.environment,pending.projectId,managementError);return}
-    manage({action:"new-thread",environment:pending.environment,projectId:pending.projectId,title:T3I18n.tr("New chat"),modelSelection:selection,runtimeMode:currentRuntimeMode() || "approval-required"})
-    pendingProjectOpen=Object.assign({},pending,{requestId:managementRequest.requestId})
+    var id=uuid()
+    pendingProjectOpen=Object.assign({},pending,{requestId:id,stage:"models",command:{action:"new-thread",environment:pending.environment,projectId:pending.projectId,title:T3I18n.tr("New chat"),modelSelection:selection,useProjectDefaults:true,inheritRuntimeMode:!!currentRuntimeMode(),runtimeMode:currentRuntimeMode() || "approval-required"}})
+    send({op:"settings",action:"workspace-read",environment:pending.environment,projectId:pending.projectId,modelDefaults:true,requestId:id})
   }
+
   function loadProjectSources(environment){var id=uuid();projectSources={busy:true,environment:environment,requestId:id,providers:[]};send({op:"project-sources",environment:environment,requestId:id})}
   property var terminalOperation:({busy:false,error:"",requestId:"",key:""})
   readonly property bool canOpenTerminal:!!selectedThread && catalog.canWrite!==false && (state.environments || []).some(function(e){return e.id===root.selectedEnvironment&&e.state==="ready"})
@@ -1185,12 +1187,31 @@ Singleton {
   signal newThreadWorkspaceRequested(var request)
   signal workspaceChoiceAccepted()
   property var workspaceOperation:({busy:false,error:""})
+  property var modelFallbackNotices:({})
+  readonly property var modelFallbackNotice:(function(){
+    var notice=modelFallbackNotices[selectedKey],selection=draft.modelSelection || selectedInfo.modelSelection
+    return notice && !selectedInfo.latestRunId && JSON.stringify(selection)===JSON.stringify(notice.selection)?notice:null
+  })()
+  function dismissModelFallback(){var all=Object.assign({},modelFallbackNotices);delete all[selectedKey];modelFallbackNotices=all}
+  function useFallbackDefault(){if(!modelFallbackNotice || draft.busy || draft.attempt)return;var selection=modelFallbackNotice.defaultSelection;dismissModelFallback();patchDraft(selectedKey,{modelSelection:selection})}
+  function fallbackModelName(selection){var model=(catalog.models || []).find(function(model){return model.instanceId===selection.instanceId && model.model===selection.model});return model?(model.label || model.model):selection.model}
+  function applyNewThreadDefaults(command,data){
+    var defaults=Object.assign({},command),context=data.modelDefaults || {}
+    defaults.modelDefaultSelection=data.defaultModelSelection || defaults.modelSelection || null
+    var resolution=NewThreadModel.resolveNewThreadModelSelection({defaultSelection:defaults.modelDefaultSelection,fallbackSelection:context.fallbackSelection || null,providers:context.providers || [],settings:context.settings,projectId:defaults.projectId,now:Date.now()})
+    if(resolution.selection)defaults.modelSelection=resolution.selection
+    defaults.modelFallback=resolution.fallback
+    if(data.defaultRuntimeMode&&!defaults.inheritRuntimeMode)defaults.runtimeMode=data.defaultRuntimeMode
+    return defaults
+  }
+
+
   function beginNewThread(request){
     if(managementBusy||managementRequest||workspaceOperation.busy)return
     if(request.sourceKey&&request.sourceKey!==selectedKey)return
     // The native New Local command explicitly selects the project checkout;
     // it must not rewrite or be overridden by the saved workspace default.
-    if(!request.sourceKey&&request.command.workspaceStrategy&&request.command.workspaceStrategy.type==="root"){
+    if(!request.sourceKey&&request.command.workspaceStrategy&&request.command.workspaceStrategy.type==="root"&&request.command.useProjectDefaults!==true){
       manage(Object.assign({},request.command,{automatic:false,workspaceStrategy:{type:"root"}}));return
     }
     if(request.command.automatic===true&&!request.sourceKey){
@@ -1198,7 +1219,7 @@ Singleton {
       send(Object.assign({op:"connection-route",requestId:id},request.command));return
     }
     var id=uuid();workspaceOperation={busy:true,error:"",request:request,requestId:id,action:"read"}
-    send({op:"settings",action:"workspace-read",environment:request.command.environment,projectId:request.command.projectId,requestId:id})
+    send({op:"settings",action:"workspace-read",environment:request.command.environment,projectId:request.command.projectId,modelDefaults:request.command.useProjectDefaults===true&&!request.sourceKey,requestId:id})
   }
   function requestNewThread(values){beginNewThread({command:values})}
   function confirmNewThread(request,isolated,configured){
@@ -1206,7 +1227,7 @@ Singleton {
     if(request.sourceKey&&selectedKey!==request.sourceKey)return
     if(!configured){
       var id=uuid();workspaceOperation={busy:true,error:"",request:request,requestId:id,action:"write",isolated:isolated}
-      send({op:"settings",action:"workspace-update",environment:request.command.environment,projectId:request.command.projectId,mode:isolated?"worktree":"local",requestId:id});return
+      send({op:"settings",action:"workspace-update",environment:request.command.environment,projectId:request.command.projectId,mode:isolated?"worktree":"local",modelDefaults:request.command.useProjectDefaults===true&&!request.sourceKey,requestId:id});return
     }
     var command=request.command || {},branch=command.branch || "HEAD"
     var strategy=isolated?{type:"worktree",baseRef:branch,startFromOrigin:!!request.startFromOrigin}:command.worktreePath?{type:"existing_worktree",worktreePath:command.worktreePath}:{type:"root"}
@@ -1740,6 +1761,17 @@ Singleton {
     send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:captured.fromTurnCount,toTurnCount:captured.toTurnCount,summary:captured,ignoreWhitespace:ws})
   }
   function action(data) {
+    if(data.op==="settings" && pendingProjectOpen && pendingProjectOpen.stage==="models" && pendingProjectOpen.requestId===data.requestId){
+      var pending=pendingProjectOpen
+      if(data.environment!==pending.environment)return
+      if(data.error){pendingProjectOpen=null;managementError=data.error;projectOpened(pending.environment,pending.projectId,data.error);return}
+      var command=applyNewThreadDefaults(pending.command,data.result || {})
+      if(!command.modelSelection){var error=T3I18n.tr("Select a model in an existing chat first.");pendingProjectOpen=null;managementError=error;projectOpened(pending.environment,pending.projectId,error);return}
+      if(!(state.projects || []).some(function(project){return project.environmentId===pending.environment && project.id===pending.projectId})){pendingProjectOpen=null;projectOpened(pending.environment,pending.projectId,"project_unavailable");return}
+      if(managementBusy || managementRequest){pendingProjectOpen=Object.assign({},pending,{requestId:"",stage:""});return}
+      manage(command);pendingProjectOpen=Object.assign({},pending,{requestId:managementRequest.requestId,stage:"creation"});return
+    }
+
     if(data.op==="provider-reset-credit-access"){
       var pending=resetCreditAccessPending[data.environment]
       if(!pending || pending.requestId!==data.requestId)return
@@ -1972,10 +2004,10 @@ Singleton {
       if(data.error){newThreadWorkspaceRequested(request);return}
       request=Object.assign({},request,{startFromOrigin:!!data.result.startFromOrigin})
       if(request.command.useProjectDefaults===true&&!request.sourceKey){
-        var defaults=Object.assign({},request.command)
-        if(data.result.defaultModelSelection)defaults.modelSelection=data.result.defaultModelSelection
-        if(data.result.defaultRuntimeMode&&!defaults.inheritRuntimeMode)defaults.runtimeMode=data.result.defaultRuntimeMode
-        request=Object.assign({},request,{command:defaults})
+        request=Object.assign({},request,{command:applyNewThreadDefaults(request.command,data.result)})
+      }
+      if(!request.sourceKey&&request.command.workspaceStrategy&&request.command.workspaceStrategy.type==="root"){
+        manage(Object.assign({},request.command,{automatic:false,workspaceStrategy:{type:"root"}}));return
       }
       if(op.action==="write")confirmNewThread(request,data.result.mode==="worktree",true)
       else if(data.result.mode)confirmNewThread(request,data.result.mode==="worktree",true)
@@ -2142,6 +2174,7 @@ Singleton {
       }
       if (!retryable) {managementRequest = null;settleNavigation=null}
       if (!data.error) {
+        if(data.result.action==="new-thread" && creation.modelFallback && creation.modelDefaultSelection){var notices=Object.assign({},modelFallbackNotices);notices[data.environment+"/"+data.result.threadId]={selection:creation.modelSelection,defaultSelection:creation.modelDefaultSelection,provider:creation.modelFallback.provider,resetsAt:creation.modelFallback.resetsAt};modelFallbackNotices=notices}
         if(data.result.action==="project-remove" && selectedInfo.projectKey===data.environment+"/"+data.result.projectId){var next=state.threads.find(function(t){return t.projectKey!==root.selectedInfo.projectKey});if(next)selectThread(next.environmentId,next.id);else clearSelection()}
         if(["archive","delete-thread"].indexOf(data.result.action)>=0&&data.result.threadId)forgetDictationRecordings(data.environment+"/"+data.result.threadId)
         if(["archive","delete-thread"].indexOf(data.result.action)>=0 && selectedKey===data.environment+"/"+data.result.threadId){var nextThread=state.threads.find(function(t){return t.key!==root.selectedKey});if(nextThread)selectThread(nextThread.environmentId,nextThread.id);else clearSelection()}

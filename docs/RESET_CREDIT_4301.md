@@ -23,7 +23,8 @@ details after confirmation closes; the quota refresh is read-only.
 `tools/build-usage-limits.cjs` updates account presentation to the same revision,
 including fresh plan selection and native hub/default-label handling. The latter
 is a presentation-only module: new exhausted-window/model-fallback selection
-exports are deliberately outside this module and remain separately scoped.
+exports are implemented separately in `NativeNewThreadModel.js`; see
+`docs/NEW_THREAD_MODEL_4301.md` for their consumer scope.
 Provider display names come from the actual canonical contracts module export,
 not a hand-built driver table. Source/output hashes are recorded next to generated
 modules. The native oracle verifies every staged input and Effect 4.1.2 before

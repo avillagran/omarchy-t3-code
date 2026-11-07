@@ -2178,6 +2178,12 @@
     "Use a reset credit?": "Use a reset credit?",
     "Use credit": "Use credit",
     "Using reset credit…": "Using reset credit…",
-    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone."
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.",
+    "Using {model}": "Using {model}",
+    "Dismiss fallback model notice": "Dismiss fallback model notice",
+    "{provider} is out of usage": "{provider} is out of usage",
+    "Use {model}": "Use {model}",
+    "Fallback model": "Fallback model",
+    "Used for new threads when the default model's provider is out of usage.": "Used for new threads when the default model's provider is out of usage."
   }
 }

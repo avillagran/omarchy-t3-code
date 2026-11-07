@@ -175,3 +175,4 @@ T3TerminalPane 1.0 T3TerminalPane.qml
 T3TerminalScrollbar 1.0 T3TerminalScrollbar.qml
 
 T3BrowserPermission 1.0 T3BrowserPermission.qml
+T3ModelFallback 1.0 T3ModelFallback.qml
