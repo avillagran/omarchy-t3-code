@@ -41,3 +41,10 @@ This freezes build artifacts. Source worktrees still need separate immutable
 checkpointing for exact-commit acceptance. The full runtime audit marker remains
 in force; artifact copying does not authorize unreviewed tests or establish
 complete native browser/UI coverage.
+
+The focused `tools/test-owned-browser-qt` runner executes only the reviewed new
+`owned_browser_qt` target in private Podman. Its profiles, HTTP document fixture,
+Qt inputs and immutable artifacts are retained. It performs no tree deletion,
+uses no symlink fixtures, and launches only its explicitly frozen private server
+and Qt binaries. Shutdown addresses only those owned child processes and socket
+endpoints. This focused admission does not clear the full runtime-audit marker.
