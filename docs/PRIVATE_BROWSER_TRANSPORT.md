@@ -20,7 +20,7 @@ The owned launcher, descriptor codecs, and local lease-admission policy exist as
 
 ## Owned supervisor readiness leaf
 
-`owned_backend::Owner` now implements a separate, unselected direct-child launch path. Its persistent profile is `XDG_STATE_HOME/omarchy-t3-code/owned-backends/o3`. The existing service controller is unchanged. Startup retains an exclusive profile lock, clears inherited environment variables, supplies a private bootstrap socket, and owns a child process group with parent-death handling. It omits browser descriptors while the server consumer remains gated.
+`owned_backend::Owner` now implements a separate, unselected direct-child launch path. Its persistent profile is `XDG_STATE_HOME/omarchy-t3-code/owned-backends/o3`. The existing service controller is unchanged. Startup retains an exclusive profile lock, clears inherited environment variables, supplies a private bootstrap socket, and owns a child process group with parent-death handling. Default launches omit browser descriptors; the separate explicit browser launch is tested only with an isolated private profile.
 
 Readiness requires version-1 runtime metadata with the actual child PID and an HTTP loopback origin, a successful bootstrap-seed OAuth exchange, and a successful authenticated `server.getConfig` RPC. Bootstrap credentials and bearer snapshots remain in process memory; the launcher does not persist them. Dropping the owner stops and reaps its child with bounded group termination and retains the persistent profile.
 
@@ -52,7 +52,7 @@ Five focused Rust functions pass, including 346 native schema projections and 24
 
 The adapter separately bounds an outer wire record at 256 MiB of UTF-8 bytes. Event encoding counts before allocating its output buffer. Native CDP message and serialized-payload limits remain separate. Overlong records retire buffered state without replay; the cap and cancellation differ from an unbounded native pipe. Lossy UTF-8 can expand invalid bytes in memory, and accepted strings/JSON projections also allocate; this is bounded transport work, not a claim of allocation-free processing. No maximum-size end-to-end memory claim has been proven yet.
 
-These adapters are not connected to an activated browser consumer. Target/session lease admission, private guest wiring, and the authoritative preview observer remain pending; browser descriptor fields are still omitted from real launches.
+These adapters are not connected to an activated browser consumer. Target/session lease admission, private guest wiring, and the authoritative preview observer remain pending; browser descriptor fields are still omitted from default product launches.
 
 ## Lease admission foundation
 
@@ -91,3 +91,9 @@ An actual private two-page Qt experiment confirmed that the pinned native relay'
 Flattened iframe/worker attachments from an admitted physical parent establish child ownership. Explicit attachment is restricted to known owned targets; descendants and their sessions are removed together on detach. Unknown-session events are dropped. Physical session/target mismatches, resource overflow (4,096 entries), and close fence later admission. Scope creation and destruction still require the actual guest/inspector owner; this module is not an identity producer. Other child target categories and nonflattened sessions remain qualified integration gaps.
 
 The private boundary proof covers foreign browser/target/session refusal, unchanged opaque Runtime objects, related and manually attached child sessions, subtree invalidation, target mismatch, bounds, and close. The real Qt composition proof retains captures/input/focus behavior, refuses browser escape requests before physical dispatch, and creates an actual owned Worker: its emitted physical child session can run `Runtime.runIfWaitingForDebugger` and read `self.name` as `owned-child`. This necessary Qt safety-boundary difference is explicit; it is not byte-for-byte page-session passthrough parity. Product activation and dedicated guest FD lifecycle remain pending.
+
+## Explicit owned browser-descriptor launch
+
+`Owner::launch_with_browser` is an explicit optional API. It creates the directional socketpairs, admits distinct high-numbered child descriptors into the bootstrap envelope, and returns parent endpoints only after actual child/OAuth/RPC readiness. The owner retains shutdown clones so `stop` interrupts external readers/writers before terminating the child. `Owner::launch` and the legacy `Config` literal remain unchanged; default serialized envelopes omit both browser fields. No live service or shared profile is adopted.
+
+Fifteen focused functions pass against the exact frozen server `4e71a49e2377bcb2c41c4dac4280b21b1e1faf5a`, SHA-256 `5f9cd0d27eaeb1c4d2f7945541c2870720fa31a7099beec1e01e326c97e49847`, using the immutable-runtime private runner. The new case observes authenticated `environment.capabilities.serverBrowser`, a live actual control descriptor, and interrupted parent I/O after explicit owner shutdown. This proves startup/adoption/shutdown, not preview commands or a connected Qt guest; the complete descriptor-to-Qt preview route is the next integration requirement.

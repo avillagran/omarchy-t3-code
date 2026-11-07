@@ -98,3 +98,43 @@ fn explicit_shutdown_releases_private_profile_while_old_snapshots_are_retained()
     assert!(replacement.is_running().unwrap());
     assert!(snapshot.same_session_admission(&snapshot.clone()));
 }
+
+#[test]
+fn opted_in_browser_descriptors_are_adopted_and_shutdown_interrupts_actual_parent_io() {
+    use std::io::Read;
+    use std::time::Duration;
+    let root = std::env::temp_dir().join(format!(
+        "of-{}",
+        &uuid::Uuid::new_v4().simple().to_string()[..12]
+    ));
+    fs::create_dir(&root).unwrap();
+    let config = Config {
+        executable: PathBuf::from("/fixture/o3-server"),
+        state_root: root.join("state"),
+    };
+    let (owner, mut browser) = Owner::launch_with_browser(&config).unwrap();
+    let descriptor = t3_protocol::api::call(
+        &owner.fresh_connection().unwrap(),
+        "server.getConfig",
+        &serde_json::json!({}),
+        Some(Duration::from_secs(2)),
+    )
+    .unwrap();
+    assert_eq!(
+        descriptor["environment"]["capabilities"]["serverBrowser"],
+        true
+    );
+    browser
+        .control
+        .set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
+    let mut byte = [0];
+    let error = browser.control.read(&mut byte).unwrap_err();
+    assert!(matches!(
+        error.kind(),
+        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+    ));
+    owner.stop().unwrap();
+    assert_eq!(browser.control.read(&mut byte).unwrap(), 0);
+    assert!(owner.fresh_connection().is_err());
+}

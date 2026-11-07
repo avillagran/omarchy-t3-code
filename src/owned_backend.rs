@@ -40,10 +40,39 @@ pub struct Owner {
     origin: String,
     authorization: auth::Auth,
     profile: PathBuf,
+    browser: Option<crate::desktop_browser_ipc::ParentEndpoints>,
     _lock: Mutex<Option<fs::File>>,
 }
 impl Owner {
     pub fn launch(config: &Config) -> Result<Self> {
+        Self::launch_inner(config, None)
+    }
+    /// Explicit private browser transport; default service/owned launches omit it.
+    pub fn launch_with_browser(
+        config: &Config,
+    ) -> Result<(Self, crate::desktop_browser_ipc::ParentEndpoints)> {
+        let (parent, child) =
+            crate::desktop_browser_ipc::endpoints().map_err(|_| "owned_backend_ipc_unavailable")?;
+        let guard = crate::desktop_browser_ipc::ParentEndpoints {
+            events: parent
+                .events
+                .try_clone()
+                .map_err(|_| "owned_backend_ipc_unavailable")?,
+            control: parent
+                .control
+                .try_clone()
+                .map_err(|_| "owned_backend_ipc_unavailable")?,
+        };
+        let owner = Self::launch_inner(config, Some((child, guard)))?;
+        Ok((owner, parent))
+    }
+    fn launch_inner(
+        config: &Config,
+        browser: Option<(
+            crate::desktop_browser_ipc::ChildEndpoints,
+            crate::desktop_browser_ipc::ParentEndpoints,
+        )>,
+    ) -> Result<Self> {
         if !config.executable.is_absolute()
             || !config.executable.is_file()
             || !config.state_root.is_absolute()
@@ -112,7 +141,7 @@ impl Owner {
         let seed = auth::token(&secret, Utc::now().timestamp_millis())?;
         // Borrow credential strings while serializing directly into private IPC;
         // never create a secret-bearing serde_json::Value or disk payload.
-        let envelope = Envelope {
+        let mut envelope = Envelope {
             mode: "desktop",
             no_browser: true,
             host: "127.0.0.1",
@@ -122,6 +151,8 @@ impl Owner {
             tailscale_serve_enabled: false,
             tailscale_serve_port: 3773,
             t3_home: &profile,
+            desktop_browser_fd: None,
+            desktop_browser_control_fd: None,
         };
         let mut command = Command::new(&config.executable);
         command
@@ -142,6 +173,16 @@ impl Owner {
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null());
+        let browser = if let Some((child, guard)) = browser {
+            let (events, control) = child
+                .configure(&mut command)
+                .map_err(|_| "owned_backend_ipc_unavailable")?;
+            envelope.desktop_browser_fd = Some(events);
+            envelope.desktop_browser_control_fd = Some(control);
+            Some(guard)
+        } else {
+            None
+        };
         let parent = unsafe { libc::getpid() };
         unsafe {
             command.pre_exec(move || {
@@ -197,6 +238,7 @@ impl Owner {
                         authorization: auth::Auth::new(secret, grant, http, origin.clone()),
                         origin,
                         profile,
+                        browser,
                         _lock: Mutex::new(Some(lock)),
                     });
                 }
@@ -237,6 +279,9 @@ impl Owner {
         result
     }
     pub fn stop(&self) -> Result<()> {
+        if let Some(browser) = &self.browser {
+            browser.close();
+        }
         self.authorization.begin_close();
         let result = {
             let mut child = self
@@ -364,6 +409,10 @@ struct Envelope<'a> {
     tailscale_serve_enabled: bool,
     tailscale_serve_port: u16,
     t3_home: &'a Path,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    desktop_browser_fd: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    desktop_browser_control_fd: Option<i32>,
 }
 
 #[cfg(test)]
