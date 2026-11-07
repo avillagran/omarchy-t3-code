@@ -5,7 +5,10 @@ const fs=require('node:fs');
 const path=require('node:path');
 const http=require('node:http');
 const readline=require('node:readline');
-const {spawn}=require('node:child_process');
+const {spawn,spawnSync}=require('node:child_process');
+const calibration=process.env.O3_TEST_CLIPBOARD_CALIBRATION==='1';let mainCalibration={};
+const visibleHost=process.env.O3_TEST_VISIBLE_HOST==='1',wayland=process.env.O3_TEST_WAYLAND==='1';
+async function seatFocus(title){if(!wayland)return;const socket=fs.readdirSync(process.env.XDG_RUNTIME_DIR).find(name=>name.startsWith('sway-ipc')&&name.endsWith('.sock'));assert(socket);const env={...process.env,SWAYSOCK:path.join(process.env.XDG_RUNTIME_DIR,socket),LD_LIBRARY_PATH:'/opt/sway-runtime/usr/lib'};const result=spawnSync('/opt/sway-runtime/usr/bin/swaymsg',['[title="'+title+'"]','focus'],{env,encoding:'utf8'});assert.equal(result.status,0);await new Promise(resolve=>setTimeout(resolve,60));const pulse=spawnSync('wtype',['-k','Shift_L'],{env:process.env,encoding:'utf8'});assert.equal(pulse.status,0);await new Promise(resolve=>setTimeout(resolve,60));const tree=JSON.parse(spawnSync('/opt/sway-runtime/usr/bin/swaymsg',['-t','get_tree'],{env,encoding:'utf8'}).stdout);function focused(node){return node.name===title&&node.focused===true||[...(node.nodes||[]),...(node.floating_nodes||[])].some(focused)}assert(focused(tree),'actual compositor keyboard focus: '+title);}
 const privateFd=Number(process.env.O3_TEST_PRIVATE_FD);assert(Number.isInteger(privateFd)&&privateFd>=64);
 assert.equal(require('./electron-private-fd.node').admit(privateFd,Number(process.env.O3_TEST_PEER_PID)),true);
 const privateSocket=new(require('node:net').Socket)({fd:privateFd,readable:true,writable:true});
@@ -27,11 +30,11 @@ let choices=[1,1,0,1];
 function deadline(promise,label){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Private fixture deadline: '+label)),12000)})]).finally(()=>clearTimeout(timer))}
 function event(line){const row=JSON.parse(new TextDecoder().decode(line));if(row.type==='attached'){attachments.get(row.tabId)?.();attachments.delete(row.tabId)}if(row.type!=='cdp')return;const frame=JSON.parse(row.message);if(typeof frame.id!=='number')return;const wait=pending.get(frame.id);if(!wait)return;pending.delete(frame.id);frame.error?wait.reject(Error(frame.error.message)):wait.resolve(frame.result)}
 async function command(tab,method,params={},sessionId){const id=++sequence;let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});pending.set(id,{resolve,reject});await services.command(JSON.stringify({type:'cdp',...tab.key,message:JSON.stringify({id,method,params,...(sessionId===undefined?{}:{sessionId})})}));return deadline(promise,method)}
-async function evaluate(tab,expression){const result=await command(tab,'Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true},tab.session);if(result.exceptionDetails)throw Error('Fixture evaluation failed: '+(result.exceptionDetails.exception?.description||result.exceptionDetails.text));return result.result.value}
-async function producerCommand(row){const id=++sequence;let resolve;const promise=new Promise(r=>resolve=r);producerPending.set(id,resolve);producer.stdin.write(JSON.stringify({...row,id})+'\n');return deadline(promise,'selection owner')}
+async function evaluate(tab,expression){if(visibleHost)await seatFocus(tab.window.getTitle());const result=await command(tab,'Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true},tab.session);if(result.exceptionDetails)throw Error('Fixture evaluation failed: '+(result.exceptionDetails.exception?.description||result.exceptionDetails.text));return result.result.value}
+async function producerCommand(row){if(wayland)await seatFocus('Owned synthetic clipboard peer');const id=++sequence;let resolve;const promise=new Promise(r=>resolve=r);producerPending.set(id,resolve);producer.stdin.write(JSON.stringify({...row,id})+'\n');const result=await deadline(promise,'selection owner');if(wayland)assert.equal(result.active,true,'real Qt clipboard peer has keyboard focus');return result}
 async function navigate(tab,url){await command(tab,'Page.navigate',{url},tab.session);for(let count=0;count<300;count++){if(await evaluate(tab,'location.href === '+JSON.stringify(url)+' && document.readyState === \"complete\"'))return;await new Promise(r=>setTimeout(r,20))}throw Error('Actual navigation did not finish')}
 async function tab(scope,host){const browserSession=await services.getSession(scope,false,'profile');const partition=await services.getPartition(scope,false,'profile');
- const window=new BrowserWindow({show:false,width:640,height:480,webPreferences:{offscreen:true,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});windows.push(window);
+ const window=new BrowserWindow({show:visibleHost,title:'Owned Electron '+scope,width:640,height:480,webPreferences:{offscreen:!visibleHost,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});windows.push(window);window.on('page-title-updated',event=>event.preventDefault());
  window.webContents.on('will-attach-webview',(event,preferences,params)=>{assert.equal(params.partition,partition);preferences.sandbox=true;preferences.nodeIntegration=false;preferences.nodeIntegrationInSubFrames=false;preferences.contextIsolation=false;preferences.disableHtmlFullscreenWindowResize=true;preferences.preload=path.join(__dirname,'electron-sandbox-preload.cjs')});
  const attachedGuest=new Promise(resolve=>window.webContents.once('did-attach-webview',(_event,guest)=>resolve(guest)));
  await window.loadURL('data:text/html,'+encodeURIComponent('<html><body style="margin:0"><webview partition="'+partition+'" src="about:blank" allowpopups="true" webpreferences="contextIsolation=false,sandbox=true,nodeIntegration=false" style="display:flex;width:640px;height:480px"></webview></body></html>'));
@@ -40,14 +43,14 @@ async function tab(scope,host){const browserSession=await services.getSession(sc
  const key={threadId:'owned-thread',tabId:'owned-'+scope};window.__ownedProofKey=key;const attached=new Promise(resolve=>attachments.set(key.tabId,resolve));services.attach(key,{webContents:contents,debugger:contents.debugger});services.setShown(key,true);await deadline(attached,'native attached-event barrier');
  const value={window,contents,key};const targets=await command(value,'Target.getTargets');assert.equal(targets.targetInfos.length,1);assert.equal(targets.targetInfos[0].targetId,info.targetInfo.targetId);
  value.session=(await command(value,'Target.attachToTarget',{targetId:info.targetInfo.targetId,flatten:true})).sessionId;
- await navigate(value,'http://'+host+':'+server.address().port+'/');
+ await navigate(value,'http://'+host+':'+server.address().port+'/');window.setTitle('Owned Electron '+scope);
  const isolation=await evaluate(value,'[typeof require,typeof process,typeof Buffer,typeof T3NativeDesktopHost]');assert.deepEqual(isolation,['undefined','undefined','undefined','undefined']);
  const proof=sandbox.get(contents.id);assert(proof?.sandboxed&&proof.isolated===false&&proof.electron==='44.10.1','real sandboxed native-preference webview preload');
  return value;
 }
 ipcMain.on('owned-sandbox-proof',(event,value)=>sandbox.set(event.sender.id,value));
 app.whenReady().then(async()=>{
- producer=spawn('/proof/clipboard-owner',[],{stdio:['pipe','pipe','pipe'],env:{...process.env,QT_QPA_PLATFORM:'xcb'}});
+ producer=spawn('/proof/clipboard-owner',[],{stdio:['pipe','pipe','pipe'],env:{...process.env,QT_QPA_PLATFORM:process.env.QT_QPA_PLATFORM||'xcb'}});
  let producerReady;const ready=new Promise(resolve=>producerReady=resolve);
  readline.createInterface({input:producer.stdout}).on('line',line=>{const row=JSON.parse(line);if(row.id!==undefined){producerPending.get(row.id)?.(row);producerPending.delete(row.id)}else if(row.ready)producerReady()});
  producer.stderr.on('data',()=>{});await deadline(ready,'independent clipboard owner start');
@@ -59,20 +62,22 @@ app.whenReady().then(async()=>{
  const nativeWrite=await evaluate(writeCheck,"navigator.clipboard.writeText('owned asynchronous write').then(()=>({allowed:true}),error=>({allowed:false,name:error.name,message:error.message}))");
  assert.equal(nativeWrite.allowed,false,'actual upstream async-write context is denied without read consent');assert.equal(dialogs.length,1);
  const copied=await evaluate(writeCheck,"(()=>{const input=document.createElement('textarea');input.value='owned sanitized gesture copy';document.body.appendChild(input);input.focus();input.select();return document.execCommand('copy')})()");
- assert.equal(copied,false,'native DevTools copy context is not silently promoted to a human gesture');
- writeCheck.contents.focus();writeCheck.contents.copy();
- let copiedText;for(let count=0;count<100;count++){copiedText=(await producerCommand({op:'read'})).text;if(copiedText==='owned sanitized gesture copy')break;await new Promise(resolve=>setTimeout(resolve,30))}
- assert.equal(copiedText,'owned sanitized gesture copy','separate application receives actual explicit-human-copy clipboard bytes');assert.equal(dialogs.length,1,'explicit user copy adds no read prompt');
+ if(!visibleHost)assert.equal(copied,false,'native DevTools copy context is not silently promoted to a human gesture');
+ if(wayland){if(visibleHost)await seatFocus(writeCheck.window.getTitle());await clipboard.writeText('owned platform clipboard control');mainCalibration.ownRead=await clipboard.readText();const backend=await producerCommand({op:'read'});mainCalibration.qtReceived=backend.text;mainCalibration.qtFocused=backend.active;if(!calibration)assert.equal(backend.text,'owned platform clipboard control','main-process OS clipboard calibration with focused Qt receiver');}
+ if(visibleHost){await seatFocus(writeCheck.window.getTitle());await writeCheck.window.webContents.executeJavaScript("document.querySelector('webview').focus()");}
+ writeCheck.contents.focus();await new Promise(resolve=>setTimeout(resolve,60));writeCheck.contents.copy();
+ let copiedText;for(let count=0;count<(calibration?1:100);count++){copiedText=(await producerCommand({op:'read'})).text;if(copiedText==='owned sanitized gesture copy')break;await new Promise(resolve=>setTimeout(resolve,30))}
+ if(!calibration)assert.equal(copiedText,'owned sanitized gesture copy','separate application receives actual explicit-human-copy clipboard bytes');assert.equal(dialogs.length,1,'explicit user copy adds no read prompt');
  const one=await tab('one','127.0.0.1');
- await producerCommand({op:'text',text:'owned external clipboard one'});
+ await producerCommand({op:'text',text:'owned external clipboard one'});mainCalibration.externalUnfocusedMainRead=await clipboard.readText();if(visibleHost)await seatFocus(one.window.getTitle());mainCalibration.externalMainRead=await clipboard.readText();
  assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2);
  assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2,'remembered Block');
  await navigate(one,'http://localhost:'+server.address().port+'/');
- assert.equal(await evaluate(one,'navigator.clipboard.readText()'),'owned external clipboard one');assert.equal(dialogs.length,3);
+ const initialRead=await evaluate(one,'navigator.clipboard.readText()');if(!calibration)assert.equal(initialRead,'owned external clipboard one');assert.equal(dialogs.length,3);
  await producerCommand({op:'text',text:'owned external clipboard changed'});
- assert.equal(await evaluate(one,'navigator.clipboard.readText()'),'owned external clipboard changed');assert.equal(dialogs.length,3,'remembered Allow still reads fresh external bytes');
+ const freshRead=await evaluate(one,'navigator.clipboard.readText()');if(!calibration)assert.equal(freshRead,'owned external clipboard changed');assert.equal(dialogs.length,3,'remembered Allow still reads fresh external bytes');
  await producerCommand({op:'image'});
- const image=await evaluate(one,"navigator.clipboard.read().then(async items=>{const item=items.find(item=>item.types.includes('image/png'));if(!item)throw Error('No PNG');const blob=await item.getType('image/png');const image=await createImageBitmap(blob);const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);return {width:image.width,height:image.height,pixel:Array.from(context.getImageData(0,0,1,1).data)}})");assert.deepEqual(image,{width:2,height:2,pixel:[18,52,86,255]});
+ const image=await evaluate(one,"navigator.clipboard.read().then(async items=>{const item=items.find(item=>item.types.includes('image/png'));if(!item)throw Error('No PNG');const blob=await item.getType('image/png');const image=await createImageBitmap(blob);const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);return {width:image.width,height:image.height,pixel:Array.from(context.getImageData(0,0,1,1).data)}})").catch(error=>{if(!calibration)throw error;return {error:String(error.message)}});if(!calibration)assert.deepEqual(image,{width:2,height:2,pixel:[18,52,86,255]});
  const two=await tab('two','localhost');assert.equal(await evaluate(two,denied),true);assert.equal(dialogs.length,4,'native decisions stay in the actual session');
  const foreign=await two.contents.debugger.sendCommand('Target.getTargetInfo');let blocked=false;try{await command(one,'Target.attachToTarget',{targetId:foreign.targetInfo.targetId,flatten:true})}catch{blocked=true}assert(blocked,'native root relay rejects a foreign target');
  const ownSocket=process.env.O3_TEST_PRIVATE_INODE;const descendants=new Set([process.pid]);let grew=true;
@@ -89,7 +94,7 @@ app.whenReady().then(async()=>{
  const opaque=JSON.stringify({targetId:foreign.targetInfo.targetId,sessionId:'foreign-session',method:'Target.closeTarget'});
  const opaqueResult=await guard.sendCommand('Runtime.evaluate',{expression:JSON.stringify(opaque),returnByValue:true});assert.equal(opaqueResult.result.value,opaque,'opaque page strings stay unchanged');
  const guardedInfo=await guard.sendCommand('Target.getTargetInfo');assert.equal(guardedInfo.targetInfo.targetId,ownInfo.targetInfo.targetId);assert.equal(retired,false);guard.close();await assert.rejects(guard.sendCommand('Runtime.evaluate',{expression:'1'}),/Only this preview tab/);
- console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({electron:process.versions.electron,sandboxed:true,nativeContextIsolation:false,nodeGlobalsAbsent:true,dialogs:dialogs.map(row=>({message:row.options.message,buttons:row.options.buttons,defaultId:row.options.defaultId,cancelId:row.options.cancelId})),nativeAsyncWrite:nativeWrite,nativeDevtoolsCopy:copied,sanitizedGestureCopy:true,textRoundtrip:true,freshExternalText:true,externalPng:image,sessionIsolation:true,foreignRootAttachDenied:true,rawForeignTargetVisible:rawForeignVisible,physicalTargetScopeDenied:forbidden.length+1,privateFdCloexec:true,descendantSocketIsolation:true,privateNamespaceSocketIsolation:true,opaqueRuntimePreserved:true}));
+ console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({electron:process.versions.electron,visibleHost,wayland,sandboxed:true,nativeContextIsolation:false,nodeGlobalsAbsent:true,dialogs:dialogs.map(row=>({message:row.options.message,buttons:row.options.buttons,defaultId:row.options.defaultId,cancelId:row.options.cancelId})),nativeAsyncWrite:nativeWrite,nativeDevtoolsCopy:copied,calibrationOnly:calibration,mainCalibration,guestCopiedText:copiedText,guestInitialRead:initialRead,guestFreshRead:freshRead,sanitizedGestureCopy:copiedText==='owned sanitized gesture copy',textRoundtrip:initialRead==='owned external clipboard one',freshExternalText:freshRead==='owned external clipboard changed',externalPng:image,sessionIsolation:true,foreignRootAttachDenied:true,rawForeignTargetVisible:rawForeignVisible,physicalTargetScopeDenied:forbidden.length+1,privateFdCloexec:true,descendantSocketIsolation:true,privateNamespaceSocketIsolation:true,opaqueRuntimePreserved:true}));
  for(const window of windows){services.detach(window.__ownedProofKey);window.destroy()}
  await services.close();producer.stdin.end(JSON.stringify({op:'quit'})+'\n');server.close();app.exit(0);
 }).catch(error=>{console.error('NATIVE_ELECTRON_FIXTURE_FAILED',error?.stack||String(error),'PERMISSIONS',JSON.stringify(observedPermissions));for(const window of windows)if(!window.isDestroyed())window.destroy();producer?.kill();server?.close();app.exit(1)});

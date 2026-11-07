@@ -16,6 +16,7 @@ pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> 
         .map_err(|_| "browser_runtime_unavailable")?;
     for name in [
         "native-electron-main.cjs",
+        "electron-human-input.cjs",
         "native-electron-services.cjs",
         "electron-private-fd.node",
         "qt-target-scope.js",

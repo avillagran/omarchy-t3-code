@@ -12,7 +12,12 @@ import tempfile
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--runtime',type=Path,required=True)
 parser.add_argument('--services',type=Path,required=True)
+parser.add_argument('--calibration-only',action='store_true',help='Record negative clipboard outcomes without declaring clipboard parity')
+parser.add_argument('--xwayland-guest',action='store_true',help='Keep Qt on Wayland and test the compositor-owned XWayland guest')
+parser.add_argument('--visible-host',action='store_true',help='Compare the visible native host topology')
+parser.add_argument('--wayland',action='store_true',help='Use the private headless Sway fixture instead of X11')
 options=parser.parse_args()
+if options.xwayland_guest and not options.wayland:parser.error('--xwayland-guest requires --wayland')
 root=Path(__file__).resolve().parent.parent
 runtime=options.runtime.resolve();services=options.services.resolve()
 manifest=json.loads((runtime.parent/'artifact.json').read_text())
@@ -34,28 +39,52 @@ with (out/'fd-addon-compile.log').open('w') as log:subprocess.run(['cc','-std=c1
 (out/'app-artifacts.json').write_text(json.dumps({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in app.iterdir()},indent=2)+'\n')
 (out/'clipboard-owner').chmod(0o500)
 (out/'clipboard-owner.json').write_text(json.dumps({'sha256':hashlib.sha256((out/'clipboard-owner').read_bytes()).hexdigest()})+'\n')
-args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--pids-limit=256','--memory=2g','--tmpfs','/tmp:rw,exec,size=512m,mode=1777','--tmpfs','/run:rw,size=32m','-v',str(out)+':/proof:ro','-v',str(runtime)+':/electron:ro','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','docker.io/library/archlinux:latest','python3','-c',r'''
-import fcntl,hashlib,json,os,pathlib,socket,subprocess,time
+args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--pids-limit=256','--memory=2g','--ulimit=core=0:0','--tmpfs','/tmp:rw,exec,size=512m,mode=1777','--tmpfs','/run:rw,size=32m','-v',str(out)+':/proof:ro','-v',str(runtime)+':/electron:ro','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','--env','__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json','localhost/o3-qml-wayland-tests:local' if options.wayland else 'docker.io/library/archlinux:latest','python3','-c',r'''
+import fcntl,hashlib,json,os,pathlib,resource,socket,subprocess,sys,time
+assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0),"Private hard and soft core limits must both be zero"
 os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700);os.mkdir('/tmp/.X11-unix',0o1777)
 manifest=json.loads(pathlib.Path('/proof/runtime-artifact.json').read_text())
 for row in manifest['files']:
  path=pathlib.Path('/electron')/row['path'];assert path.is_file() and not path.is_symlink()
  with path.open('rb') as file:assert hashlib.file_digest(file,'sha256').hexdigest()==row['sha256']
-display=subprocess.Popen(['Xvfb',':9','-screen','0','1280x1024x24','-nolisten','tcp','-extension','GLX'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+wayland=sys.argv[1]=='wayland';xwayland=sys.argv[3]=='xwayland';keyboard=None
+if wayland:
+ pathlib.Path('/tmp/record-display.py').write_text("import json,os,pathlib;pathlib.Path('/tmp/runtime/xwayland-display.json').write_text(json.dumps({key:os.environ[key] for key in ('DISPLAY','XAUTHORITY') if key in os.environ}))\n")
+ pathlib.Path('/tmp/sway.conf').write_text('xwayland force\nexec /usr/bin/python3 /tmp/record-display.py\noutput * mode 1280x1024\nseat seat0 fallback true\ninput * xkb_layout us\nfocus_follows_mouse no\n')
+ compositor_env=dict(os.environ,WLR_BACKENDS='headless',WLR_RENDERER='pixman',WLR_HEADLESS_OUTPUTS='1',WLR_LIBINPUT_NO_DEVICES='1',LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib')
+ display_log=open('/tmp/sway.log','w');display=subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],env=compositor_env,stdout=display_log,stderr=subprocess.STDOUT)
+else:display=subprocess.Popen(['Xvfb',':9','-screen','0','1280x1024x24','-nolisten','tcp','-extension','GLX'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 try:
  for _ in range(100):
   if display.poll() is not None:raise RuntimeError('Private X11 display exited')
-  if pathlib.Path('/tmp/.X11-unix/X9').is_socket():break
+  if any(file.is_socket() for file in pathlib.Path('/tmp/runtime').glob('wayland-*')) if wayland else pathlib.Path('/tmp/.X11-unix/X9').is_socket():break
   time.sleep(.02)
  else:raise RuntimeError('Private X11 display unavailable')
  parent,child=socket.socketpair();inherited=fcntl.fcntl(child.fileno(),fcntl.F_DUPFD_CLOEXEC,64)
- env=dict(os.environ,DISPLAY=':9',QT_QPA_PLATFORM='xcb',O3_TEST_PRIVATE_FD=str(inherited),O3_TEST_PEER_PID=str(os.getpid()),O3_TEST_PRIVATE_INODE=os.readlink('/proc/self/fd/'+str(inherited)))
- result=subprocess.run(['/electron/electron','--disable-setuid-sandbox','--disable-gpu','--ozone-platform=x11','/proof/app/native-electron-proof.cjs'],env=env,pass_fds=(inherited,),capture_output=True,text=True,timeout=40)
+ env=dict(os.environ,DISPLAY=':9',QT_QPA_PLATFORM='xcb',O3_TEST_VISIBLE_HOST=sys.argv[2],O3_TEST_CLIPBOARD_CALIBRATION=sys.argv[4],O3_TEST_PRIVATE_FD=str(inherited),O3_TEST_PEER_PID=str(os.getpid()),O3_TEST_PRIVATE_INODE=os.readlink('/proc/self/fd/'+str(inherited)))
+ if wayland:
+  env.update(WAYLAND_DISPLAY=next(file.name for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()),QT_QPA_PLATFORM='wayland',O3_TEST_WAYLAND='1')
+  env.pop('DISPLAY',None)
+  if xwayland:
+   for _ in range(100):
+    if pathlib.Path('/tmp/runtime/xwayland-display.json').exists():break
+    time.sleep(.02)
+   display_environment=json.loads(pathlib.Path('/tmp/runtime/xwayland-display.json').read_text());assert display_environment.get('DISPLAY')
+   env.update(display_environment)
+   for _ in range(100):
+    if subprocess.run(['xprop','-root'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+    time.sleep(.02)
+   else:raise RuntimeError('Private compositor XWayland not ready')
+  keyboard=subprocess.Popen(['wtype','-k','Shift_L','-s','40000'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ result=subprocess.run(['/electron/electron','--disable-setuid-sandbox','--disable-gpu','--ozone-platform=wayland' if wayland and not xwayland else '--ozone-platform=x11','/proof/app/native-electron-proof.cjs'],env=env,pass_fds=(inherited,),capture_output=True,text=True,timeout=40)
  print(result.stdout,end='');print(result.stderr,end='')
  assert result.returncode==0,result.returncode
  assert 'NATIVE_ELECTRON_PROOF ' in result.stdout
-finally:display.terminate();display.wait(timeout=5)
-''']
+finally:
+ if keyboard is not None:keyboard.terminate();keyboard.wait(timeout=5)
+ display.terminate();display.wait(timeout=5)
+ if wayland:display_log.close();print(pathlib.Path('/tmp/sway.log').read_text())
+''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0']
 with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=55)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
 raise SystemExit(result.returncode)

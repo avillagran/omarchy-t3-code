@@ -27,6 +27,7 @@ import * as NodeCrypto from '@effect/platform-node/NodeCrypto';
 import * as Session from 'native:session';
 import * as Dialog from 'native:dialog';
 import {make as makeHost} from 'native:host';
+import {sendPageCommand} from 'native:input';
 export async function create(boundary) {
  const dialog=boundary.showMessageBox?{...Dialog.make,showMessageBox:(options,owner)=>Effect.tryPromise({
   try:()=>boundary.showMessageBox(options,owner),
@@ -42,14 +43,15 @@ export async function create(boundary) {
   yield*Effect.forkChild(Stream.runForEach(host.pointers,event=>Effect.sync(()=>boundary.pointer?.(event))));
   admit();yield*Effect.promise(()=>lifetime);
  })));
- running.catch(()=>{stop();fail(Error('native_browser_service_failed'))});await ready;
+ running.catch(()=>{stop();const error=Error('native_browser_service_failed');fail(error);if(!closed)boundary.failed?.(error)});await ready;
  return Object.freeze({
   getPartition:(scope,persistent,namespace)=>Effect.runPromise(sessions.getPartition(scope,persistent,namespace)),
   getSession:(scope,persistent,namespace)=>Effect.runPromise(sessions.getSession(scope,persistent,namespace)),
   clearCookies:partitions=>Effect.runPromise(sessions.clearCookies(partitions)),
   clearCache:partitions=>Effect.runPromise(sessions.clearCache(partitions)),
   attach:(key,debuggee)=>host.attach(key,debuggee),detach:key=>host.detach(key),setShown:(key,shown)=>host.setShown(key,shown),
-  command:line=>Effect.runPromise(host.handleCommandLine(line)),
+  command:line=>closed?Promise.reject(Error('native_browser_closed')):Effect.runPromise(host.handleCommandLine(line)),
+  humanInput:(contents,debuggerBoundary,method,params)=>closed?Promise.reject(Error('native_browser_closed')):sendPageCommand(contents,debuggerBoundary,method,params),
   placeDownload:(source,item)=>host.placeDownload(source,item),humanStartedDownload:source=>host.humanStartedDownload(source),
   close:async()=>{if(!closed){closed=true;stop()}await running}
  });

@@ -12,7 +12,7 @@ if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71
 if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
 out=Path(tempfile.mkdtemp(prefix='native-electron-pool-',dir='/home/node/BuildCache/o3-desktop-next'));print('Native Pool evidence: '+str(out),flush=True)
 app=out/'app';(app/'bin').mkdir(parents=True);assets=out/'electron';assets.mkdir()
-for name in ['native-electron-main.cjs','qt-target-scope.js','electron-private-fd.c']:(assets/name).write_bytes((root/'ui/browser'/name).read_bytes())
+for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-scope.js','electron-private-fd.c']:(assets/name).write_bytes((root/'ui/browser'/name).read_bytes())
 (assets/'native-electron-services.cjs').write_bytes(services.read_bytes());(out/'electron-artifact.json').write_text(json.dumps(manifest)+'\n')
 with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
@@ -31,8 +31,9 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  (app/'bin/omarchy-t3-client').write_bytes((frozen/mains[0].relative_to(debug)).read_bytes());(app/'bin/omarchy-t3-client').chmod(0o500)
  binary='/compiled/'+str(tests[0].relative_to(debug))
 (out/'adapter-artifacts.json').write_text(json.dumps({file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in assets.iterdir()},indent=2)+'\n')
-args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--pids-limit=384','--memory=3g','--tmpfs','/tmp:rw,exec,size=768m,mode=1777','--tmpfs','/run:rw,size=32m','-v',str(out)+':/fixture:ro','-v',str(runtime)+':/electron:ro','-v',str(frozen)+':/compiled:ro','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','docker.io/library/archlinux:latest','python3','-c',r'''
-import hashlib,json,os,pathlib,subprocess,sys,time
+args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--pids-limit=384','--memory=3g','--ulimit=core=0:0','--tmpfs','/tmp:rw,exec,size=768m,mode=1777','--tmpfs','/run:rw,size=32m','-v',str(out)+':/fixture:ro','-v',str(runtime)+':/electron:ro','-v',str(frozen)+':/compiled:ro','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','--env','__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json','docker.io/library/archlinux:latest','python3','-c',r'''
+import hashlib,json,os,pathlib,resource,subprocess,sys,time
+assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
 os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700);os.mkdir('/tmp/.X11-unix',0o1777)
 for row in json.loads(pathlib.Path('/fixture/electron-artifact.json').read_text())['files']:
  path=pathlib.Path('/electron')/row['path'];assert path.is_file() and not path.is_symlink()

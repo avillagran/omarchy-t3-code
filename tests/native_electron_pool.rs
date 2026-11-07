@@ -132,6 +132,79 @@ fn product_pool_admits_native_guest_and_shares_visible_frames_with_cdp() {
         [18, 52, 86, 255],
         "actual guest pixels reach the product frame file"
     );
+    let prepared = cdp(
+        &mut pool,
+        &events,
+        40,
+        "Runtime.evaluate",
+        json!({"expression":r#"document.body.innerHTML="<input id='field' style='position:absolute;left:10px;top:10px;width:200px;height:40px'><button id='button' style='position:absolute;left:250px;top:10px;width:100px;height:40px'>Count</button>";document.body.dataset.clicks='0';document.querySelector('#button').onclick=()=>document.body.dataset.clicks=String(Number(document.body.dataset.clicks)+1);0"#,"returnByValue":true}),
+        Some(session),
+    );
+    assert!(prepared.get("error").is_none());
+    assert!(pool
+        .input(
+            "stale-surface",
+            &json!({"type":"press","x":30,"y":30,"button":1,"buttons":1})
+        )
+        .is_err());
+    for event in [
+        json!({"type":"press","x":30,"y":30,"button":1,"buttons":1}),
+        json!({"type":"release","x":30,"y":30,"button":1,"buttons":0}),
+        json!({"type":"key","key":65,"text":"a","modifiers":0}),
+        json!({"type":"keyup","key":65,"text":"a","modifiers":0}),
+        json!({"type":"text","text":"漢字🧪"}),
+        json!({"type":"composition","preedit":"にほん","selectionStart":3,"selectionEnd":3}),
+        json!({"type":"text","text":"日本"}),
+    ] {
+        pool.input("surface", &event).unwrap();
+    }
+    let mut current = Value::Null;
+    for id in 41..90 {
+        current = cdp(
+            &mut pool,
+            &events,
+            id,
+            "Runtime.evaluate",
+            json!({"expression":"document.querySelector('#field').value","returnByValue":true}),
+            Some(session),
+        );
+        if current["result"]["result"]["value"] == "a漢字🧪日本" {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(
+        current["result"]["result"]["value"], "a漢字🧪日本",
+        "actual pointer focus, key text, Unicode commit and composition replacement"
+    );
+    for event in [
+        json!({"type":"key","key":65,"text":"a","modifiers":0x04000000}),
+        json!({"type":"keyup","key":65,"text":"a","modifiers":0x04000000}),
+        json!({"type":"text","text":"replaced"}),
+        json!({"type":"press","x":270,"y":30,"button":1,"buttons":1}),
+        json!({"type":"release","x":270,"y":30,"button":1,"buttons":0}),
+    ] {
+        pool.input("surface", &event).unwrap();
+    }
+    for id in 90..140 {
+        current = cdp(
+            &mut pool,
+            &events,
+            id,
+            "Runtime.evaluate",
+            json!({"expression":"[document.querySelector('#field').value,document.body.dataset.clicks]","returnByValue":true}),
+            Some(session),
+        );
+        if current["result"]["result"]["value"] == json!(["replaced", "1"]) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(
+        current["result"]["result"]["value"],
+        json!(["replaced", "1"]),
+        "actual control shortcut and one pointer click"
+    );
     let foreign = cdp(
         &mut pool,
         &events,

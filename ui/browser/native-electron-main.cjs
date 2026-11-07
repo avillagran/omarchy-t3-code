@@ -7,6 +7,7 @@ require('./electron-private-fd.node').admit(data.privateBrowserFd,data.privateBr
 const {app,BrowserWindow,webContents}=require('electron');
 if(process.versions.electron!=='44.10.1')throw Error('unsupported_native_browser_runtime');
 app.setPath('userData',data.electronDirectory);app.setPath('sessionData',data.electronDirectory);
+const humanInput=require('./electron-human-input.cjs');
 const realm={};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'qt-target-scope.js'),'utf8'),realm);
 const LIMIT=256*1024*1024,MAX_TABS=128;
 let traceBytes=0;function trace(stage){const target=process.env.O3_NATIVE_ELECTRON_DIAGNOSTICS;if(target&&traceBytes<65536){const line=String(stage)+'\n';traceBytes+=line.length;fs.appendFileSync(target,line,{mode:0o600})}}
@@ -46,7 +47,7 @@ async function automate(tab,instance){trace('automate');
  if(webContents.fromDevToolsTargetId(info.targetInfo.targetId)!==tab.contents)throw Error('private_browser_target_mismatch');
  const target=info.targetInfo.targetId;
  tab.guard=realm.T3QtTargetScope.create(target,(...args)=>tab.contents.debugger.sendCommand(...args),()=>retire(tab,'private_browser_target_mismatch'));
- privatePost(tab,'proof',{viewTarget:target,cdpTarget:info.targetInfo.targetId});trace('proof');
+ tab.human=humanInput.create(tab.contents,tab.guard,services.humanInput);privatePost(tab,'proof',{viewTarget:target,cdpTarget:info.targetInfo.targetId});trace('proof');
 }
 async function privateCommand(frame){
  if(closing||!privateAlive)return;
@@ -104,13 +105,16 @@ async function control(command){
  if(command.type==='close')return shutdown('browser_closed');
  if(command.type==='permission-decision'){const pending=dialogs.get(command.requestId);if(pending){dialogs.delete(command.requestId);command.remember===true?pending.resolve({response:command.allow===true?0:1,checkboxChecked:false}):pending.reject(Error('native_dialog_unavailable'))}return}
  if(command.type==='deactivate'){selected='';surfaceId='';for(const tab of tabs.values())services.setShown(tab.key,false);return}
- let tab=tabs.get(keyOf(command));
+ if(command.type==='resize'){if(Number.isInteger(command.width)&&Number.isInteger(command.height)&&command.width>=240&&command.height>=240&&command.width<=3840&&command.height<=3840&&command.width*command.height<=3840*2160){data.width=command.width;data.height=command.height;for(const item of tabs.values())if(!item.closed)item.window.setContentSize(command.width,command.height);capture()}return}
+ const human=['press','release','move','double','wheel','key','keyup','text','composition'].includes(command.type);
+ let tab=tabs.get(human?selected:keyOf(command));
  if(command.type==='open'){
   tab=await open(command);if(command.automation===true)await automate(tab,command.automationInstance);
   if(command.background!==true){selected=keyOf(tab.key);surfaceId=command.surfaceId||'';for(const item of tabs.values())services.setShown(item.key,item===tab);tab.contents.focus()}
   if(command.url&&navigationAllowed(command.url))await tab.contents.loadURL(command.url);capture();return;
  }
  if(!tab||tab.closed)return;
+ if(human){if(tab.human&&tab.lease){await tab.human.accept(command);capture()}return}
  if(command.type==='automation'){await automate(tab,command.automationInstance);return}
  if(command.type==='activate'){if(command.automation===true)await automate(tab,command.automationInstance);selected=keyOf(tab.key);surfaceId=command.surfaceId||'';for(const item of tabs.values())services.setShown(item.key,item===tab);tab.contents.focus()}
  else if(command.type==='close-tab'){await retire(tab,'browser_tab_closed');tabs.delete(keyOf(tab.key));if(selected===keyOf(tab.key))selected='';ui({type:'closed',...tab.key})}
@@ -126,10 +130,12 @@ async function control(command){
 }
 app.whenReady().then(async()=>{
  services=await require('./native-electron-services.cjs').create({
+  failed:()=>shutdown('native_browser_service_failed'),
   event:line=>{trace('native-event');const event=JSON.parse(new TextDecoder().decode(line));const tab=tabs.get(keyOf(event));if(tab?.lease)privatePost(tab,'event',{lease:tab.lease,event})},
   painting:()=>capture(),pointer:event=>{const tab=tabs.get(keyOf(event));if(tab)ui({type:'automation-pointer',...tab.key,event})},
   showMessageBox:(options,owner)=>new Promise((resolve,reject)=>{const tab=[...tabs.values()].find(item=>item.window===owner&&item.contents.hostWebContents===owner.webContents);if(!tab||tab.closed||dialogs.size>=64){reject(Error('native_dialog_unavailable'));return}const requestId=crypto.randomUUID();dialogs.set(requestId,{tab,resolve,reject});ui({type:'native-dialog-request',requestId,...tab.key,origin:new URL(tab.contents.getURL()).origin,options})})
  });
+ if(typeof services.humanInput!=='function')throw Error('native_browser_assets_incompatible');
  const privateEnded=()=>{if(!privateAlive)return;privateAlive=false;for(const tab of tabs.values()){tab.guard?.close();services.detach(tab.key)}};let ordered=Promise.resolve();lines(pipe,LIMIT,privateCommand,privateEnded);lines(process.stdin,65536,value=>{if(value.type==='permission-decision'||value.type==='close')return control(value);ordered=ordered.then(()=>control(value));return ordered});ui({type:'ready',frameDirectory:data.frameDirectory});trace('ready');
 }).catch(()=>shutdown('browser_start_failed'));
 process.on('uncaughtException',()=>shutdown('browser_runtime_failed'));process.on('unhandledRejection',()=>shutdown('browser_runtime_failed'));

@@ -897,6 +897,8 @@ impl Pool {
                     | "wheel"
                     | "key"
                     | "keyup"
+                    | "text"
+                    | "composition"
                     | "resize"
                     | "capture"
             )
