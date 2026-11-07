@@ -14,9 +14,10 @@ fn compiled_notices_match_locked_dependencies_and_current_build_target() {
 fn actual_compiled_manifest_has_metadata_and_lazy_exact_notices_without_environment() {
  let metadata=licenses::read().unwrap();let entries=metadata["entries"].as_array().unwrap();assert!(entries.len()>200);assert_eq!(metadata["scope"],"application");
  assert!(entries.iter().all(|e|e.get("noticeText").is_none()));
- for name in ["T3 Code","Lucide icons","@pierre/diffs","t3-protocol","serde","ot3","Rust standard library","Lucide action icons"]{
+ for name in ["T3 Code","Lucide icons","@pierre/diffs","t3-protocol","serde","ot3","Rust standard library","Lucide action icons","effect"]{
   let e=entries.iter().find(|e|e["name"]==name).unwrap();let text=licenses::notice(&json!({"manifestId":metadata["manifestId"],"entryKey":e["entryKey"]})).unwrap();assert!(!text["noticeText"].as_str().unwrap().is_empty());assert_eq!(text["entryKey"],e["entryKey"]);
  }
+ let effect=entries.iter().find(|entry|entry["name"]=="effect").unwrap();assert_eq!(effect["version"],"4.1.2");assert_eq!(effect["bundles"],json!(["desktop"]));let effect_notice=licenses::notice(&json!({"manifestId":metadata["manifestId"],"entryKey":effect["entryKey"]})).unwrap();assert_eq!(effect_notice["noticeText"],include_str!("../licenses/Effect-MIT.txt"));
  assert_eq!(licenses::notice(&json!({"manifestId":"old","entryKey":entries[0]["entryKey"]})).unwrap_err(),"license_manifest_changed");
  assert_eq!(licenses::notice(&json!({"manifestId":metadata["manifestId"],"entryKey":"missing"})).unwrap_err(),"unknown_license_entry");
  assert!(omarchy_t3_client::write::execute(&json!({"op":"licenses-read"})).is_ok());
