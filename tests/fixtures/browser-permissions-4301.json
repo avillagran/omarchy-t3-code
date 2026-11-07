@@ -1,0 +1,139 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "effectVersion": "4.1.2",
+  "sources": {
+    "apps/desktop/src/preview/BrowserSession.ts": "9e66dd7d6c8d6e376d7f9a35ae1f58d82225fb5a5549781551baaba89adc3f03"
+  },
+  "policy": [
+    {
+      "permission": "clipboard-sanitized-write",
+      "request": true,
+      "check": true
+    },
+    {
+      "permission": "geolocation",
+      "request": true,
+      "check": true
+    },
+    {
+      "permission": "fullscreen",
+      "request": true,
+      "check": true
+    },
+    {
+      "permission": "pointerLock",
+      "request": true,
+      "check": true
+    },
+    {
+      "permission": "loopback-network",
+      "request": true,
+      "check": true
+    },
+    {
+      "permission": "notifications",
+      "request": false,
+      "check": false
+    },
+    {
+      "permission": "local-fonts",
+      "request": false,
+      "check": false
+    },
+    {
+      "permission": "media",
+      "request": false,
+      "check": false
+    },
+    {
+      "permission": "camera",
+      "request": false,
+      "check": false
+    },
+    {
+      "permission": "microphone",
+      "request": false,
+      "check": false
+    },
+    {
+      "permission": "unknown",
+      "request": false,
+      "check": false
+    }
+  ],
+  "trace": [
+    {
+      "label": "first",
+      "url": "https://Example.test/path",
+      "answer": false
+    },
+    {
+      "label": "busy-other-session",
+      "url": "https://busy.test/path",
+      "answer": false
+    },
+    {
+      "label": "remembered-block",
+      "url": "https://example.test:443/other",
+      "answer": false
+    },
+    {
+      "label": "retry-after-busy",
+      "url": "https://busy.test/path",
+      "answer": false
+    },
+    {
+      "label": "retry-after-dialog-failure",
+      "url": "https://busy.test/path",
+      "answer": true
+    },
+    {
+      "label": "remembered-allow",
+      "url": "https://busy.test/other",
+      "answer": true
+    },
+    {
+      "label": "invalid-origin",
+      "url": "data:text/plain,owned",
+      "answer": false
+    }
+  ],
+  "checks": {
+    "blocked": false,
+    "allowed": true,
+    "otherSession": false,
+    "unknown": false
+  },
+  "prompts": [
+    {
+      "type": "question",
+      "buttons": [
+        "Allow",
+        "Block"
+      ],
+      "defaultId": 1,
+      "cancelId": 1,
+      "message": "https://example.test wants to see text and images copied to the clipboard"
+    },
+    {
+      "type": "question",
+      "buttons": [
+        "Allow",
+        "Block"
+      ],
+      "defaultId": 1,
+      "cancelId": 1,
+      "message": "https://busy.test wants to see text and images copied to the clipboard"
+    },
+    {
+      "type": "question",
+      "buttons": [
+        "Allow",
+        "Block"
+      ],
+      "defaultId": 1,
+      "cancelId": 1,
+      "message": "https://busy.test wants to see text and images copied to the clipboard"
+    }
+  ]
+}

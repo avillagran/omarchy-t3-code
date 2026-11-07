@@ -617,6 +617,7 @@ impl Pool {
         let environment = environment.to_owned();
         let visited_key = (environment.clone(), profile.to_owned());
         let origin = origin.to_owned();
+        let reader_profile = profile.to_owned();
         session.reader = Some(thread::spawn(move || {
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
@@ -630,6 +631,20 @@ impl Pool {
                     continue;
                 };
                 match text(&value, "type") {
+                    "permission-request" if value["permission"] == "clipboard-read" => {
+                        let request = text(&value, "requestId");
+                        let origin_value = text(&value, "origin");
+                        if uuid::Uuid::parse_str(request).is_ok() && !origin_value.is_empty() {
+                            receive(
+                                json!({"kind":"permission-request","environment":environment,"originKey":origin,"processId":id,"profileId":reader_profile,"nativeRequestId":request,"thread":value["threadId"],"tabId":value["tabId"],"origin":origin_value}),
+                            );
+                        }
+                    }
+                    "permission-cancelled" => {
+                        receive(
+                            json!({"kind":"permission-cancelled","processId":id,"nativeRequestId":value["requestId"]}),
+                        );
+                    }
                     "cookie-imported" => {
                         // Dedicated response channel: cookie results never enter the UI/event callback.
                         let _ = cookie_tx.try_send(
@@ -694,6 +709,7 @@ impl Pool {
                     _ => {} // No raw JS evaluation, cookies or unhandled native prompts escape.
                 }
             }
+            receive(json!({"kind":"permission-source-closed","processId":id}));
             if alive.load(Ordering::SeqCst) {
                 let view = active.lock().unwrap().clone();
                 if let Some(view) = view.filter(|v| v.process == id) {
@@ -836,6 +852,25 @@ impl Pool {
             .find(|s| s.id == view.process)
             .ok_or("browser_runtime_closed")?;
         session.send(event.clone())
+    }
+    pub(crate) fn permission_decision(
+        &mut self,
+        source: &Value,
+        allow: bool,
+        remember: bool,
+    ) -> Result<()> {
+        let session = self
+            .sessions
+            .get_mut(&(
+                text(source, "environment").into(),
+                text(source, "profileId").into(),
+            ))
+            .filter(|session| {
+                session.id == text(source, "processId")
+                    && session.origin == text(source, "originKey")
+            })
+            .ok_or("browser_view_changed")?;
+        session.send(json!({"type":"permission-decision","requestId":source["nativeRequestId"],"allow":allow,"remember":remember}))
     }
     pub fn close_tab(
         &mut self,

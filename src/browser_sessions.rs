@@ -89,6 +89,8 @@ impl Reporter {
     }
 }
 enum Message {
+    PermissionDecision(Value),
+    PermissionWake,
     BindPrivate {
         environment: String,
         origin: String,
@@ -144,7 +146,7 @@ struct Cleanup {
     retained: std::collections::HashSet<String>,
 }
 struct CleanupLease {
-    sender: mpsc::SyncSender<Message>,
+    sender: Arc<mpsc::SyncSender<Message>>,
     id: String,
 }
 impl crate::browser_cleanup::Lease for CleanupLease {
@@ -197,7 +199,7 @@ impl Drop for CleanupLease {
 }
 #[derive(Clone)]
 pub struct Manager {
-    sender: mpsc::SyncSender<Message>,
+    sender: Arc<mpsc::SyncSender<Message>>,
     generation: Arc<AtomicU64>,
     desired: Arc<Mutex<Option<Value>>>,
     output: Output,
@@ -275,6 +277,14 @@ impl Manager {
         let storage = config.storage_root();
         let settings = config.client_settings_path();
         let (sender, receiver) = mpsc::sync_channel(256);
+        let sender = Arc::new(sender);
+        let permission_pending = Arc::new(Mutex::new(None::<Value>));
+        let callback_permissions = permission_pending.clone();
+        let callback_sender = Arc::downgrade(&sender);
+        let permission_automatic = Arc::new(Mutex::new(HashMap::<(String, String), Value>::new()));
+        let callback_automatic = permission_automatic.clone();
+        let permission_faults = Arc::new(Mutex::new(HashMap::<String, Value>::new()));
+        let callback_faults = permission_faults.clone();
         let ready = Arc::new(AtomicBool::new(true));
         let running = ready.clone();
         let generation = Arc::new(AtomicU64::new(0));
@@ -283,6 +293,65 @@ impl Manager {
         let (callback_grants, callback_output, callback_wanted) =
             (grants.clone(), output.clone(), desired.clone());
         let mut pool = browser_guest::Pool::new(config, move |data| {
+            if data["kind"] == "permission-request" {
+                let mut pending = callback_permissions.lock().unwrap();
+                if pending.is_some() {
+                    // Busy/failed prompts are not remembered as a user choice.
+                    let mut automatic = callback_automatic.lock().unwrap();
+                    if automatic.len() < 1024 {
+                        automatic.insert(
+                            (
+                                text(&data, "processId").into(),
+                                text(&data, "nativeRequestId").into(),
+                            ),
+                            data,
+                        );
+                    } else {
+                        callback_faults
+                            .lock()
+                            .unwrap()
+                            .insert(text(&data, "processId").into(), data);
+                    }
+                    drop(automatic);
+                    // A full actor queue already guarantees a future drain. Do
+                    // not block a reader that the actor may need to join.
+                    if let Some(sender) = callback_sender.upgrade() {
+                        let _ = sender.try_send(Message::PermissionWake);
+                    }
+                } else {
+                    let mut source = data;
+                    source["requestId"] = json!(uuid::Uuid::new_v4().to_string());
+                    callback_output(
+                        json!({"kind":"permission-request","requestId":source["requestId"],"environment":source["environment"],"origin":source["origin"]}),
+                    );
+                    *pending = Some(source);
+                }
+                return;
+            }
+            if matches!(
+                text(&data, "kind"),
+                "permission-cancelled" | "permission-source-closed"
+            ) {
+                if data["kind"] == "permission-source-closed" {
+                    callback_automatic
+                        .lock()
+                        .unwrap()
+                        .retain(|(process, _), _| process != text(&data, "processId"));
+                }
+                let mut pending = callback_permissions.lock().unwrap();
+                if pending.as_ref().is_some_and(|source| {
+                    source["processId"] == data["processId"]
+                        && (data["kind"] == "permission-source-closed"
+                            || source["nativeRequestId"] == data["nativeRequestId"])
+                }) {
+                    if let Some(source) = pending.take() {
+                        callback_output(
+                            json!({"kind":"permission-closed","requestId":source["requestId"]}),
+                        );
+                    }
+                }
+                return;
+            }
             if data["kind"] == "status" {
                 let s = &data["snapshot"];
                 let k = key(
@@ -327,6 +396,30 @@ impl Manager {
             let mut epochs = HashMap::<String, (String, String)>::new();
             let mut revisions = HashMap::<(String, String), u64>::new();
             for message in receiver {
+                let automatic = permission_automatic
+                    .lock()
+                    .unwrap()
+                    .drain()
+                    .map(|(_, source)| source)
+                    .collect::<Vec<_>>();
+                for source in automatic {
+                    let _ = pool.permission_decision(&source, false, false);
+                }
+                let faults = permission_faults
+                    .lock()
+                    .unwrap()
+                    .drain()
+                    .map(|(_, source)| source)
+                    .collect::<Vec<_>>();
+                for source in faults {
+                    let environment = text(&source, "environment");
+                    let profile = text(&source, "profileId");
+                    if pool.process_id(environment, profile).as_deref()
+                        == Some(text(&source, "processId"))
+                    {
+                        let _ = pool.close_profile(environment, profile);
+                    }
+                }
                 if wanted.lock().unwrap().is_none() {
                     pool.hide();
                     active = None;
@@ -441,11 +534,36 @@ impl Manager {
                         })();
                         let _ = done.send(result);
                     }
+                    Message::PermissionWake => {}
+                    Message::PermissionDecision(input) => {
+                        let mut pending = permission_pending.lock().unwrap();
+                        let Some(source) = pending
+                            .as_ref()
+                            .filter(|source| {
+                                source["requestId"] == input["requestId"]
+                                    && input["allow"].is_boolean()
+                            })
+                            .cloned()
+                        else {
+                            continue;
+                        };
+                        pending.take();
+                        drop(pending);
+                        let _ = pool.permission_decision(&source, input["allow"] == true, true);
+                        worker_output(
+                            json!({"kind":"permission-closed","requestId":source["requestId"]}),
+                        );
+                    }
                     Message::Hide => {
                         pool.hide();
                         active = None;
                     }
                     Message::Shutdown(done) => {
+                        if let Some(source) = permission_pending.lock().unwrap().take() {
+                            worker_output(
+                                json!({"kind":"permission-closed","requestId":source["requestId"]}),
+                            );
+                        }
                         for grant in grants.lock().unwrap().values() {
                             grant.allowed.store(false, Ordering::SeqCst);
                         }
@@ -1073,6 +1191,9 @@ impl Manager {
     }
     pub fn request(&self, input: Value, visible: bool) {
         match text(&input, "op") {
+            "browser-permission" if input.to_string().len() <= 1000 => {
+                let _ = self.sender.try_send(Message::PermissionDecision(input));
+            }
             "browser-hide" => self.hide(),
             "browser-show" => {
                 if !visible {

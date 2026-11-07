@@ -335,7 +335,7 @@ Item {
   readonly property var nativeFocusItem:panelLayout.Window.activeFocusItem
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
   readonly property var nativeShortcutContext:({terminalFocus:!!(root.sidePanelItem&&root.sidePanelItem.terminalItem&&root.sidePanelItem.terminalItem.terminalFocused),terminalOpen:root.sideShown&&root.sideTab==="terminal",previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
-  readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
+  readonly property bool nativeModalOpen:browserPermission.opened||documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!boardOpen&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
     function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.pinnedRows.concat(root.activeRows).concat(root.workingRows).concat(root.inputRows).concat(root.snoozedRows).concat(root.settledRows)}
@@ -910,8 +910,9 @@ Item {
     return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)
   }
   function stateColor(t) { return T3Palette.detailColor(Sidebar.detail(t)) }
+  Connections{target:root.bridge;function onBrowserPermissionChanged(){if(root.bridge.browserPermission)root.open()}}
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
-  function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
+  function close() { if(browserPermission.opened)browserPermission.choose(false);documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
   function toggle() { opened ? close() : open() }
   // Above the sidebar footer button that opened it, kept inside the window.
   // y follows the popup's height, which is only known once its rows are laid out.
@@ -1071,7 +1072,7 @@ Item {
     resizable: true
     onResized: function(w,h) { root.resizePanel(w/Style.space(1),h/Style.space(1)) }
     padding: 0
-    focusTarget: root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
+    focusTarget: browserPermission.opened ? browserPermission.defaultFocusItem : root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
     T3Starfield {
       id:sky;objectName:"t3Starfield"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
@@ -1321,6 +1322,7 @@ Item {
         }
       }
       Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.sideShown){root.closeSide()}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
+      T3BrowserPermission{id:browserPermission;popupHost:panelLayout;bridge:root.bridge}
       T3WorkspaceConfirmation {popupHost:panelLayout;bridge:root.bridge}
       T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || []; preferredProjectKey:Array.isArray(root.projectScope)?root.projectScope.length===1?root.projectScope[0]:"":root.projectScope }
       Controls.Popup {

@@ -697,6 +697,99 @@ fn actual_runtime_registers_global_observer_and_drives_the_product_manager() {
             break;
         }
     }
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    listener.set_nonblocking(true).unwrap();
+    let stop_http = Arc::new(AtomicBool::new(false));
+    let http_stopped = stop_http.clone();
+    let http = thread::spawn(move || {
+        while !http_stopped.load(Ordering::SeqCst) {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    stream
+                        .set_read_timeout(Some(Duration::from_millis(100)))
+                        .unwrap();
+                    let mut request = [0; 8192];
+                    let _ = stream.read(&mut request);
+                    let body = "<html><title>clipboard-loading</title><script>setTimeout(async()=>{const notification=await Notification.requestPermission();try{await navigator.clipboard.readText();document.title='clipboard-allowed-'+notification+'-'+location.pathname}catch(e){document.title='clipboard-blocked-'+notification+'-'+location.pathname}},700)</script></html>";
+                    let _ = write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body);
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(10))
+                }
+                Err(_) => break,
+            }
+        }
+    });
+    for (index, (host, allow, prompt_expected)) in [
+        ("127.0.0.1", false, true),
+        ("127.0.0.1", false, false),
+        ("localhost", true, true),
+        ("localhost", true, false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        protocol::api::preview::navigate(
+            &connection,
+            "controller-thread",
+            tab,
+            &format!("http://{host}:{port}/clipboard-{index}"),
+            None,
+        )
+        .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(12);
+        if prompt_expected {
+            let prompt = loop {
+                assert!(
+                    Instant::now() < deadline,
+                    "Actual Qt clipboard request did not reach app broker for {host}"
+                );
+                if let Ok(event) = output.recv_timeout(Duration::from_millis(100)) {
+                    if event["kind"] == "permission-request" {
+                        break event;
+                    }
+                }
+            };
+            assert_eq!(prompt["origin"], format!("http://{host}:{port}"));
+            manager.request(
+            json!({"op":"browser-permission","requestId":"stale-unrelated-request","allow":true}),
+            false,
+        );
+            manager.request(
+                json!({"op":"browser-permission","requestId":prompt["requestId"],"allow":allow}),
+                false,
+            );
+        }
+        let title = format!(
+            "clipboard-{}-denied-/clipboard-{index}",
+            if allow { "allowed" } else { "blocked" }
+        );
+        loop {
+            assert!(
+                Instant::now() < deadline,
+                "Actual Qt clipboard decision did not settle for {host}"
+            );
+            while let Ok(event) = output.try_recv() {
+                assert_ne!(
+                    event["kind"], "permission-request",
+                    "A remembered per-origin choice must not prompt again"
+                );
+            }
+            let sessions = preview_transport::read(&environment, "controller-thread").unwrap();
+            if sessions["result"]["sessions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|session| session["tabId"] == tab && session["navStatus"]["title"] == title)
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+    }
+    stop_http.store(true, Ordering::SeqCst);
+    http.join().unwrap();
     protocol::api::preview::close(&connection, "controller-thread", Some(tab)).unwrap();
     runtime.stop().unwrap();
     assert!(owned_runtime::current_environment().unwrap().is_none());

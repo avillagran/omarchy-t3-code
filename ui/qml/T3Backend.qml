@@ -1473,6 +1473,8 @@ Singleton {
   property int browserPageWidth:900
   property int browserPageHeight:620
   property var browserCleanups:({})
+  property var browserPermission:null
+  function answerBrowserPermission(allow){var prompt=browserPermission;if(!prompt)return;browserPermission=null;send({op:"browser-permission",requestId:prompt.requestId,allow:allow===true})}
   property var browserSurface:BrowserSurface.empty()
   function mountBrowserPage(width,height){browserMountId=uuid();browserPageMounted=true;BrowserSurface.resize(root,width,height);syncBrowserSurface(true);return browserMountId}
   function unmountBrowserPage(owner){if(owner&&owner!==browserMountId)return;browserMountId="";browserPageMounted=false;BrowserSurface.dismiss(root)}
@@ -2243,7 +2245,11 @@ Singleton {
       if (event.stream !== undefined && !acceptStream(event)) return
       var data = event.data
       if(event.type==="mosaic-messages"||event.type==="mosaic-state"){receiveMosaic(event.type,data)}
-      else if(event.type==="browser-surface"){BrowserSurface.receive(root,data)}
+      else if(event.type==="browser-surface"){
+        if(data.kind==="permission-request")root.browserPermission={requestId:data.requestId,environment:data.environment,origin:String(data.origin||"")}
+        else if(data.kind==="permission-closed"){if(root.browserPermission&&root.browserPermission.requestId===data.requestId)root.browserPermission=null}
+        else BrowserSurface.receive(root,data)
+      }
       else if(event.type==="preview-state"){Previews.receive(root,data)}
       else if(event.type==="devices-state"){Devices.receiveState(root,data)}
       else if(event.type==="device-surface"){receiveDeviceSurface(data)}

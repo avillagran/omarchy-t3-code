@@ -69,10 +69,11 @@ Window {
     onLoaded:{item.painting.connect(function(active){tab.automationPainting=active})}
    }
    anchors.fill:parent;visible:tab.selected||tab.automationPainting;opacity:tab.selected?1:0
+   Component.onDestruction:browserHost.cancelPermissions(tab.threadId,tab.tabId)
    function navigate(url){if(typeof url!=="string")return;if(!/^(https?:|about:blank(?:$|#))/i.test(url)){var external=browserHost.externalProtocolPromptUrl(url);if(external)browserHost.event({type:"external-protocol",threadId:tab.threadId,tabId:tab.tabId,url:external});return}web.url=url}
    WebEngineView{id:web;anchors.fill:parent;profile:browserProfile;focus:tab.selected;zoomFactor:browserData.zoomFactor || 1
     settings.localContentCanAccessFileUrls:false;settings.localContentCanAccessRemoteUrls:false;settings.javascriptCanOpenWindows:true;settings.fullScreenSupportEnabled:true
-    onPermissionRequested:function(p){if(p.permissionType===WebEnginePermission.PermissionType.ClipboardReadWrite||p.permissionType===WebEnginePermission.PermissionType.Notifications||p.permissionType===WebEnginePermission.PermissionType.Geolocation)p.grant();else p.deny()}
+    onPermissionRequested:function(p){browserHost.permission(p,tab.threadId,tab.tabId)}
     onFullScreenRequested:function(r){r.accept()}
     onContextMenuRequested:function(r){r.accepted=true;browserHost.event({type:"context-menu",threadId:tab.threadId,tabId:tab.tabId,x:r.position.x,y:r.position.y})}
     onFileDialogRequested:function(r){r.accepted=true;r.dialogReject();browserHost.event({type:"file-dialog",threadId:tab.threadId,tabId:tab.tabId})}

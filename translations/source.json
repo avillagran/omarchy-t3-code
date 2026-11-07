@@ -2170,6 +2170,9 @@
     "Add variable": "Add variable",
     "Remove provider instance?": "Remove provider instance?",
     "Terminal input": "Terminal input",
-    "Terminal scrollback": "Terminal scrollback"
+    "Terminal scrollback": "Terminal scrollback",
+    "Allow": "Allow",
+    "Block": "Block",
+    "{origin} wants to see text and images copied to the clipboard": "{origin} wants to see text and images copied to the clipboard"
   }
 }

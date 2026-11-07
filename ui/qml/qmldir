@@ -172,3 +172,5 @@ T3HostBadge 1.0 T3HostBadge.qml
 T3TerminalPanel 1.0 T3TerminalPanel.qml
 T3TerminalPane 1.0 T3TerminalPane.qml
 T3TerminalScrollbar 1.0 T3TerminalScrollbar.qml
+
+T3BrowserPermission 1.0 T3BrowserPermission.qml

@@ -685,7 +685,7 @@ fn watch(client: Client) -> Result<()> {
                 }
                 if matches!(
                     text(&v, "op"),
-                    "browser-show" | "browser-hide" | "browser-input" | "browser-control"
+                    "browser-show" | "browser-hide" | "browser-input" | "browser-control" | "browser-permission"
                 ) {
                     browser_manager.request(v, input_visible);
                     continue;
