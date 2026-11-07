@@ -912,6 +912,7 @@ dependencies = [
  "cbc",
  "chrono",
  "flate2",
+ "hmac",
  "image",
  "libc",
  "mime_guess",

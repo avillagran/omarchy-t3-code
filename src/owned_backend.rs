@@ -14,6 +14,8 @@ use std::os::{
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 use zeroize::Zeroizing;
+mod auth;
+use std::sync::Mutex;
 
 pub struct Config {
     pub executable: PathBuf,
@@ -34,11 +36,11 @@ impl Config {
 /// A successful launch has passed child identity, OAuth and authenticated RPC
 /// checks. No bearer or bootstrap seed is written to disk or returned in status.
 pub struct Owner {
-    child: Child,
+    child: Mutex<Child>,
     origin: String,
-    connection: protocol::Connection,
+    authorization: auth::Auth,
     profile: PathBuf,
-    _lock: fs::File,
+    _lock: Mutex<Option<fs::File>>,
 }
 impl Owner {
     pub fn launch(config: &Config) -> Result<Self> {
@@ -102,12 +104,25 @@ impl Owner {
             crate::desktop_browser_ipc::duplicate_child_source(reader.as_raw_fd())
                 .map_err(|_| "owned_backend_ipc_unavailable")?;
         let fd = bootstrap_source.as_raw_fd();
-        let seed = Zeroizing::new(format!(
+        let secret = Zeroizing::new(format!(
             "{}{}",
             uuid::Uuid::new_v4().simple(),
             uuid::Uuid::new_v4().simple()
         ));
-        let envelope = json!({"mode":"desktop","noBrowser":true,"host":"127.0.0.1","port":3773,"desktopBootstrapToken":seed.as_str(),"tailscaleServeEnabled":false,"tailscaleServePort":3773,"t3Home":profile});
+        let seed = auth::token(&secret, Utc::now().timestamp_millis())?;
+        // Borrow credential strings while serializing directly into private IPC;
+        // never create a secret-bearing serde_json::Value or disk payload.
+        let envelope = Envelope {
+            mode: "desktop",
+            no_browser: true,
+            host: "127.0.0.1",
+            port: 3773,
+            desktop_bootstrap_token: &seed,
+            desktop_bootstrap_secret: &secret,
+            tailscale_serve_enabled: false,
+            tailscale_serve_port: 3773,
+            t3_home: &profile,
+        };
         let mut command = Command::new(&config.executable);
         command
             .args(["serve", "--mode", "desktop", "--bootstrap-fd"])
@@ -174,15 +189,15 @@ impl Owner {
                 return Err("owned_backend_exited_before_ready".into());
             }
             if let Ok(origin) = runtime_origin(&profile, child.id()) {
-                if let Ok(connection) = authenticate(&http, &origin, &seed) {
+                if let Ok(grant) = auth::exchange(&http, &origin, &seed) {
                     let child = pending.child.take().ok_or("owned_backend_start_failed")?;
                     let lock = pending.lock.take().ok_or("owned_backend_start_failed")?;
                     return Ok(Self {
-                        child,
+                        child: Mutex::new(child),
+                        authorization: auth::Auth::new(secret, grant, http, origin.clone()),
                         origin,
-                        connection,
                         profile,
-                        _lock: lock,
+                        _lock: Mutex::new(Some(lock)),
                     });
                 }
             }
@@ -199,14 +214,72 @@ impl Owner {
         &self.profile
     }
     pub fn connection(&self) -> protocol::Connection {
-        self.connection.clone()
+        self.authorization.snapshot()
+    }
+    pub fn fresh_connection(&self) -> Result<protocol::Connection> {
+        if !self.alive()? {
+            return Err("owned_backend_stopped".into());
+        }
+        let result = self.authorization.fresh();
+        if !self.alive()? {
+            return Err("owned_backend_stopped".into());
+        }
+        result
+    }
+    pub fn refresh_authorization(&self) -> Result<protocol::Connection> {
+        if !self.alive()? {
+            return Err("owned_backend_stopped".into());
+        }
+        let result = self.authorization.refresh();
+        if !self.alive()? {
+            return Err("owned_backend_stopped".into());
+        }
+        result
+    }
+    pub fn stop(&self) -> Result<()> {
+        self.authorization.begin_close();
+        let result = {
+            let mut child = self
+                .child
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            stop_child(&mut child);
+            child
+                .try_wait()
+                .map_err(|_| "owned_backend_state_unavailable".to_owned())
+                .and_then(|status| {
+                    if status.is_some() {
+                        Ok(())
+                    } else {
+                        Err("owned_backend_stop_failed".into())
+                    }
+                })
+        };
+        self.authorization.finish_close();
+        if result.is_ok() {
+            self._lock
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .take();
+        }
+        result
     }
     pub fn is_running(&mut self) -> Result<bool> {
-        Ok(self
+        self.alive()
+    }
+    fn alive(&self) -> Result<bool> {
+        let alive = self
             .child
+            .lock()
+            .map_err(|_| "owned_backend_state_unavailable")?
             .try_wait()
             .map_err(|_| "owned_backend_state_unavailable")?
-            .is_none())
+            .is_none();
+        if !alive {
+            self.authorization.begin_close();
+            self.authorization.finish_close();
+        }
+        Ok(alive)
     }
 }
 // Hold the profile lock for the owner's entire lifetime, including startup.
@@ -223,9 +296,10 @@ impl Drop for Pending {
 }
 impl Drop for Owner {
     fn drop(&mut self) {
-        stop_child(&mut self.child);
+        let _ = self.stop();
     }
 }
+
 fn stop_child(child: &mut Child) {
     match child.try_wait() {
         Ok(None) => {}
@@ -278,47 +352,18 @@ fn runtime_origin(profile: &Path, pid: u32) -> Result<String> {
     }
     Ok(origin.into())
 }
-fn authenticate(
-    http: &reqwest::blocking::Client,
-    origin: &str,
-    seed: &str,
-) -> Result<protocol::Connection> {
-    let response = http
-        .post(format!("{origin}/oauth/token"))
-        .form(&[("subject_token", seed)])
-        .send()
-        .map_err(|_| "owned_backend_auth_failed")?;
-    if !response.status().is_success() {
-        return Err("owned_backend_auth_failed".into());
-    }
-    let mut bytes = Zeroizing::new(Vec::new());
-    response
-        .take(65537)
-        .read_to_end(&mut bytes)
-        .map_err(|_| "owned_backend_auth_failed")?;
-    if bytes.len() > 65536 {
-        return Err("owned_backend_auth_failed".into());
-    }
-    let value: Value = serde_json::from_slice(&bytes).map_err(|_| "owned_backend_auth_failed")?;
-    if text(&value, "token_type") != "Bearer"
-        || value["expires_in"].as_u64().is_none_or(|n| n == 0)
-        || text(&value, "scope").is_empty()
-    {
-        return Err("owned_backend_auth_failed".into());
-    }
-    let connection = t3_connection(
-        origin,
-        protocol::Credential::bearer(text(&value, "access_token"))?,
-    )?;
-    // A runtime file and token exchange alone are not readiness. Prove the
-    // actual authenticated RPC transport before publishing the owner.
-    protocol::api::call(
-        &connection,
-        "server.getConfig",
-        &json!({}),
-        Some(Duration::from_secs(2)),
-    )?;
-    Ok(connection)
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Envelope<'a> {
+    mode: &'static str,
+    no_browser: bool,
+    host: &'static str,
+    port: u16,
+    desktop_bootstrap_token: &'a str,
+    desktop_bootstrap_secret: &'a str,
+    tailscale_serve_enabled: bool,
+    tailscale_serve_port: u16,
+    t3_home: &'a Path,
 }
 
 #[cfg(test)]
@@ -392,5 +437,30 @@ mod tests {
             matches!(Owner::launch(&config),Err(error) if error=="owned_backend_control_socket_path_too_long")
         );
         assert!(!config.state_root.exists());
+    }
+    #[test]
+    fn actual_previous_rotating_bucket_authenticates_without_exporting_secret() {
+        let root = std::env::temp_dir().join(format!(
+            "op-{}",
+            &uuid::Uuid::new_v4().simple().to_string()[..12]
+        ));
+        fs::create_dir(&root).unwrap();
+        let config = Config {
+            executable: PathBuf::from("/fixture/o3-server"),
+            state_root: root.join("state"),
+        };
+        let owner = Owner::launch(&config).unwrap();
+        let credential = owner
+            .authorization
+            .credential(Utc::now().timestamp_millis() - auth::WINDOW_MS)
+            .unwrap();
+        let http = reqwest::blocking::Client::builder()
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(Duration::from_secs(2))
+            .build()
+            .unwrap();
+        let grant = auth::exchange(&http, owner.origin(), &credential).unwrap();
+        assert!(!grant.connection.same_session_admission(&owner.connection()));
     }
 }

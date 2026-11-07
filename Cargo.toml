@@ -12,6 +12,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 chrono = "0.4"
 sha2 = "0.10"
+hmac = "=0.12.1"
 libc = "0.2"
 tungstenite = { version = "0.28", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
 uuid = { version = "1", features = ["v4"] }

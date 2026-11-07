@@ -42,3 +42,59 @@ fn actual_child_auth_rpc_profile_lock_and_shutdown_are_owned() {
         "shutdown retains the private profile"
     );
 }
+
+#[test]
+fn rotating_renewal_preserves_snapshots_and_uses_actual_rpc_socket_identities() {
+    let root = std::env::temp_dir().join(format!(
+        "oa-{}",
+        &uuid::Uuid::new_v4().simple().to_string()[..12]
+    ));
+    fs::create_dir(&root).unwrap();
+    let config = Config {
+        executable: PathBuf::from("/fixture/o3-server"),
+        state_root: root.join("state"),
+    };
+    let owner = Owner::launch(&config).unwrap();
+    let before = owner.connection();
+    let socket = before
+        .rpc_session(t3_protocol::SessionOptions::default())
+        .unwrap();
+    let identity = socket.id().to_owned();
+    assert!(owner
+        .fresh_connection()
+        .unwrap()
+        .same_session_admission(&before));
+    assert!(socket.is_open());
+    assert_eq!(socket.id(), identity);
+    let renewed = owner.refresh_authorization().unwrap();
+    assert!(!renewed.same_session_admission(&before));
+    assert!(before.same_session_admission(&before.clone()));
+    assert_eq!(socket.id(), identity);
+    let next = renewed
+        .rpc_session(t3_protocol::SessionOptions::default())
+        .unwrap();
+    assert_ne!(next.id(), identity);
+    next.close();
+    socket.close();
+}
+
+#[test]
+fn explicit_shutdown_releases_private_profile_while_old_snapshots_are_retained() {
+    let root = std::env::temp_dir().join(format!(
+        "os-{}",
+        &uuid::Uuid::new_v4().simple().to_string()[..12]
+    ));
+    fs::create_dir(&root).unwrap();
+    let config = Config {
+        executable: PathBuf::from("/fixture/o3-server"),
+        state_root: root.join("state"),
+    };
+    let old = Owner::launch(&config).unwrap();
+    let snapshot = old.connection();
+    old.stop().unwrap();
+    assert!(old.fresh_connection().is_err());
+    let mut replacement = Owner::launch(&config).unwrap();
+    old.stop().unwrap();
+    assert!(replacement.is_running().unwrap());
+    assert!(snapshot.same_session_admission(&snapshot.clone()));
+}
