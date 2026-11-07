@@ -34,6 +34,7 @@ int main(int argc,char **argv){
    else if(operation=="oversized")clipboard->setText(QString(17*1024*1024,QChar('B')));
    else if(operation=="many"){auto *mime=new QMimeData;for(int i=0;i<130;i++)mime->setData(QString("application/x-owned-%1").arg(i),QByteArray("x"));mime->setText("owned metadata cap");clipboard->setMimeData(mime);}
    else if(operation=="image"){QImage image(2,2,QImage::Format_ARGB32);image.fill(QColor("#123456"));clipboard->setImage(image);}
+   else if(operation=="read-image"){const auto image=clipboard->image();const auto pixel=image.isNull()?QColor():image.pixelColor(0,0);reply({{"id",row["id"]},{"width",image.width()},{"height",image.height()},{"red",pixel.red()},{"green",pixel.green()},{"blue",pixel.blue()},{"alpha",pixel.alpha()}});}
    else if(operation=="read")reply({{"id",row["id"]},{"text",clipboard->text()}});
    else if(operation=="quit"){app.quit();return;}
    if(operation=="text"||operation=="image"||operation=="large"||operation=="at-limit"||operation=="oversized"||operation=="many")QTimer::singleShot(40,&app,[reply,row]{reply({{"id",row["id"]},{"ready",true}});});

@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""Acquire the lock-pinned keyboard oracle code privately without lifecycle scripts or browser downloads."""
+import json,os,subprocess,tempfile
+from pathlib import Path
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+out=Path(tempfile.mkdtemp(prefix='playwright-core-1.60.0-',dir='/home/node/BuildCache/o3-desktop-next'));print('Pinned keyboard source: '+str(out),flush=True)
+args=['podman','run','--rm','--pull=never','--read-only','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--ulimit=core=0:0','--pids-limit=32','--memory=256m','--tmpfs','/tmp:rw,size=32m,mode=1777','-v','/usr:/usr:ro','-v',str(out)+':/output:rw','--env','HOME=/tmp','docker.io/library/archlinux:latest','python3','-c',r'''
+import base64,hashlib,json,pathlib,tarfile,urllib.request
+root=pathlib.Path('/output');integrity='sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA=='
+metadata=json.load(urllib.request.urlopen('https://registry.npmjs.org/playwright-core/1.60.0',timeout=30));assert metadata['version']=='1.60.0' and metadata['dist']['integrity']==integrity
+url='https://registry.npmjs.org/playwright-core/-/playwright-core-1.60.0.tgz';assert metadata['dist']['tarball']==url
+archive=root/'package.tgz';digest=hashlib.sha512();size=0
+with urllib.request.urlopen(url,timeout=30) as response,archive.open('xb') as target:
+ while chunk:=response.read(1024*1024):
+  size+=len(chunk)
+  if size>32*1024*1024:raise RuntimeError('Application-code archive too large')
+  digest.update(chunk);target.write(chunk)
+assert 'sha512-'+base64.b64encode(digest.digest()).decode()==integrity
+names=set();total=0;files=[]
+with tarfile.open(archive,'r:gz') as package:
+ for entry in package:
+  name=pathlib.PurePosixPath(entry.name)
+  assert name.parts and name.parts[0]=='package' and not name.is_absolute() and not any(part in ('.','..') for part in name.parts) and '\\' not in entry.name and entry.name not in names
+  names.add(entry.name);assert len(names)<=10000 and (entry.isdir() or entry.isfile()),'No archive links/devices/rootfs'
+  path=root.joinpath(*name.parts)
+  if entry.isdir():path.mkdir(mode=0o700,parents=True,exist_ok=True);continue
+  assert entry.size<=16*1024*1024;total+=entry.size;assert total<=128*1024*1024
+  path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+  with package.extractfile(entry) as source,path.open('xb') as target:
+   while chunk:=source.read(1024*1024):target.write(chunk)
+  path.chmod(0o400);files.append({'path':entry.name,'bytes':entry.size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
+(root/'artifact.json').write_text(json.dumps({'version':'1.60.0','integrity':integrity,'url':url,'lockRevision':'4cb6945dc60ed03f567dc5daafd083e52308e82b','files':files},indent=2)+'\n')
+''']
+result=subprocess.run(args);(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)

@@ -68,6 +68,10 @@ app.whenReady().then(async()=>{
  server=http.createServer((_request,response)=>{response.end('<html><title>Owned Electron fixture</title></html>')});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const {create}=require('./native-electron-services.cjs');
  services=await create({event,showMessageBox:async(options,owner)=>{dialogs.push({options,owner:owner?.webContents.id});assert.equal(options.defaultId,1);assert.equal(options.cancelId,1);const response=choices.shift();assert.notEqual(response,undefined,'No unsolicited dialog');return {response,checkboxChecked:false}}});
+ if(process.env.O3_TEST_INPUT_BASELINE==='1'){
+  choices=Array(20).fill(1);
+  await require('./native-input-baseline.cjs')({tab,evaluate,command,producerCommand,seatFocus,services,dialogs,windows,server,producer,app,clipboard});return;
+ }
  const writeCheck=await tab('writecheck','127.0.0.1');
  const denied="navigator.clipboard.readText().then(()=>false,()=>true)";
  const nativeWrite=await evaluate(writeCheck,"navigator.clipboard.writeText('owned asynchronous write').then(()=>({allowed:true}),error=>({allowed:false,name:error.name,message:error.message}))");
