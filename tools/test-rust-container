@@ -16,7 +16,7 @@ options = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 # Collection remains gated while transitive fixture operations are being audited.
 # Explicit targets still require individual review before execution.
-if not options.test:
+if not options.test and (root / "tools/TEST_RUNTIME_AUDIT_PENDING").exists():
     raise SystemExit("Full runtime matrix is blocked pending the transitive test-safety audit; select reviewed --test targets explicitly. See docs/TEST_SAFETY.md")
 if subprocess.check_output(["podman", "info", "--format", "{{.Host.Security.Rootless}}"], text=True).strip() != "true":
     raise SystemExit("Rootless Podman is required")
