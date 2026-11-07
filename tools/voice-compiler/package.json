@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@babel/core": "8.1.0",
+    "@babel/plugin-transform-arrow-functions": "8.0.1",
     "@babel/plugin-transform-async-to-generator": "8.0.1",
     "@babel/plugin-transform-class-properties": "8.0.1",
     "@babel/plugin-transform-optional-catch-binding": "8.0.1"

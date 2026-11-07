@@ -391,6 +391,7 @@
     "T3-Code-MIT.txt": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43",
     "T3-assets-LICENSE": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43",
     "Babel-helpers-MIT.txt": "4be9d87b56a306293223b490c0d0b245e9e94f39884147bf051a6c7b825aeb30",
+    "V8-math-LICENSE.txt": "5c355b365294b4b7cceb10a7e505328a6cbabcce47b5e76324aae468c441a3e0",
     "whisper.cpp-LICENSE": "e562a2ddfaf8280537795ac5ecd34e3012b6582a147ef69ba6a6a5c08c84757d",
     "lucide-project-icons.LICENSE": "668dcc52803480e0a026b31140a4cae668772663cd764e5991d252eef03f98db",
     "LUCIDE-LICENSE": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
@@ -403,6 +404,6 @@
     "manifest.json": "c1b65c15f2d4328b5eafc20661c35671d12557df7c41375f3bee9178b13ed588",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe"
   },
-  "entries": 270,
-  "outputSha256": "b2e855fb9a18de7096434d041476a72ceb3a213197a2e96408fb1d14ac139cfe"
+  "entries": 271,
+  "outputSha256": "fd2171e54788b34abbe041c90394f32e526f5bea2e3dfe85260e3e7ca0ffa129"
 }
