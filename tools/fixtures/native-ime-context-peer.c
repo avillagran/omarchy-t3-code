@@ -259,4 +259,3 @@ int main(void) {
   wl_display_disconnect(display);
   return 0;
 }
-
