@@ -29,10 +29,13 @@ int main(int argc,char **argv){
   if(count==0){app.quit();return;}int end;
   while((end=input.indexOf('\n'))>=0){auto row=QJsonDocument::fromJson(input.left(end)).object();input.remove(0,end+1);auto operation=row["op"].toString();
    if(operation=="text")clipboard->setText(row["text"].toString());
+   else if(operation=="large")clipboard->setText(QString(200000,QChar('L')));
+   else if(operation=="oversized")clipboard->setText(QString(17*1024*1024,QChar('B')));
+   else if(operation=="many"){auto *mime=new QMimeData;for(int i=0;i<130;i++)mime->setData(QString("application/x-owned-%1").arg(i),QByteArray("x"));mime->setText("owned metadata cap");clipboard->setMimeData(mime);}
    else if(operation=="image"){QImage image(2,2,QImage::Format_ARGB32);image.fill(QColor("#123456"));clipboard->setImage(image);}
    else if(operation=="read")reply({{"id",row["id"]},{"text",clipboard->text()}});
    else if(operation=="quit"){app.quit();return;}
-   if(operation=="text"||operation=="image")QTimer::singleShot(40,&app,[reply,row]{reply({{"id",row["id"]},{"ready",true}});});
+   if(operation=="text"||operation=="image"||operation=="large"||operation=="oversized"||operation=="many")QTimer::singleShot(40,&app,[reply,row]{reply({{"id",row["id"]},{"ready",true}});});
   }
  });
  reply({{"ready",true}});QTimer::singleShot(40000,&app,&QCoreApplication::quit);return app.exec();
