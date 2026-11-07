@@ -20,6 +20,7 @@ pub mod ffi;
 mod ffi_stream;
 mod ffi_attachments;
 pub mod activity;
+pub mod speech;
 pub mod models;
 pub mod terminal;
 pub mod code_blocks;
