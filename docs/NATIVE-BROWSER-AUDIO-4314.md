@@ -18,12 +18,13 @@ Buffered output stays in memory, is capped at 19,200,000 bytes, and is returned
 once. The owned Blob URL is revoked on consumption or closure. A cancellation
 during an asynchronous Blob read refuses the eventual audio result.
 
-The renderer host must supply a sandboxed private origin and permission handler
+The renderer host supplies a sandboxed private origin and permission handler
 bound to the exact capture frame, current capture lifetime and current user
 decision. A preceding settings read or remembered destination alone cannot
 authorize audio transfer. The host must independently recheck current server
-authority and the audio consent grant before every SDK feed. Those process,
-consent, permission UI and SDK consumers are not installed by this checkpoint.
+authority and the audio consent grant before every SDK feed. The process host
+below implements the frame and permission transport. The Rust supervisor,
+consent store, permission UI and SDK consumers remain to be connected.
 No application preference or public capability selects this owner yet.
 
 ## Runtime evidence
@@ -55,3 +56,56 @@ This evidence accepts synthetic device acquisition and the actual renderer
 owner. It does not accept a physical microphone, OS permission dialog, acoustic
 accuracy, full compositor integration, independent audio/cleanup consent,
 cloud transport or public voice activation.
+
+## Private capture process
+
+`electron-capture-main.cjs`, `electron-capture-preload.cjs` and
+`electron-capture-renderer.mjs` run that same owner in a separate pinned
+Electron process. The process owns one private ephemeral profile, random local
+origin and single-use capture. The preload exposes fixed commands and audio
+callbacks only to its sandboxed, isolated main frame. Node integration,
+navigation, popups, webviews and unrelated requests are denied. The main
+process checks the exact frame and nonce on every renderer message.
+
+Before constructing a renderer, the existing native descriptor helper admits
+the inherited AF_UNIX/SOCK_STREAM endpoint against its captured parent PID and
+UID and marks it close-on-exec. The launch payload carries a random capture
+identity and private owned canonical directory; it is removed from the process
+environment after parsing. A trusted launcher must still admit/snapshot the
+complete runtime, helper and resource graph. No PATH runtime discovery, public
+CLI action or application preference selects this process yet.
+
+Audio crosses only that descriptor. Each frame has a 12-byte header:
+`OVC1`, little-endian uint32 kind, little-endian uint32 body size. Kind 0 carries
+at most 65,536 bytes of control JSON; kinds 1 and 2 carry at most 32,000 binary
+PCM bytes for streaming and buffered output respectively. Buffered output is
+split without JSON/base64 conversion. Total PCM is capped at 19,200,000 bytes;
+application ingress has eight slots and output has an explicit bounded queue.
+Header/body writes cannot interleave. Fragmented control frames are admitted
+incrementally. No audio is written to stdout, a file, or a network destination.
+
+Control messages carry the exact capture identity and increasing safe-integer
+request IDs. `prepare` seals mode and exact microphone choice; `record` and
+`stop` are ordered. A real audio permission request creates a separate opaque
+decision identity. Only a matching current parent decision can approve it.
+Other media/frame requests and stale decisions cannot authorize capture.
+`close` bypasses a pending preparation, denies unresolved permission callbacks,
+and waits for actual track/context closure before its successful receipt and
+socket flush. Audio queued before closure is discarded. Parent loss, malformed
+wire data and foreign capture identity exit with failure and manufacture no
+successful cleanup receipt. The future Rust supervisor must retain its own
+pidfd/process-group deadline and uncertainty handling; process exit alone is
+not a graceful resource receipt.
+
+`tools/test-native-pcm-host` builds only the unchanged descriptor addon on the
+host under the compile lock; all executable checks use the same private
+rootless isolation as the graph tests. Its Python fixture is an explicit test
+parent, not a replacement for the future Rust consumer. Seven real-process
+cases cover streaming, buffered output, denial, cancellation while permission
+is pending, parent loss, oversized input and foreign capture identity. They
+also reject stale permission decisions and split every control command into
+seven-byte writes. Real PCM is finite and nonzero, stop byte counts match the
+binary frames, private FD close-on-exec is physically observed before use, and
+stdout remains empty. A captured pidfd confirms each actual process exit.
+Negative exits retain their uncertainty classification. Sources/runtime are
+verified again after execution; fixtures are retained without cleanup.

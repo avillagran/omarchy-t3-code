@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+"""Run the actual private capture process with synthetic audio and owned IPC."""
+import argparse,fcntl,hashlib,json,os,pathlib,subprocess,tempfile
+p=argparse.ArgumentParser(description=__doc__);p.add_argument('--runtime',required=True,type=pathlib.Path);a=p.parse_args()
+root=pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+runtime=a.runtime.resolve();manifest=json.loads((runtime.parent/'artifact.json').read_text())
+assert manifest['version']=='44.10.1'and manifest['archiveSha256']=='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
+out=pathlib.Path(tempfile.mkdtemp(prefix='native-pcm-host-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));out.chmod(0o700)
+source=out/'source';source.mkdir(mode=0o700);state=out/'state';state.mkdir(mode=0o700)
+files=['tools/test-native-pcm-host','tools/fixtures/pcm-host-parent.py','tools/fixtures/pcm-host.py','ui/voice/electron-capture-main.cjs','ui/voice/electron-capture-preload.cjs','ui/voice/electron-capture-renderer.mjs','ui/voice/browser-capture-owner.mjs','ui/browser/electron-private-fd.c','ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json'];fence={}
+for name in files:
+ data=(root/name).read_bytes();fence[name]=hashlib.sha256(data).hexdigest();target=source/pathlib.Path(name).name;target.write_bytes(data);target.chmod(0o400)
+meta=json.loads((source/'NativePcmCapture.sources.json').read_text());assert meta['outputSha256']==fence['ui/js/NativePcmCapture.js']
+(source/'runtime.json').write_text(json.dumps(manifest)+'\n')
+addon=source/'electron-private-fd.node'
+with pathlib.Path('/var/tmp/o3-build/o3-parity-compile.lock').open('a')as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ with(out/'compile.log').open('w')as log:compiled=subprocess.run(['cc','-shared','-fPIC','-O2','-Wall','-Wextra','-Werror','-I/usr/include/node',str(source/'electron-private-fd.c'),'-o',str(addon)],stdout=log,stderr=subprocess.STDOUT)
+ if compiled.returncode:print(out);raise SystemExit(compiled.returncode)
+addon.chmod(0o500);addon_hash=hashlib.sha256(addon.read_bytes()).hexdigest()
+command=['podman','--remote=false','run','--rm','--pull=never','--http-proxy=false','--timeout=90','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--ulimit=core=0:0','--memory=2g','--pids-limit=256','--shm-size=256m','--tmpfs','/tmp:rw,exec,size=128m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',f'{runtime}:/electron:ro','-v',f'{source}:/source:ro','-v',f'{state}:/state:rw','docker.io/library/archlinux:latest','python3','/source/pcm-host.py']
+with(out/'runtime.log').open('w')as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=105)
+proof={'exit':result.returncode,'sourceSha256':fence,'descriptorAddonSha256':addon_hash,'runtimeArchiveSha256':manifest['archiveSha256'],'scope':'Actual private capture process, inherited peer-admitted binary FD, current permission round trips and synthetic Chromium audio. Test parent is Python; Rust supervisor, current server authority, audio/cleanup consent and SDK are not accepted or activated.'}
+receipt=state/'host.json'
+if receipt.is_file():proof['receipt']=json.loads(receipt.read_text())
+if result.returncode==0:assert len(proof['receipt']['cases'])==7
+assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==digest for name,digest in fence.items()),'Source changed during probe'
+assert hashlib.sha256(addon.read_bytes()).hexdigest()==addon_hash
+for row in manifest['files']:
+ path=runtime/row['path'];assert path.is_file()and not path.is_symlink()
+ with path.open('rb')as file:assert hashlib.file_digest(file,'sha256').hexdigest()==row['sha256'],'Pinned runtime changed during probe'
+(out/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(out);raise SystemExit(proof['exit'])
