@@ -109,3 +109,36 @@ binary frames, private FD close-on-exec is physically observed before use, and
 stdout remains empty. A captured pidfd confirms each actual process exit.
 Negative exits retain their uncertainty classification. Sources/runtime are
 verified again after execution; fixtures are retained without cleanup.
+
+## Rust artifact admission
+
+`src/voice_capture/resources.rs` implements the supervisor's local artifact
+admission. Its compiled manifest pins all 72 files of the complete original
+Electron 44.10.1 Linux x64 archive. `tools/pin-voice-electron-runtime` derives
+that manifest directly from the checksum-pinned retained ZIP inside a private
+container, without extraction or network access. Mutable acquisition-sidecar
+hashes are not an authority. The three numeric/graph/process runners now use
+the same source-controlled complete file manifest.
+
+Runtime admission checks every original file's SHA-256, size, executable role,
+canonical path, owner, read-only mode and single-link identity. It retains open
+descriptors and checks device/inode, size, mtime, ctime and mode again before
+reuse. The complete directory graph must match; unexpected files, directories
+or links cannot extend the runtime's library search graph. It reuses the exact
+admitted runtime rather than copying another large executable cache.
+
+The six-file helper graph is captured into a fresh private directory from the
+compiled original application resources and an explicitly admitted native
+descriptor-addon receipt. Each small file is created exclusively, flushed and
+made read-only before admission. No existing destination is adopted, and no
+recursive cleanup is performed. Test fixtures retain their owned drift, link
+and rejected-artifact cases.
+
+`tools/test-voice-capture-resources` compiles only the opt-in example and passes
+strict Clippy. Runtime checks run in a private rootless container against the
+actual original runtime and actual helper snapshots. They cover all 72 runtime
+files, six helper files, repeat-directory refusal, modified-snapshot refusal,
+an owned-directory symlink, incorrect digest, writable addon and an owned
+hardlink. This example opens no microphone or child process. It accepts artifact
+admission only; the Rust process supervisor, cancellation/receipt wiring, current
+server authority, consent and SDK integration remain to be implemented.

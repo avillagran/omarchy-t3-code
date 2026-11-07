@@ -4,11 +4,11 @@ import argparse,fcntl,hashlib,json,os,pathlib,subprocess,tempfile
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--runtime',required=True,type=pathlib.Path);a=p.parse_args()
 root=pathlib.Path(__file__).resolve().parent.parent
 assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
-runtime=a.runtime.resolve();manifest=json.loads((runtime.parent/'artifact.json').read_text())
+runtime=a.runtime.resolve();manifest=json.loads((root/'ui/voice/electron-runtime-44.10.1-linux-x64.json').read_text())
 assert manifest['version']=='44.10.1'and manifest['archiveSha256']=='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
 out=pathlib.Path(tempfile.mkdtemp(prefix='native-pcm-host-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));out.chmod(0o700)
 source=out/'source';source.mkdir(mode=0o700);state=out/'state';state.mkdir(mode=0o700)
-files=['tools/test-native-pcm-host','tools/fixtures/pcm-host-parent.py','tools/fixtures/pcm-host.py','ui/voice/electron-capture-main.cjs','ui/voice/electron-capture-preload.cjs','ui/voice/electron-capture-renderer.mjs','ui/voice/browser-capture-owner.mjs','ui/browser/electron-private-fd.c','ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json'];fence={}
+files=['tools/test-native-pcm-host','tools/fixtures/pcm-host-parent.py','tools/fixtures/pcm-host.py','ui/voice/electron-capture-main.cjs','ui/voice/electron-capture-preload.cjs','ui/voice/electron-capture-renderer.mjs','ui/voice/browser-capture-owner.mjs','ui/browser/electron-private-fd.c','ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json','ui/voice/electron-runtime-44.10.1-linux-x64.json'];fence={}
 for name in files:
  data=(root/name).read_bytes();fence[name]=hashlib.sha256(data).hexdigest();target=source/pathlib.Path(name).name;target.write_bytes(data);target.chmod(0o400)
 meta=json.loads((source/'NativePcmCapture.sources.json').read_text());assert meta['outputSha256']==fence['ui/js/NativePcmCapture.js']
