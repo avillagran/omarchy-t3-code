@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Acquire signed official compositor members for private fixtures, without installation."""
+import hashlib
+import json
+import pathlib
+import subprocess
+import tempfile
+import urllib.parse
+import urllib.request
+
+BASE = pathlib.Path('/home/node/BuildCache/o3-desktop-next')
+PACKAGES = {
+    'sway-1:1.12-4-x86_64.pkg.tar.zst': (
+        '5704cfc9eba9804116c665cb4450352bf5a240c1a8300b36aca3218116648443',
+        [('usr/bin/sway', 'usr/bin/sway'), ('usr/bin/swaymsg', 'usr/bin/swaymsg'),
+         ('usr/share/licenses/sway/LICENSE', 'usr/share/licenses/sway/LICENSE')]),
+    'wlroots0.20-0.20.2-1-x86_64.pkg.tar.zst': (
+        '8b1da3fbf29cc45908d8de771bd22a5813b298a9049462df5b8952f23c3ffb8f',
+        [('usr/lib/libwlroots-0.20.so', 'usr/lib/libwlroots-0.20.so'),
+         ('usr/share/licenses/wlroots0.20/LICENSE', 'usr/share/licenses/wlroots0.20/LICENSE')]),
+    'libliftoff-0.5.0-1-x86_64.pkg.tar.zst': (
+        '59cf08c21500673a14287b83b89b6db5389134cc24c97d9222c7cddefa639ccf',
+        [('usr/lib/libliftoff.so.0.5.0', 'usr/lib/libliftoff.so.0'),
+         ('usr/share/licenses/libliftoff/LICENSE', 'usr/share/licenses/libliftoff/LICENSE')]),
+}
+
+
+def download(url, target, limit):
+    total = 0
+    with urllib.request.urlopen(url, timeout=30) as source, target.open('xb') as output:
+        while chunk := source.read(65536):
+            total += len(chunk)
+            if total > limit:
+                raise RuntimeError('Official artifact exceeds acquisition bound')
+            output.write(chunk)
+    return {'url': url, 'file': target.name, 'bytes': total,
+            'sha256': hashlib.sha256(target.read_bytes()).hexdigest()}
+
+
+def main():
+    # Only public package data is downloaded. Package install scripts are never run.
+    output = pathlib.Path(tempfile.mkdtemp(prefix='official-sway-', dir=BASE))
+    print(output, flush=True)
+    gnupg = output / 'gnupg'
+    gnupg.mkdir(mode=0o700)
+    keyring = output / 'archlinux-keyring.gpg'
+    subprocess.run(['gpg', '--homedir', str(gnupg), '--batch', '--no-options', '--dearmor', '--output', str(keyring),
+                    '/usr/share/pacman/keyrings/archlinux.gpg'], check=True)
+    runtime = output / 'runtime'
+    runtime.mkdir()
+    downloads, files, verification = [], [], []
+    for archive, (expected, members) in PACKAGES.items():
+        url = 'https://geo.mirror.pkgbuild.com/extra/os/x86_64/' + urllib.parse.quote(archive, safe='')
+        record = download(url, output / archive, 8 * 1024 * 1024)
+        if expected is not None and record['sha256'] != expected:
+            raise RuntimeError('Pinned official package digest differs')
+        downloads.append(record)
+        downloads.append(download(url + '.sig', output / (archive + '.sig'), 16384))
+        result = subprocess.run(['gpgv', '--homedir', str(gnupg), '--keyring', str(keyring),
+                                 str(output / (archive + '.sig')), str(output / archive)],
+                                check=True, capture_output=True, text=True)
+        verification.append({'package': archive, 'returncode': result.returncode,
+                             'signatureReport': result.stderr})
+        for member, name in members:
+            # Stream one named regular member; never extract archive paths or follow links.
+            listing = subprocess.check_output(['bsdtar', '-tvf', str(output / archive), member],
+                                               text=True).splitlines()
+            if len(listing) != 1 or not listing[0].startswith('-'):
+                raise RuntimeError('Expected exactly one regular package member')
+            data = subprocess.check_output(['bsdtar', '-xOf', str(output / archive), member])
+            if len(data) > 4 * 1024 * 1024:
+                raise RuntimeError('Bounded package member required')
+            target = runtime / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open('xb') as stream:
+                stream.write(data)
+            target.chmod(0o500 if name.startswith('usr/bin/') else 0o400)
+            files.append({'path': name, 'member': member, 'package': archive,
+                          'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+    receipt = {'schema': 1, 'kind': 'official-arch-sway-regular-files',
+               'packages': downloads, 'signatureVerification': verification,
+               'publicKeyringSha256': hashlib.sha256(keyring.read_bytes()).hexdigest(),
+               'files': files}
+    (runtime / 'artifact.json').write_text(json.dumps(receipt, indent=2) + '\n')
+    (output / 'downloads.json').write_text(json.dumps(downloads, indent=2) + '\n')
+    # Retain owned outputs on failure and success. No fixture-tree deletion.
+
+
+if __name__ == '__main__':
+    main()
