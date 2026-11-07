@@ -1,0 +1,441 @@
+{
+  "version": "44.10.1",
+  "platform": "linux-x64",
+  "archiveUrl": "https://github.com/electron/electron/releases/download/v44.10.1/electron-v44.10.1-linux-x64.zip",
+  "archiveSha256": "2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167",
+  "archiveBytes": 123103802,
+  "files": [
+    {
+      "path": "LICENSE",
+      "bytes": 1096,
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d",
+      "executable": false
+    },
+    {
+      "path": "LICENSES.chromium.html",
+      "bytes": 20115518,
+      "sha256": "3375e2a9bd7bc631738fde10be6548a76efe8cf5e4b8826b8140ba8b0c4d6353",
+      "executable": false
+    },
+    {
+      "path": "chrome-sandbox",
+      "bytes": 15232,
+      "sha256": "a4f6dfd7325ddd55f94ddc0c487d22726d40ef099ded6475d5dffe236e277896",
+      "executable": true
+    },
+    {
+      "path": "chrome_100_percent.pak",
+      "bytes": 719546,
+      "sha256": "891176da5eee33b54352fdb1407a8e09a2bd48c7eb2077311e75787de33a095e",
+      "executable": false
+    },
+    {
+      "path": "chrome_200_percent.pak",
+      "bytes": 1268994,
+      "sha256": "b3ce9953a50959e9c1a018d6512742f48cee0dbf53644ea952909418bd7c2b3e",
+      "executable": false
+    },
+    {
+      "path": "chrome_crashpad_handler",
+      "bytes": 1918544,
+      "sha256": "00da0d510f0537109c7379e9f5f934ef1a841f734016869992060c7481997a9a",
+      "executable": true
+    },
+    {
+      "path": "electron",
+      "bytes": 228924744,
+      "sha256": "7722b3b95b0a31e24906f8046c1bf29cb03c1b99f67058b0b9a4c0e8681c0d87",
+      "executable": true
+    },
+    {
+      "path": "icudtl.dat",
+      "bytes": 10824576,
+      "sha256": "e1ed8f674bb8449731b79cae956042da59f9ecbd37c8d3f86586a22b4836e5b2",
+      "executable": false
+    },
+    {
+      "path": "libffmpeg.so",
+      "bytes": 2801800,
+      "sha256": "2eff1a6a9f99d4cdfb8f1c1738fb14b64a536fa5a357e478b9e6afd0ceff564c",
+      "executable": true
+    },
+    {
+      "path": "libvk_swiftshader.so",
+      "bytes": 4657576,
+      "sha256": "97f696053ce608c5ee388a5d498f36b0b74332979a4a1050d66fe8b9212860f7",
+      "executable": true
+    },
+    {
+      "path": "libvulkan.so.1",
+      "bytes": 2483288,
+      "sha256": "1536c33d755df9b9a098fcba82c4a887463e504228087ed0ca15f2c5a397c7b5",
+      "executable": true
+    },
+    {
+      "path": "locales/af.pak",
+      "bytes": 115408,
+      "sha256": "9abd48c6c1f34e14dcad66131a9cc8624b4e850ebf692b05a66fb18d5c537588",
+      "executable": false
+    },
+    {
+      "path": "locales/am.pak",
+      "bytes": 186176,
+      "sha256": "28545e9a72220ddca39f7d7b36eacb3b661a3cc40d212b7e56be21d90f5ee71b",
+      "executable": false
+    },
+    {
+      "path": "locales/ar.pak",
+      "bytes": 185633,
+      "sha256": "267687bf1ed07628b03f02d095b253141a4cbc6b80f0bfec6007ca0556260e5f",
+      "executable": false
+    },
+    {
+      "path": "locales/bg.pak",
+      "bytes": 211672,
+      "sha256": "96741df7a895b1d4894db0fd5e5db4f761849eb0e5ebadf6f3f27daf16723ebe",
+      "executable": false
+    },
+    {
+      "path": "locales/bn.pak",
+      "bytes": 269422,
+      "sha256": "eaa31ac7166ef4c5c61bf6e4a9b0a0b4cb1825e1b57e5a45f76faa65dc0d113f",
+      "executable": false
+    },
+    {
+      "path": "locales/ca.pak",
+      "bytes": 129791,
+      "sha256": "3f86be184e95323c14604836b8eaf8935fc24f9cd2308cb207be26c318d8f287",
+      "executable": false
+    },
+    {
+      "path": "locales/cs.pak",
+      "bytes": 130919,
+      "sha256": "cffb35f66f25ef7dac62b05213dfa787ecddf2533518c02276d8fbe828f541e8",
+      "executable": false
+    },
+    {
+      "path": "locales/da.pak",
+      "bytes": 119482,
+      "sha256": "14cfcdfecb80d8575d273d8ec03317ae51c3e2c976c862ab774f9af9c7c4557b",
+      "executable": false
+    },
+    {
+      "path": "locales/de.pak",
+      "bytes": 127411,
+      "sha256": "7d4874ca52ac298dbc4c01d91c1c6a549008dbefc2d0c8f52154d872dce4979f",
+      "executable": false
+    },
+    {
+      "path": "locales/el.pak",
+      "bytes": 229543,
+      "sha256": "114158bd5f674169564173a12612922259a8acc50076c228c2214659924ee018",
+      "executable": false
+    },
+    {
+      "path": "locales/en-GB.pak",
+      "bytes": 106865,
+      "sha256": "550775b16b4716e610232e6b06e35a95c4c6ce2dedbd2a26747f8dc8f08d8aeb",
+      "executable": false
+    },
+    {
+      "path": "locales/en-US.pak",
+      "bytes": 106969,
+      "sha256": "e37db76f0a15a4b2a3cbd365bd4f06b0d8dc91fb9a83c03b7cd38503c23c044b",
+      "executable": false
+    },
+    {
+      "path": "locales/es-419.pak",
+      "bytes": 128677,
+      "sha256": "aaacff94a6407a7d487a455889a544f6107107cccb82393a27e9bf593d1b943d",
+      "executable": false
+    },
+    {
+      "path": "locales/es.pak",
+      "bytes": 129380,
+      "sha256": "b3256546e28dffff82c3d00abae9ad2141cf7bb940e5e39620f6ae30b488dcea",
+      "executable": false
+    },
+    {
+      "path": "locales/et.pak",
+      "bytes": 116201,
+      "sha256": "41f78768a3ef702356653ab005522a20407e0dbbe7b0ea323683072520f11191",
+      "executable": false
+    },
+    {
+      "path": "locales/fa.pak",
+      "bytes": 180548,
+      "sha256": "365520460dd4b662f8dfa14969eb066b7c1c98ae255ecfd705c1692a1ed784f1",
+      "executable": false
+    },
+    {
+      "path": "locales/fi.pak",
+      "bytes": 119440,
+      "sha256": "fb7379246632c90a58a8f7155e390ca583f9d73b6c6ae26baf9bf4878be184df",
+      "executable": false
+    },
+    {
+      "path": "locales/fil.pak",
+      "bytes": 131706,
+      "sha256": "7c6c76af71a7d60733a01014c19d9544409d5facd6001fb9058fc8ae8062cf54",
+      "executable": false
+    },
+    {
+      "path": "locales/fr.pak",
+      "bytes": 136129,
+      "sha256": "95b11fc7368d9f4367534e89456cceda009468abe2423821a11fe1dd1a7b4604",
+      "executable": false
+    },
+    {
+      "path": "locales/gu.pak",
+      "bytes": 262702,
+      "sha256": "309dcf4484d9479eeb68dcc7d745f17dfa0ffc4e6b112751de704ce62e8aecbe",
+      "executable": false
+    },
+    {
+      "path": "locales/he.pak",
+      "bytes": 158974,
+      "sha256": "5764ba9a2261b2ded07f3c3afa8f003594b29f58c73b322f1d89479907a97ca2",
+      "executable": false
+    },
+    {
+      "path": "locales/hi.pak",
+      "bytes": 278957,
+      "sha256": "b4d36beed004905461637b0c60eacc6d8eca49ba47ba262ed04d68c88b826bf4",
+      "executable": false
+    },
+    {
+      "path": "locales/hr.pak",
+      "bytes": 125949,
+      "sha256": "6937159b11ac75bee2c8046a5150596acee10a7c10c75a2469a752175f9e9e99",
+      "executable": false
+    },
+    {
+      "path": "locales/hu.pak",
+      "bytes": 137413,
+      "sha256": "d6add186bc8bd342ef5d35cba5261c8c847ecb529697b7c003016435997c9fdc",
+      "executable": false
+    },
+    {
+      "path": "locales/id.pak",
+      "bytes": 114654,
+      "sha256": "06c550187e7dd49cf0210ac9bcf4401c10e96ed777ccc8fd07e914a9337de9b7",
+      "executable": false
+    },
+    {
+      "path": "locales/it.pak",
+      "bytes": 127474,
+      "sha256": "b02a5de9de434266991a9e37a6bcced44b65ae3c164e4920a736eb350f745ecb",
+      "executable": false
+    },
+    {
+      "path": "locales/ja.pak",
+      "bytes": 147791,
+      "sha256": "4b51a3023136f05ae2c0b8e041e262eed3f6d5fa87c782892cba36e10d904b3c",
+      "executable": false
+    },
+    {
+      "path": "locales/kn.pak",
+      "bytes": 295238,
+      "sha256": "875859c2b88312ff3644c6cadd65dd8b5057e336a0a2bea512fbffa7c85695a7",
+      "executable": false
+    },
+    {
+      "path": "locales/ko.pak",
+      "bytes": 126096,
+      "sha256": "8c98d075840cb4800016c6df141183b3ec69cfe20df38ea759f2274259a86666",
+      "executable": false
+    },
+    {
+      "path": "locales/lt.pak",
+      "bytes": 134875,
+      "sha256": "b7e01915d9f1131743aaa7b1c262c7ef685c10d8621f2437e46ebefe980a6efc",
+      "executable": false
+    },
+    {
+      "path": "locales/lv.pak",
+      "bytes": 135866,
+      "sha256": "22fc0a3e04e7772c7df2f4c74e928ceb4046edc8c1688dbc4f04676f00944952",
+      "executable": false
+    },
+    {
+      "path": "locales/ml.pak",
+      "bytes": 312341,
+      "sha256": "fffb1b403dd4a62f0116fb39a961a73dd0766049bdc23118c90f4360971e225b",
+      "executable": false
+    },
+    {
+      "path": "locales/mr.pak",
+      "bytes": 261151,
+      "sha256": "0f5879b812517af23c9655347b08852c8e8f5c399b288466a8ec717d397e94d6",
+      "executable": false
+    },
+    {
+      "path": "locales/ms.pak",
+      "bytes": 117618,
+      "sha256": "ce1f9c8cfe5b2705b281d3480e0df992ab36f3518956100564eb9edae5d03dbb",
+      "executable": false
+    },
+    {
+      "path": "locales/nb.pak",
+      "bytes": 115867,
+      "sha256": "36c2e3f5d4e920e8e0411878df2cbd4a92bd9e553e9e427b3aae355bfb9fc955",
+      "executable": false
+    },
+    {
+      "path": "locales/nl.pak",
+      "bytes": 121445,
+      "sha256": "5cceeeff48b3aad830116126f8f15b3bfddf682bbdf986b3a266e0e72ff463d1",
+      "executable": false
+    },
+    {
+      "path": "locales/pl.pak",
+      "bytes": 131479,
+      "sha256": "35e0d1578baa9c9441c83383aade35d69c03bc2307783c639c01b156015a11a8",
+      "executable": false
+    },
+    {
+      "path": "locales/pt-BR.pak",
+      "bytes": 126281,
+      "sha256": "907226d904de6a571a80289ef6a8072bad867b1f63ec37fcd735c30763af970d",
+      "executable": false
+    },
+    {
+      "path": "locales/pt-PT.pak",
+      "bytes": 127702,
+      "sha256": "540b4f6c0d58d8f0315a8e4fbee49e41b6fbfe2b9c2065b8f28b069619c132ba",
+      "executable": false
+    },
+    {
+      "path": "locales/ro.pak",
+      "bytes": 132409,
+      "sha256": "b7c3b4af988ec26f8f3a3fa789cdbe46712a14497e47cba6266c9f0e808e57f7",
+      "executable": false
+    },
+    {
+      "path": "locales/ru.pak",
+      "bytes": 207665,
+      "sha256": "b011f8c753fa33f9aa91732590ca13a791824a7fd94a8f35c41330fe346de11a",
+      "executable": false
+    },
+    {
+      "path": "locales/sk.pak",
+      "bytes": 133943,
+      "sha256": "8c743c91af3dd53fd5c36e88061a62dddb2b91687ec779e7958774f436486dac",
+      "executable": false
+    },
+    {
+      "path": "locales/sl.pak",
+      "bytes": 126078,
+      "sha256": "a692040613f2fe76800c33d000a9a62277b1fc98bd056ce7f4f5ee06f6b0ec9d",
+      "executable": false
+    },
+    {
+      "path": "locales/sr.pak",
+      "bytes": 196325,
+      "sha256": "92bac4af059cea0f2f72293fde0cc665b8554c00653b26611cfcc6e98b4971e8",
+      "executable": false
+    },
+    {
+      "path": "locales/sv.pak",
+      "bytes": 116299,
+      "sha256": "54cf311648f8688effc4cfd70a580b85b837e67dd9e5f194d9f761202a27ebba",
+      "executable": false
+    },
+    {
+      "path": "locales/sw.pak",
+      "bytes": 124791,
+      "sha256": "3475068a7e3b8205444f914d7d29421fb45b87c008594984f3e7b04cff22b2d3",
+      "executable": false
+    },
+    {
+      "path": "locales/ta.pak",
+      "bytes": 314512,
+      "sha256": "e4053fb503c08d94b7364b10a74abc04506d15f67ad74b9ea66185999ea177df",
+      "executable": false
+    },
+    {
+      "path": "locales/te.pak",
+      "bytes": 289043,
+      "sha256": "4955104544daf89da718e7f584ad66fe35dd4ca219c245697de2929acb317ec8",
+      "executable": false
+    },
+    {
+      "path": "locales/th.pak",
+      "bytes": 249576,
+      "sha256": "2272de996ac5c553cf01f406e6f708cb98ad419708355fb4969cb91ec8031e56",
+      "executable": false
+    },
+    {
+      "path": "locales/tr.pak",
+      "bytes": 125317,
+      "sha256": "f690918f136d8c5bad9853c358670e60475999d0faafb36d36001c4fa7ec4f8b",
+      "executable": false
+    },
+    {
+      "path": "locales/uk.pak",
+      "bytes": 209472,
+      "sha256": "26ddf342bb13d674df20162ff1a955edc56e6ffc64bc846953e7b2be8827fe80",
+      "executable": false
+    },
+    {
+      "path": "locales/ur.pak",
+      "bytes": 185651,
+      "sha256": "203e225739beb9879eebb08d08d9aa17b80f02320049f03d453156ff53170da8",
+      "executable": false
+    },
+    {
+      "path": "locales/vi.pak",
+      "bytes": 149276,
+      "sha256": "4dcf8fe139c4355a8999137098532662e5af79d7b464c6e2faab686605d7ad8d",
+      "executable": false
+    },
+    {
+      "path": "locales/zh-CN.pak",
+      "bytes": 103981,
+      "sha256": "aec678d57f7644157d8d7d1007cd03c9efbc7ef54488df2f856989179a563e42",
+      "executable": false
+    },
+    {
+      "path": "locales/zh-TW.pak",
+      "bytes": 103138,
+      "sha256": "deba23736da06f4e2633cbecab98e7b9c3ae8b6b7245c08b89f63581fa47f1f4",
+      "executable": false
+    },
+    {
+      "path": "resources.pak",
+      "bytes": 12634707,
+      "sha256": "32dd385693c9ee6acc27428285b12a1568964b3b0bc211b7cba91c1ddbbf0e5d",
+      "executable": false
+    },
+    {
+      "path": "resources/default_app.asar",
+      "bytes": 110862,
+      "sha256": "0eb2491b0a9ac94790389d39c09dd5005c6c1f0665842943829bbd0193f6cc4f",
+      "executable": false
+    },
+    {
+      "path": "snapshot_blob.bin",
+      "bytes": 369024,
+      "sha256": "fb4cd59e56e8985916ba1cef79aff7224d51014f49f1f999f408115c4706356b",
+      "executable": false
+    },
+    {
+      "path": "v8_context_snapshot.bin",
+      "bytes": 742456,
+      "sha256": "38c07e1fbc3f3b905cee9956da8ffbefe7ba166ec1be0bbe7e2aa4b378553b42",
+      "executable": false
+    },
+    {
+      "path": "version",
+      "bytes": 7,
+      "sha256": "2c07439deb43470b14fd0311b1c2d0959cdc284ebe917af526b65df8766f2b84",
+      "executable": false
+    },
+    {
+      "path": "vk_swiftshader_icd.json",
+      "bytes": 107,
+      "sha256": "c9eef28b6b984fec220ef0abfecc40b502d46946706e47bfe97707027cb818bd",
+      "executable": false
+    }
+  ]
+}

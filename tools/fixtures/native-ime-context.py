@@ -14,6 +14,7 @@ for record in json.loads(pathlib.Path('/fixture/runtime.json').read_text())['fil
     file = pathlib.Path('/electron') / record['path']
     assert not file.is_symlink() and file.is_file()
     assert file.stat().st_size == record['bytes']
+    assert bool(file.stat().st_mode & 0o111) == record['executable']
     assert hashlib.sha256(file.read_bytes()).hexdigest() == record['sha256']
 os.mkdir('/tmp/home', 0o700)
 os.mkdir('/tmp/runtime', 0o700)

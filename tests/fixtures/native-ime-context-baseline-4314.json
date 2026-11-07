@@ -45,11 +45,10 @@
     "staticLibrarySha256": "7e89d8a177a78343a7cf92e3c1c756dc98a437489de4861ff6de907c7e48af89"
   },
   "preparedSourceFiles": {
-    "tools/probe-native-ime-context": "326960ebddc21f752c9e9b66626526d8412ce62363bdd1a853992f34e740f215",
+    "tools/probe-native-ime-context": "529bbb7e4ddaa5f2c5547e6fbef234be2fd35b7a306363f3e14f0905659e37dc",
     "tools/fixtures/native-ime-context-peer.c": "fb1d01bccfd64eee526dccdcc4bf46816099b994fa17aecf2f98efa2f2c4054e",
     "tools/fixtures/native-ime-context.cjs": "9950381ccc52e48663016487a33ad8964405de4660ffb4a08525edf87cef2479",
-    "tools/fixtures/native-ime-context.py": "d695b51851d5213fce59e3592a356f2a39f36309afeb1ac5b051cc3cab0ff31b",
-    "tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING": "ce5a195ac82ed4aabd75c36c5b9524b65ed7edd3245bdd9743251361f82cb7a4"
+    "tools/fixtures/native-ime-context.py": "6c5cfd0ccf80d07165f5ba83978a571a887dd127fe9d25c52816e11763fd35db"
   },
   "preparedSourceChecks": {
     "pythonFiles": 2,
@@ -57,7 +56,8 @@
     "cStrictSyntaxFiles": 1,
     "nativeCompositorOrEngineExecuted": false,
     "runtimeValidated": false,
-    "pendingReview": true
+    "pendingReview": false,
+    "singleChangedLifetimeReplayAuthorized": true
   },
   "sourceDiagnosis": {
     "swayTag": "1.12",
@@ -68,5 +68,13 @@
     "candidate": "focused-surface listener removed before unsupported-view return without reinitialization",
     "callerProven": false,
     "preparedChange": "Destroy own popup/surface/buffer and acknowledge server roundtrip before view close on success/failure; no engine or compositor replay yet."
+  },
+  "sourceControlledIntake": {
+    "runtime": "ui/voice/electron-runtime-44.10.1-linux-x64.json",
+    "runtimeSha256": "59ba60542eeb35c2427d8a58d0d7ba5dd0ae7a61c5123abe752e18265263008a",
+    "compositor": "tests/fixtures/private-compositor-artifact-4314.json",
+    "compositorSha256": "a6776d3a0e6a14ff10820ccf01d6b07befc93ee8598357c601fd2547afccb5eb",
+    "acquisitionReceiptsAuthorizeIdentity": false,
+    "smallCompositorCopiedBeforeRun": true
   }
 }

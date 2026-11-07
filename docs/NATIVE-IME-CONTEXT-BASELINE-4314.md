@@ -85,9 +85,14 @@ it kills only the owned private compositor before stopping the engine, preservin
 the failure. That fallback is not a claim of graceful abnormal-exit handling.
 
 The prepared Python, Node and strict C source checks pass without starting a
-compositor or engine. Runtime remains paused by
-`tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING` until checkpoint review. Earlier
-failed closes are not replayed or relabeled successful.
+compositor or engine. The initial checkpoint paused runtime with
+`tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING`. Review approved one changed-lifetime
+replay after binding intake to source-controlled pins: the published 72-member
+runtime manifest and frozen seven-member compositor receipt. The small
+compositor members are copied to a fresh read-only snapshot before execution;
+self-reported acquisition receipts cannot authorize their identities. Earlier
+failed closes are not replayed or relabeled successful. Runtime acceptance of
+the changed lifetime remains unproved until that separate measured replay.
 
 ## Concrete adaptation boundary
 
