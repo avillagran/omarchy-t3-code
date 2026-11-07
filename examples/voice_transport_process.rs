@@ -2,7 +2,8 @@
 use omarchy_t3_client::{
     browser_native_display::Display,
     protocol::speech::{
-        decode_pcm_request, RequestCancellation, RequestFailure, TranscriptionOptions,
+        decode_pcm_request, PostProcessRequest, RequestCancellation, RequestFailure,
+        TranscriptionOptions,
     },
     voice_capture::{
         resources::{Assets, DescriptorArtifact, Runtime},
@@ -31,6 +32,13 @@ fn listener() -> (TcpListener, String) {
     (socket, base)
 }
 fn accept(listener: &TcpListener, route: &str) -> (TcpStream, Vec<u8>) {
+    accept_with_authority(listener, route, "synthetic-write-authority")
+}
+fn accept_with_authority(
+    listener: &TcpListener,
+    route: &str,
+    authority: &str,
+) -> (TcpStream, Vec<u8>) {
     let end = Instant::now() + Duration::from_secs(3);
     let mut socket = loop {
         match listener.accept() {
@@ -58,7 +66,7 @@ fn accept(listener: &TcpListener, route: &str) -> (TcpStream, Vec<u8>) {
     let header = String::from_utf8(header).unwrap();
     assert!(header.starts_with(route));
     let lower = header.to_ascii_lowercase();
-    assert!(lower.contains("authorization: bearer synthetic-write-authority\r\n"));
+    assert!(lower.contains(&format!("authorization: bearer {authority}\r\n")));
     assert!(!lower.contains("synthetic-read-authority"));
     let length = header
         .lines()
@@ -405,9 +413,119 @@ fn main() {
     use zeroize::Zeroize;
     pcm.zeroize();
     server.join().unwrap();
+    let (socket, draft_base) = listener();
+    fs::write(
+        "/state/draft-write-token",
+        "synthetic-draft-write-authority",
+    )
+    .unwrap();
+    fs::set_permissions(
+        "/state/draft-write-token",
+        fs::Permissions::from_mode(0o600),
+    )
+    .unwrap();
+    let mut draft = environment(&draft_base);
+    draft.id = "draft-environment".into();
+    draft.write_token_file = Some(PathBuf::from("/state/draft-write-token"));
+    assert!(transport
+        .bind_cleanup(&draft, "draft-owner")
+        .unwrap()
+        .is_none());
+    owner.choose_cleanup(true).unwrap();
+    let cleanup = transport
+        .bind_cleanup(&draft, "draft-owner")
+        .unwrap()
+        .unwrap();
+    let input=PostProcessRequest::decode(&json!({"options":{"speechCustomWords":[],"speechPostProcessingPrompt":{"mode":"default","customInstructions":""}},"transcript":"captured recording transcript","draft":{"text":"before ","selection":{"start":7,"end":7}}})).unwrap();
+    let server = thread::spawn(move || {
+        let (mut request, body) = accept_with_authority(
+            &socket,
+            "GET /api/auth/session ",
+            "synthetic-draft-write-authority",
+        );
+        assert!(body.is_empty());
+        respond(
+            &mut request,
+            json!({"authenticated":true,"permissions":["orchestration:operate"]}),
+        );
+        let (mut request, body) = accept_with_authority(
+            &socket,
+            "POST /api/voice/post-process ",
+            "synthetic-draft-write-authority",
+        );
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["transcript"], "captured recording transcript");
+        assert_eq!(
+            body["draft"],
+            json!({"text":"before ","selection":{"start":7,"end":7}})
+        );
+        assert_eq!(
+            body["options"]["speechPostProcessingPrompt"]["mode"],
+            "default"
+        );
+        respond(&mut request, json!({"text":"cleaned transcript"}));
+        socket
+    });
+    assert_eq!(
+        rt.block_on(cleanup.post_process(
+            "draft-owner",
+            "draft-environment",
+            &input,
+            &RequestCancellation::default(),
+            || true
+        ))
+        .unwrap(),
+        Some("cleaned transcript".into())
+    );
+    let socket = server.join().unwrap();
+    for (draft_owner, draft_environment) in [
+        ("other-owner", "draft-environment"),
+        ("draft-owner", "other-environment"),
+    ] {
+        assert_eq!(
+            rt.block_on(cleanup.post_process(
+                draft_owner,
+                draft_environment,
+                &input,
+                &RequestCancellation::default(),
+                || true
+            ))
+            .unwrap(),
+            None
+        );
+    }
+    assert_eq!(
+        rt.block_on(cleanup.post_process(
+            "draft-owner",
+            "draft-environment",
+            &input,
+            &RequestCancellation::default(),
+            || false
+        ))
+        .unwrap(),
+        None
+    );
+    owner.choose_cleanup(true).unwrap();
+    assert_eq!(
+        rt.block_on(cleanup.post_process(
+            "draft-owner",
+            "draft-environment",
+            &input,
+            &RequestCancellation::default(),
+            || true
+        ))
+        .unwrap(),
+        None
+    );
+    owner.choose_cleanup(false).unwrap();
+    assert!(transport
+        .bind_cleanup(&draft, "draft-owner")
+        .unwrap()
+        .is_none());
+    assert!(matches!(socket.accept(),Err(error)if error.kind()==std::io::ErrorKind::WouldBlock));
     assert_eq!(owner.close(), Cleanup::Confirmed);
     println!(
         "{}",
-        json!({"cases":8,"actualConsentRealm":true,"sameWriteCredential":true,"actualBinaryPcm":true,"reselectionDeniesBeforeConnect":true,"foreignResolverDenied":true,"revokedAuthorityNoAudio":true,"ownerLossNoRequest":true,"boundOpenRouterModel":true,"cancelledInferenceSocketClosed":true,"actualChromiumCapturedBytes":captured_bytes,"captureCleanupConfirmed":true,"scope":"Actual consent/capture to SDK transport with synthetic device and server; cleanup provider, streaming and composer remain separate"})
+        json!({"cases":11,"actualConsentRealm":true,"sameWriteCredential":true,"actualBinaryPcm":true,"reselectionDeniesBeforeConnect":true,"foreignResolverDenied":true,"revokedAuthorityNoAudio":true,"ownerLossNoRequest":true,"boundOpenRouterModel":true,"cancelledInferenceSocketClosed":true,"actualChromiumCapturedBytes":captured_bytes,"captureCleanupConfirmed":true,"cleanupUsesDraftEnvironmentAndCredential":true,"cleanupOwnerAndEnvironmentFenced":true,"independentCleanupReselectionDenies":true,"scope":"Actual consent/capture and cleanup to SDK transport with synthetic device/private servers; streaming and composer remain separate"})
     );
 }

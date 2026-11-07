@@ -58,6 +58,13 @@ new original identity; a late acknowledgement can acknowledge only its own
 pending choice. Dropping an acknowledgement forgets its closure without
 promoting a pending grant. Cleanup uses the independent original key.
 
+The Rust cleanup guard captures that independent identity during recording
+preparation and compares it with a fresh original read before each request.
+It keeps the weak helper lifetime and canonical inner UTF16 JSON. The actual
+transport consumer separately requires current audio consent and the original
+draft owner/environment; its private eleven-scenario receipt is documented in
+`NATIVE-VOICE-TRANSPORT-4314.md`. This does not enable a cleanup provider or UI.
+
 Binding also returns the destination read inside that same consent realm after
 matching the requested identity and checking its original guard. Rust retains
 that inner JSON with the opaque binding. A denied or stale identity returns a

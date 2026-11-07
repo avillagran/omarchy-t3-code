@@ -101,6 +101,10 @@ pub struct AudioGrantGuard {
     binding: String,
     destination_json: String,
 }
+pub struct CleanupGrantGuard {
+    owner: Weak<Mutex<Worker>>,
+    grant_json: String,
+}
 pub struct CloudAcknowledgement {
     owner: Weak<Mutex<Worker>>,
     acknowledgement: String,
@@ -257,6 +261,21 @@ impl ConsentOwner {
     }
 }
 impl AudioGrantGuard {
+    /// Capture the independent original cleanup grant at recording preparation.
+    /// Inner JSON is canonical in its JS realm and retains arbitrary UTF16 IDs.
+    pub fn cleanup_grant(&self) -> io::Result<Option<CleanupGrantGuard>> {
+        let owner = self.owner.upgrade().ok_or_else(failed)?;
+        let current = snapshot(
+            owner
+                .lock()
+                .map_err(|_| failed())?
+                .call(json!({"op":"read"}))?,
+        )?;
+        Ok((current.cleanup_json != "null").then(|| CleanupGrantGuard {
+            owner: Arc::downgrade(&owner),
+            grant_json: current.cleanup_json,
+        }))
+    }
     /// Destination supplied by the same consent realm as this binding, never
     /// copied independently from ordinary preferences or an old UI snapshot.
     /// A null destination is unavailable and cannot select a transport.
@@ -273,6 +292,23 @@ impl AudioGrantGuard {
                     worker
                         .call(json!({"op":"check","binding":self.binding}))
                         .is_ok_and(|value| value["allowed"] == true)
+                })
+            })
+            .unwrap_or(false)
+    }
+}
+impl CleanupGrantGuard {
+    /// Every request compares the captured identity with a fresh original read.
+    /// A failed read, dead helper or independently changed grant denies cleanup.
+    pub fn is_current(&self) -> bool {
+        self.owner
+            .upgrade()
+            .and_then(|owner| {
+                owner.lock().ok().map(|mut worker| {
+                    worker
+                        .call(json!({"op":"read"}))
+                        .and_then(snapshot)
+                        .is_ok_and(|value| value.cleanup_json == self.grant_json)
                 })
             })
             .unwrap_or(false)

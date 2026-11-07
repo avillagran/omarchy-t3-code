@@ -59,10 +59,34 @@ failed because its new dependency revision/lock was not cached; its retained
 result is excluded from runtime acceptance. Acquisition populated that exact
 public Git revision and changed zero package versions before the accepted run.
 
+## Independent transcript cleanup
+
+`BoundSpeech::bind_cleanup` captures the independent original cleanup identity
+at recording preparation. Its weak `CleanupGrantGuard` reads that same original
+realm again before each request. Canonical inner JSON retains native UTF16 IDs;
+a failed read, dead helper or independent reselection denies the captured grant.
+Audio consent remains a separate requirement.
+
+`BoundCleanup` binds the draft's own environment and write credential, which can
+differ from the audio destination. Owner/environment mismatch or a revoked
+cleanup grant returns None to preserve the raw transcript. Current authority is
+checked with the draft credential before postprocessing. An actual transport or
+provider failure remains an error for the original controller's fallback notice.
+The caller still supplies the original bounded draft context/options and cancels
+when its lifetime changes during an await.
+
+The follow-up receipt `voice-transport-process-uyijxhu3/result.json` passes eleven
+actual consumer scenarios and strict all-target checks on the final sources. It
+repeats the capture/transport coverage and additionally proves a real request to
+a separate draft server with a distinct write credential, original payload
+decoding, owner/environment refusal, disabled cleanup and same-choice cleanup
+reselection without another request. Both servers are private fixtures; this
+does not certify an actual text-generation provider.
+
 The destination/status interfaces here supply the original browser platform's
 network dependency. This checkpoint does not replace its language/locale/stream
-selection, cleanup-grant comparison or voice controller. Production streaming,
-cleanup on the draft environment, persistent worker/controller wiring, consent
+selection or voice controller. Production streaming,
+persistent worker/controller wiring, consent
 settings controls and physical microphone acceptance remain separate work.
 The private HTTP server supplies deterministic transcript responses; this result
 does not certify provider inference or acoustic accuracy. Public voice controls

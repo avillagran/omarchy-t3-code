@@ -1,9 +1,13 @@
 //! Voice transport bound to one original consent identity and its destination.
 //! Audio remains binary Rust data; this module exposes no CLI or QML action.
-use crate::{protocol, voice_consent::AudioGrantGuard, Environment, Result, Value};
+use crate::{
+    protocol,
+    voice_consent::{AudioGrantGuard, CleanupGrantGuard},
+    Environment, Result, Value,
+};
 use protocol::speech::{
-    CancellableSpeech, CloudKeys, CloudProvider, RequestCancellation, RequestFailure,
-    RequestResult, TranscriptionOptions,
+    CancellableSpeech, CloudKeys, CloudProvider, PostProcessRequest, RequestCancellation,
+    RequestFailure, RequestResult, TranscriptionOptions,
 };
 use std::sync::Arc;
 
@@ -13,6 +17,13 @@ pub struct BoundSpeech {
     grant: Arc<AudioGrantGuard>,
     environment_id: String,
     cloud: Option<(CloudProvider, Option<String>)>,
+    client: CancellableSpeech,
+}
+pub struct BoundCleanup {
+    audio: Arc<AudioGrantGuard>,
+    cleanup: CleanupGrantGuard,
+    draft_owner: String,
+    draft_environment: String,
     client: CancellableSpeech,
 }
 impl BoundSpeech {
@@ -73,6 +84,31 @@ impl BoundSpeech {
     }
     pub fn is_cloud(&self) -> bool {
         self.cloud.is_some()
+    }
+    /// Capture during preparation, using the draft's environment, which may be
+    /// different from the consented audio destination. No cleanup grant is inferred.
+    pub fn bind_cleanup(
+        &self,
+        draft: &Environment,
+        draft_owner: &str,
+    ) -> Result<Option<BoundCleanup>> {
+        if !self.grant.is_current() {
+            return Ok(None);
+        }
+        let Some(cleanup) = self
+            .grant
+            .cleanup_grant()
+            .map_err(|_| "voice_consent_unavailable")?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(BoundCleanup {
+            audio: self.grant.clone(),
+            cleanup,
+            draft_owner: draft_owner.into(),
+            draft_environment: draft.id.clone(),
+            client: draft.connection(true)?.cancellable_speech()?,
+        }))
     }
     /// Current draft/recording ownership and the original grant are independent
     /// requirements. No stored boolean or selected UI environment grants audio.
@@ -136,5 +172,43 @@ impl BoundSpeech {
                 || self.current(&owner),
             )
             .await
+    }
+}
+impl BoundCleanup {
+    fn current(&self, owner: &impl Fn() -> bool) -> bool {
+        owner() && self.audio.is_current() && self.cleanup.is_current()
+    }
+    /// None preserves the raw transcript when any captured/current identity no
+    /// longer matches. Failures remain distinct for the original fallback notice.
+    pub async fn post_process(
+        &self,
+        draft_owner: &str,
+        draft_environment: &str,
+        input: &PostProcessRequest,
+        cancel: &RequestCancellation,
+        owner: impl Fn() -> bool,
+    ) -> RequestResult<Option<String>> {
+        if draft_owner != self.draft_owner
+            || draft_environment != self.draft_environment
+            || !self.current(&owner)
+        {
+            return Ok(None);
+        }
+        let session = self.client.session(cancel, || self.current(&owner)).await?;
+        if session["authenticated"] != true {
+            return Err(RequestFailure::Transport("unauthorized".into()));
+        }
+        if !session
+            .get("permissions")
+            .or_else(|| session.get("scopes"))
+            .and_then(Value::as_array)
+            .is_some_and(|items| items.iter().any(|item| item == "orchestration:operate"))
+        {
+            return Err(RequestFailure::Transport("permission_denied".into()));
+        }
+        self.client
+            .post_process(input, cancel, || self.current(&owner))
+            .await
+            .map(Some)
     }
 }
