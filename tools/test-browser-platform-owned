@@ -3,15 +3,26 @@
 import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
 from runtime_artifacts import snapshot
 from pathlib import Path
-parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);options=parser.parse_args()
+parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--manager-server',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);options=parser.parse_args()
 if options.cross_cohort and not options.runtime:parser.error('cross-cohort requires native runtime')
 if bool(options.runtime)!=bool(options.services):parser.error('runtime and services must be supplied together')
+if options.manager_server and not options.runtime:parser.error('manager proof requires native runtime')
 root=Path(__file__).resolve().parent.parent
 if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
 out=Path(tempfile.mkdtemp(prefix='browser-gui-platform-',dir='/home/node/BuildCache/o3-desktop-next'));print('GUI platform evidence: '+str(out),flush=True)
 for name in ['clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
 for name in ['browser-platform-owned.cpp','browser-platform-peer.py','browser-platform-process.qml','electron-clipboard-owner.cpp']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
 (out/'T3BrowserClipboardPlatform.qml').write_bytes((root/'ui/qml/T3BrowserClipboardPlatform.qml').read_bytes())
+if options.manager_server:
+ server=options.manager_server.resolve()
+ if hashlib.sha256(server.read_bytes()).hexdigest()!='23b9f821ddc2d3da7597ff9f65cbb3ab7daa6e5eb84c1887301b1977595a977c':raise SystemExit('Exact reviewed desktop server required')
+ import shutil
+ shutil.copytree(root/'ui',out/'root/ui',symlinks=False)
+ (out/'root/bin').mkdir(parents=True)
+ (out/'root/bin/omarchy-t3-client').write_bytes((root/'tests/fixtures/browser-permission-worker.py').read_bytes());(out/'root/bin/omarchy-t3-client').chmod(0o500)
+ (out/'native-clipboard-manager.qml').write_bytes((root/'tools/fixtures/native-clipboard-manager.qml').read_bytes())
+ (out/'disabled-local-browser').write_bytes(b'Local browser fallback is excluded from this desktop-only proof.\n');(out/'disabled-local-browser').chmod(0o400)
+ (out/'server-artifact.json').write_text(json.dumps({'sha256':hashlib.sha256(server.read_bytes()).hexdigest(),'revision':'0b9a5d31abf64e7bf90008802a6115302d0ed735'})+'\n')
 if options.runtime:
  runtime=options.runtime.resolve();manifest=json.loads((runtime.parent/'artifact.json').read_text())
  if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167':raise SystemExit('Verified official runtime required')
@@ -35,6 +46,7 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  with (out/'rust-compile.jsonl').open('w') as log,(out/'rust-compile.log').open('w') as errors:
   build_args=['/home/node/.cargo/bin/cargo','build','--locked','--offline','--bins','--example','gui_clipboard_probe','--example','engine_identity_peer','--message-format=json']
   if options.runtime:build_args+=['--example','native_clipboard_pool_probe']
+  if options.manager_server:build_args+=['--example','native_clipboard_manager_probe']
   build=subprocess.run(build_args,cwd=root,env=dict(os.environ,CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target',CARGO_INCREMENTAL='0',CARGO_BUILD_JOBS='2'),stdout=log,stderr=errors)
  if build.returncode:raise SystemExit(build.returncode)
  if source_hashes!={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}:raise SystemExit('Source changed during GUI consumer compile')
@@ -50,10 +62,12 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  if options.runtime:
   pool=next(file for file in executables if file.name=='native_clipboard_pool_probe');(out/'native-pool-probe').write_bytes((frozen/pool.relative_to(debug)).read_bytes());(out/'native-pool-probe').chmod(0o500)
   main=next(file for file in executables if file.name=='omarchy-t3-client');(out/'app/bin').mkdir(parents=True);(out/'app/bin/omarchy-t3-client').write_bytes((frozen/main.relative_to(debug)).read_bytes());(out/'app/bin/omarchy-t3-client').chmod(0o500)
+if options.manager_server:
+ manager=next(file for file in executables if file.name=='native_clipboard_manager_probe');(out/'native-manager-probe').write_bytes((frozen/manager.relative_to(debug)).read_bytes());(out/'native-manager-probe').chmod(0o500)
 (out/'clipboard-owner').chmod(0o500)
 (out/'gui').chmod(0o500)
 (out/'artifacts.json').write_text(json.dumps({str(file.relative_to(out)):hashlib.sha256(file.read_bytes()).hexdigest() for file in out.rglob('*') if file.is_file()},indent=2)+'\n')
-args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--ulimit=core=0:0','--pids-limit=96','--memory=512m','--tmpfs','/tmp:rw,size=128m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(out)+':/fixture:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','QT_QPA_PLATFORM=wayland','--env','LD_LIBRARY_PATH=/fixture/worker-libs','localhost/o3-qml-wayland-tests:local','python3','-c',r'''
+args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--ulimit=core=0:0','--pids-limit=96','--memory=512m','--tmpfs','/tmp:rw,size=128m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(out)+':/fixture:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','--env','__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json','--env','QT_QPA_PLATFORM=wayland','--env','LD_LIBRARY_PATH=/fixture/worker-libs','localhost/o3-qml-wayland-tests:local','python3','-c',r'''
 import hashlib,json,os,pathlib,resource,subprocess,time
 assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
 os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700)
@@ -70,17 +84,32 @@ try:
   if sockets:break
   assert display.poll() is None;time.sleep(.02)
  else:raise AssertionError('private display unavailable')
- keyboard=subprocess.Popen(['wtype','-k','Shift_L','-s','25000'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ keyboard=subprocess.Popen(['wtype','-k','Shift_L','-s','120000'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  time.sleep(.05)
- result=subprocess.run(['/fixture/gui'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),capture_output=True,text=True,timeout=40);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PLATFORM_PASS' in result.stdout
- result=subprocess.run(['quickshell','-p','/fixture/browser-platform-process.qml'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name,QML_IMPORT_PATH='/fixture/qml'),capture_output=True,text=True,timeout=15);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PROCESS_PASS' in result.stdout+result.stderr
+ if os.environ.get('O3_NATIVE_GUI_MANAGER')=='1':
+  assert not any(os.access(pathlib.Path('/usr/bin',name),os.X_OK) for name in ['chromium','chromium-browser','google-chrome','google-chrome-stable']), 'Local browser fallback must be unavailable'
+  server=pathlib.Path('/server/o3-server');assert hashlib.sha256(server.read_bytes()).hexdigest()==json.loads(pathlib.Path('/fixture/server-artifact.json').read_text())['sha256']
+  qml=pathlib.Path('/tmp/qml');qml.mkdir()
+  for name in ['Commons','Ui','plugins','services']:(qml/name).symlink_to('/usr/share/omarchy/shell/'+name)
+  (qml/'UnderTest').symlink_to('/fixture/root')
+  (qml/'shell.qml').write_text('//@ pragma OmarchyLoadPatch\n//@ pragma RespectSystemStyle\n'+pathlib.Path('/fixture/native-clipboard-manager.qml').read_text())
+  sway=next(pathlib.Path('/tmp/runtime').glob('sway-ipc.*.sock'))
+  result=subprocess.run(['quickshell','-p',str(qml/'shell.qml')],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name,SWAYSOCK=str(sway),QML_IMPORT_PATH='/fixture/qml'),capture_output=True,text=True,timeout=100);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'NATIVE_CLIPBOARD_MANAGER_MODAL_PASS' in result.stdout+result.stderr
+ else:
+  result=subprocess.run(['/fixture/gui'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),capture_output=True,text=True,timeout=40);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PLATFORM_PASS' in result.stdout
+  result=subprocess.run(['quickshell','-p','/fixture/browser-platform-process.qml'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name,QML_IMPORT_PATH='/fixture/qml'),capture_output=True,text=True,timeout=15);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PROCESS_PASS' in result.stdout+result.stderr
 finally:
  if keyboard is not None and keyboard.poll() is None:keyboard.terminate();keyboard.wait(timeout=3)
  display.terminate();display.wait(timeout=3);log.close()
 ''']
+if options.manager_server:
+ for name in ['chromium','chromium-browser','google-chrome','google-chrome-stable']:
+  if Path('/usr/bin',name).exists():args[3:3]=['-v',str(out/'disabled-local-browser')+':/usr/bin/'+name+':ro']
+if options.manager_server:args[3:3]=['-v',str(server)+':/server/o3-server:ro','--env','O3_NATIVE_GUI_MANAGER=1']
 if options.cross_cohort:args[3:3]=['--env','O3_NATIVE_GUI_CROSS=1']
 if options.runtime:
  args[args.index('--memory=512m')]='--memory=3g';args[args.index('--pids-limit=96')]='--pids-limit=384'
  args[3:3]=['--security-opt=seccomp=unconfined','-v',str(runtime)+':/electron:ro','--env','O3_NATIVE_GUI_POOL=1']
-with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=60)
+(out/'podman-command.json').write_text(json.dumps(args)+'\n')
+with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=125)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
