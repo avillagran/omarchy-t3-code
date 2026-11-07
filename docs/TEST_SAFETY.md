@@ -25,3 +25,19 @@ Filesystem symlink fixtures point within their own temporary fixture. QML loader
 The safety checkpoint has 13 focused Rust cases passing across archive, vault, host-sync, frame, and browser-profile behavior, plus 21 build-cleanup cases. Three reviewed installer/bootstrap/restart scripts pass in private containers. The native QML preview helper builds, and all-target Clippy compilation passes. These scoped results do not replace a newly audited full runtime matrix.
 
 Remaining review includes transitive production helpers reached by other tests and native browser/UI workflows. Retained fixtures and explicit doubles must stay visible in evidence; no environment switch, silent no-op, ignored test, or alternative host runner may stand in for destructive behavior coverage.
+
+## Immutable runtime inputs
+
+The Rust container runner keeps the shared compilation lock until it has copied
+its test executables, embedded CLI and runtime libraries into a retained artifact
+directory beside the resolved Cargo target. Containers mount that copy at the
+original embedded debug path; later Cargo builds cannot replace their runtime
+inputs. Evidence records each artifact's SHA-256 and byte length. The copier uses
+`O_NOFOLLOW`, accepts regular files only, and never recursively removes artifacts.
+Private regressions cover later source-file replacement and rejection of owned
+symbolic links and paths outside the debug directory.
+
+This freezes build artifacts. Source worktrees still need separate immutable
+checkpointing for exact-commit acceptance. The full runtime audit marker remains
+in force; artifact copying does not authorize unreviewed tests or establish
+complete native browser/UI coverage.

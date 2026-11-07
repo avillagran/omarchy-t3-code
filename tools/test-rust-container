@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compile Rust tests, then run them with private profiles and read-only inputs in rootless Podman."""
 import argparse
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -8,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
+from runtime_artifacts import snapshot
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--test", action="append", default=[], help="Integration target; repeat to select several")
@@ -30,37 +33,42 @@ print("Container evidence: " + str(evidence), flush=True)
 lock = Path(os.environ.get("O3_BUILD_LOCK", "/var/tmp/o3-build/o3-parity-compile.lock"))
 lock.parent.mkdir(parents=True, exist_ok=True)
 selection = [argument for name in options.test for argument in ("--test", name)] if options.test else ["--all-targets"]
-command = ["flock", str(lock), "cargo", "test", "--locked", "--offline", *selection, "--no-run", "--message-format=json"]
-build = subprocess.run(command, cwd=root, capture_output=True, text=True)
-(evidence / "compile.json").write_text(build.stdout)
-(evidence / "compile.log").write_text(build.stderr)
-if build.returncode:
+with lock.open("a") as compile_lock:
+    fcntl.flock(compile_lock.fileno(), fcntl.LOCK_EX)
+    command = ["cargo", "test", "--locked", "--offline", *selection, "--no-run", "--message-format=json"]
+    build = subprocess.run(command, cwd=root, capture_output=True, text=True)
+    (evidence / "compile.json").write_text(build.stdout)
+    (evidence / "compile.log").write_text(build.stderr)
+    if build.returncode:
+        for line in build.stdout.splitlines():
+            try:
+                diagnostic = json.loads(line).get("message", {})
+            except ValueError:
+                continue
+            if diagnostic.get("rendered"):
+                print(diagnostic["rendered"], end="")
+        print(build.stderr, end="", file=sys.stderr)
+        raise SystemExit(build.returncode)
+    artifacts = []
     for line in build.stdout.splitlines():
-        try:
-            diagnostic = json.loads(line).get("message", {})
-        except ValueError:
-            continue
-        if diagnostic.get("rendered"):
-            print(diagnostic["rendered"], end="")
-    print(build.stderr, end="", file=sys.stderr)
-    raise SystemExit(build.returncode)
-artifacts = []
-for line in build.stdout.splitlines():
-    item = json.loads(line)
-    if item.get("executable") and item.get("profile", {}).get("test"):
-        artifacts.append((item["target"]["name"], item["executable"]))
-if not artifacts:
-    raise SystemExit("Cargo produced no test executables")
-(evidence / "artifacts.json").write_text(json.dumps(artifacts, indent=2) + "\n")
-metadata = json.loads(subprocess.check_output(["cargo", "metadata", "--offline", "--no-deps", "--format-version=1"], cwd=root, text=True))
-debug = Path(metadata["target_directory"]) / "debug"
-common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=root, text=True).strip())
-common = common.resolve() if common.is_absolute() else (root / common).resolve()
-bundle = evidence / "bin"
-shutil.copytree(root / "bin", bundle, symlinks=True)
-(bundle / "omarchy-t3-client").unlink(missing_ok=True)
-shutil.copyfile(debug / "omarchy-t3-client", bundle / "omarchy-t3-client")
-os.chmod(bundle / "omarchy-t3-client", 0o755)
+        item = json.loads(line)
+        if item.get("executable") and item.get("profile", {}).get("test"):
+            artifacts.append((item["target"]["name"], item["executable"]))
+    if not artifacts:
+        raise SystemExit("Cargo produced no test executables")
+    (evidence / "artifacts.json").write_text(json.dumps(artifacts, indent=2) + "\n")
+    metadata = json.loads(subprocess.check_output(["cargo", "metadata", "--offline", "--no-deps", "--format-version=1"], cwd=root, text=True))
+    debug = Path(metadata["target_directory"]) / "debug"
+    runtime = debug.resolve().parent / ("test-runtime-" + uuid.uuid4().hex)
+    runtime_records = snapshot(debug, [Path(binary) for _, binary in artifacts], runtime)
+    (evidence / "runtime-artifacts.json").write_text(json.dumps({"directory":str(runtime),"files":runtime_records},indent=2)+"\n")
+    common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=root, text=True).strip())
+    common = common.resolve() if common.is_absolute() else (root / common).resolve()
+    bundle = evidence / "bin"
+    shutil.copytree(root / "bin", bundle, symlinks=True)
+    (bundle / "omarchy-t3-client").unlink(missing_ok=True)
+    shutil.copyfile(runtime / "omarchy-t3-client", bundle / "omarchy-t3-client")
+    os.chmod(bundle / "omarchy-t3-client", 0o755)
 node = Path(subprocess.check_output(["node", "-p", "process.execPath"], text=True).strip()).resolve()
 args = ["podman", "run", "--rm", "--pull=never", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}",
         "--read-only", "--tmpfs", "/tmp:rw,exec,size=2g,mode=1777", "--tmpfs", "/var/tmp:rw,exec,size=1g,mode=1777",
@@ -69,7 +77,7 @@ args = ["podman", "run", "--rm", "--pull=never", "--userns=keep-id", "--user", f
         "--workdir", str(root)]
 # Chromium keeps its own sandbox; allow its namespace syscalls inside the outer container.
 # No live display, bus, home, browser profile or device is mounted.
-for source, destination in [(root, root), (common, common), (debug, debug), (bundle, root / "bin"), (Path("/usr"), Path("/usr")), (Path("/etc/fonts"), Path("/etc/fonts"))]:
+for source, destination in [(root, root), (common, common), (runtime, debug), (bundle, root / "bin"), (Path("/usr"), Path("/usr")), (Path("/etc/fonts"), Path("/etc/fonts"))]:
     args += ["-v", f"{source}:{destination}:ro"]
 if Path("/usr") not in node.parents:
     node_root = node.parent.parent
@@ -96,7 +104,7 @@ sys.exit(bool(failures))
 ''', json.dumps(artifacts)]
 with (evidence / "output.log").open("w") as output:
     result = subprocess.run(args, stdout=output, stderr=subprocess.STDOUT, timeout=1500)
-(evidence / "result.json").write_text(json.dumps({"returncode": result.returncode, "image": options.image, "targets": options.test}, indent=2) + "\n")
+(evidence / "result.json").write_text(json.dumps({"returncode": result.returncode, "image": options.image, "targets": options.test, "runtimeSnapshot":str(runtime), "runtimeArtifacts":runtime_records}, indent=2) + "\n")
 print("Result: " + str(result.returncode), flush=True)
 print("Log: " + str(evidence / "output.log"), flush=True)
 raise SystemExit(result.returncode)
