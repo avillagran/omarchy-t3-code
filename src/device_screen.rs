@@ -14,7 +14,7 @@ use std::{
     io::Write,
     os::unix::fs::{DirBuilderExt, OpenOptionsExt},
     path::PathBuf,
-    process::{Child, Command, Stdio},
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         mpsc, Arc, Mutex,
@@ -22,12 +22,14 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod decoder;
+
 struct Session {
     request_id: String,
     cancel: Arc<AtomicBool>,
     input: mpsc::Sender<Value>,
     target: Target,
-    decoder: Arc<Mutex<Option<Child>>>,
+    decoder: decoder::Slot,
     /// The device id the session resolved to (an emulator serial once booted).
     device: Arc<Mutex<String>>,
 }
@@ -156,10 +158,7 @@ impl Manager {
     pub fn stop(&mut self) {
         if let Some(session) = self.current.take() {
             session.cancel.store(true, Ordering::Relaxed);
-            if let Some(mut child) = session.decoder.lock().unwrap().take() {
-                let _ = child.kill();
-                let _ = child.wait();
-            }
+            decoder::stop(&session.decoder);
         }
     }
 }
@@ -211,15 +210,18 @@ impl Frames {
         Ok(Self { dir, request_id: request_id.into(), revision: AtomicU64::new(0), last: Mutex::new(Instant::now() - Duration::from_secs(1)) })
     }
     /// Publishes at most one frame per display refresh; older frames are dropped.
-    fn publish(&self, bytes: &[u8], ext: &str) {
+    fn publish(&self, bytes: &[u8], ext: &str) -> bool {
+        self.publish_with(bytes, ext, || {})
+    }
+    fn publish_with(&self, bytes: &[u8], ext: &str, written_frame: impl FnOnce()) -> bool {
         {
             let mut last = self.last.lock().unwrap();
             if last.elapsed() < Duration::from_millis(8) {
-                return;
+                return false;
             }
             *last = Instant::now();
         }
-        let Some((width, height)) = image_size(bytes) else { return };
+        let Some((width, height)) = image_size(bytes) else { return false };
         let revision = self.revision.fetch_add(1, Ordering::Relaxed) + 1;
         let path = self.dir.join(format!("frame-{}.{ext}", revision % 2));
         let written = fs::OpenOptions::new()
@@ -230,8 +232,10 @@ impl Frames {
             .open(&path)
             .and_then(|mut f| f.write_all(bytes));
         if written.is_ok() {
+            written_frame();
             surface(&self.request_id, json!({"kind":"frame","url":format!("file://{}",path.display()),"revision":revision,"width":width,"height":height}));
         }
+        written.is_ok()
     }
 }
 impl Drop for Frames {
@@ -290,7 +294,7 @@ fn start(target: Target, open: bool) -> Session {
     session
 }
 
-fn run(target: &Target, open: bool, cancel: &Arc<AtomicBool>, inputs: mpsc::Receiver<Value>, decoder: Arc<Mutex<Option<Child>>>, device: &Arc<Mutex<String>>) -> Result<()> {
+fn run(target: &Target, open: bool, cancel: &Arc<AtomicBool>, inputs: mpsc::Receiver<Value>, decoder: decoder::Slot, device: &Arc<Mutex<String>>) -> Result<()> {
     let env = crate::env_by_id(&target.environment)?;
     let c = env.connection(true)?;
     let platform = match target.platform { Platform::Ios => "ios", Platform::Android => "android" };
@@ -325,6 +329,9 @@ fn run(target: &Target, open: bool, cancel: &Arc<AtomicBool>, inputs: mpsc::Rece
         if cancel.load(Ordering::Relaxed) {
             break;
         }
+        if result.as_ref().is_err_and(|error| error == "device_decoder_failed" || error == "device_diagnostics_unavailable") {
+            return result;
+        }
         let now = frames.revision.load(Ordering::Relaxed);
         if now > seen {
             seen = now;
@@ -354,7 +361,7 @@ fn decoder_command() -> Command {
         .args(["-f", "image2pipe", "-pix_fmt", "yuvj420p", "-c:v", "mjpeg", "-q:v", "4", "pipe:1"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+        .stderr(Stdio::piped());
     command
 }
 
@@ -375,7 +382,7 @@ fn ios(c: &protocol::Connection, access: &device_hub::HubAccess, target: &Target
                 break;
             }
             match frame {
-                Ok(frame) => stream_frames.publish(&frame, "jpg"),
+                Ok(frame) => { stream_frames.publish(&frame, "jpg"); },
                 Err(_) => break,
             }
         }
@@ -416,59 +423,87 @@ fn ios(c: &protocol::Connection, access: &device_hub::HubAccess, target: &Target
 
 /// Android: one socket carries H.264 down and JSON input up. Video is decoded
 /// by ffmpeg when available; otherwise screenshots stand in for frames.
-fn android(c: &protocol::Connection, access: &device_hub::HubAccess, target: &Target, cancel: &Arc<AtomicBool>, inputs: &mpsc::Receiver<Value>, frames: &Arc<Frames>, decoder: &Arc<Mutex<Option<Child>>>) -> Result<()> {
+struct AndroidView<'a> {
+    connection: &'a protocol::Connection, access: &'a device_hub::HubAccess, target: &'a Target,
+    cancel: &'a Arc<AtomicBool>, inputs: &'a mpsc::Receiver<Value>, frames: &'a Arc<Frames>, decoder: &'a decoder::Slot,
+}
+fn android(c: &protocol::Connection, access: &device_hub::HubAccess, target: &Target, cancel: &Arc<AtomicBool>, inputs: &mpsc::Receiver<Value>, frames: &Arc<Frames>, decoder: &decoder::Slot) -> Result<()> {
+    android_view(AndroidView { connection: c, access, target, cancel, inputs, frames, decoder }, decoder_command())
+}
+fn android_view(view: AndroidView<'_>, mut command: Command) -> Result<()> {
+    let AndroidView { connection: c, access, target, cancel, inputs, frames, decoder } = view;
     let mut ws = c.device_socket(access, Platform::Android, &target.device_id)?;
-    let mut feed = None;
-    if let Ok(mut child) = decoder_command().spawn()
-    {
-        let stdout = child.stdout.take();
-        feed = child.stdin.take();
-        *decoder.lock().unwrap() = Some(child);
-        if let Some(stdout) = stdout {
-            let (decode_cancel, decode_frames) = (cancel.clone(), frames.clone());
-            std::thread::spawn(move || {
-                for frame in MjpegFrames::new(stdout) {
-                    if decode_cancel.load(Ordering::Relaxed) {
-                        break;
-                    }
-                    match frame {
-                        Ok(frame) => decode_frames.publish(&frame, "jpg"),
-                        Err(_) => break,
-                    }
+    surface(&target.request_id, json!({"kind":"status","stage":"connecting","input":true,"decoder":false}));
+    let mut running = match decoder::start(decoder, cancel, &mut command) {
+        Ok(Some(running)) => Some(running),
+        Ok(None) => return Ok(()),
+        Err(decoder::StartError::Spawn(error)) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(decoder::StartError::Diagnostics(error)) => { surface(&target.request_id, json!({"kind":"status","stage":"error","input":false,"decoder":false})); eprintln!("device decoder diagnostics unavailable: {error}"); return Err("device_diagnostics_unavailable".into()); },
+        Err(_) => { surface(&target.request_id, json!({"kind":"status","stage":"error","input":false,"decoder":false})); return Err("device_decoder_failed".into()); },
+    };
+    let mut feed = running.as_mut().and_then(|running| running.stdin.take());
+    if let Some(running) = running.as_mut() {
+        let stdout = running.stdout.take().expect("decoder stdout");
+        let attempt = running.attempt.clone();
+        let (decode_cancel, decode_frames, request_id) = (cancel.clone(), frames.clone(), target.request_id.clone());
+        let reader = std::thread::Builder::new().name("device-decoder-frames".into()).spawn(move || {
+            let mut reported = false;
+            for frame in MjpegFrames::new(stdout) {
+                if decode_cancel.load(Ordering::Relaxed) { break; }
+                match frame {
+                    Ok(frame) => attempt.publish(|| {
+                        decode_frames.publish_with(&frame, "jpg", || {
+                            if !reported {
+                                reported = true;
+                                surface(&request_id, json!({"kind":"status","stage":"live","input":true,"decoder":true}));
+                            }
+                        });
+                    }),
+                    Err(_) => break,
                 }
-            });
+            }
+        });
+        if reader.is_err() {
+            surface(&target.request_id, json!({"kind":"status","stage":"error","input":false,"decoder":false}));
+            return Err("device_decoder_failed".into());
         }
         let _ = ws.send(tungstenite::Message::Text(json!({"type":"reset-video","ack":false}).to_string().into()));
     } else {
-        // No decoder: poll screenshots while the socket handles input.
+        // A missing decoder remains a distinct, honestly reported screenshot mode.
         let (shot_cancel, shot_frames, shot_c, shot_access, device) = (cancel.clone(), frames.clone(), c.clone(), access.clone(), target.device_id.clone());
         std::thread::spawn(move || {
             while !shot_cancel.load(Ordering::Relaxed) {
-                if let Ok(png) = shot_c.device_screenshot(&shot_access, Platform::Android, &device) {
-                    shot_frames.publish(&png, "png");
-                }
+                if let Ok(png) = shot_c.device_screenshot(&shot_access, Platform::Android, &device) { shot_frames.publish(&png, "png"); }
                 std::thread::sleep(Duration::from_millis(250));
             }
         });
     }
-    surface(&target.request_id, json!({"kind":"status","stage":"live","input":true,"decoder":feed.is_some()}));
     while !cancel.load(Ordering::Relaxed) {
+        if running.as_ref().is_some_and(|running| running.attempt.exited()) {
+            let detail = running.as_ref().unwrap().attempt.stop();
+            surface(&target.request_id, json!({"kind":"status","stage":"error","input":false,"decoder":false}));
+            if !detail.is_empty() { eprintln!("device decoder failed: {detail}"); }
+            return Err("device_decoder_failed".into());
+        }
         while let Ok(event) = inputs.try_recv() {
-            if let Ok(message) = device_hub::input_message(Platform::Android, &event) {
-                ws.send(message).map_err(|_| "device_stream_ended")?;
-            }
+            if let Ok(message) = device_hub::input_message(Platform::Android, &event) { ws.send(message).map_err(|_| "device_stream_ended")?; }
         }
         match ws.read() {
             Ok(tungstenite::Message::Binary(packet)) => {
-                if let (Some(stdin), Some((_, payload))) = (feed.as_mut(), device_hub::parse_semu(&packet)) {
+                let parsed = device_hub::parse_semu(&packet);
+                if let Some(running) = running.as_ref() { running.attempt.packet(&packet, parsed); }
+                if let (Some(stdin), Some((_, payload))) = (feed.as_mut(), parsed) {
                     if stdin.write_all(payload).is_err() {
-                        feed = None;
+                        if let Some(running) = running.as_ref() { let detail = running.attempt.stop(); if !detail.is_empty() {eprintln!("device decoder failed: {detail}");} }
+                        surface(&target.request_id, json!({"kind":"status","stage":"error","input":false,"decoder":false}));
+                        return Err("device_decoder_failed".into());
                     }
                 }
             }
+            Ok(tungstenite::Message::Text(text)) => {if let Some(running) = running.as_ref() {running.attempt.text(text.as_str());}},
             Ok(tungstenite::Message::Close(_)) => return Err("device_stream_ended".into()),
-            Ok(_) => {}
-            Err(e) if would_block(&e) => {}
+            Ok(_) => {},
+            Err(e) if would_block(&e) => {},
             Err(_) => return Err("device_stream_ended".into()),
         }
     }
@@ -563,3 +598,6 @@ mod action_tests {
         assert!(manager.actions.lock().unwrap().is_empty());
     }
 }
+
+#[cfg(test)]
+mod flow_tests;
