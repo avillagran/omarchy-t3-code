@@ -8,7 +8,9 @@
         typeof api.dispatchMessage !== "function") throw Error("private_cdp_unavailable");
     const originalSend = host.sendMessageToBackend.bind(host);
     const originalDispatch = api.dispatchMessage.bind(api);
-    const limit = 16 * 1024 * 1024;
+    // This is decoded debugger JSON, not the outer NDJSON envelope. Native
+    // CdpRelay retains its separate 64 Mi-unit serialized output budget.
+    const limit = 128 * 1024 * 1024;
     const pending = new Map();
     let next = 1, queued = 0, closed = false, failure = null;
     let chunks = "", expected = 0;

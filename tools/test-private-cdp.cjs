@@ -30,7 +30,7 @@ const request=(id,method='Runtime.evaluate')=>JSON.stringify({id,method,params:{
  f.bridge.close();assert.equal(f.bridge.drain().closed,true);assert.throws(()=>f.bridge.send(request(2)),/closed/);
 }
 {
- const f=fixture();assert.throws(()=>f.api.dispatchMessageChunk('x',17*1024*1024),/chunk_limit/);assert.equal(f.bridge.drain().closed,true);
+ const f=fixture();assert.throws(()=>f.api.dispatchMessageChunk('x',129*1024*1024),/chunk_limit/);assert.equal(f.bridge.drain().closed,true);
 }
 {
  const f=fixture();assert.throws(()=>f.api.dispatchMessage('{"id":999,"result":{}}'),/unknown_reply/);assert.equal(f.bridge.drain().closed,true);
