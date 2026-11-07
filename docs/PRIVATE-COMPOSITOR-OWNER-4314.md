@@ -44,6 +44,27 @@ before the `ww6k18mq` receipt passed. Review then found a double-read parent rac
 the corrected candidate captures one PID before validation and uses explicit
 `-D_GNU_SOURCE`. Its final native receipt is `hudvnti0`.
 
-The actual patched compositor still requires review and a separately pinned
-build before execution. Wayland hosting, frontend engine authentication,
-native lazy clipboard transfer and full GUI acceptance remain outstanding.
+The reviewed corrected candidate was subsequently built and exercised as a
+separate app-private artifact. `tests/fixtures/private-sway-owner-proof-4314.json`
+records its exact digest, source/tool archives, signed package verification,
+header compatibility qualification and retained negative receipts. The final
+`runtime-proof5` passed with real headless Sway, pixman, no host display or
+input devices, no network, private HOME/runtime/config and hard core limit zero.
+A child consumed Wayland and IPC sockets actually connected by the supervisor;
+a foreign sibling could neither enumerate/bind globals nor interpret IPC.
+The supervisor held its `exit` command socket until actual normal process exit.
+No Electron engine was started. The source-controlled repeat runner accepts
+only that frozen artifact and its exact two dependent library identities.
+
+The build uses explicit `-D_GNU_SOURCE` only for the two patched translation
+units. Applying it globally exposed a GNU `strpbrk` const diagnostic in unrelated
+upstream code; the scoped compiler wrapper preserves upstream flags elsewhere.
+The original signed Sway BUILDINFO pins libinput 1.31.3, whose authenticated
+header was used to avoid a newly added enum diagnostic against the installed
+1.32 headers. Runtime libinput was not replaced. No warnings were suppressed.
+Meson/Ninja and source data remain in the private cache, without installation.
+
+Wayland hosting, early frontend engine authentication, native lazy clipboard
+transfer and full GUI/Pool acceptance remain outstanding. Compositor admission
+alone does not authorize clipboard reads or prove native permission behavior.
+The public selector remains disabled.
