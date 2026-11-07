@@ -255,6 +255,12 @@ pub fn renderer() -> Result<()> {
     let private_fd = private_descriptor(&payload)?;
     crate::browser_engine_identity::confine(&payload)?;
     let clipboard_identity = payload.get("privateClipboardIdentityFd").cloned();
+    let engine_spawn = payload
+        .get("privateEngineSpawn")
+        .is_some_and(|value| value == true);
+    if engine_spawn && clipboard_identity.is_none() {
+        return Err("invalid_browser_private_descriptor".into());
+    }
     let storage = storage_root();
     let _profile_lock = lock_profile(
         &storage,
@@ -270,6 +276,9 @@ pub fn renderer() -> Result<()> {
     }
     if let Some(fd) = clipboard_identity {
         payload["privateClipboardIdentityFd"] = fd;
+    }
+    if engine_spawn {
+        payload["privateEngineSpawn"] = json!(true);
     }
     let result = if let Some((runtime, assets)) = crate::browser_electron::configured() {
         payload["electronDirectory"] = json!(crate::browser_electron::directory(&payload)?);

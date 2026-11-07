@@ -74,6 +74,22 @@ impl Pending {
         &self.source
     }
     pub fn admit(&self, renderer: u32) -> Result<Engine> {
+        self.receive(renderer, false)
+    }
+    /// Admit the actual spawned child before GTK/Ozone can need its display.
+    /// The renderer reports a kernel pidfd, never a supplied engine PID label.
+    pub fn admit_spawn(&self, renderer: u32) -> Result<Engine> {
+        self.receive(renderer, true)
+    }
+    /// The later trusted-main addon must independently identify the same child.
+    pub fn confirm(&self, renderer: u32, spawned: &Engine) -> Result<()> {
+        let confirmed = self.receive(renderer, false)?;
+        if confirmed.pid != spawned.pid || !live(spawned.pidfd.as_raw_fd()) {
+            return Err("browser_engine_identity_unavailable".into());
+        }
+        Ok(())
+    }
+    fn receive(&self, renderer: u32, spawn: bool) -> Result<Engine> {
         let mut bytes = [0_u8; 64];
         let mut data = libc::iovec {
             iov_base: bytes.as_mut_ptr().cast(),
@@ -92,6 +108,9 @@ impl Pending {
                 libc::MSG_CMSG_CLOEXEC,
             )
         };
+        if count < 0 {
+            return Err("browser_engine_identity_unavailable".into());
+        }
         let mut credentials = None;
         let mut descriptors = Vec::new();
         let mut unknown = false;
@@ -121,8 +140,13 @@ impl Pending {
             }
         }
         let credential = credentials.ok_or("browser_engine_identity_unavailable")?;
-        if count != b"o3-native-engine-identity-v1".len() as isize
-            || bytes[..count.max(0) as usize] != *b"o3-native-engine-identity-v1"
+        let expected: &[u8] = if spawn {
+            b"o3-native-engine-spawn-v1"
+        } else {
+            b"o3-native-engine-identity-v1"
+        };
+        if count != expected.len() as isize
+            || bytes[..count as usize] != *expected
             || message.msg_flags & (libc::MSG_TRUNC | libc::MSG_CTRUNC) != 0
             || unknown
             || descriptors.len() != 1
@@ -131,36 +155,82 @@ impl Pending {
         {
             return Err("browser_engine_identity_unavailable".into());
         }
-        let status = std::fs::read_to_string(format!("/proc/{}/status", credential.pid))
+        let pidfd = descriptors.pop().unwrap();
+        let info = std::fs::read_to_string(format!("/proc/self/fdinfo/{}", pidfd.as_raw_fd()))
+            .map_err(|_| "browser_engine_identity_unavailable")?;
+        let pid = info
+            .lines()
+            .find_map(|line| {
+                line.strip_prefix("Pid:")
+                    .and_then(|value| value.trim().parse::<i32>().ok())
+            })
+            .filter(|pid| *pid > 0)
+            .ok_or("browser_engine_identity_unavailable")?;
+        if (spawn && credential.pid as u32 != renderer)
+            || (!spawn && credential.pid != pid)
+            || !live(pidfd.as_raw_fd())
+        {
+            return Err("browser_engine_identity_unavailable".into());
+        }
+        let status = std::fs::read_to_string(format!("/proc/{pid}/status"))
             .map_err(|_| "browser_engine_identity_unavailable")?;
         if !status.lines().any(|line| {
             line.strip_prefix("PPid:")
                 .and_then(|value| value.trim().parse::<u32>().ok())
                 == Some(renderer)
-        }) {
-            return Err("browser_engine_identity_unavailable".into());
-        }
-        let pidfd = descriptors.pop().unwrap();
-        let info = std::fs::read_to_string(format!("/proc/self/fdinfo/{}", pidfd.as_raw_fd()))
-            .map_err(|_| "browser_engine_identity_unavailable")?;
-        let mut poll = libc::pollfd {
-            fd: pidfd.as_raw_fd(),
-            events: libc::POLLIN,
-            revents: 0,
-        };
-        if !info.lines().any(|line| {
-            line.strip_prefix("Pid:")
-                .and_then(|value| value.trim().parse::<i32>().ok())
-                == Some(credential.pid)
-        }) || unsafe { libc::poll(&mut poll, 1, 0) } != 0
+        }) || !live(pidfd.as_raw_fd())
         {
             return Err("browser_engine_identity_unavailable".into());
         }
-        Ok(Engine {
-            pid: credential.pid,
-            pidfd,
-        })
+        Ok(Engine { pid, pidfd })
     }
+}
+fn live(fd: i32) -> bool {
+    let mut watch = libc::pollfd {
+        fd,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    unsafe { libc::poll(&mut watch, 1, 0) == 0 }
+}
+/// Called only by the actual renderer immediately after Command::spawn.
+/// This endpoint stays CLOEXEC in the renderer; only the separate trusted-main
+/// identity duplicate is inherited by the engine.
+pub(crate) fn report_spawn(fd: i32, child: u32) -> Result<()> {
+    report_pidfd(fd, child, b"o3-native-engine-spawn-v1")
+}
+fn report_pidfd(fd: i32, child: u32, bytes: &[u8]) -> Result<()> {
+    let raw = unsafe { libc::syscall(libc::SYS_pidfd_open, child, 0) as i32 };
+    if raw < 0 {
+        return Err("browser_engine_identity_unavailable".into());
+    }
+    let pidfd = unsafe { OwnedFd::from_raw_fd(raw) };
+    if !live(raw) {
+        return Err("browser_engine_identity_unavailable".into());
+    }
+    let mut payload = libc::iovec {
+        iov_base: bytes.as_ptr().cast_mut().cast(),
+        iov_len: bytes.len(),
+    };
+    let mut ancillary = [0_usize; 4];
+    let mut message: libc::msghdr = unsafe { mem::zeroed() };
+    message.msg_iov = &mut payload;
+    message.msg_iovlen = 1;
+    message.msg_control = ancillary.as_mut_ptr().cast();
+    message.msg_controllen = unsafe { libc::CMSG_SPACE(mem::size_of::<i32>() as _) as usize };
+    unsafe {
+        let header = libc::CMSG_FIRSTHDR(&message);
+        (*header).cmsg_level = libc::SOL_SOCKET;
+        (*header).cmsg_type = libc::SCM_RIGHTS;
+        (*header).cmsg_len = libc::CMSG_LEN(mem::size_of::<i32>() as _) as usize;
+        std::ptr::write_unaligned(libc::CMSG_DATA(header).cast::<i32>(), pidfd.as_raw_fd());
+    }
+    if unsafe { libc::sendmsg(fd, &message, libc::MSG_NOSIGNAL | libc::MSG_DONTWAIT) }
+        != bytes.len() as isize
+    {
+        return Err("browser_engine_identity_unavailable".into());
+    }
+    Ok(())
 }
 /// Confine the inherited endpoint before loading a GUI library or launching any
 /// descendant. An unrelated/non-native renderer may not receive this endpoint.
@@ -209,4 +279,177 @@ pub fn confine(payload: &Value) -> Result<()> {
         return Err("invalid_browser_private_descriptor".into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod spawn_tests {
+    use super::*;
+    struct Cohort(libc::pid_t);
+    impl Drop for Cohort {
+        fn drop(&mut self) {
+            if self.0 <= 0 {
+                return;
+            }
+            unsafe {
+                libc::kill(-self.0, libc::SIGKILL);
+                libc::waitpid(self.0, std::ptr::null_mut(), 0);
+            }
+        }
+    }
+    #[test]
+    fn spawn_record_refuses_foreign_renderer_and_false_main_sender() {
+        let pending = Pending::new().unwrap();
+        let engine = unsafe { libc::fork() };
+        assert!(engine >= 0);
+        if engine == 0 {
+            unsafe {
+                libc::setpgid(0, 0);
+            }
+            loop {
+                unsafe {
+                    libc::pause();
+                }
+            }
+        }
+        unsafe {
+            libc::setpgid(engine, engine);
+        }
+        let _cohort = Cohort(engine);
+        report_spawn(pending.source.as_raw_fd(), engine as _).unwrap();
+        assert!(pending
+            .admit_spawn(unsafe { libc::getpid() } as u32 + 1)
+            .is_err());
+        // Possessing a child pidfd does not make the renderer the main sender.
+        report_pidfd(
+            pending.source.as_raw_fd(),
+            engine as _,
+            b"o3-native-engine-identity-v1",
+        )
+        .unwrap();
+        assert!(pending.admit(unsafe { libc::getpid() } as _).is_err());
+        report_spawn(pending.source.as_raw_fd(), engine as _).unwrap();
+        let admitted = pending.admit_spawn(unsafe { libc::getpid() } as _).unwrap();
+        assert_eq!(admitted.pid(), engine);
+        assert_eq!(
+            unsafe {
+                libc::syscall(
+                    libc::SYS_pidfd_send_signal,
+                    admitted.pidfd().as_raw_fd(),
+                    libc::SIGTERM,
+                    std::ptr::null::<libc::siginfo_t>(),
+                    0,
+                )
+            },
+            0
+        );
+        let mut watch = libc::pollfd {
+            fd: admitted.pidfd().as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        assert_eq!(unsafe { libc::poll(&mut watch, 1, 1000) }, 1);
+        assert!(!live(admitted.pidfd().as_raw_fd()));
+        assert!(report_spawn(pending.source.as_raw_fd(), engine as _).is_err());
+    }
+    #[test]
+    fn spawn_pidfd_precedes_independent_same_engine_confirmation() {
+        let pending = Pending::new().unwrap();
+        let mut barrier = [-1; 2];
+        assert_eq!(
+            unsafe { libc::pipe2(barrier.as_mut_ptr(), libc::O_CLOEXEC) },
+            0
+        );
+        let renderer = unsafe { libc::fork() };
+        assert!(renderer > -1);
+        if renderer == 0 {
+            unsafe {
+                libc::setpgid(0, 0);
+            }
+            let engine = unsafe { libc::fork() };
+            if engine == 0 {
+                unsafe {
+                    libc::close(barrier[1]);
+                }
+                let mut ready = 0_u8;
+                if unsafe { libc::read(barrier[0], (&mut ready as *mut u8).cast(), 1) } != 1 {
+                    unsafe {
+                        libc::_exit(2);
+                    }
+                }
+                unsafe {
+                    libc::close(barrier[0]);
+                }
+                // A synthetic trusted-main sender: kernel credentials differ from
+                // the renderer. Actual addon/Electron proof is a separate layer.
+                if report_pidfd(
+                    pending.source.as_raw_fd(),
+                    unsafe { libc::getpid() } as _,
+                    b"o3-native-engine-identity-v1",
+                )
+                .is_err()
+                {
+                    unsafe {
+                        libc::_exit(3);
+                    }
+                }
+                loop {
+                    unsafe {
+                        libc::pause();
+                    }
+                }
+            }
+            if engine < 0 {
+                unsafe {
+                    libc::_exit(4);
+                }
+            }
+            unsafe {
+                libc::close(barrier[0]);
+            }
+            if report_spawn(pending.source.as_raw_fd(), engine as _).is_err() {
+                unsafe {
+                    libc::kill(engine, libc::SIGKILL);
+                    libc::_exit(5);
+                }
+            }
+            let ready = 1_u8;
+            if unsafe { libc::write(barrier[1], (&ready as *const u8).cast(), 1) } != 1 {
+                unsafe {
+                    libc::kill(engine, libc::SIGKILL);
+                    libc::_exit(6);
+                }
+            }
+            unsafe {
+                libc::close(barrier[1]);
+                libc::waitpid(engine, std::ptr::null_mut(), 0);
+                libc::_exit(0);
+            }
+        }
+        let mut cohort = Cohort(renderer);
+        unsafe {
+            libc::setpgid(renderer, renderer);
+            libc::close(barrier[0]);
+            libc::close(barrier[1]);
+        }
+        let engine = pending.admit_spawn(renderer as _).unwrap();
+        assert_ne!(engine.pid(), renderer);
+        pending.confirm(renderer as _, &engine).unwrap();
+        assert_eq!(
+            unsafe {
+                libc::syscall(
+                    libc::SYS_pidfd_send_signal,
+                    engine.pidfd().as_raw_fd(),
+                    libc::SIGTERM,
+                    std::ptr::null::<libc::siginfo_t>(),
+                    0,
+                )
+            },
+            0
+        );
+        let mut status = 0;
+        assert_eq!(unsafe { libc::waitpid(renderer, &mut status, 0) }, renderer);
+        cohort.0 = 0;
+        assert!(libc::WIFEXITED(status) && libc::WEXITSTATUS(status) == 0);
+        assert!(!live(engine.pidfd().as_raw_fd()));
+    }
 }

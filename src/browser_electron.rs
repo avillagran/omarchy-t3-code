@@ -78,6 +78,18 @@ pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> 
         });
     }
     let mut child = command.spawn().map_err(|_| "browser_runtime_unavailable")?;
+    if payload["privateEngineSpawn"] == true {
+        let result = payload["privateClipboardIdentityFd"]
+            .as_i64()
+            .and_then(|fd| i32::try_from(fd).ok())
+            .ok_or_else(|| "browser_engine_identity_unavailable".to_string())
+            .and_then(|fd| crate::browser_engine_identity::report_spawn(fd, child.id()));
+        if let Err(error) = result {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
+    }
     if let Some(target) = diagnostics {
         let source = child.stderr.take().ok_or("browser_runtime_unavailable")?;
         if std::thread::Builder::new()

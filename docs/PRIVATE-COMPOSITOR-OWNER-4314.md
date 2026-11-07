@@ -70,3 +70,25 @@ Wayland hosting, early frontend engine authentication, native lazy clipboard
 transfer and full GUI/Pool acceptance remain outstanding. Compositor admission
 alone does not authorize clipboard reads or prove native permission behavior.
 The public selector remains disabled.
+
+## Early engine admission
+
+The renderer now has an opt-in `privateEngineSpawn` control on its already
+confined private identity endpoint. Immediately after the actual successful
+`Command::spawn`, it opens that child's kernel pidfd and sends it with kernel
+sender credentials. It reports no user-supplied PID and retains close-on-exec
+on its original endpoint. Failure kills and waits only that owned child.
+
+`Pending::admit_spawn` validates the renderer sender, kernel pidfd identity,
+actual child ancestry and current lifetime. `Pending::confirm` then requires
+the independent trusted-main addon identity to name that same live engine.
+The legacy single-stage `admit` API remains available. This ordering lets a
+future frontend factory authenticate early GTK/Ozone connections without
+waiting for JavaScript to start. It does not authorize arbitrary connection
+peers or allow clipboard access. The new factory caller is not installed yet.
+
+`browser-engine-spawn-proof-4314.json` fences the production source and the
+private immutable Rust receipt: two actual kernel/process tests and strict
+library Clippy passed. The senders are explicitly synthetic test processes;
+this does not claim Electron, GUI or Wayland factory acceptance. No broad
+runtime suite was collected or executed.
