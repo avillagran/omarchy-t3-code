@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Compile reviewed whole native voice modules in a private build container."""
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import stat
+import subprocess
+import tempfile
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--native',required=True,type=pathlib.Path)
+parser.add_argument('--compiler',required=True,type=pathlib.Path)
+parser.add_argument('--node',required=True,type=pathlib.Path)
+args=parser.parse_args();root=pathlib.Path(__file__).resolve().parent.parent
+revision='83a3674ffd84ffb33de768210c806cb1ac53fd80'
+if subprocess.check_output(['git','-C',str(args.native),'rev-parse','HEAD'],text=True).strip()!=revision:raise SystemExit('Pinned native revision required')
+if subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+evidence=pathlib.Path(tempfile.mkdtemp(prefix='native-voice-build-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));evidence.chmod(0o700)
+source=evidence/'source';source.mkdir(mode=0o700);output=evidence/'output';output.mkdir(mode=0o700)
+for name in ['packages/client-runtime/src/voice-input/controller.ts','packages/client-runtime/src/voice-input/transcription.ts','packages/shared/src/composerTrigger.ts']:
+ target=source/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((args.native/name).read_bytes());target.chmod(0o400)
+(source/'REVISION').write_text(revision+'\n');(source/'REVISION').chmod(0o400)
+for name in ['tools/build-native-voice.mjs','tools/voice-compiler/package-lock.json']:
+ target=output/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((root/name).read_bytes());target.chmod(0o400)
+for name in ['ui/js','tests/fixtures']:(output/name).mkdir(parents=True)
+node=evidence/'node';fd=os.open(args.node,os.O_RDONLY|os.O_NOFOLLOW)
+with os.fdopen(fd,'rb')as original:
+ before=os.fstat(original.fileno());assert stat.S_ISREG(before.st_mode)and before.st_mode&0o111 and not before.st_mode&0o6000
+ with node.open('xb')as target:
+  while data:=original.read(1024*1024):target.write(data)
+ after=os.fstat(original.fileno());assert (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)==(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns)
+node.chmod(0o500)
+digest=hashlib.sha256(node.read_bytes()).hexdigest();assert digest=='0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b'
+state=evidence/'state';state.mkdir(mode=0o700)
+for name in ['home','tmp','config','cache','data','runtime']:(state/name).mkdir(mode=0o700)
+command=['podman','--remote=false','run','--rm','--pull=never','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--read-only','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64','--memory=1g','--ulimit','core=0','--workdir','/output','-v',f'{source}:/native:ro','-v',f'{args.compiler.resolve()}:/compiler:ro','-v',f'{node}:/voice-node:ro','-v',f'{output}:/output:rw','-v',f'{state}:/state:rw','-v','/usr:/usr:ro','--env','HOME=/state/home','--env','TMPDIR=/state/tmp','--env','XDG_CONFIG_HOME=/state/config','--env','XDG_CACHE_HOME=/state/cache','--env','XDG_DATA_HOME=/state/data','--env','XDG_RUNTIME_DIR=/state/runtime','localhost/o3-rust-tests:latest','/voice-node','/output/tools/build-native-voice.mjs','/native','/compiler']
+with(evidence/'build.log').open('w')as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=90)
+if result.returncode:print(evidence);raise SystemExit(result.returncode)
+records={}
+for name in ['ui/js/NativeVoice.js','ui/js/NativeVoice.sources.json','tests/fixtures/voice-unicode-4314.bin']:
+ data=(output/name).read_bytes();records[name]=hashlib.sha256(data).hexdigest();(root/name).write_bytes(data)
+(evidence/'result.json').write_text(json.dumps({'exit':0,'nodeSha256':digest,'sourceRevision':revision,'outputSha256':records,'scope':'Build-only standard TypeScript/Babel transforms; no controller runtime or product activation claim'},indent=2)+'\n')
+print(evidence)

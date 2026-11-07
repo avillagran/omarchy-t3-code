@@ -61,6 +61,7 @@ for(let i=0;i<headers.length;i++){
  entry(name,p.version,p.license,[p.dev||name==='esbuild'||name.startsWith('@esbuild/')||name.startsWith('@types/')?'build':'web'],bundled.slice(headers[i].index+headers[i][0].length,headers[i+1]?.index??bundled.length).trim(),null);
 }
 const t3Notices=[read(path.join(root,'licenses/T3-Code-MIT.txt'),'T3-Code-MIT.txt'),read(path.join(root,'ui/assets/T3-LICENSE'),'T3-assets-LICENSE')];
+entry('@babel/helpers','8.1.0','MIT',['desktop'],read(path.join(root,'licenses/Babel-helpers-MIT.txt'),'Babel-helpers-MIT.txt'),'https://github.com/babel/babel/tree/v8.1.0/packages/babel-helpers');
 entry('T3 Code',pinned,'MIT',['desktop'],[...new Set(t3Notices)].join('\n\n'),'https://github.com/pingdotgg/t3code','custom');
 const whisperSys=dictate.packages.find(p=>p.name==='whisper-rs-sys'),whisperDir=path.join(path.dirname(whisperSys.manifest_path),'whisper.cpp');
 const whisperVersion=fs.readFileSync(path.join(whisperDir,'CMakeLists.txt'),'utf8').match(/project\("whisper\.cpp" VERSION ([0-9.]+)\)/)[1];
