@@ -8,6 +8,9 @@ import selectors
 import select
 import subprocess
 import time
+import socket
+import threading
+import importlib.util
 
 assert resource.getrlimit(resource.RLIMIT_CORE) == (0, 0)
 for record in json.loads(pathlib.Path('/fixture/runtime.json').read_text())['files']:
@@ -27,6 +30,10 @@ display = subprocess.Popen(['/opt/sway-runtime/usr/bin/sway', '--config', '/tmp/
 engine = peer = keyboard = pointer = None
 popup_retired = False
 retire_popup = None
+proxy_thread = listener = None
+proxy_cancel, proxy_ready = threading.Event(), threading.Event()
+proxy_errors, native_snapshots = [], []
+typed_boundary = os.environ.get('O3_CONTEXT_TYPED_BOUNDARY') == '1'
 try:
     for _ in range(100):
         sockets = [file for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()]
@@ -40,6 +47,49 @@ try:
                        XDG_SESSION_TYPE='wayland',
                        SWAYSOCK=str(next(pathlib.Path('/tmp/runtime').glob('sway-ipc.*.sock'))))
     environment.pop('DISPLAY', None)
+    engine_environment = dict(environment)
+    if typed_boundary:
+        def load_module(name):
+            spec = importlib.util.spec_from_file_location(name, '/fixture/'+name+'.py')
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+        boundary_module = load_module('wayland-context-boundary')
+        transport = load_module('wayland-context-transport')
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        listener.set_inheritable(False)
+        listener.bind('/tmp/runtime/owned-context-proxy')
+        os.chmod('/tmp/runtime/owned-context-proxy', 0o600)
+        listener.listen(1)
+        listener.settimeout(5)
+        engine_environment['WAYLAND_DISPLAY'] = 'owned-context-proxy'
+
+        def observe(value):
+            assert len(native_snapshots) < 128, 'bounded typed native context observations'
+            native_snapshots.append(value.metadata())
+
+        def relay():
+            upstream = downstream = None
+            try:
+                upstream, _ = listener.accept()
+                assert proxy_ready.wait(3), 'actual engine PID admission deadline'
+                downstream = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                downstream.connect(str(sockets[0]))
+                boundary = boundary_module.ContextBoundary(
+                    {'Owned native context baseline': 'owned-native-window'}, observe,
+                    lambda *_: None)
+                transport.forward(upstream, downstream, (engine.pid, os.getuid()),
+                                  (display.pid, os.getuid()), boundary,
+                                  time.monotonic()+30, cancelled=proxy_cancel)
+            except Exception as error:
+                # Retain a category only; neither raw protocol nor text appears.
+                proxy_errors.append(type(error).__name__)
+            finally:
+                for endpoint in (upstream, downstream):
+                    if endpoint is not None:
+                        endpoint.close()
+        proxy_thread = threading.Thread(target=relay)
+        proxy_thread.start()
     peer = subprocess.Popen(['/fixture/native-ime-context-peer'], env=environment,
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             stderr=subprocess.DEVNULL, bufsize=0)
@@ -84,9 +134,10 @@ try:
     # Exact native platform selection derives from the real private session
     # environment. No ozone/IME/graphics command-line switch is added.
     engine = subprocess.Popen(['/electron/electron', '--disable-setuid-sandbox',
-                                '/fixture/native-ime-context.cjs'], env=environment,
+                                '/fixture/native-ime-context.cjs'], env=engine_environment,
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=subprocess.DEVNULL, bufsize=0)
+    proxy_ready.set()
     poller.register(engine.stdout, selectors.EVENT_READ, 'engine')
     wait_for(lambda: any(row['kind'] == 'engine-ready' for row in records))
     control = dict(environment, LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib')
@@ -96,7 +147,9 @@ try:
                                        env=control, timeout=2)
         assert len(tree) <= 1024 * 1024
         def visit(node):
-            if node.get('pid') == engine.pid and node.get('name') == 'Owned native context baseline':
+            # Sway sees the creator of the relay's backend socket, not Electron.
+            expected_pid = os.getpid() if typed_boundary else engine.pid
+            if node.get('pid') == expected_pid and node.get('name') == 'Owned native context baseline':
                 mapped.update(node)
             for child in node.get('nodes', []) + node.get('floating_nodes', []):
                 visit(child)
@@ -163,10 +216,21 @@ try:
                              and row['anchor'] == (13 if typed_edit else 12) for row in records[start:]))
     wait_for(lambda: any(row['kind'] == 'rectangle' and row['height'] > 0
                          and row['width'] >= 0 for row in records))
+    if typed_boundary:
+        wait_for(lambda: any(row['rectangle'] is not None for row in native_snapshots))
+        assert not proxy_errors, 'authenticated native protocol relay failed'
+        print(json.dumps({'kind':'typed-boundary-result',
+                          'scope':'actual engine client protocol; no Qt projection',
+                          'enginePeerPidVerified':True,'compositorPeerPidVerified':True,
+                          'compositorSeesProxyCreator':True,
+                          'states':native_snapshots,'rawWireLogged':False}),flush=True)
     retire_popup()
     engine.stdin.write(b'quit\n')
     engine.stdin.flush()
     assert engine.wait(timeout=5) == 0
+    if proxy_thread is not None:
+        proxy_thread.join(3)
+        assert not proxy_thread.is_alive() and not proxy_errors, 'native relay normal peer shutdown'
     poller.unregister(engine.stdout)
     wait_for(lambda: any(row['kind'] == 'context' and row['active'] == 0 for row in records))
     surrounding_observed = any(row['kind'] == 'context' and row['available'] == 1
@@ -196,3 +260,9 @@ finally:
         if child is not None and child.poll() is None:
             child.terminate()
             child.wait(timeout=5)
+    proxy_cancel.set()
+    if listener is not None:
+        listener.close()
+    if proxy_thread is not None:
+        proxy_thread.join(3)
+        assert not proxy_thread.is_alive(), 'owned proxy stopped'

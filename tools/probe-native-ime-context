@@ -18,6 +18,7 @@ parser.add_argument('--top-level', action='store_true', help='Separate native to
 parser.add_argument('--source-input', action='store_true', help='Separate original GuestInput pointer consumer control')
 parser.add_argument('--typed-edit', action='store_true', help='Observe a genuine fixed keyboard edit after focus')
 parser.add_argument('--require-surrounding', action='store_true', help='Separate stronger expectation; not assumed of the original')
+parser.add_argument('--typed-boundary', action='store_true', help='Observe native client protocol through authenticated owned sockets')
 options = parser.parse_args()
 root = pathlib.Path(__file__).resolve().parent.parent
 if (root / 'tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING').exists():
@@ -58,7 +59,8 @@ for record in receipt['files']:
 (frozen_compositor / 'artifact.json').write_bytes(compositor_pin_bytes)
 compositor = frozen_compositor
 for name in ['native-ime-context-peer.c', 'native-ime-context.cjs', 'native-ime-context.py',
-             'input-method-unstable-v2.xml', 'input-method-unstable-v2.source.json']:
+             'input-method-unstable-v2.xml', 'input-method-unstable-v2.source.json',
+             'wayland-context-boundary.py', 'wayland-context-transport.py']:
     (output / name).write_bytes((root / 'tools/fixtures' / name).read_bytes())
 protocol = json.loads((output / 'input-method-unstable-v2.source.json').read_text())
 assert hashlib.sha256((output / 'input-method-unstable-v2.xml').read_bytes()).hexdigest() == protocol['sha256']
@@ -102,7 +104,9 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock', 'a') as lock:
     'sourceHead':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
     'probeSourceHashes':{name:hashlib.sha256((root/name).read_bytes()).hexdigest()
         for name in ['tools/probe-native-ime-context','tools/fixtures/native-ime-context-peer.c',
-                     'tools/fixtures/native-ime-context.cjs','tools/fixtures/native-ime-context.py']}},indent=2)+'\n')
+                     'tools/fixtures/native-ime-context.cjs','tools/fixtures/native-ime-context.py',
+                     'tools/fixtures/wayland-context-boundary.py',
+                     'tools/fixtures/wayland-context-transport.py']}},indent=2)+'\n')
 artifacts = {file.name: hashlib.sha256(file.read_bytes()).hexdigest()
              for file in output.iterdir() if file.is_file()}
 (output / 'artifacts.json').write_text(json.dumps(artifacts, indent=2) + '\n')
@@ -128,6 +132,9 @@ if options.typed_edit:
     (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
 if options.require_surrounding:
     args[3:3] = ['--env', 'O3_CONTEXT_REQUIRE_SURROUNDING=1']
+    (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
+if options.typed_boundary:
+    args[3:3] = ['--env', 'O3_CONTEXT_TYPED_BOUNDARY=1']
     (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
 with (output / 'runtime.log').open('w') as log:
     result = subprocess.run(args, stdout=log, stderr=subprocess.STDOUT, timeout=40)
