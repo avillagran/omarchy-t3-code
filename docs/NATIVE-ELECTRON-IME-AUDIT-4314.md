@@ -151,3 +151,28 @@ Native surrounding-text/caret work must use existing engine APIs and actual
 lifecycle state. It may not replace those values with guessed DOM geometry,
 relabel a snapshot as the internal editing anchor, change product focus policy,
 or add a fixed delay based on these unsuccessful experiments.
+
+## Existing native query boundary
+
+Inspection of the already-retrieved, pinned Electron 44.10.1
+[`WebContents` binding](https://github.com/electron/electron/blob/v44.10.1/shell/browser/api/electron_api_web_contents.cc)
+does not identify a surrounding-text or text-caret getter. Its `focusedFrame`
+property returns the focused `RenderFrameHost`; this identifies a frame without
+returning editing text, selection offsets or a caret rectangle. `adjustSelection`
+calls `AdjustSelectionByCharacterOffset` and changes selection, while
+`centerSelection` scrolls it. Neither is an observation API.
+
+The `cursor-changed` event serializes the mouse cursor type and, for a custom
+cursor, its bitmap, scale and hotspot. It is not a text-caret notification.
+The inspected binding contains no `selection-changed` or
+`text-input-state-changed` event. This is a scoped finding about this existing
+binding, not proof that Chromium has no internal text-input state or that an
+additional native hosting interface cannot expose it.
+
+The existing Qt `BrowserInputItem` remains unchanged: only `ImEnabled` has a
+known answer; other queries return invalid variants. Its mount token and real
+GUI focus fence continue to protect composition delivery. Neither a frame's
+existence nor successful command delivery supplies the missing native query
+state. Replacement and selection edits that require that state remain refused.
+No new runtime test, engine flag, focus override or host configuration change
+was used for this source inspection.
