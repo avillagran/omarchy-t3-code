@@ -50,10 +50,10 @@ fn product_pool_admits_native_guest_and_shares_visible_frames_with_cdp() {
     fs::create_dir(&root).unwrap();
     let config = Config::isolated(PathBuf::from("/fixture/app/bin/omarchy-t3-client"), &root)
         .unwrap()
-        .with_native_electron(
+        .with_owned_native_electron(
             std::path::Path::new("/electron"),
             std::path::Path::new("/fixture/electron"),
-            ":9",
+            std::path::Path::new("/usr/bin/Xvfb"),
         )
         .unwrap();
     let (output, ui) = mpsc::channel();
@@ -215,7 +215,26 @@ fn product_pool_admits_native_guest_and_shares_visible_frames_with_cdp() {
     );
     assert!(foreign.get("error").is_some());
     assert_eq!(pool.process_count(), 1);
+    let display_children = fs::read_to_string("/proc/thread-self/children")
+        .unwrap()
+        .split_whitespace()
+        .filter_map(|pid| pid.parse::<i32>().ok())
+        .filter(|pid| {
+            fs::read_to_string(format!("/proc/{pid}/comm")).is_ok_and(|name| name.trim() == "Xvfb")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        display_children.len(),
+        1,
+        "the actual Pool owns exactly one private display"
+    );
     pool.close_profile("owned", "default")
         .expect("native profile must flush with a successful owned exit");
     assert_eq!(pool.process_count(), 0);
+    assert!(
+        display_children
+            .iter()
+            .all(|pid| unsafe { libc::kill(*pid, 0) } != 0),
+        "the cohort reaps its owned display"
+    );
 }

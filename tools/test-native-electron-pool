@@ -17,7 +17,7 @@ for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-sc
 with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
  with (out/'addon-compile.log').open('w') as log:subprocess.run(['cc','-std=c11','-fPIC','-shared','-Wall','-Wextra','-Werror','-I/usr/include/node',str(assets/'electron-private-fd.c'),'-o',str(assets/'electron-private-fd.node')],check=True,stdout=log,stderr=subprocess.STDOUT)
- env=dict(os.environ,CARGO_BUILD_JOBS='2')
+ env=dict(os.environ,CARGO_BUILD_JOBS='2',CARGO_INCREMENTAL='0',CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target')
  with (out/'compile.jsonl').open('w') as log,(out/'compile.log').open('w') as errors:result=subprocess.run(['cargo','test','--locked','--offline','--test','native_electron_pool','--no-run','--message-format=json'],cwd=root,env=env,stdout=log,stderr=errors)
  if result.returncode:raise SystemExit(result.returncode)
  items=[json.loads(line) for line in (out/'compile.jsonl').read_text().splitlines()]

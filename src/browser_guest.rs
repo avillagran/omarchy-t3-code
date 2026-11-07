@@ -29,6 +29,7 @@ pub struct Config {
     environment: HashMap<OsString, OsString>,
     cache: PathBuf,
     basic_store: bool,
+    native_display: Option<PathBuf>,
 }
 impl Config {
     pub fn import_assets(&self) -> [PathBuf; 2] {
@@ -81,10 +82,25 @@ impl Config {
             environment,
             cache: crate::xdg("XDG_CACHE_HOME", ".cache"),
             basic_store: false,
+            native_display: None,
         })
     }
-    /// Explicit internal renderer opt-in. This does not advertise a capability
-    /// or change the default guest. Callers supply an isolated display/profile.
+    /// Explicit internal opt-in with a private authenticated display owned by
+    /// each cohort. This does not advertise or select a browser capability.
+    pub fn with_owned_native_electron(
+        self,
+        runtime: &Path,
+        assets: &Path,
+        x_server: &Path,
+    ) -> Result<Self> {
+        if !x_server.is_absolute() {
+            return Err("invalid_browser_fixture".into());
+        }
+        let mut owned = self.with_native_electron(runtime, assets, ":owned")?;
+        owned.native_display = Some(x_server.into());
+        Ok(owned)
+    }
+    /// Explicit internal renderer opt-in on an already isolated display.
     pub fn with_native_electron(
         mut self,
         runtime: &Path,
@@ -143,6 +159,7 @@ impl Config {
             environment,
             cache: root.join("cache/omarchy-t3-code"),
             basic_store: true,
+            native_display: None,
         })
     }
 }
@@ -265,6 +282,7 @@ impl ImportVerification {
     }
 }
 struct Session {
+    _display: Option<crate::browser_native_display::Display>,
     child: Child,
     input: ChildStdin,
     id: String,
@@ -541,6 +559,12 @@ impl Pool {
         if !native_electron && !root.join("libt3-browser.so").is_file() {
             return Err("browser_runtime_unavailable".into());
         }
+        let native_display = self
+            .config
+            .native_display
+            .as_ref()
+            .map(|executable| crate::browser_native_display::Display::launch(executable))
+            .transpose()?;
         let id = uuid::Uuid::new_v4().to_string();
         let mut private_source = None;
         let mut private_fd = None;
@@ -585,6 +609,11 @@ impl Pool {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
+        if let Some(display) = &native_display {
+            command
+                .env("DISPLAY", display.name())
+                .env("XAUTHORITY", display.authorization_path());
+        }
         // The GUI worker may crash or be replaced. Do not orphan its Qt guest.
         let parent = unsafe { libc::getpid() };
         unsafe {
@@ -611,6 +640,7 @@ impl Pool {
             .visited
             .contains(&(environment.to_owned(), profile.to_owned()));
         let mut session = Session {
+            _display: native_display,
             child,
             input,
             id: id.clone(),
