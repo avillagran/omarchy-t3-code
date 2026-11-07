@@ -12,12 +12,14 @@ import tempfile
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--runtime',type=Path,required=True)
 parser.add_argument('--services',type=Path,required=True)
+parser.add_argument('--native-offers',action='store_true',help='Stream real offers on the public Qt compositor connection')
 parser.add_argument('--selection-proxy',action='store_true',help='Isolated lazy private-X selection feasibility fixture')
 parser.add_argument('--calibration-only',action='store_true',help='Record negative clipboard outcomes without declaring clipboard parity')
 parser.add_argument('--xwayland-guest',action='store_true',help='Keep Qt on Wayland and test the compositor-owned XWayland guest')
 parser.add_argument('--visible-host',action='store_true',help='Compare the visible native host topology')
 parser.add_argument('--wayland',action='store_true',help='Use the private headless Sway fixture instead of X11')
 options=parser.parse_args()
+if options.native_offers and not options.selection_proxy:parser.error('--native-offers requires --selection-proxy')
 if options.selection_proxy and (not options.wayland or not options.calibration_only):parser.error('--selection-proxy requires --wayland --calibration-only')
 if options.xwayland_guest and not options.wayland:parser.error('--xwayland-guest requires --wayland')
 root=Path(__file__).resolve().parent.parent
@@ -32,6 +34,7 @@ for name,path in {'native-electron-proof.cjs':root/'tools/fixtures/native-electr
 (out/'electron-private-fd.c').write_bytes((root/'ui/browser/electron-private-fd.c').read_bytes())
 if options.selection_proxy:
  for name in ['lazy-selection-proxy.cpp','selection-client-probe.cpp']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
+ (out/'native-wayland-offers.h').write_bytes((root/'native/browser/waylandoffers.h').read_bytes())
 (out/'app-artifacts.json').write_text(json.dumps({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in app.iterdir()},indent=2)+'\n')
 (out/'runtime-artifact.json').write_text(json.dumps(manifest,indent=2)+'\n')
 flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Gui'],text=True))
@@ -39,12 +42,12 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
  fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
  with (out/'compile.log').open('w') as log:subprocess.run(['c++','-std=c++17','-fPIC',str(out/'clipboard-owner.cpp'),'-o',str(out/'clipboard-owner'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
 if options.selection_proxy:
- proxy_flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Gui','xcb','xcb-xfixes','xcb-res'],text=True))
+ proxy_flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Gui','xcb','xcb-xfixes','xcb-res','wayland-client'],text=True))
  with (out/'proxy-compile.log').open('w') as log:subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'lazy-selection-proxy.cpp'),'-o',str(out/'lazy-selection-proxy'),*proxy_flags],check=True,stdout=log,stderr=subprocess.STDOUT)
  (out/'lazy-selection-proxy').chmod(0o500)
  with (out/'probe-compile.log').open('w') as log:subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(out/'selection-client-probe.cpp'),'-o',str(out/'selection-client-probe'),'-lxcb'],check=True,stdout=log,stderr=subprocess.STDOUT)
  (out/'selection-client-probe').chmod(0o500)
- (out/'proxy-artifacts.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['lazy-selection-proxy.cpp','lazy-selection-proxy','selection-client-probe.cpp','selection-client-probe']},indent=2)+'\n')
+ (out/'proxy-artifacts.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['lazy-selection-proxy.cpp','lazy-selection-proxy','selection-client-probe.cpp','selection-client-probe','native-wayland-offers.h']},indent=2)+'\n')
 with (out/'fd-addon-compile.log').open('w') as log:subprocess.run(['cc','-std=c11','-fPIC','-shared','-Wall','-Wextra','-Werror','-I/usr/include/node',str(out/'electron-private-fd.c'),'-o',str(app/'electron-private-fd.node')],check=True,stdout=log,stderr=subprocess.STDOUT)
 (app/'electron-private-fd.node').chmod(0o400)
 (out/'app-artifacts.json').write_text(json.dumps({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in app.iterdir()},indent=2)+'\n')
@@ -73,6 +76,7 @@ try:
  else:raise RuntimeError('Private X11 display unavailable')
  parent,child=socket.socketpair();inherited=fcntl.fcntl(child.fileno(),fcntl.F_DUPFD_CLOEXEC,64)
  env=dict(os.environ,DISPLAY=':9',QT_QPA_PLATFORM='xcb',O3_TEST_VISIBLE_HOST=sys.argv[2],O3_TEST_CLIPBOARD_CALIBRATION=sys.argv[4],O3_TEST_SELECTION_PROXY=sys.argv[5],O3_TEST_PRIVATE_FD=str(inherited),O3_TEST_PEER_PID=str(os.getpid()),O3_TEST_PRIVATE_INODE=os.readlink('/proc/self/fd/'+str(inherited)))
+ if sys.argv[6]=='1':env['O3_TEST_NATIVE_OFFERS']='1'
  if wayland:
   env.update(WAYLAND_DISPLAY=next(file.name for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()),QT_QPA_PLATFORM='wayland',O3_TEST_WAYLAND='1')
   env.pop('DISPLAY',None)
@@ -107,7 +111,7 @@ finally:
  if private_display is not None:private_display.terminate();private_display.wait(timeout=5)
  display.terminate();display.wait(timeout=5)
  if wayland:display_log.close();print(pathlib.Path('/tmp/sway.log').read_text())
-''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0','1' if options.selection_proxy else '0']
+''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0','1' if options.selection_proxy else '0','1' if options.native_offers else '0']
 with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=55)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
 raise SystemExit(result.returncode)

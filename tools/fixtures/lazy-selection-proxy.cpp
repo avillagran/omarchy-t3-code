@@ -25,6 +25,7 @@
 #include <QThread>
 #include <QImage>
 #include <functional>
+#include "native-wayland-offers.h"
 
 class ProxyWindow final:public QRasterWindow {
  void paintEvent(QPaintEvent *)override{QPainter painter(this);painter.fillRect(QRect(QPoint(),size()),QColor("#dddddd"));}
@@ -55,9 +56,11 @@ int main(int argc,char **argv){
  QHash<quint64,Transfer> pending;Receiving receiving;xcb_window_t nativeOwner=0;xcb_timestamp_t nativeStamp=0;qint64 writeUntil=-1;quint64 publications=0,egressReads=0,egressBytes=0,egressDenied=0;QString lastEgressMime;bool lastEgressDuringPublish=false;
  std::function<void()> pump;std::function<void(xcb_window_t,xcb_timestamp_t)> publish;
 
+ std::unique_ptr<NativeWaylandOffers> nativeOffers;if(qEnvironmentVariableIsSet("O3_TEST_NATIVE_OFFERS")){nativeOffers=std::make_unique<NativeWaylandOffers>();QElapsedTimer startup;startup.start();while(!nativeOffers->ready()&&startup.elapsed()<2000){QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents,2);QThread::msleep(1);}if(!nativeOffers->ready())return 2;}std::shared_ptr<const void> announcedOffer;bool announcedNative=false;
  auto reply=[](QJsonObject value){const auto line=QJsonDocument(value).toJson(QJsonDocument::Compact);fprintf(stdout,"%s\n",line.constData());fflush(stdout);};
  auto announce=[&]{ownerIndex^=1;xcb_set_selection_owner(connection,owners[ownerIndex],clipboard,XCB_CURRENT_TIME);xcb_flush(connection);};
- QObject::connect(system,&QClipboard::dataChanged,&app,[&]{if(!publishing&&!system->ownsClipboard()){nativeOwner=0;if(receiving.active){receiving.failed=true;receiving.done=true;}announce();}});
+ auto changed=[&]{if(!publishing&&!system->ownsClipboard()){if(nativeOffers){const auto identity=nativeOffers->identity();if(announcedNative&&announcedOffer==identity)return;announcedNative=true;announcedOffer=identity;}nativeOwner=0;if(receiving.active){receiving.failed=true;receiving.done=true;}announce();}};
+ const auto clipboardConnection=QObject::connect(system,&QClipboard::dataChanged,&app,changed);if(nativeOffers)nativeOffers->changed=changed;
  announce();
  auto valid=[&]{return alive&&allowedUntil>0&&allowedUntil>=clock.elapsed();};
  auto notify=[&](const xcb_selection_request_event_t &request,xcb_atom_t property){xcb_selection_notify_event_t response{};response.response_type=XCB_SELECTION_NOTIFY;response.time=request.time;response.requestor=request.requestor;response.selection=request.selection;response.target=request.target;response.property=property;xcb_send_event(connection,0,request.requestor,XCB_EVENT_MASK_NO_EVENT,reinterpret_cast<const char *>(&response));xcb_flush(connection);};
@@ -70,7 +73,7 @@ int main(int argc,char **argv){
    else if(op=="revoke"){allowedUntil=-1;lease++;for(auto entry=pending.cbegin();entry!=pending.cend();++entry)xcb_change_property(connection,XCB_PROP_MODE_REPLACE,xcb_window_t(entry.key()>>32),xcb_atom_t(entry.key()),entry->type,8,0,nullptr);pending.clear();announce();if(row.contains("id"))reply({{"id",row["id"]},{"revoked",true}});}
    else if(op=="human-copy"){writeUntil=clock.elapsed()+1000;if(row.contains("id"))reply({{"id",row["id"]},{"armed",true}});}
    else if(op=="pause"){paused=true;if(row.contains("id"))reply({{"id",row["id"]},{"paused",true}});}
-   else if(op=="stats")reply({{"id",row["id"]},{"dataReads",qint64(dataReads)},{"metadataReads",qint64(metadataReads)},{"denied",qint64(denied)},{"foreign",qint64(foreign)},{"synthetic",qint64(synthetic)},{"bytes",qint64(transferred)},{"capDenied",qint64(capDenied)},{"fetchedBytes",qint64(fetchedBytes)},{"maxFetchedBytes",qint64(maxFetchedBytes)},{"activeTransfers",pending.size()},{"focused",window.isActive()},{"publications",qint64(publications)},{"egressReads",qint64(egressReads)},{"egressBytes",qint64(egressBytes)},{"egressDenied",qint64(egressDenied)},{"lastEgressMime",lastEgressMime},{"lastEgressDuringPublish",lastEgressDuringPublish}});
+   else if(op=="stats")reply({{"id",row["id"]},{"dataReads",qint64(dataReads)},{"metadataReads",qint64(metadataReads)},{"denied",qint64(denied)},{"foreign",qint64(foreign)},{"synthetic",qint64(synthetic)},{"bytes",qint64(transferred)},{"capDenied",qint64(capDenied)},{"fetchedBytes",qint64(fetchedBytes)},{"maxFetchedBytes",qint64(maxFetchedBytes)},{"activeTransfers",pending.size()},{"focused",window.isActive()},{"publications",qint64(publications)},{"egressReads",qint64(egressReads)},{"egressBytes",qint64(egressBytes)},{"egressDenied",qint64(egressDenied)},{"lastEgressMime",lastEgressMime},{"lastEgressDuringPublish",lastEgressDuringPublish},{"nativeOfferStreams",bool(nativeOffers)},{"streamBytes",nativeOffers?qint64(nativeOffers->streamedBytes):0},{"streamReservedPeak",nativeOffers?qint64(nativeOffers->maxRetainedBytes):0},{"streamLimitFailures",nativeOffers?qint64(nativeOffers->limitFailures):0},{"streamAssemblyCapacity",nativeOffers?qint64(nativeOffers->maxAssemblyCapacity):0},{"streamBufferEstimate",nativeOffers?qint64(nativeOffers->maxBufferEstimate):0}});
    else if(op=="quit"){alive=false;pending.clear();app.quit();return;}
    else {app.exit(2);return;}
   }
@@ -104,10 +107,11 @@ int main(int argc,char **argv){
    if(!valid()){denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}
    if(request.target==timestamp){xcb_change_property(connection,XCB_PROP_MODE_REPLACE,request.requestor,property,XCB_ATOM_INTEGER,32,1,&selectedAt);notify(request,property);free(raw);continue;}
    if(request.target!=targets&&request.target!=utf8&&request.target!=text&&request.target!=plain&&request.target!=png&&request.target!=html){denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}
-   const auto *mime=system->mimeData();metadataReads++;if(!mime||!valid()||epoch!=lease){denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}
-   const auto formats=mime->formats();qsizetype metadataBytes=0;for(const auto &format:formats)metadataBytes+=format.toUtf8().size();if(formats.size()>128||metadataBytes>65536){capDenied++;denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}
-   if(request.target==targets){QVector<xcb_atom_t> available{targets,timestamp};if(mime->hasText())available<<utf8<<text<<plain;if(mime->hasFormat("image/png")||mime->hasImage())available<<png;if(mime->hasHtml())available<<html;if(available.size()>128){denied++;notify(request,XCB_ATOM_NONE);}else{xcb_change_property(connection,XCB_PROP_MODE_REPLACE,request.requestor,property,XCB_ATOM_ATOM,32,uint32_t(available.size()),available.data());notify(request,property);}free(raw);continue;}
-   QByteArray payload;if(request.target==utf8||request.target==text||request.target==plain)payload=mime->text().toUtf8();else if(request.target==png)payload=mime->data("image/png");else payload=mime->html().toUtf8();dataReads++;fetchedBytes+=quint64(payload.size());maxFetchedBytes=qMax(maxFetchedBytes,quint64(payload.size()));
+   const auto *mime=nativeOffers?nullptr:system->mimeData();metadataReads++;if((!nativeOffers&&!mime)||!valid()||epoch!=lease){denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}
+   const auto formats=nativeOffers?nativeOffers->formats():mime->formats();qsizetype metadataBytes=0;for(const auto &format:formats)metadataBytes+=format.toUtf8().size();if(formats.size()>128||metadataBytes>65536||(nativeOffers&&!nativeOffers->metadataAllowed())){capDenied++;denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}
+   const bool hasText=nativeOffers?(formats.contains("text/plain")||formats.contains("text/plain;charset=utf-8")):mime->hasText();const bool hasImage=nativeOffers?formats.contains("image/png"):(mime->hasFormat("image/png")||mime->hasImage());const bool hasHtml=nativeOffers?formats.contains("text/html"):mime->hasHtml();
+   if(request.target==targets){QVector<xcb_atom_t> available{targets,timestamp};if(hasText)available<<utf8<<text<<plain;if(hasImage)available<<png;if(hasHtml)available<<html;if(available.size()>128){denied++;notify(request,XCB_ATOM_NONE);}else{xcb_change_property(connection,XCB_PROP_MODE_REPLACE,request.requestor,property,XCB_ATOM_ATOM,32,uint32_t(available.size()),available.data());notify(request,property);}free(raw);continue;}
+   QByteArray payload;if(nativeOffers){const auto wanted=request.target==png?QString("image/png"):request.target==html?QString("text/html"):QString("text/plain");auto body=nativeOffers->read(wanted,16*1024*1024,[&]{controls();return valid()&&epoch==lease;});dataReads++;if(!body){if(nativeOffers->lastError=="stream_limit")capDenied++;denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}payload=std::move(*body);}else{if(request.target==utf8||request.target==text||request.target==plain)payload=mime->text().toUtf8();else if(request.target==png)payload=mime->data("image/png");else payload=mime->html().toUtf8();dataReads++;}fetchedBytes+=quint64(payload.size());maxFetchedBytes=qMax(maxFetchedBytes,quint64(payload.size()));
    if(!valid()||epoch!=lease||payload.size()>16*1024*1024){if(payload.size()>16*1024*1024)capDenied++;denied++;notify(request,XCB_ATOM_NONE);free(raw);continue;}
    transferred+=quint64(payload.size());const quint64 key=(quint64(request.requestor)<<32)|property;
    qsizetype retained=payload.size();for(const auto &entry:pending)retained+=entry.bytes.size();
@@ -145,5 +149,5 @@ int main(int argc,char **argv){
  };
  QObject::connect(&events,&QSocketNotifier::activated,&app,pump);
  QTimer timer;timer.setInterval(25);QObject::connect(&timer,&QTimer::timeout,&app,[&]{pump();for(auto entry=pending.begin();entry!=pending.end();)if(entry->deadline<clock.elapsed()||!valid()||entry->lease!=lease)entry=pending.erase(entry);else++entry;});timer.start();
- reply({{"ready",true},{"enginePid",qint64(engine)}});QTimer::singleShot(40000,&app,&QCoreApplication::quit);const auto result=app.exec();*lifetime=false;alive=false;pending.clear();xcb_disconnect(connection);return result;
+ reply({{"ready",true},{"enginePid",qint64(engine)}});QTimer::singleShot(40000,&app,&QCoreApplication::quit);const auto result=app.exec();QObject::disconnect(clipboardConnection);if(nativeOffers)nativeOffers->changed={};*lifetime=false;alive=false;pending.clear();xcb_disconnect(connection);return result;
 }
