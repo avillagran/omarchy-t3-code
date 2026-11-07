@@ -24,6 +24,8 @@ The first passing evidence is `native-electron-owned-8cybzvdd` under the private
 
 In this actual native baseline, a DevTools `Runtime.evaluate` call to `navigator.clipboard.writeText`, even with `userGesture: true`, requests clipboard-read permission and is denied after Block. A DevTools `execCommand('copy')` returns false. These outcomes are preserved rather than converted into automatic grants. The successful explicit native copy operation is a separate tested path.
 
+A second private physical proof, `native-electron-owned-cp68mcf1` (result 0), confirms that Electron's raw page debugger can inspect a different real guest with `Target.getTargetInfo`. The existing transport-independent target guard rejects nine foreign-target, discovery, browser-context, Browser-domain and foreign-session cases on actual Electron, while preserving opaque Runtime strings. Closing the guard rejects subsequent commands. This guard must sit below the native Host in the eventual adapter; the root relay alone is insufficient. Child-session admission and the complete adapter remain separate acceptance gates.
+
 ## Remaining admission gates
 
 The proof is not a production adapter. Existing Pool/private-FD process ownership, per-guest lease admission, lifecycle cancellation, bounded framing, frame delivery, native input, and the global application dialog broker must be connected and physically tested. Page-session Target/Browser escape prevention requires more than the root relay check. Production Wayland clipboard behavior has not been established by the private X11 proof. No public Electron capability or selection is enabled by these tools.

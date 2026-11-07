@@ -20,7 +20,7 @@ if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71
 if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
 out=Path(tempfile.mkdtemp(prefix='native-electron-owned-',dir='/home/node/BuildCache/o3-desktop-next'));print('Native Electron evidence: '+str(out),flush=True)
 app=out/'app';app.mkdir()
-for name,path in {'native-electron-proof.cjs':root/'tools/fixtures/native-electron-proof.cjs','electron-sandbox-preload.cjs':root/'tools/fixtures/electron-sandbox-preload.cjs','native-electron-services.cjs':services}.items():(app/name).write_bytes(path.read_bytes())
+for name,path in {'native-electron-proof.cjs':root/'tools/fixtures/native-electron-proof.cjs','electron-sandbox-preload.cjs':root/'tools/fixtures/electron-sandbox-preload.cjs','native-electron-services.cjs':services,'target-scope.js':root/'ui/browser/qt-target-scope.js'}.items():(app/name).write_bytes(path.read_bytes())
 (out/'clipboard-owner.cpp').write_bytes((root/'tools/fixtures/electron-clipboard-owner.cpp').read_bytes())
 (out/'app-artifacts.json').write_text(json.dumps({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in app.iterdir()},indent=2)+'\n')
 (out/'runtime-artifact.json').write_text(json.dumps(manifest,indent=2)+'\n')
