@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "scope": "Prepared source-only private compositor admission; not built or runtime accepted",
+  "sway": {
+    "version": "1.12",
+    "url": "https://raw.githubusercontent.com/swaywm/sway/refs/tags/1.12/sway/server.c",
+    "serverSha256": "3b7d2c5a6c85a000e3f953fef6b4886b1341c7e8189cf74098d53382b2edd318",
+    "gitBlobSha1": "8fe79c06ffa1248f883855651f60bcd633d02c18",
+    "ipcUrl": "https://raw.githubusercontent.com/swaywm/sway/refs/tags/1.12/sway/ipc-server.c",
+    "ipcSha256": "2af7f2449cf42474ab17678133fe5425fb80f5ed749234ae0022b3761a4a4d9c"
+  },
+  "wayland": {
+    "version": "1.26.0",
+    "url": "https://gitlab.freedesktop.org/wayland/wayland/-/raw/1.26.0/src/wayland-server.c",
+    "serverSha256": "77bfc0fdf911cf8288430b40227f22c4e37dcd4abaa4cc1f367d597e75abf893"
+  },
+  "sourceHashes": {
+    "native/browser/private-sway-owner-1.12.patch": "ba6c877b8279e40543c898cd00470eb08f1528eb7e3ad0d2f4f1fe5efd6eeb5e",
+    "native/browser/waylandowner.h": "99898c5cd719509c8f2cc7a66c34a1dab2997bbf536a7574c17bfb9468978b56",
+    "tools/fixtures/wayland-owner-check.c": "cf3470b8c9457e5d2874d42ab9ec2d45919db858aa2243248b54388549146d61",
+    "tools/test-private-wayland-owner": "64669a3b00135a5764f1e75a4606c2cdba001e103050218038353bf8d1010d33"
+  },
+  "originalSignedCompositorArtifactChanged": false,
+  "enginePatched": false,
+  "publicSelectorEnabled": false,
+  "proof": {
+    "receipt": "/home/node/BuildCache/o3-desktop-next/private-wayland-owner-ww6k18mq",
+    "returncode": 0,
+    "realWaylandVersion": "1.26.0",
+    "checks": [
+      "supervisor-connected socket delegated to child",
+      "foreign registry and guessed global bind denied",
+      "idle unauthorized peer closed without requests",
+      "32 deferred rejection slots and 33rd fail-closed termination",
+      "pidfd creation fails closed at EMFILE",
+      "supervisor exit wakes and terminates owned display",
+      "listener cleanup and idempotent finish",
+      "credential predicate agrees for client and socket FD"
+    ],
+    "qualification": "Real libwayland test, not a patched Sway build or engine-hosting acceptance"
+  }
+}
