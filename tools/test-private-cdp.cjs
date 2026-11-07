@@ -39,4 +39,10 @@ const request=(id,method='Runtime.evaluate')=>JSON.stringify({id,method,params:{
  const f=fixture();for(let i=0;i<4096;i++) f.bridge.send(request(i));
  assert.throws(()=>f.bridge.send(request(4096)),/request_limit/);assert.equal(f.bridge.drain().closed,true);
 }
+{
+ const f=fixture();assert.throws(()=>f.api.dispatchMessage('null'),/invalid_message/);assert.equal(f.bridge.drain().closed,true);
+}
+{
+ const f=fixture();assert.throws(()=>f.bridge.send('{'));assert.equal(f.bridge.drain().closed,true);
+}
 console.log('PRIVATE_CDP_PASS: collision-safe owners, out-of-order replies, events, chunks, bounds, release');

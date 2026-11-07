@@ -21,6 +21,17 @@
         chunks = ""; expected = 0;
     }
     function fail(reason) { close(reason); throw Error(reason); }
+    function decode(raw) {
+        try {
+            const value = JSON.parse(raw);
+            if (!value || typeof value !== "object" || Array.isArray(value))
+                return fail("private_cdp_invalid_message");
+            return value;
+        } catch (error) {
+            close("private_cdp_invalid_message");
+            throw error;
+        }
+    }
     function enqueue(raw) {
         if (raw.length > limit || queued + raw.length > limit) return fail("private_cdp_queue_limit");
         output.push(raw); queued += raw.length;
@@ -28,8 +39,8 @@
     function send(raw, owner) {
         if (closed) throw Error("private_cdp_closed");
         if (typeof raw !== "string" || raw.length > limit) return fail("private_cdp_message_limit");
-        const value = JSON.parse(raw);
-        if (!value || !Number.isSafeInteger(value.id) || value.id < 0 || typeof value.method !== "string")
+        const value = decode(raw);
+        if (!Number.isSafeInteger(value.id) || value.id < 0 || typeof value.method !== "string")
             return fail("private_cdp_invalid_request");
         if (pending.size >= 4096 || next > 2147483647) return fail("private_cdp_request_limit");
         const physical = next++;
@@ -41,7 +52,7 @@
     function receive(raw) {
         if (closed) return;
         if (typeof raw !== "string" || raw.length > limit) return fail("private_cdp_message_limit");
-        const value = JSON.parse(raw);
+        const value = decode(raw);
         if (Object.prototype.hasOwnProperty.call(value, "id")) {
             const request = pending.get(value.id);
             if (!request) return fail("private_cdp_unknown_reply");
