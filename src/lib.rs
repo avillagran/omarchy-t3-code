@@ -1,6 +1,7 @@
 pub mod browser_automation;
 pub mod desktop_browser_ipc;
 pub mod owned_backend;
+pub mod owned_runtime;
 mod pax_archive;
 pub mod frame_files;
 pub mod json_delta;
@@ -323,7 +324,13 @@ pub fn environments() -> Result<Vec<Environment>> {
     if let Some(path) = std::env::var_os("OMARCHY_T3_FIXTURE_ENVIRONMENTS") {
         return fixture_environments(&PathBuf::from(path));
     }
-    connections::inherited_environments()
+    let mut result = connections::inherited_environments()?;
+    // An owned transport failure must not hide independent service/remote hosts.
+    if let Ok(Some(owned)) = owned_runtime::current_environment() {
+        result.retain(|environment| environment.id != owned_runtime::ENVIRONMENT_ID);
+        result.push(owned);
+    }
+    Ok(result)
 }
 fn fixture_environments(p: &Path) -> Result<Vec<Environment>> {
     if !p.exists() {

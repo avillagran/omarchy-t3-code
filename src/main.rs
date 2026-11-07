@@ -523,6 +523,8 @@ fn watch(client: Client) -> Result<()> {
         connection_preferences::read_client_preferences,
         |data| emit("browser-surface", data),
     );
+    let owned_desktop = std::sync::Arc::new(std::sync::Mutex::new(None::<owned_runtime::Runtime>));
+    let input_owned_desktop = owned_desktop.clone();
     std::thread::spawn(move || {
         let mut input_visible = false;
         let mut mosaic_readers: Vec<live::Control> = Vec::new();
@@ -886,16 +888,37 @@ fn watch(client: Client) -> Result<()> {
                 }
                 // Draft durability must never wait behind a slow remote snapshot.
                 if v["op"] == "backend-status" {
-                    emit("backend-status", backend_service::status());
+                    let mut status = backend_service::status();
+                    status["ownedDesktop"] = input_owned_desktop.try_lock().ok().and_then(|runtime| runtime.as_ref().map(owned_runtime::Runtime::status)).unwrap_or_else(|| json!({"id":owned_runtime::ENVIRONMENT_ID,"owner":"gui","running":false}));
+                    emit("backend-status", status);
                     continue;
                 }
                 // Lifecycle controls must not wait behind a remote snapshot.
                 if matches!(text(&v, "op"), "backend-start" | "backend-control") {
                     let service_tx = input_tx.clone();
+                    let owned = input_owned_desktop.clone();
+                    let browser = browser_manager.clone();
                     std::thread::spawn(move || {
                         static BUSY: std::sync::Mutex<()> = std::sync::Mutex::new(());
                         let guard = BUSY.try_lock();
                         let result = match guard {
+                            Ok(_guard) if v["server"] == owned_runtime::ENVIRONMENT_ID => (|| -> Result<Value> {
+                                let mut runtime = owned.try_lock().map_err(|_| "backend_control_busy")?;
+                                match text(&v, "action") {
+                                    "start" => {
+                                        if runtime.is_some() { return Err("owned_backend_already_running".into()); }
+                                        let launched = owned_runtime::Runtime::launch(&backend_service::owned_config()?, browser)?;
+                                        let status = launched.status();
+                                        *runtime = Some(launched);
+                                        Ok(status)
+                                    }
+                                    "stop" => {
+                                        if let Some(mut old) = runtime.take() { old.stop()?; }
+                                        Ok(json!({"id":owned_runtime::ENVIRONMENT_ID,"owner":"gui","running":false}))
+                                    }
+                                    _ => Err("invalid_backend_action".into()),
+                                }
+                            })(),
                             Ok(_guard) => write::execute(&v),
                             Err(_) => Err("backend_control_busy".into()),
                         };
@@ -909,6 +932,10 @@ fn watch(client: Client) -> Result<()> {
                 }
                 if v["op"] == "quit" {
                     let _ = cloud_manager.cancel_active();
+                    if let Ok(mut runtime) = input_owned_desktop.lock() {
+                        if let Some(mut owned) = runtime.take() { let _ = owned.stop(); }
+                    }
+                    let _ = browser_manager.shutdown();
                 }
                 if v["op"] == "prompt-stash" && !text(&v, "authority").is_empty() {
                     let c = input_client.clone();
@@ -1184,6 +1211,9 @@ fn watch(client: Client) -> Result<()> {
             }
         }
         let _ = cloud_manager.cancel_active();
+        if let Ok(mut runtime) = input_owned_desktop.lock() {
+            if let Some(mut owned) = runtime.take() { let _ = owned.stop(); }
+        }
         let _ = browser_manager.shutdown();
         let _ = input_tx.send(json!({"op":"quit"}));
     });

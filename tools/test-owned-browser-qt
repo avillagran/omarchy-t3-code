@@ -15,6 +15,7 @@ from runtime_artifacts import snapshot
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--server-fixture',type=Path,required=True)
 parser.add_argument('--expected-sha256',required=True)
+parser.add_argument('--controller-only',action='store_true',help='Run only the reviewed real Runtime/Manager integration')
 options=parser.parse_args()
 fixture=options.server_fixture.resolve()
 if not fixture.is_file() or not fixture.stat().st_mode & 0o111:
@@ -97,12 +98,12 @@ args=['podman','run','--rm','--pull=never','--userns=keep-id','--user',str(os.ge
 import os,json,subprocess,sys
 os.mkdir('/tmp/home',0o700)
 for name,binary in json.loads(sys.argv[1]):
-    filters=['browser_runtime::private_tests::private_descriptor_rejects_unadmitted_endpoints_and_malformed_fields','browser_guest::private::tests::late_inspector_frames_cannot_retire_successor_or_unrelated_guest','browser_guest::private::tests::admission_precedes_concurrent_command_and_turn_state_is_latched'] if name=='omarchy_t3_client' else [None]
+    filters=[] if name=='omarchy_t3_client' and json.loads(sys.argv[2]) else ['browser_runtime::private_tests::private_descriptor_rejects_unadmitted_endpoints_and_malformed_fields','browser_guest::private::tests::late_inspector_frames_cannot_retire_successor_or_unrelated_guest','browser_guest::private::tests::admission_precedes_concurrent_command_and_turn_state_is_latched'] if name=='omarchy_t3_client' else (['actual_runtime_registers_global_observer_and_drives_the_product_manager'] if json.loads(sys.argv[2]) else ['actual_product_pool_shares_agent_and_visible_pages_without_background_selection','actual_runtime_registers_global_observer_and_drives_the_product_manager','authoritative_preview_open_reaches_native_qt_over_actual_owned_descriptors'])
     for selected in filters:
         args=[binary,'--test-threads=1']+(['--exact',selected] if selected else [])
         result=subprocess.run(args,timeout=60)
         if result.returncode: sys.exit(result.returncode)
-''',json.dumps(binaries)]
+''',json.dumps(binaries),json.dumps(options.controller_only)]
 with (out/'runtime.log').open('w') as output:
     result=subprocess.run(args,stdout=output,stderr=subprocess.STDOUT,timeout=150)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode,'binaries':binaries})+'\n')

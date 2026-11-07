@@ -625,3 +625,97 @@ fn actual_product_pool_shares_agent_and_visible_pages_without_background_selecti
     http_closed.store(true, Ordering::Release);
     http.join().unwrap();
 }
+
+#[test]
+fn actual_runtime_registers_global_observer_and_drives_the_product_manager() {
+    use omarchy_t3_client::{
+        browser_guest, browser_sessions, owned_runtime, preview_transport, protocol,
+    };
+    let root = std::env::temp_dir().join(format!(
+        "or-{}",
+        &uuid::Uuid::new_v4().simple().to_string()[..12]
+    ));
+    fs::create_dir(&root).unwrap();
+    let (events, output) = std::sync::mpsc::channel();
+    let manager = browser_sessions::Manager::start_with_removal(
+        browser_guest::Config::isolated(
+            PathBuf::from("/fixture/app/bin/omarchy-t3-client"),
+            &root.join("qt"),
+        )
+        .unwrap(),
+        |id| {
+            owned_runtime::current_environment()?
+                .filter(|environment| environment.id == id)
+                .ok_or("unknown_environment".into())
+        },
+        || Ok(json!({})),
+        move |event| {
+            let _ = events.send(event);
+        },
+        |_path| panic!("This proof must not remove a profile tree"),
+    );
+    let mut runtime = owned_runtime::Runtime::launch(
+        &Config {
+            executable: PathBuf::from("/fixture/o3-server"),
+            state_root: root.join("state"),
+        },
+        manager.clone(),
+    )
+    .unwrap();
+    let environment = owned_runtime::current_environment().unwrap().unwrap();
+    let connection = environment.connection(true).unwrap();
+    // No test-side observer or hand-written FD adapter: the actual Runtime must
+    // receive opened before the server can complete this native open call.
+    let opened = connection
+        .rpc(
+            "preview.open",
+            json!({"threadId":"controller-thread","runtime":"server"}),
+        )
+        .unwrap();
+    let tab = opened["tabId"]
+        .as_str()
+        .or_else(|| opened["snapshot"]["tabId"].as_str())
+        .unwrap();
+    let current = preview_transport::read(&environment, "controller-thread").unwrap();
+    assert!(current["result"]["sessions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|session| session["tabId"] == tab));
+    manager.request(json!({"op":"browser-show","environment":environment.id,"thread":"controller-thread","tabId":tab,"originKey":current["originKey"],"serverEpoch":current["result"]["serverEpoch"],"requestId":"controller-visible","width":600,"height":400}), true);
+    let deadline = Instant::now() + Duration::from_secs(15);
+    loop {
+        assert!(
+            Instant::now() < deadline,
+            "Actual manager did not show the controller-owned page"
+        );
+        let Ok(event) = output.recv_timeout(Duration::from_millis(100)) else {
+            continue;
+        };
+        assert_ne!(event["kind"], "error", "Manager error: {event}");
+        if event["kind"] == "shown" {
+            break;
+        }
+    }
+    protocol::api::preview::close(&connection, "controller-thread", Some(tab)).unwrap();
+    runtime.stop().unwrap();
+    assert!(owned_runtime::current_environment().unwrap().is_none());
+    // Releasing an already stopped runtime cannot unbind its successor.
+    let mut successor = owned_runtime::Runtime::launch(
+        &Config {
+            executable: PathBuf::from("/fixture/o3-server"),
+            state_root: root.join("next"),
+        },
+        manager.clone(),
+    )
+    .unwrap();
+    drop(runtime);
+    let current = owned_runtime::current_environment().unwrap().unwrap();
+    assert!(current
+        .connection(true)
+        .unwrap()
+        .rpc("server.getConfig", json!({}))
+        .is_ok());
+    successor.stop().unwrap();
+    manager.shutdown().unwrap();
+}

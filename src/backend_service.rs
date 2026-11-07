@@ -115,6 +115,25 @@ fn selected() -> Result<Target> {
 pub fn local_profile() -> std::path::PathBuf {
     selected().map(|t| t.profile).unwrap_or_else(|_| t3_home())
 }
+/// Read-only launch configuration for a separate GUI-owned O3 profile.
+/// The remembered background-service choice is never changed here.
+pub fn owned_config() -> Result<crate::owned_backend::Config> {
+    let (targets, _) = targets()?;
+    let executable = targets
+        .iter()
+        .find(|target| target.id == "o3")
+        .map(|target| target.cli.clone())
+        .unwrap_or_else(|| home().join(".local/share/o3-server/bin/o3-server"));
+    let config = crate::owned_backend::Config::native(executable);
+    let identity = |path: &std::path::Path| path.canonicalize().unwrap_or_else(|_| path.to_owned());
+    if targets
+        .iter()
+        .any(|target| identity(&target.profile) == identity(&config.profile()))
+    {
+        return Err("owned_backend_profile_conflict".into());
+    }
+    Ok(config)
+}
 pub fn local_cli() -> std::path::PathBuf {
     selected()
         .map(|t| t.cli)

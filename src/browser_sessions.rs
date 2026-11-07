@@ -89,6 +89,20 @@ impl Reporter {
     }
 }
 enum Message {
+    BindPrivate {
+        environment: String,
+        origin: String,
+        receive: Output,
+        done: mpsc::Sender<Result<()>>,
+    },
+    UnbindPrivate(String, mpsc::Sender<()>),
+    PrivateCommand {
+        environment: String,
+        origin: String,
+        command: Value,
+        done: mpsc::Sender<Result<()>>,
+    },
+    ReconcilePrivate(Value, mpsc::Sender<Result<()>>),
     Show(Value, u64),
     Input(Value, u64),
     Control(Value, u64),
@@ -236,17 +250,19 @@ impl Manager {
         defaults: impl Fn() -> Result<Value> + Send + 'static,
         output: impl Fn(Value) + Send + Sync + 'static,
     ) -> Self {
-        Self::start_with_removal(config,resolve,defaults,output,|path|std::fs::remove_dir_all(path))
+        Self::start_with_removal(config, resolve, defaults, output, |path| {
+            std::fs::remove_dir_all(path)
+        })
     }
     /// Explicit deletion adapter: tests quarantine validated partitions while
     /// production keeps the real storage-removal implementation.
     pub fn start_with_removal(
-        config:browser_guest::Config,
-        resolve:impl Fn(&str)->Result<Environment>+Send+Sync+'static,
-        defaults:impl Fn()->Result<Value>+Send+'static,
-        output:impl Fn(Value)+Send+Sync+'static,
-        remove:impl Fn(&Path)->std::io::Result<()>+Send+'static,
-    )->Self {
+        config: browser_guest::Config,
+        resolve: impl Fn(&str) -> Result<Environment> + Send + Sync + 'static,
+        defaults: impl Fn() -> Result<Value> + Send + 'static,
+        output: impl Fn(Value) + Send + Sync + 'static,
+        remove: impl Fn(&Path) -> std::io::Result<()> + Send + 'static,
+    ) -> Self {
         let resolve: Resolver = Arc::new(resolve);
         let output: Output = Arc::new(output);
         let grants: Grants = Arc::new(Mutex::new(HashMap::new()));
@@ -280,7 +296,9 @@ impl Manager {
                         && g.process == text(&data, "processId")
                         && g.scope["originKey"] == data["originKey"]
                 }) {
-                    reporter.offer(k, grant, s.clone());
+                    if grant.scope["snapshot"]["runtime"] != "server" {
+                        reporter.offer(k, grant, s.clone());
+                    }
                 }
             } else {
                 let active = callback_wanted.lock().unwrap().clone();
@@ -304,6 +322,7 @@ impl Manager {
             }
             let _ready = Ready(running);
             let mut cleanups = HashMap::<String, Cleanup>::new();
+            let mut private_tabs = HashMap::<Key, String>::new();
             let mut active = None::<Value>;
             let mut epochs = HashMap::<String, (String, String)>::new();
             let mut revisions = HashMap::<(String, String), u64>::new();
@@ -313,6 +332,115 @@ impl Manager {
                     active = None;
                 }
                 match message {
+                    Message::BindPrivate {
+                        environment,
+                        origin,
+                        receive,
+                        done,
+                    } => {
+                        let result =
+                            pool.bind_private_source(&environment, &origin, move |event| {
+                                receive(event)
+                            });
+                        let _ = done.send(result);
+                    }
+                    Message::UnbindPrivate(environment, done) => {
+                        invalidate(&mut pool, &grants, &environment);
+                        pool.unbind_private_source(&environment);
+                        private_tabs.retain(|(id, _, _), _| id != &environment);
+                        epochs.remove(&environment);
+                        revisions.retain(|(id, _), _| id != &environment);
+                        let _ = done.send(());
+                    }
+                    Message::PrivateCommand {
+                        environment,
+                        origin,
+                        command,
+                        done,
+                    } => {
+                        let _ = done.send(pool.private_command(&environment, &origin, &command));
+                    }
+                    Message::ReconcilePrivate(data, done) => {
+                        let result = (|| -> Result<()> {
+                            let environment = text(&data, "environment");
+                            let origin = text(&data, "originKey");
+                            if data["kind"] != "list"
+                                || data["canOperate"] != true
+                                || !pool.has_private_source(environment, origin)
+                            {
+                                return Err("preview_scope_changed".into());
+                            }
+                            let identity = (
+                                origin.to_owned(),
+                                text(&data["result"], "serverEpoch").to_owned(),
+                            );
+                            if identity.1.is_empty() {
+                                return Err("invalid_preview_state".into());
+                            }
+                            if epochs.get(environment).is_some_and(|old| old != &identity) {
+                                invalidate(&mut pool, &grants, environment);
+                                private_tabs.retain(|(id, _, _), _| id != environment);
+                            }
+                            let thread = text(&data, "thread");
+                            let revision = data["result"]["revision"]
+                                .as_u64()
+                                .ok_or("invalid_preview_state")?;
+                            if revisions
+                                .get(&(environment.into(), thread.into()))
+                                .is_some_and(|old| *old > revision)
+                            {
+                                return Ok(());
+                            }
+                            let preferences = defaults()?;
+                            let sessions = data["result"]["sessions"]
+                                .as_array()
+                                .ok_or("invalid_preview_state")?;
+                            let retained = sessions
+                                .iter()
+                                .filter(|session| {
+                                    session["runtime"] == "server" && session["headless"] != true
+                                })
+                                .map(|session| text(session, "tabId"))
+                                .collect::<std::collections::HashSet<_>>();
+                            let removed = private_tabs
+                                .iter()
+                                .filter(|((id, t, tab), _)| {
+                                    id == environment
+                                        && t == thread
+                                        && !retained.contains(tab.as_str())
+                                })
+                                .map(|(key, profile)| (key.clone(), profile.clone()))
+                                .collect::<Vec<_>>();
+                            for ((id, t, tab), profile) in removed {
+                                pool.close_tab(&id, &profile, &t, &tab)?;
+                                private_tabs.remove(&(id, t, tab));
+                            }
+                            for session in sessions {
+                                if session["runtime"] != "server" || session["headless"] == true {
+                                    continue;
+                                }
+                                let mut snapshot = session.clone();
+                                if snapshot.get("profileId").is_none() {
+                                    snapshot["profileId"] = json!(
+                                        crate::browser_preferences::default_profile(&preferences)
+                                    );
+                                }
+                                let size =
+                                    dimensions(&snapshot, &json!({"width":1280,"height":800}))?;
+                                let zoom = preferences
+                                    .get("browserDefaultZoomFactor")
+                                    .cloned()
+                                    .unwrap_or(json!(1));
+                                pool.ensure_private(environment, origin, &snapshot, size, &zoom)?;
+                                private_tabs.insert(
+                                    key(environment, thread, text(&snapshot, "tabId")),
+                                    text(&snapshot, "profileId").to_owned(),
+                                );
+                            }
+                            Ok(())
+                        })();
+                        let _ = done.send(result);
+                    }
                     Message::Hide => {
                         pool.hide();
                         active = None;
@@ -435,7 +563,7 @@ impl Manager {
                                 &environment,
                                 &cleanup.profile,
                                 cleanup.locks.get(&environment).unwrap(),
-                                |path|remove(path),
+                                |path| remove(path),
                             )?;
                             cleanup.cleared.push(environment);
                             Ok(())
@@ -566,7 +694,11 @@ impl Manager {
                         let request = text(&input, "requestId");
                         let result = (|| -> Result<Value> {
                             let e = resolve(text(&input, "environment"))?;
-                            let mut view = preview_transport::surface(&e, &input)?;
+                            let mut view = preview_transport::surface_for_owned(
+                                &e,
+                                &input,
+                                pool.has_private_source(&e.id, text(&input, "originKey")),
+                            )?;
                             if current.load(Ordering::SeqCst) != stamp {
                                 return Err("browser_view_changed".into());
                             }
@@ -694,8 +826,13 @@ impl Manager {
                         let fresh = !control
                             && grant.validated.lock().unwrap().elapsed() < Duration::from_secs(5);
                         if !fresh {
-                            let result = resolve(&k.0)
-                                .and_then(|e| preview_transport::surface(&e, &grant.scope));
+                            let result = resolve(&k.0).and_then(|e| {
+                                preview_transport::surface_for_owned(
+                                    &e,
+                                    &grant.scope,
+                                    pool.has_private_source(&e.id, text(&grant.scope, "originKey")),
+                                )
+                            });
                             match result {
                                 Ok(v)
                                     if v["snapshot"]
@@ -802,7 +939,12 @@ impl Manager {
                                         && thread == t
                                         && !result["sessions"].as_array().is_some_and(|ss| {
                                             ss.iter().any(|s| {
-                                                s["tabId"] == *tab && s["runtime"] != "server"
+                                                s["tabId"] == *tab
+                                                    && (s["runtime"] != "server"
+                                                        || pool.has_private_source(
+                                                            e,
+                                                            text(&data, "originKey"),
+                                                        ))
                                             })
                                         })
                                 })
@@ -839,6 +981,10 @@ impl Manager {
                             .map(|(k, g)| (k.clone(), g.clone()))
                             .collect::<Vec<_>>();
                         for (k, grant) in targets {
+                            // The owned backend already executed its CDP command.
+                            if grant.scope["snapshot"]["runtime"] == "server" {
+                                continue;
+                            }
                             let profile = text(&grant.scope, "profileId");
                             let event = match text(&input, "action") {
                                 "close" => {
@@ -870,6 +1016,60 @@ impl Manager {
             ready,
             import_assets,
         }
+    }
+    /// Internal controller boundary. No stdin/UI command accepts callbacks or raw CDP.
+    pub(crate) fn bind_private(
+        &self,
+        environment: &str,
+        origin: &str,
+        receive: Output,
+    ) -> Result<()> {
+        let (done, wait) = mpsc::channel();
+        self.sender
+            .send(Message::BindPrivate {
+                environment: environment.into(),
+                origin: origin.into(),
+                receive,
+                done,
+            })
+            .map_err(|_| "browser_runtime_unavailable")?;
+        wait.recv().map_err(|_| "browser_runtime_unavailable")?
+    }
+    pub(crate) fn unbind_private(&self, environment: &str) {
+        let (done, wait) = mpsc::channel();
+        if self
+            .sender
+            .send(Message::UnbindPrivate(environment.into(), done))
+            .is_ok()
+        {
+            let _ = wait.recv();
+        }
+    }
+    pub(crate) fn private_command(
+        &self,
+        environment: &str,
+        origin: &str,
+        command: Value,
+    ) -> Result<()> {
+        let (done, wait) = mpsc::channel();
+        self.sender
+            .send(Message::PrivateCommand {
+                environment: environment.into(),
+                origin: origin.into(),
+                command,
+                done,
+            })
+            .map_err(|_| "browser_runtime_unavailable")?;
+        wait.recv().map_err(|_| "browser_runtime_unavailable")?
+    }
+    pub(crate) fn reconcile_private(&self, data: Value) -> Result<()> {
+        let (done, wait) = mpsc::channel();
+        self.sender
+            .send(Message::ReconcilePrivate(data.clone(), done))
+            .map_err(|_| "browser_runtime_unavailable")?;
+        wait.recv().map_err(|_| "browser_runtime_unavailable")??;
+        self.observe(data);
+        Ok(())
     }
     pub fn request(&self, input: Value, visible: bool) {
         match text(&input, "op") {
