@@ -114,3 +114,9 @@ Chromium, it resets `FD_CLOEXEC` on that admitted guest descriptor. The pipe sta
 available to the owned guest but is not admitted through subsequent exec into
 Chromium helpers. The actual full navigation/shutdown proof still passes with
 this boundary; this is not a `/proc` inventory of every helper descriptor.
+
+## Shared product pipe implementation
+
+The fixture and product browser host now share `ui/browser/private-browser-pipe.h`. It validates the actual parent endpoint, resets descriptor inheritance, bounds buffered records/output at 256 MiB, and uses nonblocking Qt socket notifiers. Reads yield after sixteen chunks so a continuous writer cannot monopolize the GUI event loop. Socket sends suppress SIGPIPE without changing the product process's signal disposition. Failure closes only this owned endpoint.
+
+The product Rust renderer validates the optional inherited Unix endpoint before loading Qt; malformed fields and non-parent endpoints are rejected by an exact filtered private unit case. The actual browser library accepts the same optional descriptor and loads only fixed installed inspector scripts into trusted QML context. Default prepared payloads omit this field. The existing build tool now compiles the shared QObject's generated metadata. A focused private unit plus the same shared-code end-to-end navigation function pass; the actual product library also compiles. The Pool producer and per-view inspector/lease component still require integration before this path can be selected.

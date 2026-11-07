@@ -32,3 +32,5 @@ __pycache__/
 /bin/ot3-dictate
 /bin/qml/
 /native/dictate/target/
+
+/ui/browser/private-browser-pipe.moc.cpp

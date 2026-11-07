@@ -1,3 +1,4 @@
+#include "private-browser-pipe.h"
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -13,84 +14,25 @@
 #include <sys/un.h>
 #include <cstdio>
 
-class PrivatePipe : public QObject {
+class PrivatePipe : public PrivateBrowserPipe {
     Q_OBJECT
-    int descriptor;
-    QByteArray input, output;
-    QSocketNotifier reader, writer;
-    static constexpr qsizetype limit = 256 * 1024 * 1024;
-    bool closed = false;
-    void retire() {
-        if (closed) return;
-        closed = true; reader.setEnabled(false); writer.setEnabled(false);
-        ::close(descriptor); input.clear(); output.clear(); emit ended();
-    }
-    void flush() {
-        while (!output.isEmpty()) {
-            const auto count = ::write(descriptor, output.constData(), output.size());
-            if (count > 0) output.remove(0, count);
-            else if (count < 0 && errno == EINTR) continue;
-            else if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
-            else { retire(); return; }
-        }
-        writer.setEnabled(!output.isEmpty() && !closed);
-    }
 public:
-    explicit PrivatePipe(int fd) : descriptor(fd), reader(fd,QSocketNotifier::Read), writer(fd,QSocketNotifier::Write) {
-        const int flags = ::fcntl(fd,F_GETFL);
-        if (flags < 0 || ::fcntl(fd,F_SETFL,flags|O_NONBLOCK) < 0) { closed=true; return; }
-        writer.setEnabled(false);
-        connect(&writer,&QSocketNotifier::activated,this,[this]{flush();});
-        connect(&reader,&QSocketNotifier::activated,this,[this]{
-            char chunk[65536];
-            for (;;) {
-                const auto count = ::read(descriptor,chunk,sizeof(chunk));
-                if (count > 0) {
-                    if (input.size()+count > limit) { retire(); return; }
-                    input.append(chunk,count);
-                    for (;;) {
-                        const auto end=input.indexOf('\n'); if(end<0)break;
-                        const auto line=input.left(end);input.remove(0,end+1);
-                        emit command(QString::fromUtf8(line));
-                    }
-                } else if(count<0&&errno==EINTR)continue;
-                else if(count<0&&(errno==EAGAIN||errno==EWOULDBLOCK))break;
-                else {retire();return;}
-            }
-        });
-    }
-    ~PrivatePipe() override { if(!closed)::close(descriptor); }
-    Q_INVOKABLE void send(const QString &line) {
-        if(closed)return;
-        const auto bytes=line.toUtf8();
-        if(bytes.size()>limit-output.size()){retire();return;}
-        output.append(bytes);flush();
-    }
+    using PrivateBrowserPipe::PrivateBrowserPipe;
     Q_INVOKABLE void loaded(const QString &url, const QString &title) {
         if(url.startsWith("http://127.0.0.1:") && url.endsWith("/owned") && title=="Private owned Qt navigation") {
             std::puts("OWNED_PAGE_LOADED");std::fflush(stdout);
         }
     }
-signals:
-    void command(const QString &line);
-    void ended();
 };
 int main(int argc,char **argv) {
     if(argc!=8)return 2;
     std::signal(SIGPIPE,SIG_IGN);
     bool valid=false;const int fd=QString::fromLocal8Bit(argv[2]).toInt(&valid);if(!valid||fd<64)return 3;
-    int type=0; socklen_t typeSize=sizeof(type);
-    ucred peer{};socklen_t peerSize=sizeof(peer);
-    sockaddr_un address{};socklen_t addressSize=sizeof(address);
-    const int fdFlags=::fcntl(fd,F_GETFD);
-    if(fdFlags<0 || ::getsockopt(fd,SOL_SOCKET,SO_TYPE,&type,&typeSize)!=0 || type!=SOCK_STREAM ||
-       ::getsockopt(fd,SOL_SOCKET,SO_PEERCRED,&peer,&peerSize)!=0 || peer.pid!=::getppid() || peer.uid!=::geteuid() ||
-       ::getsockname(fd,reinterpret_cast<sockaddr*>(&address),&addressSize)!=0 || address.sun_family!=AF_UNIX ||
-       ::fcntl(fd,F_SETFD,fdFlags|FD_CLOEXEC)!=0)return 3;
+    if(!PrivateBrowserPipe::admit(fd))return 3;
     // Retain this endpoint only in the owned guest, never in Chromium subprocesses.
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QtWebEngineQuick::initialize();QGuiApplication app(argc,argv);
-    PrivatePipe pipe(fd);QQmlApplicationEngine engine;
+    PrivatePipe pipe(fd);if(!pipe.isOpen())return 3;QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("privatePipe",&pipe);
     engine.rootContext()->setContextProperty("threadKey",QString::fromUtf8(argv[3]));
     engine.rootContext()->setContextProperty("tabKey",QString::fromUtf8(argv[4]));

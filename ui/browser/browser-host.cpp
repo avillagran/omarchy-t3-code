@@ -1,3 +1,6 @@
+#include "private-browser-pipe.h"
+#include <QFileInfo>
+#include <memory>
 #include <QHash>
 // Qt browser guest host. One process/partition, multiple tabs; Rust owns T3
 // authentication and lifecycle. No WebChannel or native QObject enters a page.
@@ -118,10 +121,14 @@ public:
  }
 };
 extern "C" int t3_browser_main(const char *payload,const char *qml){
+ const auto data=QJsonDocument::fromJson(payload).object();
+ const bool privateRequested=data.contains("privateBrowserFd");
+ const int privateFd=data["privateBrowserFd"].toInt(-1);
+ // Admit before Qt/Chromium initialization, then make all helper execs close it.
+ if(privateRequested&&(!data["privateBrowserFd"].isDouble()||data["privateBrowserFd"].toDouble()!=privateFd||!PrivateBrowserPipe::admit(privateFd)))return 1;
  int argc=1;char name[]="omarchy-t3-browser";char *argv[]={name,nullptr};QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);QtWebEngineQuick::initialize();QGuiApplication app(argc,argv);
  app.setApplicationName("omarchy-t3-browser");app.setApplicationDisplayName("T3 Code · Browser");
  qInstallMessageHandler([](QtMsgType,const QMessageLogContext&,const QString &message){fprintf(stderr,"%s\n",qPrintable(message));});
- const auto data=QJsonDocument::fromJson(payload).object();
  BrowserHost host(data["frameDirectory"].toString(),!data["restoreSessionCookies"].toBool());
  QQuickWebEngineProfile profile;
  if(data["persistent"].toBool()){
@@ -130,7 +137,21 @@ extern "C" int t3_browser_main(const char *payload,const char *qml){
   profile.setHttpCacheType(QQuickWebEngineProfile::DiskHttpCache);profile.setPersistentCookiesPolicy(QQuickWebEngineProfile::ForcePersistentCookies);
  }else{profile.setOffTheRecord(true);profile.setHttpCacheType(QQuickWebEngineProfile::MemoryHttpCache);profile.setPersistentCookiesPolicy(QQuickWebEngineProfile::NoPersistentCookies);}
  host.attachProfile(&profile);
- QQmlApplicationEngine engine;engine.rootContext()->setContextProperty("browserHost",&host);engine.rootContext()->setContextProperty("browserProfile",&profile);engine.rootContext()->setContextProperty("browserData",data.toVariantMap());
+ std::unique_ptr<PrivateBrowserPipe> privatePipe;
+ QString privateSource;
+ if(privateRequested){
+  privatePipe=std::make_unique<PrivateBrowserPipe>(privateFd);if(!privatePipe->isOpen())return 1;
+  const auto directory=QFileInfo(QString::fromUtf8(qml)).absoluteDir();
+  for(const auto &name:{"private-cdp-bridge.js","native-browser-host.js","qt-guest-input.js","qt-target-scope.js"}){
+   QFile file(directory.filePath(QString::fromLatin1(name)));
+   if(!file.open(QIODevice::ReadOnly)||file.size()>16*1024*1024)return 1;
+   privateSource+=QString::fromUtf8(file.readAll())+'\n';
+  }
+ }
+ QQmlApplicationEngine engine;
+ engine.rootContext()->setContextProperty("browserPrivatePipe",static_cast<QObject*>(privatePipe.get()));
+ engine.rootContext()->setContextProperty("browserAutomationSource",privateSource);
+ engine.rootContext()->setContextProperty("browserHost",&host);engine.rootContext()->setContextProperty("browserProfile",&profile);engine.rootContext()->setContextProperty("browserData",data.toVariantMap());
  engine.load(QUrl::fromLocalFile(qml));if(engine.rootObjects().isEmpty())return 1;
  QObject::connect(&engine,&QQmlEngine::quit,&app,&QCoreApplication::quit);QObject::connect(&engine,&QQmlEngine::exit,&app,&QCoreApplication::exit);
  host.attach(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));fcntl(STDIN_FILENO,F_SETFL,fcntl(STDIN_FILENO,F_GETFL)|O_NONBLOCK);

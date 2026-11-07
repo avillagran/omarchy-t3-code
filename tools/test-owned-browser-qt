@@ -38,30 +38,43 @@ if server_hash!=options.expected_sha256: raise SystemExit('Server fixture SHA-25
 (out/'server-artifact.json').write_text(json.dumps({'sha256':server_hash,'bytes':server.stat().st_size})+'\n')
 for name,source in {
     'guest.cpp':root/'tools/fixtures/owned-browser-pipe.cpp',
+    'product-host.cpp':root/'ui/browser/browser-host.cpp',
+    'private-browser-pipe.h':root/'ui/browser/private-browser-pipe.h',
     'guest.qml':root/'tools/fixtures/owned-browser-pipe.qml',
     'bridge.js':root/'ui/browser/private-cdp-bridge.js',
     'host.js':root/'ui/browser/native-browser-host.js',
 }.items(): (out/name).write_bytes(source.read_bytes())
 (out/'platform.js').write_bytes((root/'ui/browser/qt-guest-input.js').read_bytes()+b'\n'+(root/'ui/browser/qt-target-scope.js').read_bytes())
-(out/'inputs.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['guest.cpp','guest.qml','bridge.js','host.js','platform.js']},indent=2)+'\n')
+(out/'inputs.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['guest.cpp','product-host.cpp','guest.qml','bridge.js','host.js','platform.js','private-browser-pipe.h']},indent=2)+'\n')
 lock=Path(os.environ.get('O3_BUILD_LOCK','/var/tmp/o3-build/o3-parity-compile.lock'))
 lock.parent.mkdir(parents=True,exist_ok=True)
 with lock.open('a') as compile_lock:
     fcntl.flock(compile_lock.fileno(),fcntl.LOCK_EX)
     env=dict(os.environ,CARGO_BUILD_JOBS='2')
     moc=subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip()+'/moc'
-    subprocess.run([moc,str(out/'guest.cpp'),'-o',str(out/'owned-browser-pipe.moc')],check=True)
+    qt_log=(out/'qt-compile.log').open('w')
+    def qt_compile(args):
+        result=subprocess.run(args,stdout=qt_log,stderr=subprocess.STDOUT)
+        if result.returncode:
+            qt_log.close()
+            (out/'result.json').write_text(json.dumps({'stage':'qt-compile','returncode':result.returncode})+'\n')
+            raise SystemExit(result.returncode)
+    qt_compile([moc,str(out/'guest.cpp'),'-o',str(out/'owned-browser-pipe.moc')])
+    qt_compile([moc,str(out/'private-browser-pipe.h'),'-o',str(out/'moc_private_browser_pipe.cpp')])
+    qt_compile([moc,str(out/'product-host.cpp'),'-o',str(out/'browser-host.moc')])
     import shlex
-    flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6WebEngineQuick'],text=True))
-    subprocess.run(['c++','-std=c++17','-fPIC',str(out/'guest.cpp'),'-o',str(out/'qt-browser'),*flags],check=True)
+    flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6WebEngineQuick','Qt6WebEngineCore'],text=True))
+    qt_compile(['c++','-std=c++17','-fPIC',str(out/'guest.cpp'),str(out/'moc_private_browser_pipe.cpp'),'-o',str(out/'qt-browser'),*flags])
+    qt_compile(['c++','-std=c++17','-fPIC','-shared',str(out/'product-host.cpp'),str(out/'moc_private_browser_pipe.cpp'),'-o',str(out/'libt3-browser.so'),*flags])
+    qt_log.close()
     (out/'qt-browser').chmod(0o500)
     (out/'qt-artifact.json').write_text(json.dumps({'sha256':hashlib.sha256((out/'qt-browser').read_bytes()).hexdigest(),'bytes':(out/'qt-browser').stat().st_size,'qt':subprocess.check_output(['pkg-config','--modversion','Qt6WebEngineQuick'],text=True).strip()},indent=2)+'\n')
-    command=['cargo','test','--locked','--offline','--test','owned_browser_qt','--no-run','--message-format=json']
+    command=['cargo','test','--locked','--offline','--lib','--test','owned_browser_qt','--no-run','--message-format=json']
     result=subprocess.run(command,cwd=root,env=env,stdout=(out/'compile.jsonl').open('w'),stderr=(out/'compile.log').open('w'))
     if result.returncode: raise SystemExit(result.returncode)
     items=[json.loads(line) for line in (out/'compile.jsonl').read_text().splitlines()]
     binaries=[(item['target']['name'],item['executable']) for item in items if item.get('executable') and item.get('profile',{}).get('test')]
-    if len(binaries)!=1: raise SystemExit('Expected only the reviewed owned-browser Qt target')
+    if len(binaries)!=2 or {name for name,_ in binaries}!={'omarchy_t3_client','owned_browser_qt'}: raise SystemExit('Expected only the selected library and owned-browser Qt target')
     debug=Path(binaries[0][1]).parent.parent
     runtime=debug.resolve().parent/('test-runtime-owned-'+uuid.uuid4().hex)
     records=snapshot(debug,[Path(binary) for _,binary in binaries],runtime)
@@ -71,6 +84,7 @@ import os,json,subprocess,sys
 os.mkdir('/tmp/home',0o700)
 for name,binary in json.loads(sys.argv[1]):
     args=[binary,'--test-threads=1']
+    if name=='omarchy_t3_client': args += ['--exact','browser_runtime::private_tests::private_descriptor_rejects_unadmitted_endpoints_and_malformed_fields']
     result=subprocess.run(args,timeout=60)
     if result.returncode: sys.exit(result.returncode)
 ''',json.dumps(binaries)]

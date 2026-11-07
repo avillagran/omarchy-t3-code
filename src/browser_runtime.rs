@@ -62,14 +62,19 @@ pub fn clear_owned_storage(
     profile: &str,
     lock: &ProfileLock,
 ) -> Result<()> {
-    clear_owned_storage_with(storage,environment,profile,lock,|path|fs::remove_dir_all(path))
+    clear_owned_storage_with(storage, environment, profile, lock, |path| {
+        fs::remove_dir_all(path)
+    })
 }
 /// Explicit filesystem deletion boundary. Tests can quarantine the validated
 /// partition and verify namespace changes without deleting its retained data.
 pub fn clear_owned_storage_with(
-    storage:&Path,environment:&str,profile:&str,lock:&ProfileLock,
-    remove:impl FnOnce(&Path)->std::io::Result<()>,
-)->Result<()> {
+    storage: &Path,
+    environment: &str,
+    profile: &str,
+    lock: &ProfileLock,
+    remove: impl FnOnce(&Path) -> std::io::Result<()>,
+) -> Result<()> {
     use std::os::unix::fs::MetadataExt;
     let identity = partition(environment, profile)?;
     let name = text(&identity, "partition").trim_start_matches("persist:");
@@ -171,6 +176,53 @@ pub fn prepare(mut payload: Value, storage: &Path, frames: &Path) -> Result<Valu
     }
     Ok(payload)
 }
+fn private_descriptor(payload: &Value) -> Result<Option<i32>> {
+    let Some(value) = payload.get("privateBrowserFd") else {
+        return Ok(None);
+    };
+    let fd = value
+        .as_i64()
+        .filter(|fd| (64..=i64::from(i32::MAX)).contains(fd))
+        .ok_or("invalid_browser_private_descriptor")? as i32;
+    let mut kind = 0i32;
+    let mut size = std::mem::size_of_val(&kind) as libc::socklen_t;
+    let mut peer: libc::ucred = unsafe { std::mem::zeroed() };
+    let mut peer_size = std::mem::size_of_val(&peer) as libc::socklen_t;
+    let mut address: libc::sockaddr_un = unsafe { std::mem::zeroed() };
+    let mut address_size = std::mem::size_of_val(&address) as libc::socklen_t;
+    let accepted = unsafe {
+        let flags = libc::fcntl(fd, libc::F_GETFD);
+        flags >= 0
+            && libc::getsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                libc::SO_TYPE,
+                (&mut kind as *mut i32).cast(),
+                &mut size,
+            ) == 0
+            && kind == libc::SOCK_STREAM
+            && libc::getsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                libc::SO_PEERCRED,
+                (&mut peer as *mut libc::ucred).cast(),
+                &mut peer_size,
+            ) == 0
+            && peer.pid == libc::getppid()
+            && peer.uid == libc::geteuid()
+            && libc::getsockname(
+                fd,
+                (&mut address as *mut libc::sockaddr_un).cast(),
+                &mut address_size,
+            ) == 0
+            && i32::from(address.sun_family) == libc::AF_UNIX
+            && libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC) == 0
+    };
+    if !accepted {
+        return Err("invalid_browser_private_descriptor".into());
+    }
+    Ok(Some(fd))
+}
 pub fn renderer() -> Result<()> {
     // This entry point is an IPC guest, never a separate desktop window.
     std::env::set_var("QT_QPA_PLATFORM", "offscreen");
@@ -195,6 +247,8 @@ pub fn renderer() -> Result<()> {
         .read_exact(&mut bytes)
         .map_err(|_| "invalid_browser_payload")?;
     let payload: Value = serde_json::from_slice(&bytes).map_err(|_| "invalid_browser_payload")?;
+    // Validate and confine the optional endpoint before any Qt library is loaded.
+    let private_fd = private_descriptor(&payload)?;
     let storage = storage_root();
     let _profile_lock = lock_profile(
         &storage,
@@ -204,7 +258,10 @@ pub fn renderer() -> Result<()> {
     let cache = crate::xdg("XDG_CACHE_HOME", ".cache").join("browser-sessions");
     private_directory(&cache)?;
     let frames = cache.join(uuid::Uuid::new_v4().to_string());
-    let payload = prepare(payload, &storage, &frames)?;
+    let mut payload = prepare(payload, &storage, &frames)?;
+    if let Some(fd) = private_fd {
+        payload["privateBrowserFd"] = json!(fd);
+    }
     let result = run(&payload);
     let _ = crate::frame_files::reclaim(&frames);
     result
@@ -242,4 +299,33 @@ fn run(payload: &Value) -> Result<()> {
 }
 pub fn storage_root() -> PathBuf {
     crate::t3_home().join("userdata/ot3-browser-profiles")
+}
+
+#[cfg(test)]
+mod private_tests {
+    use super::*;
+    use std::os::fd::AsRawFd;
+    #[test]
+    fn private_descriptor_rejects_unadmitted_endpoints_and_malformed_fields() {
+        assert_eq!(private_descriptor(&json!({})).unwrap(), None);
+        for value in [
+            Value::Null,
+            json!(true),
+            json!("64"),
+            json!(-1),
+            json!(0),
+            json!(64.5),
+            json!(u64::MAX),
+        ] {
+            assert!(private_descriptor(&json!({"privateBrowserFd":value})).is_err());
+        }
+        let (endpoint, _peer) = std::os::unix::net::UnixStream::pair().unwrap();
+        let source =
+            crate::desktop_browser_ipc::duplicate_child_source(endpoint.as_raw_fd()).unwrap();
+        let fd = source.as_raw_fd();
+        let before = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+        // A socket created in this test process is not an inherited parent endpoint.
+        assert!(private_descriptor(&json!({"privateBrowserFd":fd})).is_err());
+        assert_eq!(unsafe { libc::fcntl(fd, libc::F_GETFD) }, before);
+    }
 }
