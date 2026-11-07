@@ -33,6 +33,10 @@ pub enum Mode {
     Streaming,
     Buffered,
 }
+struct LaunchControl<'a> {
+    synthetic: bool,
+    startup: Option<&'a StartupCancellation>,
+}
 impl Mode {
     fn name(self) -> &'static str {
         match self {
@@ -122,6 +126,47 @@ impl Cancellation {
         }
     }
 }
+/// One capture launch, including the period before its renderer is ready.
+/// Cancellation is permanent and can be requested before a child exists.
+#[derive(Clone, Default)]
+pub struct StartupCancellation(Arc<StartupGate>);
+#[derive(Default)]
+struct StartupGate {
+    cancelled: AtomicBool,
+    started: AtomicBool,
+    child_started: AtomicBool,
+    capture: Mutex<Option<Cancellation>>,
+}
+impl StartupCancellation {
+    pub fn cancel(&self) {
+        self.0.cancelled.store(true, Ordering::Release);
+        if let Ok(capture) = self.0.capture.lock() {
+            if let Some(capture) = capture.as_ref() {
+                capture.cancel();
+            }
+        }
+    }
+    pub fn is_cancelled(&self) -> bool {
+        self.0.cancelled.load(Ordering::Acquire)
+    }
+    pub(crate) fn child_started(&self) -> bool {
+        self.0.child_started.load(Ordering::Acquire)
+    }
+    fn claim(&self) -> io::Result<()> {
+        if self.0.started.swap(true, Ordering::AcqRel) || self.is_cancelled() {
+            return Err(failed());
+        }
+        Ok(())
+    }
+    fn attach(&self, capture: Cancellation) -> io::Result<()> {
+        let mut slot = self.0.capture.lock().map_err(|_| failed())?;
+        if self.is_cancelled() {
+            capture.cancel();
+        }
+        *slot = Some(capture);
+        Ok(())
+    }
+}
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Phase {
     Preparing,
@@ -176,7 +221,10 @@ impl Capture {
             display,
             mode,
             microphone_id,
-            false,
+            LaunchControl {
+                synthetic: false,
+                startup: None,
+            },
         )
     }
     /// Explicit synthetic-device acceptance. This is never called by native
@@ -199,7 +247,59 @@ impl Capture {
             display,
             mode,
             microphone_id,
-            true,
+            LaunchControl {
+                synthetic: true,
+                startup: None,
+            },
+        )
+    }
+    /// The trusted factory owns startup cancellation; no request supplies an
+    /// executable, helper graph or display. Synthetic media is container-only.
+    pub fn launch_cancellable(
+        runtime: Arc<Runtime>,
+        assets: Arc<Assets>,
+        directory: &Path,
+        display: Arc<crate::browser_native_display::Display>,
+        mode: Mode,
+        microphone_id: &str,
+        startup: &StartupCancellation,
+    ) -> io::Result<Self> {
+        Self::launch_inner(
+            runtime,
+            assets,
+            directory,
+            display,
+            mode,
+            microphone_id,
+            LaunchControl {
+                synthetic: false,
+                startup: Some(startup),
+            },
+        )
+    }
+    pub fn synthetic_cancellable(
+        runtime: Arc<Runtime>,
+        assets: Arc<Assets>,
+        directory: &Path,
+        display: Arc<crate::browser_native_display::Display>,
+        mode: Mode,
+        microphone_id: &str,
+        startup: &StartupCancellation,
+    ) -> io::Result<Self> {
+        if !Path::new("/run/.containerenv").exists() {
+            return Err(failed());
+        }
+        Self::launch_inner(
+            runtime,
+            assets,
+            directory,
+            display,
+            mode,
+            microphone_id,
+            LaunchControl {
+                synthetic: true,
+                startup: Some(startup),
+            },
         )
     }
     fn launch_inner(
@@ -209,8 +309,12 @@ impl Capture {
         display: Arc<crate::browser_native_display::Display>,
         mode: Mode,
         microphone_id: &str,
-        synthetic: bool,
+        control: LaunchControl<'_>,
     ) -> io::Result<Self> {
+        let LaunchControl { synthetic, startup } = control;
+        if let Some(startup) = startup {
+            startup.claim()?;
+        }
         runtime.verify()?;
         assets.verify()?;
         let parent = directory.parent().ok_or_else(failed)?;
@@ -282,6 +386,9 @@ impl Capture {
         }
         let writer = reader.try_clone()?;
         let mut pending_child = PendingChild(Some(command.spawn()?));
+        if let Some(startup) = startup {
+            startup.0.child_started.store(true, Ordering::Release);
+        }
         drop(child_endpoint);
         let group = i32::try_from(pending_child.0.as_ref().unwrap().id()).map_err(|_| {
             io::Error::other(StartupFailure {
@@ -301,6 +408,9 @@ impl Capture {
             writer: Mutex::new(writer),
             capture,
         }));
+        if let Some(startup) = startup {
+            startup.attach(gate.clone())?;
+        }
         let mut owner = Self {
             runtime,
             assets,
@@ -500,7 +610,10 @@ impl Capture {
                                 .filter(|value| {
                                     matches!(
                                         *value,
-                                        "capture_cancelled" | "capture_failed" | "stale_permission"
+                                        "capture_cancelled"
+                                            | "capture_permission_denied"
+                                            | "capture_failed"
+                                            | "stale_permission"
                                     )
                                 })
                                 .ok_or_else(failed)?

@@ -22,6 +22,6 @@ bridge.subscribe(async command=>{
    if(owner)await owner.close();value={cleanup:'confirmed'};
   }else throw Error('Unsupported capture command');
   bridge.result(command.id,true,value);
- }catch(error){bridge.result(command.id,false,{error:error?.name==='AbortError'?'capture_cancelled':'capture_failed'})}
+ }catch(error){bridge.result(command.id,false,{error:error?.name==='AbortError'?'capture_cancelled':error?.name==='NotAllowedError'?'capture_permission_denied':'capture_failed'})}
 });
 bridge.ready();

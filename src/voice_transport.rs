@@ -112,7 +112,7 @@ impl BoundSpeech {
     }
     /// Current draft/recording ownership and the original grant are independent
     /// requirements. No stored boolean or selected UI environment grants audio.
-    fn current(&self, owner: &impl Fn() -> bool) -> bool {
+    pub(crate) fn current(&self, owner: &impl Fn() -> bool) -> bool {
         owner() && self.grant.is_current()
     }
     async fn authorize(

@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "records": {
+    "worker": {
+      "artifact": "/var/tmp/o3-build/voice-worker-process-53paxlex/result.json",
+      "artifactSha256": "89048c58001e383d1367b03cbb26994fa67bdd2a61620544f86825ef6653c066",
+      "binarySha256": "5816a9a437877cc72b942d11593e2caa301bc22cdde4934924177e42f7a1035d",
+      "receipt": {
+        "cases": 10,
+        "parallelCaptureAndStreamPreparation": true,
+        "singleUseFeeder": true,
+        "foreignPreparationRefused": true,
+        "liveBytes": 34080,
+        "finishAfterPhysicalRelease": true,
+        "permissionDeniedIdentity": true,
+        "pendingPermissionAbortClosesBothOwners": true,
+        "bufferedBytes": 25724,
+        "explicitRetrySameRecording": true,
+        "ownerLossNoRequest": true,
+        "preSpawnCancelConfirmed": true,
+        "noChildCallbackPanicConfirmed": true,
+        "unknownRetirementSticky": true,
+        "scope": "Actual host workers/consent/capture/SDK with synthetic microphone and private peers; Qt adapter and public activation remain pending"
+      },
+      "sourceSha256": {
+        "tools/test-voice-worker-process": "e65e3ef48975df5e07f8c1477ec4e709d70e56fca43d0747ad32aa898271bef7",
+        "src/voice_worker.rs": "aab03584d9bfe62e176c008f476db1f83af0231e340d6d527c822dcf2690fd57",
+        "src/voice_worker/stream.rs": "a4937c2974f86565aafa7f7b627895aa61e9e0d9fd896bbfb64d97169a0d37bd",
+        "examples/voice_worker_process.rs": "8b5bec9c7c56d8ae89206628783e54df8d8bb68a16f18241114a807e55187d5e",
+        "src/lib.rs": "77212dccc6b6f7bba191ff0ae13c519273718913947d18c09596dd52b2185633",
+        "src/voice_capture/mod.rs": "67fe27d2f05ff8d41cb00e9d838b4cd69fbff797664c9500a069225e236e7fba",
+        "src/voice_consent.rs": "191f162491b8f39bb437778b7430d68f7df5e0da749232d50bcf1755d0ab2206",
+        "src/voice_transport.rs": "7410408e3bf253ce952ffafeca58df97d3cdc76dcbc8b5ce7db5d7bcef66caa3",
+        "ui/voice/consent-helper.cjs": "2c5ebc8ee484b1b7257db8cafc7ff02b1640ac924fb767f29420e44af7bb82c5",
+        "ui/voice/consent-storage.cjs": "cb06d99f982566767f53b26d1581d158cc0808825bb2087d85cb2b8aa708e15b",
+        "ui/voice/native-consent.cjs": "170b269fffce99ece8ba7e455b88c2b44726ae32df4b7a4c95305d620421ad96",
+        "ui/voice/native-consent.sources.json": "314aacb604600ca0c8804870f04f37f4b45a8e16f918e2080dfc12d0a26e8a8c",
+        "vendor/t3-protocol/UPSTREAM.json": "6928bc8ed5b688cb35a92a52b78ed394ec930bb38da60d18102267eba43507ff",
+        "src/browser_native_display.rs": "9746ad130a854b6a4630bec8b463a7c15f5aab7afd27cd8053c7009de676de9f",
+        "src/desktop_browser_ipc.rs": "7bc9c5df15b987f1f02da75e4cc79a2ac55dd8a3874de1ce24bd422a78622fcc",
+        "src/voice_capture/resources.rs": "8534fb39aa4a42f9d31d4a531aa8993557bd48c907449e331d00b28854bd0421",
+        "ui/voice/electron-runtime-44.10.1-linux-x64.json": "59ba60542eeb35c2427d8a58d0d7ba5dd0ae7a61c5123abe752e18265263008a",
+        "ui/voice/electron-capture-main.cjs": "c9ba7a273e90cb141a94bcf7a188507154d744f15eebf35b4dbd60b40d072b99",
+        "ui/voice/electron-capture-preload.cjs": "d2fdbb6cc26cceb4707b40ec37ea56da365093fdffd35f62b1891d0aa13b0378",
+        "ui/voice/electron-capture-renderer.mjs": "77da799a783308efd8b49854042b6ceacb85b5bb4297b7a609fb1de9f8b7b63e",
+        "ui/voice/browser-capture-owner.mjs": "1bfcfd6c787192015e6e1f6d02badb5cf328d1edc12059ba1201e5f08e9606ee",
+        "ui/js/NativePcmCapture.js": "82e67fc3e59f40b522492cd85ed340254ebb96fc2a664d796766be957f1f9c83",
+        "ui/browser/electron-private-fd.c": "17b6b5ae9d1b7bd156a34e790e5cda29dbe7c4e9c6c00630a880b391232cd8b5",
+        "Cargo.toml": "d962ca8b99bca65cb51c0e76555e29893dbeb593403c1a76756c5f2fbff7fc2f",
+        "Cargo.lock": "0641a3bf09defe49c4fad5e2c31c6f6bc92ed04370479e9d2fdf663d380e05c0"
+      }
+    },
+    "capture": {
+      "artifact": "/var/tmp/o3-build/voice-capture-process-ycpq2hw4/result.json",
+      "artifactSha256": "6c0767caa8e6f2240a9dff101091e91867f6f6595b7a1384a5c0ab183ea272d8",
+      "binarySha256": "67e88ba07674267d3ab6d32d6d1c4f1dc46010b8f203055b92c86b0ab908647e",
+      "receipt": {
+        "cases": [
+          {
+            "case": "streaming",
+            "pcmBytes": 96124,
+            "leaderExitObserved": true
+          },
+          {
+            "case": "buffered",
+            "pcmBytes": 87024,
+            "leaderExitObserved": true
+          },
+          {
+            "case": "denied",
+            "pcmBytes": 0,
+            "leaderExitObserved": true
+          },
+          {
+            "case": "cancel-permission",
+            "pcmBytes": 0,
+            "leaderExitObserved": true
+          },
+          {
+            "case": "cancel-recording",
+            "pcmBytes": 96000,
+            "leaderExitObserved": true
+          },
+          {
+            "case": "cancel-buffered-stop",
+            "pcmBytes": 32000,
+            "leaderExitObserved": true
+          },
+          {
+            "case": "drop",
+            "pcmBytes": 0,
+            "leaderExitObserved": true
+          },
+          {
+            "case": "failed-startup",
+            "pcmBytes": 0,
+            "cleanup": "unknown"
+          }
+        ],
+        "actualRustSupervisor": true,
+        "actualNativeProcess": true,
+        "syntheticDeviceOnly": true,
+        "sdkOrConsentActivated": false
+      },
+      "sourceSha256": {
+        "tools/test-voice-capture-process": "6b6f4ac98e25ad4390a0918497e5a2e695ae45b46d364af447095c89d6e5e36d",
+        "examples/voice_capture_process.rs": "3a74590d313c317e6698350cf1c1362649f94961fc84777054a2d3dbd45bbb1a",
+        "src/lib.rs": "77212dccc6b6f7bba191ff0ae13c519273718913947d18c09596dd52b2185633",
+        "src/voice_capture/mod.rs": "67fe27d2f05ff8d41cb00e9d838b4cd69fbff797664c9500a069225e236e7fba",
+        "src/browser_native_display.rs": "9746ad130a854b6a4630bec8b463a7c15f5aab7afd27cd8053c7009de676de9f",
+        "src/desktop_browser_ipc.rs": "7bc9c5df15b987f1f02da75e4cc79a2ac55dd8a3874de1ce24bd422a78622fcc",
+        "src/voice_capture/resources.rs": "8534fb39aa4a42f9d31d4a531aa8993557bd48c907449e331d00b28854bd0421",
+        "ui/voice/electron-runtime-44.10.1-linux-x64.json": "59ba60542eeb35c2427d8a58d0d7ba5dd0ae7a61c5123abe752e18265263008a",
+        "ui/voice/electron-capture-main.cjs": "c9ba7a273e90cb141a94bcf7a188507154d744f15eebf35b4dbd60b40d072b99",
+        "ui/voice/electron-capture-preload.cjs": "d2fdbb6cc26cceb4707b40ec37ea56da365093fdffd35f62b1891d0aa13b0378",
+        "ui/voice/electron-capture-renderer.mjs": "77da799a783308efd8b49854042b6ceacb85b5bb4297b7a609fb1de9f8b7b63e",
+        "ui/voice/browser-capture-owner.mjs": "1bfcfd6c787192015e6e1f6d02badb5cf328d1edc12059ba1201e5f08e9606ee",
+        "ui/js/NativePcmCapture.js": "82e67fc3e59f40b522492cd85ed340254ebb96fc2a664d796766be957f1f9c83",
+        "ui/browser/electron-private-fd.c": "17b6b5ae9d1b7bd156a34e790e5cda29dbe7c4e9c6c00630a880b391232cd8b5",
+        "Cargo.toml": "d962ca8b99bca65cb51c0e76555e29893dbeb593403c1a76756c5f2fbff7fc2f",
+        "Cargo.lock": "0641a3bf09defe49c4fad5e2c31c6f6bc92ed04370479e9d2fdf663d380e05c0"
+      }
+    },
+    "transport": {
+      "artifact": "/var/tmp/o3-build/voice-transport-process-y5qv4_cq/result.json",
+      "artifactSha256": "a97bf7017dcdf73448fae418a4916419018be3796e1541bb6be4f268e29fc6c0",
+      "binarySha256": "4f1ca1fe0941d72a9921a4fc0421b85a9494b06c634ad841884f7164b3d356fb",
+      "receipt": {
+        "cases": 16,
+        "actualConsentRealm": true,
+        "sameWriteCredential": true,
+        "actualBinaryPcm": true,
+        "reselectionDeniesBeforeConnect": true,
+        "foreignResolverDenied": true,
+        "revokedAuthorityNoAudio": true,
+        "ownerLossNoRequest": true,
+        "boundOpenRouterModel": true,
+        "cancelledInferenceSocketClosed": true,
+        "actualChromiumCapturedBytes": 22564,
+        "captureCleanupConfirmed": true,
+        "actualStreamedCaptureDigest": true,
+        "streamTicketRevocationAndCancellationFence": true,
+        "cloudNeverUsesLocalStream": true,
+        "streamSessionDeniedBeforeTicket": true,
+        "cleanupUsesDraftEnvironmentAndCredential": true,
+        "cleanupOwnerAndEnvironmentFenced": true,
+        "independentCleanupReselectionDenies": true,
+        "scope": "Actual consent/capture and cleanup to SDK transport with synthetic device/private servers; composer and simultaneous live capture remain separate"
+      },
+      "sourceSha256": {
+        "tools/test-voice-transport-process": "29a21dbc7c739cee445c4f8808b746c34cd7de5a2d5528e752ead5ddf2f059a9",
+        "examples/voice_transport_process.rs": "b7437b06e2489dcf88207087f4436d18465c1666d02e4cba0fe0bf464e001255",
+        "src/lib.rs": "77212dccc6b6f7bba191ff0ae13c519273718913947d18c09596dd52b2185633",
+        "src/voice_capture/mod.rs": "67fe27d2f05ff8d41cb00e9d838b4cd69fbff797664c9500a069225e236e7fba",
+        "src/voice_consent.rs": "191f162491b8f39bb437778b7430d68f7df5e0da749232d50bcf1755d0ab2206",
+        "src/voice_transport.rs": "7410408e3bf253ce952ffafeca58df97d3cdc76dcbc8b5ce7db5d7bcef66caa3",
+        "ui/voice/consent-helper.cjs": "2c5ebc8ee484b1b7257db8cafc7ff02b1640ac924fb767f29420e44af7bb82c5",
+        "ui/voice/consent-storage.cjs": "cb06d99f982566767f53b26d1581d158cc0808825bb2087d85cb2b8aa708e15b",
+        "ui/voice/native-consent.cjs": "170b269fffce99ece8ba7e455b88c2b44726ae32df4b7a4c95305d620421ad96",
+        "ui/voice/native-consent.sources.json": "314aacb604600ca0c8804870f04f37f4b45a8e16f918e2080dfc12d0a26e8a8c",
+        "vendor/t3-protocol/UPSTREAM.json": "6928bc8ed5b688cb35a92a52b78ed394ec930bb38da60d18102267eba43507ff",
+        "src/browser_native_display.rs": "9746ad130a854b6a4630bec8b463a7c15f5aab7afd27cd8053c7009de676de9f",
+        "src/desktop_browser_ipc.rs": "7bc9c5df15b987f1f02da75e4cc79a2ac55dd8a3874de1ce24bd422a78622fcc",
+        "src/voice_capture/resources.rs": "8534fb39aa4a42f9d31d4a531aa8993557bd48c907449e331d00b28854bd0421",
+        "ui/voice/electron-runtime-44.10.1-linux-x64.json": "59ba60542eeb35c2427d8a58d0d7ba5dd0ae7a61c5123abe752e18265263008a",
+        "ui/voice/electron-capture-main.cjs": "c9ba7a273e90cb141a94bcf7a188507154d744f15eebf35b4dbd60b40d072b99",
+        "ui/voice/electron-capture-preload.cjs": "d2fdbb6cc26cceb4707b40ec37ea56da365093fdffd35f62b1891d0aa13b0378",
+        "ui/voice/electron-capture-renderer.mjs": "77da799a783308efd8b49854042b6ceacb85b5bb4297b7a609fb1de9f8b7b63e",
+        "ui/voice/browser-capture-owner.mjs": "1bfcfd6c787192015e6e1f6d02badb5cf328d1edc12059ba1201e5f08e9606ee",
+        "ui/js/NativePcmCapture.js": "82e67fc3e59f40b522492cd85ed340254ebb96fc2a664d796766be957f1f9c83",
+        "ui/browser/electron-private-fd.c": "17b6b5ae9d1b7bd156a34e790e5cda29dbe7c4e9c6c00630a880b391232cd8b5",
+        "Cargo.toml": "d962ca8b99bca65cb51c0e76555e29893dbeb593403c1a76756c5f2fbff7fc2f",
+        "Cargo.lock": "0641a3bf09defe49c4fad5e2c31c6f6bc92ed04370479e9d2fdf663d380e05c0"
+      }
+    }
+  },
+  "publicVoiceUiActivated": false,
+  "scope": "Actual host workers and legacy capture/transport regressions on matched source; synthetic device/private peers; persistent watch/Qt adapter remains pending"
+}

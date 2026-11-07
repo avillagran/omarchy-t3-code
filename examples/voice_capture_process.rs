@@ -105,7 +105,7 @@ fn main() {
                     loop {
                         if let Event::Result { id: 1, ok, error } = event(&mut owner) {
                             assert!(!ok);
-                            assert_eq!(error.as_deref(), Some("capture_failed"));
+                            assert_eq!(error.as_deref(), Some("capture_permission_denied"));
                             break;
                         }
                     }
