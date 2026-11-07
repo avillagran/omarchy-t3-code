@@ -16,15 +16,15 @@
   },
   "sourceHashes": {
     "native/browser/private-sway-owner-1.12.patch": "ba6c877b8279e40543c898cd00470eb08f1528eb7e3ad0d2f4f1fe5efd6eeb5e",
-    "native/browser/waylandowner.h": "99898c5cd719509c8f2cc7a66c34a1dab2997bbf536a7574c17bfb9468978b56",
-    "tools/fixtures/wayland-owner-check.c": "cf3470b8c9457e5d2874d42ab9ec2d45919db858aa2243248b54388549146d61",
-    "tools/test-private-wayland-owner": "64669a3b00135a5764f1e75a4606c2cdba001e103050218038353bf8d1010d33"
+    "native/browser/waylandowner.h": "7bf0d604a98724486bf6b64ca7d7334d9a86ba1f00a71fbdf74b9efb76692fb6",
+    "tools/fixtures/wayland-owner-check.c": "d5a4e4ebfa94dc061c54095fef828120fc6f8d385ab214a1af545c4f2e97e84c",
+    "tools/test-private-wayland-owner": "b9cb7760d3b48c15636a74b2ba71606ee239ddb8206aa01d90b0d1e4722de7e5"
   },
   "originalSignedCompositorArtifactChanged": false,
   "enginePatched": false,
   "publicSelectorEnabled": false,
   "proof": {
-    "receipt": "/home/node/BuildCache/o3-desktop-next/private-wayland-owner-ww6k18mq",
+    "receipt": "/home/node/BuildCache/o3-desktop-next/private-wayland-owner-hudvnti0",
     "returncode": 0,
     "realWaylandVersion": "1.26.0",
     "checks": [
@@ -38,5 +38,6 @@
       "credential predicate agrees for client and socket FD"
     ],
     "qualification": "Real libwayland test, not a patched Sway build or engine-hosting acceptance"
-  }
+  },
+  "buildRequirement": "Explicit -D_GNU_SOURCE with C11, including both patched Sway translation units"
 }

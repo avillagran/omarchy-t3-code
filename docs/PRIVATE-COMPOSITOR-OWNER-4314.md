@@ -18,7 +18,7 @@ an unconnected descriptor in the supervisor is insufficient. Engine ancestry,
 frontend peer identity and cohort ownership remain responsibilities of that
 future factory; this compositor helper does not infer them from a PID label.
 
-Admission retains a kernel pidfd for the actual parent, rechecks the parent
+Admission retains a kernel pidfd for one captured actual parent PID, rechecks the parent
 after opening it, checks liveness synchronously for every admission, and
 terminates the private display when its supervisor dies. PID reuse cannot
 revive the retained pidfd. Failure to allocate the pidfd or its event source
@@ -40,7 +40,9 @@ supervisor death and listener teardown. It does not launch Sway or Electron.
 The earlier `6qmyki9h` receipt covers the smaller scalar-parent implementation;
 it does not prove the final pidfd candidate. The `7f151jn6` compile failure is
 retained; its const-correctness and indentation diagnostics were corrected
-before the final `ww6k18mq` receipt passed.
+before the `ww6k18mq` receipt passed. Review then found a double-read parent race;
+the corrected candidate captures one PID before validation and uses explicit
+`-D_GNU_SOURCE`. Its final native receipt is `hudvnti0`.
 
 The actual patched compositor still requires review and a separately pinned
 build before execution. Wayland hosting, frontend engine authentication,

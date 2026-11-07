@@ -121,8 +121,9 @@ static inline void o3_wayland_owner_created(struct wl_listener *listener,void *d
 }
 static inline bool o3_wayland_owner_init(struct o3_wayland_owner *owner,
         struct wl_display *display) {
-    if (owner->installed || getppid()<=1) return false;
-    owner->supervisor=getppid();owner->uid=getuid();
+    const pid_t supervisor=getppid();
+    if (owner->installed || supervisor<=1) return false;
+    owner->supervisor=supervisor;owner->uid=getuid();
     owner->supervisor_fd=(int)syscall(SYS_pidfd_open,owner->supervisor,0);
     if (owner->supervisor_fd<0) return false;
     struct pollfd live={owner->supervisor_fd,POLLIN,0};

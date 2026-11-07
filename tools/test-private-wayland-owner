@@ -24,7 +24,7 @@ versions=subprocess.check_output(['pkg-config','--modversion','wayland-client','
 assert versions==['1.26.0','1.26.0'],versions
 pathlib.Path('/fixture/versions.json').write_text(__import__('json').dumps(versions)+'\n')
 flags=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client','wayland-server'],text=True).split()
-subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','/fixture/wayland-owner-check.c','-I/fixture','-o','/fixture/check',*flags],check=True)
+subprocess.run(['cc','-D_GNU_SOURCE','-std=c11','-Wall','-Wextra','-Werror','/fixture/wayland-owner-check.c','-I/fixture','-o','/fixture/check',*flags],check=True)
 ''']
 with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
     fcntl.flock(lock.fileno(),fcntl.LOCK_EX)

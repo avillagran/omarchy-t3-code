@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 /* Kernel credential and listener lifetime checks. No compositor or engine. */
 #include "waylandowner.h"
 #include <wayland-client.h>
