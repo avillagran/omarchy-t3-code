@@ -3,6 +3,7 @@
 #include "clipboardplatform.h"
 #include "clipboardcohort.h"
 #include "waylandoffers.h"
+#include "browserinputchannel.h"
 #include <QClipboard>
 #include <QFile>
 #include <QHash>
@@ -28,6 +29,7 @@ struct ClipboardPlatform::State {
   QSocketNotifier *acceptor = nullptr, *reader = nullptr, *death = nullptr;
   std::shared_ptr<NativeWaylandOffers> offers;
   QHash<QString, std::shared_ptr<ClipboardCohort>> cohorts;
+  QHash<QString, std::shared_ptr<BrowserInputChannel>> inputContexts;
   QString currentSource;
   bool publishing = false, lastAvailable = false;
   std::shared_ptr<bool> active = std::make_shared<bool>(true);
@@ -120,10 +122,28 @@ struct ClipboardPlatform::State {
     cohort->offerChanged(currentSource);
     return reply({{"type", "registered"}, {"cohort", id}});
   }
+  bool registerInputContext(const QJsonObject &row, QVector<int> &rights) {
+    const auto id=row["cohort"].toString();
+    const auto pid=row["enginePid"].toInteger();
+    if (row.size()!=5 || row["version"]!=1 || row["binding"].toString()!=session ||
+        QUuid(id).toString(QUuid::WithoutBraces)!=id || id.isEmpty() ||
+        pid<=0 || pid>2147483647 || rights.size()!=2 ||
+        inputContexts.contains(id) || inputContexts.size()>=16) return false;
+    const auto renderer=parent(pid);
+    if (renderer<=0 || parent(renderer)!=worker || !pidfdMatches(rights[1],pid)) return false;
+    const int descriptor=rights[0], engine=rights[1];
+    rights.clear(); // create consumes both handles on success and failure.
+    auto channel=BrowserInputChannel::create(descriptor,engine,worker,id);
+    if (!channel) return reply({{"type","rejected"},{"cohort",id},
+                                {"code","browser_input_context_unavailable"}});
+    inputContexts.insert(id,std::move(channel));
+    return reply({{"type","input-context-registered"},{"cohort",id}});
+  }
 
   explicit State(ClipboardPlatform *owner) : owner(owner) {}
   void closePeer() {
     cohorts.clear();
+    inputContexts.clear();
     session.clear();
     delete reader;
     reader = nullptr;
@@ -225,6 +245,17 @@ struct ClipboardPlatform::State {
       if (row["op"] == "register") {
         if (!registerCohort(row, rights))
           closePeer();
+        return;
+      }
+      if (row["op"] == "register-input-context") {
+        if (!registerInputContext(row,rights)) closePeer();
+        return;
+      }
+      if (row["op"] == "retire-input-context" && row.size()==4 && rights.isEmpty() &&
+          row["version"]==1 && row["binding"].toString()==session) {
+        const auto id=row["cohort"].toString();
+        inputContexts.remove(id);
+        if (!reply({{"type","input-context-retired"},{"cohort",id}})) closePeer();
         return;
       }
       if (row["op"] == "retire" && row.size() == 4 && rights.isEmpty() &&

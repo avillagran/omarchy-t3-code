@@ -43,7 +43,16 @@ Item {
    id:imeLoader;anchors.fill:parent
    active:root.page.nativeInput===true
    source:active?Qt.resolvedUrl("T3BrowserInputMethod.qml"):""
-   onLoaded:{var focused=frame.activeFocus;item.scopeToken=Qt.binding(function(){return root.requestId});item.inputEnabled=Qt.binding(function(){return root.interactive&&root.visible});if(focused)item.forceActiveFocus()}
+   onLoaded:{
+    var focused=frame.activeFocus;
+    item.scopeToken=Qt.binding(function(){return root.requestId});
+    item.inputEnabled=Qt.binding(function(){return root.interactive&&root.visible&&root.ready});
+    // Identity and geometry only; surrounding text uses the private C++ channel.
+    item.nativeBinding=Qt.binding(function(){return root.ready?(root.page.nativeInputBinding||({})):({})});
+    item.nativeContentRect=Qt.binding(function(){var r=root.ready?root.page.nativeInputContent:null;return r?Qt.rect(r.x,r.y,r.width,r.height):Qt.rect(0,0,0,0)});
+    item.framePresentation=Qt.binding(function(){return Qt.rect((root.width-frame.paintedWidth)/2,(root.height-frame.paintedHeight)/2,frame.paintedWidth,frame.paintedHeight)});
+    if(focused)item.forceActiveFocus()
+   }
   }
   Connections {
    target:imeLoader.item

@@ -1,4 +1,5 @@
 #include "browserinputitem.h"
+#include "browserinputchannel.h"
 #include <QElapsedTimer>
 #include <QThread>
 #include <QInputMethodQueryEvent>
@@ -16,6 +17,10 @@
 #include <sys/prctl.h>
 #include <signal.h>
 #include <cstdlib>
+#include <sys/syscall.h>
+#include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <QDir>
 
 static int checks = 0;
 #define CHECK(value) do { if (!(value)) { fprintf(stderr, "check failed line %d\n", __LINE__); return 1; } ++checks; } while(false)
@@ -131,6 +136,35 @@ int main(int argc, char **argv) {
   CHECK(item.admitNativeContext(lease, geometry, state));
   CHECK(item.inputMethodQuery(Qt::ImAnchorPosition).toInt() == 3);
   CHECK(item.inputMethodQuery(Qt::ImCurrentSelection).toString() == QString::fromUtf8("日本ZQ"));
+  CHECK(BrowserInputItem::nativeMount("owned-scope") == &item);
+  {
+    BrowserInputItem duplicate;
+    duplicate.setScopeToken("owned-scope");
+    CHECK(BrowserInputItem::nativeMount("owned-scope") == nullptr);
+  }
+  CHECK(BrowserInputItem::nativeMount("owned-scope") == &item);
+  item.setNativeBinding({{"connection",lease.connection},{"surface",lease.surface},
+                         {"tab",lease.tab},{"frame",lease.frame}});
+  item.setNativeContentRect(geometry.content);
+  item.setFramePresentation(geometry.presentation);
+  CHECK(item.admitBoundNativeContext(lease,state));
+  CHECK(item.inputMethodQuery(Qt::ImCursorRectangle).toRectF() == expectedRectangle);
+  const auto metadata = item.nativeBinding();
+  auto changed = metadata;
+  changed["frame"] = "replacement-frame";
+  item.setNativeBinding(changed);
+  CHECK(!item.contextAvailable());
+  CHECK(!item.admitBoundNativeContext(lease,state));
+  item.setNativeBinding(metadata);
+  CHECK(item.admitBoundNativeContext(lease,state));
+  changed = metadata;
+  changed["unexpected"] = "not-retained";
+  item.setNativeBinding(changed);
+  CHECK(item.nativeBinding().isEmpty());
+  CHECK(!item.contextAvailable());
+  CHECK(!item.admitBoundNativeContext(lease,state));
+  item.setNativeBinding(metadata);
+  CHECK(item.admitBoundNativeContext(lease,state));
   auto foreign = lease;
   for (auto member : {&BrowserInputContext::Binding::scope, &BrowserInputContext::Binding::connection,
                      &BrowserInputContext::Binding::surface, &BrowserInputContext::Binding::tab,
@@ -190,8 +224,110 @@ int main(int argc, char **argv) {
   item.setVisible(false);
   CHECK(!item.contextAvailable());
   item.setVisible(true);
+  CHECK(waitFor([&] { return item.hasActiveFocus(); }));
   item.bindNativeContext(lease);
   CHECK(item.admitNativeContext(lease, geometry, state));
+  {
+    const QString channelId="owned-channel";
+    const auto descriptorBaseline=QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size();
+    auto bound=lease;
+    bound.connection=channelId+":native-socket-1";
+    item.setNativeBinding({{"connection",bound.connection},{"surface",bound.surface},
+                           {"tab",bound.tab},{"frame",bound.frame}});
+    QJsonObject binding{{"scope",bound.scope},{"connection",bound.connection},
+       {"surface",bound.surface},{"tab",bound.tab},{"frame",bound.frame}};
+    QJsonObject value{{"serial",10},{"hints",4},{"purpose",0},
+      {"caret",QJsonArray{90,63,0,18}},
+      {"surroundingUtf8",QString::fromLatin1(QByteArray("A\xf0\x9f\x98\x80\xe6\x97\xa5\xe6\x9c\xacZQ").toBase64())},
+      {"cursorByte",13},{"anchorByte",13}};
+    QJsonObject row{{"version",1},{"op","state"},{"binding",binding},{"state",value}};
+    int pair[2];
+    CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,pair)==0);
+    const int pidfd=int(syscall(SYS_pidfd_open,getpid(),0));
+    CHECK(pidfd>=0);
+    auto channel=BrowserInputChannel::create(pair[0],pidfd,getpid(),channelId);
+    CHECK(channel && channel->available());
+    char requestBytes[4096];
+    const auto requestSize=recv(pair[1],requestBytes,sizeof requestBytes,MSG_DONTWAIT);
+    CHECK(requestSize>0);
+    const auto request=QJsonDocument::fromJson(QByteArray(requestBytes,int(requestSize))).object();
+    CHECK(request.size()==3 && request["op"]=="request" && request["binding"].toObject()==binding);
+    CHECK(!QByteArray(requestBytes,int(requestSize)).contains("surrounding"));
+    auto deliver=[&](const QJsonObject &message) {
+      const auto bytes=QJsonDocument(message).toJson(QJsonDocument::Compact);
+      if (send(pair[1],bytes.constData(),size_t(bytes.size()),MSG_NOSIGNAL)!=bytes.size()) return false;
+      return waitFor([&] { int pending=-1;return ioctl(pair[0],FIONREAD,&pending)==0 && pending==0; });
+    };
+    CHECK(deliver(row));
+    CHECK(item.contextAvailable());
+    CHECK(item.inputMethodQuery(Qt::ImCursorPosition).toInt()==7);
+    {
+      BrowserInputItem duplicate;
+      duplicate.setScopeToken("owned-scope");
+      CHECK(!item.contextAvailable());
+      CHECK(deliver(row));
+      CHECK(!item.contextAvailable());
+    }
+    CHECK(deliver(row));
+    CHECK(item.contextAvailable());
+    auto foreignBinding=binding;
+    foreignBinding["frame"]="foreign-frame";
+    auto stale=row;stale["binding"]=foreignBinding;
+    CHECK(deliver(stale));
+    CHECK(item.contextAvailable() && channel->available());
+    CHECK(deliver({{"version",1},{"op","invalidate"},{"binding",binding}}));
+    CHECK(!item.contextAvailable() && channel->available());
+    CHECK(deliver(row));
+    CHECK(item.contextAvailable());
+    ::close(pair[1]);
+    CHECK(waitFor([&] { return !channel->available(); }));
+    CHECK(!item.contextAvailable());
+    channel.reset();
+
+    CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,pair)==0);
+    auto hostile=BrowserInputChannel::create(pair[0],int(syscall(SYS_pidfd_open,getpid(),0)),getpid(),channelId);
+    CHECK(hostile && hostile->available());
+    const auto packet=QJsonDocument(row).toJson(QJsonDocument::Compact);
+    const auto sender=fork();
+    CHECK(sender>=0);
+    if (sender==0) _exit(send(pair[1],packet.constData(),size_t(packet.size()),MSG_NOSIGNAL)==packet.size()?0:1);
+    int status=0;
+    CHECK(waitpid(sender,&status,0)==sender && WIFEXITED(status) && WEXITSTATUS(status)==0);
+    CHECK(waitFor([&] { return !hostile->available(); }));
+    CHECK(!item.contextAvailable());
+    ::close(pair[1]);
+    hostile.reset();
+
+    CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,pair)==0);
+    auto unexpected=BrowserInputChannel::create(pair[0],int(syscall(SYS_pidfd_open,getpid(),0)),getpid(),channelId);
+    CHECK(unexpected && unexpected->available());
+    int ownedPipe[2];CHECK(pipe2(ownedPipe,O_CLOEXEC)==0);
+    alignas(cmsghdr) char ancillary[CMSG_SPACE(sizeof(int))]{};
+    iovec packetData{const_cast<char *>(packet.constData()),size_t(packet.size())};
+    msghdr message{};message.msg_iov=&packetData;message.msg_iovlen=1;
+    message.msg_control=ancillary;message.msg_controllen=sizeof ancillary;
+    auto *header=CMSG_FIRSTHDR(&message);header->cmsg_level=SOL_SOCKET;
+    header->cmsg_type=SCM_RIGHTS;header->cmsg_len=CMSG_LEN(sizeof(int));
+    memcpy(CMSG_DATA(header),&ownedPipe[0],sizeof(int));
+    CHECK(sendmsg(pair[1],&message,MSG_NOSIGNAL)==packet.size());
+    CHECK(waitFor([&] { return !unexpected->available(); }));
+    ::close(ownedPipe[0]);::close(ownedPipe[1]);::close(pair[1]);unexpected.reset();
+
+    const auto engine=fork();
+    CHECK(engine>=0);
+    if (engine==0) {for (;;) pause();}
+    CHECK(socketpair(AF_UNIX,SOCK_SEQPACKET|SOCK_CLOEXEC,0,pair)==0);
+    auto lifetime=BrowserInputChannel::create(pair[0],int(syscall(SYS_pidfd_open,engine,0)),getpid(),channelId);
+    CHECK(lifetime && lifetime->available());
+    CHECK(deliver(row));
+    CHECK(item.contextAvailable());
+    CHECK(kill(engine,SIGTERM)==0);
+    CHECK(waitpid(engine,&status,0)==engine);
+    CHECK(waitFor([&] { return !lifetime->available() && !item.contextAvailable(); }));
+    ::close(pair[1]);
+    lifetime.reset();
+    CHECK(QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot).size()==descriptorBaseline);
+  }
   window.hide();
   QCoreApplication::processEvents();
   CHECK(!item.contextAvailable());
