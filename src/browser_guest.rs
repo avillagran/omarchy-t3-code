@@ -1,5 +1,7 @@
 //! Qt guest ownership below the authorized native preview bridge. Callers must
-//! supply authoritative native snapshots; no page evaluation/automation API.
+//! supply authoritative native snapshots. Automation uses only its separately
+//! admitted private descriptor; it never shares public UI/status messages.
+mod private;
 use crate::{json, text, Result};
 use serde_json::Value;
 use std::{
@@ -7,7 +9,10 @@ use std::{
     ffi::OsString,
     fs,
     io::{BufRead, BufReader, Write},
-    os::unix::{fs::PermissionsExt, process::CommandExt},
+    os::{
+        fd::AsRawFd,
+        unix::{fs::PermissionsExt, net::UnixStream, process::CommandExt},
+    },
     path::{Path, PathBuf},
     process::{Child, ChildStdin, Command, Stdio},
     sync::{
@@ -243,6 +248,7 @@ struct Session {
     cookie_replies: std::sync::mpsc::Receiver<Value>,
     cookie_checks: HashMap<(String, String, String), CookieCheck>,
     cookie_database: PathBuf,
+    private: Option<private::Guest>,
 }
 impl Session {
     fn send(&mut self, value: Value) -> Result<()> {
@@ -251,6 +257,9 @@ impl Session {
     fn stop(&mut self) -> Result<()> {
         if let Some(result) = &self.stopped {
             return result.clone();
+        }
+        if let Some(private) = &self.private {
+            private.close();
         }
         self.alive.store(false, Ordering::SeqCst);
         let _ = writeln!(self.input, "{{\"type\":\"close\"}}");
@@ -271,6 +280,7 @@ impl Session {
         if let Some(reader) = self.reader.take() {
             let _ = reader.join();
         }
+        self.private.take();
         if let Some(path) = self.frames.lock().unwrap().take() {
             let _ = crate::frame_files::reclaim(&path);
         }
@@ -288,12 +298,19 @@ impl Drop for Session {
         let _ = self.stop();
     }
 }
+struct PrivateBinding {
+    origin: String,
+    receive: private::Native,
+    turns: Arc<Mutex<HashSet<String>>>,
+}
 pub struct Pool {
     config: Config,
     sessions: HashMap<(String, String), Session>,
     visited: HashSet<(String, String)>,
     active: Arc<Mutex<Option<View>>>,
     receive: Callback,
+    private_bindings: HashMap<String, PrivateBinding>,
+    private_registry: Arc<Mutex<crate::browser_automation::Registry>>,
 }
 impl Pool {
     pub fn new(config: Config, receive: impl Fn(Value) + Send + Sync + 'static) -> Self {
@@ -303,7 +320,174 @@ impl Pool {
             visited: HashSet::new(),
             active: Arc::new(Mutex::new(None)),
             receive: Arc::new(receive),
+            private_bindings: HashMap::new(),
+            private_registry: Arc::new(Mutex::new(Default::default())),
         }
+    }
+    /// Trusted owned-backend coordinator only. This callback writes native
+    /// browser events to its dedicated backend descriptor, never the UI output.
+    pub fn bind_private_source(
+        &mut self,
+        environment: &str,
+        origin_key: &str,
+        receive: impl Fn(Value) + Send + Sync + 'static,
+    ) -> Result<()> {
+        if environment.is_empty() || origin_key.is_empty() || origin_key.len() > 128 {
+            return Err("preview_scope_changed".into());
+        }
+        if self
+            .sessions
+            .keys()
+            .any(|(current, _)| current == environment)
+        {
+            return Err("browser_guest_mode_busy".into());
+        }
+        self.private_bindings.insert(
+            environment.into(),
+            PrivateBinding {
+                origin: origin_key.into(),
+                receive: Arc::new(receive),
+                turns: Arc::new(Mutex::new(HashSet::new())),
+            },
+        );
+        Ok(())
+    }
+    pub fn has_private_source(&self, environment: &str, origin_key: &str) -> bool {
+        self.private_bindings
+            .get(environment)
+            .is_some_and(|binding| binding.origin == origin_key)
+    }
+    pub fn unbind_private_source(&mut self, environment: &str) {
+        self.close_environment(environment);
+        self.private_bindings.remove(environment);
+    }
+    /// Caller must first perform fresh native RPC permission/snapshot admission.
+    /// A backend opened event can create this view before its open RPC completes.
+    pub fn ensure_private(
+        &mut self,
+        environment: &str,
+        origin_key: &str,
+        snapshot: &Value,
+        size: (u64, u64),
+        zoom: &Value,
+    ) -> Result<()> {
+        if !self.has_private_source(environment, origin_key) {
+            return Err("preview_scope_changed".into());
+        }
+        let snapshot = crate::preview_transport::snapshot(snapshot)?;
+        let profile = snapshot["profileId"].as_str().unwrap_or("default");
+        crate::browser_runtime::partition(environment, profile)?;
+        let viewport = crate::browser_preferences::validate(
+            "browserDefaultViewport",
+            &json!({"_tag":"freeform","width":size.0,"height":size.1}),
+        )?;
+        let zoom = crate::browser_preferences::validate("browserDefaultZoomFactor", zoom)?;
+        let key = (environment.to_owned(), profile.to_owned());
+        if self.sessions.get_mut(&key).is_some_and(|session| {
+            session.origin != origin_key
+                || session.child.try_wait().ok().flatten().is_some()
+                || !session
+                    .private
+                    .as_ref()
+                    .is_some_and(private::Guest::is_open)
+        }) {
+            self.sessions.remove(&key);
+        }
+        if !self.sessions.contains_key(&key) {
+            if self.sessions.len() >= 16 {
+                return Err("browser_guest_limit".into());
+            }
+            let session = self.launch(
+                environment,
+                profile,
+                origin_key,
+                (
+                    viewport["width"].as_u64().unwrap(),
+                    viewport["height"].as_u64().unwrap(),
+                ),
+                &zoom,
+                false,
+            )?;
+            self.sessions.insert(key.clone(), session);
+        }
+        let session = self.sessions.get_mut(&key).unwrap();
+        let thread = text(&snapshot, "threadId");
+        let tab = text(&snapshot, "tabId");
+        let instance = session
+            .private
+            .as_ref()
+            .ok_or("browser_private_unavailable")?
+            .approve(thread, tab)?;
+        if session.tabs.insert((thread.into(), tab.into())) {
+            let url = if snapshot["navStatus"]["_tag"] == "Idle" {
+                Value::Null
+            } else {
+                snapshot["navStatus"]["url"].clone()
+            };
+            session.send(json!({"type":"open","threadId":thread,"tabId":tab,"url":url,"background":true,"automation":true,"automationInstance":instance,"serverControlled":snapshot["runtime"]=="server"}))?;
+        } else {
+            session.send(json!({"type":"automation","threadId":thread,"tabId":tab,"automationInstance":instance}))?;
+        }
+        Ok(())
+    }
+    pub fn private_command(
+        &mut self,
+        environment: &str,
+        origin_key: &str,
+        command: &Value,
+    ) -> Result<()> {
+        if !self.has_private_source(environment, origin_key) {
+            return Err("preview_scope_changed".into());
+        }
+        let command = crate::desktop_browser_ipc::decode_command(command)
+            .ok_or("browser_private_command_invalid")?;
+        let thread = text(&command, "threadId");
+        let tab = text(&command, "tabId");
+        if command["type"] == "turn" {
+            let binding = self
+                .private_bindings
+                .get(environment)
+                .ok_or("preview_scope_changed")?;
+            let mut turns = binding.turns.lock().map_err(|_| "local_error")?;
+            if command["active"] == true {
+                turns.insert(thread.into());
+            } else {
+                turns.remove(thread);
+            }
+        }
+        for ((current, _), session) in &self.sessions {
+            if current != environment || session.origin != origin_key {
+                continue;
+            }
+            let Some(private) = &session.private else {
+                continue;
+            };
+            for (current_thread, current_tab) in &session.tabs {
+                if current_thread == thread && (command["type"] == "turn" || current_tab == tab) {
+                    private.command(current_thread, current_tab, command.clone())?;
+                }
+            }
+        }
+        // Native DesktopBrowserHost ignores commands for an absent tab.
+        Ok(())
+    }
+    pub fn private_lease(
+        &self,
+        environment: &str,
+        profile: &str,
+        thread: &str,
+        tab: &str,
+    ) -> Option<crate::browser_automation::Lease> {
+        let session = self.sessions.get(&(environment.into(), profile.into()))?;
+        self.private_registry.lock().ok()?.current(
+            &crate::browser_automation::Source {
+                environment: environment.into(),
+                profile: profile.into(),
+                guest: session.id.clone(),
+            },
+            thread,
+            tab,
+        )
     }
     fn launch(
         &mut self,
@@ -323,6 +507,32 @@ impl Pool {
         if !root.join("libt3-browser.so").is_file() {
             return Err("browser_runtime_unavailable".into());
         }
+        let id = uuid::Uuid::new_v4().to_string();
+        let mut private_source = None;
+        let mut private_fd = None;
+        let private = if let Some(binding) = self.private_bindings.get(environment) {
+            if binding.origin != origin {
+                return Err("preview_scope_changed".into());
+            }
+            let (parent, child) = UnixStream::pair().map_err(|_| "browser_private_unavailable")?;
+            let source = crate::desktop_browser_ipc::duplicate_child_source(child.as_raw_fd())
+                .map_err(|_| "browser_private_unavailable")?;
+            private_fd = Some(source.as_raw_fd());
+            private_source = Some(source);
+            Some(private::Guest::start(
+                crate::browser_automation::Source {
+                    environment: environment.into(),
+                    profile: profile.into(),
+                    guest: id.clone(),
+                },
+                parent,
+                self.private_registry.clone(),
+                binding.receive.clone(),
+                binding.turns.clone(),
+            )?)
+        } else {
+            None
+        };
         let mut command = Command::new(&self.config.executable);
         command
             .arg("browser-render")
@@ -350,13 +560,15 @@ impl Pool {
                 {
                     return Err(std::io::Error::other("browser_parent_gone"));
                 }
+                if let Some(source) = &private_source {
+                    crate::desktop_browser_ipc::admit_child_source(source.as_raw_fd())?;
+                }
                 Ok(())
             });
         }
         let mut child = command.spawn().map_err(|_| "browser_runtime_unavailable")?;
         let input = child.stdin.take().ok_or("browser_runtime_unavailable")?;
         let stdout = child.stdout.take().ok_or("browser_runtime_unavailable")?;
-        let id = uuid::Uuid::new_v4().to_string();
         let alive = Arc::new(AtomicBool::new(true));
         let frames = Arc::new(Mutex::new(None));
         let (cookie_tx, cookie_replies) = std::sync::mpsc::sync_channel(16);
@@ -376,6 +588,7 @@ impl Pool {
             stopped: None,
             cookie_replies,
             cookie_checks: HashMap::new(),
+            private,
             cookie_database: self
                 .config
                 .storage_root()
@@ -388,7 +601,11 @@ impl Pool {
                 )
                 .join("storage/Cookies"),
         };
-        let payload=json!({"environmentId":environment,"profileId":profile,"width":width,"height":height,"zoomFactor":zoom,"initializeCookieStore":initialize_cookies||!restore,"restoreSessionCookies":restore}).to_string().into_bytes();
+        let mut payload = json!({"environmentId":environment,"profileId":profile,"width":width,"height":height,"zoomFactor":zoom,"initializeCookieStore":initialize_cookies||!restore,"restoreSessionCookies":restore});
+        if let Some(fd) = private_fd {
+            payload["privateBrowserFd"] = json!(fd);
+        }
+        let payload = payload.to_string().into_bytes();
         session
             .input
             .write_all(&(payload.len() as u64).to_be_bytes())
@@ -504,7 +721,7 @@ impl Pool {
     ) -> Result<()> {
         let (width, height) = size;
         let snapshot = crate::preview_transport::snapshot(snapshot)?;
-        if snapshot["runtime"] == "server" {
+        if snapshot["runtime"] == "server" && !self.has_private_source(environment, origin) {
             return Err("server_browser_surface_required".into());
         }
         if view_id.is_empty() || view_id.len() > 128 || origin.is_empty() || origin.len() > 128 {
@@ -553,6 +770,15 @@ impl Pool {
             tab: tab.into(),
         });
         session.send(json!({"type":"resize","width":size["width"],"height":size["height"]}))?;
+        let instance = session
+            .private
+            .as_ref()
+            .map(|private| private.approve(thread, tab))
+            .transpose()?;
+        let automation = session
+            .private
+            .as_ref()
+            .is_some_and(private::Guest::is_open);
         if session.tabs.insert((thread.into(), tab.into())) {
             let url = if snapshot["navStatus"]["_tag"] == "Idle" {
                 Value::Null
@@ -560,11 +786,11 @@ impl Pool {
                 snapshot["navStatus"]["url"].clone()
             };
             session.send(
-                json!({"type":"open","threadId":thread,"tabId":tab,"surfaceId":view_id,"url":url}),
+                json!({"type":"open","threadId":thread,"tabId":tab,"surfaceId":view_id,"url":url,"automation":automation,"automationInstance":instance,"serverControlled":snapshot["runtime"]=="server"}),
             )?;
         } else {
             session.send(
-                json!({"type":"activate","threadId":thread,"tabId":tab,"surfaceId":view_id}),
+                json!({"type":"activate","threadId":thread,"tabId":tab,"surfaceId":view_id,"automation":automation,"automationInstance":instance,"serverControlled":snapshot["runtime"]=="server"}),
             )?;
         }
         session.send(json!({"type":"zoom","threadId":thread,"tabId":tab,"value":zoom}))?;
@@ -630,6 +856,9 @@ impl Pool {
         let key = (environment.to_owned(), profile.to_owned());
         if let Some(session) = self.sessions.get_mut(&key) {
             if session.tabs.remove(&(thread.into(), tab.into())) {
+                if let Some(private) = &session.private {
+                    private.remove(thread, tab);
+                }
                 session.send(json!({"type":"close-tab","threadId":thread,"tabId":tab}))?;
             }
             if session.tabs.is_empty() {
@@ -909,6 +1138,5 @@ mod import_verification_tests {
             verify_import(&path, &checks).is_err(),
             "missing persisted row cannot acknowledge an in-memory event"
         );
-
     }
 }

@@ -70,6 +70,7 @@ public:
         });
     }
     ~PrivateBrowserPipe() override { if(!closed)::close(descriptor); }
+    Q_INVOKABLE void close() { retire(); }
     Q_INVOKABLE void send(const QString &line) {
         if(closed)return;
         const auto bytes=line.toUtf8();

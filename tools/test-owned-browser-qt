@@ -39,13 +39,14 @@ if server_hash!=options.expected_sha256: raise SystemExit('Server fixture SHA-25
 for name,source in {
     'guest.cpp':root/'tools/fixtures/owned-browser-pipe.cpp',
     'product-host.cpp':root/'ui/browser/browser-host.cpp',
+    'image.cpp':root/'tools/fixtures/qt-image-proof.cpp',
     'private-browser-pipe.h':root/'ui/browser/private-browser-pipe.h',
     'guest.qml':root/'tools/fixtures/owned-browser-pipe.qml',
     'bridge.js':root/'ui/browser/private-cdp-bridge.js',
     'host.js':root/'ui/browser/native-browser-host.js',
 }.items(): (out/name).write_bytes(source.read_bytes())
 (out/'platform.js').write_bytes((root/'ui/browser/qt-guest-input.js').read_bytes()+b'\n'+(root/'ui/browser/qt-target-scope.js').read_bytes())
-(out/'inputs.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['guest.cpp','product-host.cpp','guest.qml','bridge.js','host.js','platform.js','private-browser-pipe.h']},indent=2)+'\n')
+(out/'inputs.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['guest.cpp','product-host.cpp','image.cpp','guest.qml','bridge.js','host.js','platform.js','private-browser-pipe.h']},indent=2)+'\n')
 lock=Path(os.environ.get('O3_BUILD_LOCK','/var/tmp/o3-build/o3-parity-compile.lock'))
 lock.parent.mkdir(parents=True,exist_ok=True)
 with lock.open('a') as compile_lock:
@@ -66,6 +67,7 @@ with lock.open('a') as compile_lock:
     flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6WebEngineQuick','Qt6WebEngineCore'],text=True))
     qt_compile(['c++','-std=c++17','-fPIC',str(out/'guest.cpp'),str(out/'moc_private_browser_pipe.cpp'),'-o',str(out/'qt-browser'),*flags])
     qt_compile(['c++','-std=c++17','-fPIC','-shared',str(out/'product-host.cpp'),str(out/'moc_private_browser_pipe.cpp'),'-o',str(out/'libt3-browser.so'),*flags])
+    qt_compile(['c++','-std=c++17','-fPIC',str(out/'image.cpp'),'-o',str(out/'qt-image'),*flags])
     qt_log.close()
     (out/'qt-browser').chmod(0o500)
     (out/'qt-artifact.json').write_text(json.dumps({'sha256':hashlib.sha256((out/'qt-browser').read_bytes()).hexdigest(),'bytes':(out/'qt-browser').stat().st_size,'qt':subprocess.check_output(['pkg-config','--modversion','Qt6WebEngineQuick'],text=True).strip()},indent=2)+'\n')
@@ -77,16 +79,29 @@ with lock.open('a') as compile_lock:
     if len(binaries)!=2 or {name for name,_ in binaries}!={'omarchy_t3_client','owned_browser_qt'}: raise SystemExit('Expected only the selected library and owned-browser Qt target')
     debug=Path(binaries[0][1]).parent.parent
     runtime=debug.resolve().parent/('test-runtime-owned-'+uuid.uuid4().hex)
-    records=snapshot(debug,[Path(binary) for _,binary in binaries],runtime)
+    mains=[item['executable'] for item in items if item.get('executable') and item['target']['name']=='omarchy-t3-client' and not item.get('profile',{}).get('test')]
+    if len(mains)!=1: raise SystemExit('Expected the actual product CLI executable')
+    records=snapshot(debug,[Path(binary) for _,binary in binaries]+[Path(mains[0])],runtime)
+    app=out/'app';(app/'bin').mkdir(parents=True);(app/'ui/browser').mkdir(parents=True)
+    for source in runtime.iterdir():
+        if source.is_file() and source.suffix=='.so': (app/'bin'/source.name).write_bytes(source.read_bytes())
+    (app/'bin/omarchy-t3-client').write_bytes((runtime/Path(mains[0]).relative_to(debug)).read_bytes())
+    (app/'bin/omarchy-t3-client').chmod(0o500)
+    (app/'bin/libt3-browser.so').write_bytes((out/'libt3-browser.so').read_bytes())
+    assets=['T3BrowserSurface.qml','T3BrowserAutomation.qml','private-cdp-bridge.js','native-browser-host.js','qt-guest-input.js','qt-target-scope.js','qt-owned-inspector.js']
+    for name in assets: (app/'ui/browser'/name).write_bytes((root/'ui/browser'/name).read_bytes())
+    paths=[app/'bin/omarchy-t3-client',app/'bin/libt3-browser.so']+[app/'ui/browser'/name for name in assets]
+    (out/'app-artifacts.json').write_text(json.dumps({str(path.relative_to(out)):hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},indent=2)+'\n')
     (out/'runtime-artifacts.json').write_text(json.dumps({'directory':str(runtime),'files':records},indent=2)+'\n')
 args=['podman','run','--rm','--pull=never','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--read-only','--tmpfs','/tmp:rw,exec,size=1g,mode=1777','--tmpfs','/var/tmp:rw,size=1g,mode=1777','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--memory=4g','--security-opt=seccomp=unconfined','-v',str(runtime)+':'+str(debug)+':ro','-v','/usr:/usr:ro','-v',str(root)+':'+str(root)+':ro','-v',str(out)+':/fixture:ro','-v','/etc/fonts:/etc/fonts:ro','--env','QT_QPA_PLATFORM=offscreen','--env','QT_QUICK_BACKEND=software','--env','QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu','--env','XDG_RUNTIME_DIR=/tmp','--env','HOME=/tmp/home','--env','TMPDIR=/tmp','docker.io/library/archlinux:latest','python3','-c',r'''
 import os,json,subprocess,sys
 os.mkdir('/tmp/home',0o700)
 for name,binary in json.loads(sys.argv[1]):
-    args=[binary,'--test-threads=1']
-    if name=='omarchy_t3_client': args += ['--exact','browser_runtime::private_tests::private_descriptor_rejects_unadmitted_endpoints_and_malformed_fields']
-    result=subprocess.run(args,timeout=60)
-    if result.returncode: sys.exit(result.returncode)
+    filters=['browser_runtime::private_tests::private_descriptor_rejects_unadmitted_endpoints_and_malformed_fields','browser_guest::private::tests::late_inspector_frames_cannot_retire_successor_or_unrelated_guest','browser_guest::private::tests::admission_precedes_concurrent_command_and_turn_state_is_latched'] if name=='omarchy_t3_client' else [None]
+    for selected in filters:
+        args=[binary,'--test-threads=1']+(['--exact',selected] if selected else [])
+        result=subprocess.run(args,timeout=60)
+        if result.returncode: sys.exit(result.returncode)
 ''',json.dumps(binaries)]
 with (out/'runtime.log').open('w') as output:
     result=subprocess.run(args,stdout=output,stderr=subprocess.STDOUT,timeout=150)

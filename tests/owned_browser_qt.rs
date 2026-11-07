@@ -189,6 +189,13 @@ fn authoritative_preview_open_reaches_native_qt_over_actual_owned_descriptors() 
         let _ = output.shutdown(Shutdown::Both);
     });
     let closing = Arc::new(AtomicBool::new(false));
+    struct Closing(Arc<AtomicBool>);
+    impl Drop for Closing {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Release);
+        }
+    }
+    let _closing_on_drop = Closing(closing.clone());
     let events_closing = closing.clone();
     let mut events = browser.events;
     let incoming = thread::spawn(move || {
@@ -266,20 +273,40 @@ fn authoritative_preview_open_reaches_native_qt_over_actual_owned_descriptors() 
         "preview.navigate",
         json!({"threadId":"thread","tabId":tab,"url":target}),
     );
+    let completed = |value: &Value| {
+        value["_tag"] == "Chunk"
+            && value["requestId"] == "events"
+            && value["values"].as_array().is_some_and(|events| {
+                events.iter().any(|event| {
+                    event["snapshot"]["navStatus"]["_tag"] == "Success"
+                        && event["snapshot"]["navStatus"]["url"] == target
+                })
+            })
+    };
+    let mut authoritative_loaded = false;
     loop {
         let value = frame(&mut socket);
+        authoritative_loaded |= completed(&value);
         if value["_tag"] == "Exit" && value["requestId"] == "navigate" {
             assert_eq!(
                 value["exit"]["_tag"], "Success",
                 "actual navigation failed: {value}"
             );
-            assert_eq!(value["exit"]["value"]["navStatus"]["url"], target);
+            assert_eq!(value["exit"]["value"]["tabId"], tab);
             break;
         }
     }
     loaded_receiver
         .recv_timeout(Duration::from_secs(3))
         .expect("actual Qt page did not load the owned HTML/title");
+    let settled = Instant::now() + Duration::from_secs(5);
+    while !authoritative_loaded {
+        assert!(
+            Instant::now() < settled,
+            "native navigation did not publish actual loaded state"
+        );
+        authoritative_loaded |= completed(&frame(&mut socket));
+    }
     closing.store(true, Ordering::Release);
     owner.stop().unwrap();
     commands.join().unwrap();
@@ -298,5 +325,303 @@ fn authoritative_preview_open_reaches_native_qt_over_actual_owned_descriptors() 
     }
     status.join().unwrap();
     stopped.store(true, Ordering::Release);
+    http.join().unwrap();
+}
+
+#[test]
+fn actual_product_pool_shares_agent_and_visible_pages_without_background_selection() {
+    use omarchy_t3_client::{
+        browser_guest::{Config as GuestConfig, Pool},
+        Environment,
+    };
+    use std::sync::{mpsc, Mutex};
+    // This path is an immutable copy of the actual Cargo CLI, not a fixture shell.
+    assert!(PathBuf::from(env!("CARGO_BIN_EXE_omarchy-t3-client")).is_absolute());
+    let root = std::env::temp_dir().join(format!(
+        "op-{}",
+        &uuid::Uuid::new_v4().simple().to_string()[..12]
+    ));
+    fs::create_dir(&root).unwrap();
+    let (owner, browser) = Owner::launch_with_browser(&Config {
+        executable: PathBuf::from("/fixture/o3-server"),
+        state_root: root.join("state"),
+    })
+    .unwrap();
+    let connection = owner.fresh_connection().unwrap();
+    let environment = Environment {
+        id: "owned".into(),
+        name: "Private owned server".into(),
+        base_url: owner.origin().into(),
+        token_file: PathBuf::new(),
+        write_token_file: None,
+        bearer: None,
+        connection_error: None,
+        connection: Some(Arc::new(connection.clone())),
+    };
+    let ticket = connection
+        .request_json("POST", "/api/auth/websocket-ticket/rpc", None, false)
+        .unwrap();
+    let mut endpoint = reqwest::Url::parse(owner.origin()).unwrap();
+    endpoint.set_scheme("ws").unwrap();
+    endpoint.set_path("/ws");
+    endpoint
+        .query_pairs_mut()
+        .append_pair("orchestrationProtocol", "2")
+        .append_pair("wsTicket", ticket["ticket"].as_str().unwrap());
+    let (mut socket, _) = tungstenite::connect(endpoint.as_str()).unwrap();
+    if let MaybeTlsStream::Plain(stream) = socket.get_mut() {
+        stream
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
+    }
+    send(&mut socket, "events", "subscribePreviewEvents", json!({}));
+    socket
+        .send(Message::Text(json!({"_tag":"Ping"}).to_string().into()))
+        .unwrap();
+    while frame(&mut socket)["_tag"] != "Pong" {}
+    let initial = omarchy_t3_client::preview_transport::read(&environment, "thread").unwrap();
+    let origin = initial["originKey"].as_str().unwrap().to_owned();
+    let (frames_sender, frames) = mpsc::channel();
+    let (native_sender, native_receiver) = mpsc::sync_channel(4096);
+    let mut pool = Pool::new(
+        GuestConfig::isolated(
+            PathBuf::from("/fixture/app/bin/omarchy-t3-client"),
+            &root.join("qt"),
+        )
+        .unwrap(),
+        move |event| {
+            frames_sender.send(event).unwrap();
+        },
+    );
+    pool.bind_private_source(&environment.id, &origin, move |event| {
+        native_sender.try_send(event).unwrap();
+    })
+    .unwrap();
+    let pool = Arc::new(Mutex::new(pool));
+    let closing = Arc::new(AtomicBool::new(false));
+    let control_pool = pool.clone();
+    let control_origin = origin.clone();
+    let control_closing = closing.clone();
+    let mut control = browser.control;
+    let controls = thread::spawn(move || {
+        let mut decoder = ipc::ControlDecoder::default();
+        let mut buffer = [0; 65536];
+        loop {
+            let count = match control.read(&mut buffer) {
+                Ok(count) => count,
+                Err(error) => {
+                    assert!(
+                        control_closing.load(Ordering::Acquire),
+                        "unexpected control read: {error}"
+                    );
+                    break;
+                }
+            };
+            if count == 0 {
+                break;
+            }
+            let lines = decoder.feed(&buffer[..count]);
+            assert!(!lines.cancelled);
+            for line in lines.values {
+                if let Some(command) = ipc::decode_command_line(&line) {
+                    let result = control_pool.lock().unwrap().private_command(
+                        "owned",
+                        &control_origin,
+                        &command,
+                    );
+                    assert!(
+                        result.is_ok() || control_closing.load(Ordering::Acquire),
+                        "native private command failed: {result:?}"
+                    );
+                }
+            }
+        }
+    });
+    let event_closing = closing.clone();
+    let mut events = browser.events;
+    let native = thread::spawn(move || {
+        while !event_closing.load(Ordering::Acquire) {
+            match native_receiver.recv_timeout(Duration::from_millis(100)) {
+                Ok(event) => {
+                    let bytes = ipc::encode_event(&event).unwrap();
+                    if let Err(error) = events.write_all(&bytes) {
+                        assert!(
+                            event_closing.load(Ordering::Acquire),
+                            "unexpected native event write: {error}"
+                        );
+                        break;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+    });
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let address = listener.local_addr().unwrap();
+    let http_closed = Arc::new(AtomicBool::new(false));
+    let stop_http = http_closed.clone();
+    let http = thread::spawn(move || {
+        while !stop_http.load(Ordering::Acquire) {
+            match listener.accept() {
+                Ok((mut socket, _)) => {
+                    socket
+                        .set_read_timeout(Some(Duration::from_secs(1)))
+                        .unwrap();
+                    let mut request = [0; 4096];
+                    let count = socket.read(&mut request).unwrap_or(0);
+                    let first =
+                        String::from_utf8_lossy(&request[..count]).starts_with("GET /first ");
+                    let color = if first { "#123456" } else { "#aa2211" };
+                    let body=format!("<!doctype html><style>html,body{{margin:0;background:{color}}}</style><title>Private product page</title><body>owned</body>");
+                    let _=write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body);
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(10))
+                }
+                Err(error) => panic!("private HTTP fixture: {error}"),
+            }
+        }
+    });
+    let mut tabs = Vec::new();
+    for (request, path) in [("first", "first"), ("second", "second")] {
+        send(
+            &mut socket,
+            request,
+            "preview.open",
+            json!({"threadId":"thread","runtime":"server","url":format!("http://{address}/{path}")}),
+        );
+        let opened = loop {
+            let value = frame(&mut socket);
+            assert_ne!(
+                value["requestId"], request,
+                "open completed without its authoritative guest"
+            );
+            if value["_tag"] == "Chunk" && value["requestId"] == "events" {
+                if let Some(event) = value["values"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|event| event["type"] == "opened")
+                {
+                    break event.clone();
+                }
+            }
+        };
+        let tab = opened["tabId"].as_str().unwrap().to_owned();
+        let admission = omarchy_t3_client::preview_transport::read(&environment, "thread").unwrap();
+        assert_eq!(admission["canOperate"], true);
+        assert_eq!(admission["result"]["serverEpoch"], opened["serverEpoch"]);
+        let mut snapshot = admission["result"]["sessions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|snapshot| snapshot["tabId"] == tab)
+            .unwrap()
+            .clone();
+        if !snapshot["profileId"].is_string() {
+            snapshot["profileId"] = json!("default");
+        }
+        pool.lock()
+            .unwrap()
+            .ensure_private("owned", &origin, &snapshot, (640, 480), &json!(1))
+            .unwrap();
+        loop {
+            let value = frame(&mut socket);
+            if value["_tag"] == "Exit" && value["requestId"] == request {
+                assert_eq!(
+                    value["exit"]["_tag"], "Success",
+                    "actual product attach failed: {value}"
+                );
+                break;
+            }
+        }
+        let lease = pool
+            .lock()
+            .unwrap()
+            .private_lease("owned", "default", "thread", &tab)
+            .expect("actual product target proof was not admitted");
+        if request == "first" {
+            pool.lock()
+                .unwrap()
+                .show(
+                    "owned",
+                    &origin,
+                    &snapshot,
+                    "visible-first",
+                    (640, 480),
+                    &json!(1),
+                )
+                .unwrap();
+        }
+        tabs.push((tab, snapshot, lease));
+    }
+    assert_ne!(tabs[0].2.target(), tabs[1].2.target());
+    assert_eq!(
+        tabs[0].2.inspector().source.guest,
+        tabs[1].2.inspector().source.guest,
+        "agent and visible tabs must share the actual profile guest"
+    );
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut blue = false;
+    while Instant::now() < deadline {
+        let Ok(event) = frames.recv_timeout(Duration::from_millis(200)) else {
+            continue;
+        };
+        if event["kind"] != "frame" {
+            continue;
+        }
+        assert_eq!(event["requestId"], "visible-first");
+        assert_eq!(event["tabId"], tabs[0].0);
+        let path = reqwest::Url::parse(event["url"].as_str().unwrap())
+            .unwrap()
+            .to_file_path()
+            .unwrap();
+        let output = Command::new("/fixture/qt-image")
+            .arg(path)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let image: Value = serde_json::from_slice(&output.stdout).unwrap();
+        if image["color"] == "#123456" {
+            blue = true;
+            break;
+        }
+    }
+    assert!(
+        blue,
+        "background agent page replaced the selected page's actual pixels"
+    );
+    let before = pool
+        .lock()
+        .unwrap()
+        .private_lease("owned", "default", "thread", &tabs[0].0)
+        .unwrap();
+    pool.lock().unwrap().hide();
+    pool.lock()
+        .unwrap()
+        .show(
+            "owned",
+            &origin,
+            &tabs[0].1,
+            "visible-again",
+            (640, 480),
+            &json!(1),
+        )
+        .unwrap();
+    let after = pool
+        .lock()
+        .unwrap()
+        .private_lease("owned", "default", "thread", &tabs[0].0)
+        .unwrap();
+    assert_eq!(before.id(), after.id());
+    assert_eq!(before.target(), after.target());
+    pool.lock().unwrap().close_all();
+    closing.store(true, Ordering::Release);
+    owner.stop().unwrap();
+    controls.join().unwrap();
+    native.join().unwrap();
+    http_closed.store(true, Ordering::Release);
     http.join().unwrap();
 }

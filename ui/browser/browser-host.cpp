@@ -142,7 +142,7 @@ extern "C" int t3_browser_main(const char *payload,const char *qml){
  if(privateRequested){
   privatePipe=std::make_unique<PrivateBrowserPipe>(privateFd);if(!privatePipe->isOpen())return 1;
   const auto directory=QFileInfo(QString::fromUtf8(qml)).absoluteDir();
-  for(const auto &name:{"private-cdp-bridge.js","native-browser-host.js","qt-guest-input.js","qt-target-scope.js"}){
+  for(const auto &name:{"private-cdp-bridge.js","native-browser-host.js","qt-guest-input.js","qt-target-scope.js","qt-owned-inspector.js"}){
    QFile file(directory.filePath(QString::fromLatin1(name)));
    if(!file.open(QIODevice::ReadOnly)||file.size()>16*1024*1024)return 1;
    privateSource+=QString::fromUtf8(file.readAll())+'\n';
