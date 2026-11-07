@@ -72,6 +72,28 @@
       "commandManifestSha256": "59b4521ed63c5a1f142fcc43b5f4ef558ef4518f0e8fc224b43e7cf360e1b8d9",
       "runtimeLogSha256": "6d446b77a057cf866ab1a938dc9e946ae8705cecd331dce04a8534df00e23ba1",
       "intakePinsManifestSha256": "afd5111d8e33ddfc1e73d51be5b4ae4c7005e208c7de1db75836f806591ed261"
+    },
+    {
+      "artifact": "native-ime-context-q62gjdj0",
+      "returncode": 0,
+      "sourceHead": "85db7cb",
+      "note": "Actual current native Wayland state through dedicated inherited private descriptor to a mapped Qt query consumer on a separate owned GUI compositor; product worker/Manager delivery and Wayland clipboard remain unselected.",
+      "liveQtQueryResult": {
+        "kind": "qt-live-query-result",
+        "realNativeCurrentState": true,
+        "dedicatedPrivateDescriptor": true,
+        "actualQtQueryEvent": true,
+        "nativeSerial": 9,
+        "connectionId": 1,
+        "surroundingBytes": 13,
+        "cursorByte": 13,
+        "nativeAndGuiSeatsSeparate": true,
+        "textLogged": false
+      },
+      "sourceArtifactsManifestSha256": "ecf3e7bf4ea0d91e2cf621271cede5eda7ea3d2b041918d349d29b735231319a",
+      "commandManifestSha256": "5c4a32ef1730088294752388f736bb13059216135bf3afe7eb2f63adeb6fce50",
+      "runtimeLogSha256": "e689e3b0f91833de9ee37b44f21f3c75b26bc926c9125476bc2e3aef13cecac4",
+      "intakePinsManifestSha256": "16b5af521dbbb4bb02bb8d4026e9baa3ccfe65bb34202d878e9d891bb867ea36"
     }
   ],
   "crash": {
@@ -162,7 +184,9 @@
     ],
     "coordinateSpace": "native-surface-local",
     "popupCoordinatesAreNotCaretCoordinates": true,
-    "qtQueryImplemented": false,
-    "publicSelectorEnabled": false
+    "qtQueryImplemented": true,
+    "publicSelectorEnabled": false,
+    "liveQtQueryProof": "native-ime-context-q62gjdj0",
+    "productWorkerManagerDelivery": false
   }
 }

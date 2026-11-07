@@ -223,3 +223,30 @@ negative receipt, not a pass.
 Delivery from the
 live owned Wayland engine into the product GUI is not yet connected, and the
 current X hosting route is not presented as providing this context.
+
+## Live native state to the actual Qt query owner
+
+The frozen `85db7cb` probe passed in `native-ime-context-q62gjdj0` (exit 0).
+The current authenticated native snapshot (serial 9, connection 1, 13 UTF-8 bytes)
+was delivered directly to the mapped `BrowserInputItem` consumer through a bounded
+inherited private descriptor. The receiving process validated the owned FIFO,
+close-on-exec, parent lifetime and 16 KiB framed input limit before parsing. Text
+never passed through stdout, QML properties or an archived protocol log.
+
+The GUI and native engine used separate owned compositor seats, preserving the
+engine's genuine focused frame while Qt received real query events. The Qt owner
+used its own item dimensions and the trusted native window/content geometry to
+project the surface-local caret into the frame's aspect-fit presentation. Its
+query event returned the current surrounding text, UTF-16 cursor/anchor and caret;
+the sensitive text value itself was not printed. The full query/lifecycle check
+program exited 0. The original popup roundtrip acknowledgement preceded native
+view closure, and engine, observer, Qt consumer and relay shutdown succeeded.
+
+This closes the live native-protocol-to-Qt-query boundary proof. The fixture uses
+one owned field and controlled mount identity. Product delivery still needs a
+separate authenticated GUI member channel, actual worker/engine/socket ownership,
+NativeMain tab-instance binding, current request/frame lease and invalidation
+forwarding. The existing clipboard registration channel intentionally carries
+ownership metadata only and must not silently become a text-context channel.
+The current product factory still owns an X display; neither a product Wayland
+supervisor nor a Wayland lazy clipboard bridge is implied by this proof.
