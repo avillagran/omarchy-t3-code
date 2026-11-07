@@ -8,13 +8,18 @@ ShellRoot {
  id:root
  readonly property var bridge:Client.T3Backend
  Window{id:window;visible:true;width:640;height:300;Client.T3ModelFallback{id:banner;anchors.fill:parent;bridge:root.bridge}}
+ Client.T3PreferenceField{id:fallbackPreference;visible:false;field:({key:"fallbackModelSelection",label:"Fallback model",kind:"model",value:null,resetValue:null})}
  TestCase{id:keys;when:false}
  Component{id:panelType;Client.T3Panel{bridge:root.bridge}}
  function check(value,message){if(!value){console.error("NEW_THREAD_MODEL_QML_FAIL "+message);Qt.exit(1);throw Error(message)}}
  Timer{interval:400;running:true;onTriggered:{
   var request=new XMLHttpRequest();request.open("GET",Qt.resolvedUrl("UnderTest/tests/fixtures/new-thread-model-4301.json"),false);request.send();var data=JSON.parse(request.responseText)
   data.cases.forEach(function(test,index){check(JSON.stringify(Native.resolveNewThreadModelSelection(test.input))===JSON.stringify(test.result),"complete native decision "+index)})
-  var sample=data.cases.find(function(test){return !!test.result.fallback}),input=sample.input
+  var sample=data.cases.find(function(test){return !!test.result.fallback}),input=JSON.parse(JSON.stringify(sample.input))
+  // Keep actual creation admission independent of the calendar; the complete
+  // native oracle cases above retain their explicit timestamp boundaries.
+  input.providers.forEach(function(provider){(provider.usageLimits.windows || []).forEach(function(window){delete window.resetsAt})})
+  check(keys.findChild(fallbackPreference,"preferenceModel_fallbackModelSelection").emptyText==="None","nullable fallback means disabled, rather than automatic")
   var command={action:"new-thread",environment:"env",projectId:"project",title:"Synthetic",modelSelection:input.defaultSelection,useProjectDefaults:true,workspaceStrategy:{type:"root"}}
   root.bridge.workspaceOperation={busy:true,requestId:"settings-proof",request:{command:command},action:"read"}
   root.bridge.action({op:"settings",environment:"env",requestId:"stale",result:{}})
