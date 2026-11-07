@@ -1,0 +1,19 @@
+{
+  "repository": "https://github.com/nodejs/node",
+  "revision": "18b32a3b1552e199a01f1a8d9fd64aa756d3b75b",
+  "node": "26.13.0",
+  "v8": "14.6.202.34",
+  "sourceFiles": {
+    "deps/v8/src/base/ieee754.cc": "badd30a2643ed785dcfbbce42f95c2522ccea3605cd39e2933467688aae1de14",
+    "deps/v8/src/base/ieee754.h": "d04cd7f71eae974bbb2fb64fd27241c7753678f042acd5ee89c2fa30ef37c4c3",
+    "deps/v8/src/base/overflowing-math.h": "3c7dde9d9b1b6bdd94e18bbf8442dc03f715161f26cf5640945fe07e6799d83a",
+    "deps/v8/include/v8-version.h": "ce7ce832371e2ffd6e56bd51f3b3f819262a01366074c660f6ea8e0d8e3b5ba3",
+    "deps/v8/LICENSE": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+  },
+  "vendoredFiles": {
+    "native/voice/vendor/v8/src/base/ieee754.cc": "badd30a2643ed785dcfbbce42f95c2522ccea3605cd39e2933467688aae1de14",
+    "native/voice/vendor/v8/src/base/ieee754.h": "d04cd7f71eae974bbb2fb64fd27241c7753678f042acd5ee89c2fa30ef37c4c3",
+    "native/voice/vendor/v8/src/base/overflowing-math.h": "3c7dde9d9b1b6bdd94e18bbf8442dc03f715161f26cf5640945fe07e6799d83a"
+  },
+  "scope": "Unchanged complete V8 IEEE754 implementation with explicit isolated C++ platform-header adapters"
+}
