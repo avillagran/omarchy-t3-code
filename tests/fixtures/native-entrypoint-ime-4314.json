@@ -1,0 +1,30 @@
+{
+  "head": "1ed8a2254ca3dfec95f2aca90ae4ae0eb7e6619f",
+  "files": {
+    "native-electron-main.cjs": "4ce6be1178c80e3ab7d3dd50c674736afbadbe0760d6e67826df1618cd041035",
+    "electron-human-input.cjs": "99ca6c23f2bf8814c800b829644c9f8d658c714c5995da8751cbf60aac680131",
+    "qt-target-scope.js": "eb2e3deab5f43635d7b406d9240b2045f4328c0ebcea5e570ffaf255269d834e",
+    "native-electron-entrypoint.py": "0d284219fa8ca9ecc368dbe244dd34e03a2ffeb5a2c3878f426e26fca53755d3",
+    "native-ime-page.html": "a673eed1287297ae29d467bb3af3016ddf62d1ef41bb7924b55df87a51883c90",
+    "native-electron-services.cjs": "88b56e91a6c89678516e8997c7e34683fb1976fbe9cee5f2c9a624b4eb7a7eae",
+    "electron-private-fd.node": "48fd7a4c74bc35a46e005c0f3441bdae34115d8ddbb48b89d16b0d96b0e165cf",
+    "clipboard-owner": "b376d077282dc35c33b380cb9921b497876560b087918a804e935f731592dbe1",
+    "write-custom.html": "41d4ae82cbe657ea5f4beeb413ea45688b58aa601e80c66d3539f09c7d09c539",
+    "read-custom.html": "9f298bdfee93411becfe12f1b8166864f3dd6a53582a5a6b74282d381436b94e",
+    "read-text.html": "c74a423ea50aeb84b69dfcc8889325e9f72fc60feb47b57e20c92ce898dd08e0"
+  },
+  "addon": "48fd7a4c74bc35a46e005c0f3441bdae34115d8ddbb48b89d16b0d96b0e165cf",
+  "scope": "Private component proof against snapshotted experimental NativeMain and page inputs; not acceptance of the committed parent runtime or the complete GUI/Manager route.",
+  "evidence": "native-electron-entrypoint-3l7oyzau",
+  "returncode": 0,
+  "frameCountsAfterNavigations": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1
+  ],
+  "finalFrameCount": 6
+}
