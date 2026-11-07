@@ -1,7 +1,4 @@
-//! Thread details (T3 ThreadDetailsPanel): the editors that can open the open
-//! thread's workspace, and opening it there through shell.openInEditor.
-//! Workspace actions derive their folder from server records. Explicit terminal
-//! links use a source-resolved target after fresh thread, grant and metadata checks.
+//! Thread workspace/editor actions and native cached terminal metadata queries.
 use crate::*;
 use serde_json::{json, Value};
 pub use t3_protocol::thread_details::{editors, workspace};
@@ -9,7 +6,6 @@ pub use t3_protocol::thread_details::{editors, workspace};
 fn shell(e: &Environment) -> Result<Value> {
     Client::shared()?.get(e, "/api/orchestration/shell", true)
 }
-
 fn terminal_target(input: &Value) -> Result<Option<&str>> {
     input
         .get("target")
@@ -19,65 +15,66 @@ fn terminal_target(input: &Value) -> Result<Option<&str>> {
         })
         .transpose()
 }
-fn terminal_physical_path(target: &str) -> &str {
-    let mut path = target;
-    for _ in 0..2 {
-        let Some((parent, position)) = path.rsplit_once(':') else {
-            break;
-        };
-        if position.is_empty() || !position.bytes().all(|b| b.is_ascii_digit()) {
-            break;
-        }
-        path = parent;
-    }
-    path
-}
-fn javascript_space(value: char) -> bool {
-    matches!(value, '\u{9}'..='\u{d}' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}' | '\u{feff}')
-}
-fn windows_drive(path: &str) -> bool {
-    let bytes = path.as_bytes();
-    bytes.len() >= 2
-        && bytes[0].is_ascii_alphabetic()
-        && bytes[1] == b':'
-        && (bytes.len() == 2 || matches!(bytes[2], b'/' | b'\\'))
-}
-// Native getFileMetadataQueryAtom normalizes paths before checking admission.
-// In particular, no agent-authored UNC/network path may trigger a host stat.
-fn terminal_metadata_path(target: &str) -> Option<String> {
-    let raw = terminal_physical_path(target).trim_matches(javascript_space);
-    let root = raw == "/" || raw == "\\" || (raw.len() == 3 && windows_drive(raw));
-    let trimmed = if root {
-        raw
-    } else if raw.starts_with('/') {
-        raw.trim_end_matches('/')
-    } else {
-        raw.trim_end_matches(['/', '\\'])
+fn metadata(e: &Environment, input: &Value, target: &str, thread: &str) -> Result<Value> {
+    let reference = file_metadata_cache::ThreadRef {
+        environment: e.id.clone(),
+        thread: thread.into(),
     };
-    let mut path = if trimmed.is_empty() {
-        raw.to_owned()
-    } else if trimmed.len() == 2 && windows_drive(trimmed) {
-        format!("{trimmed}\\")
-    } else {
-        trimmed.to_owned()
+    let Some(query) =
+        file_metadata_admission::query(&e.id, target, input["cwd"].as_str(), Some(&reference))
+    else {
+        return Ok(json!({"target":target,"path":null,"kind":null}));
     };
-    if windows_drive(&path) || path.starts_with("\\\\") {
-        path = path.replace('/', "\\").to_lowercase();
+    let path = text(&query["input"], "path");
+    if input.get("path").is_some_and(|value| value != path) {
+        return Err("invalid_terminal_link".into());
     }
-    let network =
-        path.chars().take(2).count() == 2 && path.chars().take(2).all(|c| matches!(c, '/' | '\\'));
-    let absolute = path.starts_with('/')
-        || windows_drive(&path)
-        || path.starts_with("\\\\")
-        || path.starts_with("~/");
-    (absolute && !network && path.encode_utf16().count() <= 512).then_some(path)
+    let lease = input["leaseId"].as_str().filter(|value| !value.is_empty());
+    let owner = text(input, "owner");
+    let mut queries = file_metadata_runtime::global().query(&e.id, &[path.into()], lease, owner)?;
+    let answer = queries.remove(0).wait()?;
+    let kind = answer
+        .value
+        .as_ref()
+        .map(|value| value.kind.as_str())
+        .filter(|kind| matches!(*kind, "file" | "directory"));
+    Ok(
+        json!({"target":target,"path":answer.path,"kind":kind,"sessionId":answer.session,"revision":answer.revision}),
+    )
 }
-fn terminal_metadata(
-    e: &Environment,
-    target: &str,
-    snapshot: &Value,
-    thread: &str,
-) -> Result<Value> {
+pub fn read(e: &Environment, input: &Value) -> Result<Value> {
+    let thread = text(input, "thread");
+    if !valid_id(thread) {
+        return Err("invalid_id".into());
+    }
+    if let Some(target) = terminal_target(input)? {
+        // Generic metadata requires only filesystem:read. The actual terminal
+        // hover/click additionally requires orchestration:operate in the UI.
+        return Ok(
+            json!({"environment":e.id,"thread":thread,"terminalLink":metadata(e,input,target,thread)?}),
+        );
+    }
+    let config = protocol::api::server::config(&e.connection(false)?)?;
+    let snapshot = shell(e)?;
+    Ok(
+        json!({"environment":e.id,"thread":thread,"editors":editors(&config),"cwd":workspace(&snapshot,thread).ok()}),
+    )
+}
+pub fn open(e: &Environment, input: &Value) -> Result<Value> {
+    let thread = text(input, "thread");
+    if !valid_id(thread) {
+        return Err("invalid_id".into());
+    }
+    let connection = e.connection(true)?;
+    file_metadata_runtime::authorize(&connection, "orchestration:operate")?;
+    let config = protocol::api::server::config(&connection)?;
+    let list = editors(&config);
+    let editor = match input["editor"].as_str().filter(|value| !value.is_empty()) {
+        Some(id) => list.iter().find(|editor| editor["id"] == id),
+        None => list.first(),
+    }
+    .ok_or("editor_unavailable")?;
+    let snapshot = shell(e)?;
     if !snapshot["threads"]
         .as_array()
         .into_iter()
@@ -86,61 +83,10 @@ fn terminal_metadata(
     {
         return Err("unknown_thread".into());
     }
-    let connection = e.connection(true)?;
-    let session = connection.request_json("GET", "/api/auth/session", None, false)?;
-    let scopes = session
-        .get("permissions")
-        .or_else(|| session.get("scopes"))
-        .and_then(Value::as_array);
-    if session["authenticated"] != true
-        || !["orchestration:operate", "filesystem:read"]
-            .iter()
-            .all(|scope| scopes.is_some_and(|s| s.iter().any(|v| v == scope)))
-    {
-        return Err("permission_denied".into());
-    }
-    let Some(path) = terminal_metadata_path(target) else {
-        return Ok(json!({"target":target,"path":null,"kind":null}));
-    };
-    let metadata = protocol::api::filesystem::metadata(&connection, std::slice::from_ref(&path))?;
-    let kind = metadata["entries"][0]["kind"]
-        .as_str()
-        .filter(|kind| matches!(*kind, "file" | "directory"));
-    Ok(json!({"target":target,"path":path,"kind":kind}))
-}
-
-pub fn read(e: &Environment, input: &Value) -> Result<Value> {
-    let thread = text(input, "thread");
-    if !valid_id(thread) {
-        return Err("invalid_id".into());
-    }
-    let config = protocol::api::server::config(&e.connection(true)?)?;
-    let snapshot = shell(e)?;
-    let cwd = workspace(&snapshot, thread).ok();
-    let mut result =
-        json!({"environment":e.id,"thread":thread,"editors":editors(&config),"cwd":cwd});
-    if let Some(target) = terminal_target(input)? {
-        result["terminalLink"] = terminal_metadata(e, target, &snapshot, thread)?;
-    }
-    Ok(result)
-}
-
-pub fn open(e: &Environment, input: &Value) -> Result<Value> {
-    let thread = text(input, "thread");
-    if !valid_id(thread) {
-        return Err("invalid_id".into());
-    }
-    let config = protocol::api::server::config(&e.connection(true)?)?;
-    let list = editors(&config);
-    let editor = match input["editor"].as_str().filter(|s| !s.is_empty()) {
-        Some(id) => list.iter().find(|e| e["id"] == id),
-        None => list.first(),
-    }
-    .ok_or("editor_unavailable")?;
-    let snapshot = shell(e)?;
     let target = terminal_target(input)?;
     let cwd = if let Some(target) = target {
-        let metadata = terminal_metadata(e, target, &snapshot, thread)?;
+        file_metadata_runtime::authorize(&connection, "filesystem:read")?;
+        let metadata = metadata(e, input, target, thread)?;
         if metadata["kind"].is_null() {
             return Err("terminal_link_unavailable".into());
         }
@@ -148,11 +94,11 @@ pub fn open(e: &Environment, input: &Value) -> Result<Value> {
     } else {
         workspace(&snapshot, thread)?
     };
-    protocol::api::shell::open_in_editor(&e.connection(true)?, &cwd, text(editor, "id"), None)?;
+    protocol::api::shell::open_in_editor(&connection, &cwd, text(editor, "id"), None)?;
     let mut result =
         json!({"environment":e.id,"thread":thread,"editor":editor["id"],"opened":true});
     if let Some(target) = target {
-        result["target"] = json!(target);
+        result["target"] = json!(target)
     }
     Ok(result)
 }

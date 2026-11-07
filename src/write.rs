@@ -66,6 +66,8 @@ pub fn catalog(e: &Environment) -> Result<Value> {
     result["serverVersion"]=json!(config["environment"]["serverVersion"].as_str().filter(|v|v.len()<=80&&v.chars().all(|c|c.is_ascii_alphanumeric()||".-+_".contains(c))));
     let permission=Client::shared()?.get(e,"/api/auth/session",false);
     result["canWrite"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="orchestration:operate"))));
+    result["canReadFiles"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="filesystem:read"))));
+    result["editors"]=json!(crate::thread_details::editors(&config));
     result["canShareGuest"]=json!(permission.as_ref().is_ok_and(|s|s["authenticated"]==true&&s.get("permissions").or_else(||s.get("scopes")).and_then(Value::as_array).is_some_and(|s|s.iter().any(|v|v=="access:write"))));
     if let Err(error)=permission{result["permissionError"]=json!(error);}
     Ok(result)
@@ -338,6 +340,8 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
     Ok(result)
 }
 pub fn execute(input:&Value) -> Result<Value> {
+    if let Some(result)=crate::file_metadata_runtime::control(input){return result}
+    if input["op"]=="file-metadata-query"{return crate::file_metadata_runtime::query_command(input)}
     if matches!(text(input,"op"),"browser-profiles-read"|"browser-profiles-action"){return crate::browser_profiles::execute(input)}
     if input["op"]=="licenses-read"{return crate::third_party_licenses::read()}
     if input["op"]=="thread-search"{return crate::thread_search::search(input)}

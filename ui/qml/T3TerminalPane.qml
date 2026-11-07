@@ -6,6 +6,21 @@ import qs.Commons
 Rectangle {
   id: root
   objectName: "t3TerminalPane_" + terminalId
+  property string metadataLeaseId: ""
+  property string hoveredMetadataLink: ""
+  readonly property string metadataCwd: view.cwd || ""
+  onMetadataLeaseIdChanged: {
+    if(requestId&&typeof bridge.setTerminalMetadataLease==="function")bridge.setTerminalMetadataLease(requestId,metadataLeaseId)
+    Qt.callLater(refreshMetadata)
+  }
+  onMetadataCwdChanged: {
+    if(requestId&&typeof bridge.cancelTerminalMetadata==="function")bridge.cancelTerminalMetadata(requestId)
+    Qt.callLater(refreshMetadata)
+  }
+  function refreshMetadata(){
+    if(terminal.item)terminal.item.refreshLinkActivation()
+    if(visible&&bridge.panelVisible&&requestId&&attachedKey===bridge.selectedKey&&hoveredMetadataLink&&typeof bridge.hoverTerminalLink==="function")bridge.hoverTerminalLink(hoveredMetadataLink,terminalId,requestId,metadataLeaseId)
+  }
   required property var bridge
   required property string terminalId
   property bool current: false
@@ -22,9 +37,14 @@ Rectangle {
     if (!terminal.item || !bridge.selectedKey) return
     detach();attachedKey=bridge.selectedKey;terminal.item.reset()
     requestId=bridge.attachTerminal(terminalId,terminal.item.columns,terminal.item.rows,!!restart)
+    if(typeof bridge.setTerminalMetadataLease==="function")bridge.setTerminalMetadataLease(requestId,metadataLeaseId)
     if(current)terminal.item.forceActiveFocus()
   }
-  function detach(){if(requestId){bridge.detachTerminal(requestId);requestId=""}}
+  function detach(){if(requestId){if(typeof bridge.cancelTerminalMetadata==="function")bridge.cancelTerminalMetadata(requestId);bridge.detachTerminal(requestId);requestId=""}}
+  Timer {
+    interval:1000;repeat:true;running:root.visible&&!!root.hoveredMetadataLink&&!!root.requestId
+    onTriggered:if(typeof root.bridge.refreshTerminalMetadataMiss==="function")root.bridge.refreshTerminalMetadataMiss(root.hoveredMetadataLink,root.terminalId,root.requestId,root.metadataLeaseId)
+  }
   function paste(){clipboard.text="";clipboard.paste();if(terminal.item&&clipboard.text)terminal.item.paste(clipboard.text);clipboard.text=""}
   onCurrentChanged: if(current&&terminal.item)terminal.item.forceActiveFocus()
   Component.onDestruction:{if(typeof bridge.clearTerminalLinkFailure==="function")bridge.clearTerminalLinkFailure(attachedKey,terminalId);detach()}
@@ -32,6 +52,10 @@ Rectangle {
     target: root.bridge; ignoreUnknownSignals: true
     function onSelectedKeyChanged(){attachLater.restart()}
     function onTerminalPathMetadataChanged(){if(terminal.item)terminal.item.refreshLinkActivation()}
+    function onTerminalMetadataRefreshRequested(environment,path){
+      if(environment===root.bridge.selectedEnvironment&&root.hoveredMetadataLink&&root.attachedKey===root.bridge.selectedKey&&typeof root.bridge.refreshTerminalMetadataLink==="function")
+        root.bridge.refreshTerminalMetadataLink(root.hoveredMetadataLink,root.terminalId,root.requestId,root.metadataLeaseId,path)
+    }
     function onTerminalViewEvent(request,data){
       if(request!==root.requestId || root.attachedKey!==root.bridge.selectedKey || !terminal.item)return
       if(data.kind==="primary-text"){terminal.item.paste(data.text || "");return}
@@ -64,7 +88,7 @@ Rectangle {
       id: terminal; objectName: "t3TerminalViewportLoader"
       Layout.fillWidth: true; Layout.fillHeight: true
       source: Qt.resolvedUrl("T3TerminalViewport.qml")
-      onLoaded:{terminal.item.linkAdmission=function(uri){return typeof root.bridge.canActivateTerminalLink==="function"?root.bridge.canActivateTerminalLink(uri,root.terminalId):terminal.item.nativeLinks.isTerminalUrl(uri)};root.attach(false)}
+      onLoaded:{terminal.item.linkAdmission=function(uri){return typeof root.bridge.canActivateTerminalLink==="function"?root.bridge.canActivateTerminalLink(uri,root.terminalId,root.requestId,root.metadataLeaseId):terminal.item.nativeLinks.isTerminalUrl(uri)};root.attach(false)}
     }
     Text {
       Layout.fillWidth: true; Layout.margins: Style.space(12); visible: terminal.status===Loader.Error
@@ -80,8 +104,8 @@ Rectangle {
     function onPasteRequested(){root.paste()}
     function onPrimaryPasteRequested(){if(root.requestId)root.bridge.terminalInput(root.requestId,"primary")}
     function onSelectionChanged(){primarySelection.restart()}
-    function onLinkActivated(uri,forceBrowser){if(root.attachedKey===root.bridge.selectedKey)root.bridge.openTerminalLink(uri,forceBrowser,root.terminalId)}
-    function onLinkHovered(uri){if(root.attachedKey===root.bridge.selectedKey&&typeof root.bridge.hoverTerminalLink==="function")root.bridge.hoverTerminalLink(uri,root.terminalId)}
+    function onLinkActivated(uri,forceBrowser){if(root.attachedKey===root.bridge.selectedKey)root.bridge.openTerminalLink(uri,forceBrowser,root.terminalId,root.requestId,root.metadataLeaseId)}
+    function onLinkHovered(uri){root.hoveredMetadataLink=uri;if(root.attachedKey===root.bridge.selectedKey&&typeof root.bridge.hoverTerminalLink==="function")root.bridge.hoverTerminalLink(uri,root.terminalId,root.requestId,root.metadataLeaseId)}
     function onActiveFocusChanged(){if(terminal.item.activeFocus)root.bridge.activateTerminal(root.terminalId)}
   }
   Timer { id: attachLater; interval: 0; onTriggered: root.attach(false) }

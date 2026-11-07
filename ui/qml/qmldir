@@ -1,6 +1,7 @@
 singleton T3Backend 1.0 T3Backend.qml
 BarWidget 1.0 BarWidget.qml
 T3Panel 1.0 T3Panel.qml
+T3FileMetadataLease 1.0 T3FileMetadataLease.qml
 QuotaStrip 1.0 QuotaStrip.qml
 WorkIndicator 1.0 WorkIndicator.qml
 PinnedKeyboardPanel 1.0 PinnedKeyboardPanel.qml

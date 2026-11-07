@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "native-terminal", "embedded-terminal", "terminal-links", "backend-smoke"], default="device-tools")
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "backend-smoke"], default="device-tools")
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 evidence = Path(tempfile.mkdtemp(prefix="o3-device-panel-", dir="/var/tmp"))
@@ -50,6 +50,8 @@ QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=OmarchyT3 QML_IMPORT_PATH="$1/
 command = ["podman", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
 for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "XDG_CONFIG_HOME":"/tmp/config", "XDG_STATE_HOME":"/tmp/state", "XDG_DATA_HOME":"/tmp/data", "LIBGL_ALWAYS_SOFTWARE":"1", "__EGL_VENDOR_LIBRARY_FILENAMES":"/usr/share/glvnd/egl_vendor.d/50_mesa.json"}.items():
     command += ["--env", f"{key}={value}"]
+if args.fixture == "file-metadata":
+    command += ["--env", "QML_XHR_ALLOW_FILE_READ=1"]
 client_link = root / "bin/omarchy-t3-client"
 client_target = client_link.resolve()
 client_binary = Path(os.environ.get("OMARCHY_T3_TEST_BINARY", str(client_target)))

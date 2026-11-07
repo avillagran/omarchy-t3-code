@@ -1,0 +1,521 @@
+{
+  "revision": "32a0531748c44b25072d7495ce0b9bd7e9450a87",
+  "effectVersion": "4.1.2",
+  "hashes": {
+    "packages/contracts/src/project.ts": "2aa9a4ae236beb65de35aaead9552cf3dabfc283149431db4c5791d6aa2ac374",
+    "packages/contracts/src/environment.ts": "df30ca8b575d4ecac494e6f387c48d6c0c17996744278561601ffe3e015e2a8a",
+    "packages/contracts/src/baseSchemas.ts": "edd4d2c73cc79ce5e50bffd35b9c861fe091de23a1ac792db864d3b71b09a7af",
+    "packages/contracts/src/sourceControl.ts": "747e03625e09b59950bbf0f9703ac75d5251718c73985291ece81c59143ece96",
+    "packages/contracts/src/vcs.ts": "fd8d2f5dc01c5b28aecff7667d592b2d35eb5314aa90c233d69f4f0f8ce4afbf",
+    "packages/contracts/src/modelSelection.ts": "54832cd6d41fae198eca90fe58cfceab4f6b97572c90e32cbfff703b584b434a",
+    "packages/contracts/src/model.ts": "754f9f6611fadefcd72ccc1211102379a878026643092abca27e5f90fee00cf9",
+    "packages/contracts/src/providerInstance.ts": "ade67de404651ff6c5373ba1b0359f598c06d49f5e4de2aa77ebf396ab91233a",
+    "packages/contracts/src/secretReference.ts": "21e7ad0b752e843220ed037011ee108f4475208b8e99fc89b7360c144d5277a6"
+  },
+  "cases": [
+    {
+      "schema": "read",
+      "input": null,
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {},
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false
+      },
+      "valid": true,
+      "result": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false
+      }
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "﻿ src/a.ts  ",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false
+      },
+      "valid": true,
+      "result": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false
+      }
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": " ",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": null,
+        "byteLength": 7,
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 9007199254740992,
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 1.5,
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": -1,
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": null,
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": null
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": 1
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false,
+        "exists": false
+      },
+      "valid": true,
+      "result": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false,
+        "exists": false
+      }
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false,
+        "exists": null
+      },
+      "valid": false
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false,
+        "exists": true,
+        "extra": "ignored"
+      },
+      "valid": true,
+      "result": {
+        "relativePath": "src/a.ts",
+        "contents": "fixture",
+        "byteLength": 7,
+        "truncated": false,
+        "exists": true
+      }
+    },
+    {
+      "schema": "read",
+      "input": {
+        "relativePath": "absent",
+        "contents": "",
+        "byteLength": 0,
+        "truncated": false,
+        "exists": false
+      },
+      "valid": true,
+      "result": {
+        "relativePath": "absent",
+        "contents": "",
+        "byteLength": 0,
+        "truncated": false,
+        "exists": false
+      }
+    },
+    {
+      "schema": "search",
+      "input": null,
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": null,
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {},
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {},
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file"
+          },
+          {
+            "path": "directory",
+            "kind": "directory",
+            "ignored": true
+          }
+        ],
+        "truncated": false
+      },
+      "valid": true,
+      "result": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file"
+          },
+          {
+            "path": "directory",
+            "kind": "directory",
+            "ignored": true
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file"
+          },
+          {
+            "path": "directory",
+            "kind": "directory",
+            "ignored": true
+          }
+        ],
+        "truncated": false
+      },
+      "valid": true,
+      "result": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file"
+          },
+          {
+            "path": "directory",
+            "kind": "directory",
+            "ignored": true
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [],
+        "truncated": true
+      },
+      "valid": true,
+      "result": {
+        "entries": [],
+        "truncated": true
+      }
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [],
+        "truncated": true
+      },
+      "valid": true,
+      "result": {
+        "entries": [],
+        "truncated": true
+      }
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [
+          {
+            "path": "﻿ src/a.ts  ",
+            "kind": "file",
+            "ignored": false,
+            "extra": 1
+          }
+        ],
+        "truncated": false
+      },
+      "valid": true,
+      "result": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file",
+            "ignored": false
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [
+          {
+            "path": "﻿ src/a.ts  ",
+            "kind": "file",
+            "ignored": false,
+            "extra": 1
+          }
+        ],
+        "truncated": false
+      },
+      "valid": true,
+      "result": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file",
+            "ignored": false
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [
+          {
+            "path": " ",
+            "kind": "file"
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [
+          {
+            "path": " ",
+            "kind": "file"
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "other"
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "other"
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [
+          null
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [
+          null
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file",
+            "ignored": null
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file",
+            "ignored": null
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file",
+            "ignored": 1
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [
+          {
+            "path": "src/a.ts",
+            "kind": "file",
+            "ignored": 1
+          }
+        ],
+        "truncated": false
+      },
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": [],
+        "truncated": null
+      },
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": [],
+        "truncated": null
+      },
+      "valid": false
+    },
+    {
+      "schema": "search",
+      "input": {
+        "entries": []
+      },
+      "valid": false
+    },
+    {
+      "schema": "list",
+      "input": {
+        "entries": []
+      },
+      "valid": false
+    }
+  ]
+}

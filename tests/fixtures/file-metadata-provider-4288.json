@@ -1,0 +1,529 @@
+{
+  "revision": "32a0531748c44b25072d7495ce0b9bd7e9450a87",
+  "aliases": {
+    "one": [
+      {
+        "path": "src/a.ts",
+        "kind": "modified",
+        "additions": 1,
+        "deletions": 0
+      }
+    ],
+    "two": [
+      {
+        "path": "src/b.ts",
+        "kind": "added",
+        "additions": 2,
+        "deletions": 0
+      }
+    ],
+    "three": [
+      {
+        "path": "../other.ts",
+        "kind": "modified",
+        "additions": 1,
+        "deletions": 1
+      },
+      {
+        "path": "~/home.ts",
+        "kind": "modified",
+        "additions": 0,
+        "deletions": 0
+      }
+    ],
+    "empty": []
+  },
+  "cases": [
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/work",
+        "checkpoints": [
+          {
+            "id": "one",
+            "status": "ready",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/work",
+        "checkpoints": [
+          {
+            "id": "one",
+            "status": "ready",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/work",
+        "checkpoints": [
+          {
+            "id": "one",
+            "status": "stale",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "env",
+            "input": {
+              "paths": [
+                "/work/src/a.ts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/work",
+        "checkpoints": [
+          {
+            "id": "one",
+            "status": "stale",
+            "files": "two"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "env",
+            "input": {
+              "paths": [
+                "/work/src/b.ts",
+                "/work/src/a.ts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/work",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "three"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "env",
+            "input": {
+              "paths": [
+                "/work/../other.ts",
+                "~/home.ts",
+                "/work/src/b.ts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/other",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "three"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/other",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "error",
+            "files": "three"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "env",
+            "input": {
+              "paths": [
+                "/other/../other.ts",
+                "~/home.ts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "next",
+        "cwd": "/other",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "next"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "next",
+        "cwd": "/other",
+        "checkpoints": null
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "next"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "next",
+        "cwd": "/other",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "two"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "next"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "next",
+        "cwd": "/other",
+        "checkpoints": []
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "next"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "env",
+            "input": {
+              "paths": [
+                "/other/src/b.ts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "next",
+        "cwd": "",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "next"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "next",
+        "cwd": "C:\\work",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "next"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "next",
+        "cwd": "C:\\work",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "two"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "next"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "env",
+            "input": {
+              "paths": [
+                "C:\\work\\src\\b.ts",
+                "C:\\work\\src\\a.ts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "other",
+        "thread": "next",
+        "cwd": "C:\\work",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "ready",
+            "files": "three"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "other",
+            "threadId": "next"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "other",
+        "thread": "next",
+        "cwd": "C:\\work",
+        "checkpoints": [
+          {
+            "id": "two",
+            "status": "missing",
+            "files": "three"
+          },
+          {
+            "id": "new",
+            "status": "ready",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "other",
+            "threadId": "next"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "other",
+            "input": {
+              "paths": [
+                "C:\\work\\..\\other.ts",
+                "~/home.ts",
+                "C:\\work\\src\\a.ts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": null,
+        "thread": null,
+        "cwd": "/work",
+        "checkpoints": []
+      },
+      "trace": [
+        {
+          "retain": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/work",
+        "checkpoints": [
+          {
+            "id": "one",
+            "status": "ready",
+            "files": "empty"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        }
+      ]
+    },
+    {
+      "input": {
+        "environment": "env",
+        "thread": "thread",
+        "cwd": "/work",
+        "checkpoints": [
+          {
+            "id": "one",
+            "status": "ready",
+            "files": "one"
+          }
+        ]
+      },
+      "trace": [
+        {
+          "retain": {
+            "environmentId": "env",
+            "threadId": "thread"
+          }
+        },
+        {
+          "invalidate": {
+            "environmentId": "env",
+            "input": {
+              "paths": [
+                "/work/src/a.ts"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

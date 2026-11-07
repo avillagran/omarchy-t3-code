@@ -1,0 +1,19 @@
+{
+  "revision": "32a0531748c44b25072d7495ce0b9bd7e9450a87",
+  "sources": {
+    "packages/shared/src/path.ts": "5d8e50477165341bff87df2c12208b87f6f4d1363b3497d141de1ed0cdb3261c",
+    "packages/shared/src/fileLinks.ts": "a3fc61051a12bc886a2ce61387f505a79a42d94ad1b30486bc03d3b5b5cd265d",
+    "apps/web/src/hooks/useFileMetadata.ts": "88997d5a48d5b983effe5c4ea83c9b8545ed54adce2b1dcf4dcb0b48a9984174",
+    "apps/web/src/hooks/FileMetadataThreadProvider.tsx": "86edf94471aa32eadc8222ad77ba9ef3fd1cbef84c6ca43baeda7212ce26b5c6",
+    "apps/web/src/components/ThreadTerminalDrawer.tsx": "288bca74a21d95b2c0963b3c77758228907d16ad56588b3702d983865ee7e90e",
+    "packages/client-runtime/src/state/fileMetadata.ts": "ccb091dad88edd1caa2afe10fa521891f191035ef41db539563725e057dc15bb",
+    "packages/contracts/src/filesystem.ts": "d9c7aad3b2a0a8d66e3f2ffbfa68428e033abe18739b39aea357ace134be5026",
+    "apps/server/src/auth/RpcAuthorization.ts": "1e46ad4c96975bbfbefef23aa6d0f9fc4f4cbc9b54ef4818518d30be4132200b"
+  },
+  "adaptations": [
+    "TypeScript erasure and factory imports",
+    "Object spread becomes Object.assign",
+    "Slash replaceAll becomes split/join"
+  ],
+  "outputSha256": "bbf9bb31a9087adca878ec9b846338ffa18713459e1498ad6e7110068a9cd276"
+}

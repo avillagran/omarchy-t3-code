@@ -10,6 +10,7 @@ import qs.Commons
 Rectangle {
   id: root
   objectName: "t3SidePanel"
+  property string metadataLeaseId: ""
   required property var bridge
   required property Component browserComponent
   property string tab: "browser"
@@ -123,7 +124,7 @@ Rectangle {
   }
   Component {
     id: terminalTab
-    T3TerminalPanel { bridge: root.bridge }
+    T3TerminalPanel { bridge: root.bridge; metadataLeaseId: root.metadataLeaseId }
   }
   Component {
     id: agentsTab

@@ -410,6 +410,7 @@ fn watch(client: Client) -> Result<()> {
     emit("ui-state", ui_state::load());
     let (tx, rx) = mpsc::channel::<Value>();
     rpc_sessions::set_events(tx.clone());
+    file_metadata_runtime::set_events(tx.clone());
     let compactor = auto_compact::Control::new(tx.clone());
     let idle_releaser = idle_release::Control::new(tx.clone());
     let updater = server_update::Control::new();
@@ -549,6 +550,12 @@ fn watch(client: Client) -> Result<()> {
                 continue;
             }
             if let Ok(mut v) = serde_json::from_str::<Value>(&line) {
+                // Apply mounted lease controls in input order before any query
+                // worker can observe this conversation's lifecycle.
+                if let Some(result) = file_metadata_runtime::control(&v) {
+                    emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
+                    continue;
+                }
                 if v["op"] == "stream-resync" {
                     if let Some(id) = v["stream"].as_u64() {
                         json_delta::request_resync(id);
@@ -1138,6 +1145,7 @@ fn watch(client: Client) -> Result<()> {
                         | "workflow-script"
                         | "workflow-stop"
                         | "nightly"
+                        | "file-metadata-query"
                         | "thread-details-read"
                         | "thread-details-open-editor"
                         | "provider-update"
@@ -1382,7 +1390,7 @@ fn watch(client: Client) -> Result<()> {
             Err(_) => return Ok(()),
         };
         match text(&cmd, "op") {
-            "rpc-session-state" => emit("rpc-session-state",cmd.clone()),
+            "rpc-session-state" | "file-metadata-invalidated" => emit(text(&cmd,"op"),cmd.clone()),
             "ui-state-set" => {
                 if let Err(error) = ui_state::save(&cmd["state"]) {
                     emit("ui-state-error", json!({"error":error}));

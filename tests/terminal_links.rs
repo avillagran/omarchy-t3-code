@@ -1,227 +1,201 @@
-use omarchy_t3_client::{protocol, thread_details, Environment};
+use omarchy_t3_client::{environments, file_metadata_runtime, rpc_sessions, thread_details};
 use serde_json::{json, Value};
-use std::{
-    io::{Read, Write},
-    net::TcpListener,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
-    thread,
-    time::Duration,
-};
-
+use std::{collections::HashSet, fs, os::unix::fs::PermissionsExt, sync::atomic::Ordering};
+#[path = "support/file_metadata_peer.rs"]
+mod peer;
 #[test]
-fn explicit_terminal_paths_require_fresh_scope_and_metadata_and_keep_editor_positions() {
+fn real_terminal_consumers_share_admitted_metadata_and_keep_editor_authorization_separate() {
     assert!(std::path::Path::new("/run/.containerenv").is_file());
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.set_nonblocking(true).unwrap();
-    let base = format!("http://{}", listener.local_addr().unwrap());
-    let stop = Arc::new(AtomicBool::new(false));
-    let allow = Arc::new(AtomicBool::new(true));
-    let exists = Arc::new(AtomicBool::new(true));
-    let lost = Arc::new(AtomicBool::new(false));
-    let calls = Arc::new(Mutex::new(Vec::<Value>::new()));
-    let (done, granted, present, lose, log) = (
-        stop.clone(),
-        allow.clone(),
-        exists.clone(),
-        lost.clone(),
-        calls.clone(),
+    let root = std::env::temp_dir().join(format!("terminal-metadata-{}", std::process::id()));
+    fs::create_dir(&root).unwrap();
+    fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).unwrap();
+    let token = root.join("token");
+    fs::write(&token, "synthetic-terminal-only").unwrap();
+    fs::set_permissions(&token, fs::Permissions::from_mode(0o600)).unwrap();
+    let peer = peer::Peer::new();
+    let config = root.join("environments.json");
+    fs::write(&config,json!({"environments":[{"id":"fixture","base_url":peer.base,"token_file":token,"write_token_file":token}]}).to_string()).unwrap();
+    std::env::set_var("OMARCHY_T3_FIXTURE_ENVIRONMENTS", config);
+    let environment = environments().unwrap().remove(0);
+    let runtime = file_metadata_runtime::global();
+    omarchy_t3_client::write::execute(&json!({"op":"file-metadata-retain","environment":"fixture","thread":"thread","leaseId":"lease"})).unwrap();
+    peer.operate.store(false, Ordering::Release);
+    let command = json!({"op":"thread-details-read","environment":"fixture","thread":"thread","target":"/work/main.rs:12:7","cwd":"/work","path":"/work/main.rs","leaseId":"lease","owner":"surface","editor":"zed"});
+    let first = omarchy_t3_client::write::execute(&command).unwrap();
+    assert_eq!(first["terminalLink"]["path"], "/work/main.rs");
+    assert_eq!(first["terminalLink"]["kind"], "file");
+    assert_eq!(
+        thread_details::open(&environment, &command).unwrap_err(),
+        "permission_denied"
     );
-    let server = thread::spawn(move || {
-        while !done.load(Ordering::Relaxed) {
-            let (mut stream, _) = match listener.accept() {
-                Ok(v) => v,
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    thread::sleep(Duration::from_millis(2));
-                    continue;
-                }
-                Err(e) => panic!("{e}"),
-            };
-            stream
-                .set_read_timeout(Some(Duration::from_secs(3)))
-                .unwrap();
-            let mut peek = [0; 1024];
-            let n = stream.peek(&mut peek).unwrap();
-            let start = String::from_utf8_lossy(&peek[..n]);
-            if start.starts_with("GET /api/auth/session ")
-                || start.starts_with("GET /api/orchestration/shell ")
-            {
-                let session = start.starts_with("GET /api/auth/session ");
-                let mut header = Vec::new();
-                let mut byte = [0];
-                while !header.ends_with(b"\r\n\r\n") {
-                    stream.read_exact(&mut byte).unwrap();
-                    header.push(byte[0]);
-                    assert!(header.len() < 16384);
-                }
-                let body=if session {json!({"authenticated":true,"permissions":if granted.load(Ordering::Relaxed){vec!["orchestration:read","orchestration:operate","filesystem:read"]}else{vec!["orchestration:read","filesystem:read"]}})}else{json!({"projects":[{"id":"project","workspaceRoot":"/work/project"}],"threads":[{"id":"thread","projectId":"project","worktreePath":"/work/project/.t3/worktree"}]})}.to_string();
-                write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
-                continue;
-            }
-            let mut ws = tungstenite::accept(stream).unwrap();
-            let request: Value =
-                serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
-            let value = match request["tag"].as_str().unwrap() {
-                "server.getConfig" => json!({"availableEditors":["zed","vscode"]}),
-                "filesystem.getMetadata" => {
-                    log.lock().unwrap().push(request.clone());
-                    json!({"entries":[if present.load(Ordering::Relaxed){json!({"kind":"file","private":"PRIVATE","path":request["payload"]["paths"][0]})}else{Value::Null}]})
-                }
-                "shell.openInEditor" => {
-                    log.lock().unwrap().push(request.clone());
-                    if lose.load(Ordering::Relaxed) {
-                        continue;
-                    }
-                    Value::Null
-                }
-                tag => panic!("unexpected RPC {tag}"),
-            };
-            ws.send(tungstenite::Message::Text(json!({"_tag":"Exit","requestId":request["id"],"exit":{"_tag":"Success","value":value}}).to_string().into())).unwrap();
-        }
-    });
-    struct Peer(Arc<AtomicBool>, Option<thread::JoinHandle<()>>);
-    impl Drop for Peer {
-        fn drop(&mut self) {
-            self.0.store(true, Ordering::Relaxed);
-            if let Some(thread) = self.1.take() {
-                let _ = thread.join();
-            }
-        }
-    }
-    let _peer = Peer(stop, Some(server));
-    let connection = protocol::Connection::new(
-        &base,
-        None,
-        protocol::Credential::bearer("synthetic-terminal-link-token").unwrap(),
+    assert!(!peer
+        .calls
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|call| call["tag"] == "shell.openInEditor"));
+    peer.operate.store(true, Ordering::Release);
+    let before = peer.metadata_calls().len();
+    let second = thread_details::read(&environment, &command).unwrap();
+    assert_eq!(
+        first["terminalLink"]["sessionId"],
+        second["terminalLink"]["sessionId"]
+    );
+    assert_eq!(
+        peer.metadata_calls().len(),
+        before,
+        "real repeated hover uses retained socket cache"
+    );
+    let opened = thread_details::open(&environment, &command).unwrap();
+    assert_eq!(opened["target"], command["target"]);
+    assert_eq!(
+        peer.metadata_calls().len(),
+        before,
+        "click uses same native cached query"
+    );
+    let calls = peer.calls.lock().unwrap();
+    let open = calls
+        .iter()
+        .rev()
+        .find(|call| call["tag"] == "shell.openInEditor")
+        .unwrap();
+    assert_eq!(
+        open["payload"],
+        json!({"cwd":"/work/main.rs:12:7","editor":"zed"})
+    );
+    drop(calls);
+    let before = peer.metadata_calls().len();
+    let document = omarchy_t3_client::documents::read(
+        &environment,
+        &json!({"thread":"thread","cwd":"/work","path":"read-through-document.ts"}),
     )
     .unwrap();
-    let environment = Environment {
-        id: "fixture".into(),
-        name: "Fixture".into(),
-        base_url: base,
-        token_file: Default::default(),
-        write_token_file: None,
-        bearer: None,
-        connection_error: None,
-        connection: Some(Arc::new(connection)),
-    };
-    for (target, path) in [
-        (
-            "/work/project/src/main.rs:12:7",
-            "/work/project/src/main.rs",
-        ),
-        (
-            r"C:\Users\Jane\project\main.ts:9:3",
-            r"c:\users\jane\project\main.ts",
-        ),
-        ("~/project/main.rs:1", "~/project/main.rs"),
-        ("/work/project/file:١٢", "/work/project/file:١٢"),
-    ] {
-        let command = json!({"thread":"thread","target":target,"editor":"zed"});
-        let read = thread_details::read(&environment, &command).unwrap();
-        assert_eq!(
-            read["terminalLink"],
-            json!({"target":target,"path":path,"kind":"file"})
-        );
-        assert!(!read.to_string().contains("PRIVATE"));
-        let opened = thread_details::open(&environment, &command).unwrap();
-        assert_eq!(opened["target"], target);
-        let log = calls.lock().unwrap();
-        let last = log.last().unwrap();
-        assert_eq!(last["tag"], "shell.openInEditor");
-        assert_eq!(last["payload"], json!({"cwd":target,"editor":"zed"}));
-        let metadata = &log[log.len() - 2];
-        assert_eq!(metadata["payload"], json!({"paths":[path]}));
-    }
+    assert_eq!(document["contents"], "fixture");
+    let mut seeded_command = command.clone();
+    seeded_command["target"] = json!("/work/read-through-document.ts");
+    seeded_command["path"] = json!("/work/read-through-document.ts");
+    assert_eq!(
+        thread_details::read(&environment, &seeded_command).unwrap()["terminalLink"]["kind"],
+        "file"
+    );
+    assert_eq!(
+        peer.metadata_calls().len(),
+        before,
+        "actual workspace document read seeds terminal metadata on same admitted socket"
+    );
+    let suggestions = omarchy_t3_client::suggestions::query(
+        &environment,
+        &json!({"thread":"thread","kind":"path","query":"seed"}),
+    )
+    .unwrap();
+    assert_eq!(suggestions["items"][0]["label"], "seeded.ts");
+    seeded_command["target"] = json!("/work/seeded.ts");
+    seeded_command["path"] = json!("/work/seeded.ts");
+    assert_eq!(
+        thread_details::read(&environment, &seeded_command).unwrap()["terminalLink"]["kind"],
+        "file"
+    );
+    assert_eq!(
+        peer.metadata_calls().len(),
+        before,
+        "actual composer search seeds terminal metadata without a redundant stat"
+    );
     let fixture: Value =
         serde_json::from_str(include_str!("../native/terminal/link-fixtures.json")).unwrap();
-    let metadata_cases = fixture["metadataCases"].as_array().unwrap();
-    assert_eq!(metadata_cases.len(), 22);
-    for case in metadata_cases {
-        let count = || {
-            calls
-                .lock()
-                .unwrap()
-                .iter()
-                .filter(|call| call["tag"] == "filesystem.getMetadata")
-                .count()
-        };
-        let before = count();
-        let command = json!({"thread":"thread","target":case["target"],"editor":"zed"});
-        let result = thread_details::read(&environment, &command).unwrap();
-        if let Some(expected) = case["expected"].as_str() {
-            assert_eq!(result["terminalLink"]["path"], expected, "{case}");
-            assert_eq!(count(), before + 1);
+    assert_eq!(fixture["metadataCases"].as_array().unwrap().len(), 22);
+    let mut known = HashSet::new();
+    known.insert("/work/main.rs".to_owned());
+    for case in fixture["metadataCases"].as_array().unwrap() {
+        let before = peer.metadata_calls().len();
+        let result = thread_details::read(
+            &environment,
+            &json!({"thread":"thread","target":case["target"],"leaseId":"lease","owner":"surface"}),
+        )
+        .unwrap();
+        assert_eq!(result["terminalLink"]["path"], case["expected"], "{case}");
+        if let Some(path) = case["expected"].as_str() {
             assert_eq!(
-                calls.lock().unwrap().last().unwrap()["payload"],
-                json!({"paths":[expected]})
-            );
+                peer.metadata_calls().len(),
+                before + usize::from(known.insert(path.into())),
+                "admitted paths use native cache or exactly one stat: {case}"
+            )
         } else {
-            assert!(result["terminalLink"]["kind"].is_null(), "{case}");
-            assert_eq!(count(), before, "rejected native paths must not be statted");
-            let prior = calls.lock().unwrap().len();
             assert_eq!(
-                thread_details::open(&environment, &command).unwrap_err(),
-                "terminal_link_unavailable"
-            );
-            assert_eq!(
-                calls.lock().unwrap().len(),
-                prior,
-                "network paths must reach neither metadata nor editor RPC"
-            );
+                peer.metadata_calls().len(),
+                before,
+                "rejected network/relative/oversized path never stats"
+            )
         }
     }
-    let opens = || {
-        calls
-            .lock()
-            .unwrap()
-            .iter()
-            .filter(|call| call["tag"] == "shell.openInEditor")
-            .count()
-    };
-    let before = opens();
-    let command = json!({"thread":"thread","target":"/work/project/gone.rs:3","editor":"zed"});
-    thread_details::read(&environment, &command).unwrap();
-    exists.store(false, Ordering::Relaxed);
+    peer.present.store(false, Ordering::Release);
+    runtime
+        .invalidate("fixture", &["/work/main.rs".into()])
+        .unwrap();
+    let before = peer
+        .calls
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|call| call["tag"] == "shell.openInEditor")
+        .count();
     assert_eq!(
         thread_details::open(&environment, &command).unwrap_err(),
         "terminal_link_unavailable"
     );
     assert_eq!(
-        opens(),
+        peer.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|call| call["tag"] == "shell.openInEditor")
+            .count(),
         before,
-        "a vanished path must not open after a hover read"
+        "actual invalidation fences editor opening after disappearance"
     );
-    exists.store(true, Ordering::Relaxed);
-    allow.store(false, Ordering::Relaxed);
+    peer.present.store(true, Ordering::Release);
+    let miss = thread_details::read(&environment, &command).unwrap();
+    assert!(
+        miss["terminalLink"]["kind"].is_null(),
+        "native negative remains cached until invalidation/TTL"
+    );
+    runtime
+        .invalidate("fixture", &["/work/main.rs".into()])
+        .unwrap();
     assert_eq!(
-        thread_details::open(&environment, &command).unwrap_err(),
+        thread_details::read(&environment, &command).unwrap()["terminalLink"]["kind"],
+        "file"
+    );
+    peer.allow.store(false, Ordering::Release);
+    let before = peer.metadata_calls().len();
+    assert_eq!(
+        thread_details::read(&environment, &command).unwrap_err(),
         "permission_denied"
     );
-    assert_eq!(opens(), before);
-    allow.store(true, Ordering::Relaxed);
     assert_eq!(
-        thread_details::open(
-            &environment,
-            &json!({"thread":"missing","target":"/work/project/file","editor":"zed"})
-        )
-        .unwrap_err(),
-        "unknown_thread"
+        peer.metadata_calls().len(),
+        before,
+        "scope denial precedes even retained metadata access"
     );
-    assert_eq!(opens(), before);
-    thread_details::open(&environment, &json!({"thread":"thread","editor":"vscode"})).unwrap();
+    peer.allow.store(true, Ordering::Release);
+    peer.hold.store(true, Ordering::Release);
+    let mut pending = command.clone();
+    pending["target"] = json!("/work/pending");
+    pending["path"] = json!("/work/pending");
+    let read = std::thread::spawn(move || omarchy_t3_client::write::execute(&pending));
+    peer.wait(|calls| {
+        calls.iter().any(|call| {
+            call["tag"] == "filesystem.getMetadata"
+                && call["payload"]["paths"] == json!(["/work/pending"])
+        })
+    });
+    omarchy_t3_client::write::execute(&json!({"op":"file-metadata-release","leaseId":"lease"}))
+        .unwrap();
     assert_eq!(
-        calls.lock().unwrap().last().unwrap()["payload"],
-        json!({"cwd":"/work/project/.t3/worktree","editor":"vscode"})
+        read.join().unwrap().unwrap_err(),
+        "metadata_cancelled",
+        "actual release dispatch cancels pending real read"
     );
-    let before = opens();
-    lost.store(true, Ordering::Relaxed);
-    assert!(thread_details::open(&environment, &command).is_err());
-    assert_eq!(
-        opens(),
-        before + 1,
-        "an uncertain editor-open must not retry automatically"
-    );
+    peer.wait(|calls| calls.iter().any(|call| call["_tag"] == "Interrupt"));
+    peer.hold.store(false, Ordering::Release);
+    rpc_sessions::close_all();
 }

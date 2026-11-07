@@ -1,0 +1,395 @@
+{
+  "revision": "32a0531748c44b25072d7495ce0b9bd7e9450a87",
+  "hashes": {
+    "baseSchemas.ts": "edd4d2c73cc79ce5e50bffd35b9c861fe091de23a1ac792db864d3b71b09a7af",
+    "filesystem.ts": "d9c7aad3b2a0a8d66e3f2ffbfa68428e033abe18739b39aea357ace134be5026"
+  },
+  "cases": [
+    {
+      "input": {},
+      "valid": false
+    },
+    {
+      "input": null,
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": null
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": []
+      },
+      "result": {
+        "entries": []
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          null
+        ]
+      },
+      "result": {
+        "entries": [
+          null
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {}
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file"
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "directory"
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "directory"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "other"
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "other"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "symlink"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": null
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": 1
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": null
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": -1
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 0
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 0
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 1
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 1
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 1.5
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 9007199254740991
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 9007199254740991
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 9007199254740992
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": 1e+100
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "byteLength": "1"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": null
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": ""
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": " "
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": ""
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": ""
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": "﻿"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": "﻿ text/plain  "
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": "text/plain"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": "text/plain"
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": "text/plain"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "mimeType": 42
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "input": {
+        "entries": [
+          {
+            "kind": "file",
+            "extra": 1
+          },
+          null,
+          {
+            "kind": "other"
+          }
+        ]
+      },
+      "result": {
+        "entries": [
+          {
+            "kind": "file"
+          },
+          null,
+          {
+            "kind": "other"
+          }
+        ]
+      },
+      "valid": true
+    }
+  ]
+}

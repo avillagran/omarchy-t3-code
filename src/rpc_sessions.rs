@@ -53,6 +53,14 @@ impl Owners {
     /// Obtain a current admitted socket. Opening sockets are serialized only
     /// within one environment/access mode; unrelated environments stay free.
     pub fn session(&self, environment: &str, write: bool) -> Result<protocol::RpcSession> {
+        self.admitted(environment, write)
+            .map(|(_, session)| session)
+    }
+    pub(crate) fn admitted(
+        &self,
+        environment: &str,
+        write: bool,
+    ) -> Result<(protocol::Connection, protocol::RpcSession)> {
         let connection = match current(environment, write) {
             Ok(c) => c,
             Err(error) => {
@@ -71,7 +79,7 @@ impl Owners {
         }
         if let Some(old) = entry.as_ref() {
             if old.session.is_open() && old.connection.same_session_admission(&connection) {
-                return Ok(old.session.clone());
+                return Ok((old.connection.clone(), old.session.clone()));
             }
         }
         if let Some(old) = entry.take() {
@@ -90,7 +98,7 @@ impl Owners {
             return Err("connection_changed".into());
         }
         *entry = Some(Entry {
-            connection,
+            connection: connection.clone(),
             session: session.clone(),
         });
         publish(environment, write, session.id(), "open");
@@ -109,7 +117,33 @@ impl Owners {
                 publish(environment, write, &id, "closed");
                 "local_error"
             })?;
-        Ok(session)
+        Ok((connection, session))
+    }
+    pub(crate) fn existing(
+        &self,
+        environment: &str,
+        write: bool,
+    ) -> Result<Option<protocol::RpcSession>> {
+        let wanted = match current(environment, write) {
+            Ok(c) => c,
+            Err(_) => return Ok(None),
+        };
+        let slot = self
+            .slots
+            .lock()
+            .map_err(|_| "local_error")?
+            .get(&(environment.into(), write))
+            .cloned();
+        let Some(slot) = slot else { return Ok(None) };
+        let entry = slot.entry.lock().map_err(|_| "local_error")?;
+        Ok(entry
+            .as_ref()
+            .filter(|old| {
+                !slot.retired.load(Ordering::Acquire)
+                    && old.session.is_open()
+                    && old.connection.same_session_admission(&wanted)
+            })
+            .map(|old| old.session.clone()))
     }
     /// Reconcile only actual changed/removed private admissions. Opening slots
     /// are not blocked: their final current-admission check rejects stale opens.
@@ -187,6 +221,7 @@ impl Owners {
 static OWNERS: OnceLock<Owners> = OnceLock::new();
 static EVENTS: Mutex<Option<mpsc::Sender<Value>>> = Mutex::new(None);
 fn publish(environment: &str, write: bool, id: &str, state: &str) {
+    crate::file_metadata_runtime::session_event(environment, write, id, state);
     if let Ok(events) = EVENTS.lock() {
         if let Some(events) = events.as_ref() {
             let _=events.send(json!({"op":"rpc-session-state","environment":environment,"write":write,"sessionId":id,"state":state}));
@@ -219,4 +254,22 @@ pub fn reconcile(environments: &[Environment]) {
     if let Some(owners) = OWNERS.get() {
         owners.reconcile(environments)
     }
+}
+
+pub(crate) fn admitted(
+    environment: &str,
+    write: bool,
+) -> Result<(protocol::Connection, protocol::RpcSession)> {
+    OWNERS
+        .get_or_init(Owners::default)
+        .admitted(environment, write)
+}
+pub(crate) fn existing(environment: &str, write: bool) -> Result<Option<protocol::RpcSession>> {
+    match OWNERS.get() {
+        Some(owners) => owners.existing(environment, write),
+        None => Ok(None),
+    }
+}
+pub(crate) fn is_current(environment: &str, write: bool, id: &str) -> Result<bool> {
+    Ok(existing(environment, write)?.is_some_and(|s| s.id() == id))
 }

@@ -545,6 +545,7 @@ Singleton {
   function discardDraft(key){var d=drafts[key];if(!d || d.busy || d.loading || d.attempt || d.loadError)return;patchDraft(key,{text:"",context:null,attachments:[],error:""});flushDraft(key)}
   // Capture sidebar order before Settle changes grouping. A selection epoch also
   // prevents an away-and-back navigation during the RPC from being overridden.
+  property var metadataCheckpoints: ({environment:"",thread:"",data:null})
   property int selectionEpoch:0
   onSelectedKeyChanged:{selectionEpoch++;ensureThreadFamily()}
   property var threadUndoNotice:null
@@ -1325,15 +1326,23 @@ Singleton {
   function closeInlineDocument(id){if(!id||!inlineDocuments[id])return;send({op:"document-close",requestId:id});var all=Object.assign({},inlineDocuments);delete all[id];inlineDocuments=all}
   function updateInlineDocument(id,values){if(!inlineDocuments[id])return;var all=Object.assign({},inlineDocuments);all[id]=Object.assign({},all[id],values);inlineDocuments=all}
   function clearInlineDocuments(){Object.keys(inlineDocuments).forEach(closeInlineDocument)}
+  property var terminalMetadataSessions: ({})
+  property var terminalMetadataClosed: ({})
+  property var terminalMetadataRevisions: ({})
   property var terminalPathRequests:({})
   property var terminalPathMetadata:({})
   property var terminalUrlQueue:[]
   property var terminalLinkFailures:({})
   signal terminalBrowserRequested()
   function openTerminalSystemUrl(uri){return Qt.openUrlExternally(uri)}
-  function openTerminalLink(uri,forceBrowser,terminalId){return TerminalLinks.open(root,uri,!!forceBrowser,terminalId)}
-  function hoverTerminalLink(uri,terminalId){TerminalLinks.hover(root,uri,terminalId)}
-  function canActivateTerminalLink(uri,terminalId){return TerminalLinks.allowed(root,uri,terminalId)}
+  function openTerminalLink(uri,forceBrowser,terminalId,surface,lease){return TerminalLinks.open(root,uri,!!forceBrowser,terminalId,surface,lease)}
+  function hoverTerminalLink(uri,terminalId,surface,lease){TerminalLinks.hover(root,uri,terminalId,surface,lease)}
+  function canActivateTerminalLink(uri,terminalId,surface,lease){return TerminalLinks.allowed(root,uri,terminalId,surface,lease)}
+  signal terminalMetadataRefreshRequested(string environment,string path)
+  function refreshTerminalMetadataLink(uri,terminalId,surface,lease,path){TerminalLinks.refreshPath(root,uri,terminalId,surface,lease,path)}
+  function refreshTerminalMetadataMiss(uri,terminalId,surface,lease){TerminalLinks.refreshMiss(root,uri,terminalId,surface,lease)}
+  function setTerminalMetadataLease(surface,lease){var view=terminalViews[surface];if(!view||view.metadataLeaseId===lease)return;var all=Object.assign({},terminalViews);all[surface]=Object.assign({},view,{metadataLeaseId:lease});terminalViews=all}
+  function cancelTerminalMetadata(surface){TerminalLinks.cancelSurface(root,surface)}
   function clearTerminalLinkFailure(key,terminalId){TerminalLinks.clearFailure(root,key,terminalId)}
   Timer{interval:100;repeat:true;running:root.terminalUrlQueue.length>0;onTriggered:TerminalLinks.pump(root)}
   Connections{target:root;function onSelectedKeyChanged(){TerminalLinks.reset(root)}function onPanelVisibleChanged(){if(!root.panelVisible)TerminalLinks.reset(root)}}
@@ -2337,6 +2346,7 @@ Singleton {
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
       else if(event.type==="build-cleanup"){buildCleanup=Object.assign({},buildCleanup,{running:!!data.running,error:data.error||"",report:data.report||buildCleanup.report})}
       else if(event.type==="vault"){vault=Object.assign({},vault,{state:data})}
+      else if(event.type==="file-metadata-invalidated"||event.type==="rpc-session-state"){TerminalLinks.metadataEvent(root,data)}
       else if(event.type==="disk-space"){diskSpace=data;if(!data.low)diskNoticeDismissed=false}
       else if(event.type==="worktree-setup"){worktreeSetup={key:data.environment+"/"+data.thread,snapshot:data.snapshot||null}}
       else if(event.type==="command-output"){if(data.requestId===commandOutput.requestId)commandOutput=Object.assign({},commandOutput,{text:data.text!==undefined?data.text:commandOutput.text,running:!!data.running,error:data.error||"",truncated:!!data.truncated})}
@@ -2354,6 +2364,7 @@ Singleton {
       else if (event.type === "quotas") { quotaSnapshot=data;presentQuotas();quotaError = "" }
       else if (event.type === "messages" && data.serial === requestedSerial && panelVisible) {
         loadingMessages = false; messageError = data.result.error || ""
+        metadataCheckpoints = {environment:selectedEnvironment,thread:selectedThread,data:data.result.metadataCheckpoints || null}
         if(data.result.threadState){var shares=Object.assign({},guestShares);shares[selectedKey]=data.result.threadState.guestShare||null;guestShares=shares}
         if(data.result.threadState){var subs=data.result.threadState.subagents||[];if(JSON.stringify(subs)!==JSON.stringify(threadSubagents))threadSubagents=subs}
         if(data.result.threadState){var ts=data.result.threadState;if(ts.mergeBackTargetThreadId!==selectedWorkflow.target||ts.mergeBackRunId!==selectedWorkflow.runId||selectedWorkflow.key!==selectedKey)selectedWorkflow={key:selectedKey,target:ts.mergeBackTargetThreadId||"",runId:ts.mergeBackRunId||""};var cw=ts.contextWindow||null;if(JSON.stringify(cw)!==JSON.stringify(contextWindow))contextWindow=cw}

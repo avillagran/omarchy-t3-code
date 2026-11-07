@@ -21,6 +21,26 @@ Item {
   property var anchorItem: null
   property var bar: null
   required property var bridge
+  // The conversation remains mounted when its popup is hidden. Retain its
+  // metadata through visibility and virtualized-row changes, like ChatView.
+  // A selected-thread change destroys the old owner before mounting its successor.
+  property string metadataScope: bridge.selectedKey
+  onMetadataScopeChanged: { metadataLease.active = false; Qt.callLater(syncMetadataLease) }
+  function syncMetadataLease() {
+    metadataLease.active = bridge.previewWorkerReady && !!bridge.selectedThread
+  }
+  Connections { target: root.bridge; function onPreviewWorkerReadyChanged() { root.syncMetadataLease() } }
+  Loader {
+    id: metadataLease
+    active: false
+    sourceComponent: T3FileMetadataLease {
+      bridge: root.bridge
+      environment: root.bridge.selectedEnvironment
+      thread: root.bridge.selectedThread
+      cwd: root.bridge.selectedInfo.worktreePath || ((root.bridge.state.projects || []).find(function(p) { return p.id === root.bridge.selectedInfo.projectId && p.environmentId === root.bridge.selectedEnvironment }) || {}).workspaceRoot || ""
+      checkpoints: { var value = root.bridge.metadataCheckpoints; return value && value.environment === environment && value.thread === thread ? value.data : null }
+    }
+  }
   property var prTarget:null
   property bool pullRequestsOpen:false
   // Multi-purpose side panel next to the chat (T3SidePanel): browser,
@@ -385,7 +405,7 @@ Item {
     else if(command==="thread.editQueuedMessage"){var items=bridge.queue.items;bridge.beginQueueEdit(items[items.length-1]);composerPanel.inputField.forceActiveFocus()}
   }
   function localShortcutAvailable(sequence){return !nativeKeybindingsEnabled||!nativeShortcuts.claimsSequence(sequence)}
-  Component.onCompleted: { initialized = true;syncConversation() }
+  Component.onCompleted: { initialized = true;syncConversation();syncMetadataLease() }
   property bool panelOpen:false
   // Run as the desktop app (app/shell.qml). The bar popup ("panel") needs the
   // bar's place, which the app learns from the bar widget; without it, a window.
@@ -1025,7 +1045,7 @@ Item {
     }
   }
   Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.windowMode==="floating")root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
-  Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
+  Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;metadataLeaseId:metadataLease.item?metadataLease.item.leaseId:"";browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   Component{id:browserWorkspaceComponent;T3BrowserWorkspace{bridge:root.bridge;onClosed:root.closeSide();onPreferencesRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   PinnedKeyboardPanel {
     id: popup

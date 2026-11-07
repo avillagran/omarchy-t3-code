@@ -83,6 +83,9 @@ pub mod server_updates;
 pub mod reconnect;
 pub mod rpc_sessions;
 pub mod file_metadata_cache;
+pub mod file_metadata_admission;
+pub mod file_metadata_wire;
+pub mod file_metadata_runtime;
 /// Any attachment's bytes through its signed asset URL (assets.createUrl), at
 /// most `limit` bytes. The grant authorizes the GET itself, as for images,
 /// so no credential header is needed.
@@ -480,7 +483,7 @@ pub fn normalize_messages_cached(d:&Value,cache:&mut RenderCache)->Result<Value>
         // This thread's subagents, newest first: the composer bar shows the live
         // ones, the conversation cards and the Agents panel all of them.
         thread_state["subagents"]=json!(p["subagents"].as_array().into_iter().flatten().rev().take(48).map(subagent_summary).collect::<Vec<_>>());
-        Ok(json!({"threadState":thread_state,"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
+        Ok(json!({"threadState":thread_state,"metadataCheckpoints":p["checkpoints"].as_array().map(|rows|rows.iter().map(|checkpoint|json!({"id":checkpoint["id"],"status":checkpoint["status"],"files":checkpoint["files"]})).collect::<Vec<_>>()),"approvals":protocol::approvals::pending(&d["projection"]),"questions":protocol::questions::pending(&d["projection"]),"tasks":protocol::tasks::derive(&d["projection"]),"queue":queue,"planView":plan_workflow::view(p,rendered_markdown),"timeline":conversation_timeline(&d["projection"],&messages),"messages":messages,"activity":live_activity(&d["projection"]),"historyCursor":d["historyCursor"],"hasMoreHistory":truth(&d["hasMoreHistory"]),"payloadBudgetExceeded":truth(&d["payloadBudgetExceeded"])}))
 }
 
 /// One line of a subagent's free text (progress or result), whitespace collapsed.

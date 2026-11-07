@@ -7,6 +7,7 @@ import qs.Commons
 ColumnLayout {
   id: root
   objectName: "t3TerminalPanel"
+  property string metadataLeaseId: ""
   required property var bridge
   readonly property color fg: (Color.popups ? Color.popups.text : Color.foreground)
   readonly property var layout: bridge.terminalLayout
@@ -52,7 +53,7 @@ ColumnLayout {
       model: root.tab ? root.tab.terminalIds : []
       T3TerminalPane {
         required property string modelData
-        bridge: root.bridge; terminalId: modelData
+        bridge: root.bridge; metadataLeaseId: root.metadataLeaseId; terminalId: modelData
         current: !!root.tab && root.tab.activeTerminalId===modelData
         Controls.SplitView.fillWidth: true; Controls.SplitView.fillHeight: true
         Controls.SplitView.minimumWidth: Style.space(60); Controls.SplitView.minimumHeight: Style.space(60)
