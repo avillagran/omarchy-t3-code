@@ -6,6 +6,7 @@
     const api = globalThis.DevToolsAPI;
     if (!host || !api || typeof host.sendMessageToBackend !== "function" ||
         typeof api.dispatchMessage !== "function") throw Error("private_cdp_unavailable");
+    const minimalFrontend = globalThis.__o3PrivateCdpMinimal === true;
     const originalSend = host.sendMessageToBackend.bind(host);
     const originalDispatch = api.dispatchMessage.bind(api);
     // This is decoded debugger JSON, not the outer NDJSON envelope. Native
@@ -61,14 +62,17 @@
             pending.delete(value.id);
             value.id = request.id;
             const restored = JSON.stringify(value);
-            if (request.owner === "frontend") originalDispatch(restored);
+            if (request.owner === "frontend") { if (!minimalFrontend) originalDispatch(restored); }
             else enqueue(restored);
         } else {
-            originalDispatch(raw);
+            if (!minimalFrontend) originalDispatch(raw);
             enqueue(raw);
         }
     }
-    host.sendMessageToBackend = raw => send(raw, "frontend");
+    // Automation owns this hidden frontend exclusively. Suppressed frontend
+    // requests stay unanswered; do not fabricate protocol success. Opening real
+    // DevTools requires retiring this lease and replacing the inspector.
+    host.sendMessageToBackend = raw => { if (!minimalFrontend) send(raw, "frontend"); };
     api.dispatchMessage = receive;
     api.dispatchMessageChunk = (part, size) => {
         if (closed) return;

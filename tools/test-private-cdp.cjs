@@ -4,9 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname,'../ui/browser/private-cdp-bridge.js'),'utf8');
-function fixture() {
+function fixture(minimal=false) {
  const sent=[],frontend=[];
- const context=vm.createContext({InspectorFrontendHost:{sendMessageToBackend:raw=>sent.push(JSON.parse(raw))},DevToolsAPI:{dispatchMessage:raw=>frontend.push(JSON.parse(raw))}});
+ const context=vm.createContext({__o3PrivateCdpMinimal:minimal,InspectorFrontendHost:{sendMessageToBackend:raw=>sent.push(JSON.parse(raw))},DevToolsAPI:{dispatchMessage:raw=>frontend.push(JSON.parse(raw))}});
  vm.runInContext(source,context);
  return {context,sent,frontend,bridge:context.__o3PrivateCdp,api:context.DevToolsAPI,host:context.InspectorFrontendHost};
 }
@@ -44,5 +44,12 @@ const request=(id,method='Runtime.evaluate')=>JSON.stringify({id,method,params:{
 }
 {
  const f=fixture();assert.throws(()=>f.bridge.send('{'));assert.equal(f.bridge.drain().closed,true);
+}
+{
+ const f=fixture(true);f.host.sendMessageToBackend(request(1));assert.equal(f.sent.length,0);
+ f.bridge.send(request(1));assert.equal(f.sent.length,1);
+ f.api.dispatchMessage(JSON.stringify({id:f.sent[0].id,result:{value:'owned'}}));
+ f.api.dispatchMessage('{"method":"Page.fixture","params":{}}');
+ assert.equal(f.frontend.length,0);assert.equal(f.bridge.drain().messages.length,2);
 }
 console.log('PRIVATE_CDP_PASS: collision-safe owners, out-of-order replies, events, chunks, bounds, release');
