@@ -9,6 +9,13 @@
 #include <cstdio>
 #include <limits>
 #include <functional>
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/prctl.h>
+#include <signal.h>
+#include <cstdlib>
 
 static int checks = 0;
 #define CHECK(value) do { if (!(value)) { fprintf(stderr, "check failed line %d\n", __LINE__); return 1; } ++checks; } while(false)
@@ -23,6 +30,37 @@ static bool waitFor(const std::function<bool()> &condition) {
 }
 
 int main(int argc, char **argv) {
+  QByteArray liveBytes;
+  if (argc == 3 && QByteArray(argv[1]) == "--context-fd") {
+    bool valid = false;
+    const int fd = QByteArray(argv[2]).toInt(&valid);
+    struct stat status {};
+    const auto parent = getppid();
+    CHECK(valid && fd >= 64 && fstat(fd, &status) == 0 &&
+          S_ISFIFO(status.st_mode) && status.st_uid == geteuid());
+    CHECK(fcntl(fd, F_SETFD, FD_CLOEXEC) == 0);
+    CHECK(prctl(PR_SET_PDEATHSIG, SIGKILL) == 0 && getppid() == parent);
+    auto exact = [&](char *data, int length) {
+      QElapsedTimer timer; timer.start();
+      int offset = 0;
+      while (offset < length && timer.elapsed() < 3000) {
+        pollfd ready {fd, POLLIN, 0};
+        if (poll(&ready, 1, 50) <= 0) continue;
+        const auto count = read(fd, data+offset, size_t(length-offset));
+        if (count <= 0) return false;
+        offset += int(count);
+      }
+      return offset == length;
+    };
+    unsigned char header[4];
+    CHECK(exact(reinterpret_cast<char *>(header),4));
+    const quint32 size = (quint32(header[0])<<24) | (quint32(header[1])<<16) |
+                         (quint32(header[2])<<8) | header[3];
+    CHECK(size > 0 && size <= 16384);
+    liveBytes.resize(int(size));
+    CHECK(exact(liveBytes.data(),int(size)));
+    close(fd);
+  }
   QGuiApplication app(argc, argv);
   QQuickWindow window;
   window.setTitle("Owned native context query");
@@ -40,8 +78,8 @@ int main(int argc, char **argv) {
       "physical-surface-3", "owned-tab", "owned-frame"};
   BrowserInputContext::Geometry geometry{QRectF(0,29,1280,995), QRectF(10,20,640,497.5)};
   QFile receipt("/fixture/native-state.json");
-  CHECK(receipt.open(QIODevice::ReadOnly));
-  const auto native = QJsonDocument::fromJson(receipt.readAll()).object();
+  if (liveBytes.isEmpty()) CHECK(receipt.open(QIODevice::ReadOnly));
+  const auto native = QJsonDocument::fromJson(liveBytes.isEmpty()?receipt.readAll():liveBytes).object();
   const auto actual = native["state"].toObject();
   const auto actualRect = actual["rectangle"].toArray();
   const auto outer = native["bounds"].toObject();
@@ -49,12 +87,20 @@ int main(int argc, char **argv) {
   geometry.content = QRectF(content["x"].toDouble()-outer["x"].toDouble(),
       content["y"].toDouble()-outer["y"].toDouble(),
       content["width"].toDouble(),content["height"].toDouble());
+  if (!liveBytes.isEmpty()) {
+    const qreal scale = qMin(item.width()/geometry.content.width(),
+                            item.height()/geometry.content.height());
+    geometry.presentation = QRectF((item.width()-geometry.content.width()*scale)/2,
+        (item.height()-geometry.content.height()*scale)/2,
+        geometry.content.width()*scale,geometry.content.height()*scale);
+  }
   BrowserInputContext::State state;
   state.serial = quint32(actual["serial"].toInt());
   CHECK(actualRect.size()==4);
   state.caret = QRectF(actualRect[0].toDouble(),actualRect[1].toDouble(),
                       actualRect[2].toDouble(),actualRect[3].toDouble());
-  state.surrounding = QByteArray("A\xf0\x9f\x98\x80\xe6\x97\xa5\xe6\x9c\xacZQ");
+  state.surrounding = liveBytes.isEmpty() ? QByteArray("A\xf0\x9f\x98\x80\xe6\x97\xa5\xe6\x9c\xacZQ")
+      : QByteArray::fromBase64(actual["surroundingUtf8"].toString().toLatin1());
   state.cursorByte = actual["cursorByte"].toInt();
   state.anchorByte = actual["anchorByte"].toInt();
   state.hints = quint32(actual["contentHints"].toInt());
@@ -70,12 +116,17 @@ int main(int argc, char **argv) {
   CHECK(query.value(Qt::ImSurroundingText).toString().size() == 7);
   CHECK(query.value(Qt::ImCursorPosition).toInt() == 7);
   CHECK(query.value(Qt::ImAnchorPosition).toInt() == 7);
-  CHECK(query.value(Qt::ImCursorRectangle).toRectF() == QRectF(55,37,0,9));
+  const auto expectedRectangle = liveBytes.isEmpty() ? QRectF(55,37,0,9) :
+      QRectF(geometry.presentation.x()+(state.caret->x()-geometry.content.x())*geometry.presentation.width()/geometry.content.width(),
+             geometry.presentation.y()+(state.caret->y()-geometry.content.y())*geometry.presentation.height()/geometry.content.height(),
+             state.caret->width()*geometry.presentation.width()/geometry.content.width(),
+             state.caret->height()*geometry.presentation.height()/geometry.content.height());
+  CHECK(query.value(Qt::ImCursorRectangle).toRectF() == expectedRectangle);
   auto older = state;
   older.serial--;
   older.caret = QRectF(1,2,0,18);
   CHECK(!item.admitNativeContext(lease, geometry, older));
-  CHECK(item.inputMethodQuery(Qt::ImCursorRectangle).toRectF() == QRectF(55,37,0,9));
+  CHECK(item.inputMethodQuery(Qt::ImCursorRectangle).toRectF() == expectedRectangle);
   state.anchorByte = 5;
   CHECK(item.admitNativeContext(lease, geometry, state));
   CHECK(item.inputMethodQuery(Qt::ImAnchorPosition).toInt() == 3);
@@ -116,7 +167,8 @@ int main(int argc, char **argv) {
   CHECK(!item.contextAvailable());
   state.caret = QRectF(-5,-10,0,18);
   CHECK(item.admitNativeContext(lease, geometry, state));
-  CHECK(item.inputMethodQuery(Qt::ImCursorRectangle).toRectF().x() == 7.5);
+  CHECK(qAbs(item.inputMethodQuery(Qt::ImCursorRectangle).toRectF().x()-
+      (geometry.presentation.x()+(-5-geometry.content.x())*geometry.presentation.width()/geometry.content.width())) < .000001);
   state.caret = QRectF(0,0,-1,18);
   CHECK(!item.admitNativeContext(lease, geometry, state));
   state.caret = QRectF(std::numeric_limits<double>::infinity(),0,0,18);

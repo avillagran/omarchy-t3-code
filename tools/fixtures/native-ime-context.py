@@ -11,6 +11,9 @@ import time
 import socket
 import threading
 import importlib.util
+import fcntl
+import base64
+import struct
 
 assert resource.getrlimit(resource.RLIMIT_CORE) == (0, 0)
 for record in json.loads(pathlib.Path('/fixture/runtime.json').read_text())['files']:
@@ -35,6 +38,8 @@ proxy_cancel, proxy_ready = threading.Event(), threading.Event()
 proxy_errors, native_snapshots = [], []
 proxy_connections = []
 snapshot_lock = threading.Lock()
+native_current = [None]
+gui_display = gui_keyboard = gui_query = None
 typed_boundary = os.environ.get('O3_CONTEXT_TYPED_BOUNDARY') == '1'
 try:
     for _ in range(100):
@@ -78,9 +83,15 @@ try:
                     with snapshot_lock:
                         assert len(native_snapshots) < 128, 'bounded typed native context observations'
                         native_snapshots.append(metadata)
+                        native_current[0] = (connection_id, value)
+                def invalidate(object_id, _reason):
+                    with snapshot_lock:
+                        current = native_current[0]
+                        if current is not None and current[0] == connection_id and current[1].object_id == object_id:
+                            native_current[0] = None
                 boundary = boundary_module.ContextBoundary(
                     {'Owned native context baseline': 'owned-native-window'}, scoped_observe,
-                    lambda *_: None)
+                    invalidate)
                 transport.forward(upstream, downstream, (engine.pid, os.getuid()),
                                   (display.pid, os.getuid()), boundary,
                                   time.monotonic()+30, cancelled=proxy_cancel)
@@ -250,6 +261,56 @@ try:
                           'compositorSeesProxyCreator':True,
                           'connectionCount':len(proxy_connections),
                           'states':native_snapshots,'rawWireLogged':False}),flush=True)
+    if os.environ.get('O3_CONTEXT_QT_QUERY') == '1':
+        assert typed_boundary
+        with snapshot_lock:
+            assert native_current[0] is not None
+            connection_id, value = native_current[0]
+            assert value.text is not None and value.cursor_byte == value.anchor_byte == 13
+            current = value.metadata()
+            current['surroundingUtf8'] = base64.b64encode(value.text.encode()).decode('ascii')
+        # Separate GUI and engine seats keep the genuine native focused frame
+        # alive. No host display, clipboard or toolkit listener is adopted.
+        os.mkdir('/tmp/gui-runtime',0o700)
+        gui_environment = dict(os.environ,XDG_RUNTIME_DIR='/tmp/gui-runtime',
+            WLR_BACKENDS='headless',WLR_RENDERER='pixman',WLR_HEADLESS_OUTPUTS='1',
+            WLR_LIBINPUT_NO_DEVICES='1',LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib')
+        gui_display = subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],
+            env=gui_environment,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        for _ in range(100):
+            gui_sockets = [p for p in pathlib.Path('/tmp/gui-runtime').glob('wayland-*') if p.is_socket()]
+            if gui_sockets: break
+            assert gui_display.poll() is None, 'owned GUI compositor exited'
+            time.sleep(.02)
+        else:
+            raise AssertionError('owned GUI display unavailable')
+        gui_environment.update(WAYLAND_DISPLAY=gui_sockets[0].name,
+            QT_QPA_PLATFORM='wayland',QT_QUICK_BACKEND='software')
+        gui_keyboard = subprocess.Popen(['wtype','-k','Shift_L','-s','20000'],
+            env=gui_environment,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        reader, writer = os.pipe2(os.O_CLOEXEC)
+        private_reader = fcntl.fcntl(reader,fcntl.F_DUPFD_CLOEXEC,64)
+        os.close(reader)
+        try:
+            gui_query = subprocess.Popen(['/fixture/query','--context-fd',str(private_reader)],
+                env=gui_environment,pass_fds=(private_reader,),stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL)
+            body = json.dumps({'state':current,'bounds':final_state['bounds'],
+                               'contentBounds':final_state['contentBounds']}).encode()
+            assert 0 < len(body) <= 16384
+            packet = memoryview(struct.pack('>I',len(body))+body)
+            while packet:
+                packet = packet[os.write(writer,packet):]
+        finally:
+            os.close(private_reader)
+            os.close(writer)
+        output, _ = gui_query.communicate(timeout=10)
+        assert gui_query.returncode == 0 and len(output) <= 4096 and b'BROWSER_NATIVE_CONTEXT_QUERY_PASS' in output
+        print(json.dumps({'kind':'qt-live-query-result','realNativeCurrentState':True,
+            'dedicatedPrivateDescriptor':True,'actualQtQueryEvent':True,
+            'nativeSerial':value.serial,'connectionId':connection_id,
+            'surroundingBytes':len(value.text.encode()),'cursorByte':value.cursor_byte,
+            'nativeAndGuiSeatsSeparate':True,'textLogged':False}),flush=True)
     retire_popup()
     engine.stdin.write(b'quit\n')
     engine.stdin.flush()
@@ -285,7 +346,7 @@ finally:
                 display.wait(timeout=5)
             print(json.dumps({'kind':'fixture-teardown','popupRetirement':False,
                               'ownedCompositorKilled':True}),flush=True)
-    for child in [peer, engine, pointer, keyboard, display]:
+    for child in [peer, engine, pointer, keyboard, gui_query, gui_keyboard, gui_display, display]:
         if child is not None and child.poll() is None:
             child.terminate()
             child.wait(timeout=5)
