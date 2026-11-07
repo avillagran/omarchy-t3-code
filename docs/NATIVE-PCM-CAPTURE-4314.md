@@ -68,7 +68,7 @@ python3 tools/test-native-pcm-qt --component lifecycle \
 
 The lifecycle comparison executes the complete original `browserPcmCapture.ts`
 directly in Node and its compiled resource in QJSEngine. The same controlled
-browser primitives drive 25 sequences: preparation refusal, already-aborted
+media primitives drive 25 sequences: preparation refusal, already-aborted
 signals, permission refusal and late permission after cancellation, selected
 microphone constraints, module/resume failure or cancellation, exact buffered
 blob bytes, streaming feed, final flush, stop timeout, processor error, device
@@ -78,6 +78,16 @@ remaining timers, result/error strings and buffered bytes must match exactly.
 The module/resume cancellation cases assert that the intended asynchronous
 boundary was entered before cancellation. These synthetic browser primitives
 do not establish Qt device acquisition or actual microphone permission behavior.
+Cancellation uses the actual production `VoicePlatform.AbortController` in Qt
+and Node's actual `AbortController`, with identical explicit cancellation reasons.
+The media fixture does not supply a second imitation of the cancellation signal.
+
+For subsequent focused checks, `--reuse-node-artifact` can mount a retained
+private pinned Node snapshot without creating another persistent executable
+copy. The runner refuses symlink components, a different owner, multiple links
+or a mode other than `0500`. The pinned executable hash and file identity are
+checked before and after private execution. This does not reuse a Cargo target
+or authorize an executable from the live profile.
 
 The default `--component controller` continues to generate the previously
 accepted voice controller byte-for-byte. The compiler lock gains only the

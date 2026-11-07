@@ -17,6 +17,6 @@ for(let index=0;index<25;index++){
  factories.push(platform=>{Object.assign(context,platform);return module.namespace});
 }
 let next=0;
-const result=await runCaptureLifecycle(platform=>factories[next++](platform));
+const result=await runCaptureLifecycle(platform=>factories[next++](platform),()=>new AbortController());
 if(next!==25)throw Error('Changed lifecycle case count');
 process.stdout.write(JSON.stringify(result)+'\n');
