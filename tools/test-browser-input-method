@@ -6,7 +6,7 @@ from pathlib import Path
 root=Path(__file__).resolve().parent.parent
 assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
 out=Path(tempfile.mkdtemp(prefix='browser-input-method-',dir='/home/node/BuildCache/o3-desktop-next'));print('Qt IME evidence: '+str(out),flush=True)
-for name in ['browserinputitem.h','clipboardplatform.h','clipboardplatform.cpp','clipboardcohort.h','clipboardcohort.cpp','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
+for name in ['browserinputcontext.h','browserinputitem.h','clipboardplatform.h','clipboardplatform.cpp','clipboardcohort.h','clipboardcohort.cpp','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
 page=out/'page';page.mkdir()
 for name in ['T3BrowserPage.qml','T3BrowserInputMethod.qml']:(page/name).write_bytes((root/'ui/qml'/name).read_bytes())
 if options.compositor_ime:

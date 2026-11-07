@@ -1,7 +1,8 @@
 #pragma once
 // Receives actual Qt input-method events on the owning GUI connection. Engine
-// surrounding-text/caret queries are deliberately unavailable until supplied by
-// a faithful native engine boundary; no DOM-derived context is invented here.
+// surrounding-text/caret queries remain unavailable unless a trusted native
+// boundary supplies a matching connection/surface/tab/frame lease.
+#include "browserinputcontext.h"
 #include <QGuiApplication>
 #include <QInputMethod>
 #include <QInputMethodEvent>
@@ -15,24 +16,59 @@ class BrowserInputItem : public QQuickItem {
                  inputEnabledChanged)
   Q_PROPERTY(QString scopeToken READ scopeToken WRITE setScopeToken NOTIFY
                  scopeTokenChanged)
-  Q_PROPERTY(bool contextAvailable READ contextAvailable CONSTANT)
+  Q_PROPERTY(bool contextAvailable READ contextAvailable NOTIFY contextChanged)
   bool enabled = false, composing = false;
   QString token;
+  BrowserInputContext context;
+  QMetaObject::Connection windowContextConnection;
 
 public:
   explicit BrowserInputItem(QQuickItem *parent = nullptr) : QQuickItem(parent) {
     setFlag(ItemAcceptsInputMethod, true);
+    connect(this, &QQuickItem::windowChanged, this, [this](QQuickWindow *value) {
+      disconnect(windowContextConnection);
+      clearNativeContext();
+      if (value)
+        windowContextConnection = connect(value, &QWindow::activeChanged, this,
+            [this, value] { if (!value->isActive()) clearNativeContext(); });
+    });
+  }
+  ~BrowserInputItem() override {
+    disconnect(windowContextConnection);
+    disconnect(this, nullptr, this, nullptr);
   }
   bool inputEnabled() const { return enabled; }
   QString scopeToken() const { return token; }
-  bool contextAvailable() const { return false; }
+  bool contextAvailable() const { return context.available(); }
+  // C++ owner entry points, intentionally not invokable by page JavaScript.
+  void bindNativeContext(const BrowserInputContext::Binding &binding) {
+    context.bind(binding);
+    if (binding.scope != token)
+      context.clear();
+    notifyContext();
+  }
+  bool admitNativeContext(const BrowserInputContext::Binding &binding,
+                          const BrowserInputContext::Geometry &geometry,
+                          const BrowserInputContext::State &state) {
+    if (!enabled || binding.scope != token)
+      return false;
+    const bool admitted = context.admit(binding, geometry, state);
+    notifyContext();
+    return admitted;
+  }
+  void clearNativeContext() {
+    context.clear();
+    notifyContext();
+  }
   void setInputEnabled(bool value) {
     if (enabled == value)
       return;
     enabled = value;
     setActiveFocusOnTab(enabled);
-    if (!enabled)
+    if (!enabled) {
       composing = false;
+      clearNativeContext();
+    }
     emit inputEnabledChanged();
     if (hasActiveFocus() && window() && window()->isVisible() &&
         window()->isActive())
@@ -43,25 +79,42 @@ public:
       return;
     token = value;
     composing = false;
+    clearNativeContext();
     emit scopeTokenChanged();
   }
   QVariant inputMethodQuery(Qt::InputMethodQuery query) const override {
     if (query == Qt::ImEnabled)
       return enabled && isVisible() && window() && window()->isVisible() &&
              window()->isActive() && !token.isEmpty();
-    // Invalid variants distinguish an unavailable native query from empty text,
-    // a guessed caret rectangle, a password hint or an invented selection.
-    return {};
+    if (!enabled || !isVisible() || !hasActiveFocus() || !window() ||
+        !window()->isVisible() || !window()->isActive() || token.isEmpty())
+      return {};
+    return context.query(query);
   }
 
 signals:
   void inputEnabledChanged();
   void scopeTokenChanged();
+  void contextChanged();
   void input(const QString &scopeToken, const QVariantMap &event);
   void inputRejected(const QString &reason);
   void contextRequested(const QString &scopeToken);
 
 protected:
+  void notifyContext() {
+    emit contextChanged();
+    if (hasActiveFocus() && window() && window()->isActive())
+      QGuiApplication::inputMethod()->update(Qt::ImQueryInput | Qt::ImHints);
+  }
+  void focusOutEvent(QFocusEvent *event) override {
+    clearNativeContext();
+    QQuickItem::focusOutEvent(event);
+  }
+  void itemChange(ItemChange change, const ItemChangeData &value) override {
+    if (change == ItemVisibleHasChanged || change == ItemSceneChange)
+      clearNativeContext();
+    QQuickItem::itemChange(change, value);
+  }
   void focusInEvent(QFocusEvent *event) override {
     QQuickItem::focusInEvent(event);
     if (enabled && window() && window()->isVisible() && window()->isActive() &&
