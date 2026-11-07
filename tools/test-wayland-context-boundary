@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Check the typed boundary against actual native marshalling in private containers."""
+import fcntl
+import hashlib
+import json
+import pathlib
+import subprocess
+import tempfile
+
+root = pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman', 'info', '--format', '{{.Host.Security.Rootless}}'], text=True).strip() == 'true'
+output = pathlib.Path(tempfile.mkdtemp(prefix='wayland-context-wire-', dir='/home/node/BuildCache/o3-desktop-next'))
+print(output, flush=True)
+sources = ['wayland-context-boundary.py', 'wayland-context-boundary-check.py', 'wayland-context-wire-client.c']
+for name in sources:
+    (output / name).write_bytes((root / 'tools/fixtures' / name).read_bytes())
+pins = json.loads((root / 'tests/fixtures/wayland-context-wire-sources.json').read_text())
+for record in pins['protocols']:
+    source = pathlib.Path(record['path'])
+    assert not source.is_symlink() and source.is_file() and source.stat().st_size <= 131072
+    data = source.read_bytes()
+    assert hashlib.sha256(data).hexdigest() == record['sha256']
+    (output / (record['name'] + '.xml')).write_bytes(data)
+(output / 'protocol-sources.json').write_text(json.dumps(pins, indent=2) + '\n')
+build = ['podman', 'run', '--rm', '--pull=never', '--read-only', '--network=none',
+         '--userns=keep-id', '--cap-drop=ALL', '--security-opt=no-new-privileges',
+         '--ulimit=core=0:0', '--pids-limit=32', '--memory=256m',
+         '--tmpfs', '/tmp:rw,size=32m,mode=1777', '-v', '/usr:/usr:ro',
+         '-v', str(output)+':/fixture:rw', '--env', 'HOME=/tmp',
+         'docker.io/library/archlinux:latest', 'python3', '-c', r'''
+import pathlib,subprocess
+root=pathlib.Path('/fixture')
+for name in ['text-input-v3','xdg-shell']:
+ for mode,suffix in [('client-header','.h'),('private-code','.c')]:
+  subprocess.run(['wayland-scanner',mode,str(root/(name+'.xml')),str(root/(name+suffix))],check=True)
+flags=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client'],text=True).split()
+subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(root/'wayland-context-wire-client.c'),str(root/'text-input-v3.c'),str(root/'xdg-shell.c'),'-o',str(root/'wire-client'),*flags],check=True)
+''']
+with open('/var/tmp/o3-build/o3-parity-compile.lock', 'a') as lock:
+    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+    with (output / 'compile.log').open('w') as log:
+        subprocess.run(build, check=True, stdout=log, stderr=subprocess.STDOUT, timeout=30)
+for file in output.iterdir():
+    if file.is_file():
+        file.chmod(0o500 if file.name == 'wire-client' else 0o400)
+(output / 'artifacts.json').write_text(json.dumps({file.name:hashlib.sha256(file.read_bytes()).hexdigest()
+    for file in output.iterdir() if file.is_file()},indent=2)+'\n')
+run = ['podman', 'run', '--rm', '--pull=never', '--read-only', '--network=none',
+       '--userns=keep-id', '--cap-drop=ALL', '--security-opt=no-new-privileges',
+       '--ulimit=core=0:0', '--pids-limit=32', '--memory=256m',
+       '--tmpfs', '/tmp:rw,size=32m,mode=1777', '-v', '/usr:/usr:ro',
+       '-v', str(output)+':/fixture:ro', '--env', 'HOME=/tmp',
+       'docker.io/library/archlinux:latest', 'python3', '/fixture/wayland-context-boundary-check.py']
+(output / 'podman-command.json').write_text(json.dumps(run)+'\n')
+with (output / 'runtime.log').open('w') as log:
+    result = subprocess.run(run, stdout=log, stderr=subprocess.STDOUT, timeout=30)
+(output / 'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+raise SystemExit(result.returncode)

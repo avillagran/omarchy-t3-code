@@ -1,0 +1,22 @@
+{
+  "scope": "Native libwayland client marshalling checks only; synthetic server lifecycle, no compositor or engine acceptance.",
+  "installedPackage": "wayland-protocols 1.49-1",
+  "targetTextInputVersion": 1,
+  "chromiumVersionSource": "https://github.com/chromium/chromium/blob/92a6f15143569cf59b340472d0b5030465d95722/ui/ozone/platform/wayland/host/wayland_connection.cc",
+  "protocols": [
+    {
+      "name": "text-input-v3",
+      "path": "/usr/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml",
+      "sourceUrl": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/1.49/unstable/text-input/text-input-unstable-v3.xml",
+      "sha256": "160815cda13c285a30df1971d8f0a5b3aac07071537df59916d2f748b18e4f59",
+      "license": "MIT; retained in original protocol XML and generated private fixture headers"
+    },
+    {
+      "name": "xdg-shell",
+      "path": "/usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml",
+      "sourceUrl": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/1.49/stable/xdg-shell/xdg-shell.xml",
+      "sha256": "7ba7f9c8473deee674cb1f154a18abd0bb0cc072604fc055b0c15e459fc4c7df",
+      "license": "MIT; retained in original protocol XML and generated private fixture headers"
+    }
+  ]
+}

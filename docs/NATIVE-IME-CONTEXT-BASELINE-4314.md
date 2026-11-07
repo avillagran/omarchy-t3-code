@@ -121,3 +121,38 @@ permission, lazy bytes, GUI-seat hosting, native input, isolation and teardown
 would need their own concrete acceptance before selecting such a route. No new
 engine hosting mode, query fallback or public capability is implemented by this
 baseline.
+
+## Typed client-protocol boundary prototype
+
+The private `tools/test-wayland-context-boundary` runner now exercises the real
+libwayland-client marshaller against a typed observer of the public text-input-v3
+version-1 requests. The retained `wayland-context-wire-40gmb10k` receipt reports
+428 checks and exit 0. Server enter/leave/done messages in this test are synthetic
+protocol fixtures; it opens neither Electron nor a compositor. This is a protocol
+boundary proof, not a Qt input-method query acceptance result.
+
+The observer retains only current state and one pending commit. It distinguishes
+unknown surrounding text from a known empty string, validates UTF-8 byte offsets,
+and preserves signed surface-local cursor coordinates. Publication requires the
+matching native done serial, enabled context, entered surface, and an expected
+controller-owned window identity. Disable, leave, role destruction, connection
+closure, and identity changes invalidate that state. Raw wire and text are not
+logged. The socket owner must authenticate the engine separately; a title is
+never sufficient authorization.
+
+A production transport still needs an owned Unix-socket boundary that authenticates
+both peers, forwards opaque ancillary descriptors once with close-on-exec, and
+applies bounded backpressure without rewriting unrelated Wayland messages. The
+compositor sees the process that creates its proxy-side connection; this identity
+change must be accounted for explicitly rather than described as native engine
+peer credentials. The native surface-local rectangle must then be projected using
+actual window/content geometry and the admitted frame lease. The input-method
+popup rectangle is not a substitute for that rectangle.
+
+This proposed Wayland hosting route also changes the clipboard topology. The
+existing lazy X selection bridge is proven for the private X engine and does not
+automatically provide Wayland offers. Native permissions, lazy transfer, real GUI
+seat ownership, current-offer lifetime, and cross-tab revocation require a genuine
+Wayland data-device implementation and acceptance before selecting this route.
+The public selector remains disabled; neither DOM nor accessibility reconstruction
+is used to manufacture surrounding text or caret geometry.
