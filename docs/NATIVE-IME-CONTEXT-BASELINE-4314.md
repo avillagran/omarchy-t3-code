@@ -250,3 +250,37 @@ forwarding. The existing clipboard registration channel intentionally carries
 ownership metadata only and must not silently become a text-context channel.
 The current product factory still owns an X display; neither a product Wayland
 supervisor nor a Wayland lazy clipboard bridge is implied by this proof.
+
+## Dedicated GUI channel and real-frame admission
+
+The GUI member now has a separate bounded `SOCK_SEQPACKET` input-context channel.
+Registration transfers that channel and an engine pidfd using ownership metadata
+only. The registration owner verifies the actual worker, renderer/engine ancestry
+and engine pidfd. The channel independently verifies peer credentials and each
+message's kernel `SCM_CREDENTIALS`; it accepts no ancillary file descriptors in
+state traffic. EOF, malformed messages, backpressure on GUI requests or engine
+pidfd readiness retire its admitted contexts without replay. Its current-state
+set is bounded to 16 GUI mounts; incoming records are bounded to 16 KiB.
+
+`T3BrowserPage` provides only expected connection/surface/tab/frame identity and
+actual content/painted-frame geometry to its native item. These fields remain
+empty until a real frame producer supplies them. State packets cannot replace
+the expected binding. The item is disabled until its image is actually ready;
+this fixes the former fixture's assumption that a page with no frame can accept
+input. The stronger fixture first proves refusal without a frame, then loads an
+owned regular PNG and verifies actual page input, metadata and aspect-fit geometry.
+Ambiguous simultaneous mounts are refused and invalidate earlier state. Retiring
+a channel uses its retained guarded item pointer and matching binding, so another
+mount or frame cannot be cleared by an old channel. GUI focus/frame requests carry
+ownership metadata only in the reverse direction; text never enters QML.
+
+The frozen `browser-native-context-query-cy7jfpu7` proof passed 115 checks,
+including real per-message credentials, a foreign child sender, unknown rights,
+exact FD-count reclamation, engine pidfd death, EOF, stale frame and duplicate
+mount refusal. These actors are synthetic owned processes, not a claimed new
+Electron end-to-end result. `browser-input-method-ihecezii` separately passed the
+actual page/plugin IME suite with all compilation and runtime inside private
+containers. `tests/fixtures/native-input-channel-proof-4314.json` records exact
+source hashes and receipts. The new registration operation is compiled but still
+needs its worker caller and actual admission proof; the product Wayland factory,
+private compositor intake and native lazy clipboard migration remain unselected.

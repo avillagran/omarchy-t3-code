@@ -65,7 +65,7 @@ for name in ['native-ime-context-peer.c', 'native-ime-context.cjs', 'native-ime-
              'wayland-context-boundary.py', 'wayland-context-transport.py']:
     (output / name).write_bytes((root / 'tools/fixtures' / name).read_bytes())
 if options.qt_query:
-    for source in ['native/browser/browserinputcontext.h','native/browser/browserinputitem.h',
+    for source in ['native/browser/browserinputcontext.h','native/browser/browserinputitem.h','native/browser/browserinputchannel.h',
                    'tools/fixtures/browser-native-context-query.cpp']:
         (output / pathlib.Path(source).name).write_bytes((root / source).read_bytes())
 protocol = json.loads((output / 'input-method-unstable-v2.source.json').read_text())
@@ -121,6 +121,7 @@ if options.qt_query:
                      'tools/fixtures/wayland-context-boundary.py',
                      'tools/fixtures/wayland-context-transport.py',
                      'native/browser/browserinputcontext.h','native/browser/browserinputitem.h',
+                     'native/browser/browserinputchannel.h',
                      'tools/fixtures/browser-native-context-query.cpp']}},indent=2)+'\n')
 artifacts = {file.name: hashlib.sha256(file.read_bytes()).hexdigest()
              for file in output.iterdir() if file.is_file()}

@@ -42,7 +42,7 @@ if options.reuse_manager_build:
   elif file.suffix in ['.node','.cjs','.js'] and file.name!='native-electron-services.cjs':continue
   else:current=root/'ui/browser'/file.name
   if file.read_bytes()!=current.read_bytes():raise SystemExit('Native assets changed since reviewed immutable build')
- for name in ['browserinputcontext.h','browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:
+ for name in ['browserinputchannel.h','browserinputcontext.h','browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:
   if (parent/name).read_bytes()!=(root/'native/browser'/name).read_bytes():raise SystemExit('Native GUI member changed since immutable build')
  for name in ['private-virtual-pointer.c','wayland-input-method-peer.c','input-method-unstable-v2.xml']:
   if (parent/name).read_bytes()!=(root/'tools/fixtures'/name).read_bytes():raise SystemExit('Private input helper changed since immutable build')
@@ -92,7 +92,7 @@ if options.reuse_manager_build:
  with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=125)
  (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
 (out/'source-revision.json').write_text(json.dumps({'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()})+'\n')
-for name in ['browserinputcontext.h','browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
+for name in ['browserinputchannel.h','browserinputcontext.h','browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
 for name in ['browser-platform-owned.cpp','browser-platform-peer.py','browser-platform-process.qml','electron-clipboard-owner.cpp']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
 (out/'T3BrowserClipboardPlatform.qml').write_bytes((root/'ui/qml/T3BrowserClipboardPlatform.qml').read_bytes())
 if options.manager_server:

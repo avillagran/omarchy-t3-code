@@ -9,6 +9,9 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QVariantMap>
+#include <QHash>
+#include <QPointer>
+#include <QList>
 
 class BrowserInputItem : public QQuickItem {
   Q_OBJECT
@@ -17,11 +20,48 @@ class BrowserInputItem : public QQuickItem {
   Q_PROPERTY(QString scopeToken READ scopeToken WRITE setScopeToken NOTIFY
                  scopeTokenChanged)
   Q_PROPERTY(bool contextAvailable READ contextAvailable NOTIFY contextChanged)
+  Q_PROPERTY(QVariantMap nativeBinding READ nativeBinding WRITE setNativeBinding NOTIFY nativeBindingChanged)
+  Q_PROPERTY(QRectF nativeContentRect READ nativeContentRect WRITE setNativeContentRect NOTIFY nativeGeometryChanged)
+  Q_PROPERTY(QRectF framePresentation READ framePresentation WRITE setFramePresentation NOTIFY nativeGeometryChanged)
   bool enabled = false, composing = false;
   QString token;
   BrowserInputContext context;
   QMetaObject::Connection windowContextConnection;
   QMetaObject::Connection windowVisibilityConnection;
+  QVariantMap bindingMetadata;
+  BrowserInputContext::Geometry nativeGeometry;
+  bool acceptsContext() const {
+    return enabled && isVisible() && hasActiveFocus() && window() &&
+      window()->isVisible() && window()->isActive() && !token.isEmpty();
+  }
+  static QHash<QString, QList<QPointer<BrowserInputItem>>> &mounts() {
+    static QHash<QString, QList<QPointer<BrowserInputItem>>> values;
+    return values;
+  }
+  void unmount() {
+    auto found = mounts().find(token);
+    if (found == mounts().end()) return;
+    found->removeAll(this);
+    const auto remaining=*found;
+    if (remaining.isEmpty()) mounts().erase(found);
+    else if (remaining.size()==1 && remaining.first() && remaining.first()->acceptsContext())
+      emit remaining.first()->contextRequested(remaining.first()->token);
+  }
+  void bindMetadata() {
+    BrowserInputContext::Binding value;
+    value.scope = token;
+    if (bindingMetadata.size() == 4) {
+      auto field = [&](const char *key) {
+        const auto entry = bindingMetadata.value(QString::fromLatin1(key));
+        const auto text = entry.toString();
+        return entry.metaType().id() == QMetaType::QString && text.size() <= 256 ? text : QString();
+      };
+      value.connection=field("connection");value.surface=field("surface");
+      value.tab=field("tab");value.frame=field("frame");
+    }
+    bindNativeContext(value);
+    if (acceptsContext()) emit contextRequested(token);
+  }
 
 public:
   explicit BrowserInputItem(QQuickItem *parent = nullptr) : QQuickItem(parent) {
@@ -32,13 +72,15 @@ public:
       clearNativeContext();
       if (value) {
         windowContextConnection = connect(value, &QWindow::activeChanged, this,
-            [this, value] { if (!value->isActive()) clearNativeContext(); });
+            [this, value] { if (!value->isActive()) clearNativeContext();
+              else if (acceptsContext()) emit contextRequested(token); });
         windowVisibilityConnection = connect(value, &QWindow::visibleChanged, this,
             [this](bool visible) { if (!visible) clearNativeContext(); });
       }
     });
   }
   ~BrowserInputItem() override {
+    unmount();
     disconnect(windowContextConnection);
     disconnect(windowVisibilityConnection);
     disconnect(this, nullptr, this, nullptr);
@@ -46,6 +88,57 @@ public:
   bool inputEnabled() const { return enabled; }
   QString scopeToken() const { return token; }
   bool contextAvailable() const { return context.available(); }
+  bool nativeContextInteractive() const { return acceptsContext(); }
+  static BrowserInputItem *nativeMount(const QString &scope) {
+    const auto values = mounts().value(scope);
+    BrowserInputItem *found = nullptr;
+    for (const auto &value : values) {
+      if (value && value->scopeToken() == scope) {
+        if (found) return nullptr; // Ambiguous GUI mounts are never last-writer-wins.
+        found = value;
+      }
+    }
+    return found;
+  }
+  QVariantMap nativeBinding() const { return bindingMetadata; }
+  void setNativeBinding(const QVariantMap &value) {
+    QVariantMap admitted;
+    if (value.size() == 4) {
+      for (const auto *key : {"connection","surface","tab","frame"}) {
+        const auto entry = value.value(QString::fromLatin1(key));
+        const auto text = entry.toString();
+        if (entry.metaType().id() != QMetaType::QString || text.isEmpty() || text.size() > 256) {
+          admitted.clear();
+          break;
+        }
+        admitted.insert(QString::fromLatin1(key),text);
+      }
+    }
+    if (bindingMetadata == admitted) return;
+    bindingMetadata = admitted;
+    bindMetadata();
+    emit nativeBindingChanged();
+  }
+  QRectF nativeContentRect() const { return nativeGeometry.content; }
+  QRectF framePresentation() const { return nativeGeometry.presentation; }
+  void setNativeContentRect(const QRectF &value) {
+    if (nativeGeometry.content == value) return;
+    nativeGeometry.content = value;
+    clearNativeContext();
+    emit nativeGeometryChanged();
+    if (acceptsContext()) emit contextRequested(token);
+  }
+  void setFramePresentation(const QRectF &value) {
+    if (nativeGeometry.presentation == value) return;
+    nativeGeometry.presentation = value;
+    clearNativeContext();
+    emit nativeGeometryChanged();
+    if (acceptsContext()) emit contextRequested(token);
+  }
+  bool admitBoundNativeContext(const BrowserInputContext::Binding &binding,
+                              const BrowserInputContext::State &state) {
+    return admitNativeContext(binding, nativeGeometry, state);
+  }
   // C++ owner entry points, intentionally not invokable by page JavaScript.
   void bindNativeContext(const BrowserInputContext::Binding &binding) {
     context.bind(binding);
@@ -56,7 +149,7 @@ public:
   bool admitNativeContext(const BrowserInputContext::Binding &binding,
                           const BrowserInputContext::Geometry &geometry,
                           const BrowserInputContext::State &state) {
-    if (!enabled || binding.scope != token)
+    if (!acceptsContext() || binding.scope != token)
       return false;
     const bool admitted = context.admit(binding, geometry, state);
     notifyContext();
@@ -82,6 +175,7 @@ public:
       clearNativeContext();
     }
     emit inputEnabledChanged();
+    if (acceptsContext()) emit contextRequested(token);
     if (hasActiveFocus() && window() && window()->isVisible() &&
         window()->isActive())
       QGuiApplication::inputMethod()->update(Qt::ImEnabled);
@@ -89,9 +183,17 @@ public:
   void setScopeToken(const QString &value) {
     if (token == value)
       return;
+    unmount();
     token = value;
+    if (!token.isEmpty()) {
+      mounts()[token].append(this);
+      const auto peers=mounts().value(token);
+      if (peers.size()>1)
+        for (const auto &peer : peers) if (peer) peer->clearNativeContext();
+    }
     composing = false;
     clearNativeContext();
+    if (!bindingMetadata.isEmpty()) bindMetadata();
     emit scopeTokenChanged();
   }
   QVariant inputMethodQuery(Qt::InputMethodQuery query) const override {
@@ -108,6 +210,8 @@ signals:
   void inputEnabledChanged();
   void scopeTokenChanged();
   void contextChanged();
+  void nativeBindingChanged();
+  void nativeGeometryChanged();
   void input(const QString &scopeToken, const QVariantMap &event);
   void inputRejected(const QString &reason);
   void contextRequested(const QString &scopeToken);

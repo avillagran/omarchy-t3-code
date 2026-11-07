@@ -3,6 +3,7 @@
 #include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QInputMethodEvent>
+#include <QImage>
 #include <QJSValue>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -149,12 +150,18 @@ BrowserInputItem {
   CHECK(records().size() == 6);
   item->setParentItem(nullptr);
   delete item;
+  QImage ownedFrame(16,16,QImage::Format_ARGB32_Premultiplied);
+  ownedFrame.fill(Qt::white);
+  CHECK(ownedFrame.save("/tmp/owned-browser-ime-frame.png"));
   QQmlComponent pageComponent(&engine);
   pageComponent.setData(R"(import QtQuick
 import "page" as Product
 Product.T3BrowserPage {
  width:320;height:240;interactive:true
- page:({requestId:"page-first",nativeInput:true})
+ page:({requestId:"page-first",nativeInput:true,
+   nativeInputBinding:{connection:"fixture-connection",surface:"fixture-surface",tab:"fixture-tab",frame:"fixture-frame"},
+   nativeInputContent:{x:0,y:0,width:16,height:16}})
+ function showFixtureFrame(){page=Object.assign({},page,{url:"file:///tmp/owned-browser-ime-frame.png",width:16,height:16})}
  property var records:[]
  onInput:function(token,event){records=records.concat([{token:token,event:event}]);if(event.text==="rotate")page=Object.assign({},page,{requestId:"page-replacement"})}
 })",
@@ -199,6 +206,13 @@ Product.T3BrowserPage {
     }
   }
   CHECK(mounted);
+  CHECK(!native->property("inputEnabled").toBool());
+  CHECK(native->property("nativeBinding").toMap().isEmpty());
+  CHECK(QMetaObject::invokeMethod(page,"showFixtureFrame"));
+  CHECK(waitFor([&] { return page->property("ready").toBool() && native->property("inputEnabled").toBool(); }));
+  CHECK(native->property("nativeBinding").toMap().value("connection") == "fixture-connection");
+  CHECK(native->property("nativeContentRect").toRectF() == QRectF(0,0,16,16));
+  CHECK(native->property("framePresentation").toRectF() == QRectF(40,0,240,240));
   native->forceActiveFocus();
   CHECK(waitFor([&] { return native->hasActiveFocus(); }));
   QInputMethodEvent pagePreedit(QString::fromUtf8("かな"), {});

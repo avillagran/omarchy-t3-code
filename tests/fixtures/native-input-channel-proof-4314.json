@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "scope": "Owned GUI context channel and frame admission; no product Wayland factory/clipboard activation",
+  "cases": [
+    {
+      "artifact": "browser-native-context-query-cy7jfpu7",
+      "scope": "115 real Qt/query and authenticated seqpacket lifetime/FD checks; synthetic worker/engine actors",
+      "returncode": 0,
+      "receipts": {
+        "artifacts.json": "6dcabdede71a3ee6e83d54d63d1c2633c0c727aba8366428ff8ca1a68f1cfaea",
+        "runtime.log": "3e7af367abab586b5696be5440da957ae6e3db7f872e4aadd4b11e0873ccdfb7",
+        "compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "artifact": "browser-input-method-ihecezii",
+      "scope": "Actual T3BrowserPage and rebuilt native plugin; private build/runtime; registration operation compiled but new worker caller not yet exercised",
+      "returncode": 0,
+      "receipts": {
+        "artifacts.json": "d643208a93f66cc65dfda94a08a9aefc164b41998f8fcbd283b379d3ee7efff0",
+        "runtime.log": "c8229981f28c64e41a9c7f76b62dd75f4a5c410af3a211229d4813729b2aabd1",
+        "compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "sourceHashes": {
+    "native/browser/browserinputchannel.h": "8c1b0e22db383e7dc9f9de47d7bc0fbdae5c8a3f9f3bcc8cd87f44f41703ad87",
+    "native/browser/browserinputcontext.h": "dc8ed83dabc252ca5ef19ca00c38a1086531cbe2e401e2b2594554e915518430",
+    "native/browser/browserinputitem.h": "a4f54b7323676355f989dd88fa79055e15452049edb490a9b283f5c84dd6ecf7",
+    "native/browser/clipboardplatform.cpp": "da79f19eff77e2710945d47692d14a4e6ec1307bd56c153b0310a743ab550323",
+    "ui/qml/T3BrowserPage.qml": "2028bdd4c90f73b09ab6686943230039f308d599065a8a6a78385b4527990dfd",
+    "tools/fixtures/browser-native-context-query.cpp": "12ba1109a34b1d84cb7101e06b39ebc1386394048f3acd1f20ff5a19679bc11e",
+    "tools/fixtures/browser-input-method.cpp": "5e34988904b5b08e7458db10b175b23a46159c7964716470da9f9e3893257689",
+    "tools/test-browser-input-method": "726471c5a626f442ca2ace5c552f58a37303edd199bac44f77375b76b2e94b16",
+    "tools/test-browser-native-context-query": "c5d7409b638b32dc55d28f7d8e05c05c7134b5715e4cbe38620a80968870707a"
+  },
+  "recursiveFixtureCleanup": false,
+  "hostBuildOrRuntime": false,
+  "publicSelectorEnabled": false
+}

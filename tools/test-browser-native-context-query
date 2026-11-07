@@ -12,7 +12,7 @@ root = pathlib.Path(__file__).resolve().parent.parent
 assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip() == 'true'
 output = pathlib.Path(tempfile.mkdtemp(prefix='browser-native-context-query-',dir='/home/node/BuildCache/o3-desktop-next'))
 print(output,flush=True)
-for source in ['native/browser/browserinputitem.h','native/browser/browserinputcontext.h',
+for source in ['native/browser/browserinputitem.h','native/browser/browserinputcontext.h','native/browser/browserinputchannel.h',
                'tools/fixtures/browser-native-context-query.cpp']:
     (output / pathlib.Path(source).name).write_bytes((root / source).read_bytes())
 ledger = json.loads((root/'tests/fixtures/native-ime-context-baseline-4314.json').read_text())
