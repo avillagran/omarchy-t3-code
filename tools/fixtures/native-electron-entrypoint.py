@@ -137,14 +137,26 @@ try:
     session = command('Target.attachToTarget',{'targetId':targets[0]['targetId'],'flatten':True})['sessionId']
     for method,params,owner in [('Page.enable',{},session),('Target.setDiscoverTargets',{'discover':True},None),('Target.setAutoAttach',{'autoAttach':True,'waitForDebuggerOnStart':False,'flatten':True},None),('Page.getFrameTree',{},session),('Network.enable',{},session)]:
         command(method,params,owner)
+    metadata='({url:location.href,title:document.title,readyState:document.readyState})'
+    assert hashlib.sha256(metadata.encode()).hexdigest()=='41dc123e051c0e7f367837b4eb43d0ee4026318823d2bafe4a3ae660fe847ff4'
+    for _ in range(2):
+        command('Page.getNavigationHistory',{},session)
+        command('Runtime.evaluate',{'expression':metadata,'returnByValue':True,'timeout':1000},session)
     stdin({'type':'resize','width':640,'height':480})
     stdin({'type':'activate',**key,'surfaceId':'entrypoint-view','automation':True,'automationInstance':instance})
+    command('Page.getNavigationHistory',{},session)
+    targets = command('Target.getTargets')['targetInfos']
+    session = command('Target.attachToTarget',{'targetId':targets[0]['targetId'],'flatten':True})['sessionId']
+    for method,params,owner in [('Page.enable',{},session),('Target.setDiscoverTargets',{'discover':True},None),('Target.setAutoAttach',{'autoAttach':True,'waitForDebuggerOnStart':False,'flatten':True},None),('Page.getFrameTree',{},session),('Network.enable',{},session)]:
+        command(method,params,owner)
+    command('Page.getNavigationHistory',{},session)
     frame_counts=[]
     for index in range(7):
         host='127.0.0.1' if index<2 else 'localhost'
         if index in [0,2,3]:offer('instrumented-text', {0:'native denied offer',2:'native permission allowed one',3:'native permission allowed two'}[index])
         if index==5:offer('custom-binary')
         command('Page.navigate',{'url':f'http://{host}:{server.server_port}/read-{index}'},session)
+        if index==0:command('Runtime.evaluate',{'expression':metadata,'returnByValue':True,'timeout':1000},session)
         pump(lambda:not reports.empty())
         ready = reports.get_nowait()
         if index<2:assert ready['outcome']=='denied',ready
@@ -154,6 +166,7 @@ try:
         else:assert ready['outcome']=='ime-page-ready'
         frame_counts.append(sum(row.get('type')=='frame' for row in events))
     assert permission_count==2
+    print('ACTUAL_NATIVE_ENTRYPOINT_DOUBLE_INIT_METADATA_REPLAY 3',flush=True)
     print('ACTUAL_NATIVE_ENTRYPOINT_CLIPBOARD_REPLAY 6',flush=True)
     print('ACTUAL_NATIVE_ENTRYPOINT_NAVIGATION_REPLAY 7',flush=True)
     pump(lambda:any(row.get('type')=='frame' for row in events))
