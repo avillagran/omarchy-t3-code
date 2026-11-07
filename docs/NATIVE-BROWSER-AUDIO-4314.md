@@ -23,8 +23,8 @@ bound to the exact capture frame, current capture lifetime and current user
 decision. A preceding settings read or remembered destination alone cannot
 authorize audio transfer. The host must independently recheck current server
 authority and the audio consent grant before every SDK feed. The process host
-below implements the frame and permission transport. The Rust supervisor,
-consent store, permission UI and SDK consumers remain to be connected.
+below implements the frame and permission transport. Current server authority, consent store, permission UI and SDK consumers remain
+to be connected.
 No application preference or public capability selects this owner yet.
 
 ## Runtime evidence
@@ -93,9 +93,8 @@ Other media/frame requests and stale decisions cannot authorize capture.
 and waits for actual track/context closure before its successful receipt and
 socket flush. Audio queued before closure is discarded. Parent loss, malformed
 wire data and foreign capture identity exit with failure and manufacture no
-successful cleanup receipt. The future Rust supervisor must retain its own
-pidfd/process-group deadline and uncertainty handling; process exit alone is
-not a graceful resource receipt.
+successful cleanup receipt. The Rust supervisor below retains its own pidfd/process-group deadline and
+uncertainty handling; process exit alone is not a graceful resource receipt.
 
 `tools/test-native-pcm-host` builds only the unchanged descriptor addon on the
 host under the compile lock; all executable checks use the same private
@@ -140,5 +139,59 @@ actual original runtime and actual helper snapshots. They cover all 72 runtime
 files, six helper files, repeat-directory refusal, modified-snapshot refusal,
 an owned-directory symlink, incorrect digest, writable addon and an owned
 hardlink. This example opens no microphone or child process. It accepts artifact
-admission only; the Rust process supervisor, cancellation/receipt wiring, current
-server authority, consent and SDK integration remain to be implemented.
+admission only. The process supervisor has separate physical evidence below;
+current server authority, consent and SDK integration remain to be implemented.
+
+
+## Rust process supervisor
+
+`src/voice_capture/mod.rs` consumes the admitted Runtime/Assets and a retained
+native `Display` with sealed Xauthority. It creates a fresh private capture
+directory and one private socket pair, starts a new process session, captures a
+pidfd and keeps the leader unreaped until its terminal group fence. The child
+receives a minimal environment, its captured peer PID/descriptor and one random
+capture identity. No server credential, model path or transport destination is
+forwarded. The ordinary factory enables no fake device or sandbox bypass. The
+separate synthetic factory is restricted to an explicit container fixture.
+
+Preparation, recording, stop and permission decisions are typed operations with
+bounded slots and a single ordered writer. The incremental reader retains partial
+frames across polling deadlines, validates identity/kind/length/phase, finite
+Float32 PCM and cumulative size, and correlates stop byte counts. Actual runtime
+and helper identities are rechecked before audio reaches the caller. The PCM
+event implements neither Serialize nor Debug; it is not a status payload.
+
+A cloneable cancellation handle submits one fixed urgent close with a reserved
+request ID. It cannot change mode, device, capture or server scope. Fresh
+commands stop immediately, queued audio is discarded, and the owner drains the
+real close acknowledgement. Cancellation during a buffered stop also discards
+its already queued ordinary result, preserving the close receipt. A successful
+close requires the exact native acknowledgement, observed pidfd exit, terminal
+group fence before reap, and successful leader status. Other outcomes remain
+sticky Unknown. Startup errors after creating a process carry typed
+`StartupFailure.cleanup`; unresolved startup is not silently treated as closed.
+The parent application must preserve that uncertainty and refuse resource reuse.
+
+The process is killable; blocking network inference is not performed on its
+reader or in this module. Drop attempts the same bounded close. Constructor
+failure has an independent process guard and never signals a numeric group after
+reaping can release its identity. An exceptional pending reap uses a separate
+resource-only reaper, not an unkillable microphone/inference thread.
+
+`tools/test-voice-capture-process` runs the actual Rust owner, original native
+producer and real Chromium graph inside the private container. Eight cases cover
+streaming, buffered capture, denied permission, cross-thread cancellation during
+permission and recording, cancellation during buffered stop, Drop and invalid
+native-addon startup. The normal cases observe real leader exit and confirmed
+closure; the invalid startup explicitly remains Unknown. No hardware, host
+profile, server or credentials are used. Selected Clippy passes, and the
+separate dispatcher/notices checkpoint also passes strict all-target compilation
+and four reviewed runtime tests. Its dual-credential fixture verifies status,
+models and explicit preparation use the same write identity as preflight, while
+current revocation prevents those operations. The SDK's boolean is a binary/JSON
+content flag, not a credential selector.
+
+No GUI action or public capability creates this supervisor yet. The next real
+consumer must bind the existing Backend/Composer voice controller, independent
+audio/cleanup consent, current request authority and the exact SDK session;
+every audio send still requires its own fresh consent/authority check.
