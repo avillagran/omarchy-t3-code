@@ -21,20 +21,26 @@ class BrowserInputItem : public QQuickItem {
   QString token;
   BrowserInputContext context;
   QMetaObject::Connection windowContextConnection;
+  QMetaObject::Connection windowVisibilityConnection;
 
 public:
   explicit BrowserInputItem(QQuickItem *parent = nullptr) : QQuickItem(parent) {
     setFlag(ItemAcceptsInputMethod, true);
     connect(this, &QQuickItem::windowChanged, this, [this](QQuickWindow *value) {
       disconnect(windowContextConnection);
+      disconnect(windowVisibilityConnection);
       clearNativeContext();
-      if (value)
+      if (value) {
         windowContextConnection = connect(value, &QWindow::activeChanged, this,
             [this, value] { if (!value->isActive()) clearNativeContext(); });
+        windowVisibilityConnection = connect(value, &QWindow::visibleChanged, this,
+            [this](bool visible) { if (!visible) clearNativeContext(); });
+      }
     });
   }
   ~BrowserInputItem() override {
     disconnect(windowContextConnection);
+    disconnect(windowVisibilityConnection);
     disconnect(this, nullptr, this, nullptr);
   }
   bool inputEnabled() const { return enabled; }
@@ -55,6 +61,12 @@ public:
     const bool admitted = context.admit(binding, geometry, state);
     notifyContext();
     return admitted;
+  }
+  bool retireNativeContext(const BrowserInputContext::Binding &binding) {
+    if (!context.matches(binding))
+      return false;
+    clearNativeContext();
+    return true;
   }
   void clearNativeContext() {
     context.clear();

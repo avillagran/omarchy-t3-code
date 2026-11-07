@@ -111,6 +111,7 @@ public:
     return true;
   }
   bool available() const { return current.has_value(); }
+  bool matches(const Binding &source) const { return binding.valid() && binding == source; }
   QVariant nativeHints() const { return current ? QVariant(current->hints) : QVariant(); }
   QVariant nativePurpose() const { return current ? QVariant(current->purpose) : QVariant(); }
   QVariant query(Qt::InputMethodQuery kind) const {

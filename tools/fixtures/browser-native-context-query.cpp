@@ -87,6 +87,7 @@ int main(int argc, char **argv) {
     foreign = lease;
     foreign.*member = "foreign";
     CHECK(!item.admitNativeContext(foreign, geometry, state));
+    CHECK(!item.retireNativeContext(foreign));
     CHECK(item.contextAvailable());
   }
   state.cursorByte = 2;
