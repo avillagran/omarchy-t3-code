@@ -10,7 +10,7 @@ ColumnLayout {
  readonly property var client:store.client || ({})
  readonly property var github:store.github || ({environments:[]})
  readonly property var machines:(bridge.connectionSettings || {}).environments || []
- readonly property var enabledMachines:((bridge.connectionSettings || {}).localEnabled!==false&&!!store.primaryEnvironmentId?[{id:"local",name:"T3 Code"}]:[]).concat(machines.filter(function(machine){return machine.enabled}))
+ readonly property var enabledMachines:((bridge.connectionSettings || {}).localEnabled!==false&&!!store.primaryEnvironmentId?[{id:"local",name:(((bridge.state || {}).environments || []).find(function(e){return e.id==="local"}) || {}).name || "T3 Code"}]:[]).concat(machines.filter(function(machine){return machine.enabled}))
  readonly property var rows:(github.environments || []).filter(function(entry){return enabledMachines.some(function(machine){return root.canonicalId(machine.id)===entry.environmentId})})
  property bool balancingExpanded:false
  property bool sharingExpanded:false

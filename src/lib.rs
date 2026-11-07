@@ -43,6 +43,7 @@ pub mod scheduled_tasks;
 pub mod storage_cleanup;
 pub mod mcp_apps;
 pub mod provider_setup;
+pub mod provider_login;
 pub mod agent_sessions;
 pub mod process_diagnostics;
 pub mod local_servers;

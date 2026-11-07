@@ -32,6 +32,33 @@ ColumnLayout {
  Component.onCompleted:run("read")
  T3ConnectionNotice{Layout.fillWidth:true;bridge:root.bridge;onSettingsRequested:root.run("read")}
  Text{Layout.fillWidth:true;Layout.margins:Style.space(12);visible:!!text;text:root.store.error?T3I18n.error(root.store.error):root.store.busy?T3I18n.tr("Loading…"):"";color:root.store.error?Color.urgent:root.muted;wrapMode:Text.Wrap;font.pixelSize:Style.font.caption}
+ T3PreferenceSection{Layout.fillWidth:true;title:"OmaBridge";icon:"omabridge"
+  body:Component{ColumnLayout{width:parent.width;spacing:0
+   T3ConnectionOmaBridge{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge;environments:root.store.environments || []}
+   RowLayout{Layout.fillWidth:true;Layout.margins:Style.space(14)
+    ColumnLayout{Layout.fillWidth:true
+     Text{Layout.fillWidth:true;text:T3I18n.tr("Show OmaBridge in the bar");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+     Text{Layout.fillWidth:true;text:T3I18n.tr("A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+    }
+    T3Switch{objectName:"omabridgeIndicatorPreference";checked:(root.bridge.viewState || {}).omabridgeIndicator===true;Accessible.name:T3I18n.tr("Show OmaBridge in the bar");onToggled:root.bridge.rememberView({omabridgeIndicator:checked})}
+   }
+   T3PickerButton{id:connectionAssistants;objectName:"connectionAssistants";Layout.fillWidth:true;Layout.margins:Style.space(14);primary:false;checkable:true;checked:false;text:(checked?"▾ ":"▸ ")+T3I18n.tr("Connection assistants")}
+   ColumnLayout{Layout.fillWidth:true;Layout.leftMargin:Style.space(14);Layout.rightMargin:Style.space(14);visible:connectionAssistants.checked;spacing:Style.space(10)
+    RowLayout{Layout.fillWidth:true;spacing:Style.space(8)
+     Text{text:T3I18n.tr("Run on");color:root.muted;font.pixelSize:Style.font.caption}
+     Controls.ComboBox{id:installWhere;objectName:"omabridgeInstallWhere";Layout.fillWidth:true;model:installDialog.environments.map(function(e){return e.name});currentIndex:installDialog.defaultEnvironment;Accessible.name:T3I18n.tr("Run on")}
+    }
+    Text{Layout.fillWidth:true;text:T3I18n.tr("Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+    Flow{Layout.fillWidth:true;spacing:Style.space(8)
+     T3PickerButton{objectName:"omabridgeInstallOpen";text:T3I18n.tr("Set up a new host…");enabled:installDialog.environments.length>0;onClicked:installDialog.begin(installWhere.currentIndex)}
+     T3PickerButton{objectName:"omabridgeConnectExisting";primary:false;outlined:true;text:T3I18n.tr("Connect existing…");enabled:installDialog.environments.length>0;onClicked:installDialog.begin(installWhere.currentIndex,true)}
+    }
+   }
+   T3OmaBridgeInstall{id:installDialog;bridge:root.bridge}
+   // The same OmaBridge page as the Omarchy Control Panel, on the same device.
+   T3OmaBridgeManage{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge}
+  }}
+ }
  Loader{Layout.fillWidth:true;active:root.environment!=="local";visible:active;sourceComponent:Component{T3PreferenceSection{title:"Local environment";icon:"laptop";body:Component{T3LocalConnection{width:parent.width;bridge:root.bridge}}}}}
  T3ConnectionAccess{Layout.fillWidth:true;bridge:root.bridge;environment:root.environment}
  ColumnLayout{
@@ -89,31 +116,6 @@ ColumnLayout {
    }
   }
  }
-  }}
- }
- T3PreferenceSection{Layout.fillWidth:true;title:"OmaBridge";icon:"omabridge"
-  body:Component{ColumnLayout{width:parent.width;spacing:0
-   T3ConnectionOmaBridge{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge;environments:root.store.environments || []}
-   RowLayout{Layout.fillWidth:true;Layout.margins:Style.space(14)
-    ColumnLayout{Layout.fillWidth:true
-     Text{Layout.fillWidth:true;text:T3I18n.tr("Show OmaBridge in the bar");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-     Text{Layout.fillWidth:true;text:T3I18n.tr("A small indicator next to T3 Code that shows this device's state and requests waiting for your approval.");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-    }
-    T3Switch{objectName:"omabridgeIndicatorPreference";checked:(root.bridge.viewState || {}).omabridgeIndicator===true;Accessible.name:T3I18n.tr("Show OmaBridge in the bar");onToggled:root.bridge.rememberView({omabridgeIndicator:checked})}
-   }
-   // Set up a new host with an agent: choose where the chat opens, then the host.
-   RowLayout{Layout.fillWidth:true;Layout.leftMargin:Style.space(14);Layout.rightMargin:Style.space(14);spacing:Style.space(8)
-    ColumnLayout{Layout.fillWidth:true;spacing:0
-     Text{Layout.fillWidth:true;text:T3I18n.tr("Set up a new host with your AI");color:root.fg;font.pixelSize:Style.font.caption;font.bold:true;wrapMode:Text.Wrap}
-     Text{Layout.fillWidth:true;text:T3I18n.tr("Set up another device (a server, another desktop) and pair it with this one, guided by your AI in a new chat.");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
-    }
-    Text{text:T3I18n.tr("Run on");color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.58);font.pixelSize:Style.font.caption}
-    Controls.ComboBox{id:installWhere;objectName:"omabridgeInstallWhere";Layout.preferredWidth:Style.space(170);model:installDialog.environments.map(function(e){return e.name});currentIndex:installDialog.defaultEnvironment;Accessible.name:T3I18n.tr("Run on")}
-    T3PickerButton{objectName:"omabridgeInstallOpen";text:T3I18n.tr("Set up a new host…");enabled:installDialog.environments.length>0;onClicked:installDialog.begin(installWhere.currentIndex)}
-   }
-   T3OmaBridgeInstall{id:installDialog;bridge:root.bridge}
-   // The same OmaBridge page as the Omarchy Control Panel, on the same device.
-   T3OmaBridgeManage{Layout.fillWidth:true;Layout.margins:Style.space(14);bridge:root.bridge}
   }}
  }
  T3ConnectionPreferences{Layout.fillWidth:true;bridge:root.bridge}

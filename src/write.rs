@@ -43,11 +43,18 @@ fn runtime_mode(input:&Value)->Result<&str>{
     let mode=match input.get("runtimeMode"){None|Some(Value::Null)=>"approval-required",Some(value)=>value.as_str().ok_or("invalid_runtime_mode")?};
     if protocol::models::valid_runtime_mode(mode){Ok(mode)}else{Err("invalid_runtime_mode".into())}
 }
+/// How an enabled, installed provider that is signed out on this host signs in:
+/// T3's own flow when it offers one, else its CLI's login in a terminal
+/// (provider_login), else null. Sign-ins are per host: a new host starts signed out.
+fn sign_in(native: &Value) -> Value {
+    if native["enabled"]==false||native["installed"]==false||native["auth"]["status"]!="unauthenticated"{return Value::Null}
+    if native["setup"]["canAuthenticate"]==true{json!("t3")}else if matches!(text(native,"driver"),"codex"|"claudeAgent"){json!("cli")}else{Value::Null}
+}
 pub fn catalog(e: &Environment) -> Result<Value> {
     let config = protocol::api::server::config(&e.connection(true)?)?;
     let mut result=protocol::models::catalog(&config);
     for provider in result["providers"].as_array_mut().unwrap(){
-        if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);provider["update"]=crate::provider_updates::advisory(native);}
+        if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);provider["update"]=crate::provider_updates::advisory(native);provider["signIn"]=sign_in(native);}
     }
     // T3 resolveEnvironmentMachineKind: the user's icon choice, else what the server detected.
     const MACHINES:[&str;7]=["server","cloud","linux","desktop","laptop","mac-mini","mac-studio"];
@@ -389,6 +396,8 @@ pub fn execute(input:&Value) -> Result<Value> {
         "storage-cleanup"=>crate::storage_cleanup::run(&e,input),
         "mcp-app"=>crate::mcp_apps::run(&e,input),
         "provider-setup"=>crate::provider_setup::run(&e,input),
+        "provider-login"=>crate::provider_login::launch(&e,input),
+        "provider-refresh"=>crate::provider_login::refresh(&e,input),
         "agent-sessions"=>crate::agent_sessions::run(&e,input),
         "process-diagnostics"=>crate::process_diagnostics::run(&e,input),
         "local-servers"=>crate::local_servers::read(&e),
@@ -466,4 +475,17 @@ fn pin_reorder(input:&Value)->Result<Value>{
         dispatch_command(e,&json!({"type":"thread.pin.reorder","commandId":format!("omarchy-pin-{}",uuid::Uuid::new_v4()),"threadId":thread,"orderKey":key}))?;
     }
     Ok(json!({"count":rows.len()}))
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn signed_out_providers_sign_in_through_t3_or_their_cli() {
+        let signed_out=json!({"driver":"cursor","enabled":true,"installed":true,"auth":{"status":"unauthenticated"},"setup":{"canAuthenticate":true}});
+        assert_eq!(sign_in(&signed_out),"t3");
+        for (key,value) in [("enabled",json!(false)),("installed",json!(false))]{let mut p=signed_out.clone();p[key]=value;assert!(sign_in(&p).is_null(),"{key}")}
+        for status in ["authenticated","unknown"]{let mut p=signed_out.clone();p["auth"]["status"]=json!(status);assert!(sign_in(&p).is_null(),"{status}")}
+        let mut p=signed_out.clone();p["setup"]["canAuthenticate"]=json!(false);assert!(sign_in(&p).is_null(),"no way to sign in");
+        for driver in ["codex","claudeAgent"]{p["driver"]=json!(driver);assert_eq!(sign_in(&p),"cli")}
+    }
 }

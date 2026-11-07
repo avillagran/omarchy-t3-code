@@ -33,7 +33,7 @@ Item {
     var current=String(bridge.draft.text||"");var next=current.trim()?current.replace(/\s+$/,"")+"\n\n"+quote+"\n\n":quote+"\n\n"
     bridge.patchDraft(bridge.selectedKey,{text:next});Qt.callLater(function(){composerPanel.inputField.forceActiveFocus();composerPanel.inputField.cursorPosition=composerPanel.inputField.length})
   }
-  function openPreferencesPage(page){preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page=page})}
+  function openPreferencesPage(page,environment){preferencesOpen=true;Qt.callLater(function(){var p=preferencesLoader.item;if(!p)return;if(environment)p.selectEnvironment(environment);p.page=page})}
   // Command palette groups, built when it opens (T3 CommandPalette: actions, threads, projects, settings).
   function paletteGroups(){
     var b=bridge,thread=!!b.selectedThread,actions=[]
@@ -1563,12 +1563,13 @@ Item {
           width:Math.min(Math.max(Style.space(320),root.threadDetailsWidth),parent.width-Style.space(32))
           visible:!root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen&&!(root.sideShown&&!root.browserInline)
           T3ProviderUpdateNotice{id:updateNotice;width:parent.width;bridge:root.bridge;notice:root.bridge.providerUpdateNotice;onSettingsRequested:root.openPreferencesPage("providers")}
+          T3ProviderSignInNotice{id:signInNotice;width:parent.width;bridge:root.bridge;onSignInRequested:function(environment){root.openPreferencesPage("providers",environment)}}
           T3DiskSpaceNotice{id:diskNotice;width:parent.width;bridge:root.bridge;onSettingsRequested:root.openPreferencesPage("storage")}
           Loader {
             objectName:"t3ThreadDetailsLoader";width:Math.min(root.threadDetailsWidth,parent.width);anchors.right:parent.right
             active:root.threadDetailsOpen&&!!root.bridge.selectedThread&&root.opened
             sourceComponent:T3ThreadDetails{
-              bridge:root.bridge;maxHeight:Math.max(Style.space(160),chatOverlays.parent.height-chatOverlays.y-(updateNotice.visible?updateNotice.height+chatOverlays.spacing:0)-(diskNotice.visible?diskNotice.height+chatOverlays.spacing:0)-Style.space(190))
+              bridge:root.bridge;maxHeight:Math.max(Style.space(160),chatOverlays.parent.height-chatOverlays.y-(updateNotice.visible?updateNotice.height+chatOverlays.spacing:0)-(diskNotice.visible?diskNotice.height+chatOverlays.spacing:0)-(signInNotice.visible?signInNotice.height+chatOverlays.spacing:0)-Style.space(190))
               preferredHeight:Number(root.bridge.viewState.threadDetailsHeight) || 0
               onResized:function(w,h){root.bridge.rememberView({threadDetailsWidth:Math.round(w),threadDetailsHeight:Math.round(h)})}
               onClosed:root.toggleThreadDetails()

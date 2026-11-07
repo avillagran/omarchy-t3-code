@@ -2,11 +2,13 @@ import QtQuick 6.11
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
-// Set up a new host with an agent: the chat runs on a host ot3 is connected to
-// (this device, or one that reaches the new host directly), starts clean in that
-// host's scratch project, and has the setup prompt typed in for review before
-// sending. This device writes a one-use invitation (which may ask to manage the
-// new host); it is moved host to host over SSH and the prompt names its path only.
+// Set up a new host, or connect one already set up, with an agent: the chat runs
+// on a host ot3 is connected to (this device, or one that reaches the new host
+// directly), starts clean in that host's scratch project and sends the prompt
+// at once. Run here, the other host invites and this device claims, so the
+// agent does it all. Run elsewhere, this device writes a one-use invitation
+// (which may ask to manage the new host), moved host to host over SSH; the
+// prompt names its path only. An existing host always pairs from here.
 Controls.Popup {
  id:root
  required property var bridge
@@ -19,6 +21,7 @@ Controls.Popup {
  property string requestId:""
  property string step:""
  property string invitation:""
+ property bool existing:false
  property string profile:"bridge"
  property string environment:"local"
  readonly property var profiles:[
@@ -42,7 +45,8 @@ Controls.Popup {
  }
  readonly property var scratch:scratchFor(environment)
  readonly property var services:(published.services || []).filter(function(s){return s==="t3" || s==="ssh"})
- readonly property bool ready:!!device&&!!published.active&&services.length>0&&!!scratch
+ // Run here this device only dials out: an identity is enough.
+ readonly property bool ready:!!device&&!!scratch&&(environment==="local" || !!published.active&&services.length>0)
  parent:Controls.Overlay.overlay;anchors.centerIn:parent;width:Math.min(Style.space(620),parent?parent.width-Style.space(32):Style.space(620));padding:Style.space(16);modal:true
  closePolicy:busy?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
  background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:root.muted}
@@ -52,9 +56,10 @@ Controls.Popup {
   if(code==="ssh_environment_required")return T3I18n.tr("The invitation is copied to that host over SSH; choose a host connected by SSH.")
   return T3I18n.error(code)
  }
- function begin(index){
+ function begin(index,existing){
+  root.existing=existing===true
   device=null;published={};error="";invitation="";step="";busy=true;host.text="";profile="bridge";manage.checked=true;shareSsh.checked=false
-  var e=environments[index>=0&&index<environments.length?index:defaultEnvironment];environment=e?e.id:"local"
+  var e=environments[!root.existing&&index>=0&&index<environments.length?index:defaultEnvironment];environment=e?e.id:"local"
   if(environment!=="local"&&bridge.ensureCatalog)bridge.ensureCatalog(environment)
   step="read";requestId=bridge.requestOmaBridgeManage({action:"read"});if(!requestId){busy=false;error="disconnected"}
   open()
@@ -62,10 +67,15 @@ Controls.Popup {
  // The invitation is created first: it is the one trust change, confirmed by this dialog.
  function start(){
   if(busy || !ready || !host.text.trim())return
+  error="";busy=true
+  if(environment==="local"){prompt("");return}
   var wanted=services.filter(function(s){return s==="t3" || shareSsh.checked})
-  error="";busy=true;step="invite"
+  step="invite"
   requestId=bridge.requestOmaBridgeManage({action:"invite",services:wanted.length?wanted:[services[0]],qr:false,ttl:3600,manage:manage.checked,confirmed:true})
   if(!requestId){busy=false;error="disconnected"}
+ }
+ function prompt(invitation){
+  next("omabridge-install-prompt",{host:host.text.trim(),profile:root.profile,existing:root.existing,manage:manage.checked,shareSsh:shareSsh.visible&&shareSsh.checked,invitation:invitation,device:root.device?root.device.name:"",deviceId:root.device?root.device.id:"",runsOn:root.environment==="local"?"":(root.runsOn?root.runsOn.name:"")})
  }
  function next(op,values){step=op;requestId=bridge.requestOmaBridgeInstall(op,values);if(!requestId){busy=false;error="disconnected"}}
  onClosed:{invitation="";error="";step=""}
@@ -83,18 +93,17 @@ Controls.Popup {
    root.requestId=""
    if(error || !result){root.busy=false;root.error=error || "invalid_response";return}
    if(root.step==="omabridge-invite-handoff"){
-    root.invitation=result.path || ""
-    root.next("omabridge-install-prompt",{host:host.text.trim(),profile:root.profile,manage:manage.checked,invitation:root.invitation,device:root.device?root.device.name:"",runsOn:root.environment==="local"?"":(root.runsOn?root.runsOn.name:"")});return
+    root.invitation=result.path || "";root.prompt(root.invitation);return
    }
    root.busy=false
    if(!result.prompt){root.error="invalid_response";return}
-   if(!root.scratch || !root.bridge.startPromptedChat(root.environment,root.scratch.id,result.prompt)){root.error="management_busy";return}
+   if(!root.scratch || !root.bridge.startPromptedChat(root.environment,root.scratch.id,result.prompt,true)){root.error="management_busy";return}
    root.close()
   }
  }
  contentItem:ColumnLayout{spacing:Style.space(8)
-  Text{Layout.fillWidth:true;text:T3I18n.tr("Set up a new host with your AI");color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap}
-  Text{Layout.fillWidth:true;text:T3I18n.tr("A new chat opens with the setup instructions typed in. Review them and send when ready. The agent works over SSH and pairs the device with this one through a one-use invitation that never appears in the chat.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+  Text{Layout.fillWidth:true;text:T3I18n.tr(root.existing?"Connect existing…":"Set up a new host with your AI");color:root.fg;font.bold:true;font.pixelSize:Style.font.body;wrapMode:Text.Wrap}
+  Text{Layout.fillWidth:true;text:T3I18n.tr(root.existing?"The agent starts right away in a new chat and pairs that host with this one over SSH, without changing its installation or published services.":"The agent starts right away in a new chat, does the whole setup over SSH and pairs the device with this one. It only asks you before using sudo or opening a port.");color:root.muted;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   RowLayout{Layout.fillWidth:true;spacing:Style.space(8)
    Text{text:T3I18n.tr("Run on");color:root.fg;font.pixelSize:Style.font.caption;Layout.alignment:Qt.AlignTop}
    Text{objectName:"omabridgeInstallRunsOn";text:root.runsOn?root.runsOn.name:"";color:root.fg;font.pixelSize:Style.font.caption;font.bold:true;textFormat:Text.PlainText;Layout.alignment:Qt.AlignTop}
@@ -102,11 +111,11 @@ Controls.Popup {
    Item{Layout.fillWidth:true;visible:root.environment==="local"}
   }
   RowLayout{Layout.fillWidth:true;spacing:Style.space(8)
-   Text{text:T3I18n.tr("New host (SSH)");color:root.fg;font.pixelSize:Style.font.caption}
+   Text{text:T3I18n.tr(root.existing?"SSH host or alias":"New host (SSH)");color:root.fg;font.pixelSize:Style.font.caption}
    T3PickerField{id:host;objectName:"omabridgeInstallHost";Layout.fillWidth:true;implicitHeight:Style.space(32);font.pixelSize:Style.font.caption;placeholderText:"server, user@host";selectByMouse:true;enabled:!root.busy}
   }
   // Profiles as selectable cards, two per row.
-  GridLayout{Layout.fillWidth:true;columns:2;columnSpacing:Style.space(8);rowSpacing:Style.space(8)
+  GridLayout{visible:!root.existing;Layout.fillWidth:true;columns:2;columnSpacing:Style.space(8);rowSpacing:Style.space(8)
    Repeater{model:root.profiles
     delegate:Controls.AbstractButton{id:card;required property var modelData
      objectName:"omabridgeInstallProfile_"+modelData.id;Layout.fillWidth:true;Layout.fillHeight:true;Layout.preferredWidth:1
@@ -134,7 +143,7 @@ Controls.Popup {
   Text{objectName:"omabridgeInstallError";Layout.fillWidth:true;visible:!!root.error;text:root.errorText(root.error);color:Color.urgent;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
   RowLayout{Layout.fillWidth:true;Item{Layout.fillWidth:true}
    T3PickerButton{primary:false;text:T3I18n.tr("Cancel");enabled:!root.busy;onClicked:root.close()}
-   T3PickerButton{objectName:"omabridgeInstallStart";text:T3I18n.tr("Open chat");enabled:!root.busy&&root.ready&&!!host.text.trim();onClicked:root.start()}
+   T3PickerButton{objectName:"omabridgeInstallStart";text:T3I18n.tr("Start");enabled:!root.busy&&root.ready&&!!host.text.trim();onClicked:root.start()}
   }
  }
 }
