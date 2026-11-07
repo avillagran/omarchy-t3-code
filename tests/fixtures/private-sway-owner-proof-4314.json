@@ -79,5 +79,11 @@
     "prefix/usr/lib/libwlroots-0.20.so": "7edca9a7d65855addda68e29ba5db94d57c803eb5fa7d0f86db3136b90ca9837",
     "prefix/usr/lib/libliftoff.so": "f062e3f341937c84e40979406a494f35f00f20a3de208a39070dadba04cfe08f",
     "prefix/usr/lib/libliftoff.so.0": "f062e3f341937c84e40979406a494f35f00f20a3de208a39070dadba04cfe08f"
+  },
+  "sourceControlledRunnerProof": {
+    "receipt": "/home/node/BuildCache/o3-desktop-next/private-sway-owner-3q2xgewl",
+    "returncode": 0,
+    "runnerSha256": "beaf7ee073a75d75647ac0dce76dcd503362e85d8824b987112e13f769834314",
+    "scope": "Actual frozen artifact through source-controlled admission runner; no rebuild"
   }
 }

@@ -55,6 +55,8 @@ a foreign sibling could neither enumerate/bind globals nor interpret IPC.
 The supervisor held its `exit` command socket until actual normal process exit.
 No Electron engine was started. The source-controlled repeat runner accepts
 only that frozen artifact and its exact two dependent library identities.
+The source-controlled wrapper itself then passed once at
+`private-sway-owner-3q2xgewl`, without rebuilding the artifact.
 
 The build uses explicit `-D_GNU_SOURCE` only for the two patched translation
 units. Applying it globally exposed a GNU `strpbrk` const diagnostic in unrelated
