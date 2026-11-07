@@ -9,6 +9,7 @@
 #include <QHash>
 #include <QImage>
 #include <QQueue>
+#include <QSet>
 #include <QSocketNotifier>
 #include <QThread>
 #include <QTimer>
@@ -89,6 +90,7 @@ struct ClipboardCohort::State : QObject, std::enable_shared_from_this<State> {
   Receiving receiving;
   bool reading = false, queuedScheduled = false;
   QQueue<xcb_selection_request_event_t> queued;
+  QSet<QString> advertisedFormats;
   std::shared_ptr<NativeWaylandOffers> offers;
   std::shared_ptr<const void> lastOffer;
   Publish publish;
@@ -417,6 +419,28 @@ struct ClipboardCohort::State : QObject, std::enable_shared_from_this<State> {
       }
     });
   }
+  static bool opaqueMime(const QString &name) {
+    const auto bytes = name.toUtf8();
+    if (bytes.isEmpty() || bytes.size() > 4096 || !bytes.contains('/') ||
+        QString::fromUtf8(bytes) != name)
+      return false;
+    for (auto byte : bytes)
+      if (quint8(byte) < 32 || quint8(byte) == 127)
+        return false;
+    return true;
+  }
+  QString targetMime(xcb_atom_t target) {
+    auto *reply = xcb_get_atom_name_reply(
+        connection, xcb_get_atom_name(connection, target), nullptr);
+    if (!reply)
+      return {};
+    const auto size = xcb_get_atom_name_name_length(reply);
+    const QByteArray bytes(xcb_get_atom_name_name(reply),
+                           size <= 4096 ? size : 0);
+    free(reply);
+    const auto name = QString::fromUtf8(bytes);
+    return name.toUtf8() == bytes && opaqueMime(name) ? name : QString();
+  }
   void capture(xcb_window_t owner, xcb_timestamp_t stamp) {
     if (!valid() || nativeOwner != owner || nativeStamp != stamp)
       return;
@@ -447,6 +471,24 @@ struct ClipboardCohort::State : QObject, std::enable_shared_from_this<State> {
       mapping.insert("image/png", png);
       mapping.insert("application/x-qt-image", png);
     }
+    qsizetype metadata = 0;
+    for (auto name = mapping.keyBegin(); name != mapping.keyEnd(); ++name)
+      metadata += name->toUtf8().size();
+    for (auto target : supported) {
+      const auto name = targetMime(target);
+      if (name.isEmpty() || name == "application/x-qt-image")
+        continue;
+      if (!mapping.contains(name)) {
+        metadata += name.toUtf8().size();
+        if (mapping.size() >= 128 || metadata > 65536)
+          return;
+        // UTF-8 MIME aliases share the one already admitted text body.
+        mapping.insert(name, name == "text/plain;charset=utf-8" &&
+                                     mapping.contains("text/plain")
+                                 ? mapping.value("text/plain")
+                                 : target);
+      }
+    }
     if (mapping.isEmpty())
       return;
     QHash<xcb_atom_t, QByteArray> bodies;
@@ -455,8 +497,9 @@ struct ClipboardCohort::State : QObject, std::enable_shared_from_this<State> {
       if (bodies.contains(target))
         continue;
       auto body = fetch(target, owner, stamp, uint32_t(limit - retained));
-      if (!body)
+      if (!body) {
         return;
+      }
       retained += body->size();
       bodies.insert(target, std::move(*body));
     }
@@ -512,12 +555,6 @@ struct ClipboardCohort::State : QObject, std::enable_shared_from_this<State> {
       notify(request, result);
       return;
     }
-    if (request.target != targets && request.target != utf8 &&
-        request.target != text && request.target != plain &&
-        request.target != png && request.target != html) {
-      notify(request, XCB_ATOM_NONE);
-      return;
-    }
     const auto formats = offers->formats();
     qsizetype metadata = 0;
     for (const auto &format : formats)
@@ -536,6 +573,21 @@ struct ClipboardCohort::State : QObject, std::enable_shared_from_this<State> {
         values << png;
       if (formats.contains("text/html"))
         values << html;
+      for (const auto &format : formats) {
+        if (!opaqueMime(format) || format == "application/x-qt-image")
+          continue;
+        if (!advertisedFormats.contains(format)) {
+          if (advertisedFormats.size() >= 4096) {
+            notify(request, XCB_ATOM_NONE);
+            return;
+          }
+          advertisedFormats.insert(format);
+        }
+        const auto encoded = format.toUtf8();
+        const auto target = atom(encoded.constData());
+        if (target && !values.contains(target))
+          values << target;
+      }
       xcb_change_property(connection, XCB_PROP_MODE_REPLACE, request.requestor,
                           result, XCB_ATOM_ATOM, 32, uint32_t(values.size()),
                           values.data());
@@ -544,7 +596,14 @@ struct ClipboardCohort::State : QObject, std::enable_shared_from_this<State> {
     }
     const auto mime = request.target == png    ? QString("image/png")
                       : request.target == html ? QString("text/html")
-                                               : QString("text/plain");
+                      : request.target == utf8 || request.target == text ||
+                              request.target == plain
+                          ? QString("text/plain")
+                          : targetMime(request.target);
+    if (mime.isEmpty() || (mime != "text/plain" && !formats.contains(mime))) {
+      notify(request, XCB_ATOM_NONE);
+      return;
+    }
     reading = true;
     auto body =
         offers->read(mime, limit, [&] { return valid() && epoch == lease; });

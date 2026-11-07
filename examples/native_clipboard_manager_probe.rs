@@ -184,6 +184,10 @@ fn main() {
                     }
                     let body = if post {
                         "ok"
+                    } else if data.starts_with(b"GET /read-4 ") {
+                        r#"<html><body><script>setTimeout(async()=>{let result;try{await navigator.clipboard.write([new ClipboardItem({'web application/x-owned-custom':new Blob([new Uint8Array([0,1,2,127,128,255])],{type:'application/x-owned-custom'}),'text/plain':new Blob(['owned custom fallback'],{type:'text/plain'})})]);result={outcome:'allowed',text:'custom-written'}}catch(error){result={outcome:'denied',error:error.name}};fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)})},300)</script></body></html>"#
+                    } else if data.starts_with(b"GET /read-5 ") {
+                        r#"<html><body><script>setTimeout(async()=>{let result;try{const items=await navigator.clipboard.read();let body;for(const item of items)if(item.types.includes('web application/x-owned-custom'))body=await item.getType('web application/x-owned-custom');if(!body)throw Error('Missing custom type');const bytes=new Uint8Array(await body.arrayBuffer());const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(value=>value.toString(16).padStart(2,'0')).join('');result={outcome:'allowed',text:String(bytes.length)+':'+digest}}catch(error){result={outcome:'denied',error:error.name}};fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)})},300)</script></body></html>"#
                     } else {
                         r#"<html><body><script>setTimeout(async()=>{let result;try{const text=await navigator.clipboard.readText();result={outcome:'allowed',text}}catch(error){result={outcome:'denied',error:error.name}};fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)})},300)</script></body></html>"#
                     };
@@ -213,6 +217,20 @@ fn main() {
             true,
             "native permission allowed two",
             "allowed-cached",
+        ),
+        (
+            "next-custom",
+            "localhost",
+            true,
+            "custom-written",
+            "custom-written",
+        ),
+        (
+            "read-custom",
+            "localhost",
+            true,
+            "200000:1bd168fa4e29a8a1af90173db63749b296c7f417c23487dd03ebf21d6ed663a6",
+            "custom-read",
         ),
     ]
     .into_iter()

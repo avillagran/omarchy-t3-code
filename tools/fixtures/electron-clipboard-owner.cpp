@@ -1,3 +1,4 @@
+#include <QJsonArray>
 // Independent private display selection owner. No user clipboard/history is read.
 #include <QGuiApplication>
 #include <QWindow>
@@ -35,6 +36,9 @@ int main(int argc,char **argv){
   if(count==0){app.quit();return;}int end;
   while((end=input.indexOf('\n'))>=0){auto row=QJsonDocument::fromJson(input.left(end)).object();input.remove(0,end+1);auto operation=row["op"].toString();
    if(operation=="instrumented-text")clipboard->setMimeData(new CountedMime(row["text"].toString(),&contentReads));
+   else if(operation=="custom-binary"){auto *mime=new QMimeData;mime->setData("application/web;type=\"custom/formatmap\"",QByteArray("{\"application/x-owned-custom\":\"application/web;type=\\\"custom/format0\\\"\"}"));mime->setData("application/web;type=\"custom/format0\"",QByteArray(200000,char(0xab)));mime->setText("fresh custom external offer");clipboard->setMimeData(mime);}
+   else if(operation=="formats"){QJsonArray formats;for(const auto &format:clipboard->mimeData()->formats())formats.append(format);reply({{"id",row["id"]},{"formats",formats}});}
+   else if(operation=="raw"){const auto format=row["format"].toString();const auto bytes=clipboard->mimeData()->data(format);reply({{"id",row["id"]},{"format",format},{"bytes",QString::fromLatin1(bytes.toHex())}});}
    else if(operation=="stats")reply({{"id",row["id"]},{"reads",qint64(contentReads)}});
    else if(operation=="text")clipboard->setText(row["text"].toString());
    else if(operation=="large")clipboard->setText(QString(200000,QChar('L')));
@@ -45,7 +49,7 @@ int main(int argc,char **argv){
    else if(operation=="read-image"){const auto image=clipboard->image();const auto pixel=image.isNull()?QColor():image.pixelColor(0,0);reply({{"id",row["id"]},{"width",image.width()},{"height",image.height()},{"red",pixel.red()},{"green",pixel.green()},{"blue",pixel.blue()},{"alpha",pixel.alpha()}});}
    else if(operation=="read")reply({{"id",row["id"]},{"text",clipboard->text()}});
    else if(operation=="quit"){app.quit();return;}
-   if(operation=="instrumented-text"||operation=="text"||operation=="image"||operation=="large"||operation=="at-limit"||operation=="oversized"||operation=="many")QTimer::singleShot(40,&app,[reply,row]{reply({{"id",row["id"]},{"ready",true}});});
+   if(operation=="custom-binary"||operation=="instrumented-text"||operation=="text"||operation=="image"||operation=="large"||operation=="at-limit"||operation=="oversized"||operation=="many")QTimer::singleShot(40,&app,[reply,row]{reply({{"id",row["id"]},{"ready",true}});});
   }
  });
  reply({{"ready",true}});QTimer::singleShot(40000,&app,&QCoreApplication::quit);return app.exec();
