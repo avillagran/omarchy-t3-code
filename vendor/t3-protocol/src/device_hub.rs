@@ -459,7 +459,7 @@ mod tests {
         assert_eq!(config[0], 0x82);
         ws.send(input_message(Platform::Ios, &json!({"type":"touch","phase":"down","x":0.5,"y":0.5})).unwrap()).unwrap();
         let seen = server.join().unwrap();
-        assert_eq!(seen[0], "/api/auth/websocket-ticket");
+        assert_eq!(seen[0], "/api/auth/websocket-ticket/media");
         assert_eq!(seen[1], "/api/device-hub/vendor/serve-sim/helper/UDID-1/stream.mjpeg?hostId=local&wsTicket=tick-1");
         assert_eq!(seen[2], "/api/device-hub/vendor/serve-sim/api/screenshot?device=UDID-1&hostId=local&wsTicket=tick-1");
         assert_eq!(seen[3], "/api/device-hub/vendor/serve-sim/helper/ws?device=UDID-1&hostId=local&wsTicket=tick-1");
