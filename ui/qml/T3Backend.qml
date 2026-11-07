@@ -2601,12 +2601,21 @@ Singleton {
       } else if (event.type === "error") { error = data.error; stale = true }
     } catch (_) { error = "malformed"; stale = true }
   }
+  // Internal native-engine prerequisite; no public selector enables it yet.
+  property bool nativeBrowserPlatformRequested: false
+  Loader {
+    id: clipboardPlatform
+    active: root.nativeBrowserPlatformRequested
+    source: "T3BrowserClipboardPlatform.qml"
+  }
   Process {
     id: worker
+    environment: clipboardPlatform.item ? ({O3_GUI_CLIPBOARD_ENDPOINT:clipboardPlatform.item.endpoint}) : ({})
     command: [root.binary, "watch"]
     stdinEnabled: true
-    running: true
+    running: !root.nativeBrowserPlatformRequested || (clipboardPlatform.status===Loader.Ready && clipboardPlatform.item.available)
     onStarted: {
+      if(clipboardPlatform.item)clipboardPlatform.item.bindWorker(worker.processId)
       root.streamBases=({});root.streamResyncs=({})
       if(root.gitView.scope.requestId)root.requestGit()
       root.send({op:"rewind-list",requestId:root.uuid()})

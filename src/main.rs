@@ -405,6 +405,7 @@ fn device_pool(browser: browser_sessions::Manager) -> mpsc::SyncSender<Value> {
     sender
 }
 fn watch(client: Client) -> Result<()> {
+    let _gui_clipboard = gui_clipboard::start();
     binary_update::spawn();
     let external = local_quotas::ExternalHttp::shared()?;
     emit("ui-state", ui_state::load());
