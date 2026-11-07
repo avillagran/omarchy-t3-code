@@ -46,3 +46,12 @@ uses the existing bearer/DPoP handshake and native TLS policy.
 This API currently multiplexes unary requests only. Persistent subscriptions and
 host environment lifecycle ownership require explicit integration; creating a
 session alone does not establish full native client cache lifecycle parity.
+
+A caller moving `PendingRpc` into a blocking waiter can first retain
+`pending.cancellation()`. The resulting root-exported `RpcCancellation` is an
+opaque, cloneable weak signal for that one request. Calling `cancel()` requests
+its existing bounded cancellation path; cloning or dropping the signal does not
+cancel anything. It retains neither a physical session owner nor an in-flight
+permit. A completed request's signal cannot cancel a successor on the same
+socket. Cancellation still does not prove that a transmitted mutation did not
+execute, and never authorizes replay.

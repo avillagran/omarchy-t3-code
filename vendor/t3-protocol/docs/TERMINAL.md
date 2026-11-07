@@ -40,5 +40,5 @@ apps/server/src/ws.ts and auth/RpcAuthorization.ts. terminal.observe uses
 TerminalObserveInput and TerminalAttachStreamEvent, terminal:read authorization.
 
 Regenerate saved describe/Kotlin with:
-`T3_UPDATE_FIXTURES=1 cargo test --test api_describe`.
+`android-sandbox --sh 'T3_UPDATE_FIXTURES=1 cargo test --test api_describe'`.
 No tag or release is created by this change; release CI builds the four-ABI AAR.

@@ -40,7 +40,7 @@ pub mod tasks;
 pub mod i18n;
 pub mod stream;
 pub mod session;
-pub use session::{PendingRpc, RpcSession, SessionClosed, SessionOptions};
+pub use session::{PendingRpc, RpcCancellation, RpcSession, SessionClosed, SessionOptions};
 pub mod projection;
 pub mod util;
 pub mod checkpoint_revert;

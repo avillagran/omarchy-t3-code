@@ -5,7 +5,7 @@ use std::{
     collections::HashMap,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-        mpsc, Condvar, Mutex,
+        mpsc, Condvar, Mutex, Weak,
     },
 };
 
@@ -92,7 +92,6 @@ struct Call {
 pub struct RpcSession {
     lease: Arc<Lease>,
 }
-/// An independently cancellable call. Dropping it cancels, without replay.
 /// Lifecycle observer that does not retain a session owner. Waiting on it
 /// cannot keep the socket alive after the last owner drops.
 pub struct SessionClosed {
@@ -111,12 +110,34 @@ impl SessionClosed {
             .map_err(|_| "local_error".into())
     }
 }
+/// A request-scoped cancellation signal that does not retain a socket or permit.
+/// Cloning or dropping this signal never cancels a request; call `cancel` explicitly.
+#[derive(Clone)]
+pub struct RpcCancellation {
+    cancelled: Weak<AtomicBool>,
+}
+impl RpcCancellation {
+    /// Best effort only: a transmitted mutation may already have executed.
+    /// Completed requests and future requests on the same session are unaffected.
+    pub fn cancel(&self) {
+        if let Some(cancelled) = self.cancelled.upgrade() {
+            cancelled.store(true, Ordering::Release)
+        }
+    }
+}
+/// An independently cancellable call. Dropping it cancels, without replay.
 pub struct PendingRpc {
     reply: mpsc::Receiver<Result<Value>>,
     cancelled: Arc<AtomicBool>,
     _permit: Arc<Permit>,
 }
 impl PendingRpc {
+    /// Retain this signal before moving the pending call into a blocking waiter.
+    pub fn cancellation(&self) -> RpcCancellation {
+        RpcCancellation {
+            cancelled: Arc::downgrade(&self.cancelled),
+        }
+    }
     /// Cancellation does not imply the server did not execute a transmitted call.
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Release)

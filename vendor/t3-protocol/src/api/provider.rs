@@ -69,9 +69,52 @@ pub const INSTALL_REMOVE: Function = api_fn! {
     args: [(instanceId, Slug, required)],
     payload: |a| instance_payload(a.req("instanceId")?),
 };
+/// Spend one displayed reset credit. The server owns provider-specific redemption.
+/// This mutation has no replay identity and is never retried implicitly.
+pub const CONSUME_RESET_CREDIT: Function = api_fn! {
+    name: "provider.consumeResetCredit", module: "provider", tag: Some("provider.consumeResetCredit"),
+    kind: UnrepeatableMutation, scope: Fixed("providers:manage"),
+    args: [(instanceId, Slug, optional), (sourceId, Text, optional), (accountId, Text, optional), (creditId, Text, optional)],
+    payload: |a| ResetCreditInput::from_json(a.all())?.payload(),
+    open_args: true,
+};
+
+/// Exact native union: a provider instance, or one observed source credit.
+/// Source IDs are raw strings; account/credit IDs use JavaScript trim semantics.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ResetCreditInput {
+    Provider { instance_id: String },
+    Source { source_id: String, account_id: String, credit_id: String },
+}
+impl ResetCreditInput {
+    pub fn from_json(value: &Value) -> Result<Self> {
+        value.as_object().ok_or("invalid_reset_credit_input")?;
+        if let Some(id)=value["instanceId"].as_str() {
+            let id=id.trim_matches(crate::js::is_space);
+            if ids::slug("instanceId",id).is_ok(){return Ok(Self::Provider{instance_id:id.to_owned()})}
+        }
+        let source_id=value["sourceId"].as_str().ok_or("invalid_reset_credit_input")?;
+        let account_id=reset_credit_text(value["accountId"].as_str().ok_or("invalid_reset_credit_input")?)?;
+        let credit_id=reset_credit_text(value["creditId"].as_str().ok_or("invalid_reset_credit_input")?)?;
+        Ok(Self::Source{source_id:source_id.to_owned(),account_id,credit_id})
+    }
+    pub fn payload(&self) -> Result<Value> {
+        match self {
+            Self::Provider{instance_id}=>Ok(json!({"instanceId":ids::slug("instanceId",instance_id.trim_matches(crate::js::is_space))?})),
+            Self::Source{source_id,account_id,credit_id}=>Ok(json!({"sourceId":source_id,"accountId":reset_credit_text(account_id)?,"creditId":reset_credit_text(credit_id)?})),
+        }
+    }
+}
+fn reset_credit_text(value:&str)->Result<String>{
+    let value=value.trim_matches(crate::js::is_space);
+    if value.is_empty(){Err("invalid_reset_credit_input".into())}else{Ok(value.to_owned())}
+}
+/// Send once; uncertain transport outcomes must not be replayed automatically.
+pub fn consume_reset_credit(conn:&Connection,input:&ResetCreditInput)->Result<Value>{send(conn,&CONSUME_RESET_CREDIT,input.payload()?)}
+
 pub const FUNCTIONS: &[Function] = &[
     REFRESH_PROVIDERS, UPDATE_PROVIDER, AUTH_START, AUTH_RESPOND, AUTH_CANCEL, AUTH_LOGOUT,
-    INSTALL_START, INSTALL_CANCEL, INSTALL_REMOVE,
+    INSTALL_START, INSTALL_CANCEL, INSTALL_REMOVE, CONSUME_RESET_CREDIT,
 ];
 
 /// `server.refreshProviders`: `{providers}`. `cwd` only applies with `instance_id`;

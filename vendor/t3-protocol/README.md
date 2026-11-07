@@ -45,6 +45,8 @@ The opt-in [persistent unary RPC session API](docs/PERSISTENT_RPC.md) multiplexe
 concurrent calls on one socket with bounded requests and explicit lifecycle ownership.
 `Connection::upload_attachment(name, mime, size, reader)` streams host-owned file
 or Android content data through the same RPC grant and signed POST protocol.
+The [reset-credit command](docs/RESET_CREDIT.md) preserves native input selection
+and sends confirmed redemptions without automatic replay.
 
 The core signs ES256 DPoP proofs with fresh jti, htm, normalized htu, iat and ath;
 checks the environment descriptor before exchanging its bootstrap credential;
@@ -755,9 +757,11 @@ keeps the 8 MiB input limit. In Rust the same registry is `t3_protocol::domain`
 
 ## Validation
 
+All project compilation and tests run in the rootless [Android sandbox](docs/SANDBOX.md).
+
 ```sh
-cargo test --locked
-tools/test-c-abi
+android-sandbox --sh 'cargo test --locked'
+android-sandbox --sh 'tools/test-c-abi'
 ```
 
 Fixtures verify real ES256 signatures and request/token binding, fresh proof IDs,
@@ -973,7 +977,8 @@ Behaviour hosts take over from their own HTTP code, and what stays theirs:
 See [Android/Desktop parity contracts](docs/ANDROID_PARITY.md) for the additive
 shared presentation helpers and the remaining automatic-routing host gap.
 
-Run `cargo test --locked` and `tools/test-c-abi` before changes are consumed by
+Run `android-sandbox --sh 'cargo test --locked'` and
+`android-sandbox --sh 'tools/test-c-abi'` before changes are consumed by
 either app. Native CI runs on Linux x86_64 and aarch64. Keep platform integrations
 outside this crate. Fix shared behavior here, tag a version, then update each
 consumer's pinned revision instead of copying source trees between applications.
