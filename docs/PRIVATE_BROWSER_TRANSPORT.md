@@ -107,3 +107,10 @@ On one authenticated protocol-2 socket, it subscribes to preview events and wait
 After actual attachment completes the open RPC, the test sends `preview.navigate` to an owned loopback HTTP fixture. It checks the real `PreviewSession.navStatus.url` response and separately waits for the actual WebEngine page URL and HTML title to match. Explicit owner shutdown interrupts the descriptor bridge and the Qt guest exits normally. One end-to-end function passes with no ignored cases; it includes actual startup, authentication, opened-before-attachment sequencing, target acquisition, native virtual CDP adoption, navigation, and shutdown. This adds integration evidence rather than replacing the separate schema, privacy, screenshot, and input proofs.
 
 The first run reached successful open/navigation but used the wrong result-field assertion; the corrected test follows the actual server result shape. The final proof also verifies WebEngine document loading rather than treating a Page.navigate acknowledgment as load completion. The product still requires the same private path in its existing browser Pool, real preview observers, and owned-environment lifecycle. The standalone fixture does not implement product guest leases or make owned mode selectable.
+
+The Qt pipe fixture now admits only a high-numbered AF_UNIX stream whose kernel
+peer credentials identify its actual same-UID parent. Before initializing Qt or
+Chromium, it resets `FD_CLOEXEC` on that admitted guest descriptor. The pipe stays
+available to the owned guest but is not admitted through subsequent exec into
+Chromium helpers. The actual full navigation/shutdown proof still passes with
+this boundary; this is not a `/proc` inventory of every helper descriptor.

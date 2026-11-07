@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <cerrno>
 #include <csignal>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <cstdio>
 
 class PrivatePipe : public QObject {
@@ -76,9 +78,18 @@ signals:
 int main(int argc,char **argv) {
     if(argc!=8)return 2;
     std::signal(SIGPIPE,SIG_IGN);
+    bool valid=false;const int fd=QString::fromLocal8Bit(argv[2]).toInt(&valid);if(!valid||fd<64)return 3;
+    int type=0; socklen_t typeSize=sizeof(type);
+    ucred peer{};socklen_t peerSize=sizeof(peer);
+    sockaddr_un address{};socklen_t addressSize=sizeof(address);
+    const int fdFlags=::fcntl(fd,F_GETFD);
+    if(fdFlags<0 || ::getsockopt(fd,SOL_SOCKET,SO_TYPE,&type,&typeSize)!=0 || type!=SOCK_STREAM ||
+       ::getsockopt(fd,SOL_SOCKET,SO_PEERCRED,&peer,&peerSize)!=0 || peer.pid!=::getppid() || peer.uid!=::geteuid() ||
+       ::getsockname(fd,reinterpret_cast<sockaddr*>(&address),&addressSize)!=0 || address.sun_family!=AF_UNIX ||
+       ::fcntl(fd,F_SETFD,fdFlags|FD_CLOEXEC)!=0)return 3;
+    // Retain this endpoint only in the owned guest, never in Chromium subprocesses.
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QtWebEngineQuick::initialize();QGuiApplication app(argc,argv);
-    bool valid=false;const int fd=QString::fromLocal8Bit(argv[2]).toInt(&valid);if(!valid||fd<3)return 3;
     PrivatePipe pipe(fd);QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("privatePipe",&pipe);
     engine.rootContext()->setContextProperty("threadKey",QString::fromUtf8(argv[3]));
