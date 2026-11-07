@@ -1,5 +1,5 @@
 {
-  "scope": "Private original-engine context baseline only; no implemented Qt query, no public selection, no full-context acceptance. Prepared popup-lifetime change is source-checked and has NOT run.",
+  "scope": "Private original-engine context and typed client-protocol baseline; Qt projection and public selection remain unimplemented.",
   "runtime": "44.10.1",
   "chromiumRevision": "92a6f15143569cf59b340472d0b5030465d95722",
   "cases": [
@@ -45,6 +45,33 @@
         "popupRectangleObserved": true,
         "qtQueryImplemented": false
       }
+    },
+    {
+      "artifact": "native-ime-context-y5wwex1u",
+      "returncode": 1,
+      "note": "Single-connection relay blocks independent GTK/Ozone display startup; ordered popup retirement retained.",
+      "sourceArtifactsManifestSha256": "af28f3b2d9d3a51e38ac4c125c665354ade934b05ed1858771dd4e1bfa7e05fd",
+      "commandManifestSha256": "63af8e1ef2fd1daf3bead9775ff377b19708f036fc9afe46dd8f6d4383272f1c",
+      "runtimeLogSha256": "e00ed0fea92a71190d1eedd25502f9c7aa546e9a1e417c564f5922fe2cae9d3e",
+      "intakePinsManifestSha256": "f75d9138de7c0fb17df5ae7959761c87c61820b53e9290eb101be9f5853f831d"
+    },
+    {
+      "artifact": "native-ime-context-6phcyy0x",
+      "returncode": 1,
+      "note": "Single-connection relay blocks independent GTK/Ozone display startup; ordered popup retirement retained.",
+      "sourceArtifactsManifestSha256": "a99b74b70e0629e95bcfd35618a34abb930f15e55060899d6ddc09935fdb3b32",
+      "commandManifestSha256": "13808c43fcfbbf54c44906be110918c403e408b3ebb779f8f93c365541abe0dc",
+      "runtimeLogSha256": "806c7dc9d01b4e7b1df7e65b604cc87bdd104eee5b663cd12b5f40e77937fc54",
+      "intakePinsManifestSha256": "80c946e5ddad27bf37a6f83a13dcbcf1938eaa2893c9476f56a5f6bdc964408c"
+    },
+    {
+      "artifact": "native-ime-context-c1ctemih",
+      "returncode": 0,
+      "note": "Authenticated transparent transport; actual client-protocol state measurement.",
+      "sourceArtifactsManifestSha256": "d5e9626580370ee4eab1460c1f5266e2f7bf306c6775de1cdb5d0cc18f2934a4",
+      "commandManifestSha256": "59b4521ed63c5a1f142fcc43b5f4ef558ef4518f0e8fc224b43e7cf360e1b8d9",
+      "runtimeLogSha256": "6d446b77a057cf866ab1a938dc9e946ae8705cecd331dce04a8534df00e23ba1",
+      "intakePinsManifestSha256": "afd5111d8e33ddfc1e73d51be5b4ae4c7005e208c7de1db75836f806591ed261"
     }
   ],
   "crash": {
@@ -88,7 +115,7 @@
     "onlyPackagePatch": "Meson version formatting",
     "candidate": "focused-surface listener removed before unsupported-view return without reinitialization",
     "callerProven": false,
-    "preparedChange": "Destroy own popup/surface/buffer and acknowledge server roundtrip before view close on success/failure; no engine or compositor replay yet."
+    "preparedChange": "Own popup role/surface/buffer destruction and acknowledged roundtrip precedes native view close. Validated fixed-field lifecycle; prior failed view-first closure retained."
   },
   "sourceControlledIntake": {
     "runtime": "ui/voice/electron-runtime-44.10.1-linux-x64.json",
@@ -97,5 +124,45 @@
     "compositorSha256": "a6776d3a0e6a14ff10820ccf01d6b07befc93ee8598357c601fd2547afccb5eb",
     "acquisitionReceiptsAuthorizeIdentity": false,
     "smallCompositorCopiedBeforeRun": true
+  },
+  "typedBoundary": {
+    "sourceHead": "2a42116",
+    "actualEngineConnections": 2,
+    "authenticatedEngineAndCompositor": true,
+    "serverLifecycleSynthetic": false,
+    "realSurroundingBytes": [
+      12,
+      13
+    ],
+    "realCursorRectangles": [
+      [
+        23,
+        63,
+        0,
+        18
+      ],
+      [
+        47,
+        63,
+        0,
+        18
+      ],
+      [
+        82,
+        63,
+        0,
+        18
+      ],
+      [
+        90,
+        63,
+        0,
+        18
+      ]
+    ],
+    "coordinateSpace": "native-surface-local",
+    "popupCoordinatesAreNotCaretCoordinates": true,
+    "qtQueryImplemented": false,
+    "publicSelectorEnabled": false
   }
 }

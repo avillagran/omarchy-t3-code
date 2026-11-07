@@ -156,3 +156,36 @@ seat ownership, current-offer lifetime, and cross-tab revocation require a genui
 Wayland data-device implementation and acceptance before selecting this route.
 The public selector remains disabled; neither DOM nor accessibility reconstruction
 is used to manufacture surrounding text or caret geometry.
+
+## Actual native client-state measurement
+
+The frozen `2a42116` transparent-transport probe passed in
+`native-ime-context-c1ctemih` (exit 0). It admitted two independently authenticated
+Electron connections to the owned compositor. The exact Chromium source initializes
+GTK through `GtkInitFromCommandLine` in `ui/gtk/gtk_ui.cc` and independently opens
+Ozone's display with `wl_display_connect` in
+`ui/ozone/platform/wayland/host/wayland_connection.cc`. A one-connection listener
+blocked startup in the preceding two retained negative fixtures; each connection
+now has separate object IDs, serials, queues, and observation state.
+
+The native client sent acknowledged surrounding state of 12, then 13 UTF-8 bytes,
+with cursor/anchor offsets advancing from 5 to 12 to 13. Its surface-local cursor
+rectangle advanced through `(23,63,0,18)`, `(47,63,0,18)`, `(82,63,0,18)` and
+`(90,63,0,18)`. The input-method observer still reported no surrounding text and
+popup-local `(0,-18,0,18)`. The earlier missing callback therefore did not prove
+that the engine lacked surrounding text. The typed boundary measures the engine
+requests directly and does not relabel that popup rectangle.
+
+Both socket peers were PID/UID verified. Sway correctly attributed the proxied
+window to the creator of the backend socket, a documented topology difference.
+Original GuestInput, the genuine keyboard edit to seven UTF-16 units, popup-role
+retirement acknowledgement, normal engine/peer exit, and relay shutdown passed.
+Only typed metadata was retained; text and protocol bytes were not logged.
+
+The native diagnostic exposed outer bounds `(0,0,1280,1024)` and content bounds
+`(0,29,1280,995)` alongside the captured guest's `1280x995` viewport. These are
+concrete inputs for a content-offset projection, not permission to assume every
+surface has the same origin. Production admission must bind the actual native
+surface/window, tab instance, frame geometry and current GUI lease before exposing
+an input-method query. High-DPI, resizing, selected-tab changes and stale frames
+still require coverage. Qt queries and Wayland clipboard migration remain open.
