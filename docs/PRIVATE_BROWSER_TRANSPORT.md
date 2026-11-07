@@ -1,6 +1,6 @@
 # Private browser transport foundation
 
-The optional owned-server path is not exposed yet. Existing service mode and shared profiles remain unchanged. The planned owned path uses a separate environment and persistent profile, a directly supervised child process group, inherited bootstrap/browser descriptors, and actual authenticated readiness. It must never adopt or stop an existing shared daemon implicitly.
+The optional owned-server path is not exposed yet. Existing service mode and shared profiles remain unchanged. The internal owned path uses a separate environment and persistent profile, a directly supervised child process group, inherited bootstrap/browser descriptors, and actual authenticated readiness. It must never adopt or stop an existing shared daemon implicitly.
 
 ## Qt transport evidence
 
@@ -119,7 +119,7 @@ this boundary; this is not a `/proc` inventory of every helper descriptor.
 
 The fixture and product browser host now share `ui/browser/private-browser-pipe.h`. It validates the actual parent endpoint, resets descriptor inheritance, bounds buffered records/output at 256 MiB, and uses nonblocking Qt socket notifiers. Reads yield after sixteen chunks so a continuous writer cannot monopolize the GUI event loop. Socket sends suppress SIGPIPE without changing the product process's signal disposition. Failure closes only this owned endpoint.
 
-The product Rust renderer validates the optional inherited Unix endpoint before loading Qt; malformed fields and non-parent endpoints are rejected by an exact filtered private unit case. The actual browser library accepts the same optional descriptor and loads only fixed installed inspector scripts into trusted QML context. Default prepared payloads omit this field. The existing build tool now compiles the shared QObject's generated metadata. A focused private unit plus the same shared-code end-to-end navigation function pass; the actual product library also compiles. The Pool producer and per-view inspector/lease component are integrated below. The owned-environment controller and public selection remain gated.
+The product Rust renderer validates the optional inherited Unix endpoint before loading Qt; malformed fields and non-parent endpoints are rejected by an exact filtered private unit case. The actual browser library accepts the same optional descriptor and loads only fixed installed inspector scripts into trusted QML context. Default prepared payloads omit this field. The existing build tool now compiles the shared QObject's generated metadata. A focused private unit plus the same shared-code end-to-end navigation function pass; the actual product library also compiles. The Pool producer and per-view inspector/lease component are integrated below. The owned-environment controller is wired below; public selection remains gated.
 
 ## Existing product Pool and inspector lifecycle
 
@@ -145,3 +145,12 @@ Authoritative server/headless flags remain in snapshot projection. Only non-head
 The watch worker has a concrete explicit `backend-control` route with server `owned-o3` and action `start`/`stop`, an additive `ownedDesktop` status, and a memory-only environment overlay. The executable comes from the installed O3 registry/path, while the profile remains the separate application-owned state path. A registry profile collision is refused. No service selection, live daemon, saved connection token, or shared profile is changed. The public menu remains gated until the native permission/dialog and request-header adapters have actual Qt acceptance.
 
 The reviewed runner now selects exact named integration functions. Its new real-controller function performs native `preview.open` with no test-side event subscription or FD-routing adapter, waits for the product Manager to show that same owned tab, stops it, launches a successor and verifies dropping the stopped owner cannot disrupt the successor. Earlier five-function physical evidence remains scoped to its frozen artifacts; later focused controller evidence covers this new path separately.
+
+
+## Nightly 4301 Teams request headers
+
+The actual BrowserSession header callback at `4cb6945dc60ed03f567dc5daafd083e52308e82b` supplies 49 differential cases, including case variants, no User-Agent, multiple Electron tokens, NBSP, NEL and BOM. The generator captures the upstream callback and its exact URL-pattern array; it does not reproduce that callback's algorithm. Native string outcomes are checked against both the QString adapter and the production byte-preserving adapter. The latter retains bytes outside the matched span and uses ECMAScript whitespace rather than Qt's Unicode/regular-expression defaults.
+
+A profile request interceptor applies this change only to HTTPS requests for `teams.microsoft.com` and `teams.cloud.microsoft`. It never changes the profile User-Agent and leaves absent headers alone. The actual private Qt HTTPS proof observes both Teams request headers without the Electron token and an unrelated request with its original token. It also verifies the global profile User-Agent remains identical after every navigation. Its DNS aliases, self-signed certificate acceptance and TLS server exist only in the isolated fixture; the product gains no certificate bypass or external-network test dependency.
+
+The physical proof covers normal Chromium-generated User-Agent headers. Qt exposes its header collection as a QHash, rather than Electron's ordered JavaScript object; arbitrary duplicate case-variant header enumeration is not claimed identical across those platform boundaries. The native filter patterns are recorded from source, while the physical filter proof covers their two hostnames and an unrelated hostname, not every Chromium match-pattern edge. No Teams account, sign-in request or real browsing history is used.

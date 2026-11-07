@@ -42,12 +42,13 @@ for name,source in {
     'product-host.cpp':root/'ui/browser/browser-host.cpp',
     'image.cpp':root/'tools/fixtures/qt-image-proof.cpp',
     'private-browser-pipe.h':root/'ui/browser/private-browser-pipe.h',
+    'teams-request-headers.h':root/'ui/browser/teams-request-headers.h',
     'guest.qml':root/'tools/fixtures/owned-browser-pipe.qml',
     'bridge.js':root/'ui/browser/private-cdp-bridge.js',
     'host.js':root/'ui/browser/native-browser-host.js',
 }.items(): (out/name).write_bytes(source.read_bytes())
 (out/'platform.js').write_bytes((root/'ui/browser/qt-guest-input.js').read_bytes()+b'\n'+(root/'ui/browser/qt-target-scope.js').read_bytes())
-(out/'inputs.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['guest.cpp','product-host.cpp','image.cpp','guest.qml','bridge.js','host.js','platform.js','private-browser-pipe.h']},indent=2)+'\n')
+(out/'inputs.json').write_text(json.dumps({name:hashlib.sha256((out/name).read_bytes()).hexdigest() for name in ['guest.cpp','product-host.cpp','image.cpp','guest.qml','bridge.js','host.js','platform.js','private-browser-pipe.h','teams-request-headers.h']},indent=2)+'\n')
 lock=Path(os.environ.get('O3_BUILD_LOCK','/var/tmp/o3-build/o3-parity-compile.lock'))
 lock.parent.mkdir(parents=True,exist_ok=True)
 with lock.open('a') as compile_lock:

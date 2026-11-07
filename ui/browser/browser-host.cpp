@@ -1,4 +1,5 @@
 #include "private-browser-pipe.h"
+#include "teams-request-headers.h"
 #include <QFileInfo>
 #include <memory>
 #include <QHash>
@@ -130,12 +131,14 @@ extern "C" int t3_browser_main(const char *payload,const char *qml){
  app.setApplicationName("omarchy-t3-browser");app.setApplicationDisplayName("T3 Code · Browser");
  qInstallMessageHandler([](QtMsgType,const QMessageLogContext&,const QString &message){fprintf(stderr,"%s\n",qPrintable(message));});
  BrowserHost host(data["frameDirectory"].toString(),!data["restoreSessionCookies"].toBool());
+ TeamsRequestHeaders::Interceptor teamsHeaders;
  QQuickWebEngineProfile profile;
  if(data["persistent"].toBool()){
   profile.setStorageName(data["partition"].toString());profile.setOffTheRecord(false);
   profile.setPersistentStoragePath(QDir(data["profileDirectory"].toString()).filePath("storage"));profile.setCachePath(QDir(data["profileDirectory"].toString()).filePath("cache"));
   profile.setHttpCacheType(QQuickWebEngineProfile::DiskHttpCache);profile.setPersistentCookiesPolicy(QQuickWebEngineProfile::ForcePersistentCookies);
  }else{profile.setOffTheRecord(true);profile.setHttpCacheType(QQuickWebEngineProfile::MemoryHttpCache);profile.setPersistentCookiesPolicy(QQuickWebEngineProfile::NoPersistentCookies);}
+ profile.setUrlRequestInterceptor(&teamsHeaders);
  host.attachProfile(&profile);
  std::unique_ptr<PrivateBrowserPipe> privatePipe;
  QString privateSource;
