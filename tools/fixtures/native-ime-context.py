@@ -33,6 +33,8 @@ retire_popup = None
 proxy_thread = listener = None
 proxy_cancel, proxy_ready = threading.Event(), threading.Event()
 proxy_errors, native_snapshots = [], []
+proxy_connections = []
+snapshot_lock = threading.Lock()
 typed_boundary = os.environ.get('O3_CONTEXT_TYPED_BOUNDARY') == '1'
 try:
     for _ in range(100):
@@ -60,23 +62,24 @@ try:
         listener.set_inheritable(False)
         listener.bind('/tmp/runtime/owned-context-proxy')
         os.chmod('/tmp/runtime/owned-context-proxy', 0o600)
-        listener.listen(1)
-        listener.settimeout(5)
+        listener.listen(8)
+        listener.settimeout(.1)
         engine_environment['WAYLAND_DISPLAY'] = 'owned-context-proxy'
 
-        def observe(value):
-            assert len(native_snapshots) < 128, 'bounded typed native context observations'
-            native_snapshots.append(value.metadata())
-
-        def relay():
-            upstream = downstream = None
+        def relay_connection(upstream, connection_id):
+            downstream = None
             try:
-                upstream, _ = listener.accept()
                 assert proxy_ready.wait(3), 'actual engine PID admission deadline'
                 downstream = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 downstream.connect(str(sockets[0]))
+                def scoped_observe(value):
+                    metadata = value.metadata()
+                    metadata['connectionId'] = connection_id
+                    with snapshot_lock:
+                        assert len(native_snapshots) < 128, 'bounded typed native context observations'
+                        native_snapshots.append(metadata)
                 boundary = boundary_module.ContextBoundary(
-                    {'Owned native context baseline': 'owned-native-window'}, observe,
+                    {'Owned native context baseline': 'owned-native-window'}, scoped_observe,
                     lambda *_: None)
                 transport.forward(upstream, downstream, (engine.pid, os.getuid()),
                                   (display.pid, os.getuid()), boundary,
@@ -90,6 +93,26 @@ try:
                 for endpoint in (upstream, downstream):
                     if endpoint is not None:
                         endpoint.close()
+        def relay():
+            while not proxy_cancel.is_set():
+                try:
+                    upstream, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    if proxy_cancel.is_set():
+                        break
+                    raise
+                # GTK and Ozone independently open their own displays in the
+                # exact Chromium source. Object IDs cannot cross these sockets.
+                if len(proxy_connections) >= 8:
+                    upstream.close()
+                    proxy_errors.append('native-connection-budget')
+                    break
+                connection = threading.Thread(target=relay_connection,
+                    args=(upstream, len(proxy_connections)+1))
+                proxy_connections.append(connection)
+                connection.start()
         proxy_thread = threading.Thread(target=relay)
         proxy_thread.start()
     peer = subprocess.Popen(['/fixture/native-ime-context-peer'], env=environment,
@@ -225,14 +248,18 @@ try:
                           'scope':'actual engine client protocol; no Qt projection',
                           'enginePeerPidVerified':True,'compositorPeerPidVerified':True,
                           'compositorSeesProxyCreator':True,
+                          'connectionCount':len(proxy_connections),
                           'states':native_snapshots,'rawWireLogged':False}),flush=True)
     retire_popup()
     engine.stdin.write(b'quit\n')
     engine.stdin.flush()
     assert engine.wait(timeout=5) == 0
     if proxy_thread is not None:
+        for connection in proxy_connections:
+            connection.join(3)
+        proxy_cancel.set()
         proxy_thread.join(3)
-        assert not proxy_thread.is_alive() and not proxy_errors, 'native relay normal peer shutdown'
+        assert not proxy_thread.is_alive() and not any(t.is_alive() for t in proxy_connections) and not proxy_errors, 'native relay normal peer shutdown'
     poller.unregister(engine.stdout)
     wait_for(lambda: any(row['kind'] == 'context' and row['active'] == 0 for row in records))
     surrounding_observed = any(row['kind'] == 'context' and row['available'] == 1
@@ -268,3 +295,6 @@ finally:
     if proxy_thread is not None:
         proxy_thread.join(3)
         assert not proxy_thread.is_alive(), 'owned proxy stopped'
+    for connection in proxy_connections:
+        connection.join(3)
+        assert not connection.is_alive(), 'owned connection stopped'
