@@ -30,14 +30,27 @@ Guided host installation/update, application installation, accessibility overlay
 
 ## Shared SEMU v2 decoder checkpoint
 
-The client pins published SDK `88411c6ef894ae8463f1ee1423b06f8d0e81b2f7`
-with122 exact crate inputs and no private patches. Its frame parser recognizes
+The client pins published SDK `7548724acca15c0c01c4ec2b797695cc6a638825`
+with123 exact crate inputs and no private patches. Its frame parser recognizes
 16-byte SEMU v1 and24-byte SEMU v2 headers; the latter timestamp bytes are no
 longer sent to H.264. The actual pinned hub0.19.1 writer/parser provides338
-observations, with documented legacy empty-v1 compatibility. The combined SDK
-passes422 Rust tests, C ABI, actual JNI and baseline-aware Clippy inside
+observations, with documented legacy empty-v1 compatibility. The parent SDK88411c6
+passed422 Rust tests, C ABI, actual JNI and baseline-aware Clippy inside
 `android-sandbox`. Cargo dependencies and Android/JNI/Kotlin sources are unchanged.
 
 Real emulator frame, input and view-close acceptance still requires its own
 frozen client/server/Qt proof. Decoder corpus success and a booted inventory entry
 do not establish that full UI flow.
+
+## Native media ticket purpose
+
+The device SDK requests `/api/auth/websocket-ticket/media`, matching the complete
+native4301 deviceHubAccess resolver. Eight HTTP cases, six native resolver cases
+and one actual stable-server purpose check pass. The generic ticket helper is
+unchanged and the device consumer does not silently fall back to it.
+
+The stable0b9 server accepts unbound tickets for media and refuses RPC-bound
+ones. Both unbound and media requests reached a separate403 gate when agent
+access was disabled. The server viewer-access correction has its own native
+policy and physical proof; changing ticket purpose alone does not establish
+video acceptance or justify changing authentication policy.

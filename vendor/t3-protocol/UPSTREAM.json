@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/avillagran/lib-t3-rust",
-  "revision": "88411c6ef894ae8463f1ee1423b06f8d0e81b2f7",
+  "revision": "7548724acca15c0c01c4ec2b797695cc6a638825",
   "upstreamFiles": {
     "Cargo.lock": "aad62b851e8d46ba80dee979617eb9fbe92bd0d5e92b00147e51c50b6390a641",
     "Cargo.toml": "300beed8a03280b8397f61ea8f111d6f653f9dce32d02256412efee8b8121ea4",
@@ -11,6 +11,7 @@
     "data/storage-rule-cases.json": "2bbab2df2bbd689f1b2d49dee79f65a47645ca5d42bb0eac4372634d85789f4b",
     "docs/ANDROID.md": "2dbcafe80f412e434c92d62742ddbe93abafee50625a953db36cf597f291f93d",
     "docs/ANDROID_PARITY.md": "90da5b06d8533a5f02c8906b3ad2d3c5bdb0600b9313378268b8c21fe30df375",
+    "docs/DEVICE_MEDIA_TICKETS.md": "f9ad753510d70ce455069923a5640ac22af5315c2dacb85b412d49c367c5fa1f",
     "docs/NATIVE-FALLBACK-MODEL.md": "7487243c046cc9a502aec981d66e5ff6adc7ba6752b469ed5253023502f6ed35",
     "docs/NIGHTLY_3726.md": "920b696a61f83421b2458fdbfadad3d36ee102b8fc2143c7eab01af019044a71",
     "docs/OT3_REEXPORTS.md": "5b860c02b2c90ad0f6c1fd8c399f593d5b85ef5b12cfaac7fdacbbcc2b683c24",
@@ -59,7 +60,7 @@
     "src/compaction.rs": "256d53f2309fe48d17c7dac93020890cc07313e51f7d689c4082adb4c8a27087",
     "src/composer.rs": "f10a2ae963e59c3f041512cf80625c9cd95ab042fb2c6336180b4632fd8beea3",
     "src/connection_catalog.rs": "97f52dc7ed1357c31dc92a417489931dc0f315f312bd586aa0d5c756124ea1f9",
-    "src/device_hub.rs": "9a6c44584cf4606b848189c977db0d576f07bdc6a1887bca09cbc92dd13936be",
+    "src/device_hub.rs": "bd9d683be97d7f6fdbecc5b4fe53b3d82e4a1648c834aab3295bb52d52973bd1",
     "src/diff_review.rs": "d7c4899bfdb0350dbe193f6aeee1a8dbdcde977207690e8c2946bfc1d02a1c6e",
     "src/documents.rs": "6c0a7a720592a2e122568a65bcb270f891e08688e28ed1042e7b563689048cb0",
     "src/domain/git.rs": "1529db9c58ed67a1f05e9e0b3128d59a85ac8080eba51f736929ee3d64e72dfb",

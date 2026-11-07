@@ -75,7 +75,7 @@ impl Connection {
     pub fn device_hub(&self, hub_base_path: &str, host_id: &str) -> Result<HubAccess> {
         let base = hub_base(hub_base_path)?.to_string();
         let host_id = hub_id(host_id, 128)?.to_string();
-        let ticket = self.request_json("POST", "/api/auth/websocket-ticket", None, false)?;
+        let ticket = self.request_json("POST", "/api/auth/websocket-ticket/media", None, false)?;
         Ok(HubAccess {
             base,
             host_id,
