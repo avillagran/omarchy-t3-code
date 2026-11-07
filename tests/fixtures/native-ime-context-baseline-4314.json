@@ -1,0 +1,72 @@
+{
+  "scope": "Private original-engine context baseline only; no implemented Qt query, no public selection, no full-context acceptance. Prepared popup-lifetime change is source-checked and has NOT run.",
+  "runtime": "44.10.1",
+  "chromiumRevision": "92a6f15143569cf59b340472d0b5030465d95722",
+  "cases": [
+    {
+      "artifact": "native-ime-context-_wtnf17a",
+      "note": "Valid original GuestInput pointer/native focus/real selection; no surrounding callback; stronger expectation failure.",
+      "returncode": 1,
+      "sourceArtifactsManifestSha256": "79665c993b258c3913a6f7db7641522a20303a319692ddd9228c3c184902c88a",
+      "commandManifestSha256": "42a474ea0323800ca2cf4beeeed51bef6477db048d3f62b898df27313d4f78df",
+      "runtimeLogSha256": "cfc038134f75dd9e6b87db3aaa2a6661f60f916c4d690805b27d1a7c5c7b3ea1"
+    },
+    {
+      "artifact": "native-ime-context-75hj70ht",
+      "note": "Valid real keyboard edit6to7UTF16units, native caret,8stateupdates; no surrounding callback; stronger expectation failure.",
+      "returncode": 1,
+      "sourceArtifactsManifestSha256": "423e7a7dd1ffc5b525b7ecd205d2157c8548800ff2fcbdee1db99b8a8cf0382c",
+      "commandManifestSha256": "8e08678c20b0996e13c801d075c3041a61f392c8271eda429ee26f4deb453c7f",
+      "runtimeLogSha256": "48d6c7f2a73cd268cf556a2504236ac94746760eda8e63f3b055e5b7b639791b"
+    },
+    {
+      "artifact": "native-ime-context-sjm2u88s",
+      "note": "Real edit observed, native-view-first close crashes private compositor; lifetime failure, not acceptance.",
+      "returncode": 1,
+      "sourceArtifactsManifestSha256": "2c666cfe2607ca9f69c9414157208432303a0305be1f2019ae29b0f37411fcf7",
+      "commandManifestSha256": "8bf6a219853a46e8a1911ba6e6f126cde757218519b5a49c903bb3a9ce668732",
+      "runtimeLogSha256": "b8d61e94120c6c5aa7bcb4d4475efd9617a9ca6f6747fcc6e919f9f6150ec36b"
+    }
+  ],
+  "crash": {
+    "process": "owned-private-sway",
+    "pid": 3314538,
+    "signal": "SIGSEGV",
+    "storage": "none",
+    "coreLimits": "0:0",
+    "library": "libwayland-server.so.0.26.0",
+    "elfBuildId": "0844735a67b53b10f35139455b7bed3e5887ddc8",
+    "kernelFileOffset": "0x867f",
+    "staticSymbol": "wl_list_remove+0xf",
+    "faultAddress": "0x8",
+    "callerStackAvailable": false,
+    "memoryExtracted": false,
+    "upstreamCauseProven": false,
+    "staticLibrarySha256": "7e89d8a177a78343a7cf92e3c1c756dc98a437489de4861ff6de907c7e48af89"
+  },
+  "preparedSourceFiles": {
+    "tools/probe-native-ime-context": "326960ebddc21f752c9e9b66626526d8412ce62363bdd1a853992f34e740f215",
+    "tools/fixtures/native-ime-context-peer.c": "7a520a00ef2462e160d73b40a8124dd5ab9df82fb2a0c1b777c0009261627bfa",
+    "tools/fixtures/native-ime-context.cjs": "9950381ccc52e48663016487a33ad8964405de4660ffb4a08525edf87cef2479",
+    "tools/fixtures/native-ime-context.py": "d695b51851d5213fce59e3592a356f2a39f36309afeb1ac5b051cc3cab0ff31b",
+    "tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING": "ce5a195ac82ed4aabd75c36c5b9524b65ed7edd3245bdd9743251361f82cb7a4"
+  },
+  "preparedSourceChecks": {
+    "pythonFiles": 2,
+    "nodeCheckFiles": 1,
+    "cStrictSyntaxFiles": 1,
+    "nativeCompositorOrEngineExecuted": false,
+    "runtimeValidated": false,
+    "pendingReview": true
+  },
+  "sourceDiagnosis": {
+    "swayTag": "1.12",
+    "swayTextInputGitBlob": "e496bff1b6773b7579f12ba1819f66becaa235ef",
+    "packageBuildInfoPkgbuildSha256": "e4ad2f490a89e9d9985f524c50629d2fa3ea5dc39cff388cb17329eb58f51ef1",
+    "retrievedPkgbuildMatches": true,
+    "onlyPackagePatch": "Meson version formatting",
+    "candidate": "focused-surface listener removed before unsupported-view return without reinitialization",
+    "callerProven": false,
+    "preparedChange": "Destroy own popup/surface/buffer and acknowledge server roundtrip before view close on success/failure; no engine or compositor replay yet."
+  }
+}
