@@ -46,6 +46,9 @@ ShellRoot {
    root.bridge.confirmResetCredit();same(root.bridge.resetCreditOperation.busy,false);dialog.close()
    root.bridge.requestResetCredit(account);receipt(true);tryCompare(dialog,"opened",true)
    mouseClick(findChild(confirmation,"resetCreditConfirm"));check(root.bridge.resetCreditOperation.busy)
+   var refreshed=Object.assign({},account,{redeem:{environmentId:"env",input:{sourceId:"hub",accountId:"same-account",creditId:"new-credit"}}})
+   check(root.bridge.resetCreditBusy(refreshed),"a refreshed nextCreditId cannot bypass an existing account redemption")
+   check(!root.bridge.resetCreditBusy(Object.assign({},account,{key:"other-account"})),"unrelated accounts have independent admission")
    var request=root.bridge.resetCreditOperation.requestId
    root.bridge.confirmResetCredit();same(root.bridge.resetCreditOperation.requestId,request,"double confirmation cannot issue another request")
    root.bridge.action({op:"provider-reset-credit",environment:"env",requestId:"stale",result:{outcome:"reset"}})

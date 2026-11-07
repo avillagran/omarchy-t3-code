@@ -260,7 +260,7 @@ Singleton {
   property var resetCreditOperations:({})
   property string resetCreditLast:""
   readonly property var resetCreditOperation:resetCreditOperations[resetCreditLast] || {busy:false,status:"",requestId:"",account:null}
-  function resetCreditKey(account){return account.redeem.environmentId+"/"+JSON.stringify(account.redeem.input)}
+  function resetCreditKey(account){return account.key || account.redeem.environmentId+"/"+JSON.stringify({instanceId:account.redeem.input.instanceId,sourceId:account.redeem.input.sourceId,accountId:account.redeem.input.accountId})}
   function resetCreditBusy(account){var operation=account && account.redeem?resetCreditOperations[resetCreditKey(account)]:null;return !!operation && operation.busy}
   function keepResetCreditOperation(operation){var key=resetCreditKey(operation.account),all=Object.assign({},resetCreditOperations);all[key]=operation;resetCreditOperations=all;resetCreditLast=key}
   property var resetCreditConfirmation:null

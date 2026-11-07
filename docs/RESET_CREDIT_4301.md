@@ -48,3 +48,9 @@ Evidence is retained under `/home/node/BuildCache/o3-reset-credit-ui` and
 `/var/tmp/o3-client-rust-62aak85v`; the final isolated QML checkpoint is
 `/var/tmp/o3-device-panel-wdzzgtol`. No deployment, profile change or account
 mutation is part of these checks.
+
+Pending redemption belongs to the stable account identity. A quota refresh that
+rotates `nextCreditId` cannot enable a second redemption for that account while
+the first request remains pending; unrelated accounts remain independent. The
+actual modal regression reproduces the old bypass and passes with stable account
+admission (`/var/tmp/o3-device-panel-v617oo95`).
