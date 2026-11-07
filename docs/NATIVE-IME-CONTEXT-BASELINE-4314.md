@@ -211,9 +211,15 @@ UTF-16 positions, and distinguishes unavailable from known-empty surrounding tex
 Native hints and purpose are retained; only explicit equivalent Qt constraints
 are translated, without inventing a predictive-text policy for other flags.
 
-The frozen focused proof `browser-native-context-query-ip_0aglj` passed 55 checks,
-including foreign ownership, malformed ranges, invalid geometry, stale serial,
-selection, empty/unknown, sensitive/digits flags and lifecycle retirement. This
-proves the Qt consumer against actual frozen native metadata. Delivery from the
+The preceding focused proof `browser-native-context-query-xbsmq39o` passed 54
+checks covering foreign ownership, malformed ranges, invalid geometry, stale
+serial, selection, empty/unknown and sensitive/digits flags. The stronger
+`browser-native-context-query-ip_0aglj` failed the new window-hide cache-retirement
+assertion: hiding does not necessarily change QWindow active state immediately.
+The correction explicitly observes QWindow visibility. The final frozen proof
+`browser-native-context-query-yjx9xzy8` passed all 60 checks, including explicit
+window hiding and stale-owner retirement refusal. The earlier failure remains a
+negative receipt, not a pass.
+Delivery from the
 live owned Wayland engine into the product GUI is not yet connected, and the
 current X hosting route is not presented as providing this context.
