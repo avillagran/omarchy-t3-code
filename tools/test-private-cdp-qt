@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Compile a Qt fixture, then test private CDP only inside rootless Podman."""
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import tempfile
+
+root = Path(__file__).resolve().parent.parent
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip() != 'true':
+    raise SystemExit('Rootless Podman is required')
+parent = Path('/home/node/BuildCache/o3-desktop-next')
+evidence = Path(tempfile.mkdtemp(prefix='private-cdp-',dir=parent))
+flags = shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6WebEngineQuick'],text=True))
+subprocess.run(['flock','/var/tmp/o3-build/o3-parity-compile.lock','c++','-std=c++17','-fPIC',str(root/'tools/fixtures/private-cdp-probe.cpp'),'-o',str(evidence/'probe'),*flags],check=True)
+command = ['podman','run','--rm','--pull=never','--read-only','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--userns=keep-id','--pids-limit=256','--memory=1g','--tmpfs','/tmp:rw,exec,size=512m','--tmpfs','/run:rw,size=32m',
+           '-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(root)+':/source:ro','-v',str(evidence)+':/proof:ro',
+           '--env','HOME=/tmp','--env','XDG_RUNTIME_DIR=/tmp','--env','QT_QPA_PLATFORM=offscreen','--env','QT_QUICK_BACKEND=software','--env','QT_LOGGING_RULES=*.debug=false;qml.debug=true','--env','QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu',
+           'docker.io/library/archlinux:latest','python3','-c',r'''
+import json,subprocess
+r=subprocess.run(['/proof/probe','/source/tools/fixtures/private-cdp-probe.qml'],capture_output=True,text=True,timeout=20)
+assert r.returncode==0,r.stderr
+log=r.stderr
+target=next(s.split('QT TARGET ',1)[1] for s in log.splitlines() if 'QT TARGET ' in s)
+row=json.loads(next(s.split('QT PRIVATE_RESULT ',1)[1] for s in log.splitlines() if 'QT PRIVATE_RESULT ' in s))
+replies={m['id']:m for raw in row['messages'] if 'id' in (m:=json.loads(raw))}
+assert replies[1]['result']['result']['value']=='private-probe'
+assert replies[2]['result']['targetInfo']['targetId']==target
+assert not row['closed'] and row['failure'] is None
+assert 'Protocol Error' not in log
+print('ACTUAL_QT_PRIVATE_CDP_PASS: concurrent IDs restored, actual target matched, no frontend wrong-ID error')
+''']
+with (evidence/'output.log').open('w') as output:
+    result = subprocess.run(command,stdout=output,stderr=subprocess.STDOUT,timeout=35)
+(evidence/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+print('Private Qt evidence: '+str(evidence))
+raise SystemExit(result.returncode)
