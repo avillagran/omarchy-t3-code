@@ -28,7 +28,7 @@ const delays=[];
 const windows=[];
 let services,producer,server,sequence=0;
 const pending=new Map(),producerPending=new Map(),sandbox=new Map(),dialogs=[],attachments=new Map();
-let choices=[1,1,0,1];
+let choices=[1,1,0,1],observedNativeFocus=null;
 function deadline(promise,label){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Private fixture deadline: '+label)),12000)})]).finally(()=>clearTimeout(timer))}
 function event(line){const row=JSON.parse(new TextDecoder().decode(line));if(row.type==='attached'){attachments.get(row.tabId)?.();attachments.delete(row.tabId)}if(row.type!=='cdp')return;const frame=JSON.parse(row.message);if(typeof frame.id!=='number')return;const wait=pending.get(frame.id);if(!wait)return;pending.delete(frame.id);frame.error?wait.reject(Error(frame.error.message)):wait.resolve(frame.result)}
 async function command(tab,method,params={},sessionId){const id=++sequence;let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});pending.set(id,{resolve,reject});await services.command(JSON.stringify({type:'cdp',...tab.key,message:JSON.stringify({id,method,params,...(sessionId===undefined?{}:{sessionId})})}));return deadline(promise,method)}
@@ -36,18 +36,36 @@ async function evaluate(tab,expression){if(selectionProxy)await seatFocus('Owned
 async function producerCommand(row){if(wayland)await seatFocus('Owned synthetic clipboard peer');const id=++sequence;let resolve;const promise=new Promise(r=>resolve=r);producerPending.set(id,resolve);producer.stdin.write(JSON.stringify({...row,id})+'\n');const result=await deadline(promise,'selection owner');if(wayland)assert.equal(result.active,true,'real Qt clipboard peer has keyboard focus');return result}
 async function navigate(tab,url){await command(tab,'Page.navigate',{url},tab.session);for(let count=0;count<300;count++){if(await evaluate(tab,'location.href === '+JSON.stringify(url)+' && document.readyState === \"complete\"'))return;await new Promise(r=>setTimeout(r,20))}throw Error('Actual navigation did not finish')}
 async function tab(scope,host){const persistent=scope==='ime-baseline';const browserSession=await services.getSession(scope,persistent,'profile');const partition=await services.getPartition(scope,persistent,'profile');
- const window=new BrowserWindow({show:scope==='ime-baseline'?false:visibleHost,title:'Owned Electron '+scope,width:640,height:480,webPreferences:{offscreen:!visibleHost,backgroundThrottling:scope==='ime-baseline'?false:true,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});windows.push(window);window.on('page-title-updated',event=>event.preventDefault());
- window.webContents.on('will-attach-webview',(event,preferences,params)=>{assert.equal(params.partition,partition);preferences.sandbox=true;preferences.nodeIntegration=false;preferences.nodeIntegrationInSubFrames=false;preferences.contextIsolation=false;preferences.disableHtmlFullscreenWindowResize=true;preferences.preload=path.join(__dirname,'electron-sandbox-preload.cjs')});
+ const window=new BrowserWindow({useContentSize:scope==='ime-baseline',show:scope==='ime-baseline'?false:visibleHost,title:'Owned Electron '+scope,width:scope==='ime-baseline'?1280:640,height:scope==='ime-baseline'?800:480,webPreferences:{offscreen:!visibleHost,backgroundThrottling:scope==='ime-baseline'?false:true,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});windows.push(window);window.on('page-title-updated',event=>event.preventDefault());
+ window.webContents.on('will-attach-webview',(event,preferences,params)=>{assert.equal(params.partition,partition);preferences.sandbox=true;preferences.nodeIntegration=false;preferences.nodeIntegrationInSubFrames=false;preferences.contextIsolation=false;preferences.disableHtmlFullscreenWindowResize=true;if(scope==='ime-baseline')delete preferences.preload;else preferences.preload=path.join(__dirname,'electron-sandbox-preload.cjs')});
  const attachedGuest=new Promise(resolve=>window.webContents.once('did-attach-webview',(_event,guest)=>resolve(guest)));
- await window.loadURL('data:text/html,'+encodeURIComponent('<html><body style="margin:0"><webview partition="'+partition+'" src="about:blank" allowpopups="true" webpreferences="contextIsolation=false,sandbox=true,nodeIntegration=false" style="display:flex;width:640px;height:480px"></webview></body></html>'));
+ const guestSize=scope==='ime-baseline'?'width:100vw;height:100vh':'width:640px;height:480px';
+ await window.loadURL('data:text/html,'+encodeURIComponent('<html><body style="margin:0"><webview partition="'+partition+'" src="about:blank" allowpopups="true" webpreferences="contextIsolation=false,sandbox=true,nodeIntegration=false" style="display:flex;'+guestSize+'"></webview></body></html>'));
  const contents=await deadline(attachedGuest,'actual native webview attachment');assert.equal(contents.getType(),'webview');assert.equal(contents.hostWebContents,window.webContents);assert.equal(contents.session,browserSession,'actual guest uses the native service partition');await contents.loadURL('about:blank');contents.debugger.attach('1.3');
  const info=await contents.debugger.sendCommand('Target.getTargetInfo');assert.equal(webContents.fromDevToolsTargetId(info.targetInfo.targetId),contents,'actual debugger belongs to the exact created contents');
- const key={threadId:'owned-thread',tabId:'owned-'+scope};window.__ownedProofKey=key;const attached=new Promise(resolve=>attachments.set(key.tabId,resolve));services.attach(key,{webContents:contents,debugger:contents.debugger});services.setShown(key,true);await deadline(attached,'native attached-event barrier');
- const value={window,contents,key};const targets=await command(value,'Target.getTargets');assert.equal(targets.targetInfos.length,1);assert.equal(targets.targetInfos[0].targetId,info.targetInfo.targetId);
+ const key={threadId:'owned-thread',tabId:'owned-'+scope};window.__ownedProofKey=key;const attached=new Promise(resolve=>attachments.set(key.tabId,resolve));let boundary=contents.debugger;
+ if(scope==='ime-baseline'){
+  const realm={};require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname,'target-scope.js'),'utf8'),realm);
+  const listeners=new Set();const guard=realm.T3QtTargetScope.create(info.targetInfo.targetId,(method,params,sessionId)=>{const pending=contents.debugger.sendCommand(method,params,sessionId);return method==='Emulation.setFocusEmulationEnabled'?pending.then(result=>{observedNativeFocus=params.enabled===true;console.log('NATIVE_FOCUS_EMULATION '+Number(observedNativeFocus));return result}):pending},()=>{throw Error('native_control_target_retired')});
+  contents.debugger.on('message',(event,method,params,sessionId)=>{if(guard.event(method,params,sessionId))for(const listener of listeners)listener(event,method,params,sessionId)});
+  boundary={sendCommand:(...args)=>guard.sendCommand(...args),on:(name,listener)=>{if(name==='message')listeners.add(listener)},off:(name,listener)=>{if(name==='message')listeners.delete(listener)}};
+ }
+ services.attach(key,{webContents:contents,debugger:boundary});services.setShown(key,true);await deadline(attached,'native attached-event barrier');
+ const value={window,contents,key,inputDebugger:boundary};const targets=await command(value,'Target.getTargets');assert.equal(targets.targetInfos.length,1);assert.equal(targets.targetInfos[0].targetId,info.targetInfo.targetId);
  value.session=(await command(value,'Target.attachToTarget',{targetId:info.targetInfo.targetId,flatten:true})).sessionId;
+ if(scope==='ime-baseline'){
+  // Exact desktop adoption initialization from the immutable server0b9a5d3.
+  await command(value,'Page.enable',{},value.session);
+  await command(value,'Target.setDiscoverTargets',{discover:true});
+  await command(value,'Target.setAutoAttach',{autoAttach:true,waitForDebuggerOnStart:false,flatten:true});
+  await command(value,'Page.getFrameTree',{},value.session);
+  await command(value,'Network.enable',{},value.session);
+ }
+
+ if(scope==='ime-baseline'){window.setContentSize(640,480);window.show();window.focus();contents.focus();window.webContents.setBackgroundThrottling(true)}
  await navigate(value,'http://'+host+':'+server.address().port+'/');window.setTitle('Owned Electron '+scope);
  const isolation=await evaluate(value,'[typeof require,typeof process,typeof Buffer,typeof T3NativeDesktopHost]');assert.deepEqual(isolation,['undefined','undefined','undefined','undefined']);
- const proof=sandbox.get(contents.id);assert(proof?.sandboxed&&proof.isolated===false&&proof.electron==='44.10.1','real sandboxed native-preference webview preload');
+ const proof=sandbox.get(contents.id);if(scope==='ime-baseline'){const preferences=contents.getLastWebPreferences();assert.equal(preferences.sandbox,true);assert.equal(preferences.nodeIntegration,false);assert.equal(preferences.contextIsolation,false)}else assert(proof?.sandboxed&&proof.isolated===false&&proof.electron==='44.10.1','real sandboxed native-preference webview preload');
  return value;
 }
 ipcMain.on('owned-sandbox-proof',(event,value)=>sandbox.set(event.sender.id,value));
@@ -65,19 +83,19 @@ app.whenReady().then(async()=>{
 
  }
 
- server=http.createServer((_request,response)=>{response.end('<html><title>Owned Electron fixture</title></html>')});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ server=http.createServer((request,response)=>{if(process.env.O3_TEST_IME_BASELINE==='1'){request.resume();response.setHeader('Content-Type','text/html');response.setHeader('Connection','close');let body=request.method==='POST'?'ok':fs.readFileSync(path.join(__dirname,'native-ime-page.html'),'utf8');if(request.url==='/ime-input')body=body.replace('<textarea','<input').replace('</textarea>','');response.end(body)}else response.end('<html><title>Owned Electron fixture</title></html>')});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const {create}=require('./native-electron-services.cjs');
  services=await create({event,showMessageBox:async(options,owner)=>{dialogs.push({options,owner:owner?.webContents.id});assert.equal(options.defaultId,1);assert.equal(options.cancelId,1);const response=choices.shift();assert.notEqual(response,undefined,'No unsolicited dialog');return {response,checkboxChecked:false}}});
  if(process.env.O3_TEST_IME_BASELINE==='1'){
-  const page=await tab('ime-baseline','127.0.0.1');await navigate(page,'http://localhost:'+server.address().port+'/ime');
+  const page=await tab('ime-baseline','127.0.0.1');
   page.contents.on('render-process-gone',(_event,details)=>console.log('NATIVE_IME_RENDERER_GONE '+JSON.stringify({reason:details.reason,exitCode:details.exitCode})));
   for(const tag of ['textarea','input']){
-   await evaluate(page,`document.body.innerHTML='<${tag} id="field" autofocus style="position:absolute;left:10px;top:10px;width:300px;height:80px"></${tag}>';window.imeEvents=[];for(const type of ['compositionstart','compositionupdate','compositionend','input'])field.addEventListener(type,event=>window.imeEvents.push({type:event.type,trusted:event.isTrusted}));0`);
-   page.window.show();page.window.focus();page.contents.focus();if(wayland)await seatFocus(page.window.getTitle());page.window.webContents.setBackgroundThrottling(true);console.log('NATIVE_IME_HOST_STATE '+JSON.stringify({visible:page.window.isVisible(),windowFocused:page.window.isFocused(),ownerOffscreen:page.window.webContents.isOffscreen(),guestOffscreen:page.contents.isOffscreen()}));
-   for(const type of ['mousePressed','mouseReleased'])await services.humanInput(page.contents,page.contents.debugger,'Input.dispatchMouseEvent',{type,x:50,y:40,button:'left',clickCount:1,buttons:type==='mousePressed'?1:0});
-   const rootState=await page.contents.debugger.sendCommand('Runtime.evaluate',{expression:'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})',returnByValue:true});console.log('NATIVE_IME_BASELINE_BEFORE '+JSON.stringify({tag,focusedFrame:!!page.contents.focusedFrame,root:rootState.result.value,virtual:await evaluate(page,'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})')}));for(let attempt=0;attempt<100;attempt++){if(await evaluate(page,'document.activeElement === document.getElementById("field")'))break;await new Promise(resolve=>setTimeout(resolve,10));if(attempt===99)throw Error('native_editor_not_focused')}console.log('NATIVE_IME_BASELINE_EDITOR_FOCUSED '+tag);
-   const nativeImage=await page.contents.capturePage();console.log('NATIVE_IME_NATIVE_CAPTURE '+JSON.stringify({empty:nativeImage.isEmpty(),size:nativeImage.getSize()}));const pendingScreenshot=page.contents.debugger.sendCommand('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});await services.humanInput(page.contents,page.contents.debugger,'Input.imeSetComposition',{text:'にほん',selectionStart:3,selectionEnd:3});await pendingScreenshot;
-   await services.humanInput(page.contents,page.contents.debugger,'Input.insertText',{text:'日本'});
+   await navigate(page,'http://localhost:'+server.address().port+(tag==='input'?'/ime-input':'/read-6'));
+   if(wayland)await seatFocus(page.window.getTitle());console.log('NATIVE_IME_HOST_STATE '+JSON.stringify({visible:page.window.isVisible(),windowFocused:page.window.isFocused(),focusedFrame:!!page.contents.focusedFrame,ownerOffscreen:page.window.webContents.isOffscreen(),guestOffscreen:page.contents.isOffscreen()}));
+   for(const type of ['mousePressed','mouseReleased'])await services.humanInput(page.contents,page.inputDebugger,'Input.dispatchMouseEvent',{type,x:50,y:40,button:'left',clickCount:1,buttons:type==='mousePressed'?1:0});
+   const rootState=await page.inputDebugger.sendCommand('Runtime.evaluate',{expression:'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})',returnByValue:true});console.log('NATIVE_IME_BASELINE_BEFORE '+JSON.stringify({tag,focusedFrame:!!page.contents.focusedFrame,root:rootState.result.value,virtual:await evaluate(page,'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})')}));for(let attempt=0;attempt<100;attempt++){if(await evaluate(page,'document.activeElement === document.getElementById("field")'))break;await new Promise(resolve=>setTimeout(resolve,10));if(attempt===99)throw Error('native_editor_not_focused')}console.log('NATIVE_IME_BASELINE_EDITOR_FOCUSED '+tag);
+   const nativeImage=await page.contents.capturePage();console.log('NATIVE_IME_NATIVE_CAPTURE '+JSON.stringify({empty:nativeImage.isEmpty(),size:nativeImage.getSize()}));console.log('NATIVE_FOCUS_IDLE_CONTROL_BEGIN');const idleDeadline=Date.now()+12500;while(observedNativeFocus!==false&&Date.now()<idleDeadline)await new Promise(resolve=>setTimeout(resolve,50));assert.equal(observedNativeFocus,false,'canonical idle release completed');console.log('NATIVE_FOCUS_IDLE_CONTROL_END');await services.humanInput(page.contents,page.inputDebugger,'Input.imeSetComposition',{text:'にほん',selectionStart:3,selectionEnd:3});
+   await services.humanInput(page.contents,page.inputDebugger,'Input.insertText',{text:'日本'});
    const result=await evaluate(page,'({value:field.value,events:window.imeEvents})');console.log('NATIVE_IME_BASELINE_AFTER '+JSON.stringify({tag,result}));assert.equal(result.value,'日本','real native focused editor receives composition');assert(result.events.some(event=>event.type==='compositionstart'&&event.trusted));
   }
   console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({nativeImeBaseline:true}));await services.close();producer.stdin.end();for(const window of windows)window.destroy();server.close();app.exit(0);return;
