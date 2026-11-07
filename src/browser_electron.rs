@@ -9,6 +9,9 @@ use std::{
     process::{Command, Stdio},
 };
 
+#[path = "browser_stack_diagnostics.rs"]
+mod stack_diagnostics;
+
 pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> {
     let executable = checked_file(&runtime.join("electron"))?;
     let assets = assets
@@ -56,6 +59,14 @@ pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> 
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
+    // Only Config::isolated supplies this path. Ordinary native factories do
+    // not forward the diagnostic variable or enable native stack printing.
+    let diagnostics = isolated_diagnostics()?;
+    if diagnostics.is_some() {
+        command
+            .env("ELECTRON_ENABLE_STACK_DUMPING", "1")
+            .stderr(Stdio::piped());
+    }
     unsafe {
         command.pre_exec(move || {
             crate::desktop_browser_ipc::admit_child_source(source.as_raw_fd())?;
@@ -66,13 +77,68 @@ pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> 
             Ok(())
         });
     }
-    let status = command
-        .status()
-        .map_err(|_| "browser_runtime_unavailable")?;
+    let mut child = command.spawn().map_err(|_| "browser_runtime_unavailable")?;
+    if let Some(target) = diagnostics {
+        let source = child.stderr.take().ok_or("browser_runtime_unavailable")?;
+        if std::thread::Builder::new()
+            .name("native-stack-addresses".into())
+            .spawn(move || stack_diagnostics::drain(source, target))
+            .is_err()
+        {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("browser_runtime_unavailable".into());
+        }
+    }
+    let status = child.wait().map_err(|_| "browser_runtime_unavailable")?;
     if !status.success() {
         return Err("browser_runtime_unavailable".into());
     }
     Ok(())
+}
+
+fn isolated_diagnostics() -> Result<Option<fs::File>> {
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+    let Some(path) = std::env::var_os("O3_NATIVE_ELECTRON_DIAGNOSTICS") else {
+        return Ok(None);
+    };
+    let path = PathBuf::from(path);
+    let home = std::env::var_os("HOME").ok_or("browser_diagnostics_unavailable")?;
+    let home = Path::new(&home);
+    if !home.is_absolute()
+        || path != home.join("native-electron.log")
+        || home
+            .canonicalize()
+            .map_err(|_| "browser_diagnostics_unavailable")?
+            != home
+    {
+        return Err("browser_diagnostics_unavailable".into());
+    }
+    let parent = fs::symlink_metadata(home).map_err(|_| "browser_diagnostics_unavailable")?;
+    if !parent.is_dir()
+        || parent.uid() != unsafe { libc::geteuid() }
+        || parent.permissions().mode() & 0o077 != 0
+    {
+        return Err("browser_diagnostics_unavailable".into());
+    }
+    let file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(path)
+        .map_err(|_| "browser_diagnostics_unavailable")?;
+    let metadata = file
+        .metadata()
+        .map_err(|_| "browser_diagnostics_unavailable")?;
+    if !metadata.is_file()
+        || metadata.uid() != unsafe { libc::geteuid() }
+        || metadata.nlink() != 1
+        || metadata.permissions().mode() & 0o077 != 0
+    {
+        return Err("browser_diagnostics_unavailable".into());
+    }
+    Ok(Some(file))
 }
 fn checked_file(path: &Path) -> Result<PathBuf> {
     let metadata = fs::symlink_metadata(path).map_err(|_| "browser_runtime_unavailable")?;
