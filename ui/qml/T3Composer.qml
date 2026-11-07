@@ -250,6 +250,7 @@ Rectangle {
   readonly property int modelIndex: models.findIndex(function(m) { return m.instanceId === root.selection.instanceId && m.model === root.selection.model })
   readonly property var descriptors: modelIndex >= 0 ? (models[modelIndex].descriptors || []) : []
   readonly property bool locked: !!(bridge.planOperation || {}).busy || !!draft.busy || !!draft.attempt || !!draft.loading || !!draft.loadError
+  readonly property bool voiceBlocksSubmission:bridge.voiceBlocksSubmission===true
   readonly property bool running: !!bridge.selectedInfo.activeRunId
   readonly property bool hasContent: !!draft.text.trim() || draft.attachments.length > 0
   readonly property bool stopMode: running && !hasContent && !draft.queueEdit
@@ -445,7 +446,7 @@ Rectangle {
         Keys.onUpPressed: function(event) { event.accepted = root.completionKey(event,-1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(-1)) }
         Keys.onDownPressed: function(event) { event.accepted = root.completionKey(event,1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(1)) }
         Keys.onTabPressed: function(event) {event.accepted=root.completionVisible;if(event.accepted)root.chooseCompletion(root.completionIndex)}
-        Keys.onEscapePressed: function(event) {if(["starting","recording","transcribing"].indexOf(root.bridge.dictation.state)>=0){root.bridge.cancelDictation();event.accepted=true;return}event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
+        Keys.onEscapePressed: function(event) {if(root.voiceBlocksSubmission&&root.bridge.voiceController){root.bridge.voiceController.cancel();event.accepted=true;return}if(["starting","recording","transcribing"].indexOf(root.bridge.dictation.state)>=0){root.bridge.cancelDictation();event.accepted=true;return}event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
         KeyNavigation.priority: KeyNavigation.BeforeItem
         KeyNavigation.tab: expandEditorButton
         Keys.onReturnPressed: function(event) {root.handleEnter(event)}
@@ -786,7 +787,7 @@ Rectangle {
         objectName:"t3SendAndNewThread"
         name:"git-branch"
         tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Shift+Enter"
-        enabled:!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
+        enabled:!root.voiceBlocksSubmission&&!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
         onClicked:root.bridge.submit(true)
       }
       Rectangle {
@@ -809,7 +810,7 @@ Rectangle {
         T3Icon { anchors.centerIn: parent; name: primaryAction.iconName; tint: root.stopMode ? "white" : Color.popups.background; visible: root.stopMode ? !root.draft.stopping : !root.draft.busy && !root.uploading }
         MouseArea {
           id: sendMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-          enabled: root.stopMode ? !root.draft.stopping : (!root.bridge.localDraft || root.bridge.localDraftConnected(root.bridge.selectedInfo)) && !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
+          enabled: root.stopMode ? !root.draft.stopping : !root.voiceBlocksSubmission && (!root.bridge.localDraft || root.bridge.localDraftConnected(root.bridge.selectedInfo)) && !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
           onClicked: function(mouse) { primaryAction.activate((mouse.modifiers & Qt.ControlModifier) !== 0) }
         }
         Controls.ToolTip.visible: sendHover.hovered

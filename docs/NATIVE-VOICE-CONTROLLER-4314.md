@@ -55,8 +55,28 @@ python3 tools/test-native-voice-qt --native /path/to/pinned/t3code \
   --dependencies /path/to/canonical/effect/dependencies --node /path/to/pinned/node
 ```
 
-This checkpoint makes the native controller available to the Qt composer. It
-does not yet connect microphone capture, independent audio/cleanup consent,
-destination selection, network cancellation or transcript insertion to the
-actual composer. Server engine/HTTP capability activation also remains pending.
-The existing local dictation helper continues to use its own explicit settings.
+`T3Backend.createVoiceController` binds one shared native runtime to the actual
+selected draft. It reads source-text UTF-16 positions and commits synchronously
+through the existing edit, undo, persistence and cursor-restoration paths. A
+committed A→B→A edit changes the revision; edits to another draft do not. Owner
+changes cancel the operation. Replacing a controller disposes the old one and
+the native session mechanism waits for its underlying preparation to settle.
+Hiding the panel interrupts capture. The composer disables submission while
+the original controller blocks it and routes Escape to native cancellation.
+
+The focused `voice-controller` QML fixture mounts the actual Backend and rich
+Composer in a private software X server. It verifies real editor text/cursor,
+undo/redo, submission refusal, edit/owner races, replacement settlement, physical
+Qt Escape, background interruption and context-chip/source-position conversion.
+Its worker and local dictation helper are explicitly inert, positively checked
+before launch, and live in a separate private source namespace. Source hashes
+are checked before and after the run. Run only this reviewed fixture with:
+
+```sh
+python3 tools/test-device-panel-container voice-controller
+```
+
+The capture/consent owner still needs to install real microphone and transport
+dependencies. Independent audio/cleanup consent, destination selection, network
+cancellation, their views and server engine/HTTP capability activation remain
+pending. The existing local dictation helper uses its own explicit settings.

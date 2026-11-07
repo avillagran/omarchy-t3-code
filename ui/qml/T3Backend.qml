@@ -19,6 +19,8 @@ import "../js/LocalThreadDrafts.js" as LocalDrafts
 import "../js/NativeDraftProviders.js" as DraftProviders
 import "../js/PinOrder.js" as PinOrder
 import "../js/JsonDelta.js" as JsonDelta
+import "../js/NativeVoice.js" as NativeVoice
+import "../js/VoicePlatform.js" as VoicePlatform
 
 Singleton {
   id: root
@@ -194,7 +196,7 @@ Singleton {
     promptPrefill=Object.assign({},p,{key:selectedKey});applyPromptPrefill()
   }
   // Writing drafts inside draftChanged re-enters the draft binding itself.
-  onDraftChanged:Qt.callLater(applyPromptPrefill)
+  onDraftChanged:{observeVoiceDraft();Qt.callLater(applyPromptPrefill)}
   // Reading and checking public addresses asks other devices and can take a
   // while, so it has its own channel and never blocks approvals or pairing.
   function requestOmaBridgeGateways(action,values){
@@ -642,7 +644,7 @@ Singleton {
   // prevents an away-and-back navigation during the RPC from being overridden.
   property var metadataCheckpoints: ({environment:"",thread:"",data:null})
   property int selectionEpoch:0
-  onSelectedKeyChanged:{selectionEpoch++;ensureThreadFamily()}
+  onSelectedKeyChanged:{selectionEpoch++;observeVoiceDraft();if(voiceController)voiceController.ownerChanged();ensureThreadFamily()}
   property var threadUndoNotice:null
   function releaseThreadUndoShortcut(){if(threadUndoNotice&&threadUndoNotice.shortcut)threadUndoNotice=Object.assign({},threadUndoNotice,{shortcut:false})}
   function undoThreadAction(){
@@ -994,6 +996,48 @@ Singleton {
   property var draftCursors:({})
   signal draftRestored(string key,int start,int end)
   function rememberDraftCursor(start,end){if(!selectedKey)return;var all=Object.assign({},draftCursors);all[selectedKey]={start:start,end:end};draftCursors=all}
+  // One runtime per backend preserves the original cross-controller session
+  // ownership. The capture owner installs only consent-bound dependencies.
+  readonly property var voiceRuntime:NativeVoice.create(VoicePlatform.create())
+  property var voiceController:null
+  property var voiceState:({phase:"idle",error:null,errorAction:null})
+  readonly property bool voiceBlocksSubmission:voiceRuntime.voiceInputBlocksSubmission(voiceState)
+  property double voiceDraftRevision:0
+  property string voiceObservedKey:""
+  property string voiceObservedText:""
+  function observeVoiceDraft(){
+    var key=selectedKey,text=String(draft.text || "")
+    if(key!==voiceObservedKey||text!==voiceObservedText){voiceDraftRevision++;voiceObservedKey=key;voiceObservedText=text}
+  }
+  function voiceDraftSnapshot(){
+    observeVoiceDraft()
+    if(!selectedKey||draft.loading||draft.loadError)return null
+    var cursor=draftCursors[selectedKey] || {start:voiceObservedText.length,end:voiceObservedText.length}
+    return {ownerKey:selectedKey,text:voiceObservedText,selection:{start:cursor.start,end:cursor.end},revision:voiceDraftRevision}
+  }
+  function createVoiceController(dependencies){
+    if(voiceController)releaseVoiceController()
+    var controller,commitOwner="",callbacks=Object.assign({},dependencies,{
+      readDraft:function(){var snapshot=root.voiceDraftSnapshot();commitOwner=snapshot?snapshot.ownerKey:"";return snapshot},
+      commitDraft:function(text,selection){
+        if(!commitOwner||root.selectedKey!==commitOwner||root.draft.loading||root.draft.loadError||root.draft.busy||root.draft.attempt)throw new Error("voice_draft_unavailable")
+        // The original resolver's read and this commit run synchronously in the
+        // same GUI turn. edit() preserves the real draft's undo/persistence path.
+        root.edit(text,false)
+        root.rememberDraftCursor(selection.start,selection.end)
+        root.draftRestored(commitOwner,selection.start,selection.end)
+      },
+      onStateChange:function(state){if(root.voiceController===controller)root.voiceState=state;if(dependencies.onStateChange)dependencies.onStateChange(state)}
+    })
+    controller=new voiceRuntime.VoiceInputController(callbacks)
+    voiceController=controller;voiceState=controller.currentState
+    return voiceController
+  }
+  function releaseVoiceController(){
+    var previous=voiceController;voiceController=null
+    if(previous)previous.dispose()
+    voiceState={phase:"idle",error:null,errorAction:null}
+  }
   function editSnapshot(key,d){var cursor=draftCursors[key] || {start:(d.text || "").length,end:(d.text || "").length};return {text:d.text || "",context:d.context || null,attachments:(d.attachments || []).filter(function(f){return !f.uploading}),start:cursor.start,end:cursor.end}}
   function resetUndo(key){var all=Object.assign({},draftUndo);delete all[key];draftUndo=all}
   function saveUndo(key,before,after,kind){
@@ -1027,6 +1071,9 @@ Singleton {
     var all = Object.assign({}, drafts)
     all[key] = Object.assign({text: "", context:null, attachments: [], modelSelection: null, delivery: "auto", busy: false, error: "", attempt: null}, all[key] || {}, values)
     var previous=drafts[key]
+    // Count every committed edit, including an A→B→A within one GUI turn.
+    // Other drafts do not invalidate the selected recording's revision.
+    if(key===selectedKey&&values.text!==undefined&&values.text!==(previous?previous.text:"")){voiceDraftRevision++;voiceObservedKey=key;voiceObservedText=String(values.text || "")}
     if(historyKind!==false && previous && !previous.loading && !previous.loadError && ((values.text!==undefined&&values.text!==previous.text)||(values.attachments!==undefined&&JSON.stringify(values.attachments)!==JSON.stringify(previous.attachments))))saveUndo(key,previous,all[key],historyKind)
     drafts = all
     if (!all[key].loading && !all[key].loadError && ["text","context","attachments","modelSelection","modelSelectionExplicit","runtimeMode","interactionMode","sourcePlanRef","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
@@ -1209,7 +1256,7 @@ Singleton {
   }
   Process{id:dictationRemoveProcess;onExited:root.refreshDictation()}
   // The microphone never stays open behind a hidden panel; an old error goes with its thread.
-  Connections{target:root;function onPanelVisibleChanged(){if(!root.panelVisible)root.cancelDictation()}function onSelectedKeyChanged(){if(root.dictation.error)root.dictation=Object.assign({},root.dictation,{error:""});if(root.dictationRecordings.key!==root.selectedKey)root.dictationRecordings=({key:"",items:[]})}}
+  Connections{target:root;function onPanelVisibleChanged(){if(!root.panelVisible){root.cancelDictation();if(root.voiceController)root.voiceController.appMovedToBackground()}}function onSelectedKeyChanged(){if(root.dictation.error)root.dictation=Object.assign({},root.dictation,{error:""});if(root.dictationRecordings.key!==root.selectedKey)root.dictationRecordings=({key:"",items:[]})}}
   function removeAttachment(index) {
     var files = draft.attachments.slice(); var f = files[index]
     if (!f || f.uploading || draft.busy || draft.attempt) return
@@ -1343,7 +1390,7 @@ Singleton {
     return alternate===true?(preferred==="queue"?"steer":"queue"):preferred
   }
   function submit(startNewThread,workspaceStrategy,alternate) {
-    if(rewindPending)return
+    if(rewindPending||voiceBlocksSubmission)return
     if(localDraft&&!localDraftConnected(LocalDrafts.metadata(root,selectedKey)))return
     if(planOperation.busy&&!draft.attempt)return
     if(providerSubagent&&startNewThread!==true)return
