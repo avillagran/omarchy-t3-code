@@ -189,3 +189,31 @@ surface has the same origin. Production admission must bind the actual native
 surface/window, tab instance, frame geometry and current GUI lease before exposing
 an input-method query. High-DPI, resizing, selected-tab changes and stale frames
 still require coverage. Qt queries and Wayland clipboard migration remain open.
+
+## Qt query consumer
+
+`BrowserInputContext` and `BrowserInputItem` now admit typed native state through
+C++ owner entry points. These are not page-JavaScript invokables. The current
+connection, surface, tab, captured frame and mount scope must match before an
+acknowledged state can replace the cache. Earlier serials cannot replace newer
+ones. Current-lease invalid data clears the cache; a foreign stale result cannot
+clear a newer binding. Scope replacement, disabling, hiding, focus loss and native
+window deactivation clear the state before subsequent queries.
+
+`tools/test-browser-native-context-query` builds with `-Wall -Wextra -Werror`
+inside a private container and exercises real `QInputMethodQueryEvent` delivery
+on an actual mapped Qt item. Its source-pinned input is the final native state
+and trusted window/content geometry from `c1ctemih`; the text range checks use the
+fixed synthetic field, without retaining text from the native protocol log. The
+consumer retains a zero-width caret, translates surface coordinates using actual
+content offsets and painted-frame geometry, converts UTF-8 byte offsets into Qt
+UTF-16 positions, and distinguishes unavailable from known-empty surrounding text.
+Native hints and purpose are retained; only explicit equivalent Qt constraints
+are translated, without inventing a predictive-text policy for other flags.
+
+The frozen focused proof `browser-native-context-query-ip_0aglj` passed 55 checks,
+including foreign ownership, malformed ranges, invalid geometry, stale serial,
+selection, empty/unknown, sensitive/digits flags and lifecycle retirement. This
+proves the Qt consumer against actual frozen native metadata. Delivery from the
+live owned Wayland engine into the product GUI is not yet connected, and the
+current X hosting route is not presented as providing this context.

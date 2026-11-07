@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Build and exercise native Qt context queries in private containers only."""
+import fcntl
+import hashlib
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+root = pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip() == 'true'
+output = pathlib.Path(tempfile.mkdtemp(prefix='browser-native-context-query-',dir='/home/node/BuildCache/o3-desktop-next'))
+print(output,flush=True)
+for source in ['native/browser/browserinputitem.h','native/browser/browserinputcontext.h',
+               'tools/fixtures/browser-native-context-query.cpp']:
+    (output / pathlib.Path(source).name).write_bytes((root / source).read_bytes())
+ledger = json.loads((root/'tests/fixtures/native-ime-context-baseline-4314.json').read_text())
+record = next(row for row in ledger['cases'] if row['artifact']=='native-ime-context-c1ctemih')
+log = pathlib.Path('/home/node/BuildCache/o3-desktop-next/native-ime-context-c1ctemih/runtime.log').read_bytes()
+assert hashlib.sha256(log).hexdigest() == record['runtimeLogSha256']
+rows = [json.loads(line) for line in log.decode().splitlines() if line.startswith('{')]
+actual = next(row for row in rows if row['kind']=='typed-boundary-result')
+geometry = next(row for row in reversed(rows) if row['kind']=='diagnostic')
+(output/'native-state.json').write_text(json.dumps({'state':actual['states'][-1],
+    'contentBounds':geometry['contentBounds'],'bounds':geometry['bounds'],
+    'runtimeLogSha256':record['runtimeLogSha256']})+'\n')
+compositor = pathlib.Path('/home/node/BuildCache/o3-desktop-next/native-ime-context-c1ctemih/compositor')
+pins = json.loads((root/'tests/fixtures/private-compositor-artifact-4314.json').read_text())
+for record in pins['files']:
+    file = compositor / record['path']
+    assert file.is_file() and not file.is_symlink()
+    assert file.stat().st_size == record['bytes']
+    assert hashlib.sha256(file.read_bytes()).hexdigest() == record['sha256']
+common = ['podman','run','--rm','--pull=never','--read-only','--network=none',
+          '--userns=keep-id','--cap-drop=ALL','--security-opt=no-new-privileges',
+          '--ulimit=core=0:0','--pids-limit=64','--memory=512m',
+          '--tmpfs','/tmp:rw,size=64m,mode=1777','-v','/usr:/usr:ro',
+          '--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime']
+build = common + ['-v',str(output)+':/fixture:rw','docker.io/library/archlinux:latest','python3','-c',r'''
+import pathlib,resource,subprocess
+assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
+base=pathlib.Path('/fixture')
+moc=subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip()+'/moc'
+subprocess.run([moc,str(base/'browserinputitem.h'),'-o',str(base/'moc_browserinputitem.cpp')],check=True)
+flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6Qml','Qt6Gui'],text=True).split()
+subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(base/'browser-native-context-query.cpp'),str(base/'moc_browserinputitem.cpp'),'-I/fixture','-o',str(base/'query'),*flags],check=True)
+''']
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+    fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
+    with (output/'compile.log').open('w') as log:
+        subprocess.run(build,check=True,stdout=log,stderr=subprocess.STDOUT,timeout=30)
+for file in output.iterdir():
+    file.chmod(0o500 if file.name=='query' else 0o400)
+(output/'artifacts.json').write_text(json.dumps({file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in output.iterdir() if file.is_file()},indent=2)+'\n')
+run = common + ['-v',str(output)+':/fixture:ro','-v',str(compositor)+':/opt/sway-runtime:ro',
+                '-v','/etc/fonts:/etc/fonts:ro','--env','QT_QUICK_BACKEND=software',
+                '--env','QT_QPA_PLATFORM=wayland','--env','LIBGL_ALWAYS_SOFTWARE=1',
+                'docker.io/library/archlinux:latest','python3','-c',r'''
+import os,pathlib,resource,subprocess,time
+assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
+os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700)
+pathlib.Path('/tmp/sway.conf').write_text('xwayland disable\noutput * mode 800x600\nseat seat0 fallback true\n')
+environment=dict(os.environ,LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib',WLR_BACKENDS='headless',WLR_RENDERER='pixman',WLR_HEADLESS_OUTPUTS='1',WLR_LIBINPUT_NO_DEVICES='1')
+display=subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],env=environment,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+keyboard=None
+try:
+ for _ in range(100):
+  sockets=[p for p in pathlib.Path('/tmp/runtime').glob('wayland-*') if p.is_socket()]
+  if sockets:break
+  assert display.poll() is None;time.sleep(.02)
+ else:raise AssertionError('owned compositor unavailable')
+ environment=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name)
+ keyboard=subprocess.Popen(['wtype','-k','Shift_L','-s','20000'],env=environment,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ result=subprocess.run(['/fixture/query'],env=environment,timeout=10)
+ assert result.returncode==0,result.returncode
+finally:
+ if keyboard is not None and keyboard.poll() is None:keyboard.terminate();keyboard.wait(timeout=3)
+ display.terminate();display.wait(timeout=3)
+''']
+(output/'podman-command.json').write_text(json.dumps(run)+'\n')
+with (output/'runtime.log').open('w') as log:
+    result = subprocess.run(run,stdout=log,stderr=subprocess.STDOUT,timeout=20)
+(output/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+raise SystemExit(result.returncode)
