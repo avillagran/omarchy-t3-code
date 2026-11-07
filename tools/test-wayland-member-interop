@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Exercise real default Qt keyboard, cross-client drag/drop and clipboard with the member on/off."""
+import fcntl,hashlib,json,os,subprocess,tempfile
+from pathlib import Path
+root=Path(__file__).resolve().parent.parent
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+out=Path(tempfile.mkdtemp(prefix='wayland-member-interop-',dir='/home/node/BuildCache/o3-desktop-next'));print('Native toolkit interop evidence: '+str(out),flush=True)
+for name in ['wayland-member-interop.cpp','wayland-member-source.qml','wayland-member-target.qml','private-virtual-pointer.c']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
+(out/'waylandoffers.h').write_bytes((root/'native/browser/waylandoffers.h').read_bytes())
+protocol=root/'tools/fixtures/protocols/wlr-virtual-pointer-unstable-v1.xml';provenance=json.loads((protocol.parent/'wlr-virtual-pointer-source.json').read_text());data=protocol.read_bytes()
+if hashlib.sha256(data).hexdigest()!=provenance['sha256']:raise SystemExit('Changed pinned virtual pointer protocol')
+(out/'virtual-pointer.xml').write_bytes(data);(out/'protocol-source.json').write_text(json.dumps(provenance,indent=2)+'\n')
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+ fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
+ with (out/'compile.log').open('w') as log:
+  for mode,name in [('client-header','virtual-pointer.h'),('private-code','virtual-pointer.c')]:subprocess.run(['wayland-scanner',mode,str(out/'virtual-pointer.xml'),str(out/name)],check=True,stdout=log,stderr=subprocess.STDOUT)
+  flags=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client'],text=True).split();subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(out/'private-virtual-pointer.c'),str(out/'virtual-pointer.c'),'-o',str(out/'pointer'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+  flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6Qml','Qt6Gui','wayland-client'],text=True).split();subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'wayland-member-interop.cpp'),'-o',str(out/'toolkit'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+for name in ['pointer','toolkit']:(out/name).chmod(0o500)
+(out/'artifacts.json').write_text(json.dumps({file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in out.iterdir() if file.is_file()},indent=2)+'\n')
+args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--ulimit=core=0:0','--pids-limit=192','--memory=1g','--tmpfs','/tmp:rw,size=512m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(out)+':/fixture:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','QT_QPA_PLATFORM=wayland','--env','QT_QUICK_BACKEND=software','--env','QT_SCALE_FACTOR=1','--env','LIBGL_ALWAYS_SOFTWARE=1','--env','__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json','--env','O3_PRIVATE_INPUT_FIXTURE=1','localhost/o3-qml-wayland-tests:local','python3','-c',r'''
+import json,os,pathlib,resource,select,subprocess,time
+assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
+os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700)
+pathlib.Path('/tmp/sway.conf').write_text('output * mode 1280x1024\nseat seat0 fallback true\ninput * xkb_layout us\nfocus_follows_mouse no\ndefault_border none\nxwayland disable\nfor_window [title="Owned Toolkit Source"] floating enable, resize set width 480 height 360, move position 10 10\nfor_window [title="Owned Toolkit Target"] floating enable, resize set width 480 height 360, move position 650 10\n')
+swayenv=dict(os.environ,LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib',WLR_BACKENDS='headless',WLR_RENDERER='pixman',WLR_HEADLESS_OUTPUTS='1',WLR_LIBINPUT_NO_DEVICES='1')
+displaylog=open('/tmp/sway.log','w');display=subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],env=swayenv,stdout=displaylog,stderr=subprocess.STDOUT);children=[];reports=[]
+def line(process,timeout=3):
+ ready,_,_=select.select([process.stdout],[],[],timeout)
+ assert ready,'private process response timeout'
+ value=process.stdout.readline();assert value,'private process closed'
+ return value.strip()
+def command(process,value):
+ process.stdin.write(json.dumps(value)+'\n');process.stdin.flush();return json.loads(line(process))
+def cursor(value):
+ pointer.stdin.write(value+'\n');pointer.stdin.flush();assert line(pointer)=='ok';time.sleep(.035)
+def ipc(*arguments):
+ result=subprocess.run(['/opt/sway-runtime/usr/bin/swaymsg',*arguments],env=controlenv,capture_output=True,text=True,timeout=3);assert result.returncode==0,result.stderr;return json.loads(result.stdout)
+def find(title):
+ def walk(node):
+  if node.get('name')==title:return node
+  for child in node.get('nodes',[])+node.get('floating_nodes',[]):
+   result=walk(child)
+   if result:return result
+ for _ in range(100):
+  result=walk(ipc('-t','get_tree'))
+  if result:return result
+  time.sleep(.02)
+ raise AssertionError('private mapped window absent: '+title)
+def focus(title,process):
+ ipc('[title="'+title+'"]','focus')
+ for _ in range(80):
+  state=command(process,{'op':'state'})
+  if state['active']:return state
+  time.sleep(.02)
+ raise AssertionError('actual toolkit window did not focus')
+try:
+ for _ in range(100):
+  if display.poll() is not None:raise AssertionError('private compositor exited')
+  sockets=[file for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()];controls=list(pathlib.Path('/tmp/runtime').glob('sway-ipc*.sock'))
+  if sockets and controls:break
+  time.sleep(.02)
+ else:raise AssertionError('private compositor unavailable')
+ env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name);os.environ.update(env);controlenv=dict(env,SWAYSOCK=str(controls[0]),LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib')
+ keyboard=subprocess.Popen(['wtype','-k','Shift_L','-s','30000'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);children.append(keyboard)
+ pointer=subprocess.Popen(['/fixture/pointer'],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True);children.append(pointer);assert line(pointer)=='ready'
+ for enabled in [0,1]:
+  apps=[]
+  for role,member in [('source',0),('target',enabled)]:
+   errors=open('/tmp/'+role+'-'+str(enabled)+'.log','w');process=subprocess.Popen(['/fixture/toolkit',role,str(member),'/fixture/wayland-member-'+role+'.qml'],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=errors,text=True);children.append(process);apps.append(process);assert json.loads(line(process))['ready']
+  source,target=apps;sourceRect=find('Owned Toolkit Source')['rect'];targetRect=find('Owned Toolkit Target')['rect'];focus('Owned Toolkit Target',target)
+  cursor('move '+str(targetRect['x']+100)+' '+str(targetRect['y']+50));cursor('press');cursor('release');subprocess.run(['wtype','QtKeyboard42'],env=env,check=True,timeout=3)
+  for _ in range(80):
+   state=command(target,{'op':'state'})
+   if state['typed']=='QtKeyboard42':break
+   time.sleep(.02)
+  assert state['typed']=='QtKeyboard42',('real default Qt keyboard',enabled,state)
+  start=(sourceRect['x']+60,sourceRect['y']+150);focus('Owned Toolkit Source',source)
+  cursor('move '+str(start[0])+' '+str(start[1]));cursor('press');cursor('move '+str(start[0]+30)+' '+str(start[1]+5));cursor('move '+str(start[0]+60)+' '+str(start[1]+5));cursor('move '+str(targetRect['x']+180)+' '+str(targetRect['y']+200));time.sleep(.15);cursor('release')
+  for _ in range(80):
+   state=command(target,{'op':'state'})
+   if state['drops']:break
+   time.sleep(.02)
+  assert state['drops']==1 and state['payload']=='owned-wayland-drop',('real cross-client Qt drag/drop',enabled,state)
+  focus('Owned Toolkit Target',target);command(target,{'op':'copy'});focus('Owned Toolkit Source',source);copied=command(source,{'op':'read'});assert copied['clipboard']=='owned toolkit clipboard',('default Qt clipboard handoff',enabled,copied)
+  state=command(target,{'op':'state'});assert state['streamBytes']==0,'member must not siphon keyboard/drop/clipboard data'
+  reports.append({'enabled':bool(enabled),'keyboard':'QtKeyboard42','drops':state['drops'],'payload':state['payload'],'clipboard':copied['clipboard'],'memberStreamBytes':state['streamBytes']})
+  for process in apps:process.stdin.write('{"op":"quit"}\n');process.stdin.flush();assert process.wait(timeout=3)==0
+ print('WAYLAND_MEMBER_INTEROP '+json.dumps(reports))
+finally:
+ for process in reversed(children):
+  if process.poll() is None:process.terminate();process.wait(timeout=3)
+ display.terminate();display.wait(timeout=5);displaylog.close()
+ for file in pathlib.Path('/tmp').glob('*.log'):print(file.name+'\n'+file.read_text())
+''']
+with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=40)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
