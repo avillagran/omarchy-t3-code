@@ -46,7 +46,9 @@ Item {
    onLoaded:{
     var focused=frame.activeFocus;
     item.scopeToken=Qt.binding(function(){return root.requestId});
-    item.inputEnabled=Qt.binding(function(){return root.interactive&&root.visible&&root.ready});
+    // Retained pixels keep the same input owner while a new image loads.
+    // Frame readiness gates native query metadata, never the IME composition.
+    item.inputEnabled=Qt.binding(function(){return root.interactive&&root.visible});
     // Identity and geometry only; surrounding text uses the private C++ channel.
     item.nativeBinding=Qt.binding(function(){return root.ready?(root.page.nativeInputBinding||({})):({})});
     item.nativeContentRect=Qt.binding(function(){var r=root.ready?root.page.nativeInputContent:null;return r?Qt.rect(r.x,r.y,r.width,r.height):Qt.rect(0,0,0,0)});
