@@ -26,6 +26,25 @@
       "sourceArtifactsManifestSha256": "2c666cfe2607ca9f69c9414157208432303a0305be1f2019ae29b0f37411fcf7",
       "commandManifestSha256": "8bf6a219853a46e8a1911ba6e6f126cde757218519b5a49c903bb3a9ce668732",
       "runtimeLogSha256": "b8d61e94120c6c5aa7bcb4d4475efd9617a9ca6f6747fcc6e919f9f6150ec36b"
+    },
+    {
+      "artifact": "native-ime-context-i6pu87gd",
+      "note": "Reviewed changed lifetime: original editing observed, role-first close acknowledged before native deactivation. Observation baseline only; no Qt context implementation or stronger full-surrounding acceptance.",
+      "returncode": 0,
+      "sourceArtifactsManifestSha256": "b2bc387b824c19e53715f8524bdd87c24b5ea649cc9a45b9e9195e963a38ab6f",
+      "commandManifestSha256": "a9dbcd9e2b5760284d1d331eaa5a0d4aad50b7cbaffef708d13f0935f6dbcf52",
+      "runtimeLogSha256": "3785780d1f6b3180d06bc3ee3c60d3ac6a45cf9ffb05967fd64e2f51c4922b7e",
+      "intakePinsManifestSha256": "a710a52720bd9d67e01fe973abe908fc3f87a86fb7b195d6831e614b781131ca",
+      "popupAckBeforeNativeDeactivation": true,
+      "fallbackKillObserved": false,
+      "baselineResult": {
+        "kind": "baseline-result",
+        "scope": "original-engine private fixed-field lifetime only",
+        "actualEditingObserved": true,
+        "surroundingObserved": false,
+        "popupRectangleObserved": true,
+        "qtQueryImplemented": false
+      }
     }
   ],
   "crash": {
@@ -55,9 +74,11 @@
     "nodeCheckFiles": 1,
     "cStrictSyntaxFiles": 1,
     "nativeCompositorOrEngineExecuted": false,
-    "runtimeValidated": false,
+    "runtimeValidated": true,
     "pendingReview": false,
-    "singleChangedLifetimeReplayAuthorized": true
+    "singleChangedLifetimeReplayAuthorized": true,
+    "runtimeValidatedScope": "One reviewed popup-first fixed-field normal lifetime; not Qt queries or stronger full-context expectation.",
+    "singleChangedLifetimeReplayConsumed": true
   },
   "sourceDiagnosis": {
     "swayTag": "1.12",
