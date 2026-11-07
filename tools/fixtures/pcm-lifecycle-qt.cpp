@@ -13,7 +13,7 @@ static QString read(const QString &path) {
 }
 int main(int argc,char **argv) {
     QCoreApplication app(argc,argv);
-    if (argc!=3) return 2;
+    if (argc!=4) return 2;
     QJSEngine engine;
     auto checked=[&](const QString &source,const QString &name) {
         auto value=engine.evaluate(source,name);
@@ -24,9 +24,10 @@ int main(int argc,char **argv) {
         return value;
     };
     checked("var captureFactory=(function(){"+read(argv[1])+";return createCapture})();",argv[1]);
+    checked("var abortPlatform=(function(){"+read(argv[3])+";return create()})();",argv[3]);
     checked(read(argv[2]),argv[2]);
     checked(R"JS(var completed=false,failure=null,result=null;
-        runCaptureLifecycle(captureFactory).then(function(value){result=value;completed=true},function(error){failure=String(error)+'\n'+String(error&&error.stack||'');completed=true});)JS","run-lifecycle");
+        runCaptureLifecycle(captureFactory,function(){return new abortPlatform.AbortController()}).then(function(value){result=value;completed=true},function(error){failure=String(error)+'\n'+String(error&&error.stack||'');completed=true});)JS","run-lifecycle");
     QTimer poll;
     QObject::connect(&poll,&QTimer::timeout,&app,[&]() {
         if (!engine.globalObject().property("completed").toBool()) return;

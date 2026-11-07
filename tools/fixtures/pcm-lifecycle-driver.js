@@ -1,6 +1,6 @@
 // Compare the complete capture producer across engines with identical controlled
 // browser primitives. This exercises callback ordering, not a copied reducer.
-function runCaptureLifecycle(factory) {
+function runCaptureLifecycle(factory,makeAbortController) {
     function turns() {
         var chain=Promise.resolve();
         for(var index=0;index<12;index++)chain=chain.then(function(){});
@@ -8,16 +8,14 @@ function runCaptureLifecycle(factory) {
     }
     function deferred(){var resolve,reject;var promise=new Promise(function(a,b){resolve=a;reject=b});return {promise:promise,resolve:resolve,reject:reject}}
     function outcome(promise){return Promise.resolve(promise).then(function(){return 'ok'},function(error){return String(error&&error.message||error)})}
-    function signal(){
-        var listeners=[];
-        return {aborted:false,reason:null,addEventListener:function(name,callback){if(name!=='abort')throw Error('Unexpected signal event');listeners.push(callback)},removeEventListener:function(name,callback){listeners=listeners.filter(function(value){return value!==callback})},throwIfAborted:function(){if(this.aborted)throw this.reason},abort:function(){if(this.aborted)return;this.aborted=true;this.reason=Error('cancelled');listeners.slice().forEach(function(callback){callback()});listeners=[]}};
-    }
     var rows=[],sequence=Promise.resolve();
     function test(name,body){sequence=sequence.then(function(){var env=environment();return Promise.resolve(body(env)).then(function(value){rows.push({name:name,result:value,events:env.events,liveTimers:env.timers.map(function(timer){return timer.ms}),blobs:env.blobs})})})}
     function environment(){
         var env={events:[],timers:[],blobs:[],permission:deferred(),module:deferred(),resume:deferred(),prepareError:null,streaming:false,device:'',nextId:0,ack:true,stopError:false,stopChunks:[],trackEnded:null};
         var events=env.events;
-        env.signal=signal();
+        var controller=makeAbortController();
+        env.signal=controller.signal;
+        env.abort=function(){controller.abort(Error('cancelled'))};
         env.track={stop:function(){events.push(['track.stop'])},addEventListener:function(name,callback,options){events.push(['track.listen',name,options.once]);env.trackEnded=callback}};
         env.stream={getTracks:function(){return [env.track]}};
         function Context(){
@@ -45,16 +43,16 @@ function runCaptureLifecycle(factory) {
     }
     test('not prepared',function(e){return outcome(e.capture.recorder.prepareToRecordAsync())});
     test('transcription preparation refuses',function(e){e.prepareError='destination refused';return outcome(e.prepare())});
-    test('aborted transcription preparation',function(e){e.signal.abort();return outcome(e.prepare())});
+    test('aborted transcription preparation',function(e){e.abort();return outcome(e.prepare())});
     test('permission refuses',function(e){e.permission.reject(Error('permission refused'));return e.prepare().then(function(){return outcome(e.capture.recorder.prepareToRecordAsync())})});
-    test('late permission after abort stops track',function(e){return e.prepare().then(function(){var pending=outcome(e.capture.recorder.prepareToRecordAsync());e.signal.abort();return pending}).then(function(value){e.permission.resolve(e.stream);return turns().then(function(){return value})})});
-    test('abort before acquisition',function(e){return e.prepare().then(function(){e.signal.abort();return outcome(e.capture.recorder.prepareToRecordAsync())})});
+    test('late permission after abort stops track',function(e){return e.prepare().then(function(){var pending=outcome(e.capture.recorder.prepareToRecordAsync());e.abort();return pending}).then(function(value){e.permission.resolve(e.stream);return turns().then(function(){return value})})});
+    test('abort before acquisition',function(e){return e.prepare().then(function(){e.abort();return outcome(e.capture.recorder.prepareToRecordAsync())})});
     test('default microphone and clean stop',function(e){return e.ready().then(function(){e.record();return e.capture.recorder.stop()}).then(function(){return e.capture.recorder.uri})});
     test('exact selected microphone',function(e){e.device='test-device';return e.ready().then(function(){e.capture.cancelRecording();return e.capture.recorder.uri})});
     test('module load refuses',function(e){e.permission.resolve(e.stream);e.module.reject(Error('module failed'));return e.prepare().then(function(){return outcome(e.capture.recorder.prepareToRecordAsync())})});
-    test('abort during module load',function(e){e.permission.resolve(e.stream);return e.prepare().then(function(){var pending=outcome(e.capture.recorder.prepareToRecordAsync());return turns().then(function(){if(!e.context||e.node)throw Error('Expected suspended module admission');e.signal.abort();e.module.resolve();return pending})})});
+    test('abort during module load',function(e){e.permission.resolve(e.stream);return e.prepare().then(function(){var pending=outcome(e.capture.recorder.prepareToRecordAsync());return turns().then(function(){if(!e.context||e.node)throw Error('Expected suspended module admission');e.abort();e.module.resolve();return pending})})});
     test('resume refuses',function(e){e.permission.resolve(e.stream);e.module.resolve();e.resume.reject(Error('resume failed'));return e.prepare().then(function(){return outcome(e.capture.recorder.prepareToRecordAsync())})});
-    test('abort during resume',function(e){e.permission.resolve(e.stream);e.module.resolve();return e.prepare().then(function(){var pending=outcome(e.capture.recorder.prepareToRecordAsync());return turns().then(function(){if(!e.events.some(function(event){return event[0]==='context.resume'}))throw Error('Expected suspended resume');e.signal.abort();e.resume.resolve();return pending})})});
+    test('abort during resume',function(e){e.permission.resolve(e.stream);e.module.resolve();return e.prepare().then(function(){var pending=outcome(e.capture.recorder.prepareToRecordAsync());return turns().then(function(){if(!e.events.some(function(event){return event[0]==='context.resume'}))throw Error('Expected suspended resume');e.abort();e.resume.resolve();return pending})})});
     test('buffered packets and flush become exact blob',function(e){return e.ready().then(function(){e.record();e.message(0.25);e.message(new Float32Array([0.5,-0.25]));e.stopChunks=[new Float32Array([1/8])];return e.capture.recorder.stop()}).then(function(){return e.capture.recorder.uri})});
     test('streaming packets bypass blob',function(e){e.streaming=true;return e.ready().then(function(){e.record();e.message(new Float32Array([0.5]));e.stopChunks=[new Float32Array([-0.25])];return e.capture.recorder.stop()}).then(function(){return e.capture.recorder.uri})});
     test('stop timeout releases capture',function(e){e.ack=false;return e.ready().then(function(){e.record();var pending=outcome(e.capture.recorder.stop());e.fire(5000);return pending})});
@@ -62,7 +60,7 @@ function runCaptureLifecycle(factory) {
     test('track disconnect reports error',function(e){return e.ready().then(function(){e.trackEnded();e.capture.cancelRecording();return 'ok'})});
     test('duration timer reports limit',function(e){return e.ready().then(function(){e.record();e.fire(300000);e.capture.cancelRecording();return 'ok'})});
     test('worklet reports limit',function(e){return e.ready().then(function(){e.record();e.message('limit');e.capture.cancelRecording();return 'ok'})});
-    test('aborted worklet messages are ignored',function(e){return e.ready().then(function(){e.record();e.signal.abort();e.message(new Float32Array([1]));e.message(1);e.message('limit');return e.capture.recorder.stop()}).then(function(){return e.capture.recorder.uri})});
+    test('aborted worklet messages are ignored',function(e){return e.ready().then(function(){e.record();e.abort();e.message(new Float32Array([1]));e.message(1);e.message('limit');return e.capture.recorder.stop()}).then(function(){return e.capture.recorder.uri})});
     test('cancel resolves pending stop',function(e){e.ack=false;return e.ready().then(function(){e.record();e.message(new Float32Array([1]));var pending=outcome(e.capture.recorder.stop());e.capture.cancelRecording();return pending})});
     test('repeated stop is inert after cleanup',function(e){return e.ready().then(function(){e.record();return e.capture.recorder.stop()}).then(function(){return e.capture.recorder.stop()}).then(function(){return e.capture.recorder.uri})});
     test('delete clears matching recording only',function(e){return e.ready().then(function(){e.record();e.message(new Float32Array([1]));return e.capture.recorder.stop()}).then(function(){var uri=e.capture.recorder.uri;e.capture.deleteRecording('blob:foreign');var kept=e.capture.recorder.uri===uri;e.capture.deleteRecording(uri);return {kept:kept,uri:e.capture.recorder.uri}})});
