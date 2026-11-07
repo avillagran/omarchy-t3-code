@@ -266,7 +266,7 @@ Product.T3BrowserPage {
     }
   }
   CHECK(mounted);
-  CHECK(!native->property("inputEnabled").toBool());
+  CHECK(native->property("inputEnabled").toBool());
   CHECK(native->property("nativeBinding").toMap().isEmpty());
   CHECK(QMetaObject::invokeMethod(page,"showFixtureFrame"));
   CHECK(waitFor([&] { return page->property("ready").toBool() && native->property("inputEnabled").toBool(); }));

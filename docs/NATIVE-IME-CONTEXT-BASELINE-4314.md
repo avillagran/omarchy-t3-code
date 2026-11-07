@@ -265,10 +265,10 @@ set is bounded to 16 GUI mounts; incoming records are bounded to 16 KiB.
 `T3BrowserPage` provides only expected connection/surface/tab/frame identity and
 actual content/painted-frame geometry to its native item. These fields remain
 empty until a real frame producer supplies them. State packets cannot replace
-the expected binding. The item is disabled until its image is actually ready;
-this fixes the former fixture's assumption that a page with no frame can accept
-input. The stronger fixture first proves refusal without a frame, then loads an
-owned regular PNG and verifies actual page input, metadata and aspect-fit geometry.
+the expected binding. Image readiness gates query identity and content geometry independently of basic
+IME delivery. The earlier broader input-disabled assumption was incorrect and is
+superseded by the retained-frame proof below. The actual page fixture loads an
+owned regular PNG and verifies input, metadata and aspect-fit geometry.
 Ambiguous simultaneous mounts are refused and invalidate earlier state. Retiring
 a channel uses its retained guarded item pointer and matching binding, so another
 mount or frame cannot be cleared by an old channel. GUI focus/frame requests carry
@@ -366,3 +366,27 @@ reclamation, protected canaries and the original total-count equality all remain
 asserted. The real Rust registration, reset and actual page suites pass with the
 current production headers. Receipts and source fences are recorded separately in
 `tests/fixtures/gui-context-current-owner-proof-4314.json`.
+
+
+## Preserve composition during retained-frame loading
+
+The `root.ready` input gate introduced with the context fixture was an incorrect
+extra policy. Each asynchronous capture revision can put the image into Loading
+while `retainWhileLoading` still displays the same frame. Turning `inputEnabled`
+off clears the native item's composition state and can discard its empty cancel.
+Native GuestInput does not require a capture to finish before accepting focused
+input; query-context availability must not become a basic typing permission.
+
+A controlled real asynchronous Qt image provider reproduced this in
+`browser-input-method-7y2mc93m`: the retained image remained 240x240, input was
+disabled and the empty cancellation was not delivered (exit 1). With the same
+byte-identical producer, `browser-input-method-raseaze7` passed after removing
+only that extra gate. Preedit, commit and cancel now survive a slow same-scope
+frame load. `browser-input-method-gyjeyzxp` additionally verifies that expected
+query binding/content geometry remain unavailable while loading and are restored
+only when the frame is ready; no context is automatically rebound by a packet.
+The actual page/Rust registration/reset suite also passed in
+`browser-input-method-9j0ph8i2`. No engine policy, focus flag or compositor variant
+changed. Existing scope, visibility and actual window ownership fences remain.
+The matched-source receipts are in
+`tests/fixtures/browser-retained-ime-proof-4314.json`.
