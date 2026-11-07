@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Exercise the actual native entrypoint with a private synthetic FD parent."""
+import argparse, hashlib, json, os, pathlib, subprocess, tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime', type=pathlib.Path, required=True)
+parser.add_argument('--baseline', type=pathlib.Path, required=True)
+options = parser.parse_args()
+root = pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip() == 'true'
+runtime = options.runtime.resolve()
+baseline = options.baseline.resolve()
+manifest = json.loads((runtime.parent/'artifact.json').read_text())
+assert manifest['version'] == '44.10.1'
+assert manifest['archiveSha256'] == '2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
+records = json.loads((baseline/'app-artifacts.json').read_text())
+addon = baseline/'app/electron-private-fd.node'
+assert hashlib.sha256(addon.read_bytes()).hexdigest() == records[addon.name]
+assert (baseline/'electron-private-fd.c').read_bytes() == (root/'ui/browser/electron-private-fd.c').read_bytes()
+out = pathlib.Path(tempfile.mkdtemp(prefix='native-electron-entrypoint-',dir='/home/node/BuildCache/o3-desktop-next'))
+print('Actual native entrypoint evidence: '+str(out),flush=True)
+inputs = {}
+for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-scope.js']:
+    data = (root/'ui/browser'/name).read_bytes()
+    (out/name).write_bytes(data)
+    inputs[name] = hashlib.sha256(data).hexdigest()
+for name in ['native-electron-entrypoint.py','native-ime-page.html']:
+    data = (root/'tools/fixtures'/name).read_bytes()
+    (out/name).write_bytes(data)
+    inputs[name] = hashlib.sha256(data).hexdigest()
+for name in ['native-electron-services.cjs','electron-private-fd.node']:
+    data=(baseline/'app'/name).read_bytes()
+    (out/name).write_bytes(data)
+    inputs[name]=hashlib.sha256(data).hexdigest()
+owner = baseline/'clipboard-owner'
+owner_sha = json.loads((baseline/'clipboard-owner.json').read_text())['sha256']
+assert hashlib.sha256(owner.read_bytes()).hexdigest() == owner_sha
+assert (baseline/'clipboard-owner.cpp').read_bytes() == (root/'tools/fixtures/electron-clipboard-owner.cpp').read_bytes()
+(out/'clipboard-owner').write_bytes(owner.read_bytes())
+(out/'clipboard-owner').chmod(0o500)
+inputs['clipboard-owner'] = owner_sha
+# Reuse the exact HTTP documents from the real Manager acceptance producer.
+source = (root/'examples/native_clipboard_manager_probe.rs').read_text()
+import re
+pages = re.findall(r'r#"(<html><body><script>setTimeout.*?</html>)"#', source)
+assert len(pages) == 3
+for name, content in zip(['write-custom.html','read-custom.html','read-text.html'], pages):
+    (out/name).write_text(content)
+    inputs[name] = hashlib.sha256(content.encode()).hexdigest()
+(out/'runtime.json').write_text(json.dumps(manifest)+'\n')
+(out/'inputs.json').write_text(json.dumps({'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'files':inputs,'addon':records[addon.name]},indent=2)+'\n')
+args = ['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--ulimit=core=0:0','--memory=2g','--pids-limit=256','--tmpfs','/tmp:rw,exec,size=256m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(runtime)+':/electron:ro','-v',str(out)+':/fixture/electron:ro','-v',str(out)+':/proof:ro']
+args += ['--env','HOME=/tmp/home','--env','LIBGL_ALWAYS_SOFTWARE=1','--env','__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json','docker.io/library/archlinux:latest','python3','/proof/native-electron-entrypoint.py']
+(out/'podman-command.json').write_text(json.dumps(args)+'\n')
+with (out/'runtime.log').open('w') as log:
+    result = subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=90)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+raise SystemExit(result.returncode)
