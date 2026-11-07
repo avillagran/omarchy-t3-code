@@ -1,3 +1,0 @@
-The native context observer's revised popup lifetime has source-only checks.
-Keep native compositor/engine replay paused until its immutable checkpoint is reviewed.
-The earlier native-view-first close crashed the private compositor; it is not an accepted teardown path.

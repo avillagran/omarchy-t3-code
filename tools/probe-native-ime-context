@@ -24,19 +24,39 @@ if (root / 'tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING').exists():
     raise SystemExit('Native context runtime paused for popup lifetime review; source-only checks remain available')
 assert subprocess.check_output(['podman', 'info', '--format', '{{.Host.Security.Rootless}}'], text=True).strip() == 'true'
 runtime = options.runtime.resolve()
-runtime_receipt = json.loads((runtime.parent / 'artifact.json').read_text())
+runtime_pin = root / 'ui/voice/electron-runtime-44.10.1-linux-x64.json'
+runtime_pin_bytes = runtime_pin.read_bytes()
+runtime_receipt = json.loads(runtime_pin_bytes)
 assert runtime_receipt['version'] == '44.10.1'
 assert runtime_receipt['archiveSha256'] == '2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
+assert runtime_receipt['platform'] == 'linux-x64' and len(runtime_receipt['files']) == 72
+assert not options.compositor.is_symlink()
 compositor = options.compositor.resolve()
-receipt = json.loads((compositor / 'artifact.json').read_text())
+compositor_pin = root / 'tests/fixtures/private-compositor-artifact-4314.json'
+compositor_pin_bytes = compositor_pin.read_bytes()
+receipt = json.loads(compositor_pin_bytes)
 assert receipt['schema'] == 1 and receipt['kind'] == 'official-arch-sway-regular-files'
+expected_members = {record['path'] for record in receipt['files']}
+for member in compositor.rglob('*'):
+    assert not member.is_symlink(), 'compositor source refuses symbolic links'
+    assert member.is_dir() or str(member.relative_to(compositor)) in expected_members | {'artifact.json'}
+output = pathlib.Path(tempfile.mkdtemp(prefix='native-ime-context-', dir='/home/node/BuildCache/o3-desktop-next'))
+print(output, flush=True)
+frozen_compositor = output / 'compositor'
+frozen_compositor.mkdir()
 for record in receipt['files']:
     member = compositor / record['path']
     assert not member.is_symlink() and member.is_file() and member.stat().st_uid == os.getuid()
     assert member.stat().st_size == record['bytes'] <= 4 * 1024 * 1024
-    assert hashlib.sha256(member.read_bytes()).hexdigest() == record['sha256']
-output = pathlib.Path(tempfile.mkdtemp(prefix='native-ime-context-', dir='/home/node/BuildCache/o3-desktop-next'))
-print(output, flush=True)
+    data = member.read_bytes()
+    assert hashlib.sha256(data).hexdigest() == record['sha256']
+    frozen_member = frozen_compositor / record['path']
+    frozen_member.parent.mkdir(parents=True, exist_ok=True)
+    with frozen_member.open('xb') as stream:
+        stream.write(data)
+    frozen_member.chmod(0o500 if record['path'].startswith('usr/bin/') else 0o400)
+(frozen_compositor / 'artifact.json').write_bytes(compositor_pin_bytes)
+compositor = frozen_compositor
 for name in ['native-ime-context-peer.c', 'native-ime-context.cjs', 'native-ime-context.py',
              'input-method-unstable-v2.xml', 'input-method-unstable-v2.source.json']:
     (output / name).write_bytes((root / 'tools/fixtures' / name).read_bytes())
@@ -70,7 +90,19 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock', 'a') as lock:
     with (output / 'compile.log').open('w') as log:
         subprocess.run(build_args, check=True, stdout=log, stderr=subprocess.STDOUT, timeout=30)
 (output / 'native-ime-context-peer').chmod(0o500)
-(output / 'runtime.json').write_text(json.dumps(runtime_receipt) + '\n')
+(output / 'runtime.json').write_bytes(runtime_pin_bytes)
+(output / 'intake-pins.json').write_text(json.dumps({
+    'runtimeSource':str(runtime_pin.relative_to(root)),
+    'runtimeSourceSha256':hashlib.sha256(runtime_pin_bytes).hexdigest(),
+    'runtimeMemberCount':72,
+    'compositorSource':str(compositor_pin.relative_to(root)),
+    'compositorSourceSha256':hashlib.sha256(compositor_pin_bytes).hexdigest(),
+    'compositorMemberCount':len(receipt['files']),
+    'compositorFrozenBeforeRun':True,
+    'sourceHead':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
+    'probeSourceHashes':{name:hashlib.sha256((root/name).read_bytes()).hexdigest()
+        for name in ['tools/probe-native-ime-context','tools/fixtures/native-ime-context-peer.c',
+                     'tools/fixtures/native-ime-context.cjs','tools/fixtures/native-ime-context.py']}},indent=2)+'\n')
 artifacts = {file.name: hashlib.sha256(file.read_bytes()).hexdigest()
              for file in output.iterdir() if file.is_file()}
 (output / 'artifacts.json').write_text(json.dumps(artifacts, indent=2) + '\n')
