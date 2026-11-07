@@ -36,7 +36,8 @@ targets in a private offline rootless container, and retains fixtures. Strict
 all-target compilation is separate from runtime selection.
 
 This checkpoint provides the native controls and SDK consumer. Voice preference
-views, independent destination/cleanup consent, host capture, the complete
-controller and safe transcript insertion remain in progress. It does not
+views, independent destination/cleanup consent, host capture and safe transcript
+insertion remain in progress. The complete native controller now has a separately
+verified Qt artifact; see `NATIVE-VOICE-CONTROLLER-4314.md`. It does not
 activate server capabilities or redirect the existing local dictation helper.
 The global client runtime safety audit marker remains active.

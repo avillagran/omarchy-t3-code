@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Compare the whole native controller with Qt in a retained private runtime."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import pathlib
+import shlex
+import stat
+import subprocess
+import tempfile
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--native',required=True,type=pathlib.Path)
+parser.add_argument('--dependencies',required=True,type=pathlib.Path)
+parser.add_argument('--node',required=True,type=pathlib.Path)
+args=parser.parse_args()
+root=pathlib.Path(__file__).resolve().parent.parent
+if subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+evidence=pathlib.Path(tempfile.mkdtemp(prefix='native-voice-qt-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')))
+evidence.chmod(0o700)
+def digest(data):return hashlib.sha256(data).hexdigest()
+files=['tools/fixtures/voice-controller-qt.cpp','tools/fixtures/voice-controller-driver.js','tools/fixtures/voice-controller-native.mjs','tools/fixtures/effect-4.1.2.manifest.json','ui/js/VoicePlatform.js','ui/js/NativeVoice.js','ui/js/NativeVoice.sources.json','tests/fixtures/voice-unicode-4314.bin']
+source=evidence/'source';source.mkdir(mode=0o700)
+fence={}
+for name in files:
+ data=(root/name).read_bytes();fence[name]=digest(data)
+ destination=source/name;destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes(data);destination.chmod(0o400)
+metadata=json.loads((source/'ui/js/NativeVoice.sources.json').read_text())
+effect_manifest=json.loads((source/'tools/fixtures/effect-4.1.2.manifest.json').read_text())
+for name,expected in effect_manifest['files'].items():
+ dependency=args.dependencies/'node_modules/effect'/name
+ assert dependency.is_file()and not dependency.is_symlink()and digest(dependency.read_bytes())==expected,'Changed canonical Effect file: '+name
+assert metadata['outputSha256']==fence['ui/js/NativeVoice.js']
+assert metadata['unicodeGoldenSha256']==fence['tests/fixtures/voice-unicode-4314.bin']
+for name,expected in metadata['sourceFiles'].items():assert digest((args.native/name).read_bytes())==expected
+node=evidence/'node'
+fd=os.open(args.node,os.O_RDONLY|os.O_NOFOLLOW)
+with os.fdopen(fd,'rb')as original:
+ before=os.fstat(original.fileno());assert stat.S_ISREG(before.st_mode)and before.st_mode&0o111 and not before.st_mode&0o6000
+ with node.open('xb')as destination:
+  while data:=original.read(1024*1024):destination.write(data)
+ after=os.fstat(original.fileno());assert (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)==(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns)
+node.chmod(0o500)
+node_digest=digest(node.read_bytes())
+assert node_digest=='0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b'
+binary=evidence/'voice-controller-qt'
+with pathlib.Path('/var/tmp/o3-build/o3-parity-compile.lock').open('a')as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Core','Qt6Qml'],text=True))
+ with(evidence/'compile.log').open('w')as log:
+  compiled=subprocess.run(['c++','-std=c++17','-fPIC','-O2','-Wall','-Wextra','-Werror',str(source/'tools/fixtures/voice-controller-qt.cpp'),'-o',str(binary),*flags],stdout=log,stderr=subprocess.STDOUT)
+ if compiled.returncode:print(evidence);raise SystemExit(compiled.returncode)
+binary.chmod(0o500)
+state=evidence/'state';state.mkdir(mode=0o700)
+for name in ['home','tmp','config','cache','data','runtime']:(state/name).mkdir(mode=0o700)
+base=['podman','--remote=false','run','--rm','--pull=never','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--read-only','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64','--memory=2g','--ulimit','core=0','--workdir','/state','-v',f'{source}:/source:ro','-v',f'{node}:/voice-node:ro','-v',f'{binary}:/voice-qt:ro','-v',f'{args.native.resolve()}:/native:ro','-v',f'{args.dependencies.resolve()}:/dependencies:ro','-v',f'{state}:/state:rw','-v','/usr:/usr:ro','--env','HOME=/state/home','--env','TMPDIR=/state/tmp','--env','XDG_CONFIG_HOME=/state/config','--env','XDG_CACHE_HOME=/state/cache','--env','XDG_DATA_HOME=/state/data','--env','XDG_RUNTIME_DIR=/state/runtime','localhost/o3-rust-tests:latest']
+commands={
+ 'native':['/voice-node','--experimental-vm-modules','/source/tools/fixtures/voice-controller-native.mjs','/native','/dependencies','/source/tools/fixtures/voice-controller-driver.js'],
+ 'qt':['/voice-qt','/source/ui/js/VoicePlatform.js','/source/ui/js/NativeVoice.js','/source/tools/fixtures/voice-controller-driver.js']}
+results={}
+for name,command in commands.items():
+ with(evidence/(name+'.json')).open('w')as output,(evidence/(name+'.log')).open('w')as log:
+  results[name]=subprocess.run([*base,*command],stdout=output,stderr=log,timeout=120).returncode
+ if results[name]:break
+proof={'exitCodes':results,'sourceSha256':fence,'nodeSha256':node_digest,'effectFilesVerified':len(effect_manifest['files']),'binarySha256':digest(binary.read_bytes()),'scope':'Whole original controller/helpers compared with the Qt-compiled controller. Private rootless runtime, synthetic capture/transport callbacks; no product activation.'}
+if all(results.get(name)==0 for name in commands):
+ native=json.loads((evidence/'native.json').read_text());qt=json.loads((evidence/'qt.json').read_text())
+ unicode_equal=qt.pop('unicodeSha256')==metadata['unicodeGoldenSha256'];unicode_count=qt.pop('unicodeObservations')
+ equal=native==qt
+ proof.update({'controllerEqual':equal,'unicodeEqual':unicode_equal,'unicodeObservations':unicode_count,'pureCases':native['pureCases'],'asyncCases':native['asyncCases'],'errorCases':native['errorCases'],'errorConstructorCases':len(native['constructors'])})
+ if not equal:
+  def first_difference(a,b,path='root'):
+   if type(a)is not type(b):return path
+   if isinstance(a,dict):
+    if a.keys()!=b.keys():return path+':keys'
+    for key in a:
+     if a[key]!=b[key]:return first_difference(a[key],b[key],path+'.'+str(key))
+   elif isinstance(a,list):
+    if len(a)!=len(b):return path+':length'
+    for index,(left,right)in enumerate(zip(a,b)):
+     if left!=right:return first_difference(left,right,path+'.'+str(index))
+   return path
+  proof['firstDifference']=first_difference(native,qt)
+ proof['exit']=0 if equal and unicode_equal and unicode_count==0x110000 else 1
+else:proof['exit']=1
+assert all(digest((root/name).read_bytes())==expected for name,expected in fence.items()),'Source changed during runtime'
+(evidence/'result.json').write_text(json.dumps(proof,indent=2)+'\n')
+print(evidence)
+raise SystemExit(proof['exit'])
