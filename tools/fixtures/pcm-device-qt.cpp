@@ -40,6 +40,7 @@ class Device final:public QObject {
     std::unique_ptr<O3PcmDsp> dsp;
     QJSValue port;
     int rate=0,channels=0;
+    QAudioFormat::SampleFormat sampleFormat=QAudioFormat::Float;
     bool meter=false,started=false;
     void ensure(bool success) {if(!success)qFatal("Actual device DSP failed");}
     void drain() {if(dsp)QCoreApplication::sendPostedEvents(dsp.get(),QEvent::MetaCall);}
@@ -49,7 +50,7 @@ class Device final:public QObject {
     }
     void prepare(int count) {
         channels=count;
-        QAudioFormat format;format.setSampleRate(rate);format.setChannelCount(channels);format.setSampleFormat(QAudioFormat::Float);
+        QAudioFormat format;format.setSampleRate(rate);format.setChannelCount(channels);format.setSampleFormat(sampleFormat);
         dsp=std::make_unique<O3PcmDsp>();
         connect(dsp.get(),&O3PcmDsp::failed,this,[](const QString &){qFatal("Actual device DSP emitted failure");});
         connect(dsp.get(),&O3PcmDsp::pcm,this,[this](const QByteArray &bytes){
@@ -65,7 +66,12 @@ class Device final:public QObject {
 public:
     Device(QJSEngine &value,QString source):engine(value),resource(std::move(source)) {}
     Q_INVOKABLE void begin(int sampleRate,const QJSValue &messagePort,bool meterOnly) {
-        dsp.reset();port=messagePort;rate=sampleRate;channels=0;meter=meterOnly;started=false;
+        dsp.reset();port=messagePort;rate=sampleRate;channels=0;meter=meterOnly;started=false;sampleFormat=QAudioFormat::Float;
+    }
+    Q_INVOKABLE void beginRaw(int kind,int sampleRate,int channelCount,const QJSValue &messagePort) {
+        if(kind<1||kind>3)qFatal("Invalid synthetic integer device kind");
+        begin(sampleRate,messagePort,false);
+        sampleFormat=QAudioFormat::SampleFormat(kind);prepare(channelCount);
     }
     Q_INVOKABLE void command(const QString &value) {
         if(value=="start")started=true;
@@ -87,6 +93,10 @@ public:
             const float value=float(values.property(channel).property(frame).toNumber());
             std::memcpy(bytes.data()+(frame*channels+channel)*sizeof(float),&value,sizeof(value));
         }
+        feedRaw(bytes);
+    }
+    Q_INVOKABLE void feedRaw(const QByteArray &bytes) {
+        if(!started||!dsp)return;
         // A QIODevice write may split a frame at any byte. These two calls
         // exercise the production carry without adding or losing a sample.
         const auto first=qMin(qsizetype(3),bytes.size());
@@ -124,7 +134,7 @@ static void inputAndDeliveryChecks(const QString &resource) {
     if(!gotLevel||!ended)qFatal("Callback stop was not acknowledged");
 }
 int main(int argc,char **argv) {
-    QCoreApplication app(argc,argv);if(argc!=3)return 2;
+    QCoreApplication app(argc,argv);if(argc!=3&&argc!=4)return 2;
     QJSEngine engine;
     auto checked=[&](const QString &source,const QString &name) {
         auto result=engine.evaluate(source,name);
@@ -140,7 +150,15 @@ int main(int argc,char **argv) {
     engine.globalObject().setProperty("nativePcmMath",engine.newQObject(new O3VoiceMath(&engine)));
     checked("var pcm=(function(){"+resource+";return {createDsp:createDsp}})();",argv[1]);
     checked(read(argv[2]),argv[2]);
-    checked(R"JS(var completed=false,failure=null,result=null;
+    if(argc==4) {
+        QFile codecs(argv[3]);if(!codecs.open(QIODevice::ReadOnly))return 6;
+        engine.globalObject().setProperty("pcmCodecBytes",engine.toScriptValue(codecs.readAll()));
+        checked(R"JS(var completed=false,failure=null,result=null;
+          runPcmIntegerOracle(function(kind,rate,channels,port){
+            device.beginRaw(kind,rate,channels,port);
+            return {start:function(){device.command('start')},feed:function(raw){device.feedRaw(raw)},stop:function(){device.command('stop')}};
+          },pcmDigest,pcmCodecBytes).then(function(value){result=value;completed=true},function(error){failure=String(error)+'\n'+String(error&&error.stack||'');completed=true});)JS","run-integer-device");
+    } else checked(R"JS(var completed=false,failure=null,result=null;
       runPcmOracle(function(rate,port){
         var math={PI:Math.PI,min:Math.min,max:Math.max,sqrt:Math.sqrt,sin:function(x){return nativePcmMath.sin(x)},cos:function(x){return nativePcmMath.cos(x)},exp:function(x){return nativePcmMath.exp(x)}};
         function Base(){this.port=port}

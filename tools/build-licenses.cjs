@@ -63,6 +63,7 @@ for(let i=0;i<headers.length;i++){
 const t3Notices=[read(path.join(root,'licenses/T3-Code-MIT.txt'),'T3-Code-MIT.txt'),read(path.join(root,'ui/assets/T3-LICENSE'),'T3-assets-LICENSE')];
 entry('@babel/helpers','8.1.0','MIT',['desktop'],read(path.join(root,'licenses/Babel-helpers-MIT.txt'),'Babel-helpers-MIT.txt'),'https://github.com/babel/babel/tree/v8.1.0/packages/babel-helpers');
 entry('V8 PCM math','14.6.202.34','BSD-3-Clause AND LicenseRef-Fdlibm-Sun',['desktop'],read(path.join(root,'licenses/V8-math-LICENSE.txt'),'V8-math-LICENSE.txt'),'https://github.com/nodejs/node/tree/18b32a3b1552e199a01f1a8d9fd64aa756d3b75b/deps/v8');
+entry('Chromium PCM samples','152.0.7977.169','BSD-3-Clause',['desktop'],read(path.join(root,'licenses/Chromium-PCM-LICENSE.txt'),'Chromium-PCM-LICENSE.txt'),'https://github.com/chromium/chromium/tree/92a6f15143569cf59b340472d0b5030465d95722/media/base');
 entry('T3 Code',pinned,'MIT',['desktop'],[...new Set(t3Notices)].join('\n\n'),'https://github.com/pingdotgg/t3code','custom');
 const whisperSys=dictate.packages.find(p=>p.name==='whisper-rs-sys'),whisperDir=path.join(path.dirname(whisperSys.manifest_path),'whisper.cpp');
 const whisperVersion=fs.readFileSync(path.join(whisperDir,'CMakeLists.txt'),'utf8').match(/project\("whisper\.cpp" VERSION ([0-9.]+)\)/)[1];
