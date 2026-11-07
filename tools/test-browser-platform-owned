@@ -3,26 +3,76 @@
 import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
 from runtime_artifacts import snapshot
 from pathlib import Path
-parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--manager-server',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);options=parser.parse_args()
+parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--reuse-manager-build',type=Path);parser.add_argument('--manager-ime',action='store_true');parser.add_argument('--manager-server',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);options=parser.parse_args()
 if options.cross_cohort and not options.runtime:parser.error('cross-cohort requires native runtime')
 if bool(options.runtime)!=bool(options.services):parser.error('runtime and services must be supplied together')
+if options.manager_ime and not options.manager_server:parser.error('manager IME requires exact server')
 if options.manager_server and not options.runtime:parser.error('manager proof requires native runtime')
 root=Path(__file__).resolve().parent.parent
+def freeze_ui(destination):
+ files=sorted((root/'ui').rglob('*'))
+ if any(file.is_symlink() for file in files):raise SystemExit('GUI source snapshot refuses symbolic links')
+ before={str(file.relative_to(root/'ui')):hashlib.sha256(file.read_bytes()).hexdigest() for file in files if file.is_file()}
+ for relative in before:
+  file=destination/relative;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes((root/'ui'/relative).read_bytes());file.chmod(0o400)
+ after={str(file.relative_to(root/'ui')):hashlib.sha256(file.read_bytes()).hexdigest() for file in (root/'ui').rglob('*') if file.is_file()}
+ if before!=after:raise SystemExit('GUI source changed during private snapshot')
+ return before
 if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
 out=Path(tempfile.mkdtemp(prefix='browser-gui-platform-',dir='/home/node/BuildCache/o3-desktop-next'));print('GUI platform evidence: '+str(out),flush=True)
+if options.reuse_manager_build:
+ if not options.manager_ime:parser.error('reuse requires the reviewed manager IME case')
+ parent=options.reuse_manager_build.resolve()
+ for name,digest in json.loads((parent/'rust-source-hashes.json').read_text()).items():
+  if hashlib.sha256((root/name).read_bytes()).hexdigest()!=digest:raise SystemExit('Rust source changed since reviewed immutable build: '+name)
+ for file in (parent/'electron').iterdir():
+  if file.name=='native-electron-services.cjs':current=options.services.resolve()
+  elif file.suffix in ['.node','.cjs','.js'] and file.name!='native-electron-services.cjs':continue
+  else:current=root/'ui/browser'/file.name
+  if file.read_bytes()!=current.read_bytes():raise SystemExit('Native assets changed since reviewed immutable build')
+ for name in ['browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:
+  if (parent/name).read_bytes()!=(root/'native/browser'/name).read_bytes():raise SystemExit('Native GUI member changed since immutable build')
+ for name in ['private-virtual-pointer.c','wayland-input-method-peer.c','input-method-unstable-v2.xml']:
+  if (parent/name).read_bytes()!=(root/'tools/fixtures'/name).read_bytes():raise SystemExit('Private input helper changed since immutable build')
+ for name,digest in json.loads((parent/'artifacts.json').read_text()).items():
+  if hashlib.sha256((parent/name).read_bytes()).hexdigest()!=digest:raise SystemExit('Immutable artifact changed: '+name)
+ for file in (root/'licenses').rglob('*'):
+  if file.is_file() and str(file.relative_to(root)) not in json.loads((parent/'rust-source-hashes.json').read_text()):raise SystemExit('Frozen build lacks embedded notice input receipt')
+ fixture=out/'native-clipboard-manager.qml';fixture.write_bytes((root/'tools/fixtures/native-clipboard-manager.qml').read_bytes());fixture.chmod(0o400)
+ gui_hashes=freeze_ui(out/'root/ui')
+ website=out/'native-ime-page.html';website.write_bytes((root/'tools/fixtures/native-ime-page.html').read_bytes());website.chmod(0o400)
+ args=json.loads((parent/'podman-command.json').read_text());args[3:3]=['-v',str(out/'root/ui')+':/fixture/root/ui:ro']
+ if str(options.runtime.resolve())+':/electron:ro' not in args or str(options.manager_server.resolve())+':/server/o3-server:ro' not in args:raise SystemExit('Frozen runtime/server do not match supplied inputs')
+ overlays={}
+ for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-scope.js']:
+  file=out/name;file.write_bytes((root/'ui/browser'/name).read_bytes());file.chmod(0o400);overlays[name]=hashlib.sha256(file.read_bytes()).hexdigest();args[3:3]=['-v',str(file)+':/fixture/electron/'+name+':ro','-v',str(file)+':/fixture/root/ui/browser/'+name+':ro']
+ args[3:3]=['-v',str(website)+':/fixture/native-ime-page.html:ro'];args[3:3]=['-v',str(fixture)+':/fixture/native-clipboard-manager.qml:ro']
+ code_index=args.index('-c')+1;code=args[code_index]
+ needle=';print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;'
+ replacement=';print(result.stdout);print(result.stderr)\n  if result.returncode:\n   for trace in pathlib.Path("/tmp").glob("nm-*/browser/home/native-electron.log"):print(trace.read_text()[:65536])\n  assert result.returncode==0,result.returncode;'
+ if needle not in code:raise SystemExit('Unexpected frozen manager command')
+ args[code_index]=code.replace(needle,replacement,1)
+ (out/'inputs.json').write_text(json.dumps({'parent':str(parent),'parentArtifactManifestSha256':hashlib.sha256((parent/'artifacts.json').read_bytes()).hexdigest(),'qmlSha256':hashlib.sha256(fixture.read_bytes()).hexdigest(),'websiteSha256':hashlib.sha256(website.read_bytes()).hexdigest(),'nativeAssetOverlays':overlays,'guiSourceHashes':gui_hashes,'guiHead':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()},indent=2)+'\n')
+ (out/'podman-command.json').write_text(json.dumps(args)+'\n')
+ with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=125)
+ (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
+(out/'source-revision.json').write_text(json.dumps({'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()})+'\n')
 for name in ['browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
 for name in ['browser-platform-owned.cpp','browser-platform-peer.py','browser-platform-process.qml','electron-clipboard-owner.cpp']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
 (out/'T3BrowserClipboardPlatform.qml').write_bytes((root/'ui/qml/T3BrowserClipboardPlatform.qml').read_bytes())
 if options.manager_server:
  server=options.manager_server.resolve()
  if hashlib.sha256(server.read_bytes()).hexdigest()!='23b9f821ddc2d3da7597ff9f65cbb3ab7daa6e5eb84c1887301b1977595a977c':raise SystemExit('Exact reviewed desktop server required')
- import shutil
- shutil.copytree(root/'ui',out/'root/ui',symlinks=False)
+ (out/'gui-source-hashes.json').write_text(json.dumps(freeze_ui(out/'root/ui'),indent=2)+'\n')
  (out/'root/bin').mkdir(parents=True)
  (out/'root/bin/omarchy-t3-client').write_bytes((root/'tests/fixtures/browser-permission-worker.py').read_bytes());(out/'root/bin/omarchy-t3-client').chmod(0o500)
  (out/'native-clipboard-manager.qml').write_bytes((root/'tools/fixtures/native-clipboard-manager.qml').read_bytes())
  (out/'disabled-local-browser').write_bytes(b'Local browser fallback is excluded from this desktop-only proof.\n');(out/'disabled-local-browser').chmod(0o400)
  (out/'server-artifact.json').write_text(json.dumps({'sha256':hashlib.sha256(server.read_bytes()).hexdigest(),'revision':'0b9a5d31abf64e7bf90008802a6115302d0ed735'})+'\n')
+if options.manager_ime:
+ for name in ['native-ime-page.html','private-virtual-pointer.c','wayland-input-method-peer.c','input-method-unstable-v2.xml','input-method-unstable-v2.source.json']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
+ reference=json.loads((out/'input-method-unstable-v2.source.json').read_text());assert hashlib.sha256((out/'input-method-unstable-v2.xml').read_bytes()).hexdigest()==reference['sha256']
+ pointer=root/'tools/fixtures/protocols/wlr-virtual-pointer-unstable-v1.xml';pointer_source=json.loads((pointer.parent/'wlr-virtual-pointer-source.json').read_text());assert hashlib.sha256(pointer.read_bytes()).hexdigest()==pointer_source['sha256'];(out/'virtual-pointer.xml').write_bytes(pointer.read_bytes())
 if options.runtime:
  runtime=options.runtime.resolve();manifest=json.loads((runtime.parent/'artifact.json').read_text())
  if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167':raise SystemExit('Verified official runtime required')
@@ -40,7 +90,13 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror','-shared',str(out/'clipboardplatform.cpp'),str(out/'clipboardcohort.cpp'),str(out/'plugin.cpp'),str(out/'moc_clipboardplatform.cpp'),str(out/'moc_browserinputitem.cpp'),'-I'+str(out),'-o',str(qml/'libo3browserplatform.so'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'electron-clipboard-owner.cpp'),'-o',str(out/'clipboard-owner'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'browser-platform-owned.cpp'),'-o',str(out/'gui'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
- source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[root/'Cargo.toml',root/'Cargo.lock',*list((root/'examples').glob('*.rs'))])
+  if options.manager_ime:
+   for mode,name in [('client-header','input-method-client.h'),('private-code','input-method-protocol.c')]:subprocess.run(['wayland-scanner',mode,str(out/'input-method-unstable-v2.xml'),str(out/name)],check=True,stdout=log,stderr=subprocess.STDOUT)
+   wayland=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client'],text=True).split()
+   subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(out/'wayland-input-method-peer.c'),str(out/'input-method-protocol.c'),'-o',str(out/'input-method-peer'),*wayland],check=True,stdout=log,stderr=subprocess.STDOUT)
+   for mode,name in [('client-header','virtual-pointer.h'),('private-code','virtual-pointer.c')]:subprocess.run(['wayland-scanner',mode,str(out/'virtual-pointer.xml'),str(out/name)],check=True,stdout=log,stderr=subprocess.STDOUT)
+   subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(out/'private-virtual-pointer.c'),str(out/'virtual-pointer.c'),'-o',str(out/'pointer'),*wayland],check=True,stdout=log,stderr=subprocess.STDOUT)
+ source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[file for file in (root/'licenses').rglob('*') if file.is_file()]+[root/'Cargo.toml',root/'Cargo.lock',*list((root/'examples').glob('*.rs'))])
  source_hashes={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}
  (out/'rust-source-hashes.json').write_text(json.dumps(source_hashes,indent=2)+'\n')
  with (out/'rust-compile.jsonl').open('w') as log,(out/'rust-compile.log').open('w') as errors:
@@ -106,6 +162,7 @@ finally:
  if keyboard is not None and keyboard.poll() is None:keyboard.terminate();keyboard.wait(timeout=3)
  display.terminate();display.wait(timeout=3);log.close()
 ''']
+if options.manager_ime:args[3:3]=['--env','O3_NATIVE_GUI_IME=1']
 if options.manager_server:
  for name in ['chromium','chromium-browser','google-chrome','google-chrome-stable']:
   if Path('/usr/bin',name).exists():args[3:3]=['-v',str(out/'disabled-local-browser')+':/usr/bin/'+name+':ro']

@@ -10,6 +10,8 @@ import shlex
 import subprocess
 import tempfile
 parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--native-graphics',action='store_true',help='Preserve the product native graphics flags in a private fixture')
+parser.add_argument('--ime-baseline',action='store_true',help='Compare unchanged native composition on HTTP editors')
 parser.add_argument('--custom-mime',action='store_true',help='Inspect real native custom clipboard format transport')
 parser.add_argument('--runtime',type=Path,required=True)
 parser.add_argument('--services',type=Path,required=True)
@@ -22,6 +24,7 @@ parser.add_argument('--xwayland-guest',action='store_true',help='Keep Qt on Wayl
 parser.add_argument('--visible-host',action='store_true',help='Compare the visible native host topology')
 parser.add_argument('--wayland',action='store_true',help='Use the private headless Sway fixture instead of X11')
 options=parser.parse_args()
+if options.ime_baseline and not options.visible_host:parser.error('--ime-baseline requires --visible-host')
 if options.keeper_exit and not (options.input_baseline and options.selection_proxy):parser.error('--keeper-exit requires input baseline and selection proxy')
 if options.input_baseline and (not options.wayland or (not options.visible_host and not options.selection_proxy)):parser.error('--input-baseline requires --wayland --visible-host')
 if options.native_offers and not options.selection_proxy:parser.error('--native-offers requires --selection-proxy')
@@ -100,9 +103,10 @@ try:
   time.sleep(.02)
  else:raise RuntimeError('Private X11 display unavailable')
  parent,child=socket.socketpair();inherited=fcntl.fcntl(child.fileno(),fcntl.F_DUPFD_CLOEXEC,64)
- env=dict(os.environ,O3_TEST_CUSTOM_MIME=sys.argv[9],DISPLAY=':9',QT_QPA_PLATFORM='xcb',O3_TEST_VISIBLE_HOST=sys.argv[2],O3_TEST_CLIPBOARD_CALIBRATION=sys.argv[4],O3_TEST_SELECTION_PROXY=sys.argv[5],O3_TEST_PRIVATE_FD=str(inherited),O3_TEST_PEER_PID=str(os.getpid()),O3_TEST_PRIVATE_INODE=os.readlink('/proc/self/fd/'+str(inherited)))
+ env=dict(os.environ,O3_TEST_NATIVE_GRAPHICS=sys.argv[11],O3_TEST_IME_BASELINE=sys.argv[10],O3_TEST_CUSTOM_MIME=sys.argv[9],DISPLAY=':9',QT_QPA_PLATFORM='xcb',O3_TEST_VISIBLE_HOST=sys.argv[2],O3_TEST_CLIPBOARD_CALIBRATION=sys.argv[4],O3_TEST_SELECTION_PROXY=sys.argv[5],O3_TEST_PRIVATE_FD=str(inherited),O3_TEST_PEER_PID=str(os.getpid()),O3_TEST_PRIVATE_INODE=os.readlink('/proc/self/fd/'+str(inherited)))
  if sys.argv[8]!='none':env['O3_TEST_KEEPER_EXIT']=sys.argv[8]
  if sys.argv[7]=='1':env.update(O3_TEST_INPUT_BASELINE='1',O3_PRIVATE_INPUT_FIXTURE='1')
+ if sys.argv[10]=='1':env['O3_PRIVATE_INPUT_FIXTURE']='1'
  if sys.argv[6]=='1':env['O3_TEST_NATIVE_OFFERS']='1'
  if wayland:
   env.update(WAYLAND_DISPLAY=next(file.name for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()),QT_QPA_PLATFORM='wayland',O3_TEST_WAYLAND='1')
@@ -129,7 +133,7 @@ try:
     time.sleep(.02)
    else:raise RuntimeError('Owned private X display unavailable')
 
- result=subprocess.run(['/electron/electron','--disable-setuid-sandbox','--disable-gpu','--ozone-platform=wayland' if wayland and not xwayland and not selection else '--ozone-platform=x11','/proof/app/native-electron-proof.cjs'],env=env,pass_fds=(inherited,),capture_output=True,text=True,timeout=40)
+ result=subprocess.run(['/electron/electron','--disable-setuid-sandbox',*(['--disable-gpu'] if sys.argv[11]!='1' else []),'--ozone-platform=wayland' if wayland and not xwayland and not selection else '--ozone-platform=x11','/proof/app/native-electron-proof.cjs'],env=env,pass_fds=(inherited,),capture_output=True,text=True,timeout=40)
  print(result.stdout,end='');print(result.stderr,end='')
  assert result.returncode==0,result.returncode
  assert 'NATIVE_ELECTRON_PROOF ' in result.stdout
@@ -156,7 +160,7 @@ finally:
  if private_display is not None:private_display.terminate();private_display.wait(timeout=5)
  display.terminate();display.wait(timeout=5)
  if wayland:display_log.close();print(pathlib.Path('/tmp/sway.log').read_text())
-''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0','1' if options.selection_proxy else '0','1' if options.native_offers else '0','1' if options.input_baseline else '0',options.keeper_exit or 'none','1' if options.custom_mime else '0']
+''','wayland' if options.wayland else 'x11','1' if options.visible_host else '0','xwayland' if options.xwayland_guest else 'native','1' if options.calibration_only else '0','1' if options.selection_proxy else '0','1' if options.native_offers else '0','1' if options.input_baseline else '0',options.keeper_exit or 'none','1' if options.custom_mime else '0','1' if options.ime_baseline else '0','1' if options.native_graphics else '0']
 with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=55)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
 raise SystemExit(result.returncode)

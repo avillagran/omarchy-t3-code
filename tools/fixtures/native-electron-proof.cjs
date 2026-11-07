@@ -17,7 +17,7 @@ const {app,BrowserWindow,clipboard,webContents,ipcMain,session:electronSessions}
 assert.equal(process.versions.electron,'44.10.1');
 app.setPath('userData','/tmp/electron-userdata');
 app.setPath('crashDumps','/tmp/electron-crashes');
-app.disableHardwareAcceleration();
+if(process.env.O3_TEST_NATIVE_GRAPHICS!=='1')app.disableHardwareAcceleration();
 const observedPermissions=[];let selectionProxy,proxySequence=0,proxyRevoked=false;const proxyPending=new Map();
 function proxyGrant(){if(selectionProxy&&!proxyRevoked)selectionProxy.stdin.write(JSON.stringify({op:'grant'})+'\n')}
 async function proxyCommand(op){const id=++proxySequence;let resolve;const pending=new Promise(value=>resolve=value);proxyPending.set(id,resolve);selectionProxy.stdin.write(JSON.stringify({op,id})+'\n');return deadline(pending,'selection proxy control')}
@@ -35,7 +35,7 @@ async function command(tab,method,params={},sessionId){const id=++sequence;let r
 async function evaluate(tab,expression){if(selectionProxy)await seatFocus('Owned clipboard platform proxy');if(visibleHost)await seatFocus(tab.window.getTitle());const result=await command(tab,'Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true},tab.session);if(result.exceptionDetails)throw Error('Fixture evaluation failed: '+(result.exceptionDetails.exception?.description||result.exceptionDetails.text));return result.result.value}
 async function producerCommand(row){if(wayland)await seatFocus('Owned synthetic clipboard peer');const id=++sequence;let resolve;const promise=new Promise(r=>resolve=r);producerPending.set(id,resolve);producer.stdin.write(JSON.stringify({...row,id})+'\n');const result=await deadline(promise,'selection owner');if(wayland)assert.equal(result.active,true,'real Qt clipboard peer has keyboard focus');return result}
 async function navigate(tab,url){await command(tab,'Page.navigate',{url},tab.session);for(let count=0;count<300;count++){if(await evaluate(tab,'location.href === '+JSON.stringify(url)+' && document.readyState === \"complete\"'))return;await new Promise(r=>setTimeout(r,20))}throw Error('Actual navigation did not finish')}
-async function tab(scope,host){const browserSession=await services.getSession(scope,false,'profile');const partition=await services.getPartition(scope,false,'profile');
+async function tab(scope,host){const persistent=scope==='ime-baseline';const browserSession=await services.getSession(scope,persistent,'profile');const partition=await services.getPartition(scope,persistent,'profile');
  const window=new BrowserWindow({show:visibleHost,title:'Owned Electron '+scope,width:640,height:480,webPreferences:{offscreen:!visibleHost,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});windows.push(window);window.on('page-title-updated',event=>event.preventDefault());
  window.webContents.on('will-attach-webview',(event,preferences,params)=>{assert.equal(params.partition,partition);preferences.sandbox=true;preferences.nodeIntegration=false;preferences.nodeIntegrationInSubFrames=false;preferences.contextIsolation=false;preferences.disableHtmlFullscreenWindowResize=true;preferences.preload=path.join(__dirname,'electron-sandbox-preload.cjs')});
  const attachedGuest=new Promise(resolve=>window.webContents.once('did-attach-webview',(_event,guest)=>resolve(guest)));
@@ -68,6 +68,20 @@ app.whenReady().then(async()=>{
  server=http.createServer((_request,response)=>{response.end('<html><title>Owned Electron fixture</title></html>')});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const {create}=require('./native-electron-services.cjs');
  services=await create({event,showMessageBox:async(options,owner)=>{dialogs.push({options,owner:owner?.webContents.id});assert.equal(options.defaultId,1);assert.equal(options.cancelId,1);const response=choices.shift();assert.notEqual(response,undefined,'No unsolicited dialog');return {response,checkboxChecked:false}}});
+ if(process.env.O3_TEST_IME_BASELINE==='1'){
+  const page=await tab('ime-baseline','127.0.0.1');await navigate(page,'http://localhost:'+server.address().port+'/ime');
+  page.contents.on('render-process-gone',(_event,details)=>console.log('NATIVE_IME_RENDERER_GONE '+JSON.stringify({reason:details.reason,exitCode:details.exitCode})));
+  for(const tag of ['textarea','input']){
+   await evaluate(page,`document.body.innerHTML='<${tag} id="field" autofocus style="position:absolute;left:10px;top:10px;width:300px;height:80px"></${tag}>';window.imeEvents=[];for(const type of ['compositionstart','compositionupdate','compositionend','input'])field.addEventListener(type,event=>window.imeEvents.push({type:event.type,trusted:event.isTrusted}));0`);
+   page.window.show();page.window.focus();page.contents.focus();if(wayland)await seatFocus(page.window.getTitle());
+   for(const type of ['mousePressed','mouseReleased'])await services.humanInput(page.contents,page.contents.debugger,'Input.dispatchMouseEvent',{type,x:50,y:40,button:'left',clickCount:1,buttons:type==='mousePressed'?1:0});
+   const rootState=await page.contents.debugger.sendCommand('Runtime.evaluate',{expression:'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})',returnByValue:true});console.log('NATIVE_IME_BASELINE_BEFORE '+JSON.stringify({tag,focusedFrame:!!page.contents.focusedFrame,root:rootState.result.value,virtual:await evaluate(page,'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})')}));for(let attempt=0;attempt<100;attempt++){if(await evaluate(page,'document.activeElement === document.getElementById("field")'))break;await new Promise(resolve=>setTimeout(resolve,10));if(attempt===99)throw Error('native_editor_not_focused')}console.log('NATIVE_IME_BASELINE_EDITOR_FOCUSED '+tag);
+   const pendingScreenshot=page.contents.debugger.sendCommand('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});await services.humanInput(page.contents,page.contents.debugger,'Input.imeSetComposition',{text:'にほん',selectionStart:3,selectionEnd:3});await pendingScreenshot;
+   await services.humanInput(page.contents,page.contents.debugger,'Input.insertText',{text:'日本'});
+   const result=await evaluate(page,'({value:field.value,events:window.imeEvents})');console.log('NATIVE_IME_BASELINE_AFTER '+JSON.stringify({tag,result}));assert.equal(result.value,'日本','real native focused editor receives composition');assert(result.events.some(event=>event.type==='compositionstart'&&event.trusted));
+  }
+  console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({nativeImeBaseline:true}));await services.close();producer.stdin.end();for(const window of windows)window.destroy();server.close();app.exit(0);return;
+ }
  if(process.env.O3_TEST_INPUT_BASELINE==='1'){
   choices=Array(20).fill(1);if(process.env.O3_TEST_CUSTOM_MIME==='1')choices[2]=0;
   await require('./native-input-baseline.cjs')({tab,evaluate,command,producerCommand,seatFocus,services,dialogs,windows,server,producer,app,clipboard,proxyCommand,selectionProxy});return;

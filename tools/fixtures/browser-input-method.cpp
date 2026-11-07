@@ -6,6 +6,7 @@
 #include <QJSValue>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QProcess>
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QQuickItem>
@@ -226,6 +227,68 @@ Product.T3BrowserPage {
   QCoreApplication::sendEvent(native, &pageDisabled);
   CHECK(!pageDisabled.isAccepted());
   CHECK(pageRecords().size() == 3);
+  if (qEnvironmentVariableIsSet("O3_TEST_COMPOSITOR_IME")) {
+    page->setProperty("interactive", true);
+    native->forceActiveFocus();
+    CHECK(
+        waitFor([&] { return native->hasActiveFocus() && window.isActive(); }));
+    QProcess method;
+    method.setProgram("/fixture/input-method-peer");
+    method.start();
+    CHECK(method.waitForStarted(2000));
+    bool ready = false, active = false;
+    auto drain = [&] {
+      while (method.canReadLine()) {
+        const auto line = method.readLine().trimmed();
+        if (line == "ready")
+          ready = true;
+        else if (line.startsWith("active "))
+          active = true;
+        else if (line.startsWith("inactive "))
+          active = false;
+      }
+    };
+    const bool activated = waitFor([&] {
+      drain();
+      return ready && active;
+    });
+    if (!activated)
+      fprintf(stderr, "COMPOSITOR_IME_NOT_ACTIVE state=%d error=%s\n",
+              int(method.state()), method.readAllStandardError().constData());
+    CHECK(activated);
+    const auto before = pageRecords().size();
+    method.write("preedit\n");
+    CHECK(method.waitForBytesWritten(1000));
+    CHECK(waitFor([&] {
+      drain();
+      return pageRecords().size() > before;
+    }));
+    CHECK(pageRecords().last().toObject()["event"].toObject()["preedit"] ==
+          QString::fromUtf8("にほん"));
+    const auto composition =
+        pageRecords().last().toObject()["event"].toObject();
+    CHECK(composition["preedit"].toString().size() == 3);
+    CHECK(composition["selectionStart"].toInt(-1) == 3);
+    CHECK(composition["selectionEnd"].toInt(-1) == 3);
+    CHECK(!composition.contains("replacementStart"));
+    CHECK(!composition.contains("replacementEnd"));
+    method.write("commit\n");
+    CHECK(method.waitForBytesWritten(1000));
+    CHECK(waitFor([&] {
+      drain();
+      for (const auto &record : pageRecords())
+        if (record.toObject()["event"].toObject()["text"] ==
+            QString::fromUtf8("日本"))
+          return true;
+      return false;
+    }));
+    CHECK(pageRecords().last().toObject()["token"] == "page-replacement");
+    method.write("quit\n");
+    CHECK(method.waitForBytesWritten(1000));
+    CHECK(method.waitForFinished(2000) && method.exitCode() == 0);
+    puts("BROWSER_COMPOSITOR_IME_PASS input-method-v2 text-input-v3 "
+         "actual-T3BrowserPage unicode-preedit-commit");
+  }
   page->setParentItem(nullptr);
   delete page;
   window.hide();

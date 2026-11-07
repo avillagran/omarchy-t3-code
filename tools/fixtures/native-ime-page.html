@@ -1,0 +1,18 @@
+<!doctype html>
+<html><body>
+<textarea id="field" autofocus style="position:fixed;left:10px;top:10px;width:300px;height:80px"></textarea>
+<script>
+// Observes native editing only; no expected text is inserted by this website.
+window.imeEvents=[];
+function observe(outcome,event){
+ const bounds=field.getBoundingClientRect();
+ fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({outcome,text:field.value,focus:document.activeElement.tagName,target:event?.target?.tagName||'',x:event?.clientX,y:event?.clientY,bounds:[bounds.x,bounds.y,bounds.width,bounds.height],events:window.imeEvents})});
+}
+for(const type of ['compositionstart','compositionupdate','compositionend'])
+ field.addEventListener(type,event=>{window.imeEvents.push({type:event.type,trusted:event.isTrusted});setTimeout(()=>observe(type==='compositionend'?'allowed':'ime-observation',event),30)});
+document.addEventListener('pointerdown',event=>setTimeout(()=>observe('ime-observation',event),0));
+field.addEventListener('input',event=>setTimeout(()=>observe('ime-observation',event),0));
+let readySent=false;
+const ready=()=>{if(!readySent&&document.activeElement===field){readySent=true;fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({outcome:'ime-page-ready'})})}};
+field.addEventListener('focus',ready);requestAnimationFrame(ready);
+</script></body></html>
