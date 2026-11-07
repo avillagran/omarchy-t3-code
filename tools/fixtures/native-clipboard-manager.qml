@@ -5,6 +5,20 @@ import Quickshell.Io
 import "UnderTest/ui/qml" as Test
 ShellRoot {
  id:root
+ readonly property bool exerciseIme:Quickshell.env("O3_NATIVE_GUI_IME")==="1"
+ property bool imePhase:false
+ property bool imeGuiFocused:false
+ property bool imeFocusReady:false
+ property bool imePointerReady:false
+ property bool imeClicked:false
+ property string imePointerStep:""
+ property bool imePeerReady:false
+ property bool imePeerActive:false
+ property bool imePreeditSent:false
+ property bool imeCommitSent:false
+ property bool imeCompleted:false
+ property bool nativeCanOperate:false
+ property var nativeFrame:({})
  property bool producerReady:false
  property bool ownerReady:false
  property bool begun:false
@@ -31,6 +45,7 @@ ShellRoot {
   else if(action==="gui-one")send({op:"next-allow"})
   else if(action==="gui-two")send({op:"next-fresh"})
   else if(action==="gui-custom")send({op:"read-custom"})
+  else if(action==="gui-ime")imeGuiFocused=true
   else check(false,"unexpected focus action")
  }
  function producerLine(line){var value=JSON.parse(line)
@@ -47,9 +62,13 @@ ShellRoot {
   check(false,"unexpected producer record")
  }
  function receive(line){var event=JSON.parse(line)
+  if(event.type==="ime-observation"){console.log("IME_DOM_OBSERVATION "+JSON.stringify(event));return}
   if(event.type==="browser-surface"){
    var data=event.data
-   if(data.kind==="permission-request"){
+   if(data.kind==="shown"){root.check(data.requestId==="manager-visible","actual mounted view identity");root.nativeCanOperate=data.canOperate===true}
+   else if(data.kind==="frame"){if(data.requestId==="manager-visible")root.nativeFrame=data}
+   else if(data.kind==="input-rejected")root.check(false,"actual native input rejection "+data.error)
+   else if(data.kind==="permission-request"){
     prompts++;check(prompts<=2,"no extra prompts for remembered origins");check(data.nativeOptions&&data.nativeOptions.defaultId===1&&data.nativeOptions.cancelId===1,"actual native default/cancel policy");check(data.nativeOptions.buttons[0]==="Allow"&&data.nativeOptions.buttons[1]==="Block","actual native button choices");brokerBridge.browserPermission=data
    }else if(data.kind==="permission-closed"){if(brokerBridge.browserPermission&&brokerBridge.browserPermission.requestId===data.requestId)brokerBridge.browserPermission=null}
    else if(data.kind==="error")check(false,"actual Manager error "+data.error)
@@ -63,7 +82,9 @@ ShellRoot {
   else if(event.stage==="allowed-one"){check(prompts===2&&choices===2,"actual explicit Allow settled");offer({op:"stats",id:14})}
   else if(event.stage==="allowed-cached"){check(prompts===2&&choices===2,"per-origin Allow remembered");offer({op:"stats",id:15})}
   else if(event.stage==="custom-written"){root.check(prompts===2,"cached native Allow governs custom write");focus("Owned synthetic clipboard peer","custom-inspect")}
-  else if(event.stage==="custom-read"){root.check(prompts===2,"cached native Allow governs fresh custom read");send({op:"stop"})}
+  else if(event.stage==="custom-read"){root.check(prompts===2,"cached native Allow governs fresh custom read");send({op:exerciseIme?"next-ime":"stop"})}
+  else if(event.stage==="ime-ready"){root.check(exerciseIme&&nativeCanOperate,"actual writable native page");imePhase=true;focus(window.title,"gui-ime")}
+  else if(event.stage==="ime-complete"){root.check(imePreeditSent&&imeCommitSent&&prompts===2,"actual compositor and native outcome");imeCompleted=true;imeClient.write("quit\n");imePointer.write("quit\n");send({op:"stop"})}
   else if(event.stage==="complete"){finished=true;offer({op:"quit"})}
   else check(false,"unexpected worker stage "+event.stage)
  }
@@ -76,7 +97,16 @@ ShellRoot {
   id:window
   title:"Owned native clipboard permissions"
   visible:true;implicitWidth:700;implicitHeight:500
-  Item{id:host;anchors.fill:parent;Test.T3BrowserPermission{id:prompt;bridge:brokerBridge;popupHost:host}}
+  Item {
+   id:host;anchors.fill:parent
+   Test.T3BrowserPage {
+    id:nativePage;anchors.fill:parent;visible:root.imePhase
+    page:root.nativeFrame;interactive:root.nativeCanOperate&&root.imePhase
+    onInput:function(id,event){console.log("IME_PAGE_INPUT "+event.type);root.check(id===root.nativeFrame.requestId&&root.imePhase,"actual GUI surface input scope");root.send({op:"browser-input",requestId:id,event:event});if(event.type==="composition"&&event.preedit&&!root.imeCommitSent){root.imeCommitSent=true;imeCommit.restart()}}
+    onInputMethodRejected:function(reason){root.check(false,"actual Qt input-method rejection "+reason)}
+   }
+   Test.T3BrowserPermission{id:prompt;bridge:brokerBridge;popupHost:host}
+  }
  }
  Loader{id:platform;active:true;source:"/fixture/T3BrowserClipboardPlatform.qml"}
  Process {
@@ -93,14 +123,30 @@ ShellRoot {
  Process{id:focusControl;environment:({LD_LIBRARY_PATH:"/opt/sway-runtime/usr/lib"});onExited:function(code){root.check(code===0,"physical private compositor focus");root.keyMode="pulse";keyboard.command=["/usr/bin/wtype","-k","Shift_L"];keyboard.running=true}}
  Process{id:keyboard;onExited:function(code){root.check(code===0,"physical private compositor keyboard");if(root.keyMode==="pulse")root.focusDone()}}
  property string sentRequest:""
+ Process {
+  id:imePointer;command:["/fixture/pointer"];environment:({O3_PRIVATE_INPUT_FIXTURE:"1"});stdinEnabled:true;running:root.exerciseIme&&root.imePhase
+  stdout:SplitParser{onRead:function(line){if(line==="ready"){root.imePointerReady=true;return}root.check(line==="ok","physical private pointer acknowledgment");if(root.imePointerStep==="move"){root.imePointerStep="press";imePointer.write("press\n")}else if(root.imePointerStep==="press"){root.imePointerStep="release";imePointer.write("release\n")}else if(root.imePointerStep==="release"){root.imePointerStep="";root.imeClicked=true}else root.check(false,"unexpected physical pointer acknowledgment")}}
+  onExited:function(code){root.check(code===0&&root.imeCompleted,"physical IME pointer completed code="+code+" ready="+root.imePointerReady+" clicked="+root.imeClicked+" step="+root.imePointerStep)}
+ }
+ Process {
+  id:imeClient;command:["/fixture/input-method-peer"];stdinEnabled:true;running:root.exerciseIme&&root.imePhase
+  stdout:SplitParser{onRead:function(line){console.log("IME_PEER_STATE "+line);if(line==="ready")root.imePeerReady=true;else if(line.indexOf("active ")===0)root.imePeerActive=true;else if(line.indexOf("inactive ")===0)root.imePeerActive=false;else root.check(line==="sent preedit"||line==="sent commit","typed compositor peer record")}}
+  stderr:SplitParser{onRead:function(line){console.error("COMPOSITOR_PEER_DIAGNOSTIC "+line.slice(0,300))}}
+  onExited:function(code){root.check(code===0&&root.imeCompleted,"compositor IME peer completed code="+code+" completed="+root.imeCompleted+" phase="+root.imePhase+" guiFocused="+root.imeGuiFocused+" focusReady="+root.imeFocusReady+" peerReady="+root.imePeerReady+" peerActive="+root.imePeerActive+" preeditSent="+root.imePreeditSent+" commitSent="+root.imeCommitSent+" itemFocus="+(nativePage.nativeInputItem?nativePage.nativeInputItem.activeFocus:false)+" itemEnabled="+(nativePage.nativeInputItem?nativePage.nativeInputItem.inputEnabled:false)+" frameNative="+root.nativeFrame.nativeInput+" frameReady="+nativePage.ready+" item="+!!nativePage.nativeInputItem+" windowActive="+host.Window.active)}
+ }
+ Timer{id:imeCommit;interval:20;onTriggered:imeClient.write("commit\n")}
  Timer{interval:40;running:true;repeat:true;onTriggered:{
+  if(root.imePhase&&root.imeGuiFocused&&nativePage.ready&&root.imePointerReady&&!root.imeClicked&&!root.imePointerStep&&host.Window.active){var w=Number(root.nativeFrame.width),h=Number(root.nativeFrame.height),scale=Math.min(nativePage.width/w,nativePage.height/h);root.check(w>0&&h>0&&scale>0,"actual captured viewport geometry");var point=host.mapToGlobal((nativePage.width-w*scale)/2+50*scale,(nativePage.height-h*scale)/2+40*scale);root.imePointerStep="move";imePointer.write("move "+Math.round(point.x)+" "+Math.round(point.y)+"\n")}
+  if(root.imeClicked&&nativePage.nativeInputItem&&nativePage.nativeInputItem.activeFocus&&host.Window.active)root.imeFocusReady=true
+  if(root.imeFocusReady&&root.imePeerReady&&root.imePeerActive&&nativePage.nativeInputItem&&nativePage.nativeInputItem.activeFocus&&host.Window.active&&!root.imePreeditSent){root.imePreeditSent=true;imeClient.write("preedit\n")}
+
   if(prompt.opened&&brokerBridge.browserPermission&&root.sentRequest!==brokerBridge.browserPermission.requestId&&!keyboard.running&&!focusControl.running){
    root.check(host.Window.active&&prompt.defaultFocusItem.activeFocus,"real GUI seat and native default Block focus")
    root.sentRequest=brokerBridge.browserPermission.requestId
    root.send({op:"browser-permission",requestId:"stale-unrelated-request",allow:true})
    root.keyMode="choice";keyboard.command=root.prompts===1?["/usr/bin/wtype","-k","Return"]:["/usr/bin/wtype","-M","shift","-k","Tab","-m","shift","-k","Return"];keyboard.running=true
   }
-  if(root.finished&&!worker.running&&!producer.running&&!platform.item.workerAdmitted){console.log("NATIVE_CLIPBOARD_MANAGER_MODAL_PASS actual-owned-server actual-Manager physical-default-Block explicit-Allow remembered-origins fresh-data zero-denied-content-fetches exact-custom-MIME");Qt.quit()}
+  if(root.finished&&!worker.running&&!producer.running&&!platform.item.workerAdmitted&&(!root.exerciseIme||(!imeClient.running&&!imePointer.running))){if(root.exerciseIme)console.log("NATIVE_MANAGER_COMPOSITOR_IME_PASS actual-Wayland actual-Qt actual-Page actual-Manager actual-native-GuestInput actual-DOM");console.log("NATIVE_CLIPBOARD_MANAGER_MODAL_PASS actual-owned-server actual-Manager physical-default-Block explicit-Allow remembered-origins fresh-data zero-denied-content-fetches exact-custom-MIME");Qt.quit()}
  }}
  Timer{id:customDelay;interval:20;onTriggered:root.offer({op:"formats",id:30})}
  Timer{interval:90000;running:true;onTriggered:root.check(false,"native manager proof deadline")}

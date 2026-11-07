@@ -31,7 +31,7 @@ fn main() {
         &uuid::Uuid::new_v4().simple().to_string()[..12]
     ));
     std::fs::create_dir(&root).unwrap();
-    let config = browser_guest::Config::isolated(
+    let mut config = browser_guest::Config::isolated(
         PathBuf::from("/fixture/app/bin/omarchy-t3-client"),
         &root.join("browser"),
     )
@@ -43,6 +43,10 @@ fn main() {
     )
     .unwrap()
     .with_gui_clipboard(Some(gui));
+    let exercise_ime = std::env::var_os("O3_NATIVE_GUI_IME").is_some();
+    if exercise_ime {
+        config = config.with_mapped_native_host().unwrap();
+    }
     let removals = Arc::new(AtomicUsize::new(0));
     let attempted = removals.clone();
     let shown = Arc::new(AtomicBool::new(false));
@@ -75,6 +79,8 @@ fn main() {
             let row: Value = serde_json::from_str(&line.unwrap()).unwrap();
             if row["op"] == "browser-permission" {
                 input_manager.request(row, false);
+            } else if row["op"] == "browser-input" {
+                input_manager.request(row, true);
             } else if commands.send(row).is_err() {
                 break;
             }
@@ -124,6 +130,8 @@ fn main() {
     let stop = Arc::new(AtomicBool::new(false));
     let stopped = stop.clone();
     let (reports, results) = mpsc::channel();
+    let ime_page =
+        exercise_ime.then(|| std::fs::read_to_string("/fixture/native-ime-page.html").unwrap());
     let http = std::thread::spawn(move || {
         while !stopped.load(Ordering::SeqCst) {
             match listener.accept() {
@@ -186,6 +194,8 @@ fn main() {
                         "ok"
                     } else if data.starts_with(b"GET /read-4 ") {
                         r#"<html><body><script>setTimeout(async()=>{let result;try{await navigator.clipboard.write([new ClipboardItem({'web application/x-owned-custom':new Blob([new Uint8Array([0,1,2,127,128,255])],{type:'application/x-owned-custom'}),'text/plain':new Blob(['owned custom fallback'],{type:'text/plain'})})]);result={outcome:'allowed',text:'custom-written'}}catch(error){result={outcome:'denied',error:error.name}};fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)})},300)</script></body></html>"#
+                    } else if data.starts_with(b"GET /read-6 ") {
+                        ime_page.as_deref().unwrap()
                     } else if data.starts_with(b"GET /read-5 ") {
                         r#"<html><body><script>setTimeout(async()=>{let result;try{const items=await navigator.clipboard.read();let body;for(const item of items)if(item.types.includes('web application/x-owned-custom'))body=await item.getType('web application/x-owned-custom');if(!body)throw Error('Missing custom type');const bytes=new Uint8Array(await body.arrayBuffer());const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(value=>value.toString(16).padStart(2,'0')).join('');result={outcome:'allowed',text:String(bytes.length)+':'+digest}}catch(error){result={outcome:'denied',error:error.name}};fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)})},300)</script></body></html>"#
                     } else {
@@ -201,7 +211,7 @@ fn main() {
         }
     });
     stage("owner-ready");
-    for (index, (instruction, host, allowed, expected, done)) in [
+    let mut phases = vec![
         ("start", "127.0.0.1", false, "", "blocked-one"),
         ("next-block", "127.0.0.1", false, "", "blocked-cached"),
         (
@@ -232,10 +242,11 @@ fn main() {
             "200000:1bd168fa4e29a8a1af90173db63749b296c7f417c23487dd03ebf21d6ed663a6",
             "custom-read",
         ),
-    ]
-    .into_iter()
-    .enumerate()
-    {
+    ];
+    if exercise_ime {
+        phases.push(("next-ime", "localhost", true, "日本", "ime-complete"));
+    }
+    for (index, (instruction, host, allowed, expected, done)) in phases.into_iter().enumerate() {
         let command = controls.recv_timeout(Duration::from_secs(30)).unwrap();
         assert_eq!(command["op"], instruction);
         let connection = owned_runtime::current_environment()
@@ -251,7 +262,21 @@ fn main() {
             None,
         )
         .unwrap();
-        let report = results.recv_timeout(Duration::from_secs(25)).unwrap();
+        if instruction == "next-ime" {
+            let ready = results.recv_timeout(Duration::from_secs(25)).unwrap();
+            assert_eq!(ready["outcome"], "ime-page-ready");
+            stage("ime-ready");
+        }
+        let report = loop {
+            let report = results.recv_timeout(Duration::from_secs(25)).unwrap();
+            if instruction == "next-ime" && report["outcome"] == "ime-observation" {
+                output(
+                    json!({"type":"ime-observation","focus":report["focus"],"target":report["target"],"x":report["x"],"y":report["y"],"bounds":report["bounds"],"valueUnits":report["text"].as_str().map(|text|text.encode_utf16().count()),"events":report["events"]}),
+                );
+                continue;
+            }
+            break report;
+        };
         assert_eq!(
             report["outcome"],
             if allowed { "allowed" } else { "denied" }
@@ -260,6 +285,13 @@ fn main() {
             assert_eq!(report["text"], expected);
         } else {
             assert_eq!(report["error"], "NotAllowedError");
+        }
+        if instruction == "next-ime" {
+            let events = report["events"].as_array().unwrap();
+            assert!(events
+                .iter()
+                .any(|event| event["type"] == "compositionstart" && event["trusted"] == true));
+            assert!(events.iter().any(|event| event["type"] == "compositionend"));
         }
         stage(done);
     }
