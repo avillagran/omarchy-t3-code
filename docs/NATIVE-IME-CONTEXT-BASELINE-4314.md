@@ -284,3 +284,24 @@ containers. `tests/fixtures/native-input-channel-proof-4314.json` records exact
 source hashes and receipts. The new registration operation is compiled but still
 needs its worker caller and actual admission proof; the product Wayland factory,
 private compositor intake and native lazy clipboard migration remain unselected.
+
+## Receive-error correction after source review
+
+Review of the GUI channel and preexisting registration member found that a
+non-retry `recvmsg` error could leave the original ancillary-buffer length and
+uninitialized stack data in place. Traversing that buffer after the failed
+syscall could mistake garbage for received rights. Both paths now return/retire
+before ancillary traversal on errors other than `EAGAIN`/`EINTR`, and initialize
+the control buffer defensively. Successful truncated packets still traverse and
+close actual received rights; zero-length packets containing rights are not
+mistaken for an ancillary-free EOF.
+
+`browser-native-context-query-56o4ex98` passed 116 checks including an actual
+`ECONNRESET`, context retirement and exact FD-count reclamation.
+`browser-input-method-xhj2qkb9` exercised the real registration member with a live
+owned worker: it left the admitted reply unread and closed its socket, producing
+an actual `ECONNRESET` while the worker remained alive. The member retired, its
+FD count returned to baseline, and the actual page/plugin IME suite passed.
+The source-matched follow-up receipts are recorded separately in
+`tests/fixtures/gui-receive-reset-proof-4314.json`; the earlier channel ledger is
+unchanged. No fixture tree or external process was deleted.

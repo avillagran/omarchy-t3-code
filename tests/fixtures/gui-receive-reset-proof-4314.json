@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "scope": "Actual owned socket reset paths; no compositor crash or broad suite",
+  "cases": [
+    {
+      "artifact": "browser-native-context-query-56o4ex98",
+      "returncode": 0,
+      "actualECONNRESET": true,
+      "fdCountReclaimed": true,
+      "runtimeLogSha256": "b556265ff94267dbb17f034528cbde38dbf4c4110c4a2ac1e7eb6efcc44d37f9",
+      "artifactsSha256": "0a9ec87c6322cfce0a1e4422fbcd798d7a4db23eecdf82dfec426b6dae27742d"
+    },
+    {
+      "artifact": "browser-input-method-xhj2qkb9",
+      "returncode": 0,
+      "actualECONNRESET": true,
+      "fdCountReclaimed": true,
+      "runtimeLogSha256": "46efc4c8862592c9e63e3059e0cc7883f26e172141e060c29c394cb04ecb4977",
+      "artifactsSha256": "bcf2c93d331d65cbe8be3aa96a012b9d4b8591dbf5fcf6082f99007ed28cd77c"
+    }
+  ],
+  "sourceHashes": {
+    "native/browser/browserinputchannel.h": "c4d0af55b2a37917ba5441b7eaab2908bee7d366f1ad758ac27b1ecad95bd2cc",
+    "native/browser/clipboardplatform.cpp": "0d6bb984411aa57beefff1ab5a20028320795db7d08120e4509a5f8c11c8405d",
+    "tools/fixtures/browser-native-context-query.cpp": "72c195e2e3f8a265ea91a017a29a1e2e246ad66c89e53c222ea0478ab3c4af21",
+    "tools/fixtures/browser-input-method.cpp": "04b05f2f722638df5c105de5167074e5fac3da6c2953ee4912b7f641140b5217"
+  },
+  "oldLedgerModified": false
+}

@@ -21,6 +21,7 @@ class BrowserInputChannel final : public QObject {
   pid_t worker = 0;
   QString identity;
   bool retiring=false;
+  int receiveFailure=0;
   QSocketNotifier *reader = nullptr, *death = nullptr;
   QMetaObject::Connection requester;
   struct Mount {BrowserInputContext::Binding binding;QPointer<BrowserInputItem> item;};
@@ -117,13 +118,20 @@ class BrowserInputChannel final : public QObject {
   void receive() {
     if (!alive()) { retire(); return; }
     char bytes[16384];
-    alignas(cmsghdr) char control[CMSG_SPACE(sizeof(ucred))+CMSG_SPACE(16*sizeof(int))];
+    alignas(cmsghdr) char control[CMSG_SPACE(sizeof(ucred))+CMSG_SPACE(16*sizeof(int))]{};
     iovec data{bytes,sizeof bytes};
     msghdr message{};
     message.msg_iov=&data;message.msg_iovlen=1;
     message.msg_control=control;message.msg_controllen=sizeof control;
     const auto size=recvmsg(socket,&message,MSG_DONTWAIT|MSG_CMSG_CLOEXEC);
-    if (size<0 && (errno==EAGAIN || errno==EINTR)) return;
+    if (size<0) {
+      const auto failure=errno;
+      if (failure==EAGAIN || failure==EINTR) return;
+      receiveFailure=failure;
+      retire();
+      return;
+    }
+    if (size==0 && message.msg_controllen==0) {retire();return;}
     bool credential=false,unexpected=false;
     for (auto *header=CMSG_FIRSTHDR(&message);header;header=CMSG_NXTHDR(&message,header)) {
       if (header->cmsg_level==SOL_SOCKET && header->cmsg_type==SCM_CREDENTIALS &&
@@ -176,6 +184,7 @@ public:
     return result->available()?result:std::shared_ptr<BrowserInputChannel>();
   }
   bool available() const { return !retiring && socket>=0 && alive(); }
+  int receiveError() const { return receiveFailure; }
   void retire() {
     if (retiring) return;
     retiring=true;
