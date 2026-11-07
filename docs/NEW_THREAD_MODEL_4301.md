@@ -43,9 +43,10 @@ Evidence:
   separately from the full client runtime matrix, which remains gated by the
   existing transitive filesystem audit.
 
-This checkpoint preserves the current O3 empty-server-thread creation model.
-It does not implement T3's separate local-draft/sticky-provider lifecycle or its
-minute-by-minute default reevaluation while a local draft remains unsubmitted.
+The subsequent [local draft lifecycle](LOCAL_THREAD_DRAFTS_4301.md) replaces
+empty-server-thread creation with local drafts, sticky provider state and minute
+reevaluation. Its focused workflow proofs and remaining scope boundaries are
+documented separately from this model-resolution corpus.
 The corpus establishes its recorded reset-date inputs; arbitrary JavaScript
 Date.parse differences between V8 and Qt are not certified. These are tracked
 parity gaps, not claims of complete new-thread workflow equivalence.

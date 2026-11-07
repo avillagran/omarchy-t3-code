@@ -15,6 +15,8 @@ import "../js/ProviderUpdates.js" as Updates
 import "../js/NativeKeybindings.js" as NativeKeys
 import "../js/UsageLimits.js" as Usage
 import "../js/NativeNewThreadModel.js" as NewThreadModel
+import "../js/LocalThreadDrafts.js" as LocalDrafts
+import "../js/NativeDraftProviders.js" as DraftProviders
 import "../js/PinOrder.js" as PinOrder
 import "../js/JsonDelta.js" as JsonDelta
 
@@ -347,10 +349,73 @@ Singleton {
   property string query: ""
   property int requestedSerial: 0
   property var drafts: ({})
+  readonly property bool localDraft:LocalDrafts.isLocal(root,selectedKey)
+  readonly property var threadItems:(state.threads || []).concat(Object.keys(viewState.localDraftThreads || {}).filter(function(key){return LocalDrafts.isLocal(root,key)}).map(function(key){return LocalDrafts.present(root,key)}))
+  property var pendingLocalDraftCreate:null
+  property var pendingLocalDraftMoves:({})
+  property var localModelContexts:({})
+  property var localProjectContexts:({})
+  property var localModelRequests:({})
+  property var localDraftClockRelease:null
+  function syncLocalDraftClock(){
+    if(panelVisible&&localDraft){if(!localDraftClockRelease)localDraftClockRelease=T3ThreadClock.subscribe(function(){root.refreshLocalDraftDefaults(root.selectedKey)})}
+    else if(localDraftClockRelease){localDraftClockRelease();localDraftClockRelease=null}
+  }
+  Connections{target:root;function onLocalDraftChanged(){root.syncLocalDraftClock()}function onPanelVisibleChanged(){root.syncLocalDraftClock()}}
+
+  function localDraftConnected(entry){return (state.environments || []).some(function(environment){return environment.id===entry.environmentId&&environment.state==="ready"})}
+  function localDraftProject(entry){return (state.projects || []).find(function(project){return project.environmentId===entry.environmentId&&project.id===entry.projectId}) || null}
+  function requestLocalDraftDefaults(key,initial){
+    var entry=LocalDrafts.metadata(root,key);if(!entry||!LocalDrafts.isLocal(root,key)||!localDraftConnected(entry))return
+    if(workspaceOperation.busy&&workspaceOperation.request&&workspaceOperation.request.localDraftKey===key)return
+    var request=uuid(),requests=Object.assign({},localModelRequests)
+    Object.keys(requests).forEach(function(id){if(requests[id].key===key)delete requests[id]})
+    requests[request]={key:key,draftId:entry.draftId,initial:initial};localModelRequests=requests
+    send({op:"settings",action:"workspace-read",environment:entry.environmentId,projectId:entry.projectId,project:localDraftProject(entry),localDraft:true,modelDefaults:true,requestId:request})
+  }
+  function initializeLocalDraftDefaults(key,initial,command){
+    var entry=LocalDrafts.metadata(root,key),cached=LocalDrafts.cachedDefaults(root,key)
+    if(!entry)return
+    if(cached)localDraftDefaults(key,cached,initial)
+    if((!cached||cached.consultProjectFile)&&localDraftConnected(entry))requestLocalDraftDefaults(key,initial)
+    managementFinished({})
+  }
+  function refreshLocalDraftDefaults(key){
+    var cached=LocalDrafts.cachedDefaults(root,key)
+    if(cached)localDraftDefaults(key,cached,null)
+    requestLocalDraftDefaults(key,null)
+  }
+  function localDraftDefaults(key,result,initial){
+    var entry=LocalDrafts.metadata(root,key),saved=drafts[key];if(!entry||!saved||!LocalDrafts.isLocal(root,key))return
+    if(!(state.projects || []).some(function(project){return project.environmentId===entry.environmentId&&project.id===entry.projectId}))return
+    var contexts=Object.assign({},localModelContexts);contexts[key]=result;localModelContexts=contexts
+    var projects=Object.assign({},localProjectContexts);projects[entry.environmentId+"/"+entry.projectId]=result;localProjectContexts=projects
+    var context=result.modelDefaults || {},configured=result.defaultModelSelection || null
+    var carried=initial?initial.carrySelection:null,sticky=initial?initial.stickySelection:null
+    var automatic=DraftProviders.resolveProjectDefaultProviderModelSelection(context.providers || [],context.settings || {providerInstances:{},projectSettingsOverrides:{}},entry.projectId)
+    var resolution=NewThreadModel.resolveNewThreadModelSelection({defaultSelection:configured || (initial&&(carried||sticky)?null:automatic),fallbackSelection:context.fallbackSelection || null,providers:context.providers || [],settings:context.settings,projectId:entry.projectId,now:initial?Date.now():Math.floor(Date.now()/60000)*60000})
+    var selected=saved.modelSelection || entry.modelSelection
+    if(initial&&!saved.modelSelectionExplicit){
+      var override=resolution.fallback?resolution.selection:configured || (initial.sourceDraftId===entry.draftId?null:carried) || selected || sticky || automatic
+      if(override){selected=override;patchDraft(key,{modelSelection:override,modelSelectionExplicit:false})}
+    }
+    var notices=Object.assign({},modelFallbackNotices)
+    var window=resolution.fallback?resolution.fallback.provider.instanceId+":"+(resolution.fallback.resetsAt || ""):null
+    if(window!==(viewState.modelFallbackDismissedWindows || {})[entry.environmentId]&&!saved.modelSelectionExplicit&&resolution.fallback&&selected&&resolution.selection&&selected.instanceId===resolution.selection.instanceId&&selected.model===resolution.selection.model)notices[key]={selection:resolution.selection,defaultSelection:configured || automatic,provider:resolution.fallback.provider,resetsAt:resolution.fallback.resetsAt}
+    else delete notices[key]
+    modelFallbackNotices=notices
+    var values={modelSelection:selected}
+    var project=localDraftProject(entry)
+    var mode=result.mode?DraftProviders.resolveNewThreadEnvMode({projectSettings:{settings:{defaultThreadEnvMode:result.mode},sources:{defaultThreadEnvMode:result.modeSource || "environment"}},workspaceRoot:project?project.workspaceRoot:null,newProjectsRoot:result.newProjectsRoot,projectHasThreads:(state.threads || []).some(function(thread){return thread.environmentId===entry.environmentId&&thread.projectId===entry.projectId})}):null
+    if(initial&&!entry.workspaceExplicit&&(initial.created||!initial.alreadyOpen)&&mode)values.workspaceStrategy=mode==="worktree"?{type:"worktree",baseRef:entry.branch || "HEAD",startFromOrigin:!!result.startFromOrigin}:{type:"root"}
+    if(initial&&!initial.alreadyOpen&&result.defaultRuntimeMode&&!saved.runtimeMode)values.runtimeMode=result.defaultRuntimeMode
+    LocalDrafts.patch(root,key,values)
+  }
+
   // Native prompt-stash behavior, presented through a shared project drawer.
   property var projectDrafts:({entries:[],busy:false,error:"",requestId:"",scope:"",command:null})
   signal projectDraftRestored(string key)
-  function draftProject(key){var t=(state.threads || []).find(function(t){return t.key===key || t.environmentId+"/"+t.id===key});return t?t.projectId || "":""}
+  function draftProject(key){var local=LocalDrafts.metadata(root,key);if(local)return local.projectId;var t=(state.threads || []).find(function(t){return t.key===key || t.environmentId+"/"+t.id===key});return t?t.projectId || "":""}
   function projectDraftScope(){return selectedInfo.projectId?selectedEnvironment+"/"+selectedInfo.projectId:""}
   function requestProjectDrafts(action,entry){
     if(action==="list"&&projectDrafts.error&&projectDrafts.command){retryProjectDrafts();return}
@@ -396,6 +461,7 @@ Singleton {
     if (submission) { var pending=Object.assign({},pendingSends);pending[revision]=submission;pendingSends=pending }
     var dirty=Object.assign({},dirtyDrafts);delete dirty[key];dirtyDrafts=dirty
     send({op:"draft-save",key:key,revision:revision,draft:d})
+    return revision
   }
   function flushDrafts() { Object.keys(dirtyDrafts).forEach(function(key){root.flushDraft(key)});dirtyDrafts=({}) }
   Timer { id: saveDrafts; interval: 150; onTriggered: root.flushDrafts() }
@@ -517,7 +583,7 @@ Singleton {
   readonly property bool shellThreadFamilies:catalog.shellThreadFamilies===true||(state.environments||[]).some(function(e){return e.id===root.selectedEnvironment&&e.shellThreadFamilies===true})
   property var familyEpochs:({})
   function ensureThreadFamily(){
-    if(!selectedThread||!shellThreadFamilies)return
+    if(localDraft||!selectedThread||!shellThreadFamilies)return
     var info=(state.environments||[]).find(function(e){return e.id===root.selectedEnvironment}),epoch=info?info.shellGeneration:0
     if(familyEpochs[selectedKey]===epoch||nightlyState("family",selectedEnvironment,selectedThread).busy)return
     var epochs=Object.assign({},familyEpochs);epochs[selectedKey]=epoch;familyEpochs=epochs
@@ -628,19 +694,19 @@ Singleton {
     if(!selection){var template=(state.threads || []).find(function(t){return t.environmentId===pending.environment&&t.projectId===pending.projectId&&!t.settled&&t.modelSelection});selection=template?template.modelSelection:null}
     if(!selection){
       var available=catalogs[pending.environment]
-      if(!available){ensureCatalog(pending.environment);return}
+      if(!available){if((state.environments || []).some(function(environment){return environment.id===pending.environment&&environment.state==="ready"}))ensureCatalog(pending.environment);available={models:[]}}
       var models=(available.models || []).filter(function(m){return m.available!==false})
       var favorite=models.find(function(m){return (available.favorites || []).some(function(f){return f.provider===m.instanceId&&f.model===m.model})}) || models[0]
       if(favorite)selection={instanceId:favorite.instanceId,model:favorite.model,options:[]}
     }
-    var id=uuid()
-    pendingProjectOpen=Object.assign({},pending,{requestId:id,stage:"models",command:{action:"new-thread",environment:pending.environment,projectId:pending.projectId,title:T3I18n.tr("New chat"),modelSelection:selection,useProjectDefaults:true,inheritRuntimeMode:!!currentRuntimeMode(),runtimeMode:currentRuntimeMode() || "approval-required"}})
-    send({op:"settings",action:"workspace-read",environment:pending.environment,projectId:pending.projectId,modelDefaults:true,requestId:id})
+    pendingProjectOpen=null
+    requestNewThread({action:"new-thread",environment:pending.environment,projectId:pending.projectId,title:T3I18n.tr("New chat"),modelSelection:selection,useProjectDefaults:true,inheritRuntimeMode:!!currentRuntimeMode(),runtimeMode:currentRuntimeMode() || "approval-required"})
+    projectOpened(pending.environment,pending.projectId,managementError || "")
   }
 
   function loadProjectSources(environment){var id=uuid();projectSources={busy:true,environment:environment,requestId:id,providers:[]};send({op:"project-sources",environment:environment,requestId:id})}
   property var terminalOperation:({busy:false,error:"",requestId:"",key:""})
-  readonly property bool canOpenTerminal:!!selectedThread && catalog.canWrite!==false && (state.environments || []).some(function(e){return e.id===root.selectedEnvironment&&e.state==="ready"})
+  readonly property bool canOpenTerminal:!localDraft&&!!selectedThread && catalog.canWrite!==false && (state.environments || []).some(function(e){return e.id===root.selectedEnvironment&&e.state==="ready"})
   signal terminalOpened()
   // A Mermaid block to draw in the side panel's renders tab.
   signal diagramRequested(var attachment)
@@ -736,7 +802,7 @@ Singleton {
   signal branchSwitchFailed(string error)
   // Checkout branch drift of the open thread; dismissing hides it for this thread until it changes.
   property var branchMismatch:({})
-  function checkBranchMismatch(){if(!selectedThread||!worker.running)return;var id=uuid();branchMismatch=Object.assign({},branchMismatch.key===selectedKey?branchMismatch:{key:selectedKey},{requestId:id});send({op:"branch-check",environment:selectedEnvironment,thread:selectedThread,requestId:id})}
+  function checkBranchMismatch(){if(localDraft||!selectedThread||!worker.running)return;var id=uuid();branchMismatch=Object.assign({},branchMismatch.key===selectedKey?branchMismatch:{key:selectedKey},{requestId:id});send({op:"branch-check",environment:selectedEnvironment,thread:selectedThread,requestId:id})}
   function resolveBranchMismatch(restore){if(!selectedThread||branchMismatch.busy)return;var id=uuid();branchMismatch=Object.assign({},branchMismatch,{busy:true,requestId:id});send({op:"branch-resolve",environment:selectedEnvironment,thread:selectedThread,restore:restore,requestId:id})}
   Timer{id:branchCheckDelay;interval:1200;onTriggered:root.checkBranchMismatch()}
   // A finished run may have moved the checkout.
@@ -882,7 +948,7 @@ Singleton {
   property var visitState:({key:"",at:0,sent:0})
   function visitThread(env,thread,ms){if(!env||!thread||!(ms>0)||!worker.running)return;send({op:"thread-visit",environment:env,thread:thread,visitedAt:new Date(ms).toISOString(),requestId:uuid()})}
   function watermarkVisit(){
-    var t=selectedInfo;if(!panelVisible||!t.key||!(t.updatedAt>0)||(catalogs[t.environmentId] || {}).canWrite===false||(t.lastVisitedAt || 0)>=t.updatedAt)return
+    var t=selectedInfo;if(localDraft||!panelVisible||!t.key||!(t.updatedAt>0)||(catalogs[t.environmentId] || {}).canWrite===false||(t.lastVisitedAt || 0)>=t.updatedAt)return
     if(visitState.key===t.key&&visitState.at===t.updatedAt)return
     var unseen=(t.latestRunCompletedAt || 0)>(t.lastVisitedAt || 0),now=Date.now()
     if(!unseen&&visitState.key===t.key&&now-visitState.sent<10000)return
@@ -906,11 +972,17 @@ Singleton {
   function mergeBack(){if(!mergeBackTarget||!mergeBackRunId||managementBusy)return;manage({action:"merge-back",environment:selectedEnvironment,thread:selectedThread,targetThread:mergeBackTarget,runId:mergeBackRunId})}
   function manage(values) {
     if (managementBusy) return
+    var localKey=(values.environment || selectedEnvironment)+"/"+(values.thread || selectedThread)
+    if(LocalDrafts.isLocal(root,localKey)&&values.action!=="new-thread"){
+      if(values.action==="thread-rename"){LocalDrafts.patch(root,localKey,{title:values.title});return}
+      if(values.action==="delete-thread"){LocalDrafts.promoted(root,localKey);if(selectedKey===localKey)clearSelection();return}
+      managementError="draft_thread_not_submitted";return
+    }
     var command = managementRequest || Object.assign({op:"manage",requestId:uuid()},values)
     if(!managementRequest)settleNavigation=planSettleNavigation(command)
     managementRequest = command; managementBusy = true; managementError = ""; send(command)
   }
-  readonly property var selectedInfo: state.threads.find(function(t) { return t.key === root.selectedKey }) || ({})
+  readonly property var selectedInfo: state.threads.find(function(t) { return t.key === root.selectedKey }) || LocalDrafts.present(root,selectedKey)
   readonly property bool providerSubagent: selectedInfo.providerSubagent===true
   function openParentThread(){if(selectedInfo.parentThreadId)selectThread(selectedEnvironment,selectedInfo.parentThreadId)}
   readonly property var draft: drafts[selectedKey] || ({text: "", context:null, attachments: [], modelSelection: selectedInfo.modelSelection || null, delivery: "auto", busy: false, error: "", attempt: null})
@@ -957,7 +1029,7 @@ Singleton {
     var previous=drafts[key]
     if(historyKind!==false && previous && !previous.loading && !previous.loadError && ((values.text!==undefined&&values.text!==previous.text)||(values.attachments!==undefined&&JSON.stringify(values.attachments)!==JSON.stringify(previous.attachments))))saveUndo(key,previous,all[key],historyKind)
     drafts = all
-    if (!all[key].loading && !all[key].loadError && ["text","context","attachments","modelSelection","runtimeMode","interactionMode","sourcePlanRef","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
+    if (!all[key].loading && !all[key].loadError && ["text","context","attachments","modelSelection","modelSelectionExplicit","runtimeMode","interactionMode","sourcePlanRef","delivery","attempt","queueEdit","questionnaires","approvals"].some(function(k){return values[k] !== undefined})) {
       var dirty=Object.assign({},dirtyDrafts);dirty[key]=true;dirtyDrafts=dirty;saveDrafts.restart()
       var updated=Object.assign({},drafts);updated[key]=Object.assign({},updated[key],{saveState:"saving",saveRevision:""});drafts=updated
     }
@@ -965,7 +1037,7 @@ Singleton {
   function edit(value,typing) { releaseThreadUndoShortcut();if (selectedKey && !draft.busy && !draft.attempt) patchDraft(selectedKey, {text: value, error: ""},typing?"typing":"edit") }
   function chooseModel(index) {
     var m = catalog.models[index]; if (!m) return
-    patchDraft(selectedKey, {modelSelection: {instanceId: m.instanceId, model: m.model, options: []}})
+    LocalDrafts.selectModel(root,m.instanceId,m.model)
   }
   // Permissions shown in the open chat's composer, or "" with no chat open.
   function currentRuntimeMode(){return selectedKey?(draft.runtimeMode || selectedInfo.runtimeMode || ""):""}
@@ -979,7 +1051,7 @@ Singleton {
     var selection = Object.assign({}, draft.modelSelection || selectedInfo.modelSelection)
     var options = (selection.options || []).filter(function(o) { return o.id !== id })
     options.push({id: id, value: value}); selection.options = options
-    patchDraft(selectedKey, {modelSelection: selection})
+    LocalDrafts.rememberSelection(root,selection,true);patchDraft(selectedKey,{modelSelection:selection,modelSelectionExplicit:true})
   }
   function attach(url, env, thread) {
     var key = env + "/" + thread; var d = drafts[key]
@@ -1190,10 +1262,14 @@ Singleton {
   property var modelFallbackNotices:({})
   readonly property var modelFallbackNotice:(function(){
     var notice=modelFallbackNotices[selectedKey],selection=draft.modelSelection || selectedInfo.modelSelection
-    return notice && !selectedInfo.latestRunId && JSON.stringify(selection)===JSON.stringify(notice.selection)?notice:null
+    return notice && localDraft && !selectedInfo.latestRunId && JSON.stringify(selection)===JSON.stringify(notice.selection)?notice:null
   })()
-  function dismissModelFallback(){var all=Object.assign({},modelFallbackNotices);delete all[selectedKey];modelFallbackNotices=all}
-  function useFallbackDefault(){if(!modelFallbackNotice || draft.busy || draft.attempt)return;var selection=modelFallbackNotice.defaultSelection;dismissModelFallback();patchDraft(selectedKey,{modelSelection:selection})}
+  function dismissModelFallback(){
+    var notice=modelFallbackNotices[selectedKey]
+    if(notice){var dismissed=Object.assign({},viewState.modelFallbackDismissedWindows || {});dismissed[selectedEnvironment]=notice.provider.instanceId+":"+(notice.resetsAt || "");rememberView({modelFallbackDismissedWindows:dismissed})}
+    var all=Object.assign({},modelFallbackNotices);delete all[selectedKey];modelFallbackNotices=all
+  }
+  function useFallbackDefault(){if(!modelFallbackNotice || draft.busy || draft.attempt)return;var selection=modelFallbackNotice.defaultSelection;dismissModelFallback();LocalDrafts.selectModel(root,selection.instanceId,selection.model)}
   function fallbackModelName(selection){var model=(catalog.models || []).find(function(model){return model.instanceId===selection.instanceId && model.model===selection.model});return model?(model.label || model.model):selection.model}
   function applyNewThreadDefaults(command,data){
     var defaults=Object.assign({},command),context=data.modelDefaults || {}
@@ -1212,16 +1288,35 @@ Singleton {
     // The native New Local command explicitly selects the project checkout;
     // it must not rewrite or be overridden by the saved workspace default.
     if(!request.sourceKey&&request.command.workspaceStrategy&&request.command.workspaceStrategy.type==="root"&&request.command.useProjectDefaults!==true){
-      manage(Object.assign({},request.command,{automatic:false,workspaceStrategy:{type:"root"}}));return
+      if(request.localDraftKey){LocalDrafts.patch(root,request.localDraftKey,{workspaceStrategy:{type:"root"}});managementFinished({});return;}manage(Object.assign({},request.command,{automatic:false,workspaceStrategy:{type:"root"}}));return
     }
     if(request.command.automatic===true&&!request.sourceKey){
       var id=uuid();workspaceOperation={busy:true,error:"",request:request,requestId:id,action:"routing"}
       send(Object.assign({op:"connection-route",requestId:id},request.command));return
     }
     var id=uuid();workspaceOperation={busy:true,error:"",request:request,requestId:id,action:"read"}
+    if(request.localDraftKey){var reads=Object.assign({},localModelRequests);Object.keys(reads).forEach(function(token){if(reads[token].key===request.localDraftKey)delete reads[token]});localModelRequests=reads}
     send({op:"settings",action:"workspace-read",environment:request.command.environment,projectId:request.command.projectId,modelDefaults:request.command.useProjectDefaults===true&&!request.sourceKey,requestId:id})
   }
-  function requestNewThread(values){beginNewThread({command:values})}
+  function continueLocalRoute(request,result){
+    workspaceOperation={busy:false,error:""}
+    request=Object.assign({},request,{command:Object.assign({},request.command,result,{automatic:false,branch:null,worktreePath:null})})
+    if(request.localDraftKey)initializeLocalDraftDefaults(request.localDraftKey,request.localInitial,request.command)
+    else beginNewThread(request)
+  }
+  function requestNewThread(values){
+    if(managementBusy||managementRequest||workspaceOperation.busy)return
+    var opened=LocalDrafts.create(root,values);if(!opened)return
+    var command=Object.assign({},values,{localDraftKey:opened.key})
+    var initial=Object.assign({},opened,{inheritRuntimeMode:values.inheritRuntimeMode})
+    managementFinished({})
+    if(values.automatic===true&&localDraftConnected(LocalDrafts.metadata(root,opened.key))){
+      var request={localDraftKey:opened.key,localInitial:initial,command:command},id=uuid()
+      workspaceOperation={busy:true,error:"",request:request,requestId:id,action:"routing"}
+      send(Object.assign({op:"connection-route",requestId:id},command));return
+    }
+    initializeLocalDraftDefaults(opened.key,initial,command)
+  }
   function confirmNewThread(request,isolated,configured){
     if(managementBusy||managementRequest||workspaceOperation.busy)return
     if(request.sourceKey&&selectedKey!==request.sourceKey)return
@@ -1234,6 +1329,7 @@ Singleton {
     if(!isolated&&command.branch)strategy.branch=command.branch
     workspaceChoiceAccepted()
     if(request.sourceKey)submit(true,strategy)
+    else if(request.localDraftKey){LocalDrafts.patch(root,request.localDraftKey,{workspaceStrategy:strategy,workspaceExplicit:true});managementFinished({})}
     else manage(Object.assign({},command,{workspaceStrategy:strategy}))
   }
   // T3 followUpBehavior (client settings): a message sent during a run is queued
@@ -1248,6 +1344,7 @@ Singleton {
   }
   function submit(startNewThread,workspaceStrategy,alternate) {
     if(rewindPending)return
+    if(localDraft&&!localDraftConnected(LocalDrafts.metadata(root,selectedKey)))return
     if(planOperation.busy&&!draft.attempt)return
     if(providerSubagent&&startNewThread!==true)return
     if(workspaceOperation.busy)return
@@ -1257,6 +1354,15 @@ Singleton {
     if(startNewThread!==true&&!draft.attempt&&!draft.queueEdit&&!draft.attachments.length&&freshSessionCommandAvailable&&/^\/clear\s*$/i.test(draft.text.trim())){armFreshSession();patchDraft(selectedKey,{text:""});flushDraft(selectedKey);return}
     if(!draft.attempt&&interactionModeEnabled&&/^\/(plan|default)$/.test(draft.text.trim())){chooseInteractionMode(draft.text.trim().slice(1));patchDraft(selectedKey,{text:""});flushDraft(selectedKey);return}
     if (!draft.attempt && !draft.text.trim() && draft.attachments.length === 0) return
+    if(localDraft&&!draft.attempt){
+      var entry=LocalDrafts.metadata(root,selectedKey)
+      if(!(state.projects || []).some(function(project){return project.environmentId===entry.environmentId&&project.id===entry.projectId})){patchDraft(selectedKey,{error:"invalid_project"});return}
+      if(!entry.workspaceStrategy){newThreadWorkspaceRequested({localDraftKey:selectedKey,localInitial:{draftId:entry.draftId},command:Object.assign({},entry,{environment:entry.environmentId})});return}
+      var localAttempt=LocalDrafts.submission(root)
+      if(!localAttempt||!localAttempt.modelSelection){patchDraft(selectedKey,{error:"model_unavailable"});return}
+      messageSubmitted(selectedKey)
+      patchDraft(selectedKey,{busy:true,attempt:localAttempt,error:""});flushDraft(selectedKey,localAttempt);return
+    }
     var attempt = draft.attempt || {op: "send", environment: selectedEnvironment, thread: selectedThread,
       requestId: uuid(), text: draft.text, context:messageContext(draft), attachments: draft.attachments.map(function(f) { return f.attachment }),
       modelSelection: draft.modelSelection || selectedInfo.modelSelection, delivery: dispatchMode(alternate)}
@@ -1283,6 +1389,7 @@ Singleton {
     send({op: "stop", environment: selectedEnvironment, thread: selectedThread, requestId: uuid(), runId: selectedInfo.activeRunId})
   }
   function connectionLost() {
+    pendingLocalDraftMoves=({})
     Devices.lost(root);Profiles.lost(root)
     scriptShortcutPending=null;keybindingInvalidations=({})
     if(licenseView.busy)licenseView=Object.assign({},licenseView,{busy:false,error:"disconnected"})
@@ -1301,7 +1408,7 @@ Singleton {
     if(planOperation.busy)planOperation=Object.assign({},planOperation,{busy:false,error:planOperation.command?"rpc_outcome_unknown":"disconnected"})
     if(backendStart.busy)backendStart={busy:false,error:"rpc_outcome_unknown",status:""}
     if(terminalOperation.busy)terminalOperation=Object.assign({},terminalOperation,{busy:false,error:"rpc_outcome_unknown"})
-    if(workspaceOperation.busy){workspaceOperation=Object.assign({},workspaceOperation,{busy:false,error:"rpc_outcome_unknown"});newThreadWorkspaceRequested(workspaceOperation.request)}
+    if(workspaceOperation.busy){workspaceOperation=Object.assign({},workspaceOperation,{busy:false,error:"rpc_outcome_unknown"});if(!workspaceOperation.request.localDraftKey||workspaceOperation.request.localDraftKey===selectedKey)newThreadWorkspaceRequested(workspaceOperation.request)}
     if(connectionCloud.busy)connectionCloud=Object.assign({},connectionCloud,{busy:false,error:"rpc_outcome_unknown",device:null})
     if(connectionPreferences.busy)connectionPreferences=Object.assign({},connectionPreferences,{busy:false,error:"rpc_outcome_unknown"})
     if(connectionNetwork.busy)connectionNetwork=Object.assign({},connectionNetwork,{busy:false,error:"rpc_outcome_unknown"})
@@ -1530,7 +1637,7 @@ Singleton {
   function resizeBrowserPage(width,height,owner){if(owner&&owner!==browserMountId)return;BrowserSurface.resize(root,width,height)}
   function browserPageInput(id,event,owner){if(owner&&owner!==browserMountId)return;BrowserSurface.input(root,id,event)}
   function browserControl(action){BrowserSurface.control(root,action)}
-  function syncBrowserSurface(force){BrowserSurface.sync(root,!!force)}
+  function syncBrowserSurface(force){if(localDraft)return;BrowserSurface.sync(root,!!force)}
   onPreviewStateChanged:Qt.callLater(function(){root.syncBrowserSurface(false)})
   onPreviewWatchChanged:Qt.callLater(function(){root.syncBrowserSurface(false)})
   property var previewCommands:({})
@@ -1539,7 +1646,7 @@ Singleton {
   function previewAction(action,options){return Previews.command(root,action,options)}
   function acknowledgePreviewOperation(){Previews.acknowledge(root)}
   property var previewWatch:({signature:"",requestId:"",environment:"",thread:"",originKey:"",busy:false,connected:false,error:"",canOperate:false,serverBrowser:false})
-  function syncPreview(force){Previews.sync(root,!!force)}
+  function syncPreview(force){if(localDraft)return;Previews.sync(root,!!force)}
   onPreviewVisibleChanged:Qt.callLater(function(){root.syncPreview(false)})
   onSelectedThreadChanged:Qt.callLater(function(){root.syncPreview(false)})
   property var browserImportCatalog:({busy:false,error:"",requestId:"",sources:[]})
@@ -1704,7 +1811,7 @@ Singleton {
   property var gitView:({loading:false,error:"",data:null,scope:{},operation:{}})
   property var gitCommands:({})
   property var scriptShortcutPending:null
-  readonly property bool canOpenGit:!!selectedInfo.projectId&&!!(selectedInfo.worktreePath || gitProject.workspaceRoot)
+  readonly property bool canOpenGit:!localDraft&&!!selectedInfo.projectId&&!!(selectedInfo.worktreePath || gitProject.workspaceRoot)
   readonly property var gitProject:(state.projects || []).find(function(p){return p.id===root.selectedInfo.projectId&&p.environmentId===root.selectedEnvironment}) || {}
   readonly property bool gitBusy:Object.keys(gitCommands).some(function(id){var c=root.gitCommands[id];return c.op==="git-action"&&c.environment===root.selectedEnvironment&&c.scope.cwd===(root.gitView.scope || {}).cwd})
   function dismissGit(){scriptShortcutPending=null;gitView={loading:false,error:"",data:null,scope:{},operation:{}}}
@@ -1994,14 +2101,24 @@ Singleton {
       var request=workspaceOperation.request
       workspaceOperation={busy:false,error:data.error || ""}
       if(data.error){managementError=data.error;return}
-      request=Object.assign({},request,{command:Object.assign({},request.command,data.result,{automatic:false,branch:null,worktreePath:null})})
-      beginNewThread(request);return
+      if(request.localDraftKey){LocalDrafts.route(root,request,data.result);return}
+      continueLocalRoute(request,data.result);return
     }
     if(data.op==="settings"&&data.requestId===workspaceOperation.requestId){
       var op=workspaceOperation,request=op.request
       workspaceOperation=Object.assign({},op,{busy:false,requestId:"",error:data.error || ""})
       if(request.sourceKey&&request.sourceKey!==selectedKey)return
       if(data.error){newThreadWorkspaceRequested(request);return}
+      if(request.localDraftKey){
+        var entry=LocalDrafts.metadata(root,request.localDraftKey)
+        if(!entry||entry.draftId!==request.localInitial.draftId)return
+        localDraftDefaults(request.localDraftKey,data.result,request.localInitial)
+        if(entry.workspaceStrategy){managementFinished({});return}
+        if(selectedKey!==request.localDraftKey)return
+        if(data.result.mode)confirmNewThread(request,data.result.mode==="worktree",true)
+        else newThreadWorkspaceRequested(request)
+        return
+      }
       request=Object.assign({},request,{startFromOrigin:!!data.result.startFromOrigin})
       if(request.command.useProjectDefaults===true&&!request.sourceKey){
         request=Object.assign({},request,{command:applyNewThreadDefaults(request.command,data.result)})
@@ -2012,6 +2129,12 @@ Singleton {
       if(op.action==="write")confirmNewThread(request,data.result.mode==="worktree",true)
       else if(data.result.mode)confirmNewThread(request,data.result.mode==="worktree",true)
       else newThreadWorkspaceRequested(request)
+      return
+    }
+    if(data.op==="settings"&&localModelRequests[data.requestId]){
+      var pending=localModelRequests[data.requestId],requests=Object.assign({},localModelRequests);delete requests[data.requestId];localModelRequests=requests
+      var entry=LocalDrafts.metadata(root,pending.key)
+      if(entry&&entry.draftId===pending.draftId&&!data.error)localDraftDefaults(pending.key,data.result,pending.initial || null)
       return
     }
     if(data.op==="connection-network"){
@@ -2154,14 +2277,14 @@ Singleton {
       var moving=source&&source.attempt&&source.attempt.op==="manage"&&source.attempt.requestId===creation.requestId
       managementBusy = false; managementError = data.error || ""
       var localRejection=["invalid_workspace","invalid_project","invalid_request_id","invalid_title","invalid_message","invalid_attachments","image_limit_10MiB","image_total_limit_80MiB"].indexOf(data.error)>=0
-      var retryable=data.error==="rpc_outcome_unknown" || (!!creation.workspaceStrategy&&!!data.error&&!localRejection)
+      var retryable=data.error==="rpc_outcome_unknown" || (!creation.localDraftId&&!!creation.workspaceStrategy&&!!data.error&&!localRejection)
       if(creation.planFollowUp===true&&data.error)planOperation=Object.assign({},planOperation,{busy:false,error:data.error,command:creation})
       if(moving){
         if(data.error)patchDraft(sourceKey,{busy:false,error:data.error,attempt:retryable?source.attempt:null})
         else if(creation.workspaceStrategy){
           // Native launch durably accepts the initial message and defers its
           // execution until workspace preparation completes.
-          patchDraft(sourceKey,{text:"",context:null,attachments:[],attempt:null,busy:false,error:""});resetUndo(sourceKey);flushDraft(sourceKey)
+          patchDraft(sourceKey,{text:"",context:null,attachments:[],modelSelectionExplicit:false,attempt:null,busy:false,error:""});resetUndo(sourceKey);flushDraft(sourceKey)
         } else {
           var destination=data.environment+"/"+data.result.threadId
           var attempt=Object.assign({},source.attempt,{op:"send",requestId:source.attempt.sendRequestId,thread:data.result.threadId,delivery:"auto",moveSource:sourceKey,creationRequestId:source.attempt.requestId})
@@ -2174,6 +2297,7 @@ Singleton {
       }
       if (!retryable) {managementRequest = null;settleNavigation=null}
       if (!data.error) {
+        if(data.result.action==="new-thread")LocalDrafts.promoted(root,data.environment+"/"+data.result.threadId)
         if(data.result.action==="new-thread" && creation.modelFallback && creation.modelDefaultSelection){var notices=Object.assign({},modelFallbackNotices);notices[data.environment+"/"+data.result.threadId]={selection:creation.modelSelection,defaultSelection:creation.modelDefaultSelection,provider:creation.modelFallback.provider,resetsAt:creation.modelFallback.resetsAt};modelFallbackNotices=notices}
         if(data.result.action==="project-remove" && selectedInfo.projectKey===data.environment+"/"+data.result.projectId){var next=state.threads.find(function(t){return t.projectKey!==root.selectedInfo.projectKey});if(next)selectThread(next.environmentId,next.id);else clearSelection()}
         if(["archive","delete-thread"].indexOf(data.result.action)>=0&&data.result.threadId)forgetDictationRecordings(data.environment+"/"+data.result.threadId)
@@ -2206,7 +2330,8 @@ Singleton {
 
     if (data.op === "catalog") {
       var loading=Object.assign({},catalogLoading);delete loading[data.environment];catalogLoading=loading
-      var all = Object.assign({}, catalogs); all[data.environment] = data.result || Object.assign({},all[data.environment] || {models:[],providers:[],favorites:[]},{favoritesReady:false,error:data.error}); catalogs = all;if(data.environment===selectedEnvironment)ensureThreadFamily();finishProjectOpen(); return
+      if(data.result&&data.result.newThreadContext){var cached=Object.assign({},localProjectContexts);Object.keys(cached).forEach(function(key){if(key.indexOf(data.environment+"/")===0)delete cached[key]});localProjectContexts=cached}
+      var all = Object.assign({}, catalogs); all[data.environment] = data.result || Object.assign({},all[data.environment] || {models:[],providers:[],favorites:[]},{favoritesReady:false,error:data.error}); catalogs = all;if(data.environment===selectedEnvironment)ensureThreadFamily();finishProjectOpen();if(localDraft&&data.environment===selectedEnvironment){var context=LocalDrafts.cachedDefaults(root,selectedKey);if(context)localDraftDefaults(selectedKey,context,null)} return
     }
     var d = drafts[key]; if (!d) return
     if (data.op === "upload") {
@@ -2284,24 +2409,27 @@ Singleton {
   Timer { id: sidebarSearchDebounce; interval: 260; onTriggered: root.searchSidebar(root.query) }
   function searchSidebar(value){var q=Sidebar.freeText(value);if(q.length<3){sidebarSearch={query:q,matches:[],requestId:""};return}var id=uuid();sidebarSearch={query:q,matches:sidebarSearch.query&&q.indexOf(sidebarSearch.query)===0?sidebarSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
   function clearSelection(){clearInlineDocuments();closeDocument();documentOpen=({busy:false,error:"",requestId:""});dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""};threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";planView=({plans:[],ready:null});planOperation=({busy:false,error:"",command:null});transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
-  function selectThread(env, thread) {
+  function selectThread(env, thread, localCreation) {
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}
-    if (selectedEnvironment === env && selectedThread === thread) { fetchMessages(); return }
+    if (selectedEnvironment === env && selectedThread === thread) { if(localDraft&&!localCreation)refreshLocalDraftDefaults(selectedKey);fetchMessages(); return }
     clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;threadSubagents=[];branchRefs=({});branchMismatch=({});branchCheckDelay.restart();documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
     selectedEnvironment = env; selectedThread = thread; selectedKey = env + "/" + thread
-    var found = state.threads.find(function(t) { return t.key === root.selectedKey })
+    if(localDraft)send({op:"clear-select"})
+    var found = state.threads.find(function(t) { return t.key === root.selectedKey }) || LocalDrafts.present(root,selectedKey)
     selectedTitle = found ? (found.title || thread) : thread
     selectedProject = found ? (found.project || env) : env
     if (!drafts[selectedKey]) {
       patchDraft(selectedKey, {loading:true,modelSelection: found ? found.modelSelection : null})
       send({op:"draft-load",key:selectedKey,projectId:draftProject(selectedKey)})
     }
-    if (!catalogs[env]) send({op: "catalog", environment: env})
+    if (!catalogs[env]&&(!localDraft||localDraftConnected(LocalDrafts.metadata(root,selectedKey)))) send({op: "catalog", environment: env})
     resetHistory();planView=({plans:[],ready:null});planOperation=({busy:false,error:"",command:null});transcript = []; activity = [];tasks=null;questions=[];approvals=[];queue=({items:[],held:false,canReorder:false,canSteer:false}); messageError = ""; fetchMessages()
+    if(localDraft&&!localCreation)refreshLocalDraftDefaults(selectedKey)
     persistView.restart()
   }
   function fetchMessages() {
     if (!panelVisible || !selectedThread) return
+    if(localDraft){loadingMessages=false;return}
     if(historyOperation.busy)historyOperation=({busy:false,error:""})
     requestedSerial++; loadingMessages = true
     send({op: "select", environment: selectedEnvironment, thread: selectedThread, serial: requestedSerial})
@@ -2373,10 +2501,12 @@ Singleton {
         var loaded=drafts[data.key];if(!loaded || !loaded.loading) return
         var saved=data.draft || {};var restored=Object.assign({},loaded,saved,{loading:false,loadError:data.error || "",saveState:data.error?"error":"saved",busy:false,error:saved.attempt?"rpc_outcome_unknown":data.error || ""})
         var cache=Object.assign({},drafts);cache[data.key]=restored;drafts=cache
+        LocalDrafts.resumeCreate(root,data.key,data.error)
       }
       else if (event.type === "draft-saved") {
         var existing=drafts[data.key];var submission=pendingSends[data.revision]
         if(existing && existing.saveRevision===data.revision) { var updated=Object.assign({},drafts);updated[data.key]=Object.assign({},existing,{saveState:data.error?"error":"saved",saveError:data.error || ""});drafts=updated }
+        if(LocalDrafts.savedMove(root,data))return
         if(data.error==="draft_recovery_changed"&&data.recovery){
           var pendingRecovery=Object.assign({},pendingSends);delete pendingRecovery[data.revision];pendingSends=pendingRecovery
           if(existing&&existing.attempt&&submission&&existing.attempt.requestId===submission.requestId)patchDraft(data.key,{attempt:null,busy:false})
@@ -2405,7 +2535,10 @@ Singleton {
             if(submission.moveSource)patchDraft(submission.moveSource,{busy:false,error:"draft_save_failed"})
           }
           else if (existing && existing.busy && existing.attempt && existing.attempt.requestId === submission.requestId) {
-            if(submission.op==="manage")manage(submission)
+            if(submission.op==="manage"){
+              if(submission.localDraftId&&!(state.projects || []).some(function(project){return project.environmentId===submission.environment&&project.id===submission.projectId})){patchDraft(data.key,{attempt:null,busy:false,error:"invalid_project"});return}
+              manage(submission)
+            }
             else {
               if(submission.moveSource){
                 var source=drafts[submission.moveSource]
@@ -2480,7 +2613,7 @@ Singleton {
       root.requestClientSettings();root.send({op: "visible", value: root.panelVisible}); root.send({op: "search", query: ""})
       if(root.browserImportWizard.open&&root.browserImportOperation.state!=="uncertain")ImportFlow.refresh(root,false);
       root.syncPreview(true);Devices.visibility(root);if(root.browserProfileView.environments.length)root.requestBrowserProfiles(root.browserProfileView.environments,true);root.syncKeybindingWatches(true);root.ensureRuntimeKeybindings(true)
-      if (root.selectedEnvironment) root.send({op: "catalog", environment: root.selectedEnvironment})
+      if (root.selectedEnvironment&&(!root.localDraft||root.localDraftConnected(LocalDrafts.metadata(root,root.selectedKey)))) root.send({op: "catalog", environment: root.selectedEnvironment})
       if(root.panelVisible)root.probeScroll()
       if (root.panelVisible && root.selectedThread) root.fetchMessages()
       if(root.panelVisible&&root.mosaicTargets.length)root.send({op:"mosaic-watch",targets:root.mosaicTargets})

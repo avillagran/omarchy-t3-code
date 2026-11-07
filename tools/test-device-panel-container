@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "browser-permission", "browser-permission-panel", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "thread-activity", "thread-row-activity", "backend-smoke", "reset-credit", "new-thread-model"], default="device-tools")
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "browser-permission", "browser-permission-panel", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "thread-activity", "thread-row-activity", "backend-smoke", "reset-credit", "new-thread-model", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"], default="device-tools")
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 if subprocess.check_output(["podman", "--remote=false", "info", "--format", "{{.Host.Security.Rootless}}"], text=True).strip() != "true":
@@ -69,7 +69,7 @@ exit "$result"
 command = ["podman", "--remote=false", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
 for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "XDG_CONFIG_HOME":"/tmp/config", "XDG_STATE_HOME":"/tmp/state", "XDG_DATA_HOME":"/tmp/data", "LIBGL_ALWAYS_SOFTWARE":"1", "__EGL_VENDOR_LIBRARY_FILENAMES":"/usr/share/glvnd/egl_vendor.d/50_mesa.json"}.items():
     command += ["--env", f"{key}={value}"]
-if args.fixture in ["file-metadata", "thread-activity", "reset-credit", "new-thread-model"]:
+if args.fixture in ["file-metadata", "thread-activity", "reset-credit", "new-thread-model", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"]:
     command += ["--env", "QML_XHR_ALLOW_FILE_READ=1"]
 if args.fixture == "thread-activity":
     command += ["--env", "TZ=UTC"]
@@ -78,22 +78,27 @@ client_target = client_link.resolve()
 client_binary = Path(os.environ.get("OMARCHY_T3_TEST_BINARY", str(client_target)))
 if args.fixture == "thread-row-activity":
     client_binary = root / "tests/fixtures/thread-activity-worker.py"
-if args.fixture in ["browser-permission", "browser-permission-panel"]:
+if args.fixture in ["browser-permission", "browser-permission-panel", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"]:
     # T3I18n imports the global backend singleton even when the component's own
     # bridge is local. Never start an incidental mutable Cargo debug executable.
     client_binary = evidence / "permission-worker"
-    client_binary.write_bytes((root / "tests/fixtures/browser-permission-worker.py").read_bytes())
+    worker_fixture="local-thread-draft-worker.py" if args.fixture in ["local-thread-drafts","local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"] else "browser-permission-worker.py"
+    client_binary.write_bytes((root / "tests/fixtures" / worker_fixture).read_bytes())
     client_binary.chmod(0o500)
 if client_binary.is_file():
     command += ["-v", f"{client_binary}:{client_target}:ro"]
 display="wayland" if args.fixture in ["side-panel", "native-terminal", "thread-row-activity", "browser-permission-panel"] else "x11"
 container_image="localhost/o3-qml-wayland-tests:local" if display=="wayland" else "docker.io/library/archlinux:latest"
 command += ["-v", "/usr:/usr:ro", "-v", "/etc/fonts:/etc/fonts:ro", "-v", f"{root}:{root}:ro", "-v", f"{evidence}:/evidence:rw", container_image, "bash", "-c", script, "device-panel", str(root), args.fixture, display]
+if args.fixture == "local-thread-draft-clock":
+    command[3:3]=["--env","O3_LOCAL_DRAFT_CLOCK=1"]
+    script_index=command.index(script)
+    command[script_index]=script.replace("timeout 25 quickshell","timeout 140 quickshell")
 if args.fixture == "thread-row-activity":
     # Exercise the real 60-second native tick rather than shortening its period.
     script_index = command.index(script)
     command[script_index] = script.replace("timeout 25 quickshell", "timeout 90 quickshell")
-result = subprocess.run(command, capture_output=True, text=True, timeout=105 if args.fixture == "thread-row-activity" else 45)
+result = subprocess.run(command, capture_output=True, text=True, timeout=155 if args.fixture=="local-thread-draft-clock" else 105 if args.fixture == "thread-row-activity" else 45)
 (evidence / "result.json").write_text(json.dumps({"returncode":result.returncode,"fixture":args.fixture})+"\n")
 log = (evidence / "qml.log").read_text() if (evidence / "qml.log").exists() else result.stdout + result.stderr
 print(f"Device panel container evidence: {evidence}")

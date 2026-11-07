@@ -4,6 +4,7 @@ import QtTest
 import Quickshell
 import "UnderTest/ui/qml" as Client
 import "UnderTest/ui/js/NativeNewThreadModel.js" as Native
+import "UnderTest/ui/js/LocalThreadDrafts.js" as Drafts
 ShellRoot {
  id:root
  readonly property var bridge:Client.T3Backend
@@ -18,35 +19,36 @@ ShellRoot {
   var sample=data.cases.find(function(test){return !!test.result.fallback}),input=JSON.parse(JSON.stringify(sample.input))
   // Keep actual creation admission independent of the calendar; the complete
   // native oracle cases above retain their explicit timestamp boundaries.
-  input.providers.forEach(function(provider){(provider.usageLimits.windows || []).forEach(function(window){delete window.resetsAt})})
+  input.providers.forEach(function(provider){provider.models=provider.models || [{slug:provider.instanceId===input.defaultSelection.instanceId?input.defaultSelection.model:input.fallbackSelection.model,isDefault:true,isCustom:false}];(provider.usageLimits.windows || []).forEach(function(window){delete window.resetsAt})})
   check(keys.findChild(fallbackPreference,"preferenceModel_fallbackModelSelection").emptyText==="None","nullable fallback means disabled, rather than automatic")
   var command={action:"new-thread",environment:"env",projectId:"project",title:"Synthetic",modelSelection:input.defaultSelection,useProjectDefaults:true,workspaceStrategy:{type:"root"}}
-  root.bridge.workspaceOperation={busy:true,requestId:"settings-proof",request:{command:command},action:"read"}
-  root.bridge.action({op:"settings",environment:"env",requestId:"stale",result:{}})
-  check(root.bridge.workspaceOperation.busy,"stale settings result cannot affect creation")
-  root.bridge.action({op:"settings",environment:"env",requestId:"settings-proof",result:{mode:"worktree",defaultModelSelection:input.defaultSelection,defaultRuntimeMode:"approval-required",modelDefaults:{fallbackSelection:input.fallbackSelection,providers:input.providers,settings:input.settings}}})
-  check(root.bridge.managementRequest.modelSelection.instanceId===input.fallbackSelection.instanceId,"actual creation consumer chooses the native fallback")
-  check(root.bridge.managementRequest.workspaceStrategy.type==="root","explicit New Local keeps root despite saved worktree preference")
-  check(!!root.bridge.managementRequest.modelFallback,"actual creation retains fallback explanation")
-  root.bridge.state={threads:[{key:"env/thread",id:"thread",environmentId:"env",modelSelection:input.fallbackSelection}],projects:[],environments:[]}
-  root.bridge.selectedEnvironment="env";root.bridge.selectedThread="thread";root.bridge.selectedKey="env/thread"
-  root.bridge.modelFallbackNotices={"env/thread":{selection:input.fallbackSelection,defaultSelection:input.defaultSelection,provider:sample.result.fallback.provider,resetsAt:sample.result.fallback.resetsAt}}
+  var backend=root.bridge
+  backend.viewStateLoaded=true
+  backend.state={threads:[],projects:[{id:"project",key:"env/project",environmentId:"env",workspaceRoot:"/tmp/project"}],environments:[{id:"env",state:"offline"}]}
+  backend.requestNewThread(command)
+  var key=backend.selectedKey,entry=Drafts.metadata(backend,key)
+  var initial={draftId:entry.draftId,created:true,alreadyOpen:false,carrySelection:input.defaultSelection,stickySelection:null,sourceDraftId:null}
+  var result={mode:"worktree",defaultModelSelection:input.defaultSelection,defaultRuntimeMode:"approval-required",modelDefaults:{fallbackSelection:input.fallbackSelection,providers:input.providers,settings:input.settings}}
+  backend.localModelRequests={"settings-proof":{key:key,draftId:entry.draftId,initial:initial}}
+  backend.action({op:"settings",environment:"env",requestId:"stale",result:result})
+  check(backend.draft.modelSelection.instanceId===input.defaultSelection.instanceId,"stale settings cannot change a local draft")
+  backend.action({op:"settings",environment:"env",requestId:"settings-proof",result:result})
+  check(backend.draft.modelSelection.instanceId===input.fallbackSelection.instanceId,"actual local creation chooses the native fallback")
+  check(Drafts.metadata(backend,key).workspaceStrategy.type==="root","explicit New Local keeps root despite saved worktree preference")
+  check(backend.state.threads.length===0&&!backend.managementRequest,"fallback resolution does not materialize an empty thread")
   check(!!root.bridge.modelFallbackNotice,"accepted fallback has an actual composer notice")
   keys.mouseClick(keys.findChild(banner,"useFallbackDefault"))
   check(root.bridge.draft.modelSelection.instanceId===input.defaultSelection.instanceId,"explicit Use default restores the original model in the real composer draft")
   check(!root.bridge.modelFallbackNotice,"explicit restoration dismisses the notice")
-  root.bridge.managementBusy=false;root.bridge.managementRequest=null
-  root.bridge.state={threads:[],projects:[{id:"project",environmentId:"env",key:"env/project",defaultModelSelection:input.defaultSelection}],environments:[]}
-  root.bridge.openProject("env","project",true)
-  check(root.bridge.pendingProjectOpen.stage==="models","automatic project opening waits for current native model context")
-  var pending=root.bridge.pendingProjectOpen
-  root.bridge.action({op:"settings",environment:"env",requestId:pending.requestId,result:{defaultModelSelection:input.defaultSelection,modelDefaults:{fallbackSelection:input.fallbackSelection,providers:input.providers}}})
-  check(root.bridge.managementRequest.modelSelection.instanceId===input.fallbackSelection.instanceId,"automatic project opening uses the same actual fallback consumer")
-  root.bridge.managementBusy=false;root.bridge.managementRequest=null
-  root.bridge.openProject("env","project",true);pending=root.bridge.pendingProjectOpen
-  root.bridge.state={threads:[],projects:[],environments:[]}
-  root.bridge.action({op:"settings",environment:"env",requestId:pending.requestId,result:{defaultModelSelection:input.defaultSelection,modelDefaults:{fallbackSelection:input.fallbackSelection,providers:input.providers}}})
-  check(!root.bridge.managementRequest && !root.bridge.pendingProjectOpen,"project disappearance before the read completes never creates a stale thread")
+  backend.clearSelection()
+  backend.openProject("env","project",true)
+  check(backend.localDraft&&!backend.pendingProjectOpen&&!backend.managementRequest,"automatic cached project opening reaches a local draft without a fresh server write")
+  backend.patchDraft(backend.selectedKey,{text:"Retained before project disappearance"})
+  var pendingKey=backend.selectedKey,pendingEntry=Drafts.metadata(backend,pendingKey)
+  backend.localModelRequests={"disappearing-project":{key:pendingKey,draftId:pendingEntry.draftId,initial:initial}}
+  backend.state={threads:[],projects:[],environments:[]}
+  backend.action({op:"settings",environment:"env",requestId:"disappearing-project",result:result})
+  check(!backend.managementRequest&&backend.drafts[pendingKey].text==="Retained before project disappearance","project disappearance cannot materialize or erase a stale draft")
   console.log("NEW_THREAD_MODEL_QML_PASS: "+data.cases.length+" whole native decisions, actual backend creation, stale settings fence and explicit local workspace")
   Qt.quit()
  }}

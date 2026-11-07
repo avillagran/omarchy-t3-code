@@ -69,6 +69,7 @@ fn sign_in(native: &Value) -> Value {
 pub fn catalog(e: &Environment) -> Result<Value> {
     let config = protocol::api::server::config(&e.connection(true)?)?;
     let mut result=protocol::models::catalog(&config);
+    result["newThreadContext"]=crate::new_thread_models::catalog_context(&config);
     for provider in result["providers"].as_array_mut().unwrap(){
         if let Some(native)=config["providers"].as_array().into_iter().flatten().find(|p|p["instanceId"]==provider["instanceId"]){provider["showInteractionModeToggle"]=json!(native["showInteractionModeToggle"]!=false);provider["supportsConversationRollback"]=json!(native["supportsConversationRollback"]!=false);provider["update"]=crate::provider_updates::advisory(native);provider["signIn"]=sign_in(native);}
     }
@@ -100,15 +101,25 @@ pub fn workspace_preference(e:&Environment,input:&Value)->Result<Value>{
         if !matches!(input["mode"].as_str(),Some("local"|"worktree")){return Err("invalid_settings".into())}
         protocol::api::server::update_settings(&e.connection(true)?,&json!({"defaultThreadEnvMode":input["mode"]}),None)?
     }else if input["action"]=="workspace-read"{protocol::api::server::settings(&e.connection(true)?)?}else{return Err("invalid_settings".into())};
+    let mut new_projects_root=Value::Null;
     let models=if input["modelDefaults"]==true {
         let config=protocol::api::server::config(&e.connection(true)?)?;
-        raw=config["settings"].clone();Some(crate::new_thread_models::present(&config,project))
+        raw=config["settings"].clone();new_projects_root=json!(config["newProjectsRoot"].as_str());Some(crate::new_thread_models::present(&config,project))
     }else{None};
     let overrides=&raw["projectSettingsOverrides"][project];
     let mode=overrides["defaultThreadEnvMode"].as_str().or(raw["defaultThreadEnvMode"].as_str()).filter(|s|matches!(*s,"local"|"worktree"));
     let origin=overrides["newWorktreesStartFromOrigin"].as_bool().or(raw["newWorktreesStartFromOrigin"].as_bool()).unwrap_or(true);
-    let mut result=crate::native_settings::thread_defaults(&raw,project);
-    result["mode"]=json!(mode);result["startFromOrigin"]=json!(origin);if let Some(models)=models{result["modelDefaults"]=models;}Ok(result)
+    let mut result=if input["localDraft"]==true {
+        let mut hint=input["project"].clone();if !hint.is_object(){hint=json!({"id":project})}hint["id"]=json!(project);
+        let initial=crate::local_drafts::workspace_defaults(&raw,Some(&hint),None);
+        let file=if initial["consultProjectFile"]==true {
+            hint["workspaceRoot"].as_str().and_then(|cwd|protocol::api::projects::read_file(&e.connection(true).ok()?,cwd,"t3.json",Some(true)).ok()).filter(|file|file["exists"]!=false&&file["truncated"]!=true).and_then(|file|protocol::scoped_settings::project_file(text(&file,"contents")))
+        }else{None};
+        crate::local_drafts::workspace_defaults(&raw,Some(&hint),file.as_ref())
+    }else{crate::native_settings::thread_defaults(&raw,project)};
+    if input["localDraft"]==true{result["newProjectsRoot"]=new_projects_root;}
+    if input["localDraft"]!=true {result["mode"]=json!(mode);result["startFromOrigin"]=json!(origin);}
+    if let Some(models)=models{result["modelDefaults"]=models;}Ok(result)
 }
 pub fn history(e: &Environment,input:&Value)->Result<Value>{
     let thread=text(input,"thread");if !valid_id(thread){return Err("invalid_id".into())}
@@ -170,6 +181,7 @@ fn launch_command(input:&Value,thread:&str)->Result<Value>{
     let title=text(input,"title").trim();
     if title.is_empty()||title.chars().count()>255{return Err("invalid_title".into())}
     let mut command=json!({"threadId":thread,"projectId":input["projectId"],"title":title,"modelSelection":input["modelSelection"],"runtimeMode":runtime_mode(input)?,"interactionMode":interaction_mode(input)?,"workspaceStrategy":workspace,"creationSource":"web"});
+    if input["generateTitle"]==true {command["generateTitle"]=json!(true);}
     if input["launchWithMessage"]==true {
         validate_message(input)?;
         let message=uuid::Uuid::parse_str(text(input,"sendRequestId")).map_err(|_|"invalid_request_id")?;
@@ -278,7 +290,7 @@ pub fn manage(e: &Environment, input: &Value) -> Result<Value> {
         },
         "new-thread" => {
             let project=text(input,"projectId"); if !valid_id(project) || !input["modelSelection"].is_object() {return Err("invalid_project".into())}
-            thread=format!("omarchy-thread-{id}");
+            thread=match input.get("targetThreadId") {Some(value)=>value.as_str().filter(|target|valid_id(target)).ok_or("invalid_id")?.to_owned(),None=>format!("omarchy-thread-{id}")};
             let mode=runtime_mode(input)?;
             if input["workspaceStrategy"].is_object(){(LAUNCH,launch_command(input,&thread)?)}else{(DISPATCH,json!({"type":"thread.create","threadId":thread,"projectId":project,"title":text(input,"title").trim(),"modelSelection":input["modelSelection"],"runtimeMode":mode,"interactionMode":interaction_mode(input)?,"branch":input["branch"],"worktreePath":input["worktreePath"],"createdBy":"user","creationSource":"web"}))}
         },

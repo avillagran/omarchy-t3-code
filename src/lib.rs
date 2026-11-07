@@ -1118,3 +1118,5 @@ mod reply_order_tests {
 }
 
 pub mod new_thread_models;
+
+pub mod local_drafts;

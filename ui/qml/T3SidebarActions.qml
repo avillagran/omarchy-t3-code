@@ -32,7 +32,7 @@ Item {
     var index = projects.findIndex(function(p) { return p.key === (projectKey || preferredProjectKey || root.bridge.selectedInfo.projectKey) })
     project.currentIndex = Math.max(0,index)
     title.text = bridge.managementRequest ? (bridge.managementRequest.title || "") : T3I18n.tr("New chat")
-    if(typeof bridge.refreshCatalogIn==="function"&&projects[project.currentIndex])bridge.refreshCatalogIn(projects[project.currentIndex].environmentId)
+    if(typeof bridge.refreshCatalogIn==="function"&&projects[project.currentIndex]&&((bridge.state || {}).environments || []).some(function(environment){return environment.id===projects[project.currentIndex].environmentId&&environment.state==="ready"}))bridge.refreshCatalogIn(projects[project.currentIndex].environmentId)
     dialog.open()
   }
   function addProject() { projectWizard.begin() }
@@ -57,7 +57,7 @@ Item {
         objectName:"newChatProjectSelect"
         Layout.fillWidth: true; visible: !root.addingProject
         model: root.projects; textRole: "title"
-        onActivated:function(i){if(typeof root.bridge.refreshCatalogIn==="function"&&root.projects[i])root.bridge.refreshCatalogIn(root.projects[i].environmentId)}
+        onActivated:function(i){if(typeof root.bridge.refreshCatalogIn==="function"&&root.projects[i]&&((root.bridge.state || {}).environments || []).some(function(environment){return environment.id===root.projects[i].environmentId&&environment.state==="ready"}))root.bridge.refreshCatalogIn(root.projects[i].environmentId)}
         enabled: !root.bridge.managementBusy && !root.bridge.managementRequest && !(root.bridge.workspaceOperation || {}).busy
       }
       RowLayout{Layout.fillWidth:true;visible:!root.sourceThread&&!!((root.bridge.connectionPreferences || {}).client || {}).loadBalancingEnabled
@@ -86,7 +86,6 @@ Item {
             var template = root.bridge.state.threads.find(function(t) { return t.projectKey === p.key && !t.settled && t.modelSelection })
             var targetCatalog=(root.bridge.catalogs || {})[p.environmentId] || ({}),available=(targetCatalog.models || []).find(function(m){return m.available!==false})
             var selection = (root.sourceThread?root.sourceThread.modelSelection:null) || p.defaultModelSelection || (template ? template.modelSelection : null) || (available?{instanceId:available.instanceId,model:available.model,options:[]}:null) || root.bridge.draft.modelSelection
-            if (!selection) { root.bridge.managementError = T3I18n.tr("Select a model in an existing chat first."); return }
             var branchSource=root.sourceThread&&root.sourceThread.projectKey===p.key?root.sourceThread:null
             root.bridge.requestNewThread({action: "new-thread", text:root.initialPrompt, attachments:[], sendRequestId:root.bridge.uuid(), launchWithMessage:!!root.initialPrompt.trim(), environment: p.environmentId, projectId: p.id, title: title.text.trim(), modelSelection: selection, runtimeMode: root.sourceThread?root.sourceThread.runtimeMode:root.inheritedRuntimeMode || (template ? template.runtimeMode : "approval-required"),inheritRuntimeMode:!!root.sourceThread || !!root.inheritedRuntimeMode,useProjectDefaults:!root.sourceThread,workspaceStrategy:root.forcedWorkspaceStrategy,automatic:!root.sourceThread&&root.automaticChoice&&!!((root.bridge.connectionPreferences || {}).client || {}).loadBalancingEnabled,branch:branchSource?branchSource.branch:null,worktreePath:branchSource?branchSource.worktreePath:null})
           }

@@ -809,7 +809,7 @@ Rectangle {
         T3Icon { anchors.centerIn: parent; name: primaryAction.iconName; tint: root.stopMode ? "white" : Color.popups.background; visible: root.stopMode ? !root.draft.stopping : !root.draft.busy && !root.uploading }
         MouseArea {
           id: sendMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-          enabled: root.stopMode ? !root.draft.stopping : !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
+          enabled: root.stopMode ? !root.draft.stopping : (!root.bridge.localDraft || root.bridge.localDraftConnected(root.bridge.selectedInfo)) && !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
           onClicked: function(mouse) { primaryAction.activate((mouse.modifiers & Qt.ControlModifier) !== 0) }
         }
         Controls.ToolTip.visible: sendHover.hovered

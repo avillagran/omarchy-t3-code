@@ -334,7 +334,7 @@ Item {
   readonly property var lastUserMessage:(bridge.transcript || []).filter(function(m){return m.role==="user"}).slice(-1)[0] || null
   readonly property var nativeFocusItem:panelLayout.Window.activeFocusItem
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
-  readonly property var nativeShortcutContext:({terminalFocus:!!(root.sidePanelItem&&root.sidePanelItem.terminalItem&&root.sidePanelItem.terminalItem.terminalFocused),terminalOpen:root.sideShown&&root.sideTab==="terminal",previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
+  readonly property var nativeShortcutContext:({terminalFocus:!!(root.sidePanelItem&&root.sidePanelItem.terminalItem&&root.sidePanelItem.terminalItem.terminalFocused),terminalOpen:root.sideShown&&root.sideTab==="terminal",previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:!!bridge.localDraft,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
   readonly property bool nativeModalOpen:browserPermission.opened||documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!boardOpen&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
@@ -459,14 +459,14 @@ Item {
   readonly property color healthy: Color.accent
   property string hostFilter: bridge.viewState.hostFilter || ""
   property var sidebarInteractionThreads:[]
-  readonly property var sidebarSourceThreads:sidebarUpdatesPaused?sidebarInteractionThreads:bridge.state.threads
+  readonly property var sidebarSourceThreads:sidebarUpdatesPaused?sidebarInteractionThreads:(bridge.threadItems || bridge.state.threads)
   readonly property var hostThreads: sidebarSourceThreads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.groupOf(t)===root.threadGroupFilter)})
   // Groups the user makes from a thread's menu (Groups): one name per thread.
   readonly property var threadGroups: bridge.viewState.threadGroups || ({})
   // A whole project can join a group too; a thread's own group wins.
   readonly property var groupProjects: bridge.viewState.groupProjects || ({})
   function groupOf(t) { return threadGroups[t.key] || groupProjects[t.projectKey] || "" }
-  readonly property var threadGroupMap: { var map = {}; bridge.state.threads.forEach(function(t) { var g = root.groupOf(t); if (g) map[t.key] = g }); return map }
+  readonly property var threadGroupMap: { var map = {}; (bridge.threadItems || bridge.state.threads).forEach(function(t) { var g = root.groupOf(t); if (g) map[t.key] = g }); return map }
   property string threadGroupFilter: bridge.viewState.threadGroupFilter || ""
   onThreadGroupFilterChanged: if(initialized && (bridge.viewState.threadGroupFilter || "")!==threadGroupFilter)bridge.rememberView({threadGroupFilter:threadGroupFilter})
   readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))

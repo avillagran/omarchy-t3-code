@@ -2184,7 +2184,9 @@
     "{provider} is out of usage": "{provider} is out of usage",
     "Use {model}": "Use {model}",
     "Fallback model": "Fallback model",
-    "Used for new threads when the default model's provider is out of usage.": "Used for new threads when the default model's provider is out of usage."
+    "Used for new threads when the default model's provider is out of usage.": "Used for new threads when the default model's provider is out of usage.",
+    "This action becomes available after the first message is sent.": "This action becomes available after the first message is sent.",
+    "Choose a model before sending.": "Choose a model before sending."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4371,7 +4373,9 @@
     "{provider} is out of usage": "{provider} agotó su límite de uso",
     "Use {model}": "Usar {model}",
     "Fallback model": "Modelo alternativo",
-    "Used for new threads when the default model's provider is out of usage.": "Se usa en hilos nuevos cuando el proveedor del modelo predeterminado agota su límite de uso."
+    "Used for new threads when the default model's provider is out of usage.": "Se usa en hilos nuevos cuando el proveedor del modelo predeterminado agota su límite de uso.",
+    "This action becomes available after the first message is sent.": "Esta acción estará disponible después de enviar el primer mensaje.",
+    "Choose a model before sending.": "Elige un modelo antes de enviar."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6558,7 +6562,9 @@
     "{provider} is out of usage": "{provider} atingiu o limite de utilização",
     "Use {model}": "Usar {model}",
     "Fallback model": "Modelo alternativo",
-    "Used for new threads when the default model's provider is out of usage.": "Usado em novas conversas quando o fornecedor do modelo predefinido atinge o limite de utilização."
+    "Used for new threads when the default model's provider is out of usage.": "Usado em novas conversas quando o fornecedor do modelo predefinido atinge o limite de utilização.",
+    "This action becomes available after the first message is sent.": "Esta ação fica disponível após o envio da primeira mensagem.",
+    "Choose a model before sending.": "Escolha um modelo antes de enviar."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8745,7 +8751,9 @@
     "{provider} is out of usage": "{provider} a atteint sa limite d’utilisation",
     "Use {model}": "Utiliser {model}",
     "Fallback model": "Modèle de secours",
-    "Used for new threads when the default model's provider is out of usage.": "Utilisé pour les nouvelles conversations lorsque le fournisseur du modèle par défaut atteint sa limite d’utilisation."
+    "Used for new threads when the default model's provider is out of usage.": "Utilisé pour les nouvelles conversations lorsque le fournisseur du modèle par défaut atteint sa limite d’utilisation.",
+    "This action becomes available after the first message is sent.": "Cette action devient disponible après l’envoi du premier message.",
+    "Choose a model before sending.": "Choisissez un modèle avant d’envoyer."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10932,7 +10940,9 @@
     "{provider} is out of usage": "{provider} hat sein Nutzungslimit erreicht",
     "Use {model}": "{model} verwenden",
     "Fallback model": "Ersatzmodell",
-    "Used for new threads when the default model's provider is out of usage.": "Wird für neue Unterhaltungen verwendet, wenn der Anbieter des Standardmodells sein Nutzungslimit erreicht."
+    "Used for new threads when the default model's provider is out of usage.": "Wird für neue Unterhaltungen verwendet, wenn der Anbieter des Standardmodells sein Nutzungslimit erreicht.",
+    "This action becomes available after the first message is sent.": "Diese Aktion ist verfügbar, sobald die erste Nachricht gesendet wurde.",
+    "Choose a model before sending.": "Wähle vor dem Senden ein Modell aus."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13119,7 +13129,9 @@
     "{provider} is out of usage": "{provider} ha esaurito il limite di utilizzo",
     "Use {model}": "Usa {model}",
     "Fallback model": "Modello alternativo",
-    "Used for new threads when the default model's provider is out of usage.": "Usato per le nuove conversazioni quando il fornitore del modello predefinito esaurisce il limite di utilizzo."
+    "Used for new threads when the default model's provider is out of usage.": "Usato per le nuove conversazioni quando il fornitore del modello predefinito esaurisce il limite di utilizzo.",
+    "This action becomes available after the first message is sent.": "Questa azione diventa disponibile dopo l’invio del primo messaggio.",
+    "Choose a model before sending.": "Scegli un modello prima di inviare."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15306,7 +15318,9 @@
     "{provider} is out of usage": "{provider} heeft de gebruikslimiet bereikt",
     "Use {model}": "{model} gebruiken",
     "Fallback model": "Reservemodel",
-    "Used for new threads when the default model's provider is out of usage.": "Wordt gebruikt voor nieuwe gesprekken wanneer de provider van het standaardmodel de gebruikslimiet bereikt."
+    "Used for new threads when the default model's provider is out of usage.": "Wordt gebruikt voor nieuwe gesprekken wanneer de provider van het standaardmodel de gebruikslimiet bereikt.",
+    "This action becomes available after the first message is sent.": "Deze actie is beschikbaar nadat het eerste bericht is verzonden.",
+    "Choose a model before sending.": "Kies een model voordat je verzendt."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17493,7 +17507,9 @@
     "{provider} is out of usage": "{provider} osiągnął limit użycia",
     "Use {model}": "Użyj {model}",
     "Fallback model": "Model zapasowy",
-    "Used for new threads when the default model's provider is out of usage.": "Używany w nowych rozmowach, gdy dostawca modelu domyślnego osiągnie limit użycia."
+    "Used for new threads when the default model's provider is out of usage.": "Używany w nowych rozmowach, gdy dostawca modelu domyślnego osiągnie limit użycia.",
+    "This action becomes available after the first message is sent.": "Ta czynność będzie dostępna po wysłaniu pierwszej wiadomości.",
+    "Choose a model before sending.": "Wybierz model przed wysłaniem."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19680,7 +19696,9 @@
     "{provider} is out of usage": "Лимит использования {provider} исчерпан",
     "Use {model}": "Использовать {model}",
     "Fallback model": "Резервная модель",
-    "Used for new threads when the default model's provider is out of usage.": "Используется в новых беседах, когда провайдер модели по умолчанию исчерпал лимит использования."
+    "Used for new threads when the default model's provider is out of usage.": "Используется в новых беседах, когда провайдер модели по умолчанию исчерпал лимит использования.",
+    "This action becomes available after the first message is sent.": "Это действие станет доступно после отправки первого сообщения.",
+    "Choose a model before sending.": "Перед отправкой выберите модель."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21867,7 +21885,9 @@
     "{provider} is out of usage": "Ліміт використання {provider} вичерпано",
     "Use {model}": "Використати {model}",
     "Fallback model": "Резервна модель",
-    "Used for new threads when the default model's provider is out of usage.": "Використовується в нових розмовах, коли постачальник типової моделі вичерпав ліміт використання."
+    "Used for new threads when the default model's provider is out of usage.": "Використовується в нових розмовах, коли постачальник типової моделі вичерпав ліміт використання.",
+    "This action becomes available after the first message is sent.": "Ця дія стане доступною після надсилання першого повідомлення.",
+    "Choose a model before sending.": "Перед надсиланням виберіть модель."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24054,7 +24074,9 @@
     "{provider} is out of usage": "{provider} の使用上限に達しました",
     "Use {model}": "{model} を使用",
     "Fallback model": "代替モデル",
-    "Used for new threads when the default model's provider is out of usage.": "既定モデルのプロバイダーが使用上限に達した場合、新しいスレッドに使用します。"
+    "Used for new threads when the default model's provider is out of usage.": "既定モデルのプロバイダーが使用上限に達した場合、新しいスレッドに使用します。",
+    "This action becomes available after the first message is sent.": "最初のメッセージを送信すると、この操作を利用できます。",
+    "Choose a model before sending.": "送信する前にモデルを選択してください。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26241,7 +26263,9 @@
     "{provider} is out of usage": "{provider} 사용 한도에 도달했습니다",
     "Use {model}": "{model} 사용",
     "Fallback model": "대체 모델",
-    "Used for new threads when the default model's provider is out of usage.": "기본 모델 제공자의 사용 한도에 도달하면 새 대화에 사용합니다."
+    "Used for new threads when the default model's provider is out of usage.": "기본 모델 제공자의 사용 한도에 도달하면 새 대화에 사용합니다.",
+    "This action becomes available after the first message is sent.": "첫 메시지를 보내면 이 작업을 사용할 수 있습니다.",
+    "Choose a model before sending.": "보내기 전에 모델을 선택하세요."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28428,7 +28452,9 @@
     "{provider} is out of usage": "{provider} 已达到使用限额",
     "Use {model}": "使用 {model}",
     "Fallback model": "备用模型",
-    "Used for new threads when the default model's provider is out of usage.": "当默认模型的提供商达到使用限额时，用于新会话。"
+    "Used for new threads when the default model's provider is out of usage.": "当默认模型的提供商达到使用限额时，用于新会话。",
+    "This action becomes available after the first message is sent.": "发送第一条消息后即可使用此操作。",
+    "Choose a model before sending.": "发送前请选择模型。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30615,7 +30641,9 @@
     "{provider} is out of usage": "استُنفد حد استخدام {provider}",
     "Use {model}": "استخدام {model}",
     "Fallback model": "النموذج البديل",
-    "Used for new threads when the default model's provider is out of usage.": "يُستخدم للمحادثات الجديدة عندما يستنفد مزوّد النموذج الافتراضي حد الاستخدام."
+    "Used for new threads when the default model's provider is out of usage.": "يُستخدم للمحادثات الجديدة عندما يستنفد مزوّد النموذج الافتراضي حد الاستخدام.",
+    "This action becomes available after the first message is sent.": "يصبح هذا الإجراء متاحًا بعد إرسال الرسالة الأولى.",
+    "Choose a model before sending.": "اختر نموذجًا قبل الإرسال."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32802,7 +32830,9 @@
     "{provider} is out of usage": "{provider} kullanım sınırına ulaştı",
     "Use {model}": "{model} kullan",
     "Fallback model": "Yedek model",
-    "Used for new threads when the default model's provider is out of usage.": "Varsayılan modelin sağlayıcısı kullanım sınırına ulaştığında yeni konuşmalar için kullanılır."
+    "Used for new threads when the default model's provider is out of usage.": "Varsayılan modelin sağlayıcısı kullanım sınırına ulaştığında yeni konuşmalar için kullanılır.",
+    "This action becomes available after the first message is sent.": "Bu işlem ilk mesaj gönderildikten sonra kullanılabilir.",
+    "Choose a model before sending.": "Göndermeden önce bir model seçin."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34989,7 +35019,9 @@
     "{provider} is out of usage": "{provider} har nått användningsgränsen",
     "Use {model}": "Använd {model}",
     "Fallback model": "Reservmodell",
-    "Used for new threads when the default model's provider is out of usage.": "Används för nya konversationer när standardmodellens leverantör har nått användningsgränsen."
+    "Used for new threads when the default model's provider is out of usage.": "Används för nya konversationer när standardmodellens leverantör har nått användningsgränsen.",
+    "This action becomes available after the first message is sent.": "Den här åtgärden blir tillgänglig när det första meddelandet har skickats.",
+    "Choose a model before sending.": "Välj en modell innan du skickar."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37176,7 +37208,9 @@
     "{provider} is out of usage": "{provider} har nået brugsgrænsen",
     "Use {model}": "Brug {model}",
     "Fallback model": "Reservemodel",
-    "Used for new threads when the default model's provider is out of usage.": "Bruges til nye samtaler, når standardmodellens udbyder har nået brugsgrænsen."
+    "Used for new threads when the default model's provider is out of usage.": "Bruges til nye samtaler, når standardmodellens udbyder har nået brugsgrænsen.",
+    "This action becomes available after the first message is sent.": "Denne handling bliver tilgængelig, når den første besked er sendt.",
+    "Choose a model before sending.": "Vælg en model, før du sender."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39363,7 +39397,9 @@
     "{provider} is out of usage": "{provider} har nådd bruksgrensen",
     "Use {model}": "Bruk {model}",
     "Fallback model": "Reservemodell",
-    "Used for new threads when the default model's provider is out of usage.": "Brukes for nye samtaler når leverandøren av standardmodellen har nådd bruksgrensen."
+    "Used for new threads when the default model's provider is out of usage.": "Brukes for nye samtaler når leverandøren av standardmodellen har nådd bruksgrensen.",
+    "This action becomes available after the first message is sent.": "Denne handlingen blir tilgjengelig når den første meldingen er sendt.",
+    "Choose a model before sending.": "Velg en modell før du sender."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -41550,7 +41586,9 @@
     "{provider} is out of usage": "Palvelun {provider} käyttöraja on saavutettu",
     "Use {model}": "Käytä mallia {model}",
     "Fallback model": "Varamalli",
-    "Used for new threads when the default model's provider is out of usage.": "Käytetään uusissa keskusteluissa, kun oletusmallin tarjoajan käyttöraja on saavutettu."
+    "Used for new threads when the default model's provider is out of usage.": "Käytetään uusissa keskusteluissa, kun oletusmallin tarjoajan käyttöraja on saavutettu.",
+    "This action becomes available after the first message is sent.": "Tämä toiminto on käytettävissä ensimmäisen viestin lähettämisen jälkeen.",
+    "Choose a model before sending.": "Valitse malli ennen lähettämistä."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -43737,6 +43775,8 @@
     "{provider} is out of usage": "{provider} dosáhl limitu použití",
     "Use {model}": "Použít {model}",
     "Fallback model": "Záložní model",
-    "Used for new threads when the default model's provider is out of usage.": "Používá se pro nové konverzace, když poskytovatel výchozího modelu dosáhne limitu použití."
+    "Used for new threads when the default model's provider is out of usage.": "Používá se pro nové konverzace, když poskytovatel výchozího modelu dosáhne limitu použití.",
+    "This action becomes available after the first message is sent.": "Tato akce bude dostupná po odeslání první zprávy.",
+    "Choose a model before sending.": "Před odesláním vyberte model."
   }
 }

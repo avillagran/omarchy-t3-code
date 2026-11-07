@@ -2184,6 +2184,8 @@
     "{provider} is out of usage": "{provider} is out of usage",
     "Use {model}": "Use {model}",
     "Fallback model": "Fallback model",
-    "Used for new threads when the default model's provider is out of usage.": "Used for new threads when the default model's provider is out of usage."
+    "Used for new threads when the default model's provider is out of usage.": "Used for new threads when the default model's provider is out of usage.",
+    "This action becomes available after the first message is sent.": "This action becomes available after the first message is sent.",
+    "Choose a model before sending.": "Choose a model before sending."
   }
 }
