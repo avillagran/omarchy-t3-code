@@ -1,5 +1,6 @@
 pub mod gui_clipboard;
 pub mod browser_native_display;
+pub mod browser_engine_identity;
 pub mod browser_automation;
 pub mod desktop_browser_ipc;
 pub mod owned_backend;

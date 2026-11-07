@@ -18,17 +18,18 @@ with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
   flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Qml','Qt6Gui','wayland-client'],text=True).split()
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror','-shared',str(out/'clipboardplatform.cpp'),str(out/'plugin.cpp'),str(out/'moc_clipboardplatform.cpp'),'-I'+str(out),'-o',str(qml/'libo3browserplatform.so'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
   subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'browser-platform-owned.cpp'),'-o',str(out/'gui'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
- source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[root/'Cargo.toml',root/'Cargo.lock',root/'examples/gui_clipboard_probe.rs'])
+ source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[root/'Cargo.toml',root/'Cargo.lock',*list((root/'examples').glob('*.rs'))])
  source_hashes={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}
  (out/'rust-source-hashes.json').write_text(json.dumps(source_hashes,indent=2)+'\n')
  with (out/'rust-compile.jsonl').open('w') as log,(out/'rust-compile.log').open('w') as errors:
-  build=subprocess.run(['/home/node/.cargo/bin/cargo','build','--locked','--offline','--bins','--example','gui_clipboard_probe','--message-format=json'],cwd=root,env=dict(os.environ,CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target',CARGO_INCREMENTAL='0',CARGO_BUILD_JOBS='2'),stdout=log,stderr=errors)
+  build=subprocess.run(['/home/node/.cargo/bin/cargo','build','--locked','--offline','--bins','--example','gui_clipboard_probe','--example','engine_identity_peer','--message-format=json'],cwd=root,env=dict(os.environ,CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target',CARGO_INCREMENTAL='0',CARGO_BUILD_JOBS='2'),stdout=log,stderr=errors)
  if build.returncode:raise SystemExit(build.returncode)
  if source_hashes!={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}:raise SystemExit('Source changed during GUI consumer compile')
  items=[json.loads(line) for line in (out/'rust-compile.jsonl').read_text().splitlines()];executables=[Path(item['executable']) for item in items if item.get('executable')]
  probe=next(file for file in executables if file.name=='gui_clipboard_probe');debug=probe.parent.parent
  frozen=debug.resolve().parent/('browser-gui-platform-'+uuid.uuid4().hex)
  records=snapshot(debug,executables,frozen);(out/'runtime-artifacts.json').write_text(json.dumps(records,indent=2)+'\n')
+ peer=next(file for file in executables if file.name=='engine_identity_peer');(out/'identity-peer').write_bytes((frozen/peer.relative_to(debug)).read_bytes());(out/'identity-peer').chmod(0o500)
  (out/'worker-probe').write_bytes((frozen/probe.relative_to(debug)).read_bytes());(out/'worker-probe').chmod(0o500)
  (out/'worker-libs').mkdir()
  for file in frozen.iterdir():

@@ -31,8 +31,22 @@ pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> 
     // destination can collide with its source; only this fork clears CLOEXEC.
     let source = crate::desktop_browser_ipc::duplicate_child_source(original)
         .map_err(|_| "invalid_browser_private_descriptor")?;
+    let identity = payload
+        .get("privateClipboardIdentityFd")
+        .map(|value| {
+            let descriptor = value
+                .as_i64()
+                .and_then(|value| i32::try_from(value).ok())
+                .ok_or("invalid_browser_private_descriptor")?;
+            crate::desktop_browser_ipc::duplicate_child_source(descriptor)
+                .map_err(|_| "invalid_browser_private_descriptor")
+        })
+        .transpose()?;
     let mut child_payload = payload.clone();
     child_payload["privateBrowserFd"] = json!(source.as_raw_fd());
+    if let Some(identity) = &identity {
+        child_payload["privateClipboardIdentityFd"] = json!(identity.as_raw_fd());
+    }
     child_payload["privateBrowserPeerPid"] = json!(unsafe { libc::getppid() });
     let mut command = Command::new(executable);
     command
@@ -45,6 +59,9 @@ pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> 
     unsafe {
         command.pre_exec(move || {
             crate::desktop_browser_ipc::admit_child_source(source.as_raw_fd())?;
+            if let Some(identity) = &identity {
+                crate::desktop_browser_ipc::admit_child_source(identity.as_raw_fd())?;
+            }
             // Node admits and marks this destination CLOEXEC before guests.
             Ok(())
         });

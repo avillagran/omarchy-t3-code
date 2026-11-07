@@ -283,6 +283,7 @@ impl ImportVerification {
 }
 struct Session {
     _display: Option<crate::browser_native_display::Display>,
+    _engine: Option<crate::browser_engine_identity::Engine>,
     child: Child,
     input: ChildStdin,
     id: String,
@@ -565,6 +566,8 @@ impl Pool {
             .as_ref()
             .map(|executable| crate::browser_native_display::Display::launch(executable))
             .transpose()?;
+        let identity = native_display.as_ref().map(|_| crate::browser_engine_identity::Pending::new()).transpose()?;
+        let identity_fd = identity.as_ref().map(|pending| pending.source().as_raw_fd());
         let id = uuid::Uuid::new_v4().to_string();
         let mut private_source = None;
         let mut private_fd = None;
@@ -626,6 +629,7 @@ impl Pool {
                 if let Some(source) = &private_source {
                     crate::desktop_browser_ipc::admit_child_source(source.as_raw_fd())?;
                 }
+                if let Some(identity) = identity_fd { crate::desktop_browser_ipc::admit_child_source(identity)?; }
                 Ok(())
             });
         }
@@ -641,6 +645,7 @@ impl Pool {
             .contains(&(environment.to_owned(), profile.to_owned()));
         let mut session = Session {
             _display: native_display,
+            _engine: None,
             child,
             input,
             id: id.clone(),
@@ -669,12 +674,14 @@ impl Pool {
         if let Some(fd) = private_fd {
             payload["privateBrowserFd"] = json!(fd);
         }
+        if let Some(fd) = identity_fd { payload["privateClipboardIdentityFd"] = json!(fd); }
         let payload = payload.to_string().into_bytes();
         session
             .input
             .write_all(&(payload.len() as u64).to_be_bytes())
             .and_then(|_| session.input.write_all(&payload))
             .map_err(|_| "browser_runtime_closed")?;
+        session._engine = identity.map(|pending| pending.admit(session.child.id())).transpose()?;
         let active = self.active.clone();
         let receive = self.receive.clone();
         let cache = self.config.cache.join("browser-sessions");

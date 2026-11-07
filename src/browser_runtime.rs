@@ -249,6 +249,8 @@ pub fn renderer() -> Result<()> {
     let payload: Value = serde_json::from_slice(&bytes).map_err(|_| "invalid_browser_payload")?;
     // Validate and confine the optional endpoint before any Qt library is loaded.
     let private_fd = private_descriptor(&payload)?;
+    crate::browser_engine_identity::confine(&payload)?;
+    let clipboard_identity = payload.get("privateClipboardIdentityFd").cloned();
     let storage = storage_root();
     let _profile_lock = lock_profile(
         &storage,
@@ -262,6 +264,7 @@ pub fn renderer() -> Result<()> {
     if let Some(fd) = private_fd {
         payload["privateBrowserFd"] = json!(fd);
     }
+    if let Some(fd) = clipboard_identity { payload["privateClipboardIdentityFd"] = fd; }
     let result = if let Some((runtime, assets)) = crate::browser_electron::configured() {
         payload["electronDirectory"] = json!(crate::browser_electron::directory(&payload)?);
         crate::browser_electron::run(&payload, &runtime, &assets)

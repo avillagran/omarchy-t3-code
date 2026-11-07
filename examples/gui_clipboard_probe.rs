@@ -47,6 +47,64 @@ fn main() {
                 println!("owned-display");
                 std::io::stdout().flush().unwrap();
             }
+            "identity" => {
+                use std::{os::fd::AsRawFd, os::unix::process::CommandExt};
+                for mode in [
+                    "valid",
+                    "bad-body",
+                    "regular-fd",
+                    "foreign-pidfd",
+                    "extra-rights",
+                    "many-rights",
+                    "wrong-parent",
+                ] {
+                    let pending =
+                        omarchy_t3_client::browser_engine_identity::Pending::new().unwrap();
+                    let source = pending.source().as_raw_fd();
+                    let mut command = std::process::Command::new("/fixture/identity-peer");
+                    command
+                        .arg(source.to_string())
+                        .arg(mode)
+                        .stdin(std::process::Stdio::piped())
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null());
+                    unsafe {
+                        command.pre_exec(move || {
+                            let flags = libc::fcntl(source, libc::F_GETFD);
+                            if flags < 0
+                                || libc::fcntl(source, libc::F_SETFD, flags & !libc::FD_CLOEXEC)
+                                    != 0
+                            {
+                                Err(std::io::Error::last_os_error())
+                            } else {
+                                Ok(())
+                            }
+                        });
+                    }
+                    let mut child = command.spawn().unwrap();
+                    let expected = if mode == "wrong-parent" {
+                        u32::MAX
+                    } else {
+                        std::process::id()
+                    };
+                    let admitted = pending.admit(expected);
+                    if mode == "valid" {
+                        let engine = admitted.unwrap();
+                        assert_eq!(engine.pid() as u32, child.id());
+                        assert_ne!(
+                            unsafe { libc::fcntl(engine.pidfd().as_raw_fd(), libc::F_GETFD) }
+                                & libc::FD_CLOEXEC,
+                            0
+                        );
+                    } else {
+                        assert!(admitted.is_err(), "{mode}");
+                    }
+                    child.stdin.take().unwrap().write_all(b"quit\n").unwrap();
+                    assert!(child.wait().unwrap().success());
+                }
+                println!("engine-identity");
+                std::io::stdout().flush().unwrap();
+            }
             "quit" => break,
             _ => panic!("unknown private fixture command"),
         }

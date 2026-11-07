@@ -3,7 +3,8 @@
 const fs=require('node:fs'),path=require('node:path'),net=require('node:net'),vm=require('node:vm'),crypto=require('node:crypto');
 const data=JSON.parse(process.env.O3_NATIVE_BROWSER_DATA||'null');delete process.env.O3_NATIVE_BROWSER_DATA;
 if(!data||!Number.isInteger(data.privateBrowserFd)||data.privateBrowserFd<64||!Number.isInteger(data.privateBrowserPeerPid)||!path.isAbsolute(data.frameDirectory))throw Error('invalid_browser_payload');
-require('./electron-private-fd.node').admit(data.privateBrowserFd,data.privateBrowserPeerPid);
+const privateDescriptors=require('./electron-private-fd.node');privateDescriptors.admit(data.privateBrowserFd,data.privateBrowserPeerPid);
+if(data.privateClipboardIdentityFd!==undefined)privateDescriptors.identify(data.privateClipboardIdentityFd,data.privateBrowserPeerPid);
 const {app,BrowserWindow,webContents}=require('electron');
 if(process.versions.electron!=='44.10.1')throw Error('unsupported_native_browser_runtime');
 app.setPath('userData',data.electronDirectory);app.setPath('sessionData',data.electronDirectory);
