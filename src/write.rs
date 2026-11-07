@@ -8,6 +8,22 @@ use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 pub fn rpc(e: &Environment, tag: &str, payload: Value) -> Result<Value> {
     e.connection(true)?.rpc(tag,payload)
 }
+fn reset_credit_access(e: &Environment) -> Result<(protocol::Connection, bool)> {
+    let connection = e.connection(true)?;
+    let session = connection.request_json("GET", "/api/auth/session", None, false)?;
+    let allowed = session["authenticated"] == true
+        && session.get("permissions").or_else(|| session.get("scopes"))
+            .and_then(Value::as_array).is_some_and(|scopes| scopes.iter().any(|scope| scope == "providers:manage"));
+    Ok((connection, allowed))
+}
+fn consume_reset_credit(e: &Environment, input: &Value) -> Result<Value> {
+    let input = protocol::api::provider::ResetCreditInput::from_json(input)?;
+    let (connection, allowed) = reset_credit_access(e)?;
+    if !allowed { return Err("permission_denied".into()); }
+    // Redemption spends a credit. Neither transport uncertainty nor a later quota
+    // refresh is authority to repeat this mutation.
+    protocol::api::provider::consume_reset_credit(&connection, &input)
+}
 /// `orchestration.dispatchCommand` through the typed API, with the write token like `rpc`.
 pub fn dispatch_command(e: &Environment, command: &Value) -> Result<Value> {
     send_command(&e.connection(true)?,command)
@@ -375,6 +391,8 @@ pub fn execute(input:&Value) -> Result<Value> {
     if input["op"]=="copy" {return clipboard::copy(input)}
     let e=environments()?.into_iter().find(|e|e.id==text(input,"environment")).ok_or("unknown_environment")?;
     match text(input,"op") {
+        "provider-reset-credit-access"=>reset_credit_access(&e).map(|(_,allowed)| json!({"canManageProviders":allowed})),
+        "provider-reset-credit"=>consume_reset_credit(&e,&input["input"]),
         "devices-read"=>crate::integration_devices::read(&e),
         "devices-action"=>crate::integration_devices::apply(&e,input),
         "connection-access"=>crate::connection_access::execute(&e,input),

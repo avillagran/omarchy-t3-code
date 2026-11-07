@@ -2173,7 +2173,12 @@
     "Terminal scrollback": "Terminal scrollback",
     "Allow": "Allow",
     "Block": "Block",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} wants to see text and images copied to the clipboard"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} wants to see text and images copied to the clipboard",
+    "Use reset": "Use reset",
+    "Use a reset credit?": "Use a reset credit?",
+    "Use credit": "Use credit",
+    "Using reset credit…": "Using reset credit…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone."
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4349,7 +4354,12 @@
     "Terminal scrollback": "Historial de terminal",
     "Allow": "Permitir",
     "Block": "Bloquear",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} quiere ver el texto y las imágenes copiados al portapapeles"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} quiere ver el texto y las imágenes copiados al portapapeles",
+    "Use reset": "Usar reinicio",
+    "Use a reset credit?": "¿Usar un crédito de reinicio?",
+    "Use credit": "Usar crédito",
+    "Using reset credit…": "Usando crédito de reinicio…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Esto consume un crédito de tu cuenta y reinicia las ventanas actuales de límites de uso. No se puede deshacer."
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6525,7 +6535,12 @@
     "Terminal scrollback": "Histórico do terminal",
     "Allow": "Permitir",
     "Block": "Bloquear",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} quer ver o texto e as imagens copiados para a área de transferência"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} quer ver o texto e as imagens copiados para a área de transferência",
+    "Use reset": "Usar reposição",
+    "Use a reset credit?": "Usar um crédito de reposição?",
+    "Use credit": "Usar crédito",
+    "Using reset credit…": "A usar crédito de reposição…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Isto usa um crédito da sua conta e repõe as janelas atuais dos limites de utilização. Não pode ser anulado."
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8701,7 +8716,12 @@
     "Terminal scrollback": "Historique du terminal",
     "Allow": "Autoriser",
     "Block": "Bloquer",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} souhaite voir le texte et les images copiés dans le presse-papiers"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} souhaite voir le texte et les images copiés dans le presse-papiers",
+    "Use reset": "Utiliser une réinitialisation",
+    "Use a reset credit?": "Utiliser un crédit de réinitialisation ?",
+    "Use credit": "Utiliser le crédit",
+    "Using reset credit…": "Utilisation du crédit de réinitialisation…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Cette action utilise un crédit de votre compte et réinitialise les fenêtres actuelles de limitation. Elle est irréversible."
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10877,7 +10897,12 @@
     "Terminal scrollback": "Terminalverlauf",
     "Allow": "Zulassen",
     "Block": "Blockieren",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} möchte in die Zwischenablage kopierte Texte und Bilder sehen"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} möchte in die Zwischenablage kopierte Texte und Bilder sehen",
+    "Use reset": "Zurücksetzen nutzen",
+    "Use a reset credit?": "Ein Guthaben zum Zurücksetzen verwenden?",
+    "Use credit": "Guthaben verwenden",
+    "Using reset credit…": "Guthaben zum Zurücksetzen wird verwendet…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Dabei wird ein Guthaben Ihres Kontos eingelöst und die aktuellen Nutzungslimitfenster werden zurückgesetzt. Dies kann nicht rückgängig gemacht werden."
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13053,7 +13078,12 @@
     "Terminal scrollback": "Cronologia del terminale",
     "Allow": "Consenti",
     "Block": "Blocca",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} vuole vedere il testo e le immagini copiati negli appunti"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} vuole vedere il testo e le immagini copiati negli appunti",
+    "Use reset": "Usa ripristino",
+    "Use a reset credit?": "Usare un credito di ripristino?",
+    "Use credit": "Usa credito",
+    "Using reset credit…": "Utilizzo del credito di ripristino…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Questa operazione usa un credito del tuo account e azzera le finestre attuali dei limiti di utilizzo. Non può essere annullata."
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15229,7 +15259,12 @@
     "Terminal scrollback": "Terminalgeschiedenis",
     "Allow": "Toestaan",
     "Block": "Blokkeren",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} wil tekst en afbeeldingen op het klembord bekijken"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} wil tekst en afbeeldingen op het klembord bekijken",
+    "Use reset": "Reset gebruiken",
+    "Use a reset credit?": "Een resetcredit gebruiken?",
+    "Use credit": "Credit gebruiken",
+    "Using reset credit…": "Resetcredit wordt gebruikt…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Dit gebruikt één credit van je account en wist de huidige gebruikslimietvensters. Dit kan niet ongedaan worden gemaakt."
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -17405,7 +17440,12 @@
     "Terminal scrollback": "Historia terminala",
     "Allow": "Zezwól",
     "Block": "Zablokuj",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} chce zobaczyć tekst i obrazy skopiowane do schowka"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} chce zobaczyć tekst i obrazy skopiowane do schowka",
+    "Use reset": "Użyj resetu",
+    "Use a reset credit?": "Użyć kredytu resetowania?",
+    "Use credit": "Użyj kredytu",
+    "Using reset credit…": "Używanie kredytu resetowania…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Ta operacja zużywa jeden kredyt z konta i zeruje bieżące okna limitów użycia. Nie można jej cofnąć."
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -19581,7 +19621,12 @@
     "Terminal scrollback": "История терминала",
     "Allow": "Разрешить",
     "Block": "Блокировать",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} хочет видеть текст и изображения, скопированные в буфер обмена"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} хочет видеть текст и изображения, скопированные в буфер обмена",
+    "Use reset": "Использовать сброс",
+    "Use a reset credit?": "Использовать кредит сброса?",
+    "Use credit": "Использовать кредит",
+    "Using reset credit…": "Используется кредит сброса…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Будет использован один кредит вашей учётной записи и сброшены текущие окна ограничений. Это действие нельзя отменить."
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -21757,7 +21802,12 @@
     "Terminal scrollback": "Історія термінала",
     "Allow": "Дозволити",
     "Block": "Блокувати",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} хоче бачити текст і зображення, скопійовані в буфер обміну"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} хоче бачити текст і зображення, скопійовані в буфер обміну",
+    "Use reset": "Використати скидання",
+    "Use a reset credit?": "Використати кредит скидання?",
+    "Use credit": "Використати кредит",
+    "Using reset credit…": "Використання кредиту скидання…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Буде використано один кредит вашого облікового запису та скинуто поточні вікна обмежень. Цю дію неможливо скасувати."
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -23933,7 +23983,12 @@
     "Terminal scrollback": "ターミナルのスクロールバック",
     "Allow": "許可",
     "Block": "ブロック",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} がクリップボードにコピーされたテキストと画像を読み取ろうとしています"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} がクリップボードにコピーされたテキストと画像を読み取ろうとしています",
+    "Use reset": "リセットを使用",
+    "Use a reset credit?": "リセットクレジットを使用しますか？",
+    "Use credit": "クレジットを使用",
+    "Using reset credit…": "リセットクレジットを使用中…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "アカウントのクレジットを1つ使用し、現在のレート制限期間をリセットします。この操作は取り消せません。"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26109,7 +26164,12 @@
     "Terminal scrollback": "터미널 스크롤백",
     "Allow": "허용",
     "Block": "차단",
-    "{origin} wants to see text and images copied to the clipboard": "{origin}에서 클립보드에 복사된 텍스트와 이미지를 보려고 합니다"
+    "{origin} wants to see text and images copied to the clipboard": "{origin}에서 클립보드에 복사된 텍스트와 이미지를 보려고 합니다",
+    "Use reset": "초기화 사용",
+    "Use a reset credit?": "초기화 크레딧을 사용할까요?",
+    "Use credit": "크레딧 사용",
+    "Using reset credit…": "초기화 크레딧 사용 중…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "계정의 크레딧 하나를 사용하고 현재 사용량 제한 구간을 초기화합니다. 이 작업은 취소할 수 없습니다."
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28285,7 +28345,12 @@
     "Terminal scrollback": "终端回滚",
     "Allow": "允许",
     "Block": "阻止",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} 想要查看复制到剪贴板的文字和图片"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} 想要查看复制到剪贴板的文字和图片",
+    "Use reset": "使用重置",
+    "Use a reset credit?": "使用一个重置额度？",
+    "Use credit": "使用额度",
+    "Using reset credit…": "正在使用重置额度…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "这将使用您账户中的一个额度并重置当前的速率限制窗口。此操作无法撤销。"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -30461,7 +30526,12 @@
     "Terminal scrollback": "سجل الطرفية",
     "Allow": "السماح",
     "Block": "حظر",
-    "{origin} wants to see text and images copied to the clipboard": "يريد {origin} الاطلاع على النصوص والصور المنسوخة إلى الحافظة"
+    "{origin} wants to see text and images copied to the clipboard": "يريد {origin} الاطلاع على النصوص والصور المنسوخة إلى الحافظة",
+    "Use reset": "استخدام إعادة التعيين",
+    "Use a reset credit?": "استخدام رصيد لإعادة التعيين؟",
+    "Use credit": "استخدام الرصيد",
+    "Using reset credit…": "جارٍ استخدام رصيد إعادة التعيين…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "سيستخدم هذا رصيدًا واحدًا من حسابك ويعيد تعيين فترات حدود الاستخدام الحالية. لا يمكن التراجع عن ذلك."
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -32637,7 +32707,12 @@
     "Terminal scrollback": "Terminal geçmişi",
     "Allow": "İzin ver",
     "Block": "Engelle",
-    "{origin} wants to see text and images copied to the clipboard": "{origin}, panoya kopyalanan metin ve resimleri görmek istiyor"
+    "{origin} wants to see text and images copied to the clipboard": "{origin}, panoya kopyalanan metin ve resimleri görmek istiyor",
+    "Use reset": "Sıfırlama kullan",
+    "Use a reset credit?": "Bir sıfırlama kredisi kullanılsın mı?",
+    "Use credit": "Kredi kullan",
+    "Using reset credit…": "Sıfırlama kredisi kullanılıyor…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Bu işlem hesabınızdan bir kredi kullanır ve mevcut kullanım sınırı pencerelerini sıfırlar. Geri alınamaz."
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -34813,7 +34888,12 @@
     "Terminal scrollback": "Terminalhistorik",
     "Allow": "Tillåt",
     "Block": "Blockera",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} vill se text och bilder som kopierats till urklipp"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} vill se text och bilder som kopierats till urklipp",
+    "Use reset": "Använd återställning",
+    "Use a reset credit?": "Använda en återställningskredit?",
+    "Use credit": "Använd kredit",
+    "Using reset credit…": "Använder återställningskredit…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Detta använder en kredit på ditt konto och återställer de aktuella användningsgränserna. Det kan inte ångras."
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36989,7 +37069,12 @@
     "Terminal scrollback": "Terminalhistorik",
     "Allow": "Tillad",
     "Block": "Bloker",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} vil se tekst og billeder kopieret til udklipsholderen"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} vil se tekst og billeder kopieret til udklipsholderen",
+    "Use reset": "Brug nulstilling",
+    "Use a reset credit?": "Brug en nulstillingskredit?",
+    "Use credit": "Brug kredit",
+    "Using reset credit…": "Bruger nulstillingskredit…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Dette bruger en kredit på din konto og nulstiller de aktuelle brugsgrænser. Det kan ikke fortrydes."
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39165,7 +39250,12 @@
     "Terminal scrollback": "Terminalhistorikk",
     "Allow": "Tillat",
     "Block": "Blokker",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} vil se tekst og bilder som er kopiert til utklippstavlen"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} vil se tekst og bilder som er kopiert til utklippstavlen",
+    "Use reset": "Bruk tilbakestilling",
+    "Use a reset credit?": "Bruke en tilbakestillingskreditt?",
+    "Use credit": "Bruk kreditt",
+    "Using reset credit…": "Bruker tilbakestillingskreditt…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Dette bruker én kreditt på kontoen din og nullstiller de gjeldende bruksgrensene. Det kan ikke angres."
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -41341,7 +41431,12 @@
     "Terminal scrollback": "Päätteen vierityshistoria",
     "Allow": "Salli",
     "Block": "Estä",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} haluaa nähdä leikepöydälle kopioidun tekstin ja kuvat"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} haluaa nähdä leikepöydälle kopioidun tekstin ja kuvat",
+    "Use reset": "Käytä nollausta",
+    "Use a reset credit?": "Käytetäänkö nollauskrediitti?",
+    "Use credit": "Käytä krediitti",
+    "Using reset credit…": "Käytetään nollauskrediittiä…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Tämä käyttää yhden tilisi krediitin ja nollaa nykyiset käyttörajoitusjaksot. Toimintoa ei voi kumota."
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -43517,6 +43612,11 @@
     "Terminal scrollback": "Historie terminálu",
     "Allow": "Povolit",
     "Block": "Blokovat",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} chce zobrazit text a obrázky zkopírované do schránky"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} chce zobrazit text a obrázky zkopírované do schránky",
+    "Use reset": "Použít obnovení",
+    "Use a reset credit?": "Použít kredit pro obnovení?",
+    "Use credit": "Použít kredit",
+    "Using reset credit…": "Používání kreditu pro obnovení…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "Tím se použije jeden kredit z vašeho účtu a obnoví se aktuální okna limitů použití. Akci nelze vrátit zpět."
   }
 }

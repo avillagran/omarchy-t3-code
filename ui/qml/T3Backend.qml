@@ -255,7 +255,35 @@ Singleton {
   property var quotaSnapshot:({environments:[],localSources:[]})
   property var quotaNotices:[]
   property var quotaExternal:[]
-  function presentQuotas(){var view=Usage.present(quotaSnapshot,Date.now());providers=view.providers;quotaNotices=view.notices;quotaExternal=view.external}
+  property var resetCreditAccess:({})
+  property var resetCreditAccessPending:({})
+  property var resetCreditOperations:({})
+  property string resetCreditLast:""
+  readonly property var resetCreditOperation:resetCreditOperations[resetCreditLast] || {busy:false,status:"",requestId:"",account:null}
+  function resetCreditKey(account){return account.redeem.environmentId+"/"+JSON.stringify(account.redeem.input)}
+  function resetCreditBusy(account){var operation=account && account.redeem?resetCreditOperations[resetCreditKey(account)]:null;return !!operation && operation.busy}
+  function keepResetCreditOperation(operation){var key=resetCreditKey(operation.account),all=Object.assign({},resetCreditOperations);all[key]=operation;resetCreditOperations=all;resetCreditLast=key}
+  property var resetCreditConfirmation:null
+  signal resetCreditConfirmationRequested()
+  function probeResetCreditAccess(environment,account){
+    if(!worker.running)return
+    if(resetCreditAccessPending[environment]){if(account){var existing=Object.assign({},resetCreditAccessPending);existing[environment]=Object.assign({},existing[environment],{account:account});resetCreditAccessPending=existing}return}
+    var id=uuid(),pending=Object.assign({},resetCreditAccessPending)
+    pending[environment]={requestId:id,account:account || null};resetCreditAccessPending=pending
+    send({op:"provider-reset-credit-access",environment:environment,requestId:id})
+  }
+  function requestResetCredit(account){
+    if(resetCreditConfirmation || !account || !account.redeem || resetCreditBusy(account))return
+    probeResetCreditAccess(account.redeem.environmentId,JSON.parse(JSON.stringify(account)))
+  }
+  function confirmResetCredit(){
+    var account=resetCreditConfirmation;resetCreditConfirmation=null
+    if(!account || resetCreditBusy(account) || !resetCreditAccess[account.redeem.environmentId])return
+    var id=uuid();keepResetCreditOperation({busy:true,status:"",requestId:id,account:account})
+    send({op:"provider-reset-credit",environment:account.redeem.environmentId,input:account.redeem.input,requestId:id})
+  }
+
+  function presentQuotas(){var view=Usage.present(quotaSnapshot,Date.now());providers=view.providers;quotaNotices=view.notices;quotaExternal=view.external;(quotaSnapshot.environments || []).forEach(function(e){root.probeResetCreditAccess(e.id,null)})}
   function refreshQuotas(){send({op:"quotas-refresh"})}
   Timer{interval:60000;repeat:true;running:root.panelVisible;onTriggered:root.presentQuotas()}
   property bool stale: true
@@ -1712,6 +1740,22 @@ Singleton {
     send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:captured.fromTurnCount,toTurnCount:captured.toTurnCount,summary:captured,ignoreWhitespace:ws})
   }
   function action(data) {
+    if(data.op==="provider-reset-credit-access"){
+      var pending=resetCreditAccessPending[data.environment]
+      if(!pending || pending.requestId!==data.requestId)return
+      var all=Object.assign({},resetCreditAccessPending);delete all[data.environment];resetCreditAccessPending=all
+      var access=Object.assign({},resetCreditAccess);access[data.environment]=!data.error && !!data.result && data.result.canManageProviders===true;resetCreditAccess=access
+      if(pending.account && access[data.environment] && !resetCreditBusy(pending.account) && !resetCreditConfirmation){resetCreditConfirmation=pending.account;resetCreditConfirmationRequested()}
+      return
+    }
+    if(data.op==="provider-reset-credit"){
+      var operation=Object.values(resetCreditOperations).find(function(candidate){return candidate.requestId===data.requestId})
+      if(!operation || !operation.busy || operation.requestId!==data.requestId || operation.account.redeem.environmentId!==data.environment)return
+      var result=data.result || {},outcomes={reset:"Reset applied. Your windows have cleared.",nothingToReset:"Nothing to reset right now.",noCredit:"No reset credit left.",alreadyRedeemed:"That credit was already redeemed."}
+      keepResetCreditOperation(Object.assign({},operation,{busy:false,status:data.error || (typeof result.warning==="string"?result.warning:outcomes[result.outcome]) || "Could not use the reset credit."}))
+      refreshQuotas();return
+    }
+
     if(data.op==="server-update"){if(data.error){var errors=Object.assign({},serverUpdateErrors);errors[data.environment]=data.error;serverUpdateErrors=errors}return}
     if((data.op==="thread-details-read"||data.op==="thread-details-open-editor")&&TerminalLinks.pathReceipt(root,data))return
     if(data.op==="provider-update"||data.op==="thread-details-read"||data.op==="thread-details-open-editor"){detailsAction(data);return}

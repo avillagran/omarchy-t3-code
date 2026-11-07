@@ -1160,6 +1160,8 @@ fn watch(client: Client) -> Result<()> {
                         | "provider-setup"
                         | "provider-login"
                         | "provider-refresh"
+                        | "provider-reset-credit-access"
+                        | "provider-reset-credit"
                         | "agent-sessions"
                         | "process-diagnostics"
                         | "pin-reorder"

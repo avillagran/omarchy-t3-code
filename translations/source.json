@@ -2173,6 +2173,11 @@
     "Terminal scrollback": "Terminal scrollback",
     "Allow": "Allow",
     "Block": "Block",
-    "{origin} wants to see text and images copied to the clipboard": "{origin} wants to see text and images copied to the clipboard"
+    "{origin} wants to see text and images copied to the clipboard": "{origin} wants to see text and images copied to the clipboard",
+    "Use reset": "Use reset",
+    "Use a reset credit?": "Use a reset credit?",
+    "Use credit": "Use credit",
+    "Using reset credit…": "Using reset credit…",
+    "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone.": "This redeems one credit on your account and clears the current rate-limit windows. It cannot be undone."
   }
 }

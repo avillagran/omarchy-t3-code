@@ -2075,12 +2075,24 @@ Item {
             objectName:"t3HeaderUsage"
             anchors.left:parent.left;anchors.right:parent.right
             providers:root.bridge.providers
+            creditBridge:root.bridge
             notices:root.bridge.quotaNotices || []
             external:root.bridge.quotaExternal || []
             onRefreshRequested:root.bridge.refreshQuotas()
             // The reveal does the collapsing so the strip keeps its height.
             showHeader:false;collapsed:false
           }
+          }
+          T3ResetCreditConfirmation {bridge:root.bridge;popupHost:panelLayout}
+          Repeater {
+            model:Object.values(root.bridge.resetCreditOperations).filter(function(operation){return operation.busy || !!operation.status})
+            Text {
+              required property var modelData
+              objectName:"t3ResetCreditStatus"
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24)
+              text:modelData.account.label+": "+(modelData.busy?T3I18n.tr("Using reset credit…"):modelData.status)
+              textFormat:Text.PlainText;wrapMode:Text.Wrap;color:Color.popups.text;font.pixelSize:Style.font.caption
+            }
           }
           T3SubthreadBar {
             visible:root.bridge.subthread&&!root.composerExpanded

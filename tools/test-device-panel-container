@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "browser-permission", "browser-permission-panel", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "thread-activity", "thread-row-activity", "backend-smoke"], default="device-tools")
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "browser-permission", "browser-permission-panel", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "thread-activity", "thread-row-activity", "backend-smoke", "reset-credit"], default="device-tools")
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 if subprocess.check_output(["podman", "--remote=false", "info", "--format", "{{.Host.Security.Rootless}}"], text=True).strip() != "true":
@@ -69,7 +69,7 @@ exit "$result"
 command = ["podman", "--remote=false", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}", "--read-only", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--network=none", "--pids-limit=256", "--memory=2g"]
 for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "XDG_CONFIG_HOME":"/tmp/config", "XDG_STATE_HOME":"/tmp/state", "XDG_DATA_HOME":"/tmp/data", "LIBGL_ALWAYS_SOFTWARE":"1", "__EGL_VENDOR_LIBRARY_FILENAMES":"/usr/share/glvnd/egl_vendor.d/50_mesa.json"}.items():
     command += ["--env", f"{key}={value}"]
-if args.fixture in ["file-metadata", "thread-activity"]:
+if args.fixture in ["file-metadata", "thread-activity", "reset-credit"]:
     command += ["--env", "QML_XHR_ALLOW_FILE_READ=1"]
 if args.fixture == "thread-activity":
     command += ["--env", "TZ=UTC"]
