@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/chromium/chromium",
+  "revision": "92a6f15143569cf59b340472d0b5030465d95722",
+  "version": "152.0.7977.169",
+  "electron": "44.10.1",
+  "electronDepsSha256": "dc52f884ca8a8e0529a91d070cd19dd745a4176c3bd3fe03973e6a869dc5d95e",
+  "sourceFiles": {
+    "native/voice/vendor/chromium/media/base/audio_sample_types.h": "96fee7d58629f2cb6749eba333c57cc171c4bab60c4638a37b9a5be2382ab547",
+    "native/voice/vendor/chromium/LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b"
+  },
+  "scope": "Complete unchanged native sample type traits and original BSD license. Only explicit device-format selection is adapted."
+}

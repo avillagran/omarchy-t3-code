@@ -1,16 +1,28 @@
 #include "pcmdsp.h"
 #include "voicemath.h"
+#include "vendor/chromium/media/base/audio_sample_types.h"
 #include <QQmlEngine>
 #include <QThread>
 #include <QPointer>
 #include <cmath>
 #include <limits>
+#include <cstring>
 
 namespace {
 // Bound a single callback independently of the original five-minute PCM limit.
 // The device owner must split larger buffers instead of silently dropping audio.
 constexpr qsizetype MaxInputBytes=1024*1024;
 constexpr qsizetype MaxFrames=4096;
+template<class T> T sample(const char *bytes) {T value;std::memcpy(&value,bytes,sizeof(value));return value;}
+float normalized(const QAudioFormat &format,const char *bytes) {
+    switch(format.sampleFormat()) {
+    case QAudioFormat::UInt8:return media::UnsignedInt8SampleTypeTraits::ToFloat(sample<uint8_t>(bytes));
+    case QAudioFormat::Int16:return media::SignedInt16SampleTypeTraits::ToFloat(sample<int16_t>(bytes));
+    case QAudioFormat::Int32:return media::SignedInt32SampleTypeTraits::ToFloat(sample<int32_t>(bytes));
+    case QAudioFormat::Float:return media::Float32SampleTypeTraitsNoClip::ToFloat(sample<float>(bytes));
+    default:Q_UNREACHABLE();
+    }
+}
 }
 O3PcmDsp::O3PcmDsp(QObject *parent):QObject(parent) {}
 O3PcmDsp::~O3PcmDsp()=default;
@@ -95,9 +107,9 @@ bool O3PcmDsp::processFrames(qsizetype frames) {
         if (!checked(values)) return false;
         for (qsizetype frame=0;frame<frames;frame++) {
             const auto offset=frame*frameBytes+channel*sampleBytes;
-            // Qt owns device-format normalization. The original worklet still
-            // owns channel averaging, resampling, metering, chunks and limits.
-            values.setProperty(quint32(frame),format.normalizedSampleValue(partial.constData()+offset));
+            // Complete pinned Chromium traits own the sample conversion. Qt's
+            // generic helper differs for negative integers and unsigned zero.
+            values.setProperty(quint32(frame),normalized(format,partial.constData()+offset));
         }
         channelList.setProperty(quint32(channel),values);
     }
