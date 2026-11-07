@@ -430,6 +430,20 @@ struct AndroidView<'a> {
 fn android(c: &protocol::Connection, access: &device_hub::HubAccess, target: &Target, cancel: &Arc<AtomicBool>, inputs: &mpsc::Receiver<Value>, frames: &Arc<Frames>, decoder: &decoder::Slot) -> Result<()> {
     android_view(AndroidView { connection: c, access, target, cancel, inputs, frames, decoder }, decoder_command())
 }
+fn transport_error_category(error: &tungstenite::Error) -> &'static str {
+    match error {
+        tungstenite::Error::Protocol(tungstenite::error::ProtocolError::ResetWithoutClosingHandshake) => "reset-without-close",
+        tungstenite::Error::Io(_) => "io",
+        tungstenite::Error::ConnectionClosed => "connection-closed",
+        tungstenite::Error::AlreadyClosed => "already-closed",
+        tungstenite::Error::Protocol(_) => "protocol",
+        _ => "transport",
+    }
+}
+fn disconnected(target: &Target, running: Option<&decoder::Running>) {
+    if let Some(running) = running { running.attempt.stop(); }
+    surface(&target.request_id, json!({"kind":"status","stage":"reconnecting","input":false,"decoder":false}));
+}
 fn android_view(view: AndroidView<'_>, mut command: Command) -> Result<()> {
     let AndroidView { connection: c, access, target, cancel, inputs, frames, decoder } = view;
     let mut ws = c.device_socket(access, Platform::Android, &target.device_id)?;
@@ -486,7 +500,12 @@ fn android_view(view: AndroidView<'_>, mut command: Command) -> Result<()> {
             return Err("device_decoder_failed".into());
         }
         while let Ok(event) = inputs.try_recv() {
-            if let Ok(message) = device_hub::input_message(Platform::Android, &event) { ws.send(message).map_err(|_| "device_stream_ended")?; }
+            if let Ok(message) = device_hub::input_message(Platform::Android, &event) {
+                if let Err(error) = ws.send(message) {
+                    if let Some(running) = running.as_ref() {running.attempt.read_error(transport_error_category(&error));}
+                    disconnected(target, running.as_ref()); return Err("device_stream_ended".into());
+                }
+            }
         }
         match ws.read() {
             Ok(tungstenite::Message::Binary(packet)) => {
@@ -501,10 +520,16 @@ fn android_view(view: AndroidView<'_>, mut command: Command) -> Result<()> {
                 }
             }
             Ok(tungstenite::Message::Text(text)) => {if let Some(running) = running.as_ref() {running.attempt.text(text.as_str());}},
-            Ok(tungstenite::Message::Close(_)) => return Err("device_stream_ended".into()),
+            Ok(tungstenite::Message::Close(frame)) => {
+                if let Some(running) = running.as_ref() { running.attempt.closed(frame.as_ref().map(|frame|u16::from(frame.code)),frame.as_ref().map_or("",|frame|frame.reason.as_str())); }
+                disconnected(target, running.as_ref()); return Err("device_stream_ended".into());
+            },
             Ok(_) => {},
             Err(e) if would_block(&e) => {},
-            Err(_) => return Err("device_stream_ended".into()),
+            Err(error) => {
+                if let Some(running) = running.as_ref() {running.attempt.read_error(transport_error_category(&error));}
+                disconnected(target, running.as_ref()); return Err("device_stream_ended".into());
+            },
         }
     }
     Ok(())

@@ -53,6 +53,7 @@ struct Trace {
     omitted_events: usize,
     omitted_payload: usize,
     io_failed: bool,
+    terminal: Option<Value>,
 }
 impl Trace {
     fn open(path: &Path) -> io::Result<Self> {
@@ -128,6 +129,7 @@ impl Trace {
             omitted_events: 0,
             omitted_payload: 0,
             io_failed: false,
+            terminal: None,
         })
     }
     fn event(&mut self, event: Value) {
@@ -246,7 +248,7 @@ impl Trace {
                 self.io_failed = true;
                 0
             });
-        let value = json!({"format":1,"pid":pid,"ownerStopped":owner_stopped,"exitSignal":status.and_then(|status|status.signal()),"traceWriteFailed":self.io_failed,"exitCode":status.and_then(|status|status.code()),"success":status.is_some_and(|status|status.success()),"stderr":String::from_utf8_lossy(&stderr.bytes.iter().copied().collect::<Vec<_>>()),"omittedStderrBytes":stderr.omitted,"events":self.events,"omittedEvents":self.omitted_events,"payloadBytes":payload_bytes,"wireBytes":wire_bytes,"omittedPayloadBytes":self.omitted_payload,"limits":{"stderrBytes":STDERR_LIMIT,"payloadBytes":PAYLOAD_LIMIT,"wireBytes":PAYLOAD_LIMIT,"events":EVENT_LIMIT}});
+        let value = json!({"format":1,"pid":pid,"ownerStopped":owner_stopped,"exitSignal":status.and_then(|status|status.signal()),"traceWriteFailed":self.io_failed,"transportTerminal":self.terminal,"exitCode":status.and_then(|status|status.code()),"success":status.is_some_and(|status|status.success()),"stderr":String::from_utf8_lossy(&stderr.bytes.iter().copied().collect::<Vec<_>>()),"omittedStderrBytes":stderr.omitted,"events":self.events,"omittedEvents":self.omitted_events,"payloadBytes":payload_bytes,"wireBytes":wire_bytes,"omittedPayloadBytes":self.omitted_payload,"limits":{"stderrBytes":STDERR_LIMIT,"payloadBytes":PAYLOAD_LIMIT,"wireBytes":PAYLOAD_LIMIT,"events":EVENT_LIMIT}});
         let _ = serde_json::to_writer(&mut self.report, &value);
         let _ = self.report.write_all(b"\n");
         let _ = self.report.flush();
@@ -321,6 +323,31 @@ impl Attempt {
     pub fn text(&self, text: &str) {
         if let Some(trace) = self.state.trace.lock().unwrap().as_mut() {
             trace.text(text);
+        }
+    }
+    pub fn closed(&self, code: Option<u16>, reason: &str) {
+        let reason_known = matches!(
+            reason,
+            "" | "Unauthorized"
+                | "device not ready"
+                | "device session changed"
+                | "message too large"
+                | "client too slow"
+                | "frame send failed"
+                | "session is stopped"
+                | "session is error"
+                | "session is starting"
+                | "Server stopping"
+        );
+        if let Some(trace) = self.state.trace.lock().unwrap().as_mut() {
+            trace.terminal = Some(
+                json!({"kind":"close","code":code,"reasonBytes":reason.len(),"knownReason":if reason_known {Some(reason)} else {None}}),
+            );
+        }
+    }
+    pub fn read_error(&self, category: &'static str) {
+        if let Some(trace) = self.state.trace.lock().unwrap().as_mut() {
+            trace.terminal = Some(json!({"kind":"read-error","category":category}));
         }
     }
     pub fn stop(&self) -> String {
@@ -663,6 +690,41 @@ mod tests {
         let value: Value = serde_json::from_slice(&std::fs::read(report).unwrap()).unwrap();
         assert_eq!(value["traceWriteFailed"], true);
         assert_eq!(value["payloadBytes"], 0);
+    }
+    #[test]
+    fn unknown_close_reason_is_omitted_but_code_and_length_survive() {
+        let root = root();
+        let state = Arc::new(State {
+            active: Mutex::new(true),
+            stderr: Mutex::new(Tail::default()),
+            trace: Mutex::new(Some(Trace::open(&root).unwrap())),
+        });
+        let attempt = Attempt {
+            slot: Slot::default(),
+            state: state.clone(),
+        };
+        attempt.closed(
+            Some(1008),
+            "https://private.invalid/private-authority-marker",
+        );
+        state
+            .trace
+            .lock()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .finish(123, None, false, &Tail::default());
+        let report = std::fs::read_dir(&root)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .find(|path| path.extension().unwrap() == "json")
+            .unwrap();
+        let text = std::fs::read_to_string(report).unwrap();
+        assert!(!text.contains("private.invalid") && !text.contains("private-authority-marker"));
+        let value: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(value["transportTerminal"]["code"], 1008);
+        assert!(value["transportTerminal"]["reasonBytes"].as_u64().unwrap() > 0);
+        assert!(value["transportTerminal"]["knownReason"].is_null());
     }
     #[test]
     fn diagnostic_directory_refuses_owned_ancestor_links_and_broad_permissions() {
