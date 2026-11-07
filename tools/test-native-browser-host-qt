@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""Freeze the pinned native Host and prove its Qt boundary in rootless Podman."""
+import hashlib
+import json
+from pathlib import Path
+import shlex
+import shutil
+import subprocess
+import tempfile
+
+root = Path(__file__).resolve().parent.parent
+if subprocess.check_output(['podman', 'info', '--format', '{{.Host.Security.Rootless}}'], text=True).strip() != 'true':
+    raise SystemExit('Rootless Podman is required')
+evidence = Path(tempfile.mkdtemp(prefix='native-host-qt-', dir='/home/node/BuildCache/o3-desktop-next'))
+inputs = {
+    'native-browser-host-probe.cpp': root/'tools/fixtures/native-browser-host-probe.cpp',
+    'probe.qml': root/'tools/fixtures/native-browser-host-probe.qml',
+    'bridge.js': root/'ui/browser/private-cdp-bridge.js',
+    'host.js': root/'ui/browser/native-browser-host.js',
+    'sources.json': root/'ui/browser/native-browser-host.sources.json',
+}
+for name, source in inputs.items():
+    shutil.copyfile(source, evidence/name)
+(evidence/'inputs.json').write_text(json.dumps({name: hashlib.sha256((evidence/name).read_bytes()).hexdigest() for name in inputs}, indent=2)+'\n')
+flags = shlex.split(subprocess.check_output(['pkg-config', '--cflags', '--libs', 'Qt6Quick', 'Qt6WebEngineQuick'], text=True))
+moc = subprocess.check_output(['pkg-config', '--variable=libexecdir', 'Qt6Core'], text=True).strip()+'/moc'
+subprocess.run([moc, str(evidence/'native-browser-host-probe.cpp'), '-o', str(evidence/'native-browser-host-probe.moc')], check=True)
+subprocess.run(['flock', '/var/tmp/o3-build/o3-parity-compile.lock', 'c++', '-std=c++17', '-fPIC', str(evidence/'native-browser-host-probe.cpp'), '-o', str(evidence/'probe'), *flags], check=True)
+command = ['podman', 'run', '--rm', '--pull=never', '--read-only', '--network=none', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--security-opt=seccomp=unconfined', '--userns=keep-id', '--pids-limit=256', '--memory=2g', '--tmpfs', '/tmp:rw,exec,size=512m', '--tmpfs', '/run:rw,size=32m', '-v', '/usr:/usr:ro', '-v', '/etc/fonts:/etc/fonts:ro', '-v', str(evidence)+':/proof:ro', '--env', 'HOME=/tmp', '--env', 'XDG_RUNTIME_DIR=/tmp', '--env', 'QT_QPA_PLATFORM=offscreen', '--env', 'QT_QUICK_BACKEND=software', '--env', 'QT_LOGGING_RULES=*.debug=false;qml.debug=true', '--env', 'QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu', 'docker.io/library/archlinux:latest', 'python3', '-c', r'''
+import json,subprocess
+r=subprocess.run(['/proof/probe','/proof/probe.qml','/proof/bridge.js','/proof/host.js'],capture_output=True,text=True,timeout=25)
+print(r.stderr)
+assert r.returncode==0
+value=json.loads(next(line.split('NATIVE_HOST_QT_RESULT ',1)[1] for line in r.stderr.splitlines() if 'NATIVE_HOST_QT_RESULT ' in line))
+assert value['target'] and value['maxInflight']==1
+assert [frame['id'] for frame in value['captures']]==[11,12]
+for frame in value['captures']: assert frame['image']=={'color':'#123456','height':480,'width':640}
+assert [call['params']['enabled'] for call in value['calls'] if call['method']=='Emulation.setFocusEmulationEnabled']==[True,False]
+assert sum(call['method']=='Page.captureScreenshot' for call in value['calls'])==2
+assert 'Protocol Error' not in r.stderr
+print('ACTUAL_NATIVE_HOST_QT_PASS: pinned Host/GuestInput/CdpRelay/Effect; serialized hidden-page PNGs and focus lifecycle')
+''']
+with (evidence/'output.log').open('w') as output:
+    result = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT, timeout=35)
+(evidence/'result.json').write_text(json.dumps({'returncode': result.returncode})+'\n')
+print('Native Host Qt evidence: '+str(evidence))
+raise SystemExit(result.returncode)
