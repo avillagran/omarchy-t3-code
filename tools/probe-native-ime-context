@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Observe the original engine's native context only on an owned private compositor."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime', type=pathlib.Path, required=True)
+parser.add_argument('--services', type=pathlib.Path, required=True)
+parser.add_argument('--compositor', type=pathlib.Path, required=True)
+parser.add_argument('--pointer-baseline', type=pathlib.Path, required=True)
+parser.add_argument('--top-level', action='store_true', help='Separate native top-level control; not hosted-webview acceptance')
+parser.add_argument('--source-input', action='store_true', help='Separate original GuestInput pointer consumer control')
+parser.add_argument('--typed-edit', action='store_true', help='Observe a genuine fixed keyboard edit after focus')
+parser.add_argument('--require-surrounding', action='store_true', help='Separate stronger expectation; not assumed of the original')
+options = parser.parse_args()
+root = pathlib.Path(__file__).resolve().parent.parent
+if (root / 'tools/NATIVE_IME_CONTEXT_RUNTIME_PENDING').exists():
+    raise SystemExit('Native context runtime paused for popup lifetime review; source-only checks remain available')
+assert subprocess.check_output(['podman', 'info', '--format', '{{.Host.Security.Rootless}}'], text=True).strip() == 'true'
+runtime = options.runtime.resolve()
+runtime_receipt = json.loads((runtime.parent / 'artifact.json').read_text())
+assert runtime_receipt['version'] == '44.10.1'
+assert runtime_receipt['archiveSha256'] == '2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
+compositor = options.compositor.resolve()
+receipt = json.loads((compositor / 'artifact.json').read_text())
+assert receipt['schema'] == 1 and receipt['kind'] == 'official-arch-sway-regular-files'
+for record in receipt['files']:
+    member = compositor / record['path']
+    assert not member.is_symlink() and member.is_file() and member.stat().st_uid == os.getuid()
+    assert member.stat().st_size == record['bytes'] <= 4 * 1024 * 1024
+    assert hashlib.sha256(member.read_bytes()).hexdigest() == record['sha256']
+output = pathlib.Path(tempfile.mkdtemp(prefix='native-ime-context-', dir='/home/node/BuildCache/o3-desktop-next'))
+print(output, flush=True)
+for name in ['native-ime-context-peer.c', 'native-ime-context.cjs', 'native-ime-context.py',
+             'input-method-unstable-v2.xml', 'input-method-unstable-v2.source.json']:
+    (output / name).write_bytes((root / 'tools/fixtures' / name).read_bytes())
+protocol = json.loads((output / 'input-method-unstable-v2.source.json').read_text())
+assert hashlib.sha256((output / 'input-method-unstable-v2.xml').read_bytes()).hexdigest() == protocol['sha256']
+services = options.services.resolve()
+assert hashlib.sha256(services.read_bytes()).hexdigest() == '88b56e91a6c89678516e8997c7e34683fb1976fbe9cee5f2c9a624b4eb7a7eae'
+(output / 'native-electron-services.cjs').write_bytes(services.read_bytes())
+pointer_baseline = options.pointer_baseline.resolve()
+assert (pointer_baseline / 'private-virtual-pointer.c').read_bytes() == (root / 'tools/fixtures/private-virtual-pointer.c').read_bytes()
+pointer = pointer_baseline / 'pointer'
+assert not pointer.is_symlink() and pointer.is_file() and pointer.stat().st_size < 1048576
+assert hashlib.sha256(pointer.read_bytes()).hexdigest() == json.loads((pointer_baseline / 'artifacts.json').read_text())['pointer']
+(output / 'pointer').write_bytes(pointer.read_bytes())
+(output / 'pointer').chmod(0o500)
+build_args = ['podman', 'run', '--rm', '--pull=never', '--read-only', '--network=none',
+              '--userns=keep-id', '--cap-drop=ALL', '--security-opt=no-new-privileges',
+              '--ulimit=core=0:0', '--pids-limit=32', '--memory=256m',
+              '--tmpfs', '/tmp:rw,size=32m,mode=1777', '-v', '/usr:/usr:ro',
+              '-v', str(output)+':/fixture:rw', '--env', 'HOME=/tmp',
+              'docker.io/library/archlinux:latest', 'python3', '-c', r'''
+import pathlib,subprocess
+root=pathlib.Path('/fixture')
+for mode,name in [('client-header','input-method-client.h'),('private-code','input-method-protocol.c')]:
+ subprocess.run(['wayland-scanner',mode,str(root/'input-method-unstable-v2.xml'),str(root/name)],check=True)
+flags=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client'],text=True).split()
+subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(root/'native-ime-context-peer.c'),str(root/'input-method-protocol.c'),'-o',str(root/'native-ime-context-peer'),*flags],check=True)
+''']
+with open('/var/tmp/o3-build/o3-parity-compile.lock', 'a') as lock:
+    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+    with (output / 'compile.log').open('w') as log:
+        subprocess.run(build_args, check=True, stdout=log, stderr=subprocess.STDOUT, timeout=30)
+(output / 'native-ime-context-peer').chmod(0o500)
+(output / 'runtime.json').write_text(json.dumps(runtime_receipt) + '\n')
+artifacts = {file.name: hashlib.sha256(file.read_bytes()).hexdigest()
+             for file in output.iterdir() if file.is_file()}
+(output / 'artifacts.json').write_text(json.dumps(artifacts, indent=2) + '\n')
+args = ['podman', 'run', '--rm', '--pull=never', '--read-only', '--network=none',
+        '--userns=keep-id', '--cap-drop=ALL', '--security-opt=no-new-privileges',
+        '--security-opt=seccomp=unconfined', '--ulimit=core=0:0', '--pids-limit=256',
+        '--memory=2g', '--shm-size=256m', '--tmpfs', '/tmp:rw,exec,size=128m,mode=1777',
+        '--tmpfs', '/run:rw,size=32m', '-v', '/usr:/usr:ro', '-v', '/etc/fonts:/etc/fonts:ro',
+        '-v', str(runtime)+':/electron:ro', '-v', str(compositor)+':/opt/sway-runtime:ro',
+        '-v', str(output)+':/fixture:ro', '--env', 'HOME=/tmp/home',
+        '--env', 'XDG_RUNTIME_DIR=/tmp/runtime', '--env', 'LIBGL_ALWAYS_SOFTWARE=1',
+        '--env', '__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json',
+        'docker.io/library/archlinux:latest', 'python3', '/fixture/native-ime-context.py']
+(output / 'podman-command.json').write_text(json.dumps(args) + '\n')
+if options.top_level:
+    args[3:3] = ['--env', 'O3_CONTEXT_TOP_LEVEL=1']
+    (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
+if options.source_input:
+    args[3:3] = ['--env', 'O3_CONTEXT_SOURCE_INPUT=1']
+    (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
+if options.typed_edit:
+    args[3:3] = ['--env', 'O3_CONTEXT_TYPED_EDIT=1']
+    (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
+if options.require_surrounding:
+    args[3:3] = ['--env', 'O3_CONTEXT_REQUIRE_SURROUNDING=1']
+    (output / 'podman-command.json').write_text(json.dumps(args) + '\n')
+with (output / 'runtime.log').open('w') as log:
+    result = subprocess.run(args, stdout=log, stderr=subprocess.STDOUT, timeout=40)
+(output / 'result.json').write_text(json.dumps({'returncode': result.returncode}) + '\n')
+raise SystemExit(result.returncode)
