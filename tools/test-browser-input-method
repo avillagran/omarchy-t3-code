@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise real Qt IME events in a private container, without guessed engine queries."""
 import argparse, fcntl, hashlib, json, os, subprocess, tempfile
-parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--compositor-ime',action='store_true');options=parser.parse_args()
+parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--compositor-ime',action='store_true');parser.add_argument('--input-worker-build');options=parser.parse_args()
 from pathlib import Path
 root=Path(__file__).resolve().parent.parent
 assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
@@ -41,5 +41,17 @@ finally:
  display.terminate();display.wait(timeout=3);log.close()
 ''']
 if options.compositor_ime:args[3:3]=['--env','O3_TEST_COMPOSITOR_IME=1']
+if options.input_worker_build:
+ build=Path(options.input_worker_build).resolve()
+ assert json.loads((build/'result.json').read_text())['returncode']==0
+ hashes=json.loads((build/'source-hashes.json').read_text())
+ for source,digest in hashes.items():assert hashlib.sha256((root/source).read_bytes()).hexdigest()==digest,source
+ records=json.loads((build/'runtime-artifacts.json').read_text())
+ for record in records:
+  file=build/'runtime'/record['path'];assert file.is_file() and not file.is_symlink() and file.stat().st_size==record['bytes']
+  with file.open('rb') as stream:assert hashlib.file_digest(stream,'sha256').hexdigest()==record['sha256']
+ args[3:3]=['-v',str(build/'runtime')+':/rust:ro','--env','LD_LIBRARY_PATH=/rust/deps','--env','O3_INPUT_CONTEXT_WORKER=/rust/examples/gui-input-context-worker']
+ (out/'rust-source-hashes.json').write_text(json.dumps(hashes,indent=2)+'\n')
+ (out/'rust-runtime-artifacts.json').write_bytes((build/'runtime-artifacts.json').read_bytes())
 with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=25)
 (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
