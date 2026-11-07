@@ -165,7 +165,7 @@ impl Runtime {
             files,
         })
     }
-    pub(super) fn executable(&self) -> PathBuf {
+    pub(crate) fn executable(&self) -> PathBuf {
         self.root.join("electron")
     }
     pub fn verify(&self) -> io::Result<()> {
@@ -245,11 +245,69 @@ pub struct DescriptorArtifact {
 pub struct Assets {
     root: PathBuf,
     files: Vec<VerifiedFile>,
+    entry: &'static str,
 }
 impl Assets {
     /// Snapshot only the small helper graph. No runtime/model copy, recursive
     /// deletion or adoption of an existing destination is performed.
     pub fn capture(directory: &Path, descriptor: &DescriptorArtifact) -> io::Result<Self> {
+        Self::install(
+            directory,
+            descriptor,
+            "electron-capture-main.cjs",
+            &[
+                (
+                    "electron-capture-main.cjs",
+                    include_bytes!("../../ui/voice/electron-capture-main.cjs"),
+                ),
+                (
+                    "electron-capture-preload.cjs",
+                    include_bytes!("../../ui/voice/electron-capture-preload.cjs"),
+                ),
+                (
+                    "electron-capture-renderer.mjs",
+                    include_bytes!("../../ui/voice/electron-capture-renderer.mjs"),
+                ),
+                (
+                    "browser-capture-owner.mjs",
+                    include_bytes!("../../ui/voice/browser-capture-owner.mjs"),
+                ),
+                (
+                    "NativePcmCapture.js",
+                    include_bytes!("../../ui/js/NativePcmCapture.js"),
+                ),
+            ],
+        )
+    }
+    /// Install the original consent producer and its private metadata adapter.
+    /// This graph contains no capture engine or audio/control network client.
+    pub fn consent(directory: &Path, descriptor: &DescriptorArtifact) -> io::Result<Self> {
+        Self::install(
+            directory,
+            descriptor,
+            "consent-helper.cjs",
+            &[
+                (
+                    "consent-helper.cjs",
+                    include_bytes!("../../ui/voice/consent-helper.cjs"),
+                ),
+                (
+                    "consent-storage.cjs",
+                    include_bytes!("../../ui/voice/consent-storage.cjs"),
+                ),
+                (
+                    "native-consent.cjs",
+                    include_bytes!("../../ui/voice/native-consent.cjs"),
+                ),
+            ],
+        )
+    }
+    fn install(
+        directory: &Path,
+        descriptor: &DescriptorArtifact,
+        entry: &'static str,
+        rows: &[(&str, &[u8])],
+    ) -> io::Result<Self> {
         let parent = directory.parent().ok_or_else(invalid)?;
         canonical(parent)?;
         let metadata = fs::symlink_metadata(parent)?;
@@ -268,28 +326,6 @@ impl Assets {
             &descriptor.sha256,
             descriptor.bytes,
         )?;
-        let rows = [
-            (
-                "electron-capture-main.cjs",
-                include_bytes!("../../ui/voice/electron-capture-main.cjs").as_slice(),
-            ),
-            (
-                "electron-capture-preload.cjs",
-                include_bytes!("../../ui/voice/electron-capture-preload.cjs").as_slice(),
-            ),
-            (
-                "electron-capture-renderer.mjs",
-                include_bytes!("../../ui/voice/electron-capture-renderer.mjs").as_slice(),
-            ),
-            (
-                "browser-capture-owner.mjs",
-                include_bytes!("../../ui/voice/browser-capture-owner.mjs").as_slice(),
-            ),
-            (
-                "NativePcmCapture.js",
-                include_bytes!("../../ui/js/NativePcmCapture.js").as_slice(),
-            ),
-        ];
         let mut files = Vec::new();
         for (name, bytes) in rows {
             files.push(snapshot(directory, name, bytes)?)
@@ -303,10 +339,14 @@ impl Assets {
         Ok(Self {
             root: directory.into(),
             files,
+            entry,
         })
     }
-    pub(super) fn entry(&self) -> PathBuf {
-        self.root.join("electron-capture-main.cjs")
+    pub(crate) fn entry(&self) -> PathBuf {
+        self.root.join(self.entry)
+    }
+    pub(crate) fn descriptor(&self) -> PathBuf {
+        self.root.join("electron-private-fd.node")
     }
     pub fn verify(&self) -> io::Result<()> {
         for file in &self.files {

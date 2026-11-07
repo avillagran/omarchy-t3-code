@@ -38,6 +38,7 @@ pub mod connection_github;
 pub mod native_settings;
 pub mod speech_management;
 pub mod voice_capture;
+pub mod voice_consent;
 pub mod session_memory;
 pub mod provider_instances;
 pub mod scoped_settings;

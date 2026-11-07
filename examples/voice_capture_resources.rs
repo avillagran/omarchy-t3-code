@@ -25,6 +25,16 @@ fn main() {
         PathBuf::from("/state/accepted/electron-capture-main.cjs")
     );
     assert!(Assets::capture(std::path::Path::new("/state/accepted"), &descriptor).is_err());
+    let consent = Assets::consent(std::path::Path::new("/state/consent"), &descriptor).unwrap();
+    consent.verify().unwrap();
+    assert_eq!(
+        consent.entry(),
+        PathBuf::from("/state/consent/consent-helper.cjs")
+    );
+    assert_eq!(
+        consent.descriptor(),
+        PathBuf::from("/state/consent/electron-private-fd.node")
+    );
     let stale = Assets::capture(std::path::Path::new("/state/stale"), &descriptor).unwrap();
     let entry = stale.entry();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o600)).unwrap();
