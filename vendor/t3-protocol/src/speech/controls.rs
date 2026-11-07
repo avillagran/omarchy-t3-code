@@ -172,7 +172,10 @@ fn invalid_request(mut response: reqwest::blocking::Response) -> ControlFailure 
     if bytes.len() > 65536 {
         return "too_large".into();
     }
-    let Ok(v) = serde_json::from_slice::<Value>(&bytes) else {
+    invalid_request_payload(&bytes)
+}
+pub(super) fn invalid_request_payload(bytes: &[u8]) -> ControlFailure {
+    let Ok(v) = serde_json::from_slice::<Value>(bytes) else {
         return "malformed".into();
     };
     let Some(reason) = v["reason"].as_str().filter(|r| {

@@ -7,11 +7,13 @@ use unicode_normalization::UnicodeNormalization;
 
 mod controls;
 mod live;
+mod request;
 pub use controls::{
     Acceleration, ControlFailure, ControlResult, LocalModelAction, PostProcessRequest,
     UnloadTimeout,
 };
 pub use live::{LiveEvent, LiveFailure, LiveText, SpeechCancellation, SpeechStream};
+pub use request::{CancellableSpeech, RequestCancellation, RequestFailure, RequestResult};
 
 pub const SAMPLE_RATE: usize = 16_000;
 pub const MAX_PCM_BYTES: usize = SAMPLE_RATE * 4 * 5 * 60;
@@ -194,6 +196,16 @@ pub struct CloudKeys {
     pub xai: bool,
     pub openrouter: Option<bool>,
 }
+fn decode_cloud_keys(value: &Value) -> SpeechResult<CloudKeys> {
+    Ok(CloudKeys {
+        openai: value["openai"].as_bool().ok_or("malformed")?,
+        xai: value["xai"].as_bool().ok_or("malformed")?,
+        openrouter: value
+            .get("openrouter")
+            .map(|value| value.as_bool().ok_or_else(|| String::from("malformed")))
+            .transpose()?,
+    })
+}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CloudModel {
     pub id: String,
@@ -250,8 +262,11 @@ fn speech_json(mut response: reqwest::blocking::Response) -> SpeechResult<Value>
     if bytes.len() > 65536 {
         return Err("too_large".into());
     }
+    cloud_error(&bytes)
+}
+fn cloud_error(bytes: &[u8]) -> SpeechResult<Value> {
     let value: Value =
-        serde_json::from_slice(&bytes).map_err(|_| SpeechFailure::from("malformed"))?;
+        serde_json::from_slice(bytes).map_err(|_| SpeechFailure::from("malformed"))?;
     let provider = match value["provider"].as_str() {
         Some("openai") => CloudProvider::OpenAi,
         Some("xai") => CloudProvider::Xai,
@@ -294,6 +309,7 @@ impl Connection {
         let client = reqwest::blocking::Client::builder()
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
+            .retry(reqwest::retry::never())
             .timeout(request_timeout(path))
             .build()
             .map_err(|_| "local_error")?;
@@ -323,14 +339,7 @@ impl Connection {
     }
     pub fn speech_cloud_keys(&self) -> SpeechResult<CloudKeys> {
         let v = speech_json(self.speech_request("GET", "/api/voice/cloud/keys", None, false)?)?;
-        Ok(CloudKeys {
-            openai: v["openai"].as_bool().ok_or("malformed")?,
-            xai: v["xai"].as_bool().ok_or("malformed")?,
-            openrouter: v
-                .get("openrouter")
-                .map(|v| v.as_bool().ok_or_else(|| String::from("malformed")))
-                .transpose()?,
-        })
+        decode_cloud_keys(&v)
     }
     pub fn speech_cloud_models(&self) -> SpeechResult<Vec<CloudModel>> {
         let v = speech_json(self.speech_request(

@@ -1240,13 +1240,17 @@ name = "t3-protocol"
 version = "0.3.7"
 dependencies = [
  "base64 0.22.1",
+ "bytes",
  "chrono",
+ "http-body",
  "p256",
  "pulldown-cmark",
  "rand_core 0.6.4",
  "reqwest",
  "serde_json",
  "sha2",
+ "socket2",
+ "tokio",
  "tungstenite",
  "unicode-normalization",
  "uuid",
@@ -1429,7 +1433,6 @@ checksum = "5fd4f6878c9cb28d874b009da9e8d183b5abc80117c40bbd187a1fde336be6e8"
 dependencies = [
  "tinyvec",
 ]
-
 
 [[package]]
 name = "untrusted"
