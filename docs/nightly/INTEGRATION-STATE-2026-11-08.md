@@ -1,5 +1,99 @@
 # Git integration and disk review, 2026-11-08
 
+## Current audit: Nightly 4367
+
+The audit covers 22 client, 76 server and 13 SDK worktrees, plus the Android
+checkout. All use their original shared Git stores. Work is preserved in Git,
+but integration and publication remain incomplete.
+
+| Repository | Verified current state |
+| --- | --- |
+| Client | Integration source head `0da87b6`, 18 commits ahead of live public `ba6324b` before this documentation commit. The audit commit adds one further local commit. The opened checkout still selects `fix/share-t3-o3-label`; implementation lives in `/var/tmp/o3-build/o3code-nightly`. |
+| Server | Primary `6b4bb63` is clean and matches its live remote feature branch. [CI 42486616139](https://github.com/avillagran/o3-server/actions/runs/42486616139) completed successfully in both minimal and default modes at this exact head, including tests, strict Clippy, formatting and policy checks. |
+| SDK | Auth feature `64e322be` is clean and published; all 13 SDK worktrees are clean. The main checkout remains `104a9abd`. Publication of the feature branch does not imply a default-branch merge. |
+| Android | Clean `f3aa340`, 15 commits ahead of live `origin/main` at `f7888857`; no upstream or published feature branch. No Android builds or tests were run. |
+
+### Pending changes and preservation
+
+Fifteen worktrees contain 317 changed or untracked paths: 180 client paths
+and 137 server paths. An independent final check read every current file and
+compared it with its checkpoint blob: all 317 match. Seven primary-client
+prototypes remain untracked in that worktree, with exact copies in checkpoint
+`dd8181a`. Reload's 148 paths remain separate work in progress.
+
+The audit found nine server `force-stop` paths without a matching checkpoint.
+They are now saved in non-branch ref
+`refs/checkpoints/audit-20261108/force-stop-current` at `771e267`.
+File bytes, identities, modes, original HEAD and real index were preserved.
+This is local preservation, without merge, publication or test acceptance.
+Current candidate checkpoints also include GUI `cdcfa9ab` (25 paths), managed
+auth `5b71ea4` (15 paths), and canonical Browser birth `833ffc23` (14 paths).
+
+Branch ancestry alone overstates missing integration: nine client worktree
+heads have equivalent cherry-picked patches in the primary. Accepted server
+readiness, early-dialog, no-tab and handoff changes are likewise integrated
+through equivalent patches. A focused source review nevertheless found three
+actual UI omissions in the primary:
+
+- OmaBridge still displays **Share T3 Code**, instead of the **T3/O3** wording
+  saved on `fix/share-t3-o3-label` (`07f0a01`).
+- Provider device-code sign-in lacks the **Copy code** action saved in
+  `0e0f574`; the cloud-connection copy action serves a different flow.
+- Preferences reopen without retaining their last page; the saved change is
+  `e53eedc`.
+
+Reset-credit authorization and immutable IME intake are present in evolved
+form; unmatched patch IDs are not enough to declare features missing. The
+remaining voice history and one non-ancestral profile-report merge still need
+semantic review. GUI alias acceptance stopped at its first failed cleanup
+case; the remaining fault cases were not started. Combined GUI regression and
+the separate auth/Browser lifecycle candidates remain pending.
+
+### Current disk allocation
+
+| Location | Measured allocation or available space |
+| --- | ---: |
+| ROOT available | 2,408,382,464 bytes, about 2.24 GiB; 99% used |
+| HOME available | 61,689,921,536 bytes, about 57.45 GiB |
+| `/home/node/BuildCache` | 522,543,271,936 bytes, about 486.66 GiB |
+| `/var/tmp/o3-build` | 50,471,018,496 bytes, about 47.00 GiB |
+| `/var/tmp/o3-server` | 50,787,921,920 bytes, about 47.30 GiB |
+| The two ROOT development `tmp` directories | 35,926,085,632 bytes combined, about 33.46 GiB |
+| Old `lib-nightly-4247` incremental cache | 1,182,683,136 bytes, about 1.10 GiB |
+
+BuildCache is on HOME; `/var/tmp` is on ROOT. ROOT needs its own space recovery.
+The largest HOME caches are `o3-server` (about 206.47 GiB), `o3-code` (63.52
+GiB), and `o3-desktop-next` (56.19 GiB). These totals include active artifacts
+and are not estimates of removable space.
+
+The old incremental cache is a concrete review candidate. Retained fixtures,
+evidence, runtimes and backups account for much of ROOT usage and require
+ownership checks. Fifteen clean client checkouts have ancestral or equivalent
+committed patches and about 643 MiB of Git-listed source allocation; generated
+files, ignored files, merge resolutions and current input reservations are
+excluded from that assessment. No worktree removal is approved by these
+figures. Btrfs shared extents, hardlinks and permission-limited private
+directories also prevent treating `du` totals as guaranteed reclaim.
+
+No files were deleted, cleanup archives created, builds launched, or tests
+repeated in this audit. Earlier cleanup attempts remain closed. Source code,
+rescue data, snapshots, Android images and reserved artifacts were preserved.
+
+Evidence:
+
+- Client: `/var/tmp/o3-build/o3-code-git-integration-audit-8okfy1oe/report.json`.
+- UI review: `/var/tmp/o3-build/o3-code-git-integration-audit-8okfy1oe/semantic-five-candidates.json`.
+- Server/SDK/Android: `/var/tmp/o3-server/git-integration-readonly-20261108-status-agent.json`.
+- New checkpoint: `/var/tmp/o3-server/force-stop-preservation-ui6t6mjl/receipt.json`.
+- Independent 317-path check: `/var/tmp/o3-build/git-disk-source-recheck-k884qkwv/result.json`.
+- Disk: `/var/tmp/o3-build/sdk-auth-readonly-disk-summary-20261109.json` (the filename date differs from the observation date).
+- Exact-head CI: `/var/tmp/o3-build/ci-4367-integration-audit-20261108.json`.
+
+## Earlier audit record
+
+The following observations describe earlier checkpoints. The current audit
+above supersedes their moving branch heads, worktree counts and disk readings.
+
 All inspected worktrees belong to the original project Git stores in
 `/home/node/Work/o3-code/.git`, `/home/node/Work/o3-server/.git` and
 `/home/node/Work/lib-t3-rust/.git`. The audit covered 22 client, 73 server and
