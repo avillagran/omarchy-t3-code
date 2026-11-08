@@ -21,11 +21,12 @@ Item {
  property int rowCount:0
  implicitHeight:Style.space(440)
  function rowFor(key){for(var i=0;i<rows.count;i++){var r=rows.get(i);if(r.rowKey===key)return JSON.parse(r.payload)}return null}
- function allowed(row){var s=row&&sessions[row.environment];return !!row&&!!s&&!s.busy&&!s.error&&!!s.data&&row.viewId===s.data.viewId&&!!row.writable&&!bridge.archiveBlocking(bridge.archiveActions[bridge.archiveKey(row)])}
+ function available(row){var s=row&&sessions[row.environment];return !!row&&!!s&&!s.busy&&!s.error&&!!s.data&&row.viewId===s.data.viewId&&!!row.writable&&!bridge.archiveBlocking(bridge.archiveActions[bridge.archiveKey(row)])}
+ function allowed(row){return available(row)&&(!pendingDelete||bridge.archiveKey(pendingDelete)!==bridge.archiveKey(row))}
  function restore(row){if(allowed(row))bridge.requestArchiveAction(row,"unarchive",false)}
  function remove(row){if(!allowed(row))return;selected=null;menu.close();if(((bridge.clientSettings || {}).data || {}).confirmThreadDelete===false)bridge.requestArchiveAction(row,"delete",true);else{pendingDelete=JSON.parse(JSON.stringify(row));confirmation.open()}}
  function confirmDelete(){var row=pendingDelete;confirmation.close();pendingDelete=null;if(allowed(row))bridge.requestArchiveAction(row,"delete",true)}
- function context(key,item){var r=rowFor(key);if(!r)return;selected=r;menu.popup(item,0,item.height)}
+ function context(key,item){var r=rowFor(key);if(!allowed(r))return;selected=r;menu.popup(item,0,item.height)}
  // Keep the virtual list and scroll position stable across read/busy/action receipts.
  function rebuild(){
   if(!rows)return
@@ -97,6 +98,7 @@ Item {
       Text{Layout.fillWidth:true;text:T3I18n.tr("Archived {archived} · Created {created}",{archived:root.relative(row.entry.archivedAt || row.entry.createdAt),created:root.relative(row.entry.createdAt)});color:root.dim;font.pixelSize:Style.font.caption;elide:Text.ElideRight;textFormat:Text.PlainText}
      }
      T3PickerButton{objectName:"archiveUnarchive_"+row.entry.id;primary:false;text:T3I18n.tr("Unarchive");implicitHeight:Style.space(28);leftPadding:Style.space(10);rightPadding:leftPadding;enabled:root.allowed(row.entry);onClicked:root.restore(row.entry);contentItem:RowLayout{spacing:Style.space(6);T3Icon{name:"archive";tint:root.fg;implicitWidth:Style.space(14)}Text{text:parent.parent.text;color:root.fg;font.pixelSize:Style.font.caption}} background:Rectangle{radius:Style.space(5);color:parent.hovered?Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.06):"transparent";border.width:1;border.color:Qt.rgba(root.fg.r,root.fg.g,root.fg.b,0.14)}}
+     T3IconButton{objectName:"archiveDelete_"+row.entry.id;name:"trash-2";tint:Color.urgent;tooltipText:T3I18n.tr("Delete");Accessible.name:T3I18n.tr("Delete")+" "+row.entry.title;enabled:root.allowed(row.entry);onClicked:root.remove(row.entry)}
     }
    }
    T3Wheel{flickable:list}
@@ -119,7 +121,7 @@ Item {
    Text{Layout.fillWidth:true;text:T3I18n.tr("This permanently clears conversation history for this thread.");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
    RowLayout{Layout.alignment:Qt.AlignRight
     T3PickerButton{primary:false;text:T3I18n.tr("Cancel");onClicked:confirmation.close()}
-    T3PickerButton{objectName:"archiveDeleteConfirm";text:T3I18n.tr("Delete");enabled:root.allowed(root.pendingDelete);onClicked:root.confirmDelete()}
+    T3PickerButton{objectName:"archiveDeleteConfirm";text:T3I18n.tr("Delete");enabled:root.available(root.pendingDelete);onClicked:root.confirmDelete()}
    }
   }
  }
