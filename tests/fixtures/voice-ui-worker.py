@@ -93,7 +93,7 @@ for line in sys.stdin:
     elif action == 'record':
         reply(packet)
         emit(dict(kind='level', session=packet['session'], value=0.65))
-        emit(dict(kind='stream', session=packet['session'], value=dict(event='text', text=dict(text='<b>partial</b>'))))
+        emit(dict(kind='stream', session=packet['session'], value=dict(event='text', text=dict(committed='<b>confirmed</b> ', tentative='<i>partial</i>'))))
     elif action == 'stop':
         reply(packet, dict(uri='o3-voice-recording:'+packet['session']))
     elif action == 'transcribe':

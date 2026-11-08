@@ -32,7 +32,7 @@ Rectangle {
   onNativeVoiceShortcutModeChanged:{nativeVoicePress=null;nativeVoiceShortcutGeneration++}
   onNativeVoiceModeChanged:{nativeVoicePress=null;nativeVoiceShortcutGeneration++}
   readonly property real microphoneLevel:nativeVoiceMode?Math.max(0,Math.min(1,Number(bridge.nativeVoiceLevel)||0)):Number((bridge.dictation || {}).level)||0
-  readonly property string nativeVoicePreviewText:typeof bridge.nativeVoicePreview==="string"?bridge.nativeVoicePreview:bridge.nativeVoicePreview&&typeof bridge.nativeVoicePreview.text==="string"?bridge.nativeVoicePreview.text:""
+  readonly property string nativeVoicePreviewText:bridge.nativeVoicePreview&&typeof bridge.nativeVoicePreview.committed==="string"&&typeof bridge.nativeVoicePreview.tentative==="string"?bridge.nativeVoicePreview.committed+bridge.nativeVoicePreview.tentative:""
   readonly property string nativeVoiceFailure:voiceMessage(nativeVoiceState.error || bridge.nativeVoiceError || "")
   function voiceMessage(value){return T3I18n.error(String(value||""))}
   function voiceDestination(){

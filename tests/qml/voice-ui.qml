@@ -68,7 +68,7 @@ ShellRoot{
     keys.mouseClick(item('nativeVoicePermissionAllow'))
     return waitFor(function(){return b.voiceState.phase==='recording'&&composer.microphoneLevel===0.65},"explicit Allow reaches real native controller/metadata adapter")
    }).then(function(){
-    check(composer.nativeVoicePreviewText==='<b>partial</b>'&&item('nativeVoicePreview').textFormat===Text.PlainText,"stream preview remains plain text")
+    check(composer.nativeVoicePreviewText==='<b>confirmed</b> <i>partial</i>'&&item('nativeVoicePreview').text==='<b>confirmed</b> <i>partial</i>'&&item('nativeVoicePreview').textFormat===Text.PlainText,"stream preview remains plain text")
     keys.mouseClick(item('t3ComposerDictate'))
     return waitFor(function(){return b.voiceState.phase==='idle'&&b.draft.text==='hello spoken'},"native mic stop inserts actual controller transcript")
    }).then(function(){
