@@ -527,6 +527,7 @@ fn watch(client: Client) -> Result<()> {
     );
     let owned_desktop = std::sync::Arc::new(std::sync::Mutex::new(None::<owned_runtime::Runtime>));
     let input_owned_desktop = owned_desktop.clone();
+    let mut native_search = native_search::Manager::new(tx.clone())?;
     std::thread::spawn(move || {
         let mut input_visible = false;
         let mut mosaic_readers: Vec<live::Control> = Vec::new();
@@ -554,6 +555,12 @@ fn watch(client: Client) -> Result<()> {
                 continue;
             }
             if let Ok(mut v) = serde_json::from_str::<Value>(&line) {
+                if v["op"] == "native-search" {
+                    if let Err(error) = native_search.submit(v.clone()) {
+                        emit("action", json!({"op":"native-search","requestId":v["requestId"],"error":error}));
+                    }
+                    continue;
+                }
                 // Apply mounted lease controls in input order before any query
                 // worker can observe this conversation's lifecycle.
                 if let Some(result) = file_metadata_runtime::control(&v) {
@@ -1220,6 +1227,9 @@ fn watch(client: Client) -> Result<()> {
             if let Some(mut owned) = runtime.take() { let _ = owned.stop(); }
         }
         let _ = browser_manager.shutdown();
+        if let Err(error) = native_search.close() {
+            emit("native-search-error", json!({"error":error}));
+        }
         let _ = input_tx.send(json!({"op":"quit"}));
     });
     let result_tx = tx.clone();
@@ -1426,6 +1436,8 @@ fn watch(client: Client) -> Result<()> {
             Err(_) => return Ok(()),
         };
         match text(&cmd, "op") {
+            "native-search-result" => emit("action", json!({"op":"native-search",
+                "requestId":cmd["requestId"],"result":cmd["result"],"error":cmd["error"]})),
             "rpc-session-state" | "file-metadata-invalidated" => emit(text(&cmd,"op"),cmd.clone()),
             "browser-profile-targets-ready" => { for target in profile_reporting.take_targets() { emit("browser-profile-target",target); } },
             "browser-profile-report" => profile_reporting.submit(&cmd),
