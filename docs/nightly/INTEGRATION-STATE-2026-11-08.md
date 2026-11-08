@@ -1,6 +1,90 @@
 # Git integration and disk review, 2026-11-08
 
-## Current audit: Nightly 4367
+## Latest recheck: preserved work, incomplete integration
+
+The recheck covers 22 client, 78 server and 13 SDK worktrees, plus Android.
+These are worktrees of the existing project Git stores. All 468 pending source
+paths observed in sixteen dirty worktrees now have exact local Git checkpoints.
+Saving work in a checkpoint does not integrate, publish or install it.
+
+| Repository | Verified branch and publication state |
+| --- | --- |
+| Client | Implementation head `b929bd5` is 23 commits ahead of live public `ba6324b`. This documentation commit adds one further local commit. The opened checkout is still clean `07f0a01` on `fix/share-t3-o3-label`; the integration checkout is `/var/tmp/o3-build/o3code-nightly`. |
+| Server | Primary `19132bf` is clean and matches the live remote feature branch. [CI 42497001835](https://github.com/avillagran/o3-server/actions/runs/42497001835) succeeds in both modes at this exact head, including formatting, fixture policy, tests, strict Clippy, compatibility and Python checks. |
+| SDK | Auth branch `64e322be` remains clean and published; all thirteen SDK worktrees are clean. The main checkout remains `104a9abd`. |
+| Android | Clean `f3aa340`, fifteen local commits above `origin/main` at `f7888857`, with no upstream or published feature branch. No Android build or tests ran for this recheck. |
+
+The three previously identified client omissions are now integrated locally:
+T3/O3 sharing text, provider device-code copying and the last preferences page.
+A further Rust persistence omission was corrected. [Scoped proof and cache
+findings](RESTORED-CONTROLS-4367.md) distinguish two passing QML cases, actual
+four-process state-module persistence and a normal library build from the
+pending rebuilt-application and combined GUI regression.
+
+### Source preservation
+
+The initial observation found 181 pending client paths and 287 server paths.
+Eight recent paths lacked matching checkpoint blobs. They are now preserved:
+
+| Candidate | Local checkpoint | Scope |
+| --- | --- | --- |
+| GUI scoped registration, sibling and capacity source | `b5ae5d46`, `checkpoint/20261108/gui-context-sibling-capacity-4340` | All 26 GUI paths; includes the three latest fixture changes beyond `2da26d0`. No build or runtime acceptance of this new candidate. |
+| Current query-reader work | `82490289`, `refs/checkpoints/audit-20261108/force-stop-reader-current` | Five current paths, with source, selected HEAD and real index preserved. |
+| Managed native auth and linked-environment lifecycle | `fd088c83`, `checkpoint/20261109/managed-auth-native-worker-linked-source` | 156 pending source paths; includes the complete 113-file native 4367 closure. Uncompiled, inactive and unpublished. |
+| Complete Browser Status producers | `3e6a1cc1`, `refs/checkpoints/status-complete-producers-4367/20261108-source-2` | Thirteen source paths, uncompiled and unpublished. |
+
+An independent follow-up reread all 468 initial paths: bytes, size and mode
+remained identical, and all were covered by durable local checkpoint refs.
+It checked 1,395 recorded commit/path blob claims without a discrepancy.
+This is an observation of those pathspecs, not a promise that ongoing work
+cannot add new changes. Seven primary prototypes and the 148-path reload
+candidate remain separate preserved work in progress.
+
+The server's canonical birth and capture changes are now public, including
+actual ACK-before-navigation and cancellation evidence. CI at `65beeff` first
+failed thirteen tests because two synthetic CDP peers omitted session IDs.
+Head `19132bf` fixes those peers without changing production matching; a private
+twelve-reply protocol probe and the new full CI both pass. Complete Status,
+managed-auth lifecycle, GUI acceptance and the wider Nightly goal remain open.
+
+### Disk candidates and active reservations
+
+BuildCache currently allocates approximately 522.4 GB (486.5 GiB) on HOME.
+Its largest entries remain `o3-server` (221.7 GB), `o3-code` (68.2 GB) and
+`o3-desktop-next` (60.3 GB). These include active artifacts and are not removable
+space estimates. ROOT has about 2.35 GB available, HOME about 60.9 GB, and the
+AVD filesystem only 38.6 MB at observation. Cleaning HOME does not free ROOT.
+
+| Review candidate | Measured allocation | Qualification |
+| --- | ---: | --- |
+| `/home/node/BuildCache/o3-desktop-next/gui-glue-target` | 23,898,259,456 bytes | Historical compiler output; no match in the audited current GUI/primary admissions. Other-owner and historical evidence review still needed. |
+| `/home/node/BuildCache/o3-desktop-next/session-target` | 8,887,746,560 bytes | Same qualification; no current deletion or reclaim claim. |
+| 66 sibling `browser-gui-platform-*` fixture directories | 14,344,863,744 bytes from independent `du` calls | Several contain large executable/probe copies; hardlink overlap and unique evidence must be checked. Do not add this figure to parent totals. |
+| `/var/tmp/o3-build/lib-nightly-4247/target/debug/incremental` | 1,182,683,136 bytes | Old incremental output on ROOT; candidate for an ownership/input check. |
+| The two development `tmp` directories on ROOT | 35,926,085,632 bytes combined | Retained test fixtures and private container data; some directories cannot be read. Not blanket disposable temporary data. |
+
+All nineteen protected GUI/client artifact identities remain intact, including
+the current library-test executable `17cfc60b`, retained application/watch
+executables and accepted or failed Qt banks. All twenty-four server executable
+reservations remain protected. A stale shared Cargo SDK fingerprint was fixed
+earlier by a reversible sixteen-byte rename; that is a correctness fix and
+does not explain changes in free space.
+
+No cache trees, worktrees, sources, executables, snapshots, rescue data or
+Android images were removed in this recheck. No build or runtime test was
+started for the audit. Earlier cleanup scopes remain closed. The disk figures
+are allocated bytes, with possible shared extents and hardlinks, rather than
+guaranteed reclaim.
+
+Evidence:
+
+- Git observation and five-path preservation: `/var/tmp/o3-build/git-disk-current-audit-b5y7ow23/`.
+- Independent 468-path verification: `/var/tmp/o3-build/git-disk-current-independent-verify-zp0h0o2r/result.json`, SHA256 `cee546ec404455ce18cb756391fc50e9ee334ce38921fba34609b993420d68a7`.
+- GUI source checkpoint: `wayland-input-method-owner-source-review/gui-sibling-capacity-checkpoint-ceci6h8c/receipt.json`, SHA256 `b6f9e1e0fe9589a2a8b21ed64d35c85aa6085a81a04e66e2112d52c2f1d2227b`, under `/var/tmp/o3-build`.
+- GUI disk/reservation inventory: `/var/tmp/o3-build/gui-client-readonly-disk-audit-qthmxlbe/report.json`, SHA256 `ee213009546baab6f0bb311b9cda9a2984278fb8c27cf06e37680b344cd14b7a`.
+- Exact-head CI: `/var/tmp/o3-server/cdp-session-fix-publication-remj1qh2/ci1913/terminal.json`, SHA256 `ce9aa4e57da713d148ccf300ab4b15d8301e896a1389dd106df8d9d363137166`.
+
+## Prior audit: Nightly 4367
 
 The audit covers 22 client, 76 server and 13 SDK worktrees, plus the Android
 checkout. All use their original shared Git stores. Work is preserved in Git,
