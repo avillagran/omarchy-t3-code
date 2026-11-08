@@ -1,6 +1,7 @@
 # Nightly 4353 source delta
 
-The target is [v0.1.8-nightly.20261108.4353](https://github.com/pingdotgg/t3code/releases/tag/v0.1.8-nightly.20261108.4353)
+The current target is recorded in [the Nightly 4367 delta](NIGHTLY-4367-DELTA.md).
+This preceding target is [v0.1.8-nightly.20261108.4353](https://github.com/pingdotgg/t3code/releases/tag/v0.1.8-nightly.20261108.4353)
 at `3cd97a1ee230437b1bfd8441dffe65eac55be1e5`. The original checkout retains
 its 4314 HEAD; the new tag was fetched without switching it. The preceding
 [4340 ledger](NIGHTLY-4340-DELTA.md) and component receipts remain intact.
