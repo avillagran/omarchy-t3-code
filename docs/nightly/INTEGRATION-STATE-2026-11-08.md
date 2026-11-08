@@ -10,8 +10,8 @@ complete compatibility has not been accepted.
 
 | Repository | Integration state | Remaining work |
 | --- | --- | --- |
-| Client | `feat/nightly-4247-parity` contains unpublished implementation through `785c145` and audit documentation in `ce7e2ac`. Public draft PR #35 remains at `ba6324b`. Auth draft PR #36 (`eed75bb`) is also integrated locally with 21 byte-identical files. | Combined build and remaining GUI teardown acceptance; pending GUI work is not published. |
-| Server | Public `feat/nightly-4247-fresh-context` is `6be0e55`, draft PR #50. The accepted no-tab/negative source work is already integrated. | Native-launch fixture correction, complete present Status and managed-account controller/store work remain separate source candidates. CI at the public head passes default mode and fails minimal on the old JSON publication fixture. |
+| Client | `feat/nightly-4247-parity` contains implementation through `785c145` and validation records through `a38cc1e`, 16 commits ahead at recheck. Public draft PR #35 remains at `ba6324b`. Auth draft PR #36 (`eed75bb`) is also integrated locally with 21 byte-identical files. | Combined build, remaining GUI fault/quiet/burst acceptance and regression without diagnostics; pending GUI work is not published. |
+| Server | Public `feat/nightly-4247-fresh-context` is `2e1721d`, draft PR #50. It integrates the native-launch JSON fixture correction, early owned-dialog retention and oversized handoff selection. Full CI `42479617926` passes both modes at this exact head. | Complete present Status, canonical Browser birth runtime acceptance and managed-account State/RPC/full-lifecycle work remain separate source candidates. |
 | SDK | Public `feat/nightly-4340-auth-remove-method` is `64e322be`, draft PR #40, clean. Required native and Android artifact CI passed at this head. | Whole-client/server integration and actual managed-store acceptance remain separate from SDK acceptance. |
 | Android | `/home/node/Work/o3-android` is clean at `f3aa34034ed459160773eed728cc79efe52d2b6b`, on `feat/android-client-parity-20261106`, 15 commits ahead of `origin/main` (`f7888857`). A read-only remote check found no published feature branch; no upstream is configured. | The 15 commits are saved locally, but are not published on this branch or merged into `main`. No Android build or tests were run for this audit. |
 
@@ -59,6 +59,23 @@ The GUI and reload checkpoints are not ancestors of the integration branch.
 Reload still changes all 148 files with `git diff -w`; it must not be discarded
 as a formatting-only change without reviewing the actual diff. The seven
 primary prototypes and 21 GUI files also remain separate work in progress.
+
+Later local checkpoints preserve subsequent scoped work without changing the
+selected integration branch:
+
+| Candidate | Local ref | Checkpoint |
+| --- | --- | --- |
+| GUI26 lifecycle acceptance and remaining GUI source | `checkpoint/20261108/gui-context-lifecycle-4340` | `0979ee91a329` |
+| Managed controller/store/lease, including the accepted original-peer gate | `checkpoint/20261109/managed-chatgpt-native-peer` | `c627eb83d6f1` |
+| Canonical Browser birth source and strict metadata acceptance | `refs/checkpoints/status-canonical-birth-4353/20261108-source-3` | `d35b64ffda35` |
+
+The managed peer gate passes 14 original removal outcomes and six real lease
+protocol cases, including bidirectional live-owner exclusion and heartbeats.
+It does not accept RPC/subscriptions or the complete auth lifecycle. The
+canonical birth gate passes strict metadata checks in both modes, with zero
+runtime tests; it does not establish physical ACK-before-navigation behavior.
+Initial managed-catalog and Browser cancellation source changes are being
+developed after these checkpoints and need their own final snapshots and gates.
 
 ## Disk review
 
@@ -113,3 +130,25 @@ rescue data, AVD, worktree, source, evidence or archive was removed.
 The final disk audit is
 `/var/tmp/o3-build/root-cache-and-disk-audit-20261108.json`, SHA-256
 `f7ceca784376d710a606f19175aa34b71de40c534ec61127552df392e0c09282`.
+
+## Read-only recheck after subsequent implementation
+
+Remote refs still resolve to client `ba6324b`, server `2e1721d` and SDK
+`64e322be`. Android still has no published feature ref and remains 15 local
+commits ahead of `origin/main`. The SDK's primary checkout selects `main` at
+`104a9abd`; its accepted feature branch is a separate checkout/ref. These are
+Git integration facts, not evidence about the installed application.
+
+The recheck measured 62,841,335,808 available bytes on HOME (58.5 GiB),
+2,450,661,376 on ROOT (2.28 GiB), and 148,713,472 on `/mnt/avd` (142 MiB).
+Allocated directory sizes remain approximately 487 GiB for BuildCache,
+47 GiB for `/var/tmp/o3-build` and 48 GiB for `/var/tmp/o3-server`.
+The largest BuildCache directories are `o3-server` (207 GiB), `o3-code`
+(64 GiB) and `o3-desktop-next` (57 GiB); those totals are not reclaim estimates
+and do not reopen previously closed cleanup targets. The small ROOT margin
+also rules out treating retained fixtures or backup archives as disposable.
+
+No files were deleted and no cleanup archives were created by this recheck.
+The earlier cache attempts remain closed. Evidence:
+`/var/tmp/o3-build/git-disk-recheck-levnm41u/result.json`, SHA-256
+`1a2f40b27ef90beb13643ec69bf2fddcf3fcdc631cdbab219999b5806616b3f2`.
