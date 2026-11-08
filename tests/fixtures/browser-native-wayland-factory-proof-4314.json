@@ -158,5 +158,12 @@
     "cargoTomlSha256": "43e984b4552621c71fac2023c9d07a27cf7ce12e0977113e6b72a6b67ec60bad",
     "cargoLockSha256": "17a6c4b74dec4a7466d06da90edbd4c744b6b3aea7ef3f39cf312ccad5facc89",
     "statement": "Isolated audit worktree build, not a relabel of the later primary SDK combination"
+  },
+  "testOnlyFollowup": {
+    "path": "src/browser_wayland_transport.rs",
+    "beforeSha256": "cb4c699ee86e9433d428155b71adcfd0276a6b95f7b1a8322c60f9dff33d16ea",
+    "afterSha256": "7cb7f2fb2cce28f1b586c06a1cf10591129e13b7d0e3a86e7e0ac4d9d0886a47",
+    "productionPrefixSha256": "930826d66cdb670f7db962243a298a02a7f10272ec5dcef0d0d64cb9357af4f1",
+    "qualification": "Only cfg(test) Queue literal initialization changed for combined Clippy. Original test binary/physical source hashes above remain the exact executed evidence; no new execution claimed."
   }
 }

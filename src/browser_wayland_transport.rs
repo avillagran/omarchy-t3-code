@@ -374,10 +374,12 @@ mod tests {
             .set_read_timeout(Some(std::time::Duration::from_secs(2)))
             .unwrap();
         let descriptor = std::fs::File::open("/dev/null").unwrap();
-        let mut outbound = Queue::default();
-        outbound.bytes = 4;
-        outbound.allocated = 4;
-        outbound.rights = 1;
+        let mut outbound = Queue {
+            bytes: 4,
+            allocated: 4,
+            rights: 1,
+            ..Default::default()
+        };
         let copy = unsafe { libc::fcntl(descriptor.as_raw_fd(), libc::F_DUPFD_CLOEXEC, 64) };
         assert!(copy >= 0);
         outbound.chunks.push_back(Chunk {

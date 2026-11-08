@@ -77,3 +77,9 @@ metadata only through the actual frame producer and preserve native permission,
 origin, fresh-read and current-offer lifetime semantics. Packaging, full owned
 supervisor/provider integration and public selection remain gated on those
 concrete consumers. No production focus workaround or engine flag was added.
+
+A subsequent test-only follow-up initializes the same queue fields in one
+literal for combined Clippy. The production prefix is byte-identical; its hash
+and the old/new full test-source hashes are recorded separately. The original
+test artifact hashes remain the exact executed receipt, without relabeling the
+follow-up as another executed test build.
