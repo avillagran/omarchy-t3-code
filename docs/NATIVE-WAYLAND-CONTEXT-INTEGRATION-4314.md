@@ -75,10 +75,38 @@ are `wayland-context-integrated-build-2/result.json` and
 Recording-sink tests do not impersonate GUI/kernel admission. Independent native
 marshaller checks still must cover creation/framing: the first separate typed
 client/server fixture aborted in its synthetic setup and remains unaccepted.
+The corrected native-marshaller comparison below now covers that boundary.
 Actual GUI/factory acceptance
 must cover title association, capture geometry, query delivery, immediate
 retirement and default input noninterference. Child-surface transforms and
 ambiguous active contexts remain a real gap rather than a fabricated offset.
+
+## Independent native protocol comparison
+
+The third retained marshaller fixture passes using scanner-generated typed
+libwayland client/server APIs and the installed native 1.26.0 libraries. Actual
+constructors supply all nine object IDs, global names and interface versions.
+The registry's observed client proxy version is zero, while the original server
+constructor creates its resource at version one; the fixture records both.
+Earlier skipped-ID and registry-version setup failures remain retained and
+unaccepted. No request dispatch or compositor is simulated as admission.
+
+The native APIs produce four wire records: object creation/title, enter,
+text-input commit, and done. A separate std-only Rust test includes the whole
+unchanged production observer and feeds those records at twelve fragmentation
+widths, including one byte. It verifies actual surface/text identities, the
+trusted title lease, Unicode byte offsets, caret/content fields, done gating,
+one-shot draining, and lease removal. Exactly this new case runs in private
+Podman; the six previous parser cases remain filtered. Its standalone build
+passes `-D warnings`, without Cargo, runtime copies or a new Cargo target.
+
+The retained receipts are
+`/var/tmp/o3-build/wayland-native-marshaller-3-kinayh44/runtime-result.json` and
+`/var/tmp/o3-build/wayland-native-observer-1-w69onfsn/runtime-result.json`.
+Combined current-client strict all-target compilation and an actual CLI build
+also pass in `client-profile-wayland-combined-1/result.json`. These results
+validate parsing and compilation, not actual GUI context delivery, renderer
+authentication, compositor behavior or public mode activation.
 
 ## Clipboard migration is separate
 
