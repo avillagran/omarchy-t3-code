@@ -7,6 +7,7 @@ ShellRoot{
  id:root
  readonly property var bridge:Client.T3Backend
  property var waiting:[]
+ property string revokedSession:""
  FloatingWindow{id:window;visible:true;implicitWidth:820;implicitHeight:1000
   Column{width:parent.width
    Client.T3Composer{id:composer;width:parent.width;bridge:root.bridge}
@@ -95,6 +96,24 @@ ShellRoot{
     keys.keyRelease(Qt.Key_Space,Qt.ControlModifier)
     keys.mouseClick(item('nativeVoicePermissionAllow'))
     return waitFor(function(){return b.voiceState.phase==='idle'&&b.draft.text==='hello spoken spoken'},'hold release waits for prepare then stops and commits')
+   }).then(function(){
+    keys.mouseClick(item('t3ComposerDictate'))
+    return waitFor(function(){return !!b.nativeVoicePermission},'actual permission before same-ID consent replacement')
+   }).then(function(){
+    root.revokedSession=b.nativeVoicePermission.session
+    keys.mouseClick(item('nativeVoicePermissionAllow'))
+    return waitFor(function(){return b.voiceState.phase==='recording'&&b.nativeVoiceLevel===0.65},'recording before destination replacement')
+   }).then(function(){
+    var id=b.nativeVoiceChoice.id,before=b.draft.text
+    var changed={id:id,destination:{kind:'environment',environmentId:'changed-env'}}
+    b.nativeVoiceHost.receive({kind:'consent',value:{choiceJson:JSON.stringify(changed),cleanupJson:JSON.stringify(b.nativeVoiceCleanupGrant)}})
+    check(b.nativeVoiceChoice.id===id&&b.nativeVoiceChoice.destination.environmentId==='changed-env','actual notification preserves ID but changes destination')
+    check(!b.voiceController&&!b.nativeVoicePermission&&b.voiceState.phase==='idle'&&b.nativeVoiceLevel===0&&b.nativeVoicePreview===null,'whole changed grant releases actual controller and capture presentation')
+    b.nativeVoiceHost.receive({kind:'level',session:root.revokedSession,value:0.95})
+    b.nativeVoiceHost.receive({kind:'stream',session:root.revokedSession,value:{event:'text',text:{committed:'stale',tentative:'never'}}})
+    check(b.nativeVoiceLevel===0&&b.nativeVoicePreview===null&&b.draft.text===before&&b.dictation.state==='idle','revoked scope cannot deliver late level/preview/transcript or start legacy audio')
+    settings.chooseDestination('environment:env')
+    return waitFor(function(){return b.nativeVoiceChoice&&b.nativeVoiceChoice.destination.environmentId==='env'&&!settings.consentBusy},'restore explicit consent after changed destination')
    }).then(function(){
     settings.chooseDestination('off')
     return waitFor(function(){return b.nativeVoiceChoice==='off'},"explicit off")

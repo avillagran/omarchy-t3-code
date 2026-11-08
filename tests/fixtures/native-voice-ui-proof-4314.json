@@ -5,7 +5,7 @@
     "tools/test-device-panel-container": "ca6184d6f9b908e6c2ccf18db1f26807be5160547941a4c1048143c0268ffbc4",
     "tests/qml/voice-controller.qml": "23582868248aafe5279669a5beecada63ed1acd1a5fb8b71ebef7aa8cd1111b7",
     "tests/fixtures/browser-permission-worker.py": "f3ab07af35446d406e6e893e3f72100422d997e5c1867fb5f5ead3cfedeb30e5",
-    "ui/qml/T3Backend.qml": "306c3fc90795d48a3569420226abdc4b04971d2f1efd1cafbbe986842587ee38",
+    "ui/qml/T3Backend.qml": "1486afa03a101701d4ddc0c9fea63281c7f1b880ee9bdb90456bd17d27821151",
     "ui/qml/T3Composer.qml": "58c2cedab1ebeab2fe0e1e4602843f4f4d07a517d3fd62af8a2282a9d7a83a73",
     "ui/js/NativeVoice.js": "fbac3bb266c846b0e1fe5e1f11376c7ffc2ca5995284355f071e3b162e91d657",
     "ui/js/NativeVoice.sources.json": "04f076d68a7f5efae4e4e6072ae877a46d08206651715e49e3ab77ccecc5e57e",
@@ -15,7 +15,7 @@
     "ui/qml/T3Preferences.qml": "c3b7b800e72f0710bc4ce5c738cd5c8d4bca405b0532c88db9fc42ed535ae730",
     "ui/qml/qmldir": "3d713e3f6329b3fbc46612a08d8379d3e4e1ac71eb0e3d4ad79c007d6bced9bd",
     "ui/js/NativeVoiceHost.js": "e40287034a2da782a07f6faa8620e6552402db29eb8b3b14eb5f4d6f4eb20a44",
-    "tests/qml/voice-ui.qml": "f4d13a7b526132e4abd6d8c18a41a7d10a967cbeb8c6d07dd9b8989df5f0b85e",
+    "tests/qml/voice-ui.qml": "3491a21c9f0c8b119e4995d6da4fcfe35bedc5edec34981f93d0fa9ed04fb524",
     "tests/fixtures/voice-ui-worker.py": "6c4889658cfb632e42af759f56b0a1c89f739efa9cb9785451cf799cd1e63a1d"
   },
   "capture": "Synthetic in-memory recording/transcription; inert worker and local dictation helper; no microphone/network/auth/host display",
@@ -32,7 +32,8 @@
     "Readable restart guidance for uncertain shutdown and host loss",
     "Idle clears native preview and resets level to zero; subsequent preparing does not revive old text",
     "Actual Host ready(false) clears controller/permission while preserving initialized native mode, visible failure and disabled native mic",
-    "Actual Ctrl+Space after helper loss does not fall back to the legacy dictation backend"
+    "Actual Ctrl+Space after helper loss does not fall back to the legacy dictation backend",
+    "Actual same-ID consent notification with changed destination releases recording controller; old session level/stream cannot restore preview, level or transcript; explicit consent then restored"
   ],
   "previewCorrection": {
     "supersedes": "f2nixbyf preview assertion used an invented {text} shape and did not prove native streaming preview. Other checks retain their original scope.",
