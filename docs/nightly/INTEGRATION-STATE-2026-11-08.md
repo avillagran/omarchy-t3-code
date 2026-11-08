@@ -3,29 +3,37 @@
 ## Latest follow-up: current integration and storage
 
 Integration remains incomplete. The opened checkout is clean `07f0a01`; the
-client integration checkout still selects local `e280d88`, 24 commits ahead of
-the live feature branch `ba6324b`, before this documentation follow-up. The
+client integration checkout selects local `d1d7f13`, 25 commits ahead of
+the live feature branch `ba6324b`, before this final audit commit. The
 server feature branch is clean and matches live `19132bf`, and the SDK auth
 branch is clean and matches live `64e322be`. All thirteen SDK worktrees are
 clean. Android is clean `f3aa340`, fifteen commits above live `origin/main`,
 without an upstream or published feature branch.
 
-The audit observed 487 pending paths across sixteen client/server worktrees.
-Two current force-stop fixtures lacked checkpoint matches; both are now saved
-in `2aa9baaa`, at
+The final audit observed 498 pending paths across sixteen client/server
+worktrees. Two current force-stop fixtures initially lacked checkpoint matches;
+both were saved in `2aa9baaa`, at
 `refs/checkpoints/audit-20261108/force-stop-latest-dialog-boundary`, with HEAD,
-the real index and source bytes preserved. Six new palette-search source files
+the real index and source bytes preserved. Concurrent work added further
+changes; twelve current force-stop paths are now preserved in `3ed05ee6`, at
+`refs/checkpoints/audit-20261108/force-stop-concurrent-source`. All 498 paths
+from the final observation have exact local checkpoint matches. Six new palette-search source files
 are saved in `55896144`; the previous seven primary prototypes remain in
 `dd8181a`. These checkpoints preserve work without merging or publishing it.
 Ongoing implementation may add later source changes after this observation.
 
 Current separately checkpointed candidates include GUI production/failure
 diagnostics `a5f7a1ce` and its newer input-route investigation `d02fae17`, managed
-auth `6ea2a687`, and full Status producers `0e492f76`. The diagnostic GUI bank
-passes five cases, but production-bank attempts 37 and 38 fail on different
-paths. Managed auth passes strict metadata in both modes and a normal library
-build; its actual native lifecycle remains unaccepted. The first full Status
-metadata attempt fails on missing standalone upload-policy coverage. None of
+auth `6ea2a687`, and full Status producers `c9f7491f`. GUI bank 39 passes all
+five production-source cases once each, including real sibling editing and
+24 EOF replacements. Earlier production-bank attempts 37 and 38 fail on
+different paths; their causes remain unexplained and were not reproduced.
+Managed auth passes strict metadata in both modes, a normal library build,
+and two actual native-worker/actor/RPC cases with signed synthetic peers.
+Initial/settings reconciliation and full linked/background lifecycle remain
+pending. The first full Status metadata attempt fails on missing standalone
+upload-policy coverage; source 7 adds that coverage without changing production.
+None of
 these observations establishes complete product acceptance or integration.
 
 [Complete native palette search](NATIVE-SEARCH-4367.md) passes 34 original
@@ -58,6 +66,8 @@ this audit. Cleaning HOME does not replenish ROOT.
 Evidence under `/var/tmp/o3-build/`:
 
 - `git-disk-recheck-20261108-k2brkfu2/report.json`, SHA256 `d65dbebc06a670ca4a6730ab9e51ca77750a6cbaff26f0dfc0c4ef73693f00d5`. Its initial SDK/Android path selection was corrected separately in `sdk-android-correction.json`; the corrected scope has 114 worktrees including Android.
+- `git-disk-recheck-20261108-k2brkfu2/final-preservation-resolution.json`, SHA256 `bf2acb13331f9e9bd02f5e80510a8db502dadc9cf8365143e06677a0448a34d6`, resolves all 498 exact pending-path observations against their checkpoint blobs.
+- `managed-auth-native-runtime4-qz23gnec/result.json`, SHA256 `e648d0e78aaad20f0c4b9650cb01561a128988a50024b6df6c05ca24746f6ba7`, records the first actual two-case runtime pass. Previous launch attempts stopped before any container or runtime; the accepted owner reuses an immutable input base with small, verified compiler-output timestamp and membership overlays.
 - `native-palette-checkpoint-v2-594zl6du/receipt.json`, SHA256 `ed104cd06c66ba5121807db5ff088125b03f8236cd332c795f4ace38048ee715`.
 - `gui-storage-checkpoint-supplement-vn94llgb/report.json`, SHA256 `2539b5f3aeff0bd6d8143cfac20513c2261639e996c38fa56acb05298e7c3035`.
 - Force-stop receipt under `/var/tmp/o3-server/force-stop-current-preserve-x8dr8fph/receipt.json`, SHA256 `c174cb5316f76be88b47b28bc72f8c46546a117e94ec5b1a8ab3248a9df51933`.
