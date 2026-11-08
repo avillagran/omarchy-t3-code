@@ -1,5 +1,66 @@
 # Git integration and storage review — 2026-11-08
 
+## Latest observed state — 22:39 UTC
+
+The project is not fully integrated or published. The opened client checkout is
+clean at published `07f0a01`; the implementation checkout remains a separate
+worktree at `c167b72`, 31 commits ahead of the actual remote feature tip
+`ba6324b`, before this documentation commit. Its 36 pending source paths are
+preserved in local checkpoints. Browser, auth, DateTime, voice and GUI work
+remain at different integration and validation stages.
+
+The fresh inventory covers 117 worktrees: 22 client, 80 server, 14 SDK and one
+Android checkout. The final read at 22:39 UTC found 17 dirty worktrees and 565
+pending path versions, all exactly matched to reachable local checkpoint blobs.
+These are file versions across worktrees, not 565 independent features.
+
+The first read found seven new provider-cancellation versions absent from all
+290 server refs. That concurrent lane subsequently had nine pending paths. Its
+fresh, stable nine-path state is preserved in local commit `a0ee94e1573d1ff1a1a214c062cddd9989294138`,
+`refs/checkpoints/audit-20261108/current-provider-cancellation-recheck`, using
+an independent index. Source bytes, identities, HEAD and the real index were
+unchanged. The final 565-path observation supersedes the earlier 563-path cut;
+it does not claim preservation of transient versions between observations.
+
+Published SDK `39b73284` and server `1797ed0e` feature tips remain separate from
+their default branches. Android `632af9fc` is clean with 16 local commits over
+main, without an upstream or same-name remote feature branch. Local checkpoints
+protect source; they do not establish integration, publication or acceptance.
+
+Existing proof results were inspected without starting another build or test:
+the canonical client main and public SDK compile passed, and the private Qt
+sidebar scenario passed with the unchanged 16-scenario worker proof. Its shell
+metadata and supplied server-result events qualify this as UI acceptance,
+not live multi-environment server acceptance. Browser Open passed; viewport
+320×240 and DPR 2 passed before snapshot timed out. PNG and Encoder acceptance
+remain pending. Native DateTime and auth ownership source also need their
+prepared compilation/runtime gates. Full Nightly parity is incomplete.
+
+Current allocated sizes are 528.49 GB for BuildCache and 164.27 GB for the
+separate server cache. The three Git directories together allocate 139.87 MB.
+ROOT has 2.21 GB free, HOME 49.40 GB, and the separate AVD volume 38.49 MB.
+No observed free-space change is attributed to this audit.
+
+All previously reviewed candidate sizes remain unchanged: historical server
+caches in HOME total 134.27 GB; GUI groups within BuildCache total 47.13 GB;
+the three old ROOT targets total 17.37 GB. These are review candidates, not
+guaranteed physical reclaim or blanket deletion approval. No candidate appeared
+in inspectable process references; restricted `/proc` reads limit that result.
+Current targets, reserved artifacts, worktrees, source checkpoints, unique
+proof evidence, rescue data, Android images and snapshots were retained.
+
+Evidence is in `/var/tmp/o3-build/git-storage-current-review-jasvmnho/`:
+
+- `final-preservation-resolution.json`, SHA256 `19dd139628a12b363069a4fc4892817d33e94543b9c3ded0880d27b07118f9bd`: all 565 observed versions matched local checkpoints; every worktree read was stable.
+- `provider-cancellation-preservation.json`, SHA256 `e1716c31e25e5382aafbae6f4cc483f512e11deab21b8b5ec5c3d23bcdae5e4e`: exact nine-path preservation without changing the active worktree.
+- `storage.json`, SHA256 `bd9eefed8efb517fb41b9cae03e7e198433149a4a5fe0a567a3099c4e5f48a73`: fresh candidate sizes, free space and process visibility limits.
+
+The live remote and branch audit is
+`/var/tmp/o3-build/current-three-repo-audit-20261109.json`, SHA256
+`fc5e0d464f4d24acced84daa6f903f30a89678b4a0ceb7df2de3c54805a8b9f4`.
+No cleanup, feature merge, code publication, installation or new build/test/runtime
+was performed for this review. This documentation adds one local client commit.
+
 ## Current recheck — from 21:13 UTC
 
 The work is still not fully integrated or published. The fresh inventory covers
