@@ -322,7 +322,7 @@ impl Observer {
                 u32::from_ne_bytes(header[4..].try_into().map_err(|_| "native_header_shape")?);
             let size = (word >> 16) as usize;
             let opcode = (word & 65535) as u16;
-            if !(8..=MESSAGE_LIMIT).contains(&size) || size % 4 != 0 {
+            if !(8..=MESSAGE_LIMIT).contains(&size) || !size.is_multiple_of(4) {
                 return Err("native_header_shape");
             }
             if self.buffers[direction].len() - at < size {
@@ -614,7 +614,7 @@ mod tests {
         let mut bytes = (value.len() as u32 + 1).to_ne_bytes().to_vec();
         bytes.extend_from_slice(value.as_bytes());
         bytes.push(0);
-        while bytes.len() % 4 != 0 {
+        while !bytes.len().is_multiple_of(4) {
             bytes.push(0);
         }
         bytes

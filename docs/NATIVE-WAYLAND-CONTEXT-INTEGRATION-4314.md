@@ -1,8 +1,11 @@
 # Native Wayland context consumer integration
 
-This work remains source-only and unselected. The accepted factory proof does
-not cover this observer or actual GUI context delivery. No new build, runtime,
-cache or executable copy has been made for this change.
+This optional consumer remains unselected. Strict all-target compilation and
+nine focused parser/routing tests now pass on the integrated current-client
+source. They do not establish actual GUI context delivery. The earlier accepted
+factory proof does not cover this observer. Validation reuses an existing Cargo
+target and mounts the exact libtest read-only; no executable or runtime copy is
+made for these checks.
 
 ## Existing boundaries
 
@@ -63,10 +66,16 @@ services bounded GUI requests during authenticated traffic and idle transport
 ticks; state updates may refresh an already-bound frame but cannot mount another
 item. The GUI lease still checks the actual engine and worker lifetimes.
 
-This source has not been compiled or executed. Six observer cases and three
-explicit recording-sink policy tests have been prepared, not passed. Recording-
-sink tests do not impersonate GUI/kernel admission. Independent original native
-marshaller checks must cover creation/framing and actual GUI/factory acceptance
+Six observer cases and three explicit recording-sink policy tests pass in
+private rootless Podman. The first strict build found two Clippy alignment
+warnings; replacing those modulo expressions with `is_multiple_of` passed the
+next strict build without changing protocol behavior. Build and runtime receipts
+are `wayland-context-integrated-build-2/result.json` and
+`wayland-context-integrated-runtime-1/result.json` under `/var/tmp/o3-build`.
+Recording-sink tests do not impersonate GUI/kernel admission. Independent native
+marshaller checks still must cover creation/framing: the first separate typed
+client/server fixture aborted in its synthetic setup and remains unaccepted.
+Actual GUI/factory acceptance
 must cover title association, capture geometry, query delivery, immediate
 retirement and default input noninterference. Child-surface transforms and
 ambiguous active contexts remain a real gap rather than a fabricated offset.
