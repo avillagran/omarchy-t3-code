@@ -1,0 +1,20 @@
+{
+  "receipt": "/var/tmp/o3-build/voice-locales-final-ukux12qa/result.json",
+  "receiptSha256": "cd4ed0de41950652c7197727fe4b20002069b637e5e24548a5c48de4a5bbef3d",
+  "buildExit": 0,
+  "checkExit": 0,
+  "locales": 20,
+  "sourceKeys": 2257,
+  "newKeys": 70,
+  "newTranslatedValues": 1330,
+  "existingTranslationChanges": 0,
+  "outputsSha256": {
+    "translations/source.json": "e3ecddd247050236f175dcedd84f4d09e990c0be34d50c6812e3ff0eb6a7c3b8",
+    "translations/i18n.json": "e2d33b03e42eb638280a1f5c66a87406286720a262507c09c94cf7121f823cdf",
+    "translations/COVERAGE.md": "c0e4969ae596d7f39eab71d852c4333e60a5dc4a686e50c92ffab44004cf116d",
+    "translations/batch-native-voice-4314.tsv": "d4a60842220a7198b6a5a6b23ba451c9f2dea181e13ddaff696c65cb3ac2cc24",
+    "translations/batch-native-voice-runtime-4314.tsv": "ea5c37747c4a0f442239b509aa73c3456b8549b42e6c52a3f4c78a7f684d41ca",
+    "translations/batch-restored-model-and-draft.tsv": "060f3a41764ad8abfe7b223f564a5dc4ae7de3617f90760233873532914b8a35"
+  },
+  "qualification": "Original static controller errors and new controls; provider-supplied free-form messages remain data. Two prior catalog entries restored to deterministic input batches without changing their translations."
+}
