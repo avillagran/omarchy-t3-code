@@ -7,7 +7,7 @@ pub fn valid_command(command:&str)->bool{
 }
 fn closed(source:&str)->bool{
  let opening=source.trim_start().chars().take_while(|c|*c=='`'||*c=='~').collect::<String>();if opening.len()<3{return false}
- let closing=source.lines().last().unwrap_or("").trim_start_matches([' ','\t','>']);let n=closing.chars().take_while(|c|Some(*c)==opening.chars().next()).count();n>=opening.len()&&closing[n..].trim().is_empty()&&source.contains('\n')
+ let closing=source.lines().last().unwrap_or("").trim_start_matches([' ','\t','>']);let n=closing.chars().take_while(|c|opening.starts_with(*c)).count();n>=opening.len()&&closing[n..].trim().is_empty()&&source.contains('\n')
 }
 pub fn parse(markdown:&str)->Vec<Value>{
  let mut blocks=vec![];let mut current:Option<(String,String,bool)>=None;

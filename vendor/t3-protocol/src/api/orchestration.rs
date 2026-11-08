@@ -514,7 +514,7 @@ pub enum Command {
     ThreadUnpin { command_id: String, thread_id: String },
     ThreadPinReorder { command_id: String, thread_id: String, order_key: String },
     ThreadMarkUnread { command_id: String, thread_id: String },
-    ThreadVisit { command_id: String, thread_id: String, visited_at: String },
+    ThreadVisit { command_id: String, thread_id: String, visited_at: String, opened: Option<bool>, search_query: Option<String> },
     QueuedRunCancel { command_id: String, thread_id: String, run_id: String },
     QueuedRunReorder { command_id: String, thread_id: String, run_id: String, before_run_id: Option<String> },
     QueuedRunEdit { command_id: String, thread_id: String, run_id: String, text: String, attachments: Vec<Value>, context: Option<Value> },
@@ -816,9 +816,14 @@ impl Command {
                 v
             }
             Self::ThreadMarkUnread { command_id, thread_id } => simple("thread.mark-unread", command_id, thread_id)?,
-            Self::ThreadVisit { command_id, thread_id, visited_at } => {
+            Self::ThreadVisit { command_id, thread_id, visited_at, opened, search_query } => {
                 let mut v = simple("thread.visit", command_id, thread_id)?;
                 v["visitedAt"] = json!(timestamp("visitedAt", visited_at)?);
+                if let Some(opened) = opened { v["opened"] = json!(opened); }
+                if let Some(query) = search_query {
+                    if query.encode_utf16().count() > 200 { return Err(ids::invalid("searchQuery")); }
+                    v["searchQuery"] = json!(query);
+                }
                 v
             }
             Self::QueuedRunCancel { command_id, thread_id, run_id } => {
@@ -1030,7 +1035,20 @@ impl Command {
             "thread.unpin" => Self::ThreadUnpin { command_id: c, thread_id: r.req_str("threadId")? },
             "thread.pin.reorder" => Self::ThreadPinReorder { command_id: c, thread_id: r.req_str("threadId")?, order_key: r.req_str("orderKey")? },
             "thread.mark-unread" => Self::ThreadMarkUnread { command_id: c, thread_id: r.req_str("threadId")? },
-            "thread.visit" => Self::ThreadVisit { command_id: c, thread_id: r.req_str("threadId")?, visited_at: r.req_str("visitedAt")? },
+            "thread.visit" => {
+                // The upstream optional fields accept absence, not explicit null.
+                let opened = match r.raw("opened") {
+                    None => None,
+                    Some(Value::Bool(value)) => Some(*value),
+                    Some(_) => return Err(ids::invalid("opened")),
+                };
+                let search_query = match r.raw("searchQuery") {
+                    None => None,
+                    Some(Value::String(value)) => Some(value.clone()),
+                    Some(_) => return Err(ids::invalid("searchQuery")),
+                };
+                Self::ThreadVisit { command_id: c, thread_id: r.req_str("threadId")?, visited_at: r.req_str("visitedAt")?, opened, search_query }
+            },
             "queued-run.cancel" => Self::QueuedRunCancel { command_id: c, thread_id: r.req_str("threadId")?, run_id: r.req_str("runId")? },
             "queued-run.reorder" => Self::QueuedRunReorder {
                 command_id: c,

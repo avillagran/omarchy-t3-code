@@ -367,7 +367,7 @@ mod tests {
         packet.extend_from_slice(&[0, 0, 0, 1, 0x65]);
         assert_eq!(parse_semu(&packet), Some((true, &[0, 0, 0, 1, 0x65][..])));
         packet[5] = 0;
-        assert_eq!(parse_semu(&packet).unwrap().0, false);
+        assert!(!parse_semu(&packet).unwrap().0);
         assert!(parse_semu(b"nope").is_none());
     }
     #[test]

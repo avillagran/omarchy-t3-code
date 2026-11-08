@@ -129,7 +129,8 @@ pub const FILTER_OPTIONS: Function = api_fn! {
  name: "pullRequests.filterOptions", module: "pullRequests", tag: Some("pullRequests.filterOptions"),
  kind: Read, scope: Fixed("orchestration:read"),
  args: [(kind, Enum(&["labels","authors"]), required),(projectId, Id, optional),(projectIds, Array, optional),(host, Text, optional),(query, Text, optional)],
- payload: |a| { if let Some(list)=a.array("projectIds")? {if list.len()>100{return Err("invalid_project_ids".into())} for id in list {ids::id("projectId",id.as_str().ok_or("invalid_project_id")?)?;}} if a.str("query")?.is_some_and(|q|q.encode_utf16().count()>100||q.trim().is_empty()){return Err("invalid_query".into())} Ok(a.all().clone()) },
+ payload: |a| { if let Some(list)=a.array("projectIds")? {if list.len()>100{return Err("invalid_project_ids".into())} for id in list {ids::id("projectId",id.as_str().ok_or("invalid_project_id")?)?;}}
+ if a.str("query")?.is_some_and(|q|q.encode_utf16().count()>100||q.trim().is_empty()){return Err("invalid_query".into())} Ok(a.all().clone()) },
 };
 pub const FUNCTIONS: &[Function] = &[
     CHANGE_BREAKDOWN, FILTER_OPTIONS,

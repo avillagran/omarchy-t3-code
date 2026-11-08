@@ -997,3 +997,13 @@ used for the Android/event extension. Device/UI validation remains consumer work
 [MIT License](LICENSE). Independent community project; not an official T3 SDK.
 
 Terminal context/output Kotlin/JNI helpers, read-only observation and reconnect/chunk policy: [docs/TERMINAL.md](docs/TERMINAL.md).
+
+### Thread open history
+
+`Command::ThreadVisit` preserves the optional `opened` and `search_query` fields
+from the nightly 4367 `thread.visit` contract. Omitting both produces the legacy
+watermark-only payload. `search_query` remains unmodified and is bounded to 200
+UTF-16 units, including blank strings; servers fold and store their own picked
+query. Explicit null is invalid for either optional field. The existing generic
+`orchestration.dispatchCommand` Kotlin/JNI binding carries this command object
+unchanged, so its generated function signature does not change.

@@ -46,12 +46,9 @@ pub fn envelope(page: &Value, thread: &str) -> Result<Value, String> {
         if !local {
             native["id"] = json!(format!("{source}/{id}"));
         }
-        match item["type"].as_str() {
-            Some("user_message" | "assistant_message") => {
-                let message_id = item["messageId"].as_str().ok_or("malformed_history")?;
-                messages.push(json!({"id":if local {message_id.to_string()} else {format!("{source}/{message_id}")},"role":if item["type"]=="user_message" {"user"} else {"assistant"},"text":item["text"],"attachments":item["attachments"].as_array().cloned().unwrap_or_default(),"createdAt":time,"streaming":false}));
-            }
-            _ => {}
+        if let Some("user_message" | "assistant_message") = item["type"].as_str() {
+            let message_id = item["messageId"].as_str().ok_or("malformed_history")?;
+            messages.push(json!({"id":if local {message_id.to_string()} else {format!("{source}/{message_id}")},"role":if item["type"]=="user_message" {"user"} else {"assistant"},"text":item["text"],"attachments":item["attachments"].as_array().cloned().unwrap_or_default(),"createdAt":time,"streaming":false}));
         }
         items.push(native);
     }
@@ -59,6 +56,14 @@ pub fn envelope(page: &Value, thread: &str) -> Result<Value, String> {
         json!({"projection":{"thread":{"id":thread},"messages":messages,"turnItems":items},"historyCursor":page["nextCursor"],"hasMoreHistory":page["hasMoreHistory"]}),
     )
 }
+impl crate::Connection {
+    /// Authenticated bounded history read, with compact ids expanded by transport.
+    pub fn history_page(&self,thread:&str,cursor:&str)->crate::Result<Value>{
+        crate::api::ids::id("threadId",thread)?;
+        self.request_json_with_limit("GET",&path(thread,cursor)?,None,true,8*1024*1024)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,13 +87,5 @@ mod tests {
         );
         assert_eq!(e["historyCursor"], "next");
         assert!(e["projection"].get("runtimeRequests").is_none());
-    }
-}
-
-impl crate::Connection {
-    /// Authenticated bounded history read, with compact ids expanded by transport.
-    pub fn history_page(&self,thread:&str,cursor:&str)->crate::Result<Value>{
-        crate::api::ids::id("threadId",thread)?;
-        self.request_json_with_limit("GET",&path(thread,cursor)?,None,true,8*1024*1024)
     }
 }

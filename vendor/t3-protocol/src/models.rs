@@ -27,7 +27,8 @@ pub fn catalog(config:&Value)->Value{
   let mp=&config["settings"]["providerModelPreferences"][id];let hidden=mp["hiddenModels"].as_array().cloned().unwrap_or_default();let order=mp["modelOrder"].as_array().cloned().unwrap_or_default();
   let mut list=vec![];
   for m in p["models"].as_array().into_iter().flatten(){
-   let slug=text(m,"slug");if models.iter().chain(list.iter()).any(|v:&Value|v["instanceId"]==id&&v["model"]==slug){continue}if slug.is_empty()||hidden.iter().any(|v|v==slug){continue}
+   let slug=text(m,"slug");if models.iter().chain(list.iter()).any(|v:&Value|v["instanceId"]==id&&v["model"]==slug){continue}
+   if slug.is_empty()||hidden.iter().any(|v|v==slug){continue}
    list.push(json!({"registryIcon":registry_icon(config,p),"instanceId":id,"providerName":p["displayName"],"driverKind":p["driver"],"model":slug,"name":format!("{} · {}",text(p,"displayName"),text(m,"name")),"displayName":m["name"],"shortName":m["shortName"],"subProvider":m["subProvider"],"isLegacy":m["isLegacy"],"badge":m["badge"],"available":ready,"descriptors":m["capabilities"]["optionDescriptors"]}));
   }
   list.sort_by_key(|m|order.iter().position(|v|v==&m["model"]).unwrap_or(usize::MAX));models.extend(list);
