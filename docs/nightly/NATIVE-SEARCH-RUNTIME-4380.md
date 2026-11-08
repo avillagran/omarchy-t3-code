@@ -54,10 +54,16 @@ carry the original matched-message find query and entry target. Existing
 Obsidian results remain a separate final extension group.
 
 Visit-source integration distinguishes local recency, server open deduplication,
-explicit palette picks and read watermarks. The typed SDK and atomic server
-open-history implementation remain in separate candidates awaiting their own
-runtime, publication and exact-pin checks. The primary SDK is not privately
-patched to make those fields appear supported.
+explicit palette picks and read watermarks. The typed SDK contract is published
+at `39b73284d27d83f8a26c836d00986b484d3c4eb5`, with native and Android CI green
+in draft [PR 41](https://github.com/avillagran/lib-t3-rust/pull/41). Its unchanged
+implementation passed 129 Rust cases, actual C ABI and canonical Kotlin/JNI.
+Primary commit `57ad64a` pins that public revision and matches all 135 canonical
+crate leaves, with no local vendor changes. The primary lockfile is unchanged.
+
+The application library and owner proofs below predate this SDK pin; the
+combined application still requires a fresh gate with the public pin. Atomic
+server open-history runtime acceptance remains separate and incomplete.
 
 ## Actual component evidence
 
@@ -71,7 +77,7 @@ No host account, display or profile was used.
 | Electron core 2 | Pass; all 34 original callbacks and 192 assertions | Complete original expectations with explicit assertion adapters, not the upstream runner |
 | Worker protocol 2 | Pass; 9 scenarios and 16 requests | Real child, ranking, actions-only filter, local open/deduplication, pick persistence, stable late results, accent-preserving find, malformed request recovery and normal reaping |
 | Packed UTF16 protocol 3 | Pass; 10 scenarios and 17 requests, actual child reaped | Includes the packed Rust-facing JSON envelope and a lone UTF16 surrogate without data loss |
-| Strict Rust and normal library | Pass; all-target metadata and normal library | Actual primary root and SDK source, both freshly compiled; no application executable or test link |
+| Strict Rust and normal library | Pass; all-target metadata and normal library | Source freeze `7d763a7e`, before the public SDK update; actual primary root and SDK both freshly compiled, no application executable or test link |
 | Compiled Rust owner | Pass; 8 private cases against actual admitted Electron | 1.4 MB request, Unicode and packed UTF16, error recovery, 50 terminal ranking waiters, two ordered opens, normal closure and a stopped child's actual timeout/reaping |
 | Qt consumers | Pending combined acceptance | The current executable was not rebuilt or installed |
 
