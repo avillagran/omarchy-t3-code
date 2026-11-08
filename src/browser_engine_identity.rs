@@ -8,6 +8,7 @@ use std::{
 pub struct Pending {
     socket: OwnedFd,
     source: OwnedFd,
+    early_main: std::sync::Mutex<Option<Engine>>,
 }
 pub struct Engine {
     pid: libc::pid_t,
@@ -68,28 +69,63 @@ impl Pending {
         }
         let source = crate::desktop_browser_ipc::duplicate_child_source(child.as_raw_fd())
             .map_err(|_| "browser_engine_identity_unavailable")?;
-        Ok(Self { socket, source })
+        Ok(Self {
+            socket,
+            source,
+            early_main: std::sync::Mutex::new(None),
+        })
     }
     pub fn source(&self) -> &OwnedFd {
         &self.source
     }
     pub fn admit(&self, renderer: u32) -> Result<Engine> {
-        self.receive(renderer, false)
+        self.receive(renderer, Some(false))
+            .map(|(_, engine)| engine)
     }
     /// Admit the actual spawned child before GTK/Ozone can need its display.
     /// The renderer reports a kernel pidfd, never a supplied engine PID label.
     pub fn admit_spawn(&self, renderer: u32) -> Result<Engine> {
-        self.receive(renderer, true)
+        let (spawn, engine) = self.receive(renderer, None)?;
+        if spawn {
+            return Ok(engine);
+        }
+        *self
+            .early_main
+            .lock()
+            .map_err(|_| "browser_engine_identity_unavailable")? = Some(engine);
+        let spawned = self.receive(renderer, Some(true))?.1;
+        let main = self
+            .early_main
+            .lock()
+            .map_err(|_| "browser_engine_identity_unavailable")?;
+        if !main
+            .as_ref()
+            .is_some_and(|main| main.pid == spawned.pid && live(main.pidfd.as_raw_fd()))
+        {
+            return Err("browser_engine_identity_unavailable".into());
+        }
+        Ok(spawned)
     }
     /// The later trusted-main addon must independently identify the same child.
     pub fn confirm(&self, renderer: u32, spawned: &Engine) -> Result<()> {
-        let confirmed = self.receive(renderer, false)?;
-        if confirmed.pid != spawned.pid || !live(spawned.pidfd.as_raw_fd()) {
+        let early = self
+            .early_main
+            .lock()
+            .map_err(|_| "browser_engine_identity_unavailable")?
+            .take();
+        let confirmed = match early {
+            Some(engine) => engine,
+            None => self.receive(renderer, Some(false))?.1,
+        };
+        if confirmed.pid != spawned.pid
+            || !live(confirmed.pidfd.as_raw_fd())
+            || !live(spawned.pidfd.as_raw_fd())
+        {
             return Err("browser_engine_identity_unavailable".into());
         }
         Ok(())
     }
-    fn receive(&self, renderer: u32, spawn: bool) -> Result<Engine> {
+    fn receive(&self, renderer: u32, expected: Option<bool>) -> Result<(bool, Engine)> {
         let mut bytes = [0_u8; 64];
         let mut data = libc::iovec {
             iov_base: bytes.as_mut_ptr().cast(),
@@ -140,13 +176,17 @@ impl Pending {
             }
         }
         let credential = credentials.ok_or("browser_engine_identity_unavailable")?;
-        let expected: &[u8] = if spawn {
-            b"o3-native-engine-spawn-v1"
+        let packet = bytes
+            .get(..count as usize)
+            .ok_or("browser_engine_identity_unavailable")?;
+        let spawn = if packet == b"o3-native-engine-spawn-v1" {
+            true
+        } else if packet == b"o3-native-engine-identity-v1" {
+            false
         } else {
-            b"o3-native-engine-identity-v1"
+            return Err("browser_engine_identity_unavailable".into());
         };
-        if count != expected.len() as isize
-            || bytes[..count as usize] != *expected
+        if expected.is_some_and(|value| value != spawn)
             || message.msg_flags & (libc::MSG_TRUNC | libc::MSG_CTRUNC) != 0
             || unknown
             || descriptors.len() != 1
@@ -182,7 +222,7 @@ impl Pending {
         {
             return Err("browser_engine_identity_unavailable".into());
         }
-        Ok(Engine { pid, pidfd })
+        Ok((spawn, Engine { pid, pidfd }))
     }
 }
 fn live(fd: i32) -> bool {
@@ -353,10 +393,22 @@ mod spawn_tests {
     }
     #[test]
     fn spawn_pidfd_precedes_independent_same_engine_confirmation() {
+        roundtrip(false);
+    }
+    #[test]
+    fn independently_identified_main_may_arrive_before_spawn_record() {
+        roundtrip(true);
+    }
+    fn roundtrip(main_first: bool) {
         let pending = Pending::new().unwrap();
         let mut barrier = [-1; 2];
         assert_eq!(
             unsafe { libc::pipe2(barrier.as_mut_ptr(), libc::O_CLOEXEC) },
+            0
+        );
+        let mut acknowledged = [-1; 2];
+        assert_eq!(
+            unsafe { libc::pipe2(acknowledged.as_mut_ptr(), libc::O_CLOEXEC) },
             0
         );
         let renderer = unsafe { libc::fork() };
@@ -392,6 +444,21 @@ mod spawn_tests {
                         libc::_exit(3);
                     }
                 }
+                if main_first {
+                    let ready = 1_u8;
+                    unsafe {
+                        libc::close(acknowledged[0]);
+                    }
+                    if unsafe { libc::write(acknowledged[1], (&ready as *const u8).cast(), 1) } != 1
+                    {
+                        unsafe {
+                            libc::_exit(7);
+                        }
+                    }
+                }
+                unsafe {
+                    libc::close(acknowledged[1]);
+                }
                 loop {
                     unsafe {
                         libc::pause();
@@ -406,6 +473,29 @@ mod spawn_tests {
             unsafe {
                 libc::close(barrier[0]);
             }
+            unsafe {
+                libc::close(acknowledged[1]);
+            }
+            if main_first {
+                let ready = 1_u8;
+                if unsafe { libc::write(barrier[1], (&ready as *const u8).cast(), 1) } != 1 {
+                    unsafe {
+                        libc::_exit(8);
+                    }
+                }
+                let mut acknowledgement = 0_u8;
+                if unsafe {
+                    libc::read(acknowledged[0], (&mut acknowledgement as *mut u8).cast(), 1)
+                } != 1
+                {
+                    unsafe {
+                        libc::_exit(9);
+                    }
+                }
+            }
+            unsafe {
+                libc::close(acknowledged[0]);
+            }
             if report_spawn(pending.source.as_raw_fd(), engine as _).is_err() {
                 unsafe {
                     libc::kill(engine, libc::SIGKILL);
@@ -413,7 +503,9 @@ mod spawn_tests {
                 }
             }
             let ready = 1_u8;
-            if unsafe { libc::write(barrier[1], (&ready as *const u8).cast(), 1) } != 1 {
+            if !main_first
+                && unsafe { libc::write(barrier[1], (&ready as *const u8).cast(), 1) } != 1
+            {
                 unsafe {
                     libc::kill(engine, libc::SIGKILL);
                     libc::_exit(6);
@@ -430,6 +522,8 @@ mod spawn_tests {
             libc::setpgid(renderer, renderer);
             libc::close(barrier[0]);
             libc::close(barrier[1]);
+            libc::close(acknowledged[0]);
+            libc::close(acknowledged[1]);
         }
         let engine = pending.admit_spawn(renderer as _).unwrap();
         assert_ne!(engine.pid(), renderer);

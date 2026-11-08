@@ -82,13 +82,18 @@ on its original endpoint. Failure kills and waits only that owned child.
 `Pending::admit_spawn` validates the renderer sender, kernel pidfd identity,
 actual child ancestry and current lifetime. `Pending::confirm` then requires
 the independent trusted-main addon identity to name that same live engine.
-The legacy single-stage `admit` API remains available. This ordering lets a
-future frontend factory authenticate early GTK/Ozone connections without
+The legacy single-stage `admit` API remains available. This ordering lets the
+internal frontend factory authenticate early GTK/Ozone connections without
 waiting for JavaScript to start. It does not authorize arbitrary connection
-peers or allow clipboard access. The new factory caller is not installed yet.
+peers or allow clipboard access. The internal Pool factory now uses this caller; public selection is not installed.
 
 `browser-engine-spawn-proof-4314.json` fences the production source and the
-private immutable Rust receipt: two actual kernel/process tests and strict
+private immutable Rust receipt: the initial two actual kernel/process tests and strict
 library Clippy passed. The senders are explicitly synthetic test processes;
 this does not claim Electron, GUI or Wayland factory acceptance. No broad
 runtime suite was collected or executed.
+
+The completed internal caller and its final three identity/seven transport plus
+actual Electron receipt are documented in `NATIVE-WAYLAND-FACTORY-4314.md`.
+The original two-test ledger remains historical evidence, not a final-source
+claim for the sender-order and lifecycle changes.

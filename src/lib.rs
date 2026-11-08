@@ -2,6 +2,8 @@ pub mod gui_clipboard;
 pub mod gui_input_context;
 pub mod browser_native_display;
 pub mod browser_engine_identity;
+mod browser_wayland;
+mod browser_wayland_transport;
 pub mod browser_automation;
 pub mod desktop_browser_ipc;
 pub mod owned_backend;

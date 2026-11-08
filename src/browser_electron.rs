@@ -67,8 +67,16 @@ pub(crate) fn run(payload: &Value, runtime: &Path, assets: &Path) -> Result<()> 
             .env("ELECTRON_ENABLE_STACK_DUMPING", "1")
             .stderr(Stdio::piped());
     }
+    let renderer = unsafe { libc::getpid() };
     unsafe {
         command.pre_exec(move || {
+            // The renderer owns the profile lock. Its actual child must not
+            // survive renderer replacement while continuing to use that profile.
+            if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL) != 0
+                || libc::getppid() != renderer
+            {
+                return Err(std::io::Error::other("browser_renderer_gone"));
+            }
             crate::desktop_browser_ipc::admit_child_source(source.as_raw_fd())?;
             if let Some(identity) = &identity {
                 crate::desktop_browser_ipc::admit_child_source(identity.as_raw_fd())?;

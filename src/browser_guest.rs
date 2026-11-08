@@ -30,6 +30,7 @@ pub struct Config {
     cache: PathBuf,
     basic_store: bool,
     native_display: Option<PathBuf>,
+    native_wayland: Option<crate::browser_wayland::Config>,
     mapped_native_host: bool,
     clipboard: Option<crate::gui_clipboard::Shared>,
 }
@@ -85,6 +86,7 @@ impl Config {
             cache: crate::xdg("XDG_CACHE_HOME", ".cache"),
             basic_store: false,
             native_display: None,
+            native_wayland: None,
             mapped_native_host: false,
             clipboard: None,
         })
@@ -107,13 +109,29 @@ impl Config {
             return Err("invalid_browser_fixture".into());
         }
         let mut owned = self.with_native_electron(runtime, assets, ":owned")?;
+        owned.native_wayland = None;
         owned.native_display = Some(x_server.into());
+        Ok(owned)
+    }
+    /// Internal opt-in: an app-private admitted compositor and authenticated
+    /// transparent frontend sockets. System clipboard migration is not enabled.
+    pub fn with_owned_native_wayland(
+        self,
+        runtime: &Path,
+        assets: &Path,
+        compositor: &Path,
+        libraries: &Path,
+    ) -> Result<Self> {
+        let mut owned = self.with_native_electron(runtime, assets, "owned-wayland")?;
+        owned.environment.remove(std::ffi::OsStr::new("DISPLAY"));
+        owned.native_display = None;
+        owned.native_wayland = Some(crate::browser_wayland::Config::new(compositor, libraries)?);
         Ok(owned)
     }
     /// Map the genuine native host only on this factory's owned display.
     /// No existing desktop display or service is adopted by this option.
     pub fn with_mapped_native_host(mut self) -> Result<Self> {
-        if self.native_display.is_none() {
+        if self.native_display.is_none() && self.native_wayland.is_none() {
             return Err("browser_owned_display_required".into());
         }
         self.mapped_native_host = true;
@@ -186,6 +204,7 @@ impl Config {
             cache: root.join("cache/omarchy-t3-code"),
             basic_store: true,
             native_display: None,
+            native_wayland: None,
             mapped_native_host: false,
             clipboard: None,
         })
@@ -311,6 +330,7 @@ impl ImportVerification {
 }
 struct Session {
     _display: Option<crate::browser_native_display::Display>,
+    _wayland: Option<crate::browser_wayland::Display>,
     _engine: Option<crate::browser_engine_identity::Engine>,
     _clipboard: Option<crate::gui_clipboard::CohortLease>,
     child: Child,
@@ -329,6 +349,13 @@ struct Session {
 }
 impl Session {
     fn send(&mut self, value: Value) -> Result<()> {
+        if self
+            ._wayland
+            .as_ref()
+            .is_some_and(|display| !display.healthy())
+        {
+            return Err("browser_wayland_host_unavailable".into());
+        }
         writeln!(self.input, "{value}").map_err(|_| "browser_runtime_closed".into())
     }
     fn stop(&mut self) -> Result<()> {
@@ -595,10 +622,17 @@ impl Pool {
             .as_ref()
             .map(|executable| crate::browser_native_display::Display::launch(executable))
             .transpose()?;
-        let identity = native_display
+        let native_wayland = self
+            .config
+            .native_wayland
             .as_ref()
-            .map(|_| crate::browser_engine_identity::Pending::new())
+            .map(crate::browser_wayland::Display::launch)
             .transpose()?;
+        let identity = if native_display.is_some() || native_wayland.is_some() {
+            Some(crate::browser_engine_identity::Pending::new()?)
+        } else {
+            None
+        };
         let identity_fd = identity
             .as_ref()
             .map(|pending| pending.source().as_raw_fd());
@@ -646,6 +680,13 @@ impl Pool {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
+        if let Some(display) = &native_wayland {
+            command
+                .env_remove("DISPLAY")
+                .env("WAYLAND_DISPLAY", display.name())
+                .env("XDG_SESSION_TYPE", "wayland")
+                .env("XDG_RUNTIME_DIR", display.runtime());
+        }
         if let Some(display) = &native_display {
             command
                 .env("DISPLAY", display.name())
@@ -681,6 +722,7 @@ impl Pool {
             .contains(&(environment.to_owned(), profile.to_owned()));
         let mut session = Session {
             _display: native_display,
+            _wayland: native_wayland,
             _engine: None,
             _clipboard: None,
             child,
@@ -708,7 +750,9 @@ impl Pool {
                 .join("storage/Cookies"),
         };
         let mut payload = json!({"environmentId":environment,"profileId":profile,"width":width,"height":height,"zoomFactor":zoom,"initializeCookieStore":initialize_cookies||!restore,"restoreSessionCookies":restore});
-        if self.config.mapped_native_host && session._display.is_some() {
+        if self.config.mapped_native_host
+            && (session._display.is_some() || session._wayland.is_some())
+        {
             payload["ownedNativeHost"] = json!(true);
         }
         if let Some(fd) = private_fd {
@@ -717,6 +761,9 @@ impl Pool {
         if let Some(fd) = identity_fd {
             payload["privateClipboardIdentityFd"] = json!(fd);
         }
+        if session._wayland.is_some() {
+            payload["privateEngineSpawn"] = json!(true);
+        }
         let payload = payload.to_string().into_bytes();
         session
             .input
@@ -724,7 +771,16 @@ impl Pool {
             .and_then(|_| session.input.write_all(&payload))
             .map_err(|_| "browser_runtime_closed")?;
         session._engine = identity
-            .map(|pending| pending.admit(session.child.id()))
+            .map(|pending| {
+                if let Some(display) = session._wayland.as_mut() {
+                    let engine = pending.admit_spawn(session.child.id())?;
+                    display.attach(&engine)?;
+                    pending.confirm(session.child.id(), &engine)?;
+                    Ok(engine)
+                } else {
+                    pending.admit(session.child.id())
+                }
+            })
             .transpose()?;
         if let (Some(gui), Some(display), Some(engine)) =
             (&self.config.clipboard, &session._display, &session._engine)
