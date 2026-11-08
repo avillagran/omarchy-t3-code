@@ -1,0 +1,552 @@
+{
+  "verifiedAtUtc": "2026-11-08T10:16:13.102259+00:00",
+  "officialReleaseUrl": "https://github.com/pingdotgg/t3code/releases/tag/v0.1.8-nightly.20261108.4353",
+  "previousReference": "a9e709f15f825cacac1b6d665fa1920c328d68b7",
+  "previousEvidenceSha256": "833a85636b405d6eb996d1fbf95f277cfdbafec081bf5535361a674df8a208ba",
+  "targetTag": "v0.1.8-nightly.20261108.4353",
+  "targetRevision": "3cd97a1ee230437b1bfd8441dffe65eac55be1e5",
+  "localOriginalCheckoutHeadUnchanged": true,
+  "footprints": [
+    {
+      "path": "apps/server/src/mcp/AcpMcpStdioBridge.test.ts",
+      "beforeSha256": "9bc5fe4140068d8c45edb36ce055239ed039029950d85f8d2246bc33d37afc0a",
+      "afterSha256": "9bc5fe4140068d8c45edb36ce055239ed039029950d85f8d2246bc33d37afc0a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/AcpMcpStdioBridge.ts",
+      "beforeSha256": "776c25e62971fd1360c5f6ed7db89c3ab4e73fd14d6c8334456dc418169223d8",
+      "afterSha256": "776c25e62971fd1360c5f6ed7db89c3ab4e73fd14d6c8334456dc418169223d8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpDeviceToolkit.test.ts",
+      "beforeSha256": "1a509eae5d6fea99993d5079aaf479f20f972ee6fb33ee0fc1bdad545aa3cc89",
+      "afterSha256": "1a509eae5d6fea99993d5079aaf479f20f972ee6fb33ee0fc1bdad545aa3cc89",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpHttpServer.test.ts",
+      "beforeSha256": "cc66ba21c845762956e388594352601f628252fbbd93d0ca1df8b137c793fb76",
+      "afterSha256": "dd6a179798a7285191b1140c986d82df579547808d0050195e191979255372cc",
+      "byteIdentical": false
+    },
+    {
+      "path": "apps/server/src/mcp/McpHttpServer.ts",
+      "beforeSha256": "db5991c125a4db32083fb6e779f8f659eeeaddcd03886d0f2e53577f006f3069",
+      "afterSha256": "c9f4d90a51d5ccc1666f9465faf78a50b628e6c6ec4892e486134960674b3add",
+      "byteIdentical": false
+    },
+    {
+      "path": "apps/server/src/mcp/McpInvocationContext.test.ts",
+      "beforeSha256": "a6f616e37a50fea35b3ea74ba46910a4db2b26849b74312c1e2bf1e38e0b3862",
+      "afterSha256": "a6f616e37a50fea35b3ea74ba46910a4db2b26849b74312c1e2bf1e38e0b3862",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpInvocationContext.ts",
+      "beforeSha256": "c0bf05105036c1e05a872219a2e548d05ba4ae1b7fc79bde581dd5dec63782f0",
+      "afterSha256": "c0bf05105036c1e05a872219a2e548d05ba4ae1b7fc79bde581dd5dec63782f0",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpSessionRegistry.test.ts",
+      "beforeSha256": "74072abc876b844a30ebe7416a27de6ea2d1437043f0c083a6cd89ae5232d2d5",
+      "afterSha256": "74072abc876b844a30ebe7416a27de6ea2d1437043f0c083a6cd89ae5232d2d5",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpSessionRegistry.testkit.ts",
+      "beforeSha256": "733740582821c7895288c788e2cf73faef2884a64cd0f5258b25a4f0f3560880",
+      "afterSha256": "733740582821c7895288c788e2cf73faef2884a64cd0f5258b25a4f0f3560880",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpSessionRegistry.ts",
+      "beforeSha256": "324094b7befdfc2cf488d95a7393948ccec55ae63fafe8c281ccd27ee89c8345",
+      "afterSha256": "324094b7befdfc2cf488d95a7393948ccec55ae63fafe8c281ccd27ee89c8345",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.race.test.ts",
+      "beforeSha256": "7417888d2bea2e9adc2d50e18cc4fb244142746b53fd8cc153abe28da021f68d",
+      "afterSha256": "7417888d2bea2e9adc2d50e18cc4fb244142746b53fd8cc153abe28da021f68d",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.test.ts",
+      "beforeSha256": "ef1b3fd9ed62be4d3e5ee63f42567c0f2abd080ad38bfd2b5fa707426bb810b4",
+      "afterSha256": "ef1b3fd9ed62be4d3e5ee63f42567c0f2abd080ad38bfd2b5fa707426bb810b4",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.testkit.ts",
+      "beforeSha256": "499d3dc5b2584a78a82dc8a551f2cbc2f3fea6b9823c31d234d25bbc6a08d666",
+      "afterSha256": "499d3dc5b2584a78a82dc8a551f2cbc2f3fea6b9823c31d234d25bbc6a08d666",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.ts",
+      "beforeSha256": "17a5a70ffa74153911e3092c4358a6e6d3dd3703d78512914434850df1250df1",
+      "afterSha256": "17a5a70ffa74153911e3092c4358a6e6d3dd3703d78512914434850df1250df1",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpService.activity.test.ts",
+      "beforeSha256": "a731d68f5263f8595106f32fdbb273076e48d6e503f385c36d66be3f13525662",
+      "afterSha256": "a731d68f5263f8595106f32fdbb273076e48d6e503f385c36d66be3f13525662",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpService.test.ts",
+      "beforeSha256": "f3e345d5826ab7e4219a1a9d26443b2e9a490ad05e1b5c0caca9cee2d8cb767a",
+      "afterSha256": "f3e345d5826ab7e4219a1a9d26443b2e9a490ad05e1b5c0caca9cee2d8cb767a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpService.ts",
+      "beforeSha256": "11a7215f6c55129a5908b5cc9189ad50458db844ccab64c7e2b71db2f7a5372a",
+      "afterSha256": "11a7215f6c55129a5908b5cc9189ad50458db844ccab64c7e2b71db2f7a5372a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpToolkit.integration.test.ts",
+      "beforeSha256": "efaa36b47fe1aa0a91fd6a0b850d7953824ef7f91841a2323fbdfbd25c7315ad",
+      "afterSha256": "efaa36b47fe1aa0a91fd6a0b850d7953824ef7f91841a2323fbdfbd25c7315ad",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/PreviewAutomationBroker.test.ts",
+      "beforeSha256": "16432343fbd7a4d22291aa031d0f82583cd694c921a7f2a0965da33c4fb60540",
+      "afterSha256": "16432343fbd7a4d22291aa031d0f82583cd694c921a7f2a0965da33c4fb60540",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/PreviewAutomationBroker.ts",
+      "beforeSha256": "25207d4e247dcae0b84d352890956ba9c300a0f728d098ca921805306643cf86",
+      "afterSha256": "25207d4e247dcae0b84d352890956ba9c300a0f728d098ca921805306643cf86",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/TaskCancelNativeSubagent.integration.test.ts",
+      "beforeSha256": "8ada7f7dfc154c0fe9449b9612757759396a1b1bff72fc7791b978b672940bac",
+      "afterSha256": "8ada7f7dfc154c0fe9449b9612757759396a1b1bff72fc7791b978b672940bac",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/TaskCancelUsageLimit.integration.test.ts",
+      "beforeSha256": "87c8863c74c0b91880099c074ab8994f777027e930f622fe4d08bb9e99f9bcca",
+      "afterSha256": "87c8863c74c0b91880099c074ab8994f777027e930f622fe4d08bb9e99f9bcca",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/ThreadMetadataMcpService.ts",
+      "beforeSha256": "2dbcfe8edc8f5232b724c69ff5a1d84cccc0325211df9b1a366905417ad887a4",
+      "afterSha256": "2dbcfe8edc8f5232b724c69ff5a1d84cccc0325211df9b1a366905417ad887a4",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/WorktreeMcpService.test.ts",
+      "beforeSha256": "43df25bf4f6f47bda0acdc0d4d82d9e43fb62d03a6d93001bf71ae257eeee921",
+      "afterSha256": "43df25bf4f6f47bda0acdc0d4d82d9e43fb62d03a6d93001bf71ae257eeee921",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/WorktreeMcpService.ts",
+      "beforeSha256": "749aa9f3e8983f9e72925482f3f3cd018a031ce7211213025ca809c6c97b0db6",
+      "afterSha256": "749aa9f3e8983f9e72925482f3f3cd018a031ce7211213025ca809c6c97b0db6",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/advertisedJsonSchema.test.ts",
+      "beforeSha256": "7ca437a236c3d1c2db8aba3c6bdc5f0f9ad7340a867c28c84a7aa43c2ba58529",
+      "afterSha256": "7ca437a236c3d1c2db8aba3c6bdc5f0f9ad7340a867c28c84a7aa43c2ba58529",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/advertisedJsonSchema.ts",
+      "beforeSha256": "9cb38df27973daa7a74f694130b3c8b2713563417801c99edd06c72aa8467dab",
+      "afterSha256": "9cb38df27973daa7a74f694130b3c8b2713563417801c99edd06c72aa8467dab",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/delegatedTaskModes.ts",
+      "beforeSha256": "041447811a67bcf62c2af83c4165572dae6dc90af51cf7e039f72b52f82b8909",
+      "afterSha256": "041447811a67bcf62c2af83c4165572dae6dc90af51cf7e039f72b52f82b8909",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/linkOrigin.test.ts",
+      "beforeSha256": "8c788ab4b05c359319c89d0baa62cf08f06c775bce17f5796643f82b1654d6e0",
+      "afterSha256": "8c788ab4b05c359319c89d0baa62cf08f06c775bce17f5796643f82b1654d6e0",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/linkOrigin.ts",
+      "beforeSha256": "bd52b6ab0ec776d53aedcc5ea84492c478b4d225153432ac015dd83be38b5796",
+      "afterSha256": "bd52b6ab0ec776d53aedcc5ea84492c478b4d225153432ac015dd83be38b5796",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/threadAccess.test.ts",
+      "beforeSha256": "fef766f130bd50e15ccddb19461b254e9e1e34f6eafa883d4b0796c01bdf6498",
+      "afterSha256": "fef766f130bd50e15ccddb19461b254e9e1e34f6eafa883d4b0796c01bdf6498",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/threadAccess.ts",
+      "beforeSha256": "a8e9d2ca932736b4826ae3b9166937dc7e57f2cab50c3c807b5db6da415a577a",
+      "afterSha256": "a8e9d2ca932736b4826ae3b9166937dc7e57f2cab50c3c807b5db6da415a577a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/attachment/handlers.ts",
+      "beforeSha256": "339673d811543493f5fe2e5b66abc928316b8b62a8d7987d2d82e58359fe57db",
+      "afterSha256": "339673d811543493f5fe2e5b66abc928316b8b62a8d7987d2d82e58359fe57db",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/attachment/input.ts",
+      "beforeSha256": "e496ad80bb4b689a605982ecbd0f3d9696a4233c6e7c56886e6cc08da38a26c2",
+      "afterSha256": "e496ad80bb4b689a605982ecbd0f3d9696a4233c6e7c56886e6cc08da38a26c2",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/attachment/tools.ts",
+      "beforeSha256": "9920324ac60af1a107384d0b72da727ba25acfc08b01513e3d9ac9249aeadc5b",
+      "afterSha256": "9920324ac60af1a107384d0b72da727ba25acfc08b01513e3d9ac9249aeadc5b",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/core.test.ts",
+      "beforeSha256": "cc9bf5796e1c1fe912266016157c178797d34f6cc983285c6dde30ec1928faca",
+      "afterSha256": "cc9bf5796e1c1fe912266016157c178797d34f6cc983285c6dde30ec1928faca",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/device/handlers.test.ts",
+      "beforeSha256": "6dd78a8a389b8900a4714b53a78f4c068db1be330498210b80723df258d01ae4",
+      "afterSha256": "6dd78a8a389b8900a4714b53a78f4c068db1be330498210b80723df258d01ae4",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/device/handlers.ts",
+      "beforeSha256": "2649ec8769ced4468b4dacd25d67c85cad2c5ccc52f3ce7dc9f2c7f9eb9a0383",
+      "afterSha256": "2649ec8769ced4468b4dacd25d67c85cad2c5ccc52f3ce7dc9f2c7f9eb9a0383",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/device/tools.ts",
+      "beforeSha256": "e7e01aec20ebc5ebccbd59c3b24ea1b77a826e361d3dcc631070fa35d79956d8",
+      "afterSha256": "e7e01aec20ebc5ebccbd59c3b24ea1b77a826e361d3dcc631070fa35d79956d8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/environment/handlers.test.ts",
+      "beforeSha256": "12022c74b53265d7c14b27ae243e3afe1d988bb5a2c334173ce656e73487c2c3",
+      "afterSha256": "12022c74b53265d7c14b27ae243e3afe1d988bb5a2c334173ce656e73487c2c3",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/environment/handlers.ts",
+      "beforeSha256": "681b19d5d97ff1ca9c18827c791de307f202f6d5fa0ea07468a0f3df6971e551",
+      "afterSha256": "681b19d5d97ff1ca9c18827c791de307f202f6d5fa0ea07468a0f3df6971e551",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/environment/tools.ts",
+      "beforeSha256": "47f8b39a2e2a346b8279ca9aa82dc62ce3b1ff63c917b1618d7239fb0450a658",
+      "afterSha256": "47f8b39a2e2a346b8279ca9aa82dc62ce3b1ff63c917b1618d7239fb0450a658",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/html/handlers.ts",
+      "beforeSha256": "6a157bbb8a8d9463ec34c37d0284550d854792bc5b24a1b8771de3f53c1e379c",
+      "afterSha256": "6a157bbb8a8d9463ec34c37d0284550d854792bc5b24a1b8771de3f53c1e379c",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/html/tools.ts",
+      "beforeSha256": "978081a0287522e0c8c4973e1c6d3ef176dc83ed171952c4e6599429d952ba76",
+      "afterSha256": "978081a0287522e0c8c4973e1c6d3ef176dc83ed171952c4e6599429d952ba76",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/orchestrator/handlers.ts",
+      "beforeSha256": "ce9941d24795e63718c13e7c33dce637ac7af8914490173ab78dd4e04b8ca70b",
+      "afterSha256": "ce9941d24795e63718c13e7c33dce637ac7af8914490173ab78dd4e04b8ca70b",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/orchestrator/tools.test.ts",
+      "beforeSha256": "073a6e29071e09f133b67b4ccc47b164c0e51f690236075daf519f1e0c6c407a",
+      "afterSha256": "073a6e29071e09f133b67b4ccc47b164c0e51f690236075daf519f1e0c6c407a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/orchestrator/tools.ts",
+      "beforeSha256": "6831a30ebed5de5f10329b7e150aff3e88e4278e6c08e56237198a4252e2f01e",
+      "afterSha256": "6831a30ebed5de5f10329b7e150aff3e88e4278e6c08e56237198a4252e2f01e",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/handlers.test.ts",
+      "beforeSha256": "3e827a34e97009a9e87bef06793be7d1af0a5e4b5ef806af0af76742fa8b0f96",
+      "afterSha256": "3e827a34e97009a9e87bef06793be7d1af0a5e4b5ef806af0af76742fa8b0f96",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/handlers.ts",
+      "beforeSha256": "72f759f56dbb9ce70db1197a489930a1c78090d86462e775c4b5feee8beae31b",
+      "afterSha256": "70415495c736e2068b8d9aa79d6531cf5d0e1f78b4418a5b1e56ec1d03807093",
+      "byteIdentical": false
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/tools.test.ts",
+      "beforeSha256": "103fbc5f9cb77b07b7c2f5f92aab6f1085d2c67397264a4281cc8dd943843330",
+      "afterSha256": "103fbc5f9cb77b07b7c2f5f92aab6f1085d2c67397264a4281cc8dd943843330",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/tools.ts",
+      "beforeSha256": "bfb5b9d6d87560e1dc3baeaae67eb21a78bc94507b94417d82c0472fe4718b9c",
+      "afterSha256": "bfb5b9d6d87560e1dc3baeaae67eb21a78bc94507b94417d82c0472fe4718b9c",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/previewControls/handlers.test.ts",
+      "beforeSha256": "4fa9854d94f8cb40c6cd60a8438099681257edc0262a5b3f0ac49482f463fcb2",
+      "afterSha256": "4fa9854d94f8cb40c6cd60a8438099681257edc0262a5b3f0ac49482f463fcb2",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/previewControls/handlers.ts",
+      "beforeSha256": "6446b43974be49411cdbc0ab40a5d53d09439be4c87b92396b2aa769ca47cdfa",
+      "afterSha256": "6446b43974be49411cdbc0ab40a5d53d09439be4c87b92396b2aa769ca47cdfa",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/previewControls/tools.ts",
+      "beforeSha256": "98ad1c1d81bbb0224279938c130eca444b1b2142507998e458d190065f47f0f8",
+      "afterSha256": "98ad1c1d81bbb0224279938c130eca444b1b2142507998e458d190065f47f0f8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/project/handlers.test.ts",
+      "beforeSha256": "d195ebc334b66d238a062a07c7c9484768b4bd9ef4d330af78b36a9efb51c99d",
+      "afterSha256": "d195ebc334b66d238a062a07c7c9484768b4bd9ef4d330af78b36a9efb51c99d",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/project/handlers.ts",
+      "beforeSha256": "0d7027332a51cf6d8e23222484daf50be263e61f8b2c665ccbe66dbdd4bb0284",
+      "afterSha256": "0d7027332a51cf6d8e23222484daf50be263e61f8b2c665ccbe66dbdd4bb0284",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/project/tools.ts",
+      "beforeSha256": "ccaba4a185d959ce0c3c0b812f23cbc5196e21dfa87349f06b15904b66bd0d6c",
+      "afterSha256": "ccaba4a185d959ce0c3c0b812f23cbc5196e21dfa87349f06b15904b66bd0d6c",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/pullRequests/handlers.test.ts",
+      "beforeSha256": "cea99b02a9298d412b67a3cf502e317c366bac888ddc4ffb5efdc5a1cc999b52",
+      "afterSha256": "cea99b02a9298d412b67a3cf502e317c366bac888ddc4ffb5efdc5a1cc999b52",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/pullRequests/handlers.ts",
+      "beforeSha256": "243ec445589b59a3a14fa68bb3b599c596c1787a5f08da553e930a7c5f3a5d91",
+      "afterSha256": "243ec445589b59a3a14fa68bb3b599c596c1787a5f08da553e930a7c5f3a5d91",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/pullRequests/tools.ts",
+      "beforeSha256": "a595d596e3a3c9d90dd7abff4ad24bae86226bd8b962021c83f42591f28ffe1b",
+      "afterSha256": "a595d596e3a3c9d90dd7abff4ad24bae86226bd8b962021c83f42591f28ffe1b",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/thread/handlers.ts",
+      "beforeSha256": "5d59fa9fdac547c69870e19f23bb02e0799203ac5bc3e60b3efcd4131e76bcb3",
+      "afterSha256": "5d59fa9fdac547c69870e19f23bb02e0799203ac5bc3e60b3efcd4131e76bcb3",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/thread/tools.ts",
+      "beforeSha256": "2197e8ededd75df3fd94d57e993f3fe405203418774cddf10738fbf5c31b2a05",
+      "afterSha256": "2197e8ededd75df3fd94d57e993f3fe405203418774cddf10738fbf5c31b2a05",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/worktree/handlers.ts",
+      "beforeSha256": "4f6638b523c7791cb1eeaa0bf41fd1cf4f82c23667a5dc6bf914aa1e3a454bc8",
+      "afterSha256": "4f6638b523c7791cb1eeaa0bf41fd1cf4f82c23667a5dc6bf914aa1e3a454bc8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/worktree/tools.ts",
+      "beforeSha256": "d480aca924808901f3695afeca614bb573b317bde90c71235002cef976bea55f",
+      "afterSha256": "d480aca924808901f3695afeca614bb573b317bde90c71235002cef976bea55f",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/preview/ServerBrowser.ts",
+      "beforeSha256": "e8b025a1c7de82ba8089c5fa7d4439ee69e1d19a74af7657a26a419a51cdfab6",
+      "afterSha256": "8d9608a2345c1a8c950dab4b0fba64ab4ec2ed89ee0ecb6d0a44c3759973420a",
+      "byteIdentical": false
+    },
+    {
+      "path": "apps/server/src/preview/ServerBrowserPage.ts",
+      "beforeSha256": "d5e1058f13b57c9f0a52f2ac68f88b656958e202a1ca81050a093bd7e8f1001b",
+      "afterSha256": "05ce05d15878ccc123310a58032dbf73f20dc7c783384d05b504ebcec8047fe0",
+      "byteIdentical": false
+    },
+    {
+      "path": "packages/contracts/src/preview.ts",
+      "beforeSha256": "d93c13bf3c0510629d61cce4249192cc083b3849d00c7e9f2c4abd70b1d4fb3d",
+      "afterSha256": "d93c13bf3c0510629d61cce4249192cc083b3849d00c7e9f2c4abd70b1d4fb3d",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/web/src/browser/BrowserProfileReporter.ts",
+      "beforeSha256": "ec8dbd094cf6bff0eb545478e57ed8b3255f80d13193a9b9141e967505112045",
+      "afterSha256": "ec8dbd094cf6bff0eb545478e57ed8b3255f80d13193a9b9141e967505112045",
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/client-runtime/src/state/serverConfigProjection.ts",
+      "beforeSha256": "9b2e59b961a8d366e3679918e8d7a49b659cd7b8a1d459787c9ce88c4bbf2662",
+      "afterSha256": "9b2e59b961a8d366e3679918e8d7a49b659cd7b8a1d459787c9ce88c4bbf2662",
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/client-runtime/src/state/presentation.ts",
+      "beforeSha256": "beac3c8a1cec697205568b9c041cbb3f41a5148b8505f9dd1aa299c8a781b6f8",
+      "afterSha256": "beac3c8a1cec697205568b9c041cbb3f41a5148b8505f9dd1aa299c8a781b6f8",
+      "byteIdentical": true
+    }
+  ],
+  "unchangedFootprintCount": 65,
+  "changedFootprintCount": 5,
+  "changedPaths": [
+    "apps/mobile/src/components/FilePreview.tsx",
+    "apps/mobile/src/components/FilePreviewModal.tsx",
+    "apps/mobile/src/features/files/ThreadFilesRouteScreen.tsx",
+    "apps/server/src/mcp/McpHttpServer.test.ts",
+    "apps/server/src/mcp/McpHttpServer.ts",
+    "apps/server/src/mcp/toolkits/preview/handlers.ts",
+    "apps/server/src/preview/ServerBrowser.ts",
+    "apps/server/src/preview/ServerBrowserPage.test.ts",
+    "apps/server/src/preview/ServerBrowserPage.ts",
+    "apps/server/src/provider/AntigravityInstallation.test.ts",
+    "apps/server/src/provider/AntigravityInstallation.ts",
+    "apps/server/src/provider/antigravityAuthSupport.test.ts",
+    "apps/server/src/provider/antigravityAuthSupport.ts",
+    "apps/server/src/storageCleanup.test.ts",
+    "apps/server/src/storageCleanup.ts",
+    "apps/web/src/components/settings/IntegrationsSettings.tsx",
+    "apps/web/src/components/ui/collapsible-section-header.tsx",
+    "apps/web/src/components/ui/sidebar.tsx",
+    "apps/web/src/index.css",
+    "packages/contracts/src/previewAutomation.ts",
+    "packages/provider-core/src/server/handoffBudget.ts",
+    "packages/provider-muse/src/server/adapter.test.ts",
+    "packages/provider-muse/src/server/adapter.ts",
+    "scripts/render-metrics.ts"
+  ],
+  "commits": [
+    {
+      "commit": "3cd97a1ee230437b1bfd8441dffe65eac55be1e5",
+      "subject": "fix(server): saved preview screenshots keep full resolution (#28255)",
+      "paths": [
+        "apps/server/src/mcp/McpHttpServer.test.ts",
+        "apps/server/src/mcp/McpHttpServer.ts",
+        "apps/server/src/mcp/toolkits/preview/handlers.ts",
+        "apps/server/src/preview/ServerBrowser.ts",
+        "apps/server/src/preview/ServerBrowserPage.test.ts",
+        "apps/server/src/preview/ServerBrowserPage.ts",
+        "packages/contracts/src/previewAutomation.ts"
+      ]
+    },
+    {
+      "commit": "e11c2fdca7d1e67b0a9ada3bdbd87314efa78557",
+      "subject": "fix(mobile): share PDFs from the Android attachment viewer (#32266)",
+      "paths": [
+        "apps/mobile/src/components/FilePreview.tsx",
+        "apps/mobile/src/components/FilePreviewModal.tsx",
+        "apps/mobile/src/features/files/ThreadFilesRouteScreen.tsx"
+      ]
+    },
+    {
+      "commit": "7b680b616f6d35fa3ba16c3dbdd6f9146b1f3a92",
+      "subject": "feat(antigravity): support agy CLI as custom binaryPath (#32503)",
+      "paths": [
+        "apps/server/src/provider/AntigravityInstallation.test.ts",
+        "apps/server/src/provider/AntigravityInstallation.ts",
+        "apps/server/src/provider/antigravityAuthSupport.test.ts",
+        "apps/server/src/provider/antigravityAuthSupport.ts"
+      ]
+    },
+    {
+      "commit": "8a84e9426d26bb50de24a8d36c262a851a3befd2",
+      "subject": "perf(server): skip oversized history during handoff selection (#23821)",
+      "paths": [
+        "packages/provider-core/src/server/handoffBudget.ts"
+      ]
+    },
+    {
+      "commit": "a1af1841ede2acc64e83b0e9c2b5efab4ab4ca34",
+      "subject": "fix(scripts): report:renders starts on Windows without a vp shim (#32777)",
+      "paths": [
+        "scripts/render-metrics.ts"
+      ]
+    },
+    {
+      "commit": "71c2d3a302092b94511eb7e6ab4e6844a66dbf22",
+      "subject": "fix(server): storage report lists project worktrees nested inside plain folders (#25883)",
+      "paths": [
+        "apps/server/src/storageCleanup.test.ts",
+        "apps/server/src/storageCleanup.ts"
+      ]
+    },
+    {
+      "commit": "28eff11d81ec687f5c090137a869d63c822b675c",
+      "subject": "fix(web): lineage phase headers truncate instead of overflowing the details card (#27582)",
+      "paths": [
+        "apps/web/src/components/ui/collapsible-section-header.tsx"
+      ]
+    },
+    {
+      "commit": "ecf7f1ab95b7df475d6d97921508f7db31f0c329",
+      "subject": "fix(web): mobile sidebar keeps its width when shelves expand (#27541)",
+      "paths": [
+        "apps/web/src/components/ui/sidebar.tsx"
+      ]
+    },
+    {
+      "commit": "f475de2f7563b66b4e96f2746718e2a06274f0f6",
+      "subject": "fix(web): device tool update buttons fit their popovers (#27030)",
+      "paths": [
+        "apps/web/src/components/settings/IntegrationsSettings.tsx"
+      ]
+    },
+    {
+      "commit": "57ded10b74ed995b5e8ad99a016ba0fb09bb6df0",
+      "subject": "fix(web): restore bold weight in rendered Markdown (#25694)",
+      "paths": [
+        "apps/web/src/index.css"
+      ]
+    },
+    {
+      "commit": "0450f854f2cf54c8cfcfe541cfb056950056172c",
+      "subject": "fix(muse): a declined /compact reports its reason and no longer wedges the thread (#28454)",
+      "paths": [
+        "packages/provider-muse/src/server/adapter.test.ts",
+        "packages/provider-muse/src/server/adapter.ts"
+      ]
+    }
+  ],
+  "qualification": "Source comparison only. Identical footprints retain only earlier qualified component evidence, not changed contracts/dependencies/callers or whole nightly acceptance. Keep all 4340 component receipts and their source snapshots. Global validated pin remains unchanged. Mobile and platform changes require explicit review."
+}

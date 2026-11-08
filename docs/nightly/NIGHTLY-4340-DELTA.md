@@ -1,5 +1,9 @@
 # Nightly 4340 source delta
 
+The newer target and its separate pending changes are recorded in
+[the Nightly 4353 delta](NIGHTLY-4353-DELTA.md). This historical component ledger
+retains its original 4340 source and proof boundaries.
+
 The target is `v0.1.8-nightly.20261107.4340` at
 `a9e709f15f825cacac1b6d665fa1920c328d68b7`. The original 4314 checkout
 and its accepted receipts are retained. The exact source comparison finds 70
