@@ -30,13 +30,14 @@ Actual private gates, under `/var/tmp/o3-build/`:
 
 - `primary-search-mount-4380-compile-iyfzgrxm/output/result.json`, SHA256 `10af0b50fbd3f077c25d8e347409f1e8cdee689eda0d3c76ed37b6db2a9e070a`: strict all-target metadata, normal library and canonical `src/main.rs` example pass. The unchanged public SDK is reused from the previously verified actual graph; no SDK cache markers move. Only two aliases of the earlier terminal, accepted example are relinked; 27 other reservations remain intact.
 - `primary-search-mount-4380-runtime-r3y3ep88/output/result.json`, SHA256 `5cf0c5ed345294f0f3470709155bf3a60ae9c85e6cc9392e18707fe0acb516ee`: current worker 17 scenarios / 35 requests pass; a RAM-only fixture linked to the actual production library verifies shared ownership, replacement, release, shell precedence, cuts, removals and atomic malformed-input refusal; real canonical-client Sidebar and existing command-palette Qt cases pass with private Wayland. All 406 emitted graph files and 29 reserved aliases remain unchanged.
+- `primary-thread-search-rpc-4380-_y3vqx9h/output/result.json`, SHA256 `f65648152002d65c003d94541720eb72ca0de8d94cec05cb9ca8bc108a6bc26a`: the current production search and SDK contact three private WebSocket protocol peers. A fast partial mounts before it releases the slow peer's barrier; an unsupported peer fails independently; final rows follow environment order. Exact older-title scope payloads and consumer-only mount/release pass, with all peer threads joined. The private RAM fixture is checked in as `tests/fixtures/thread-search-rpc.rs`; it does not implement or validate the server's search SQL.
 
 The Qt cases cover flat project search, partial/late result display, keyed Enter
 selection and find, Unicode admission, clipping, actions, recent threads,
 settings, message matches and closing the palette. Their synthetic metadata and
 supplied server-result events do not prove live server search or reconnection.
 
-Remaining search work includes real multi-environment RPC acceptance, shared
+Remaining search work includes original-server search acceptance, shared
 query/cache and scoped cached-row behavior, complete submenu/action coverage,
 and lossless QML-to-server transport when the 200-code-unit clip leaves a lone
 surrogate. The packed V8 bridge already preserves that value; the separate
