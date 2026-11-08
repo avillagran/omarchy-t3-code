@@ -8,7 +8,7 @@ require(addon).admit(fd,expectedParent);
 const net=require('node:net');
 const crypto=require('node:crypto');
 const {ConsentStorage}=require('./consent-storage.cjs');
-const {create}=require('./native-consent.cjs');
+const {create,decodeSpeech,cloudSpeechMessage}=require('./native-consent.cjs');
 const socket=new net.Socket({fd,readable:true,writable:true});
 const MAX_PACKET=32*1024*1024,MAX_HANDLES=256;
 let closed=false,buffer=Buffer.alloc(0),lastId=0;
@@ -19,7 +19,7 @@ const window={
  removeEventListener(type,callback){listeners.get(type)?.delete(callback);},
  dispatchEvent(event){for(const callback of listeners.get(event.type)??[])callback(event);return true;}
 };
-const storage=new ConsentStorage(directory,()=>{try{window.dispatchEvent({type:'storage',key:null});send({type:'changed'});}catch{finish(false);}});
+const storage=new ConsentStorage(directory,()=>{try{window.dispatchEvent({type:'storage',key:null});send({type:'changed',...snapshot()});}catch{finish(false);}});
 window.localStorage=storage;
 const consent=create({window,CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},console:{error(){/* Never log a destination or corrupt storage body. */}}});
 const bindings=new Map(),acknowledgements=new Map();
@@ -32,6 +32,12 @@ function command(packet){
  const base=['id','op'];let result={};
  switch(packet.op){
   case 'read':exact(packet,base);result=snapshot();break;
+  case 'decode-speech':exact(packet,[...base,'kind','valueJson']);
+   if(!['project-context','preferences','status','options','postprocess','postprocess-request','keys','models','result'].includes(packet.kind)||typeof packet.valueJson!=='string')throw Error('Invalid speech codec request');
+   result=decodeSpeech(packet.kind,packet.valueJson);break;
+  case 'cloud-message':exact(packet,[...base,'provider','reason']);
+   if(!['openai','xai','openrouter'].includes(packet.provider)||!['missing-key','key-changed','unreadable-key','rejected-key','rate-limit','model-unavailable','unavailable'].includes(packet.reason))throw Error('Invalid cloud message');
+   result={message:cloudSpeechMessage(packet.provider,packet.reason)};break;
   case 'choose-audio':exact(packet,[...base,'destinationJson']);consent.chooseAudioDestination(innerString(packet.destinationJson));result=snapshot();break;
   case 'choose-cleanup':exact(packet,[...base,'enabled']);if(typeof packet.enabled!=='boolean')throw Error('Invalid cleanup choice');consent.chooseTranscriptCleanup(packet.enabled);result=snapshot();break;
   case 'pending-cloud':exact(packet,[...base,'destinationJson']);result={acknowledgement:opaque(acknowledgements,consent.pendingCloudAudioChoice(innerString(packet.destinationJson))),...snapshot()};break;
@@ -45,6 +51,11 @@ function command(packet){
    result={binding:opaque(bindings,check),destinationJson:JSON.stringify(destination)};
   }break;
   case 'check':exact(packet,[...base,'binding']);result={allowed:typeof packet.binding==='string'&&bindings.has(packet.binding)&&bindings.get(packet.binding)()===true};break;
+  case 'check-cleanup':exact(packet,[...base,'grantJson']);{
+   const expected=innerString(packet.grantJson);
+   if(expected!==null&&typeof expected!=='string')throw Error('Invalid cleanup identity');
+   result={allowed:expected!==null&&consent.readCleanupGrant()===expected,grantJson:JSON.stringify(expected)};
+  }break;
   case 'release':exact(packet,[...base,'binding']);bindings.delete(packet.binding);break;
   case 'forget-ack':exact(packet,[...base,'acknowledgement']);acknowledgements.delete(packet.acknowledgement);break;
   case 'close':exact(packet,base);send({type:'result',id:packet.id,ok:true});finish(true);return;

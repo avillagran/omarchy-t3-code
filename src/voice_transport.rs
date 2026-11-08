@@ -110,6 +110,31 @@ impl BoundSpeech {
             client: draft.connection(true)?.cancellable_speech()?,
         }))
     }
+    /// Optional cleanup must match the identity captured with recording options.
+    pub fn bind_cleanup_expected(
+        &self,
+        draft: &Environment,
+        draft_owner: &str,
+        grant_json: &str,
+    ) -> crate::Result<Option<BoundCleanup>> {
+        if !self.grant.is_current() {
+            return Err("voice_consent_revoked".into());
+        }
+        let Some(cleanup) = self
+            .grant
+            .cleanup_grant_expected(grant_json)
+            .map_err(|_| "voice_cleanup_unavailable")?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(BoundCleanup {
+            audio: self.grant.clone(),
+            cleanup,
+            draft_owner: draft_owner.into(),
+            draft_environment: draft.id.clone(),
+            client: draft.connection(true)?.cancellable_speech()?,
+        }))
+    }
     /// Current draft/recording ownership and the original grant are independent
     /// requirements. No stored boolean or selected UI environment grants audio.
     pub(crate) fn current(&self, owner: &impl Fn() -> bool) -> bool {

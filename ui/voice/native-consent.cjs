@@ -559,6 +559,73 @@ function isBoolean(input) {
 	return typeof input === "boolean";
 }
 /**
+* Checks whether a value is a `symbol`.
+*
+* **When to use**
+*
+* Use when you need a `Predicate` guard to narrow an `unknown` value to a
+* symbol.
+*
+* **Details**
+*
+* Uses `typeof input === "symbol"`.
+*
+* **Example** (Guarding symbols)
+*
+* ```ts import.meta.vitest
+* import { Predicate } from "effect"
+*
+* const data: unknown = Symbol.for("id")
+*
+* if (Predicate.isSymbol(data)) {
+*   data.description // => "id"
+* }
+* ```
+*
+* @see {@link isPropertyKey}
+* @stability stable
+* @category guards
+* @since 2.0.0
+*/
+function isSymbol(input) {
+	return typeof input === "symbol";
+}
+/**
+* Checks whether a value is a valid `PropertyKey` (string, number, or symbol).
+*
+* **When to use**
+*
+* Use when you need a `Predicate` guard for unknown property keys before
+* indexing.
+*
+* **Details**
+*
+* Uses `isString`, `isNumber`, and `isSymbol`.
+*
+* **Example** (Guarding property keys)
+*
+* ```ts import.meta.vitest
+* import { Predicate } from "effect"
+*
+* const key: unknown = "name"
+* const obj: Record<PropertyKey, unknown> = { name: "Ada" }
+*
+* if (Predicate.isPropertyKey(key) && key in obj) {
+*   obj[key] // => "Ada"
+* }
+* ```
+*
+* @see {@link isString}
+* @see {@link isNumber}
+* @see {@link isSymbol}
+* @stability stable
+* @category guards
+* @since 4.0.0
+*/
+function isPropertyKey(u) {
+	return isString$1(u) || isNumber(u) || isSymbol(u);
+}
+/**
 * Checks whether a value is a `function`.
 *
 * **When to use**
@@ -589,6 +656,36 @@ function isBoolean(input) {
 */
 function isFunction(input) {
 	return typeof input === "function";
+}
+/**
+* Checks whether a value is not `undefined`.
+*
+* **When to use**
+*
+* Use when you need a `Predicate` refinement that filters out `undefined`
+* while preserving other falsy values.
+*
+* **Details**
+*
+* Returns a refinement that excludes `undefined`.
+*
+* **Example** (Filtering undefined values)
+*
+* ```ts import.meta.vitest
+* import { Predicate } from "effect"
+*
+* const values = [1, undefined, 2]
+* const defined = values.filter(Predicate.isNotUndefined) // => [1, 2]
+* ```
+*
+* @see {@link isUndefined}
+* @see {@link isNotNullish}
+* @stability stable
+* @category guards
+* @since 2.0.0
+*/
+function isNotUndefined(input) {
+	return input !== void 0;
 }
 /**
 * Checks whether a value is not `null` and not `undefined`.
@@ -2853,6 +2950,97 @@ const none = () => none$1;
 * @since 2.0.0
 */
 const some = some$1;
+/**
+* Checks whether an `Option` is `None` (absent).
+*
+* **When to use**
+*
+* Use when you need to branch on an absent `Option` before accessing `.value`.
+*
+* **Details**
+*
+* - Acts as a type guard, narrowing to `None<A>`
+*
+* **Example** (Checking for None)
+*
+* ```ts import.meta.vitest
+* import { Option } from "effect"
+*
+* Option.isNone(Option.some(1)) // => false
+* Option.isNone(Option.none()) // => true
+* ```
+*
+* @see {@link isSome} for the opposite check.
+*
+* @stability stable
+* @category guards
+* @since 2.0.0
+*/
+const isNone = isNone$1;
+/**
+* Checks whether an `Option` contains a value (`Some`).
+*
+* **When to use**
+*
+* Use when you need to branch on a present `Option` before accessing `.value`.
+*
+* **Details**
+*
+* - Acts as a type guard, narrowing to `Some<A>`
+*
+* **Example** (Checking for Some)
+*
+* ```ts import.meta.vitest
+* import { Option } from "effect"
+*
+* Option.isSome(Option.some(1)) // => true
+* Option.isSome(Option.none()) // => false
+* ```
+*
+* @see {@link isNone} for the opposite check.
+*
+* @stability stable
+* @category guards
+* @since 2.0.0
+*/
+const isSome = isSome$1;
+/**
+* Filters an `Option` using a predicate. Returns `None` if the predicate is
+* not satisfied or the input is `None`.
+*
+* **When to use**
+*
+* Use when you need to discard an `Option`'s present value when it does not
+* meet a condition, while narrowing the type via a refinement predicate.
+*
+* **Details**
+*
+* - `None` → `None`
+* - `Some` where `predicate(value)` is `true` → `Some(value)`
+* - `Some` where `predicate(value)` is `false` → `None`
+* - Supports refinements for type narrowing
+*
+* **Example** (Filtering with a predicate)
+*
+* ```ts import.meta.vitest
+* import { Option } from "effect"
+*
+* const removeEmpty = (input: Option.Option<string>) =>
+*   Option.filter(input, (value) => value !== "")
+*
+* removeEmpty(Option.some("hello")) // => Option.some("hello")
+* removeEmpty(Option.some("")) // => Option.none()
+* removeEmpty(Option.none()) // => Option.none()
+* ```
+*
+* @see {@link filterMap} to transform and filter simultaneously
+* @see {@link exists} to test without filtering
+*
+* @stability stable
+* @category filtering
+* @since 2.0.0
+*/
+const filter = /*#__PURE__*/ dual(2, (self, predicate) => isNone(self) ? none() : predicate(self.value) ? some(self.value) : none());
 /**
 * Retrieves the keys of a given record as an array.
 *
@@ -6931,6 +7119,124 @@ function transformEffect$1(f) {
 	});
 }
 /**
+* Creates a getter that transforms the full `Option` — both present and absent values.
+*
+* **When to use**
+*
+* Use when you need a schema getter to handle both `Some` and `None` cases.
+*
+* **Details**
+*
+* The getter is pure and never fails. It receives the full `Option<E>` and
+* must return `Option<T>`, so it can turn a present value into absent or an
+* absent value into present.
+*
+* **Example** (Filtering out empty strings)
+*
+* ```ts import.meta.vitest
+* import { Effect, Option, SchemaGetter } from "effect"
+*
+* const skipEmpty = SchemaGetter.transformOptional<string, string>((o) =>
+*   Option.filter(o, (s) => s.length > 0)
+* )
+* Effect.runSync(SchemaGetter.run(skipEmpty, Option.some(""), {})) // => Option.none()
+* ```
+*
+* @see {@link transform} when you only need to transform present values
+* @see {@link omit} when you always want `None`
+*
+* @stability stable
+* @category transforming
+* @since 4.0.0
+*/
+function transformOptional(f) {
+	return makeGetter({
+		_tag: "TransformOptional",
+		transform: f
+	});
+}
+/**
+* Creates a getter that effectfully transforms the full `Option`.
+*
+* @stability stable
+* @category transforming
+* @since 4.0.0
+*/
+function transformOptionalEffect(f) {
+	return makeGetter({
+		_tag: "TransformOptionalEffect",
+		transform: f
+	});
+}
+/**
+* Creates a getter that always returns `None`, effectively omitting the value from output.
+*
+* **When to use**
+*
+* Use when you need a schema getter to exclude a field during decoding or
+* encoding.
+*
+* **Details**
+*
+* - Always returns `Option.None` regardless of input.
+* - Never fails.
+*
+* **Example** (Omitting a field during encoding)
+*
+* ```ts import.meta.vitest
+* import { Effect, Option, SchemaGetter } from "effect"
+*
+* const omitField = SchemaGetter.omit<string>()
+* Effect.runSync(SchemaGetter.run(omitField, Option.some("hidden"), {})) // => Option.none()
+* ```
+*
+* @see {@link transformOptional} when you want conditional omission
+* @see {@link forbidden} when you want to fail instead of silently omit
+*
+* @stability stable
+* @category filtering
+* @since 4.0.0
+*/
+function omit() {
+	return transformOptional(() => none());
+}
+/**
+* Creates a getter that replaces `undefined` values with a default.
+*
+* **When to use**
+*
+* Use when you need a schema getter to provide a fallback for a field that may
+* be `undefined` in the encoded input.
+*
+* **Details**
+*
+* - If the input is `Some(undefined)` or `None`, produces `Some(T)`.
+* - If the input is `Some(value)` where value is not `undefined`, passes it through.
+* - `defaultValue` is an `Effect` that will be executed each time a default is needed.
+*
+* **Example** (Providing a default value for an optional field)
+*
+* ```ts import.meta.vitest
+* import { Effect, Option, SchemaGetter } from "effect"
+*
+* const withZero = SchemaGetter.withDefault(Effect.succeed(0))
+* await Effect.runPromise(SchemaGetter.run(withZero, Option.some(undefined), {})) // => Option.some(0)
+* ```
+*
+* @see {@link transformOptionalEffect} for custom effectful missing-key handling
+* @see {@link required} when absent input should fail instead of using a default
+*
+* @stability stable
+* @category transforming
+* @since 4.0.0
+*/
+function withDefault$1(defaultValue) {
+	return transformOptionalEffect((o) => {
+		const filtered = filter(o, isNotUndefined);
+		return isSome(filtered) ? succeed$1(filtered) : mapEager(defaultValue, some);
+	});
+}
+/**
 * Coerces any value to a `string` using the global `String()` constructor.
 *
 * **When to use**
@@ -7605,6 +7911,30 @@ const Null$1 = class extends ASTNodeImpl {
 };
 const null_ = /*#__PURE__*/ new Null$1();
 /**
+* Constructs a {@link Undefined}.
+*
+* @stability stable
+* @category constructors
+* @since 4.0.0
+*/
+const Undefined$1 = class extends ASTNodeImpl {
+	_tag = "Undefined";
+	/** @internal */
+	getParser() {
+		return fromConst(this, void 0);
+	}
+	/** @internal */
+	toCodecJson() {
+		return replaceEncoding(this, [undefinedToNull]);
+	}
+	/** @internal */
+	getExpected() {
+		return "undefined";
+	}
+};
+const undefinedToNull = /*#__PURE__*/ new Link(null_, /*#__PURE__*/ new Transformation(/*#__PURE__*/ transform$1(() => void 0), /*#__PURE__*/ transform$1(() => null)));
+const undefined_ = /*#__PURE__*/ new Undefined$1();
+/**
 * Constructs a {@link Unknown}.
 *
 * @stability stable
@@ -7985,7 +8315,7 @@ function getIndexSignatureKeys(input, parameter, options = defaultParseOptions) 
 			default: return [];
 		}
 	}
-	return go(parameterFromPropertyKey(toEncoded(parameter)));
+	return go(parameterFromPropertyKey(toEncoded$1(parameter)));
 }
 /**
 * Constructs a {@link PropertySignature}.
@@ -8040,7 +8370,7 @@ const IndexSignature = class {
 		if (!isIndexSignatureParameter(parameter)) throw new Error(`Invalid index signature parameter ${parameter._tag}`);
 		this.parameter = parameter;
 		this.type = type;
-		if (isOptional(type) || type.encoding !== void 0 && isOptional(toEncoded(type))) throw new Error("Cannot use `Schema.optionalKey` or `Schema.optional` with index signatures. Index signatures already allow keys to be absent; use `Schema.UndefinedOr` to allow `undefined` values.");
+		if (isOptional(type) || type.encoding !== void 0 && isOptional(toEncoded$1(type))) throw new Error("Cannot use `Schema.optionalKey` or `Schema.optional` with index signatures. Index signatures already allow keys to be absent; use `Schema.UndefinedOr` to allow `undefined` values.");
 	}
 };
 /**
@@ -8570,7 +8900,7 @@ const Union$1 = class extends ASTNodeImpl {
 		if (typeof expected === "string") return expected;
 		if (this.types.length === 0) return "never";
 		const types = this.types.map((type) => {
-			const encoded = toEncoded(type);
+			const encoded = toEncoded$1(type);
 			switch (encoded._tag) {
 				case "Arrays": {
 					const literals = encoded.elements.filter(isLiteral);
@@ -8736,7 +9066,9 @@ function isFinite(annotations) {
 		...annotations
 	});
 }
-const numberToJson = /*#__PURE__*/ new Link(/*#__PURE__*/ new Union$1([/* @__PURE__ */ appendChecks(number, [/*#__PURE__*/ isFinite()]), nonFiniteLiterals]), /*#__PURE__*/ new Transformation(/*#__PURE__*/ Number$3(), /*#__PURE__*/ transform$1((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))));
+/** @internal */
+const finite = /*#__PURE__*/ appendChecks(number, [/*#__PURE__*/ isFinite()]);
+const numberToJson = /*#__PURE__*/ new Link(/*#__PURE__*/ new Union$1([finite, nonFiniteLiterals]), /*#__PURE__*/ new Transformation(/*#__PURE__*/ Number$3(), /*#__PURE__*/ transform$1((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))));
 /**
 * Creates a {@link Filter} that validates strings by running `RegExp.test`.
 *
@@ -8861,6 +9193,10 @@ function updateLastLink(encoding, f) {
 	return out === last ? encoding : append(encoding.slice(0, encoding.length - 1), out);
 }
 /** @internal */
+function applyToLastLink(f) {
+	return (ast) => ast.encoding ? replaceEncoding(ast, updateLastLink(ast.encoding, f)) : ast;
+}
+/** @internal */
 function applyToSelfOrLastLinkEncodingIdempotent(f, options) {
 	function out(ast) {
 		if (ast.encoding) {
@@ -8897,6 +9233,14 @@ function annotateKey(ast, annotations) {
 	}) : new Context(false, false, void 0, annotations));
 }
 /** @internal */
+const optionalKey$1 = /*#__PURE__*/ memoizeIdempotent((ast) => {
+	const context = ast.context ? ast.context.isOptional === false ? new Context(true, ast.context.isMutable, ast.context.constructorDefault, ast.context.annotations) : ast.context : new Context(true, false);
+	return optionalKeyLastLink(replaceContext(ast, context));
+});
+const optionalKeyLastLink = /*#__PURE__*/ applyToLastLink(optionalKey$1);
+/** @internal */
+const optional$1 = /*#__PURE__*/ memoize((ast) => optionalKey$1(new Union$1([ast, undefined_])));
+/** @internal */
 function withConstructorDefault$1(ast, defaultValue) {
 	return replaceContext(ast, ast.context ? new Context(ast.context.isOptional, ast.context.isMutable, defaultValue, ast.context.annotations) : new Context(false, false, defaultValue));
 }
@@ -8920,6 +9264,41 @@ function withConstructorDefault$1(ast, defaultValue) {
 */
 function decodeTo$1(from, to, transformation) {
 	return appendTransformation(from, transformation, to);
+}
+function parseParameter(ast) {
+	const literals = [];
+	const parameters = [];
+	function addLiteral(literal) {
+		if (!literals.includes(literal)) literals.push(literal);
+	}
+	function go(ast) {
+		switch (ast._tag) {
+			case "Literal":
+				if (isPropertyKey(ast.literal)) addLiteral(ast.literal);
+				return;
+			case "UniqueSymbol":
+				addLiteral(ast.symbol);
+				return;
+			case "Enum":
+				for (const [, value] of ast.enums) addLiteral(value);
+				return;
+			case "Never": return;
+			case "Union":
+				for (let i = 0; i < ast.types.length; i++) go(ast.types[i]);
+				return;
+			default: parameters.push(ast);
+		}
+	}
+	go(ast);
+	return {
+		literals,
+		parameters
+	};
+}
+/** @internal */
+function record(key, value) {
+	const { literals, parameters: indexSignatures } = parseParameter(key);
+	return new Objects(literals.map((literal) => new PropertySignature(literal, value)), indexSignatures.map((parameter) => new IndexSignature(parameter, value)));
 }
 /**
 * Returns `true` if the AST node represents an optional property.
@@ -9028,7 +9407,7 @@ const toType = /*#__PURE__*/ memoizeIdempotent((ast) => {
 * @category transforming
 * @since 4.0.0
 */
-const toEncoded = /*#__PURE__*/ memoizeIdempotent((ast) => {
+const toEncoded$1 = /*#__PURE__*/ memoizeIdempotent((ast) => {
 	return toType(flip(ast));
 });
 function flipEncoding(ast, encoding) {
@@ -10234,6 +10613,73 @@ function isSchema(u) {
 	return hasProperty(u, TypeId) && u[TypeId] === TypeId;
 }
 /**
+* Creates an exact optional key schema for struct fields. Unlike `optional`,
+* this creates exact optional properties (not `| undefined`) that can be
+* completely omitted from the object.
+*
+* **Example** (Creating a struct with optional key)
+*
+* ```ts import.meta.vitest
+* import { Schema } from "effect"
+*
+* const schema = Schema.Struct({
+*   name: Schema.String,
+*   age: Schema.optionalKey(Schema.Number)
+* })
+*
+* // Type: { readonly name: string; readonly age?: number }
+* type Person = typeof schema["Type"]
+* ```
+*
+* @stability stable
+* @category combinators
+* @since 4.0.0
+*/
+const optionalKey = /*#__PURE__*/ lambda((schema) => make(optionalKey$1(schema.ast), { schema }));
+/**
+* Marks a struct field as optional, allowing the key to be absent or
+* `undefined`.
+*
+* **Details**
+*
+* The resulting property may be absent or explicitly set to `undefined`.
+* Equivalent to `optionalKey(UndefinedOr(S))`.
+*
+* Use {@link optionalKey} instead if you want exact optional semantics (absent
+* only, not `undefined`).
+*
+* **Example** (Defining an optional field accepting undefined)
+*
+* ```ts import.meta.vitest
+* import { Schema } from "effect"
+*
+* const schema = Schema.Struct({
+*   name: Schema.String,
+*   age: Schema.optional(Schema.Number)
+* })
+*
+* // { readonly name: string; readonly age?: number | undefined }
+* type Person = typeof schema.Type
+* ```
+*
+* @stability stable
+* @category combinators
+* @since 3.10.0
+*/
+const optional = /*#__PURE__*/ lambda((self) => {
+	const schema = UndefinedOr(self);
+	return make(optional$1(self.ast), { schema });
+});
+/**
+* Extracts the encoded-side schema: sets `Type` to equal the `Encoded`,
+* discarding the decoding transformation path.
+*
+* @stability stable
+* @category transforming
+* @since 4.0.0
+*/
+const toEncoded = /*#__PURE__*/ lambda((schema) => make(toEncoded$1(schema.ast), { schema }));
+/**
 * Creates a schema for a single literal value (string, number, bigint, boolean, or null).
 *
 * **Example** (Defining a string literal)
@@ -10289,6 +10735,15 @@ const Unknown = /*#__PURE__*/ make(unknown);
 */
 const Null = /*#__PURE__*/ make(null_);
 /**
+* Schema for the `undefined` literal. Validates that the input is strictly `undefined`.
+*
+* @see {@link UndefinedOr} for a union with another schema.
+* @stability stable
+* @category schemas
+* @since 3.10.0
+*/
+const Undefined = /*#__PURE__*/ make(undefined_);
+/**
 * Schema for `string` values. Validates that the input is `typeof` `"string"`.
 *
 * @stability stable
@@ -10296,6 +10751,22 @@ const Null = /*#__PURE__*/ make(null_);
 * @since 4.0.0
 */
 const String$1 = /*#__PURE__*/ make(string);
+/**
+* Schema for `number` values, including `NaN`, `Infinity`, and `-Infinity`.
+*
+* **Details**
+*
+* Default JSON serializer:
+*
+* - Finite numbers are serialized as numbers.
+* - Non-finite values are serialized as strings (`"NaN"`, `"Infinity"`, `"-Infinity"`).
+*
+* @see {@link Finite} for a schema that excludes non-finite values.
+* @stability stable
+* @category schemas
+* @since 4.0.0
+*/
+const Number$1 = /*#__PURE__*/ make(number);
 /**
 * Schema for `boolean` values. Validates that the input is `typeof` `"boolean"`.
 *
@@ -10357,6 +10828,63 @@ function makeStruct(ast, fields) {
 function Struct(fields) {
 	return makeStruct(struct(fields, void 0), fields);
 }
+/**
+* Defines a record schema whose dynamic properties are selected by a key schema
+* and decoded with a value schema.
+*
+* **Details**
+*
+* For dynamic keys, the key schema selects matching own properties and the
+* value schema decodes or encodes only those selected properties. Checks on
+* string, number, symbol, and template literal key schemas narrow which
+* properties are selected.
+*
+* For transformed key schemas, property selection is based on encoded property
+* names before the selected key is decoded.
+*
+* **Gotchas**
+*
+* Dynamic records reject value schemas wrapped with {@link optionalKey} or
+* {@link optional}. Index signatures already allow keys to be absent; use
+* {@link UndefinedOr} when existing entries may contain `undefined`. Optional
+* value schemas remain valid for finite literal keys, which become declared
+* properties.
+*
+* When decoded or encoded key transformations produce the same property key,
+* sequential parsing applies selected own properties in selection order, so
+* the later selected property overwrites the earlier value. Dynamic key
+* selection always examines own properties. Finite literal and enum keys are
+* declared fields and may therefore be inherited. Output key order is not
+* guaranteed.
+*
+* **Example** (Defining a string-keyed record of numbers)
+*
+* ```ts import.meta.vitest
+* import { Schema } from "effect"
+*
+* const schema = Schema.Record(Schema.String, Schema.Number)
+*
+* // { readonly [x: string]: number }
+* type R = typeof schema.Type
+*
+* Schema.decodeUnknownSync(schema)({ a: 1, b: 2 }) // => { a: 1, b: 2 }
+* ```
+*
+* @stability stable
+* @category constructors
+* @since 3.10.0
+*/
+function Record(key, value) {
+	return make(record(key.ast, value.ast), {
+		key,
+		value
+	});
+}
+/**
+* @category constructors
+* @since 4.0.0
+*/
+const ArraySchema = /*#__PURE__*/ lambda((schema) => make(new Arrays(false, [], [schema.ast]), { value: schema }));
 function makeUnion(ast, members) {
 	return make(ast, {
 		members,
@@ -10436,6 +10964,14 @@ function Literals(literals) {
 */
 const NullOr = /*#__PURE__*/ lambda((self) => Union([self, Null]));
 /**
+* Creates a union schema of `S | undefined`.
+*
+* @stability stable
+* @category constructors
+* @since 3.10.0
+*/
+const UndefinedOr = /*#__PURE__*/ lambda((self) => Union([self, Undefined]));
+/**
 * Intersects a schema's output type with `Brand.Brand<B>` to prevent accidental
 * mixing of structurally identical types.
 *
@@ -10503,6 +11039,58 @@ function decodeTo(to, transformation) {
 */
 function withConstructorDefault(defaultValue) {
 	return (schema) => make(withConstructorDefault$1(schema.ast, defaultValue), { schema });
+}
+function toIssueEffect(self) {
+	if (effectIsExit(self) && self._tag === "Success") return self;
+	return catchCause(self, (cause) => failCauseSync(() => map(cause, (error) => error.issue)));
+}
+/**
+* Wraps the `Encoded` side with `optional` (key absent **or** `undefined`)
+* and provides a default `Encoded` value when the field is missing or
+* `undefined` during decoding.
+*
+* **When to use**
+*
+* Use when the default is expressed in the encoded representation, before the
+* field's decoding transformation runs.
+*
+* **Details**
+*
+* The default value is specified in terms of the `Encoded` type (before any
+* decoding transformations).
+*
+* Options:
+*
+* - `encodingStrategy`:
+*   - `"passthrough"` (default): include the value in the encoded output.
+*   - `"omit"`: omit the key from the encoded output.
+*
+* **Example** (Providing a default for an optional field value)
+*
+* ```ts import.meta.vitest
+* import { Effect, Schema } from "effect"
+*
+* const MySchema = Schema.Struct({
+*   name: Schema.String.pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed("anonymous")))
+* })
+*
+* Schema.decodeUnknownSync(MySchema)({ name: undefined }).name // => "anonymous"
+* ```
+*
+* @see {@link withDecodingDefaultKey} for the key-level variant (key absent only, not `undefined`)
+* @see {@link withDecodingDefaultType} for the variant where the default is a `Type` value
+* @stability stable
+* @category decoding
+* @since 3.10.0
+*/
+function withDecodingDefault(defaultValue, options) {
+	const encode = options?.encodingStrategy === "omit" ? omit() : passthrough$1();
+	return (self) => {
+		return optional(toEncoded(self)).pipe(decodeTo(self, {
+			decode: withDefault$1(toIssueEffect(defaultValue)),
+			encode
+		}));
+	};
 }
 /**
 * Combines a {@link Literal} schema with {@link withConstructorDefault}, making it ideal
@@ -10673,6 +11261,58 @@ function isPattern(regExp, annotations) {
 		...annotations
 	});
 }
+/**
+* Schema for finite numbers, rejecting `NaN`, `Infinity`, and `-Infinity`.
+*
+* @stability stable
+* @category schemas
+* @since 3.10.0
+*/
+const Finite = /*#__PURE__*/ make(finite);
+/**
+* Validates that a number is a safe integer (within the safe integer range
+* that can be exactly represented in JavaScript).
+*
+* **Details**
+*
+* JSON Schema:
+*
+* This check corresponds to `type: "integer"` with `minimum: Number.MIN_SAFE_INTEGER`
+* and `maximum: Number.MAX_SAFE_INTEGER` in JSON Schema.
+*
+* Arbitrary:
+*
+* During arbitrary generation, this applies an integer constraint.
+*
+* @stability stable
+* @category validation
+* @since 4.0.0
+*/
+function isInt(annotations) {
+	return makeFilter((n) => globalThis.Number.isSafeInteger(n), {
+		expected: "an integer",
+		representation: {
+			id: "effect/schema/isInt",
+			payload: null
+		},
+		toJsonSchema: () => ({
+			type: "integer",
+			minimum: globalThis.Number.MIN_SAFE_INTEGER,
+			maximum: globalThis.Number.MAX_SAFE_INTEGER
+		}),
+		toCode: () => ({ runtime: "Schema.isInt()" }),
+		arbitraryConstraint: { number: "integer" },
+		...annotations
+	});
+}
+/**
+* Schema for integers, rejecting `NaN`, `Infinity`, and `-Infinity`.
+*
+* @stability stable
+* @category schemas
+* @since 3.10.0
+*/
+const Int = /*#__PURE__*/ Number$1.check(/*#__PURE__*/ isInt());
 /**
 * Validates that a value has at least the specified length. Works with strings
 * and arrays.
@@ -11121,7 +11761,7 @@ const makeEntityId = (brand$1) => {
 };
 const EnvironmentId = makeEntityId("EnvironmentId");
 // native:cloud
-const CloudSpeechModelId = String$1.check(isMinLength(3), isMaxLength(160), isPattern(/^(?!openrouter\/)[a-z\d][a-z\d.-]*\/[a-z\d][a-z\d._-]*$/i));
+const CloudSpeechModelId$1 = String$1.check(isMinLength(3), isMaxLength(160), isPattern(/^(?!openrouter\/)[a-z\d][a-z\d.-]*\/[a-z\d][a-z\d._-]*$/i));
 // native:contract
 const VoiceTranscriptionDestination = Union([
 	Struct({
@@ -11137,7 +11777,7 @@ const VoiceTranscriptionDestination = Union([
 		kind: Literal("cloud"),
 		environmentId: EnvironmentId,
 		provider: Literal("openrouter"),
-		model: CloudSpeechModelId
+		model: CloudSpeechModelId$1
 	})
 ]);
 // adapter:hooks
@@ -11433,9 +12073,248 @@ function readCleanupGrant() {
 function chooseTranscriptCleanup(enabled) {
 	writeLocalStorageValue(CLEANUP_KEY, enabled ? randomUUID() : null, null, CleanupGrant);
 }
+TrimmedNonEmptyString.check(isMaxLength(4096), isPattern(/^(?![a-z][a-z\d+.-]*:\/\/)[!-~]+$/i));
+const CloudSpeechProvider = Literals([
+	"openai",
+	"xai",
+	"openrouter"
+]);
+const CLOUD_SPEECH_PROVIDER_NAMES = {
+	openai: "OpenAI",
+	xai: "xAI",
+	openrouter: "OpenRouter"
+};
+/** Servers that predate OpenRouter report only the first two providers. */
+const CloudSpeechKeys = Struct({
+	openai: Boolean$1,
+	xai: Boolean$1,
+	openrouter: optionalKey(Boolean$1)
+});
+Struct({ models: ArraySchema(Struct({
+	id: String$1.check(isMinLength(3), isMaxLength(160), isPattern(/^(?!openrouter\/)[a-z\d][a-z\d.-]*\/[a-z\d][a-z\d._-]*$/i)),
+	name: String$1
+})) });
+var CloudSpeechError = class extends TaggedError()("CloudSpeechError", {
+	provider: CloudSpeechProvider,
+	reason: Literals([
+		"missing-key",
+		"key-changed",
+		"unreadable-key",
+		"rejected-key",
+		"rate-limit",
+		"model-unavailable",
+		"unavailable"
+	])
+}, { httpApiStatus: 422 }) {
+	get message() {
+		const name = CLOUD_SPEECH_PROVIDER_NAMES[this.provider];
+		switch (this.reason) {
+			case "missing-key": return `Add your ${name} API key in Settings → Voice.`;
+			case "key-changed": return `The ${name} key changed before your recording was sent. Try again.`;
+			case "unreadable-key": return `Couldn’t read the ${name} API key. Unlock the vault on the selected environment or update the key in Settings → Voice. No audio was sent to ${name}.`;
+			case "rejected-key": return `${name} rejected this API key. Check its permissions and billing in Settings → Voice.`;
+			case "rate-limit": return `${name} reached a usage limit. Check the account's quota or try again later.`;
+			case "model-unavailable": return `The chosen model isn’t available on ${name}. Choose another model in Settings → Voice.`;
+			case "unavailable": return `${name} couldn’t transcribe this recording. Try again later.`;
+		}
+	}
+};
+const SpeechModelId = String$1.check(isMinLength(1), isMaxLength(160));
+const SpeechCustomWord = String$1.check(isMinLength(1), isMaxLength(50));
+const SpeechCustomWords = ArraySchema(Struct({
+	term: SpeechCustomWord,
+	aliases: ArraySchema(SpeechCustomWord).check(isMaxLength(8))
+})).check(isMaxLength(100), makeFilter((entries) => {
+	const keys = entries.flatMap(({ term, aliases }) => [term, ...aliases]).map((spelling) => spelling.trim().normalize("NFC").toLocaleLowerCase());
+	return keys.every(Boolean) && new Set(keys).size === keys.length ? true : "Dictionary terms and aliases must be unique and nonempty.";
+}));
+const SpeechAcceleration = Union([
+	Literal("auto"),
+	Literal("cpu"),
+	String$1.check(isPattern(/^gpu:.+/), isMaxLength(500))
+]);
+const SpeechModelUnloadTimeout = Literals([
+	"never",
+	"immediately",
+	"min_2",
+	"min_5",
+	"min_10",
+	"min_15",
+	"hour_1"
+]);
+const SpeechLanguage = String$1.check(isMinLength(2), isMaxLength(16));
+const SpeechGpuDevice = Struct({
+	id: String$1,
+	name: String$1
+});
+const EnvironmentSpeechModelState = Literals([
+	"downloadable",
+	"downloading",
+	"verifying",
+	"installed"
+]);
+const EnvironmentSpeechModels = Struct({ models: ArraySchema(Struct({
+	id: SpeechModelId,
+	name: String$1,
+	description: String$1,
+	size: Finite,
+	languages: ArraySchema(String$1),
+	accuracy: Finite,
+	speed: Finite,
+	benchmark: optionalKey(Struct({
+		accuracy: Record(String$1, Struct({
+			grade: String$1,
+			errorPercent: Finite
+		})),
+		secondsPer30s: NullOr(Finite)
+	})),
+	recommended: Boolean$1,
+	supportsStreaming: Boolean$1,
+	supportsLanguageDetection: Boolean$1,
+	supportsTranslation: Boolean$1,
+	active: Boolean$1,
+	state: EnvironmentSpeechModelState,
+	downloaded: optionalKey(Finite)
+})) });
+Struct({ modelId: SpeechModelId });
+const EnvironmentSpeechState = Literals([
+	"missing-model",
+	"ready",
+	"transcribing"
+]);
+const EnvironmentSpeechStatus = Union([Struct({
+	supported: Literal(false),
+	reason: String$1
+}), Struct({
+	supported: Literal(true),
+	state: EnvironmentSpeechState,
+	modelId: SpeechModelId,
+	model: String$1,
+	size: Finite,
+	supportsStreaming: Boolean$1,
+	supportsBufferedStreaming: optionalKey(Boolean$1),
+	supportsTranslation: Boolean$1,
+	languages: optionalKey(ArraySchema(String$1)),
+	supportsLanguageDetection: optionalKey(Boolean$1),
+	acceleration: SpeechAcceleration,
+	modelUnloadTimeout: SpeechModelUnloadTimeout,
+	gpuDevices: ArraySchema(SpeechGpuDevice)
+})]);
+const EnvironmentSpeechTranscriptionResult = Struct({ text: String$1 });
+Struct({ acceleration: SpeechAcceleration });
+Struct({ timeout: SpeechModelUnloadTimeout });
+const SpeechPostProcessingPromptSettings = Struct({
+	mode: Literals(["default", "custom"]),
+	customInstructions: String$1.check(isMaxLength(1e4))
+});
+/** A word the person says to flag a spoken correction, such as "sorry" or "err". */
+const SpeechCorrectionCue = String$1.check(isMaxLength(50));
+/** Recognition preferences that travel with every recording. */
+const SpeechTranscriptionOptions = Struct({
+	speechLanguage: SpeechLanguage,
+	speechTranslateToEnglish: Boolean$1,
+	speechCustomWords: SpeechCustomWords,
+	speechRemoveFillerWords: Boolean$1,
+	/** Preserve this cue for separately consented transcript cleanup. */
+	speechCorrectionWord: optionalKey(SpeechCorrectionCue),
+	speechSilenceFiltering: Boolean$1.pipe(withDecodingDefault(succeed$1(true)))
+});
+const SpeechPostProcessingOptions = Struct({
+	speechCustomWords: SpeechCustomWords,
+	speechPostProcessingPrompt: SpeechPostProcessingPromptSettings,
+	speechCorrectionWord: optionalKey(SpeechCorrectionCue)
+});
+const EnvironmentSpeechPostProcessingRequest = Struct({
+	options: SpeechPostProcessingOptions,
+	transcript: String$1.check(isMaxLength(1e5)),
+	draft: Struct({
+		text: String$1.check(isMaxLength(1e5)),
+		selection: Struct({
+			start: Number$1,
+			end: Number$1
+		})
+	})
+});
+Struct({ text: String$1 });
+Union([Struct({
+	type: Literal("start"),
+	options: SpeechTranscriptionOptions
+}), Struct({ type: Literal("finish") })]);
+const SpeechStreamText = Struct({
+	committed: String$1,
+	tentative: String$1
+});
+Union([
+	Struct({ type: Literal("ready") }),
+	Struct({
+		type: Literal("update"),
+		revision: Int,
+		text: NullOr(SpeechStreamText)
+	}),
+	Struct({
+		type: Literal("finished"),
+		text: String$1
+	}),
+	Struct({
+		type: Literal("error"),
+		message: String$1
+	})
+]);
+// native:preferences
+const VoiceShortcutMode = Literals([
+	"auto",
+	"hold",
+	"toggle"
+]);
+const VoicePreferencesSchema = Struct({
+	voiceMicrophone: String$1.pipe(withDecodingDefault(succeed$1(""))),
+	voiceShortcutMode: VoiceShortcutMode.pipe(withDecodingDefault(succeed$1("auto"))),
+	speechLanguage: SpeechLanguage.pipe(withDecodingDefault(succeed$1("auto"))),
+	speechTranslateToEnglish: Boolean$1.pipe(withDecodingDefault(succeed$1(false))),
+	speechCustomWords: SpeechCustomWords.pipe(withDecodingDefault(succeed$1([]))),
+	speechSilenceFiltering: Boolean$1.pipe(withDecodingDefault(succeed$1(true))),
+	speechRemoveFillerWords: Boolean$1.pipe(withDecodingDefault(succeed$1(true))),
+	speechPostProcessingPrompt: SpeechPostProcessingPromptSettings.pipe(withDecodingDefault(succeed$1({
+		mode: "default",
+		customInstructions: ""
+	}))),
+	speechCorrectionWord: SpeechCorrectionCue.pipe(withDecodingDefault(succeed$1("")))
+});
+// native:project-voice
+const ProjectVoiceSchema = Struct({ speechProjectCustomWords: SpeechCustomWords.pipe(withDecodingDefault(succeed$1([]))) });
 // native:entry
 function create(platform) {
 	initialize(platform);
 	return native_consent_exports;
 }
+function decodeSpeech(kind, valueJson) {
+	const schema = {
+		preferences: VoicePreferencesSchema,
+		"project-context": ProjectVoiceSchema,
+		status: EnvironmentSpeechStatus,
+		options: SpeechTranscriptionOptions,
+		postprocess: SpeechPostProcessingOptions,
+		"postprocess-request": EnvironmentSpeechPostProcessingRequest,
+		keys: CloudSpeechKeys,
+		models: EnvironmentSpeechModels,
+		result: EnvironmentSpeechTranscriptionResult
+	}[kind];
+	if (!schema) throw Error("Unknown speech metadata codec");
+	try {
+		return {
+			decoded: true,
+			valueJson: JSON.stringify(decodeUnknownSync(schema)(JSON.parse(valueJson)))
+		};
+	} catch {
+		return { decoded: false };
+	}
+}
+function cloudSpeechMessage(provider, reason) {
+	return new CloudSpeechError({
+		provider,
+		reason
+	}).message;
+}
+exports.cloudSpeechMessage = cloudSpeechMessage;
 exports.create = create;
+exports.decodeSpeech = decodeSpeech;

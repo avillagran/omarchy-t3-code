@@ -4,7 +4,7 @@ use omarchy_t3_client::{
         resources::{Assets, DescriptorArtifact, Runtime},
         Cleanup, StartupFailure,
     },
-    voice_consent::{ConsentOwner, Snapshot},
+    voice_consent::{ConsentChange, ConsentOwner, Snapshot},
 };
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -15,7 +15,8 @@ use std::{
         unix::fs::{DirBuilderExt, PermissionsExt},
     },
     path::Path,
-    sync::Arc,
+    sync::{mpsc::Receiver, Arc},
+    time::{Duration, Instant},
 };
 fn choice(snapshot: Snapshot) -> Value {
     serde_json::from_str(&snapshot.choice_json).unwrap()
@@ -32,6 +33,46 @@ fn exited(fd: &OwnedFd) {
         revents: 0,
     };
     assert_eq!(unsafe { libc::poll(&mut descriptor, 1, 1000) }, 1);
+}
+fn changed(receiver: &Receiver<ConsentChange>, matches: impl Fn(&Snapshot) -> bool) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match receiver
+            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            .unwrap()
+        {
+            ConsentChange::Changed {
+                generation,
+                snapshot,
+            } => {
+                assert!(generation > 0);
+                if matches(&snapshot) {
+                    return;
+                }
+            }
+            ConsentChange::Closed => panic!("Consent owner closed before the idle storage event"),
+        }
+    }
+}
+fn stored_cleanup(namespace: &Path, value: &str) {
+    let key: Vec<u8> = "t3code:voice-cleanup-grant:v1"
+        .encode_utf16()
+        .flat_map(u16::to_le_bytes)
+        .collect();
+    let value: Vec<u8> = value.encode_utf16().flat_map(u16::to_le_bytes).collect();
+    let mut bytes = b"OVS1".to_vec();
+    bytes.extend_from_slice(&(key.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(&(value.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(&key);
+    bytes.extend_from_slice(&value);
+    let pending = namespace.join("retained-cleanup-fixture.pending");
+    fs::write(&pending, bytes).unwrap();
+    fs::set_permissions(&pending, fs::Permissions::from_mode(0o600)).unwrap();
+    fs::rename(
+        pending,
+        namespace.join(format!("{:x}.consent", Sha256::digest(&key))),
+    )
+    .unwrap();
 }
 fn main() {
     assert!(Path::new("/run/.containerenv").exists());
@@ -61,6 +102,7 @@ fn main() {
     .unwrap();
     let first_exit = observed(&first);
     let second_exit = observed(&second);
+    let changes = first.subscribe_changes().unwrap();
     let environment = json!({"kind":"environment","environmentId":"actual-env"}).to_string();
     let cloud =
         json!({"kind":"cloud","environmentId":"actual-env","provider":"openai"}).to_string();
@@ -77,13 +119,90 @@ fn main() {
     assert!(guard.is_current());
     let fresh = choice(second.choose_audio(&environment).unwrap());
     assert_ne!(fresh["id"], selected["id"]);
+    // The first owner makes no RPC here: its persistent reader must deliver the
+    // actual other-window storage event while the command channel is idle.
+    changed(&changes, |snapshot| {
+        serde_json::from_str::<Value>(&snapshot.choice_json).unwrap()["id"] == fresh["id"]
+    });
     assert!(!guard.is_current());
     let current = first.bind_audio(&fresh["id"].to_string()).unwrap();
     assert!(current.is_current());
     let cleanup = first.choose_cleanup(true).unwrap().cleanup_json;
+    let cleanup_guard = current.cleanup_grant_expected(&cleanup).unwrap().unwrap();
+    assert!(cleanup_guard.is_current());
+    let next_cleanup = second.choose_cleanup(true).unwrap().cleanup_json;
+    changed(&changes, |snapshot| snapshot.cleanup_json == next_cleanup);
+    assert!(
+        current.is_current(),
+        "Cleanup changes do not revoke audio consent"
+    );
+    assert!(!cleanup_guard.is_current());
+    assert!(
+        current.cleanup_grant_expected(&cleanup).is_err(),
+        "Never bind a successor cleanup grant to old recording options"
+    );
+    assert!(current.cleanup_grant_expected("null").unwrap().is_none());
+    let defaults: Value =
+        serde_json::from_str(&first.decode_speech("preferences", "{}").unwrap().unwrap()).unwrap();
+    assert_eq!(defaults["speechLanguage"], "auto");
+    assert_eq!(defaults["speechSilenceFiltering"], true);
+    assert_eq!(defaults["speechCustomWords"], json!([]));
+    assert!(first
+        .decode_speech("preferences", r#"{"voiceMicrophone":false}"#)
+        .unwrap()
+        .is_none());
+    assert!(first.decode_speech("options", r#"{"speechLanguage":"auto","speechTranslateToEnglish":false,"speechRemoveFillerWords":true,"speechSilenceFiltering":true,"speechCustomWords":[{"term":"e\u0301","aliases":["é"]}]}"#).unwrap().is_none());
+    assert_eq!(
+        first.cloud_message("openai", "missing-key").unwrap(),
+        "Add your OpenAI API key in Settings → Voice."
+    );
+    let preferences_path = Path::new("/state/client-settings.json");
+    fs::write(
+        preferences_path,
+        br#"{"speechLanguage":"auto","unrelated":"preserved"}"#,
+    )
+    .unwrap();
+    let before =
+        omarchy_t3_client::connection_preferences::read_client_preferences_at(preferences_path)
+            .unwrap();
+    let updated = omarchy_t3_client::voice_preferences::update_at(&first, preferences_path, before["revision"].as_str().unwrap(), &json!({"speechLanguage":"es","voiceMicrophone":"exact-device","speechSilenceFiltering":false})).unwrap();
+    assert_eq!(updated["speechLanguage"], "es");
+    assert_eq!(updated["voiceMicrophone"], "exact-device");
+    assert_eq!(updated["speechSilenceFiltering"], false);
+    let retained = fs::read(preferences_path).unwrap();
+    assert_eq!(
+        serde_json::from_slice::<Value>(&retained).unwrap()["unrelated"],
+        "preserved"
+    );
+    assert!(omarchy_t3_client::voice_preferences::update_at(
+        &first,
+        preferences_path,
+        updated["revision"].as_str().unwrap(),
+        &json!({"speechLanguage":false})
+    )
+    .is_err());
+    assert!(omarchy_t3_client::voice_preferences::update_at(
+        &first,
+        preferences_path,
+        before["revision"].as_str().unwrap(),
+        &json!({"speechLanguage":"en"})
+    )
+    .is_err());
+    assert!(omarchy_t3_client::voice_preferences::update_at(
+        &first,
+        preferences_path,
+        updated["revision"].as_str().unwrap(),
+        &json!({"voiceAudioGrant":"forbidden"})
+    )
+    .is_err());
+    assert_eq!(fs::read(preferences_path).unwrap(), retained);
+    assert!(
+        current.is_current(),
+        "Ordinary preferences cannot restore or change consent"
+    );
     second.choose_audio("null").unwrap();
     assert!(!current.is_current());
-    assert_eq!(first.snapshot().unwrap().cleanup_json, cleanup);
+    assert_eq!(first.snapshot().unwrap().cleanup_json, next_cleanup);
     let prior = choice(first.choose_audio(&environment).unwrap());
     let prior_guard = first.bind_audio(&prior["id"].to_string()).unwrap();
     let late = second.pending_cloud(&cloud).unwrap();
@@ -118,9 +237,19 @@ fn main() {
     let legacy = first.bind_audio(r#""legacy\ud800""#).unwrap();
     assert!(legacy.destination_json().contains(r"\udfff"));
     assert!(legacy.is_current());
+    // JSON spelling is not grant identity. The original realm canonicalizes a
+    // parsed legacy UTF16 identity before the native guard retains its snapshot.
+    let legacy_cleanup_json = r#""cleanup\uD800\u2028""#;
+    stored_cleanup(namespace, legacy_cleanup_json);
+    let legacy_cleanup = legacy
+        .cleanup_grant_expected(legacy_cleanup_json)
+        .unwrap()
+        .unwrap();
+    assert!(legacy_cleanup.is_current());
     fs::rename(namespace, "/state/retained-grants").unwrap();
     fs::DirBuilder::new().mode(0o700).create(namespace).unwrap();
     assert!(!legacy.is_current());
+    assert!(!legacy_cleanup.is_current());
     assert!(first.snapshot().is_err());
     assert_eq!(first.close(), Cleanup::Unknown);
     assert_eq!(first.close(), Cleanup::Unknown);
@@ -243,6 +372,6 @@ fn main() {
     assets.verify().unwrap();
     println!(
         "{}",
-        json!({"cases":7,"crossProcessFreshGrant":true,"sameDestinationRevokes":true,"independentCleanup":true,"lateCloudAckCannotRestore":true,"rawUtf16InnerJson":true,"namespaceReplacementDenies":true,"dropExits":true,"deadHelperDenies":true,"stoppedHelperSharesFiveSecondCloseBudget":true,"invalidStartupUnknown":true,"scope":"Actual Rust consent owner; SDK/audio/composer consumers not activated"})
+        json!({"cases":7,"crossProcessFreshGrant":true,"idleStorageNotifications":true,"capturedCleanupCannotRetarget":true,"originalMetadataCodecs":true,"voicePreferenceCas":true,"sameDestinationRevokes":true,"independentCleanup":true,"lateCloudAckCannotRestore":true,"rawUtf16InnerJson":true,"namespaceReplacementDenies":true,"dropExits":true,"deadHelperDenies":true,"stoppedHelperSharesFiveSecondCloseBudget":true,"invalidStartupUnknown":true,"scope":"Actual Rust consent owner, persistent demux, codecs and preference CAS; SDK/audio/composer consumers require separate acceptance"})
     );
 }

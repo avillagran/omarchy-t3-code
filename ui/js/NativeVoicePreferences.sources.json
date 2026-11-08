@@ -1,0 +1,51 @@
+{
+  "revision": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "sourceFiles": {
+    "apps/web/src/speech/useEnvironmentSpeechInput.ts": "7544339679d5713babdca6519c2d476c7950bc6ebe0776ee56ff7b48dab6a750",
+    "packages/shared/src/speech.ts": "af32fbbc5e6028bb6ef0c652a1ed26163da61034c1b4330a54093d749f7c9523"
+  },
+  "selected": [
+    {
+      "source": "apps/web/src/speech/useEnvironmentSpeechInput.ts",
+      "name": "cleanupContext"
+    },
+    {
+      "source": "apps/web/src/speech/useEnvironmentSpeechInput.ts",
+      "name": "recordingPreferences"
+    },
+    {
+      "source": "apps/web/src/speech/useEnvironmentSpeechInput.ts",
+      "name": "getTranscriptionOptions"
+    },
+    {
+      "source": "apps/web/src/speech/useEnvironmentSpeechInput.ts",
+      "name": "postProcess"
+    },
+    {
+      "source": "packages/shared/src/speech.ts",
+      "name": "vocabularyKey"
+    },
+    {
+      "source": "packages/shared/src/speech.ts",
+      "name": "resolveSpeechVocabulary"
+    }
+  ],
+  "compilerLockSha256": "0d0bc93378fbd6079ea207a9c5ce482a8ab750f4e019d8dd74f70ac408dbe378",
+  "node": "26.13.0",
+  "outputSha256": "54b5f9fd57dc44b579779de46017972a67fbd6a7d2dea935006e8056bb0eb2b7",
+  "dependencies": [
+    "flatMap",
+    "latestRef",
+    "hasAudioConsent",
+    "readCleanupGrant",
+    "runEnvironmentSpeech",
+    "postProcessEnvironmentTranscript"
+  ],
+  "adaptations": [
+    "Whole original declarations and callback bodies; TypeScript/import linkage only",
+    "Original shared recordingPreferences closure retained",
+    "Standard Babel async/class/optional-catch/object-rest-spread transforms for Qt",
+    "Three original flatMap calls linked to explicit realm-local ordinary metadata array primitive; custom species/proxy/array-like behavior unsupported"
+  ],
+  "scope": "Original preference capture, vocabulary, cleanup context and postProcess callback; host transport/consent and production UI require separate acceptance"
+}

@@ -21,6 +21,9 @@ import "../js/PinOrder.js" as PinOrder
 import "../js/JsonDelta.js" as JsonDelta
 import "../js/NativeVoice.js" as NativeVoice
 import "../js/VoicePlatform.js" as VoicePlatform
+import "../js/NativeVoiceInput.js" as NativeVoiceInput
+import "../js/NativeVoicePreferences.js" as NativeVoicePreferences
+import "../js/NativeVoiceHost.js" as NativeVoiceHost
 
 Singleton {
   id: root
@@ -64,6 +67,12 @@ Singleton {
   function requestClientSettings(patch){
     if(clientSettings.busy)return
     var id=uuid();clientSettings=Object.assign({},clientSettings,{busy:true,error:"",requestId:id})
+    if(patch&&nativeVoiceHost.isVoicePatch(patch)){
+      nativeVoiceHost.updatePreferences(patch,(clientSettings.data || {}).revision || "").then(function(value){
+        if(root.clientSettings.requestId===id)root.clientSettings=Object.assign({},root.clientSettings,{busy:false,error:"",data:value})
+      },function(error){if(root.clientSettings.requestId===id)root.clientSettings=Object.assign({},root.clientSettings,{busy:false,error:String(error.message || error)})})
+      return
+    }
     send({op:"client-settings",action:patch?"update":"read",requestId:id,revision:(clientSettings.data || {}).revision || "",patch:patch || {}})
   }
   property var diffPreferenceUpdate:({desired:"",stage:"",error:""})
@@ -644,7 +653,7 @@ Singleton {
   // prevents an away-and-back navigation during the RPC from being overridden.
   property var metadataCheckpoints: ({environment:"",thread:"",data:null})
   property int selectionEpoch:0
-  onSelectedKeyChanged:{selectionEpoch++;observeVoiceDraft();if(voiceController)voiceController.ownerChanged();ensureThreadFamily()}
+  onSelectedKeyChanged:{selectionEpoch++;observeVoiceDraft();nativeVoiceHost.ownerChanged(selectedKey,selectedEnvironment,selectionEpoch);if(voiceController)voiceController.ownerChanged();ensureThreadFamily()}
   property var threadUndoNotice:null
   function releaseThreadUndoShortcut(){if(threadUndoNotice&&threadUndoNotice.shortcut)threadUndoNotice=Object.assign({},threadUndoNotice,{shortcut:false})}
   function undoThreadAction(){
@@ -998,7 +1007,70 @@ Singleton {
   function rememberDraftCursor(start,end){if(!selectedKey)return;var all=Object.assign({},draftCursors);all[selectedKey]={start:start,end:end};draftCursors=all}
   // One runtime per backend preserves the original cross-controller session
   // ownership. The capture owner installs only consent-bound dependencies.
-  readonly property var voiceRuntime:NativeVoice.create(VoicePlatform.create())
+  readonly property var voicePrimitives:VoicePlatform.create()
+  readonly property var voiceRuntime:NativeVoice.create(voicePrimitives)
+  property bool nativeVoiceAvailable:false
+  property bool nativeVoiceInitialized:false
+  property var nativeVoicePreferences:null
+  property var nativeVoiceMicrophones:[]
+  function refreshNativeVoicePreferences(){
+    if(!nativeVoiceAvailable){nativeVoicePreferences=null;return}
+    var data=clientSettings.data
+    nativeVoiceHost.preferences(data).then(function(value){if(root.nativeVoiceAvailable&&root.clientSettings.data===data)root.nativeVoicePreferences=value},function(error){root.nativeVoiceError=String(error.message || error)})
+  }
+  onClientSettingsChanged:refreshNativeVoicePreferences()
+  property var nativeVoiceChoice:null
+  property var nativeVoiceCleanupGrant:null
+  property var nativeVoicePermission:null
+  property var nativeVoiceBinding:null
+  property real nativeVoiceLevel:0
+  property var nativeVoicePreview:null
+  property string nativeVoiceError:""
+  property string nativeVoiceWarning:""
+  readonly property var nativeVoiceHost:NativeVoiceHost.create({
+    primitives:root.voicePrimitives,runtime:root.voiceRuntime,
+    inputFactory:NativeVoiceInput.create,preferencesFactory:NativeVoicePreferences.create,
+    uuid:function(){return root.uuid()},
+    send:function(command){if(voiceWorker.running)voiceWorker.write(JSON.stringify(command)+"\n")},
+    readLatest:function(){
+      return {clientSettings:root.clientSettings.data,input:{environmentId:root.selectedEnvironment,
+        projectId:root.selectedInfo.projectId || null,projectName:root.selectedInfo.projectName || null,
+        ownerKey:root.selectedKey,cleanup:true},cleanupPrepared:root.catalog.canWrite===true}
+    },
+    onAvailable:function(value){if(value)root.nativeVoiceInitialized=true;root.nativeVoiceAvailable=value;root.refreshNativeVoicePreferences();if(!value)root.releaseVoiceController()},
+    onConsent:function(choice,cleanup){
+      var changed=JSON.stringify(root.nativeVoiceChoice)!==JSON.stringify(choice)
+      root.nativeVoiceChoice=choice;root.nativeVoiceCleanupGrant=cleanup
+      if(changed)root.releaseVoiceController()
+    },
+    onPermission:function(session,id){root.nativeVoicePermission={session:session,id:id}},
+    onLevel:function(value){root.nativeVoiceLevel=value},
+    onDurationLimit:function(){if(root.voiceController)root.voiceController.stop()},
+    onText:function(value){root.nativeVoicePreview=value},
+    onError:function(message){if(root.voiceController)root.voiceController.interruptRecording(message)},
+    onCleanupError:function(failure){root.nativeVoiceError=String(failure.message || failure)}
+  })
+  function decideNativeVoicePermission(allow){
+    var permission=nativeVoicePermission;nativeVoicePermission=null
+    if(permission)nativeVoiceHost.permission(permission.session,permission.id,allow).catch(function(error){root.nativeVoiceError=String(error.message || error)})
+  }
+  function toggleNativeVoice(){
+    if(!nativeVoiceAvailable)return
+    if(!nativeVoiceChoice||nativeVoiceChoice==="off"){nativeVoiceSettingsRequested();return}
+    if(!voiceController){
+      var binding=nativeVoiceHost.controller()
+      createVoiceController({retryFailedRecording:true,recorder:binding.recorder,
+        getTranscriber:function(){return binding.transcriber},
+        requestPermission:function(){return Promise.resolve({granted:true,canAskAgain:true})},
+        configureRecording:function(){return Promise.resolve()},releaseRecording:binding.releaseRecording,
+        deleteRecording:binding.deleteRecording,postProcess:binding.postProcess,
+        onPostProcessingError:function(){root.nativeVoiceWarning="Transcript cleanup failed. The original transcript was added."}})
+      nativeVoiceBinding=binding
+    }
+    if(voiceState.phase==="recording")return voiceController.stop()
+    else if(voiceState.phase==="idle"||voiceState.phase==="error")return voiceController.start()
+  }
+  signal nativeVoiceSettingsRequested()
   property var voiceController:null
   property var voiceState:({phase:"idle",error:null,errorAction:null})
   readonly property bool voiceBlocksSubmission:voiceRuntime.voiceInputBlocksSubmission(voiceState)
@@ -1027,7 +1099,16 @@ Singleton {
         root.rememberDraftCursor(selection.start,selection.end)
         root.draftRestored(commitOwner,selection.start,selection.end)
       },
-      onStateChange:function(state){if(root.voiceController===controller)root.voiceState=state;if(dependencies.onStateChange)dependencies.onStateChange(state)}
+      onStateChange:function(state){
+        if(root.voiceController===controller){
+          root.voiceState=state
+          if(state.phase!=="preparing")root.nativeVoicePermission=null
+          if(state.phase!=="recording"&&state.phase!=="transcribing")root.nativeVoicePreview=null
+          if(state.phase!=="recording")root.nativeVoiceLevel=0
+          if(state.phase==="preparing"){root.nativeVoiceError="";root.nativeVoiceWarning=""}
+        }
+        if(dependencies.onStateChange)dependencies.onStateChange(state)
+      }
     })
     controller=new voiceRuntime.VoiceInputController(callbacks)
     voiceController=controller;voiceState=controller.currentState
@@ -1036,6 +1117,9 @@ Singleton {
   function releaseVoiceController(){
     var previous=voiceController;voiceController=null
     if(previous)previous.dispose()
+    var binding=nativeVoiceBinding;nativeVoiceBinding=null
+    if(binding)binding.dispose()
+    nativeVoicePermission=null;nativeVoiceLevel=0;nativeVoicePreview=null
     voiceState={phase:"idle",error:null,errorAction:null}
   }
   function editSnapshot(key,d){var cursor=draftCursors[key] || {start:(d.text || "").length,end:(d.text || "").length};return {text:d.text || "",context:d.context || null,attachments:(d.attachments || []).filter(function(f){return !f.uploading}),start:cursor.start,end:cursor.end}}
@@ -2654,6 +2738,18 @@ Singleton {
     id: clipboardPlatform
     active: root.nativeBrowserPlatformRequested
     source: "T3BrowserClipboardPlatform.qml"
+  }
+  Process {
+    id: voiceWorker
+    command:[root.binary,"voice-watch"]
+    stdinEnabled:true
+    running:true
+    onStarted:root.nativeVoiceHost.ownerChanged(root.selectedKey,root.selectedEnvironment,root.selectionEpoch)
+    stdout:SplitParser{onRead:function(line){
+      try{var event=JSON.parse(line);if(event.type==="native-voice")root.nativeVoiceHost.receive(event.data)}
+      catch(_){root.nativeVoiceError="voice_control_invalid"}
+    }}
+    onExited:{root.nativeVoiceHost.lost();root.releaseVoiceController();root.nativeVoiceError="voice_host_lost"}
   }
   Process {
     id: worker

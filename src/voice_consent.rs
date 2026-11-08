@@ -19,7 +19,12 @@ use std::{
     },
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
-    sync::{Arc, Mutex, Weak},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        mpsc::{self, Receiver, SyncSender},
+        Arc, Mutex, Weak,
+    },
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 const MAX_PACKET: usize = 32 * 1024 * 1024;
@@ -90,9 +95,84 @@ impl Drop for Pending {
 }
 /// Inner JSON remains a string so arbitrary native UTF16 grant/EnvironmentId
 /// code units survive Rust's UTF8 JSON boundary. Qt parses this inner document.
+#[derive(Clone)]
 pub struct Snapshot {
     pub choice_json: String,
     pub cleanup_json: String,
+}
+/// Event metadata is observational. Guards still ask the original producer at
+/// each admission; a snapshot never grants recording or transcript upload.
+#[derive(Clone)]
+pub enum ConsentChange {
+    Changed { generation: u64, snapshot: Snapshot },
+    Closed,
+}
+#[derive(Default)]
+struct Subscribers {
+    senders: Vec<SyncSender<ConsentChange>>,
+    last: Option<Snapshot>,
+    closed: bool,
+}
+#[derive(Default)]
+struct Notifications {
+    generation: AtomicU64,
+    subscribers: Mutex<Subscribers>,
+}
+impl Notifications {
+    fn changed(&self, snapshot: Snapshot) -> io::Result<()> {
+        let mut subscribers = self.subscribers.lock().map_err(|_| failed())?;
+        if subscribers.closed {
+            return Err(failed());
+        }
+        let generation = loop {
+            let current = self.generation.load(Ordering::Acquire);
+            let next = current.checked_add(1).ok_or_else(failed)?;
+            if self
+                .generation
+                .compare_exchange(current, next, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+            {
+                break next;
+            }
+        };
+        subscribers.last = Some(snapshot.clone());
+        let event = ConsentChange::Changed {
+            generation,
+            snapshot,
+        };
+        // A stalled subscriber is disconnected, never allowed to block the sole
+        // socket reader. Its queued events drain before the receiver sees EOF.
+        subscribers
+            .senders
+            .retain(|sender| sender.try_send(event.clone()).is_ok());
+        Ok(())
+    }
+    fn close(&self) {
+        if let Ok(mut subscribers) = self.subscribers.lock() {
+            subscribers.closed = true;
+            for sender in subscribers.senders.drain(..) {
+                let _ = sender.try_send(ConsentChange::Closed);
+            }
+        }
+    }
+    fn subscribe(&self) -> io::Result<Receiver<ConsentChange>> {
+        let (sender, receiver) = mpsc::sync_channel(16);
+        let mut subscribers = self.subscribers.lock().map_err(|_| failed())?;
+        if subscribers.closed {
+            let _ = sender.try_send(ConsentChange::Closed);
+            return Ok(receiver);
+        }
+        if let Some(snapshot) = &subscribers.last {
+            sender
+                .try_send(ConsentChange::Changed {
+                    generation: self.generation.load(Ordering::Acquire),
+                    snapshot: snapshot.clone(),
+                })
+                .map_err(|_| failed())?;
+        }
+        subscribers.senders.push(sender);
+        Ok(receiver)
+    }
 }
 #[derive(Clone)]
 pub struct ConsentOwner(Arc<Mutex<Worker>>);
@@ -117,9 +197,10 @@ struct Worker {
     pidfd: OwnedFd,
     group: i32,
     socket: UnixStream,
-    buffer: Vec<u8>,
+    replies: Receiver<io::Result<Value>>,
+    reader: Option<JoinHandle<()>>,
+    notifications: Arc<Notifications>,
     sequence: u64,
-    changes: u64,
     broken: bool,
     cleanup: Option<Cleanup>,
 }
@@ -188,17 +269,26 @@ impl ConsentOwner {
                 cleanup: Cleanup::Unknown,
             }));
         }
+        let pidfd = unsafe { OwnedFd::from_raw_fd(raw as i32) };
+        let notifications = Arc::new(Notifications::default());
+        let reader_socket = socket.try_clone()?;
+        let (reply_sender, replies) = mpsc::sync_channel(2);
+        let events = notifications.clone();
+        let reader = thread::Builder::new()
+            .name("native-consent-reader".into())
+            .spawn(move || read_socket(reader_socket, reply_sender, events))?;
         let mut worker = Worker {
             runtime,
             assets,
             namespace,
             child: pending.0.take(),
-            pidfd: unsafe { OwnedFd::from_raw_fd(raw as i32) },
+            pidfd,
             group,
             socket,
-            buffer: Vec::new(),
+            replies,
+            reader: Some(reader),
+            notifications,
             sequence: 0,
-            changes: 0,
             broken: false,
             cleanup: None,
         };
@@ -219,6 +309,36 @@ impl ConsentOwner {
     }
     pub fn snapshot(&self) -> io::Result<Snapshot> {
         snapshot(self.call(json!({"op":"read"}))?)
+    }
+    /// Complete original Effect speech codecs run in the private metadata
+    /// realm. Inner JSON preserves arbitrary UTF-16 without parsing it in Rust.
+    /// A schema refusal is an ordinary None and does not retire consent.
+    pub fn decode_speech(&self, kind: &str, value_json: &str) -> io::Result<Option<String>> {
+        if !matches!(
+            kind,
+            "project-context"
+                | "preferences"
+                | "status"
+                | "options"
+                | "postprocess"
+                | "postprocess-request"
+                | "keys"
+                | "models"
+                | "result"
+        ) {
+            return Err(failed());
+        }
+        let reply = self.call(json!({"op":"decode-speech","kind":kind,"valueJson":value_json}))?;
+        match reply["decoded"].as_bool() {
+            Some(false) => Ok(None),
+            Some(true) => Ok(Some(reply["valueJson"].as_str().ok_or_else(failed)?.into())),
+            None => Err(failed()),
+        }
+    }
+    /// Render errors with the complete original contract's message getter.
+    pub fn cloud_message(&self, provider: &str, reason: &str) -> io::Result<String> {
+        let reply = self.call(json!({"op":"cloud-message","provider":provider,"reason":reason}))?;
+        Ok(reply["message"].as_str().ok_or_else(failed)?.into())
     }
     /// Call only for an explicit current UI choice, never preference replay.
     pub fn choose_audio(&self, destination_json: &str) -> io::Result<Snapshot> {
@@ -248,7 +368,22 @@ impl ConsentOwner {
     /// A monotonic notification hint. Authority always comes from a fresh check.
     pub fn change_generation(&self) -> io::Result<u64> {
         self.snapshot()?;
-        Ok(self.0.lock().map_err(|_| failed())?.changes)
+        Ok(self
+            .0
+            .lock()
+            .map_err(|_| failed())?
+            .notifications
+            .generation
+            .load(Ordering::Acquire))
+    }
+    /// A bounded independent event channel. No subscriber callback runs under
+    /// the serialized command/child owner mutex.
+    pub fn subscribe_changes(&self) -> io::Result<Receiver<ConsentChange>> {
+        self.0
+            .lock()
+            .map_err(|_| failed())?
+            .notifications
+            .subscribe()
     }
     pub fn process_id(&self) -> io::Result<u32> {
         Ok(self.0.lock().map_err(|_| failed())?.group as u32)
@@ -261,6 +396,29 @@ impl ConsentOwner {
     }
 }
 impl AudioGrantGuard {
+    /// Bind only the cleanup identity captured by the original UI callback.
+    /// Comparison takes place in the original JS realm, preserving UTF16 IDs.
+    pub fn cleanup_grant_expected(
+        &self,
+        grant_json: &str,
+    ) -> io::Result<Option<CleanupGrantGuard>> {
+        let owner = self.owner.upgrade().ok_or_else(failed)?;
+        let reply = owner
+            .lock()
+            .map_err(|_| failed())?
+            .call(json!({"op":"check-cleanup","grantJson":grant_json}))?;
+        let canonical = reply["grantJson"].as_str().ok_or_else(failed)?;
+        if canonical == "null" {
+            return Ok(None);
+        }
+        if reply["allowed"] != true {
+            return Err(failed());
+        }
+        Ok(Some(CleanupGrantGuard {
+            owner: Arc::downgrade(&owner),
+            grant_json: canonical.into(),
+        }))
+    }
     /// Capture the independent original cleanup grant at recording preparation.
     /// Inner JSON is canonical in its JS realm and retains arbitrary UTF16 IDs.
     pub fn cleanup_grant(&self) -> io::Result<Option<CleanupGrantGuard>> {
@@ -412,48 +570,19 @@ impl Worker {
                 Err(_) => return Err(failed()),
             }
         }
-        loop {
-            let value = self.receive(deadline)?;
-            if value == json!({"type":"changed"}) {
-                self.changes = self.changes.saturating_add(1);
-                continue;
-            }
-            if value["type"] != "result" || value["id"] != self.sequence || value["ok"] != true {
-                return Err(failed());
-            }
-            return Ok(value);
+        let value = self.receive(deadline)?;
+        if value["type"] != "result" || value["id"] != self.sequence || value["ok"] != true {
+            return Err(failed());
         }
+        Ok(value)
     }
     fn receive(&mut self, deadline: Instant) -> io::Result<Value> {
-        loop {
-            if Instant::now() >= deadline {
-                return Err(failed());
-            }
-            if let Some(end) = self.buffer.iter().position(|byte| *byte == b'\n') {
-                let value = serde_json::from_slice(&self.buffer[..end]).map_err(|_| failed())?;
-                self.buffer.drain(..=end);
-                return Ok(value);
-            }
-            if !poll(self.socket.as_raw_fd(), libc::POLLIN, deadline)? {
-                return Err(failed());
-            }
-            let mut bytes = [0_u8; 65536];
-            match self.socket.read(&mut bytes) {
-                Ok(0) => return Err(failed()),
-                Ok(count) => {
-                    if self.buffer.len() + count > MAX_PACKET {
-                        return Err(failed());
-                    }
-                    self.buffer.extend_from_slice(&bytes[..count]);
-                }
-                Err(error)
-                    if matches!(
-                        error.kind(),
-                        io::ErrorKind::Interrupted | io::ErrorKind::WouldBlock
-                    ) => {}
-                Err(_) => return Err(failed()),
-            }
+        if Instant::now() >= deadline {
+            return Err(failed());
         }
+        self.replies
+            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            .map_err(|_| failed())?
     }
     fn close(&mut self) -> Cleanup {
         if let Some(cleanup) = self.cleanup {
@@ -467,6 +596,12 @@ impl Worker {
         let fenced = unsafe { libc::kill(-self.group, libc::SIGKILL) } == 0
             || io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH);
         let _ = self.socket.shutdown(Shutdown::Both);
+        if let Some(reader) = self.reader.take() {
+            if reader.join().is_err() {
+                self.broken = true;
+            }
+        }
+        self.notifications.close();
         let mut cleanup = Cleanup::Unknown;
         if let Some(mut child) = self.child.take() {
             if exited {
@@ -493,6 +628,68 @@ impl Drop for Worker {
     fn drop(&mut self) {
         let _ = self.close();
     }
+}
+// This thread alone receives bytes. Commands retain their original bounded
+// deadline and serial correlation; unsolicited changes cannot steal a reply.
+fn read_socket(
+    mut socket: UnixStream,
+    replies: SyncSender<io::Result<Value>>,
+    notifications: Arc<Notifications>,
+) {
+    let result = (|| -> io::Result<()> {
+        let mut buffer = Vec::new();
+        loop {
+            while let Some(end) = buffer.iter().position(|byte| *byte == b'\n') {
+                let value: Value = serde_json::from_slice(&buffer[..end]).map_err(|_| failed())?;
+                buffer.drain(..=end);
+                if value["type"] == "changed" {
+                    if value.as_object().is_none_or(|fields| {
+                        fields.len() != 3
+                            || !fields.contains_key("choiceJson")
+                            || !fields.contains_key("cleanupJson")
+                    }) {
+                        return Err(failed());
+                    }
+                    notifications.changed(snapshot(value)?)?;
+                } else {
+                    replies.try_send(Ok(value)).map_err(|_| failed())?;
+                }
+            }
+            let mut descriptor = libc::pollfd {
+                fd: socket.as_raw_fd(),
+                events: libc::POLLIN,
+                revents: 0,
+            };
+            let polled = unsafe { libc::poll(&mut descriptor, 1, -1) };
+            if polled < 0 {
+                if io::Error::last_os_error().kind() == io::ErrorKind::Interrupted {
+                    continue;
+                }
+                return Err(failed());
+            }
+            let mut bytes = [0u8; 65536];
+            match socket.read(&mut bytes) {
+                Ok(0) => return Err(failed()),
+                Ok(count) => {
+                    if buffer.len() + count > MAX_PACKET {
+                        return Err(failed());
+                    }
+                    buffer.extend_from_slice(&bytes[..count]);
+                }
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::Interrupted | io::ErrorKind::WouldBlock
+                    ) => {}
+                Err(_) => return Err(failed()),
+            }
+        }
+    })();
+    if result.is_err() {
+        let _ = replies.try_send(Err(failed()));
+    }
+    let _ = socket.shutdown(Shutdown::Both);
+    notifications.close();
 }
 fn poll(fd: i32, events: i16, deadline: Instant) -> io::Result<bool> {
     loop {

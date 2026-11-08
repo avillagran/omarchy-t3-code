@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Compare complete native preference callbacks and ordinary-array flatMap privately."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import tempfile
+p=argparse.ArgumentParser(description=__doc__)
+for name in ['native','compiler','node']:p.add_argument('--'+name,type=Path,required=True)
+a=p.parse_args();root=Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+out=Path(tempfile.mkdtemp(prefix='voice-preferences-oracle-',dir='/var/tmp/o3-server'));out.chmod(0o700)
+for name in ['source','home','tmp']:(out/name).mkdir(mode=0o700)
+names=['ui/js/VoicePlatform.js','ui/js/NativeVoicePreferences.js','ui/js/NativeVoicePreferences.sources.json','tools/fixtures/voice-preferences-driver.js','tools/fixtures/voice-preferences-native.mjs','tools/fixtures/voice-preferences-qt.cpp']
+hash_file=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+fence={}
+for name in names:
+ data=(root/name).read_bytes();fence[name]=hashlib.sha256(data).hexdigest();target=out/'source'/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);target.chmod(0o400)
+manifest=json.loads((root/'ui/js/NativeVoicePreferences.sources.json').read_text())
+assert manifest['outputSha256']==fence['ui/js/NativeVoicePreferences.js']
+assert hash_file(a.compiler/'package-lock.json')==manifest['compilerLockSha256']
+assert hash_file(a.node)=='0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b'
+for name,expected in manifest['sourceFiles'].items():assert hash_file(a.native/name)==expected
+base=['podman','--remote=false','run','--rm','--pull=never','--http-proxy=false','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64','--memory=1g','--ulimit','core=0','--workdir','/out','-v',f'{out}:/out:rw','-v',f'{a.native.resolve()}:/native:ro','-v',f'{a.compiler.resolve()}:/compiler:ro','-v',f'{a.node.resolve()}:/node:ro','-v','/usr:/usr:ro','--env','HOME=/out/home','--env','TMPDIR=/out/tmp','localhost/o3-rust-tests:latest']
+with Path('/var/tmp/o3-build/o3-parity-compile.lock').open('a')as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ flags=shlex.split(subprocess.check_output([*base,'/usr/bin/pkg-config','--cflags','--libs','Qt6Core','Qt6Qml'],text=True))
+ with(out/'compile.log').open('w')as log:compiled=subprocess.run([*base,'/usr/bin/c++','-std=c++17','-fPIC','-O2','-Wall','-Wextra','-Werror','/out/source/tools/fixtures/voice-preferences-qt.cpp','-o','/out/preferences-qt',*flags],stdout=log,stderr=subprocess.STDOUT,timeout=90)
+ if compiled.returncode:print(out);raise SystemExit(compiled.returncode)
+(out/'preferences-qt').chmod(0o500)
+# Runtime source and executable are remounted read-only; only private state is writable.
+runtime=[*base[:-1],'-v',f'{out}/source:/out/source:ro','-v',f'{out}/preferences-qt:/out/preferences-qt:ro',base[-1]]
+commands={
+ 'native':['/node','/out/source/tools/fixtures/voice-preferences-native.mjs','/native','/compiler','/out/source/ui/js/NativeVoicePreferences.sources.json','/out/source/tools/fixtures/voice-preferences-driver.js'],
+ 'qt':['/out/preferences-qt','/out/source/ui/js/VoicePlatform.js','/out/source/ui/js/NativeVoicePreferences.js','/out/source/tools/fixtures/voice-preferences-driver.js'],
+}
+codes={}
+for name,command in commands.items():
+ with(out/(name+'.json')).open('w')as stdout,(out/(name+'.log')).open('w')as stderr:codes[name]=subprocess.run([*runtime,*command],stdout=stdout,stderr=stderr,timeout=30).returncode
+ if codes[name]:break
+proof={'exit':1,'exitCodes':codes,'sourceSha256':fence,'binarySha256':hash_file(out/'preferences-qt'),'scope':'Whole native vocabulary/preferences/context/postProcess and ordinary metadata-array flatMap corpus; no custom species/proxy/array-like or complete Unicode universe claim; no audio, transport or UI activation'}
+if len(codes)==2 and not any(codes.values()):
+ original=json.loads((out/'native.json').read_text());qt=json.loads((out/'qt.json').read_text());proof.update(cases=original['count'],equal=original==qt)
+ if original==qt:proof['exit']=0
+ else:proof['firstDifference']=next((i for i,(x,y)in enumerate(zip(original['cases'],qt['cases']))if x!=y),None)
+assert all(hash_file(root/name)==expected for name,expected in fence.items())
+(out/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(out);raise SystemExit(proof['exit'])

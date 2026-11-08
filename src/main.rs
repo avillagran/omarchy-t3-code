@@ -1839,6 +1839,13 @@ fn main() {
         }
         return;
     }
+    if std::env::args().nth(1).as_deref() == Some("voice-watch") {
+        if let Err(error) = voice_watch::run(env_by_id) {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if std::env::args().nth(1).as_deref() == Some("terminal-session") {
         let args: Vec<_> = std::env::args().skip(2).collect();
         let result = if args.len() == 3 {

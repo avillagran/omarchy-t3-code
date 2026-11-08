@@ -1,8 +1,4 @@
-// Standalone integration test until the parent wires the module into lib.rs.
-pub use omarchy_t3_client::{browser_preferences, read_catalog, t3_home, Result, Url, MAX_BYTES};
-#[path = "../src/connection_preferences.rs"]
-mod preferences;
-use preferences::*;
+use omarchy_t3_client::{connection_preferences::*, Result};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, os::unix::fs::{symlink, PermissionsExt}};

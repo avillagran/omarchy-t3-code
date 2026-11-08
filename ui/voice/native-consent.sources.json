@@ -12,7 +12,18 @@
   "effect": "4.1.2",
   "rolldown": "1.2.16",
   "astCompiler": "8.1.0",
-  "outputSha256": "170b269fffce99ece8ba7e455b88c2b44726ae32df4b7a4c95305d620421ad96",
+  "preferenceFields": [
+    "voiceMicrophone",
+    "voiceShortcutMode",
+    "speechLanguage",
+    "speechTranslateToEnglish",
+    "speechCustomWords",
+    "speechSilenceFiltering",
+    "speechRemoveFillerWords",
+    "speechPostProcessingPrompt",
+    "speechCorrectionWord"
+  ],
+  "outputSha256": "815cc309a83f4b6010c7f32a0a3cdf4de3edbb8e7cca5562d1e9e4a63d00c287",
   "dependencyInputs": {
     "node_modules/effect/dist/Array.js": "0643f151d7b57ab0e7369d565f010749c11e964ce3b18d4236f8c02144b7d116",
     "node_modules/effect/dist/BigDecimal.js": "d483fd9e00bb032eff2f16d80cfc41f4ca2338f6a2f151e121db784a6b507ab9",
@@ -84,11 +95,12 @@
     "node_modules/effect/dist/net/NetAddress.js": "9a3d64af31a200853c9a754d9ea847ce452e4be52210c78bf0ef03ca574b6494"
   },
   "adaptations": [
-    "Whole original consent and local-storage modules retained",
-    "Whole codec and UUID declarations selected without body changes",
+    "Whole original consent, local-storage and speech-contract modules retained",
+    "Whole codec, UUID and shortcut declarations selected without body changes",
+    "Voice preference schema retains the complete original selected field properties including decoding defaults",
     "Actual original Effect codecs/equivalence; no handwritten consent state or schema parser",
     "Framework-only useSyncExternalStore adapter reads fresh snapshots; Qt storage notifications are a separate consumer",
     "Explicit realm-local window/CustomEvent/console bindings; no global/prototype mutation"
   ],
-  "scope": "Original consent data producer only; filesystem, helper lifetime, UI and audio-send consumers require separate acceptance"
+  "scope": "Original consent, speech metadata and voice preference codecs; filesystem, helper lifetime, UI and audio-send consumers require separate acceptance"
 }

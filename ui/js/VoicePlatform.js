@@ -80,5 +80,29 @@ function create() {
             }
         }
     }
-    return {Schema:Schema, AbortController:Controller}
+    // Realm-local Array.flatMap for admitted ordinary metadata arrays. This
+    // does not install a global method, honor custom species or claim generic
+    // array-like/proxy semantics. Each mapper result is flattened immediately.
+    function flatMap(receiver, mapper) {
+        if (!Array.isArray(receiver) || Object.getPrototypeOf(receiver) !== Array.prototype ||
+                Object.prototype.hasOwnProperty.call(receiver, "constructor"))
+            throw new TypeError("Ordinary metadata array required")
+        if (typeof mapper !== "function") throw new TypeError("Mapper required")
+        var length = receiver.length, output = [], target = 0
+        function append(value) {
+            if (target >= 9007199254740991) throw new TypeError("Metadata array limit")
+            Object.defineProperty(output, String(target++), {value:value, writable:true, enumerable:true, configurable:true})
+        }
+        for (var index = 0; index < length; index++) {
+            if (!(index in receiver)) continue
+            var mapped = mapper(receiver[index], index, receiver)
+            if (Array.isArray(mapped)) {
+                var nestedLength = mapped.length
+                for (var nested = 0; nested < nestedLength; nested++)
+                    if (nested in mapped) append(mapped[nested])
+            } else append(mapped)
+        }
+        return output
+    }
+    return {Schema:Schema, AbortController:Controller, flatMap:flatMap}
 }

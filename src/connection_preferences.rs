@@ -4,6 +4,7 @@ use crate::{read_catalog, t3_home, Result};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, io::Write, os::fd::AsRawFd, os::unix::fs::OpenOptionsExt, path::{Path, PathBuf}};
+pub const VOICE_KEYS:&[&str]=&["voiceMicrophone","voiceShortcutMode","speechLanguage","speechTranslateToEnglish","speechCustomWords","speechSilenceFiltering","speechRemoveFillerWords","speechPostProcessingPrompt","speechCorrectionWord"];
 
 fn revision(bytes: &[u8]) -> String { format!("{:x}", Sha256::digest(bytes)) }
 fn settings_path() -> PathBuf { t3_home().join("userdata/client-settings.json") }
@@ -41,13 +42,15 @@ fn preferences(value: &Value, rev: String) -> Value {
         "wordWrap":settings["wordWrap"]!=false,"diffFilesCollapsed":settings["diffFilesCollapsed"]!=false,
         "loadBalancingWeights":settings["loadBalancingWeights"].as_object().cloned().unwrap_or_default()});
     if let Some(browser)=crate::browser_preferences::projection(settings).as_object(){for (key,value) in browser {out[key]=value.clone();}}
+    for key in VOICE_KEYS {if let Some(value)=settings.get(*key){out[*key]=value.clone();}}
     out
 }
 /// Read safe client defaults and a revision of the canonical client-settings file.
 /// Raw client settings fields, for runtime choices such as the search engine.
 pub fn client_settings() -> Result<Value> {
-    Ok(fields(&document(&bytes(&settings_path())?)?).clone())
+    client_settings_at(&settings_path())
 }
+pub(crate) fn client_settings_at(path:&Path)->Result<Value>{Ok(fields(&document(&bytes(path)?)?).clone())}
 pub fn read_client_preferences() -> Result<Value> {
     read_client_preferences_at(&settings_path())
 }
@@ -58,6 +61,12 @@ pub fn read_client_preferences_at(path: &Path) -> Result<Value> {
 /// CAS under an ot3 lock. Native Electron does not take this lock: compare again
 /// just before rename and fail on a detected external edit rather than overwrite it.
 pub fn update_client_preferences_at(path: &Path, expected: &str, patch: &Value) -> Result<Value> {
+    update_at(path, expected, patch, None)
+}
+pub(crate) fn update_validated_voice_at(path:&Path,expected:&str,patch:&Value,decoded:&Value)->Result<Value>{
+    update_at(path,expected,patch,Some(decoded))
+}
+fn update_at(path: &Path, expected: &str, patch: &Value, voice: Option<&Value>) -> Result<Value> {
     let parent = path.parent().ok_or("client_settings_write_failed")?;
     fs::create_dir_all(parent).map_err(|_| "client_settings_write_failed")?;
     let lock = fs::OpenOptions::new().create(true).read(true).write(true).mode(0o600)
@@ -70,10 +79,11 @@ pub fn update_client_preferences_at(path: &Path, expected: &str, patch: &Value) 
     let raw = bytes(&destination)?;
     if revision(&raw) != expected { return Err("client_settings_changed_reload".into()); }
     let mut value = document(&raw)?;
-    if !patch.is_object() || patch.as_object().is_some_and(|o| o.is_empty() || o.keys().any(|k| !crate::browser_preferences::KEYS.contains(&k.as_str()) && k != "timestampFormat" && k != "diffLayout" && k != "planModeEnabled" && k != "followUpBehavior" && k != "mathRenderingEnabled" && k != "loadBalancingEnabled" && k != "environmentId" && k != "weight")) {
+    if !patch.is_object() || patch.as_object().is_some_and(|o| o.is_empty() || o.keys().any(|k| !(voice.is_some()&&VOICE_KEYS.contains(&k.as_str())) && !crate::browser_preferences::KEYS.contains(&k.as_str()) && k != "timestampFormat" && k != "diffLayout" && k != "planModeEnabled" && k != "followUpBehavior" && k != "mathRenderingEnabled" && k != "loadBalancingEnabled" && k != "environmentId" && k != "weight")) {
         return Err("invalid_client_preference".into());
     }
     let target = fields_mut(&mut value);
+    if let Some(voice)=voice{for key in VOICE_KEYS{if patch.get(*key).is_some(){target[*key]=voice.get(*key).ok_or("invalid_client_preference")?.clone();}}}
     for key in crate::browser_preferences::KEYS {if let Some(next)=patch.get(*key){target[*key]=crate::browser_preferences::validate(key,next)?;}}
     if let Some(format)=patch.get("timestampFormat"){if !matches!(format.as_str(),Some("locale"|"12-hour"|"24-hour")){return Err("invalid_client_preference".into())}target["timestampFormat"]=format.clone();}
     if let Some(layout)=patch.get("diffLayout"){

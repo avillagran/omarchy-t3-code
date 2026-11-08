@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Run the real Qt voice controller/platform through the metadata bridge privately."""
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import tempfile
+
+root=Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+out=Path(tempfile.mkdtemp(prefix='native-voice-host-',dir='/var/tmp/o3-build'));out.chmod(0o700)
+source=out/'source';source.mkdir(mode=0o700)
+scripts=['ui/js/VoicePlatform.js','ui/js/NativeVoice.js','ui/js/NativeVoiceInput.js','ui/js/NativeVoicePreferences.js','ui/js/NativeVoiceHost.js','tools/fixtures/voice-host-driver.js']
+names=[*scripts,'tools/fixtures/voice-host-qt.cpp']
+digest=lambda data:hashlib.sha256(data).hexdigest()
+fence={}
+for name in names:
+ data=(root/name).read_bytes();fence[name]=digest(data);dest=source/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data);dest.chmod(0o400)
+binary=out/'voice-host-qt'
+with Path('/var/tmp/o3-build/o3-parity-compile.lock').open('a')as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Core','Qt6Qml'],text=True))
+ with(out/'compile.log').open('w')as log:
+  built=subprocess.run(['c++','-std=c++17','-fPIC','-O2','-Wall','-Wextra','-Werror',str(source/names[-1]),'-o',str(binary),*flags],stdout=log,stderr=subprocess.STDOUT)
+ if built.returncode:print(out);raise SystemExit(built.returncode)
+binary.chmod(0o500)
+state=out/'state';state.mkdir(mode=0o700)
+for name in ['home','tmp','runtime','cache','config','data']:(state/name).mkdir(mode=0o700)
+command=['podman','--remote=false','run','--rm','--pull=never','--http-proxy=false','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64','--memory=1g','--ulimit','core=0','--workdir','/state','-v',f'{source}:/source:ro','-v',f'{binary}:/voice-host-qt:ro','-v',f'{state}:/state:rw','-v','/usr:/usr:ro']
+for key,value in {'HOME':'home','TMPDIR':'tmp','XDG_RUNTIME_DIR':'runtime','XDG_CACHE_HOME':'cache','XDG_CONFIG_HOME':'config','XDG_DATA_HOME':'data'}.items():command+=['--env',key+'=/state/'+value]
+command+=['localhost/o3-rust-tests:latest','/voice-host-qt',*['/source/'+name for name in scripts]]
+with(out/'runtime.json').open('w')as output,(out/'runtime.log').open('w')as log:
+ run=subprocess.run(command,stdout=output,stderr=log,timeout=45)
+proof={'exit':run.returncode,'sourceSha256':fence,'binarySha256':digest(binary.read_bytes()),'scope':'Actual compiled original Qt controller/platform/preferences and host metadata bridge with synthetic peer; no physical microphone, SDK, transport or production activation claim'}
+if run.returncode==0:proof['cases']=json.loads((out/'runtime.json').read_text())['count']
+assert all(digest((root/name).read_bytes())==expected for name,expected in fence.items())
+(out/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(out);raise SystemExit(run.returncode)
