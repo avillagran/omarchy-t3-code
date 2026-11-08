@@ -37,7 +37,7 @@ requires an explicit platform/Android review and is not silently excluded.
 | `95e7dbfd` | fix(github): keep review-required until required reviewers approve (#32395) | pending review |
 | `a9752171` | fix(grok): long command titles no longer end in a broken character (#32408) | pending review |
 | `ce9b8067` | fix(server): theme files saved with a UTF-8 BOM are published instead of rejected (#32405) | pending review |
-| `48bb784e` | fix(shared): inline code like `allocator.cc:217` becomes a file chip (#32403) | pending review |
+| `48bb784e` | fix(shared): inline code like `allocator.cc:217` becomes a file chip (#32403) | scalar classifier: 87 native comparisons pass; whole-library build and renderer UI pending |
 | `7f7bf263` | fix(web): recover ACP settings when projects change (#32409) | pending review |
 | `fd1adc88` | fix(acp): retain streamed child tool output (#32411) | pending review |
 | `1b952135` | fix(providers): remove incomplete ChatGPT connections (#29280) | source implementation |

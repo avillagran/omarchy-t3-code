@@ -896,8 +896,9 @@
         "packages/shared/src/markdownLinks.test.ts",
         "packages/shared/src/markdownLinks.ts"
       ],
-      "status": "pending-review",
-      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+      "status": "accepted-classifier-component-awaiting-full-consumer-validation",
+      "qualification": "The complete original classifier and production Rust module agree on 87 scalar cases, including all 12 original regression rows. Local client commit 436ca96; no whole-library rebuild, renderer UI, global pin or publication acceptance.",
+      "evidence": "inline-code-file-proof-4340.json"
     },
     {
       "commit": "7f7bf263a8367418fd1eafc4e55b58f20ddb8f6d",
