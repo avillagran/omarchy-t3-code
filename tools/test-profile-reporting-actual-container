@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Verify actual QML/client watch/HTTP/RPC/profile catalogs in rootless Podman."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+IMAGE = 'sha256:cf00ddb64a7d8e72a205fff49fbdaf443ecec648130b2e729320726575679462'
+CLIENT_SHA = '80e44787b6e132c743d50fd3f46d5ae9070867f0a2f8480c6da27ba6c6b651dd'
+
+
+def digest(path):
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def inside():
+    assert Path('/run/.containerenv').is_file()
+    assert os.environ['HOME'] == '/tmp/home'
+    os.umask(0o077)
+    for name in ['home', 'runtime', 'qml', 'client-source/bin', 'client-profile/userdata', '.X11-unix']:
+        Path('/tmp', name).mkdir(mode=0o700, parents=True, exist_ok=True)
+    Path('/tmp/.X11-unix').chmod(0o1777)
+    for name in ['Commons', 'Ui', 'plugins', 'services']:
+        Path('/tmp/qml', name).symlink_to('/usr/share/omarchy/shell/' + name)
+    for name in ['ui', 'upstream', 'manifest.json']:
+        Path('/tmp/client-source', name).symlink_to('/client-source/' + name)
+    Path('/tmp/client-source/bin/omarchy-t3-client').symlink_to('/actual-client')
+    Path('/tmp/qml/UnderTest').symlink_to('/tmp/client-source')
+    Path('/tmp/qml/shell.qml').write_text(
+        '//@ pragma OmarchyLoadPatch\n//@ pragma RespectSystemStyle\n'
+        + Path('/client-source/tests/qml/browser-profile-reporting-actual.qml').read_text())
+    Path('/tmp/client-profile/userdata/client-settings.json').write_text(json.dumps(dict(
+        browserProfiles=[dict(id='work', name='Work', kind='persistent')],
+        browserDefaultProfileId='work', browserRecordingFrameRate=30)))
+    # Only the incidental legacy dictation probe is inert. The main watch and
+    # idle voice-watch processes both use the actual admitted client executable.
+    dictate = Path('/tmp/inert-dictate')
+    dictate.write_text('#!/usr/bin/python3\nprint(\'{"models":[],"recorder":false}\')\n')
+    dictate.chmod(0o500)
+    logs = [Path('/evidence', name).open('x') for name in ['server.log', 'display.log', 'qml.log']]
+    server = display = qml = None
+    failure = None
+    codes = {}
+    try:
+        server = subprocess.Popen(['/actual-server'], stdin=subprocess.PIPE,
+            stdout=logs[0], stderr=subprocess.STDOUT, text=True)
+        deadline = time.monotonic() + 8
+        while not Path('/tmp/profile-report-chain/environments.json').is_file():
+            if server.poll() is not None:
+                raise RuntimeError('Actual server fixture exited before listener admission')
+            if time.monotonic() >= deadline:
+                raise RuntimeError('Actual listener admission deadline')
+            time.sleep(0.02)
+        display = subprocess.Popen(['Xvfb', ':9', '-screen', '0', '1280x1024x24',
+            '-nolisten', 'tcp', '-extension', 'GLX'], stdout=logs[1], stderr=subprocess.STDOUT)
+        deadline = time.monotonic() + 3
+        while not Path('/tmp/.X11-unix/X9').is_socket():
+            if display.poll() is not None or time.monotonic() >= deadline:
+                raise RuntimeError('Private software display admission failed')
+            time.sleep(0.02)
+        qml = subprocess.Popen(['quickshell', '-p', '/tmp/qml/shell.qml'],
+            stdout=logs[2], stderr=subprocess.STDOUT)
+        codes['qml'] = qml.wait(timeout=40)
+        if codes['qml'] != 0:
+            raise RuntimeError('Actual QML chain failed')
+    except BaseException as error:
+        failure = dict(type=type(error).__name__, message=str(error))
+    finally:
+        if qml is not None and qml.poll() is None:
+            qml.terminate()
+            try:
+                qml.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                qml.kill()
+                qml.wait(timeout=3)
+        if server is not None:
+            if server.poll() is None:
+                try:
+                    server.stdin.write('{"op":"stop"}\n')
+                    server.stdin.close()
+                    codes['server'] = server.wait(timeout=5)
+                except (BrokenPipeError, subprocess.TimeoutExpired):
+                    server.kill()
+                    codes['server'] = server.wait(timeout=3)
+            else:
+                codes['server'] = server.returncode
+        if display is not None and display.poll() is None:
+            display.terminate()
+            try:
+                display.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                display.kill()
+                display.wait(timeout=3)
+        for stream in logs:
+            stream.close()
+    log = Path('/evidence/qml.log').read_text()
+    passed = failure is None and codes == dict(qml=0, server=0)
+    passed = passed and 'BROWSER_PROFILE_CHAIN_QML_PASS' in log and not any(
+        marker in log for marker in ['QML_FAIL', 'ReferenceError', 'TypeError', 'Binding loop'])
+    proof = Path('/evidence/server-result.json')
+    passed = passed and proof.is_file() and json.loads(proof.read_text())['cleanStop']
+    Path('/evidence/inside-result.json').write_text(json.dumps(dict(
+        accepted=passed, codes=codes, failure=failure), indent=2) + '\n')
+    raise SystemExit(0 if passed else 1)
+
+
+def source_fence(root, extra):
+    names = subprocess.check_output(['git', 'ls-files', '-z', '--', 'src', 'ui',
+        'upstream', 'runtime', 'compat', 'tests', 'examples', 'Cargo.toml', 'Cargo.lock', 'build.rs'], cwd=root)
+    selected = {os.fsdecode(name) for name in names.split(b'\0') if name}
+    selected.update(extra)
+    result = {}
+    for name in sorted(selected):
+        path = root / name
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise RuntimeError('Source fence requires regular files: ' + name)
+        result[name] = digest(path)
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--server-source', type=Path, required=True)
+    parser.add_argument('--server-build', type=Path, required=True)
+    parser.add_argument('--client-binary', type=Path, required=True)
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parent.parent
+    server_root = args.server_source.resolve(strict=True)
+    build = json.loads(args.server_build.read_text())
+    assert build['exit'] == 0 and build['sourceUnchanged']
+    artifact, = build['artifacts']
+    server = Path(artifact['path'])
+    client = args.client_binary
+    assert stat.S_ISREG(server.lstat().st_mode) and stat.S_ISREG(client.lstat().st_mode)
+    assert digest(server) == artifact['sha256'] and server.stat().st_size == artifact['bytes']
+    assert digest(client) == CLIENT_SHA
+    assert subprocess.check_output(['podman', '--remote=false', 'info', '--format',
+        '{{.Host.Security.Rootless}}'], text=True).strip() == 'true'
+    evidence = Path(tempfile.mkdtemp(prefix='o3-profile-chain-', dir='/var/tmp'))
+    evidence.chmod(0o700)
+    lock = os.open('/var/tmp/o3-build/o3-parity-compile.lock', os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    info = os.fstat(lock)
+    assert stat.S_ISREG(info.st_mode) and info.st_uid == os.getuid() and info.st_nlink == 1
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    client_before = source_fence(root, ['tools/test-profile-reporting-actual-container',
+        'tests/qml/browser-profile-reporting-actual.qml'])
+    server_before = source_fence(server_root, ['examples/profile_reporting_acceptance.rs'])
+    compiled = json.loads(args.server_build.with_name('inputs.json').read_text())
+    assert all(server_before[name] == expected for name, expected in compiled.items())
+    env = dict(HOME='/tmp/home', XDG_RUNTIME_DIR='/tmp/runtime', XDG_CONFIG_HOME='/tmp/config',
+        XDG_STATE_HOME='/tmp/state', XDG_DATA_HOME='/tmp/data', XDG_CACHE_HOME='/tmp/cache',
+        T3CODE_HOME='/tmp/client-profile', OMARCHY_T3_FIXTURE_ENVIRONMENTS='/tmp/profile-report-chain/environments.json',
+        OMARCHY_T3_DICTATE='/tmp/inert-dictate', DISPLAY=':9', QT_QPA_PLATFORM='xcb',
+        QT_QUICK_BACKEND='software', QT_QUICK_CONTROLS_STYLE='OmarchyT3',
+        QML_IMPORT_PATH='/client-source/ui/style', QML_XHR_ALLOW_FILE_READ='1',
+        LIBGL_ALWAYS_SOFTWARE='1', PATH='/usr/bin:/bin')
+    command = ['podman', '--remote=false', 'run', '--rm', '--init', '--pull=never', '--http-proxy=false',
+        '--name', evidence.name, '--cidfile', str(evidence/'container.cid'),
+        '--userns=keep-id', '--user', f'{os.getuid()}:{os.getgid()}', '--read-only',
+        '--ulimit=core=0:0', '--tmpfs', '/tmp:rw,size=768m,mode=1777', '--tmpfs', '/run:rw,size=64m,mode=755',
+        '--network=none', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--pids-limit=256', '--memory=2g']
+    for name, value in env.items():
+        command += ['--env', name + '=' + value]
+    for source, destination, mode in [(Path('/usr'), '/usr', 'ro'), (Path('/etc/fonts'), '/etc/fonts', 'ro'),
+        (root, '/client-source', 'ro'), (server_root, '/server-source', 'ro'),
+        (server, '/actual-server', 'ro'), (client, '/actual-client', 'ro'), (evidence, '/evidence', 'rw')]:
+        command += ['-v', f'{source}:{destination}:{mode}']
+    command += [IMAGE, '/usr/bin/python3', '/client-source/tools/test-profile-reporting-actual-container',
+        '--inside-private-container']
+    (evidence/'command.json').write_text(json.dumps(command, indent=2) + '\n')
+    with (evidence/'container.log').open('x') as out:
+        result = subprocess.run(command, stdout=out, stderr=subprocess.STDOUT, timeout=90)
+    unchanged = client_before == source_fence(root, ['tools/test-profile-reporting-actual-container',
+        'tests/qml/browser-profile-reporting-actual.qml']) and server_before == source_fence(
+            server_root, ['examples/profile_reporting_acceptance.rs'])
+    binaries_unchanged = digest(client) == CLIENT_SHA and digest(server) == artifact['sha256']
+    (evidence/'source-fences.json').write_text(json.dumps(dict(client=client_before, server=server_before), indent=2) + '\n')
+    accepted = result.returncode == 0 and unchanged and binaries_unchanged
+    (evidence/'result.json').write_text(json.dumps(dict(accepted=accepted, returncode=result.returncode,
+        sourceUnchanged=unchanged, binariesUnchanged=binaries_unchanged, clientSha256=CLIENT_SHA,
+        serverArtifact=artifact, clientSourceCount=len(client_before), serverSourceCount=len(server_before),
+        qualification='Actual production QML -> admitted CLI watch and native preference CAS -> real HTTP authentication/WebSocket RPC -> three actual State catalogs. Two allowed, one denied. No metadata transport peer, real user profile, provider, browser engine or standalone server-startup acceptance.'), indent=2) + '\n')
+    os.close(lock)
+    print('Actual profile chain evidence: ' + str(evidence), flush=True)
+    if not accepted:
+        for name in ['container.log', 'inside-result.json', 'server.log', 'qml.log']:
+            path = evidence/name
+            if path.is_file():
+                print(path.read_text()[-14000:])
+        raise SystemExit(1)
+    print('ACTUAL_PROFILE_CHAIN_CONTAINER_PASS', flush=True)
+
+
+if '--inside-private-container' in sys.argv:
+    inside()
+else:
+    main()
