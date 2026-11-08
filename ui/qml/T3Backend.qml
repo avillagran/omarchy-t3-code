@@ -1,6 +1,7 @@
 pragma Singleton
 import "../js/DeviceSettings.js" as Devices
 import "../js/BrowserProfiles.js" as Profiles
+import "../js/NativeBrowserProfileReporting.js" as ProfileReporting
 import "../js/BrowserImport.js" as ImportFlow
 import "../js/PreviewSessions.js" as Previews
 import "../js/BrowserSurface.js" as BrowserSurface
@@ -66,7 +67,7 @@ Singleton {
   property var clientSettings:({busy:false,error:"",requestId:"",data:{planModeEnabled:false}})
   function requestClientSettings(patch){
     if(clientSettings.busy)return
-    var id=uuid();clientSettings=Object.assign({},clientSettings,{busy:true,error:"",requestId:id})
+    var id=uuid();profileReportProfilesWrite=!!(patch&&Object.prototype.hasOwnProperty.call(patch,"browserProfiles"));clientSettings=Object.assign({},clientSettings,{busy:true,error:"",requestId:id})
     if(patch&&nativeVoiceHost.isVoicePatch(patch)){
       nativeVoiceHost.updatePreferences(patch,(clientSettings.data || {}).revision || "").then(function(value){
         if(root.clientSettings.requestId===id)root.clientSettings=Object.assign({},root.clientSettings,{busy:false,error:"",data:value})
@@ -1772,6 +1773,10 @@ Singleton {
   property var keybindingConfigs:({})
   // Metadata subscription is active only while the native browser view is visible.
   property bool previewVisible:false
+  property bool profileReportProfilesWrite: false
+  property var profileReportTargets: new Map()
+  property var profileReports: new Map()
+  property var profileReportInput: null
   readonly property bool previewWorkerReady:worker.running
   property var previewStores:({})
   property var previewState:null
@@ -2220,6 +2225,8 @@ Singleton {
       if(!clientSettings.busy||data.requestId!==clientSettings.requestId)return
       var mathBefore=!!(clientSettings.data || {}).mathRenderingEnabled
       clientSettings=Object.assign({},clientSettings,{busy:false,error:data.error || "",data:data.result || clientSettings.data})
+      if(!data.error&&data.result)ProfileReporting.settings(root,data.result,profileReportProfilesWrite)
+      profileReportProfilesWrite=false
       // Messages are rendered by the worker; reload them when math typesetting changes.
       if(!!(clientSettings.data || {}).mathRenderingEnabled!==mathBefore&&clientSettings.data)fetchMessages()
       var update=diffPreferenceUpdate
@@ -2716,7 +2723,8 @@ Singleton {
       else if(event.type==="document-ready" && inlineDocuments[data.requestId]){updateInlineDocument(data.requestId,{rendererReady:true,error:data.error || ""})}
       else if(event.type==="build-cleanup"){buildCleanup=Object.assign({},buildCleanup,{running:!!data.running,error:data.error||"",report:data.report||buildCleanup.report})}
       else if(event.type==="vault"){vault=Object.assign({},vault,{state:data})}
-      else if(event.type==="file-metadata-invalidated"||event.type==="rpc-session-state"){TerminalLinks.metadataEvent(root,data)}
+      else if(event.type==="browser-profile-target"){ProfileReporting.target(root,data)}
+      else if(event.type==="file-metadata-invalidated"||event.type==="rpc-session-state"){TerminalLinks.metadataEvent(root,data);if(event.type==="rpc-session-state")ProfileReporting.session(root,data)}
       else if(event.type==="disk-space"){diskSpace=data;if(!data.low)diskNoticeDismissed=false}
       else if(event.type==="worktree-setup"){worktreeSetup={key:data.environment+"/"+data.thread,snapshot:data.snapshot||null}}
       else if(event.type==="command-output"){if(data.requestId===commandOutput.requestId)commandOutput=Object.assign({},commandOutput,{text:data.text!==undefined?data.text:commandOutput.text,running:!!data.running,error:data.error||"",truncated:!!data.truncated})}
@@ -2727,7 +2735,7 @@ Singleton {
       else if (event.type === "action") action(data)
       else if (event.type === "backend-status") {acceptBackendStatus(data)}
       else if (event.type === "snapshot") { snapshotAboutToChange(); state = data; stale = data.stale; error = "";ensureSidebarCatalogs()
-        if(data.clientPreferences&&!clientSettings.busy)clientSettings=Object.assign({},clientSettings,{data:data.clientPreferences,error:""})
+        if(data.clientPreferences&&!clientSettings.busy){clientSettings=Object.assign({},clientSettings,{data:data.clientPreferences,error:""});ProfileReporting.settings(root,data.clientPreferences)}
         var current = state.threads.find(function(t) { return t.key === root.selectedKey })
         if (current) { selectedTitle = current.title; selectedProject = current.project }ensureThreadFamily()
         finishLocalRecovery();snapshotUpdated() }
@@ -2796,7 +2804,7 @@ Singleton {
       Object.keys(root.drafts).forEach(function(key){ if(root.projectDraftTransferKey(key))return;if(root.drafts[key].loading)root.send({op:"draft-load",key:key,projectId:root.draftProject(key)});else root.flushDraft(key) })
     }
     stdout: SplitParser { onRead: function(line) { root.receive(line) } }
-    onExited: { ImportFlow.lost(root);root.browserCleanups=({}); BrowserSurface.dismiss(root);Previews.lost(root); root.connectionLost(); root.stale = true; root.error = "disconnected"; reconnect.restart() }
+    onExited: { ProfileReporting.lost(root);ImportFlow.lost(root);root.browserCleanups=({}); BrowserSurface.dismiss(root);Previews.lost(root); root.connectionLost(); root.stale = true; root.error = "disconnected"; reconnect.restart() }
   }
   Timer { id: reconnect; interval: 5000; onTriggered: worker.running = true }
 

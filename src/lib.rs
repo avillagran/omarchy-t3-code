@@ -1035,6 +1035,7 @@ mod tests {
 pub mod window_layout;
 
 pub mod browser_preferences;
+pub mod browser_profile_reporting;
 
 pub mod browser_profiles;
 

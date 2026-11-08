@@ -501,6 +501,7 @@ fn watch(client: Client) -> Result<()> {
     let input_tx = tx.clone();
     let live = live::Control::new(client.clone());
     let shell_environments = shell_watch::start(tx.clone());
+    let mut profile_reporting = browser_profile_reporting::Control::new(tx.clone());
     // Resume from suspend / network change: streams reconnect on their own; re-check
     // connections (SSH tunnels die with a suspend) and rebuild the sidebar now.
     let wake_tx = tx.clone();
@@ -1314,6 +1315,7 @@ fn watch(client: Client) -> Result<()> {
         if Instant::now() >= next_poll {
             last_snapshot = Instant::now();
             if let Ok(environments) = environments() {
+                profile_reporting.sync(&environments);
                 quotas.sync(environments);
             }
             match snapshot(&client) {
@@ -1425,6 +1427,8 @@ fn watch(client: Client) -> Result<()> {
         };
         match text(&cmd, "op") {
             "rpc-session-state" | "file-metadata-invalidated" => emit(text(&cmd,"op"),cmd.clone()),
+            "browser-profile-targets-ready" => { for target in profile_reporting.take_targets() { emit("browser-profile-target",target); } },
+            "browser-profile-report" => profile_reporting.submit(&cmd),
             "ui-state-set" => {
                 if let Err(error) = ui_state::save(&cmd["state"]) {
                     emit("ui-state-error", json!({"error":error}));
