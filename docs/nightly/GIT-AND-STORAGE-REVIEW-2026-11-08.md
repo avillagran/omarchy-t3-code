@@ -1,5 +1,67 @@
 # Git integration and storage review — 2026-11-08
 
+## Current recheck — from 21:13 UTC
+
+The work is still not fully integrated or published. The fresh inventory covers
+117 registered worktrees: 22 client, 80 server, 14 SDK and one Android checkout.
+Sixteen worktrees contain 534 pending paths. These are path versions, including
+the same relative filenames in different worktrees, rather than 534 features.
+
+Existing durable local checkpoints cover 522 current versions. Twelve recent
+maintenance versions in `/var/tmp/o3-server/force-stop` were absent from every
+existing server ref. They are now preserved exactly in `273169514b534e1d573bc2e36a7e0bb765e74c20`,
+`refs/checkpoints/audit-20261108/mise-maintenance-current-recheck`, using an
+independent index. HEAD, the real index, source bytes, modes and identities did
+not change. One documentation file changed concurrently after the first
+observation; the checkpoint uses its freshly observed stable version. The
+earlier 510-path audit below is a separate historical observation.
+
+During final revalidation, the concurrent maintenance lane committed those
+twelve versions in `05743fe7` and became clean. The final observed pending count
+is therefore 522 paths in fifteen dirty worktrees. The preserved 534-version
+selected cut and the later 522-pending-path state are distinct observations.
+
+| Scope | Current verified state |
+| --- | --- |
+| Opened client checkout | Clean, published `07f0a01`; this is a different checkout from the integration branch. |
+| Client integration checkout | `7540744`, 30 commits ahead of live `ba6324b`, before this report update. Twenty WIP paths exactly preserved in local `da7bed01`; combined UI acceptance and publication remain pending. |
+| Wayland GUI | Twenty-six WIP paths exactly preserved in `d67bbc4c`; separate from the client integration branch. |
+| Managed auth server | 164 WIP paths exactly preserved in `45983218`; local, not merged or published. Factory compilation and composed three-case private acceptance pass; full provider catalog/lifecycle/production activation remain pending. |
+| Complete Browser Status | Fifty-one WIP paths exactly preserved in `fbe327d4`; local, not merged or published. Strict minimal/default metadata checks pass; physical feature tests and integration remain pending. |
+| Server integration feature | Clean, published `19132bf`. Main checkout remains clean at `97d3e12`, six commits behind live `dev` at `4cf398c`. |
+| Thread-open server | Clean, published `1797ed0e`, draft PR61. Both CI239 jobs pass; no default-branch merge or installation. |
+| Thread-open SDK | Clean, published `39b73284`, draft PR41, both public CI workflows pass. Exact public pin is committed in the client; SDK main remains `104a9abd`. |
+| Maintenance server | Clean `05743fe7`; the twelve preserved versions are now committed in this separate lane. |
+| Android | Clean local feature head `632af9fc`, sixteen commits ahead of live `main` at `f7888857`; no upstream or published feature branch. |
+
+Current ROOT availability is approximately 2.22 GB and HOME 51.19 GB.
+BuildCache allocates 528.27 GB on HOME. The Git directories for the client,
+server and SDK together allocate approximately 135 MB; they are not the main
+space consumers. The separate AVD filesystem has approximately 571 MB free;
+its change since the earlier observation is not attributed to this audit.
+
+All fourteen historical server candidate sizes and cache tags below were
+rechecked and are unchanged: 134.27 GB in HOME and 17.37 GB in ROOT. The three
+GUI candidate groups are also unchanged at a combined 47.13 GB. No candidate
+path appeared in inspectable current process references; restricted `/proc`
+queries prevent a universal absence claim. Sizes are allocated accounting,
+not guaranteed physical reclaim. Preserve unique evidence and check current
+owners and shared blocks before any separately scoped cleanup.
+
+No cleanup, feature merge, code push, deployment or new build/test/runtime was
+launched for this recheck. An existing Browser metadata compilation was
+observed to its actual terminal success. Current artifacts, worktrees,
+checkpoints, proof banks, Android images and snapshots were retained.
+
+Current evidence:
+
+- `/var/tmp/o3-build/git-preservation-current-audit-mgj0_k3t/`: fresh inventory, live remote heads, force-only refreshed observation, all-ref coverage and preservation receipt.
+- `/var/tmp/o3-build/git-disk-recheck-20261108-ww3z698n/storage.json`, SHA256 `80f8c7ae191e1431fe0ae4e05d05992e11407641d8452680384f0b2db9bf9771`: fresh sizes, mounts, free space and process-query limitations.
+- `/var/tmp/o3-build/thread-open-4380-qualified-components-ci239-green.json`, SHA256 `ab7615daf5ec5343f04e252a740383f9384bbaceafc02828695b4705b0eebf3f`: public server/SDK validation and remaining limits.
+- `/var/tmp/o3-server/status-complete-metadata5-f2318w3i/result.json`, SHA256 `8fcf8954b9639d0f87de8d37f058403a8fccda60c4728ae47d7da3a59488215c`: strict metadata success, zero tests or executable links.
+
+## Earlier snapshot — 19:44–19:52 UTC
+
 The work is not fully integrated or published. All 510 pending source-path
 versions observed across 117 worktrees have exact copies in durable local Git
 refs. Checkpoints preserve work; they do not merge, publish, or validate it.
