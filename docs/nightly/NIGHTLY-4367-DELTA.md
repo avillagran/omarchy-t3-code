@@ -22,7 +22,7 @@ The source-comparison receipt is
 | --- | --- | --- |
 | `20fcc6ca57` | Refresh linking tools in existing agent sessions | Pending implementation and validation review |
 | `d6c2b09c52` | HTML preview/render accepts a file path, with native source checks and caller permission enforcement | Pending implementation and validation review |
-| `09a54f01bc` | Whole-word title matches rank above busy prefixes | Pending implementation and validation review |
+| `09a54f01bc` | Whole-word title matches rank above busy prefixes | Complete original core passes 34 callbacks/192 assertions in V8; Qt regex incompatibility and product/history integration remain open. [Evidence](NATIVE-SEARCH-4367.md). |
 | `dff0b1159b` | Show the actual reason relay unlink failed | Pending implementation and validation review |
 | `22dc6f9e98` | Keep scheduled task prompts clear of the mobile microphone | Pending Android/mobile review |
 | `8e6a732305` | Move a scheduled task to another thread while preserving history | Pending server, SDK and client review |
