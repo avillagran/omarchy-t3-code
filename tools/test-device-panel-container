@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "browser-permission", "browser-permission-panel", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "thread-activity", "thread-row-activity", "backend-smoke", "reset-credit", "new-thread-model", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route", "voice-controller", "voice-ui", "voice-microphones", "voice-microphones-refresh"], default="device-tools")
+parser.add_argument("fixture", nargs="?", choices=["device-tools", "side-panel", "browser-workspace", "browser-permission", "browser-permission-panel", "native-terminal", "embedded-terminal", "terminal-links", "file-metadata", "thread-activity", "thread-row-activity", "backend-smoke", "reset-credit", "new-thread-model", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route", "voice-controller", "voice-ui", "voice-microphones", "voice-microphones-refresh", "browser-profile-reporting"], default="device-tools")
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 if subprocess.check_output(["podman", "--remote=false", "info", "--format", "{{.Host.Security.Rootless}}"], text=True).strip() != "true":
@@ -17,6 +17,7 @@ if subprocess.check_output(["podman", "--remote=false", "info", "--format", "{{.
 evidence = Path(tempfile.mkdtemp(prefix="o3-device-panel-", dir="/var/tmp"))
 evidence.chmod(0o700)
 voice_fence={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in ["tools/test-device-panel-container","tests/qml/voice-controller.qml","tests/fixtures/browser-permission-worker.py","ui/qml/T3Backend.qml","ui/qml/T3Composer.qml","ui/js/NativeVoice.js","ui/js/NativeVoice.sources.json","ui/js/VoicePlatform.js","ui/qml/T3NativeVoiceSettings.qml","ui/qml/T3I18n.qml","ui/qml/T3Preferences.qml","ui/qml/qmldir","ui/js/NativeVoiceHost.js","tests/qml/voice-ui.qml","tests/fixtures/voice-ui-worker.py","tests/qml/voice-microphones.qml","tests/qml/voice-microphones-refresh.qml","tests/fixtures/voice-microphones-worker.py","ui/qml/T3Select.qml","ui/js/NativeVoiceInput.js","ui/js/NativeVoicePreferences.js"]} if args.fixture in ["voice-controller","voice-ui","voice-microphones", "voice-microphones-refresh"] else None
+profile_fence={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in ["tools/test-device-panel-container","tests/qml/browser-profile-reporting.qml","tests/fixtures/browser-profile-report-worker.py","ui/qml/T3Backend.qml","ui/js/NativeBrowserProfileReporting.js"]} if args.fixture=="browser-profile-reporting" else None
 script = r'''
 set -eu
 test "$(ulimit -Hc)" = 0
@@ -27,7 +28,7 @@ chmod 700 /tmp/runtime
 chmod 1777 /tmp/.X11-unix
 for name in Commons Ui plugins services; do ln -s "/usr/share/omarchy/shell/$name" "/tmp/qml/$name"; done
 fixture_source="$1"
-if test "$2" = voice-controller || test "$2" = voice-ui || test "$2" = voice-microphones || test "$2" = voice-microphones-refresh; then
+if test "$2" = voice-controller || test "$2" = voice-ui || test "$2" = voice-microphones || test "$2" = voice-microphones-refresh || test "$2" = browser-profile-reporting; then
   mkdir -p /tmp/voice-source/bin
   ln -s "$1/ui" /tmp/voice-source/ui
   ln -s "$1/upstream" /tmp/voice-source/upstream
@@ -38,7 +39,7 @@ fi
 ln -s "$fixture_source" /tmp/qml/UnderTest
 printf '%s\n' '//@ pragma OmarchyLoadPatch' '//@ pragma RespectSystemStyle' > /tmp/qml/shell.qml
 cat "$1/tests/qml/$2.qml" >> /tmp/qml/shell.qml
-if test "$2" = voice-controller || test "$2" = voice-ui || test "$2" = voice-microphones || test "$2" = voice-microphones-refresh; then
+if test "$2" = voice-controller || test "$2" = voice-ui || test "$2" = voice-microphones || test "$2" = voice-microphones-refresh || test "$2" = browser-profile-reporting; then
   test -x "$fixture_source/bin/omarchy-t3-client"
   "$fixture_source/bin/omarchy-t3-client" --inert-preflight </dev/null
   test -x /voice-inert-dictate
@@ -96,16 +97,17 @@ client_target = client_link.resolve()
 client_binary = Path(os.environ.get("OMARCHY_T3_TEST_BINARY", str(client_target)))
 if args.fixture == "thread-row-activity":
     client_binary = root / "tests/fixtures/thread-activity-worker.py"
-if args.fixture in ["browser-permission", "browser-permission-panel", "voice-controller", "voice-ui", "voice-microphones", "voice-microphones-refresh", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"]:
+if args.fixture in ["browser-permission", "browser-permission-panel", "voice-controller", "voice-ui", "voice-microphones", "voice-microphones-refresh", "browser-profile-reporting", "local-thread-drafts", "local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"]:
     # T3I18n imports the global backend singleton even when the component's own
     # bridge is local. Never start an incidental mutable Cargo debug executable.
     client_binary = evidence / "permission-worker"
     worker_fixture="local-thread-draft-worker.py" if args.fixture in ["local-thread-drafts","local-thread-draft-clock", "local-thread-draft-offline", "local-thread-draft-route"] else "browser-permission-worker.py"
     if args.fixture=="voice-ui":worker_fixture="voice-ui-worker.py"
+    if args.fixture=="browser-profile-reporting":worker_fixture="browser-profile-report-worker.py"
     if args.fixture in ["voice-microphones", "voice-microphones-refresh"]:worker_fixture="voice-microphones-worker.py"
     client_binary.write_bytes((root / "tests/fixtures" / worker_fixture).read_bytes())
     client_binary.chmod(0o500)
-if args.fixture in ["voice-controller","voice-ui","voice-microphones", "voice-microphones-refresh"]:
+if args.fixture in ["voice-controller","voice-ui","voice-microphones", "voice-microphones-refresh", "browser-profile-reporting"]:
     # The incidental singleton must not execute the user's local dictation
     # helper. This retained inert program emits no models and opens no audio.
     dictate = evidence / "voice-inert-dictate"
@@ -113,7 +115,7 @@ if args.fixture in ["voice-controller","voice-ui","voice-microphones", "voice-mi
     dictate.chmod(0o500)
     command += ["-v", f"{client_binary}:/voice-inert-worker:ro"]
     command += ["-v", f"{dictate}:/voice-inert-dictate:ro", "--env", "OMARCHY_T3_DICTATE=/voice-inert-dictate"]
-if client_binary.is_file() and args.fixture not in ["voice-controller","voice-ui","voice-microphones", "voice-microphones-refresh"]:
+if client_binary.is_file() and args.fixture not in ["voice-controller","voice-ui","voice-microphones", "voice-microphones-refresh", "browser-profile-reporting"]:
     command += ["-v", f"{client_binary}:{client_target}:ro"]
 display="wayland" if args.fixture in ["side-panel", "native-terminal", "thread-row-activity", "browser-permission-panel"] else "x11"
 container_image="localhost/o3-qml-wayland-tests:local" if display=="wayland" else "docker.io/library/archlinux:latest"
@@ -130,6 +132,9 @@ if args.fixture in ["voice-microphones", "voice-microphones-refresh"]:
     command[3:3] = ["--init", "--pull=never", "--http-proxy=false"]
     (evidence / "command.json").write_text(json.dumps(command, indent=2) + "\n")
 result = subprocess.run(command, capture_output=True, text=True, timeout=155 if args.fixture=="local-thread-draft-clock" else 105 if args.fixture == "thread-row-activity" else 45)
+if profile_fence is not None:
+    assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==expected for name,expected in profile_fence.items()),"Profile reporting source changed during runtime"
+    (evidence / "profile-source-fence.json").write_text(json.dumps(profile_fence,indent=2)+"\n")
 if voice_fence is not None:
     assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==expected for name,expected in voice_fence.items()),"Voice source changed during runtime"
 (evidence / "result.json").write_text(json.dumps({"returncode":result.returncode,"fixture":args.fixture,**({"sourceSha256":voice_fence,"capture":"Actual Backend/Settings/Host scope with metadata-only transport peer; no audio devices, PCM, network, authentication, host display or Rust CAS execution" if args.fixture in ["voice-microphones", "voice-microphones-refresh"] else "Synthetic in-memory recording/transcription; inert worker and local dictation helper; no microphone/network/auth/host display"} if voice_fence is not None else {})})+"\n")

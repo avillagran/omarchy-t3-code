@@ -188,19 +188,46 @@ fn bounded_input(input: &Value) -> Result<Value> {
         "defaultProfileId":crate::browser_preferences::validate("browserDefaultProfileId", &value["defaultProfileId"])?,
         "recordingFrameRate":crate::browser_preferences::validate("browserRecordingFrameRate", &value["recordingFrameRate"])?}}))
 }
+/// Wire numbers become JS Numbers in the original projection. In particular,
+/// equal integer/float encodings must not manufacture a new config identity.
+fn js_equal(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        (Value::Number(a), Value::Number(b)) => a.as_f64() == b.as_f64(),
+        (Value::Array(a), Value::Array(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| js_equal(a, b))
+        }
+        (Value::Object(a), Value::Object(b)) => {
+            a.len() == b.len()
+                && a.iter()
+                    .all(|(key, value)| b.get(key).is_some_and(|other| js_equal(value, other)))
+        }
+        _ => left == right,
+    }
+}
+#[derive(Default)]
+struct ConfigProjection {
+    value: Option<Value>,
+    // JS own properties whose value is undefined are distinct from missing
+    // properties. These bits are internal identity state, never wire fields.
+    undefined: u8,
+}
 /// Mirror the pinned config projection followed by presentation.withoutProviders.
 /// Providers never change report identity; equal snapshots/settings retain it.
-fn project_config(previous: &mut Option<Value>, event: &Value) -> bool {
+fn project_config(previous: &mut ConfigProjection, event: &Value) -> bool {
     if event["version"] != 1 {
         return false;
     }
     let kind = text(event, "type");
     let mut force = false;
+    let mut undefined = previous.undefined;
     let mut next = match kind {
         "snapshot" if event["config"].is_object() => {
             let mut next = event["config"].clone();
+            // Original carried undefined values are omitted by the snapshot
+            // spread, removing their own keys and changing presentation identity.
+            undefined = 0;
             for key in ["environmentThemes", "usageLimitSources"] {
-                if let Some(value) = previous.as_ref().and_then(|v| v.get(key)) {
+                if let Some(value) = previous.value.as_ref().and_then(|v| v.get(key)) {
                     next[key] = value.clone();
                 }
             }
@@ -210,7 +237,7 @@ fn project_config(previous: &mut Option<Value>, event: &Value) -> bool {
         | "settingsUpdated"
         | "environmentThemesUpdated"
         | "usageLimitSourcesUpdated" => {
-            let Some(current) = previous.as_ref() else {
+            let Some(current) = previous.value.as_ref() else {
                 return false;
             };
             let mut next = current.clone();
@@ -222,17 +249,19 @@ fn project_config(previous: &mut Option<Value>, event: &Value) -> bool {
                 }
                 "settingsUpdated" => next["settings"] = event["payload"]["settings"].clone(),
                 _ => {
-                    let (key, field) = if kind == "environmentThemesUpdated" {
-                        ("environmentThemes", "themes")
+                    let (key, field, bit) = if kind == "environmentThemesUpdated" {
+                        ("environmentThemes", "themes", 1)
                     } else {
-                        ("usageLimitSources", "sources")
+                        ("usageLimitSources", "sources", 2)
                     };
                     let values = &event["payload"][field];
                     if values.as_array().is_some_and(|values| !values.is_empty()) {
                         next[key] = values.clone();
+                        undefined &= !bit;
                         force = true;
                     } else {
                         next.as_object_mut().expect("config object").remove(key);
+                        undefined |= bit;
                     }
                 }
             }
@@ -244,10 +273,17 @@ fn project_config(previous: &mut Option<Value>, event: &Value) -> bool {
     next.as_object_mut()
         .expect("config object")
         .remove("providers");
-    let changed = force || previous.as_ref() != Some(&next);
-    *previous = Some(next);
+    let changed = force
+        || previous.undefined != undefined
+        || !previous
+            .value
+            .as_ref()
+            .is_some_and(|old| js_equal(old, &next));
+    previous.value = Some(next);
+    previous.undefined = undefined;
     changed
 }
+
 fn watch_target(
     id: String,
     identity: String,
@@ -256,7 +292,7 @@ fn watch_target(
     events: Arc<Notices>,
 ) {
     let mut retry = 1;
-    let mut config = None;
+    let mut config = ConfigProjection::default();
     let mut config_id = String::new();
     let mut previous_session = String::new();
     while !stop.load(Ordering::Acquire) {
@@ -269,7 +305,7 @@ fn watch_target(
                     *current = None;
                 }
                 publish(&events, &id, &identity, &previous_session, None);
-                config = None;
+                config = ConfigProjection::default();
                 previous_session = session.id().to_owned();
             }
             if !operates(&connection)? {
@@ -294,8 +330,8 @@ fn watch_target(
                         if changed {
                             config_id = uuid::Uuid::new_v4().to_string();
                         }
-                        if changed || missing && config.is_some() {
-                            if config.as_ref().is_some_and(|value| {
+                        if changed || missing && config.value.is_some() {
+                            if config.value.as_ref().is_some_and(|value| {
                                 value["environment"]["capabilities"]["serverBrowser"] == true
                             }) {
                                 if let Ok(mut current) = target.lock() {
@@ -411,7 +447,7 @@ mod tests {
 
     #[test]
     fn provider_push_and_equal_snapshot_keep_config_identity() {
-        let mut config = None;
+        let mut config = ConfigProjection::default();
         let snapshot = json!({"version":1,"type":"snapshot","config":{
             "environment":{"capabilities":{"serverBrowser":true}},"providers":[],"settings":{"n":1}}});
         assert!(project_config(&mut config, &snapshot));
@@ -436,6 +472,37 @@ mod tests {
             &mut config,
             &json!({"version":1,"type":"keybindingsUpdated","payload":{"keybindings":[],"issues":[]}})
         ));
+    }
+
+    #[test]
+    fn whole_native_projection_reference_preserves_undefined_keys_and_duration_identity() {
+        let reference: Value = serde_json::from_str(include_str!(
+            "../tests/fixtures/browser-profile-config-projection-4314.json"
+        ))
+        .unwrap();
+        assert_eq!(reference["wholeProjection"], true);
+        assert_eq!(reference["wholeWithoutProviders"], true);
+        assert_eq!(reference["effect"], "4.1.2");
+        let mut projection = ConfigProjection::default();
+        let rows = reference["rows"].as_array().unwrap();
+        assert_eq!(rows.len(), 20);
+        for row in rows {
+            let event: Value = serde_json::from_str(row["eventJson"].as_str().unwrap()).unwrap();
+            assert_eq!(
+                project_config(&mut projection, &event),
+                row["changed"].as_bool().unwrap(),
+                "{}",
+                row["name"]
+            );
+            let mut undefined = Vec::new();
+            if projection.undefined & 1 != 0 {
+                undefined.push("environmentThemes");
+            }
+            if projection.undefined & 2 != 0 {
+                undefined.push("usageLimitSources");
+            }
+            assert_eq!(json!(undefined), row["ownUndefined"], "{}", row["name"]);
+        }
     }
 
     #[test]
