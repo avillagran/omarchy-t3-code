@@ -78,6 +78,7 @@ pub(crate) struct Display {
     socket_identity: (u64, u64),
     cancel: Arc<AtomicBool>,
     join: Option<thread::JoinHandle<()>>,
+    context: Option<crate::browser_context_owner::Shared>,
 }
 impl Display {
     pub(crate) fn launch(config: &Config) -> Result<Self> {
@@ -148,6 +149,7 @@ impl Display {
             socket_identity: (metadata.dev(), metadata.ino()),
             cancel: Arc::new(AtomicBool::new(false)),
             join: None,
+            context: None,
         };
         let raw = unsafe { libc::syscall(libc::SYS_pidfd_open, owned.child.id(), 0) as i32 };
         if raw < 0 {
@@ -200,7 +202,21 @@ impl Display {
         };
         !self.cancel.load(Ordering::Acquire) && unsafe { libc::poll(&mut poll, 1, 0) } == 0
     }
-    pub(crate) fn attach(&mut self, engine: &Engine) -> Result<()> {
+    pub(crate) fn context(&self) -> Option<crate::browser_context_owner::Shared> {
+        self.context.clone()
+    }
+    pub(crate) fn attach(
+        &mut self,
+        engine: &Engine,
+        gui: Option<crate::gui_clipboard::Shared>,
+        owner: &str,
+    ) -> Result<()> {
+        if let Some(gui) = gui {
+            self.context = Some(crate::browser_context_owner::Owner::register(
+                gui, owner, engine,
+            )?);
+        }
+        let context = self.context.clone();
         let listener = self.frontend.take().ok_or_else(error)?;
         let pid = engine.pid();
         let pidfd = duplicate(engine.pidfd().as_raw_fd())?;
@@ -283,18 +299,58 @@ impl Display {
                         };
                         let stopped = cancel.clone();
                         let terminate = cancel.clone();
+                        let context = context.clone();
                         match thread::Builder::new()
                             .name("browser-wayland-stream".into())
                             .spawn(move || {
-                                if transport::forward(
-                                    front,
-                                    backend,
-                                    (pid, compositor_pid),
-                                    [engine_watch, server_watch],
-                                    stopped,
-                                )
-                                .is_err()
-                                {
+                                let result = if let Some(context) = context {
+                                    let setup =
+                                        context.lock().map_err(|_| error()).and_then(|owner| {
+                                            let connection = owner.connection();
+                                            crate::browser_wayland_context::Observer::new(
+                                                owner.titles(),
+                                            )
+                                            .map(|observer| (connection, observer))
+                                            .map_err(|_| error())
+                                        });
+                                    if let Ok((connection, mut observer)) = setup {
+                                        let result = transport::forward_observed(
+                                            front,
+                                            backend,
+                                            (pid, compositor_pid),
+                                            [engine_watch, server_watch],
+                                            stopped,
+                                            &mut |direction, bytes| {
+                                                let mut owner =
+                                                    context.lock().map_err(|_| error())?;
+                                                observer
+                                                    .expect(owner.titles())
+                                                    .map_err(|_| error())?;
+                                                observer
+                                                    .feed(direction, bytes)
+                                                    .map_err(|_| error())?;
+                                                let (invalidated, states) = observer.take();
+                                                owner.update(&connection, invalidated, states)
+                                            },
+                                        );
+                                        observer.close();
+                                        if let Ok(mut owner) = context.lock() {
+                                            let _ = owner.close_connection(&connection);
+                                        }
+                                        result
+                                    } else {
+                                        Err(error())
+                                    }
+                                } else {
+                                    transport::forward(
+                                        front,
+                                        backend,
+                                        (pid, compositor_pid),
+                                        [engine_watch, server_watch],
+                                        stopped,
+                                    )
+                                };
+                                if result.is_err() {
                                     terminate.store(true, Ordering::Release);
                                 }
                             }) {

@@ -252,6 +252,20 @@ pub(crate) fn forward(
     watched: [OwnedFd; 2],
     cancel: Arc<AtomicBool>,
 ) -> Result<()> {
+    forward_observed(front, backend, identities, watched, cancel, &mut |_, _| {
+        Ok(())
+    })
+}
+/// Observe only authenticated, FD-validated positive reads. The observer cannot
+/// change the queued bytes or ancillary ownership; its failure retires the stream.
+pub(crate) fn forward_observed(
+    front: UnixStream,
+    backend: UnixStream,
+    identities: (i32, i32),
+    watched: [OwnedFd; 2],
+    cancel: Arc<AtomicBool>,
+    observe: &mut dyn FnMut(usize, &[u8]) -> Result<()>,
+) -> Result<()> {
     let (engine, compositor) = identities;
     let [engine_pidfd, compositor_pidfd] = watched;
     peer(&front, engine)?;
@@ -266,6 +280,9 @@ pub(crate) fn forward(
         if cancel.load(Ordering::Acquire) {
             return Ok(());
         }
+        // A bounded idle tick also services authenticated GUI current-state
+        // requests when the engine has no new protocol traffic.
+        observe(0, &[])?;
         let mut descriptors = [
             libc::pollfd {
                 fd: engine_pidfd.as_raw_fd(),
@@ -339,9 +356,15 @@ pub(crate) fn forward(
                 && !eof[index]
                 && queues[1 - index].allocated < BYTE_BUDGET
                 && queues[1 - index].rights < FD_BUDGET
-                && receive(streams[index].as_raw_fd(), &mut queues[1 - index])? == Some(false)
             {
-                eof[index] = true;
+                match receive(streams[index].as_raw_fd(), &mut queues[1 - index])? {
+                    Some(false) => eof[index] = true,
+                    Some(true) => {
+                        let chunk = queues[1 - index].chunks.back().ok_or_else(fail)?;
+                        observe(index, &chunk.bytes)?;
+                    }
+                    None => {}
+                }
             }
         }
     }

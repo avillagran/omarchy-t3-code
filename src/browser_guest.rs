@@ -348,7 +348,21 @@ struct Session {
     private: Option<private::Guest>,
 }
 impl Session {
-    fn send(&mut self, value: Value) -> Result<()> {
+    fn send(&mut self, mut value: Value) -> Result<()> {
+        if let Some(context) = self._wayland.as_ref().and_then(|display| display.context()) {
+            let mut owner = context
+                .lock()
+                .map_err(|_| "browser_input_context_unavailable")?;
+            match text(&value, "type") {
+                "open" => {
+                    let title = owner.title(text(&value, "threadId"), text(&value, "tabId"))?;
+                    value["nativeContextTitle"] = json!(title);
+                }
+                "deactivate" => owner.hide()?,
+                "close-tab" => owner.remove(text(&value, "threadId"), text(&value, "tabId"))?,
+                _ => {}
+            }
+        }
         if self
             ._wayland
             .as_ref()
@@ -361,6 +375,11 @@ impl Session {
     fn stop(&mut self) -> Result<()> {
         if let Some(result) = &self.stopped {
             return result.clone();
+        }
+        if let Some(context) = self._wayland.as_ref().and_then(|display| display.context()) {
+            if let Ok(mut owner) = context.lock() {
+                let _ = owner.hide();
+            }
         }
         if let Some(private) = &self.private {
             private.close();
@@ -774,7 +793,7 @@ impl Pool {
             .map(|pending| {
                 if let Some(display) = session._wayland.as_mut() {
                     let engine = pending.admit_spawn(session.child.id())?;
-                    display.attach(&engine)?;
+                    display.attach(&engine, self.config.clipboard.clone(), &session.id)?;
                     pending.confirm(session.child.id(), &engine)?;
                     Ok(engine)
                 } else {
@@ -793,6 +812,10 @@ impl Pool {
             )?);
         }
 
+        let context = session
+            ._wayland
+            .as_ref()
+            .and_then(|display| display.context());
         let active = self.active.clone();
         let receive = self.receive.clone();
         let cache = self.config.cache.join("browser-sessions");
@@ -914,9 +937,39 @@ impl Pool {
                         let Ok(url) = crate::Url::from_file_path(path) else {
                             continue;
                         };
-                        receive(
-                            json!({"kind":"frame","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"url":url.to_string(),"revision":value["revision"],"width":value["width"],"height":value["height"],"nativeInput":native_electron && value["nativeInput"] == true}),
-                        );
+                        // Keep frame admission and context binding atomic against
+                        // hide/show. A previously cloned View cannot rebind after hide.
+                        let current = active.lock().unwrap();
+                        if !current.as_ref().is_some_and(|now| {
+                            now.id == view.id
+                                && now.process == view.process
+                                && now.thread == view.thread
+                                && now.tab == view.tab
+                        }) {
+                            continue;
+                        }
+                        let mut frame = json!({"kind":"frame","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"url":url.to_string(),"revision":value["revision"],"width":value["width"],"height":value["height"],"nativeInput":native_electron && value["nativeInput"] == true});
+                        if let Some(context) = &context {
+                            if let (Ok(mut owner), Some(revision)) =
+                                (context.lock(), value["revision"].as_u64())
+                            {
+                                if let Ok(Some((binding, content))) =
+                                    owner.frame(crate::browser_context_owner::FrameInput {
+                                        thread: &view.thread,
+                                        tab: &view.tab,
+                                        scope: &view.id,
+                                        revision,
+                                        title: text(&value, "nativeContextTitle"),
+                                        content: &value["nativeInputContent"],
+                                    })
+                                {
+                                    frame["nativeInputBinding"] = binding;
+                                    frame["nativeInputContent"] = content;
+                                }
+                            }
+                        }
+                        drop(current);
+                        receive(frame);
                     }
                     "status" => {
                         if let Ok(snapshot) = crate::preview_transport::snapshot(
