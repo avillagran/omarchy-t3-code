@@ -72,12 +72,13 @@ ShellRoot{
     keys.mouseClick(item('t3ComposerDictate'))
     return waitFor(function(){return b.voiceState.phase==='idle'&&b.draft.text==='hello spoken'},"native mic stop inserts actual controller transcript")
    }).then(function(){
-    check(!item('nativeVoicePreview').visible,"finished preview is not duplicated")
+    check(!item('nativeVoicePreview').visible&&b.nativeVoicePreview===null&&composer.microphoneLevel===0,"idle clears old preview and level")
     check(Client.T3I18n.error('voice_cleanup_unknown').indexOf('voice_cleanup_unknown')<0,"shutdown failure is user-facing")
     check(Client.T3I18n.error('voice_host_lost').indexOf('voice_host_lost')<0,"connection failure is user-facing")
     keys.mouseClick(item('t3ComposerDictate'))
     return waitFor(function(){return !!b.nativeVoicePermission},'new permission before owner switch')
    }).then(function(){
+    check(b.nativeVoicePreview===null&&composer.nativeVoicePreviewText===''&&!item('nativeVoicePreview').visible,'fresh preparing never revives old preview')
     var old=b.nativeVoicePermission
     b.selectedThread='two';b.selectedKey='env/two'
     return waitFor(function(){return !b.nativeVoicePermission},'changing draft denies old permission')
@@ -99,7 +100,18 @@ ShellRoot{
     return waitFor(function(){return b.nativeVoiceChoice==='off'},"explicit off")
    }).then(function(){
     check(b.voiceState.phase==='idle',"off does not auto-fallback to legacy")
-    b.releaseVoiceController()
+    settings.chooseDestination('environment:env')
+    return waitFor(function(){return b.nativeVoiceChoice&&b.nativeVoiceChoice.destination.environmentId==='env'},'restore explicit destination for helper-loss test')
+   }).then(function(){
+    keys.mouseClick(item('t3ComposerDictate'))
+    return waitFor(function(){return !!b.voiceController&&!!b.nativeVoicePermission},'actual prepared controller exists before helper loss')
+   }).then(function(){
+    b.nativeVoiceHost.receive({kind:'ready',available:false})
+    check(!b.nativeVoiceAvailable&&b.nativeVoiceInitialized&&!b.voiceController&&!b.nativeVoicePermission,'real ready(false) clears actual controller and permission')
+    check(composer.nativeVoiceMode&&item('t3ComposerDictate').visible&&!item('t3ComposerDictate').enabled,'lost native helper leaves disabled native mic')
+    check(!!composer.nativeVoiceFailure&&item('nativeVoiceErrorMessage').visible,'helper-loss guidance remains visible')
+    composer.inputField.forceActiveFocus();keys.keyClick(Qt.Key_Space,Qt.ControlModifier)
+    check(b.dictation.state==='idle'&&!b.voiceController,'lost native helper never silently falls back to legacy shortcut')
     console.log('VOICE_UI_QML_PASS: actual Backend/Host/platform/controller/Composer and Settings; transport-only synthetic peer, no microphone/network/credentials; no automatic grants, env/off/cleanup, native9field patches, dictionary, Block/Escape/Allow, plain identity/preview, real mic start/stop/commit and readable errors')
     Qt.quit()
    })

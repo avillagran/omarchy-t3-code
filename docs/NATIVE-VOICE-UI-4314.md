@@ -8,7 +8,7 @@ Voice preferences use the original nine-field codec through the host's revision-
 
 ## Acceptance and limits
 
-`python3 tools/test-device-panel-container voice-ui` runs the actual Backend, NativeVoiceHost, platform/controller, Composer and settings in private rootless Podman. Only the worker transport is synthetic; it never captures audio, calls a provider or opens account/profile data. The source-fenced receipt is `tests/fixtures/native-voice-ui-proof-4314.json`; its successful evidence directory is `/var/tmp/o3-device-panel-zjskqddd`.
+`python3 tools/test-device-panel-container voice-ui` runs the actual Backend, NativeVoiceHost, platform/controller, Composer and settings in private rootless Podman. Only the worker transport is synthetic; it never captures audio, calls a provider or opens account/profile data. The source-fenced receipt is `tests/fixtures/native-voice-ui-proof-4314.json`; its successful evidence directory is `/var/tmp/o3-device-panel-68lv2kyu`.
 
 The test covers explicit consent, all nine original preference writes and dictionary edits, Block/Escape/Allow, native controller start/stop and draft insertion, literal preview/identity, stale permission rejection after a draft switch, and physical held Ctrl+Space release while permission is pending. The earlier `_wud5edu` failure was an incorrect fixture lookup for QObject-owned popups; it is retained. The corrected lookup and expanded acceptance passed.
 
@@ -17,3 +17,7 @@ This is not physical microphone/provider acceptance. Device enumeration is not e
 ## Streaming preview correction
 
 The first UI acceptance used a synthetic `{text}` preview object, which did not match the native contract and masked an empty-preview defect. That assertion is superseded. Native `SpeechStreamText` has `committed` and `tentative` strings; nightly 4314 ChatComposer renders adjacent spans without adding whitespace, and PreviewAnnotationSpeech explicitly concatenates those fields. The corrected consumer and transport fixture preserve that concatenation exactly. The new actual UI proof asserts HTML-like text in both fields remains literal `Text.PlainText`. Native source hashes are recorded in the receipt; previous passes are not reused as evidence of this correction.
+
+## Helper loss and fresh-session presentation
+
+Once the native host has been available, losing it leaves the native microphone visible but disabled, with translated failure guidance. Neither the button, shortcut nor legacy preferences silently switches backends. Starting/Allow require current native availability. The actual Host `ready(false)` notification was tested while a real controller and microphone request existed; both were released, and physical Ctrl+Space did not start legacy dictation. Idle resets preview/level and a subsequent preparation cannot redisplay the preceding transcript. The latest source-fenced UI receipt includes these checks and the Backend lifecycle fixes supplied by its owner.

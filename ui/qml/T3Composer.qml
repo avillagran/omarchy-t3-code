@@ -25,7 +25,7 @@ Rectangle {
   }
   readonly property bool focusLayout:bridge.viewState.interfaceLayout === "focus" || (bridge.viewState || {}).interfaceLayout === "projects"
   required property var bridge
-  readonly property bool nativeVoiceMode:bridge.nativeVoiceAvailable===true
+  readonly property bool nativeVoiceMode:bridge.nativeVoiceAvailable===true||bridge.nativeVoiceInitialized===true
   readonly property var nativeVoiceState:bridge.voiceState || ({phase:"idle"})
   readonly property string nativeVoicePhase:String(nativeVoiceState.phase || "idle")
   readonly property string nativeVoiceShortcutMode:(bridge.nativeVoicePreferences||{}).voiceShortcutMode||"auto"
@@ -33,7 +33,7 @@ Rectangle {
   onNativeVoiceModeChanged:{nativeVoicePress=null;nativeVoiceShortcutGeneration++}
   readonly property real microphoneLevel:nativeVoiceMode?Math.max(0,Math.min(1,Number(bridge.nativeVoiceLevel)||0)):Number((bridge.dictation || {}).level)||0
   readonly property string nativeVoicePreviewText:bridge.nativeVoicePreview&&typeof bridge.nativeVoicePreview.committed==="string"&&typeof bridge.nativeVoicePreview.tentative==="string"?bridge.nativeVoicePreview.committed+bridge.nativeVoicePreview.tentative:""
-  readonly property string nativeVoiceFailure:voiceMessage(nativeVoiceState.error || bridge.nativeVoiceError || "")
+  readonly property string nativeVoiceFailure:voiceMessage(nativeVoiceState.error || bridge.nativeVoiceError || (nativeVoiceMode&&bridge.nativeVoiceAvailable!==true?"voice_host_unavailable":""))
   function voiceMessage(value){return T3I18n.error(String(value||""))}
   function voiceDestination(){
     var choice=bridge.nativeVoiceChoice,destination=choice&&choice!=="off"?choice.destination:null;
@@ -139,6 +139,7 @@ Rectangle {
   property int nativeVoiceShortcutGeneration:0
   function nativeVoiceShortcut(event,pressed){
     if(event.key!==Qt.Key_Space)return false;
+    if(root.nativeVoiceMode&&root.bridge.nativeVoiceAvailable!==true)return event.modifiers===Qt.ControlModifier;
     if(pressed){
       if(event.modifiers!==Qt.ControlModifier||root.locked)return false;
       if(event.isAutoRepeat)return true;
@@ -160,7 +161,7 @@ Rectangle {
     return true;
   }
   function cancelNativeVoice(){nativeVoicePress=null;nativeVoiceShortcutGeneration++;if(bridge.voiceController)bridge.voiceController.cancel()}
-  Connections{target:root.bridge;ignoreUnknownSignals:true;function onSelectedKeyChanged(){root.nativeVoicePress=null;root.nativeVoiceShortcutGeneration++;if(root.currentNativePermission())root.answerNativePermission(false)}}
+  Connections{target:root.bridge;ignoreUnknownSignals:true;function onSelectedKeyChanged(){root.nativeVoicePress=null;root.nativeVoiceShortcutGeneration++;if(root.currentNativePermission())root.answerNativePermission(false)}function onNativeVoiceAvailableChanged(){if(root.bridge.nativeVoiceAvailable!==true){root.nativeVoicePress=null;root.nativeVoiceShortcutGeneration++}}}
   function dictationKey(event,pressed){
     if(event.key!==Qt.Key_Space)return false
     if(root.nativeVoiceMode)return root.nativeVoiceShortcut(event,pressed)
@@ -512,6 +513,7 @@ Rectangle {
     }
     T3ModelOptions {id:modelOptions;Layout.fillWidth:true;visible:root.showOptions&&!root.draft.queueEdit;bridge:root.bridge;descriptors:root.descriptors;selection:root.selection;locked:root.locked}
     Text {
+      objectName:"nativeVoiceErrorMessage"
       Layout.fillWidth: true
       visible: !!text
       text: root.draft.error ? (root.draft.error === "rpc_outcome_unknown" ? T3I18n.tr("No confirmation from T3. Retry the same submission; it will not duplicate.") : T3I18n.error(root.draft.error))
@@ -597,7 +599,7 @@ Rectangle {
           : mode === "transcribing" ? T3I18n.tr("Transcribing…")
           : !model.installed ? T3I18n.tr("Download the dictation model ({size}), then dictate",{size:root.sizeText(model.sizeBytes)})
           : T3I18n.tr("Dictate") + " · " + T3I18n.tr("Ctrl+Space: hold to talk, tap to start and stop")
-        enabled: root.nativeVoiceMode?(listening||((mode==="idle"||mode==="error")&&!root.locked&&!!root.bridge.selectedKey)):mode === "downloading" || listening || (mode === "idle" && (!model.installed || (!root.locked && !!root.bridge.selectedThread)))
+        enabled: root.nativeVoiceMode?(root.bridge.nativeVoiceAvailable===true&&(listening||((mode==="idle"||mode==="error")&&!root.locked&&!!root.bridge.selectedKey))):mode === "downloading" || listening || (mode === "idle" && (!model.installed || (!root.locked && !!root.bridge.selectedThread)))
         onClicked: root.nativeVoiceMode?(root.nativeVoiceState.errorAction==="settings"?root.openNativeVoiceSettings():root.bridge.toggleNativeVoice()):mode === "downloading" ? root.bridge.cancelDictationDownload() : root.bridge.toggleDictation()
         // Resting the mouse on the microphone lists the recordings kept for this
         // thread, so the audio behind a lost transcription is a click away.
@@ -919,7 +921,7 @@ Rectangle {
       RowLayout{
         Layout.alignment:Qt.AlignRight
         T3PickerButton{id:nativePermissionBlock;objectName:"nativeVoicePermissionBlock";text:T3I18n.tr("Block");primary:false;Keys.onReleased:function(event){if(root.nativeVoiceShortcut(event,false))event.accepted=true};onClicked:root.answerNativePermission(false)}
-        T3PickerButton{objectName:"nativeVoicePermissionAllow";text:T3I18n.tr("Allow");Keys.onReleased:function(event){if(root.nativeVoiceShortcut(event,false))event.accepted=true};enabled:root.currentNativePermission()&&root.nativeVoiceMode&&root.nativePermissionOwner===root.bridge.selectedKey&&!!root.voiceDestination();onClicked:root.answerNativePermission(true)}
+        T3PickerButton{objectName:"nativeVoicePermissionAllow";text:T3I18n.tr("Allow");Keys.onReleased:function(event){if(root.nativeVoiceShortcut(event,false))event.accepted=true};enabled:root.currentNativePermission()&&root.nativeVoiceMode&&root.bridge.nativeVoiceAvailable===true&&root.nativePermissionOwner===root.bridge.selectedKey&&!!root.voiceDestination();onClicked:root.answerNativePermission(true)}
       }
     }
   }
