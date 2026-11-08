@@ -24,7 +24,7 @@ proofs; callers, changed contracts and dependencies still require review.
 | `3cd97a1e` | fix(server): saved preview screenshots keep full resolution (#28255) | pending review |
 | `e11c2fdc` | fix(mobile): share PDFs from the Android attachment viewer (#32266) | pending review |
 | `7b680b61` | feat(antigravity): support agy CLI as custom binaryPath (#32503) | pending review |
-| `8a84e942` | perf(server): skip oversized history during handoff selection (#23821) | published on server `2e1721d`; exact scalar selector matches 63 native cases, new-head full CI pending |
+| `8a84e942` | perf(server): skip oversized history during handoff selection (#23821) | published on server `2e1721d`; exact scalar selector matches 63 native cases, full container CI passes both modes |
 | `a1af1841` | fix(scripts): report:renders starts on Windows without a vp shim (#32777) | pending review |
 | `71c2d3a3` | fix(server): storage report lists project worktrees nested inside plain folders (#25883) | pending review |
 | `28eff11d` | fix(web): lineage phase headers truncate instead of overflowing the details card (#27582) | pending review |
