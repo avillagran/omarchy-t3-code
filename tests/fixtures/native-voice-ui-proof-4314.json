@@ -1,0 +1,34 @@
+{
+  "returncode": 0,
+  "fixture": "voice-ui",
+  "sourceSha256": {
+    "tools/test-device-panel-container": "ca6184d6f9b908e6c2ccf18db1f26807be5160547941a4c1048143c0268ffbc4",
+    "tests/qml/voice-controller.qml": "23582868248aafe5279669a5beecada63ed1acd1a5fb8b71ebef7aa8cd1111b7",
+    "tests/fixtures/browser-permission-worker.py": "f3ab07af35446d406e6e893e3f72100422d997e5c1867fb5f5ead3cfedeb30e5",
+    "ui/qml/T3Backend.qml": "288284d2c94867627b9c7478f0f833b2627ec026347c2ac96735ba1c7f1fdc52",
+    "ui/qml/T3Composer.qml": "0236d356ea3a3e9452d8daa32347a2e78968a3d5cfe1d9d8adbdc641ac31929f",
+    "ui/js/NativeVoice.js": "fbac3bb266c846b0e1fe5e1f11376c7ffc2ca5995284355f071e3b162e91d657",
+    "ui/js/NativeVoice.sources.json": "04f076d68a7f5efae4e4e6072ae877a46d08206651715e49e3ab77ccecc5e57e",
+    "ui/js/VoicePlatform.js": "da6f1eea8d938a6b149ab9a43b2c65d9ded8410818d42688117d01e0e0a1a8f2",
+    "ui/qml/T3NativeVoiceSettings.qml": "9d9045abc50b0a666820a04522ba7cf5ac9bb692a7b250a2f4136df2d00cff40",
+    "ui/qml/T3I18n.qml": "ca88fd61070fdd4ca105d1ec787a3400109274659178b45e45761ab41ba4929a",
+    "ui/qml/T3Preferences.qml": "259a9f9d422fcea534dc540fd1ce548fef82087d24d882dd650701b08479b055",
+    "ui/qml/qmldir": "3d713e3f6329b3fbc46612a08d8379d3e4e1ac71eb0e3d4ad79c007d6bced9bd",
+    "ui/js/NativeVoiceHost.js": "e40287034a2da782a07f6faa8620e6552402db29eb8b3b14eb5f4d6f4eb20a44",
+    "tests/qml/voice-ui.qml": "6e95f458e05483aa1166a857db1a3b6b4e60bcb1b8761cad51a1976824505d64",
+    "tests/fixtures/voice-ui-worker.py": "1bd2012d59ac2ee4571f3a298fc51a58e0cd59f58d7d044df7d650bfff425468"
+  },
+  "capture": "Synthetic in-memory recording/transcription; inert worker and local dictation helper; no microphone/network/auth/host display",
+  "scope": "Actual native Backend/Host/platform/controller and Composer/Settings; transport-only synthetic metadata peer; no physical capture, provider, cloud-key workflow or microphone enumeration.",
+  "checks": [
+    "Explicit environment/off and independent cleanup consent; no constructor grants",
+    "All original nine preference fields written through actual settings host adapter, including structured dictionary/alias editing",
+    "Permission defaults Block; Escape denial; Allow starts recording",
+    "Plain-text destination identity and streaming preview",
+    "Mic start/stop commits real controller transcript into actual draft",
+    "Draft switch rejects pending old-owner permission without writing the other draft",
+    "Physical Ctrl+Space hold released before Allow waits for actual start promise then stops/commits",
+    "Unrelated permission-modal key release does not stop hold",
+    "Readable restart guidance for uncertain shutdown and host loss"
+  ]
+}

@@ -179,3 +179,4 @@ T3ModelFallback 1.0 T3ModelFallback.qml
 T3BrowserClipboardPlatform 1.0 T3BrowserClipboardPlatform.qml
 
 T3BrowserInputMethod 1.0 T3BrowserInputMethod.qml
+T3NativeVoiceSettings 1.0 T3NativeVoiceSettings.qml
