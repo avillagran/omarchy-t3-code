@@ -18,8 +18,11 @@ image. Its embedded JDK is `/opt/java/openjdk`. Explicit toolchain jars can be
 mounted read-only with colon-separated `ANDROID_SANDBOX_RO` paths. Supply the
 Kotlin compiler and Android toolchain variables documented in ANDROID.md.
 
-The project, SDK and optional toolchain inputs are read-only. Only private Cargo,
+The project worktree is mounted read-write, including for generated source
+outputs. The SDK and optional toolchain inputs are read-only. Private Cargo,
 Gradle, target and home state is writable; `/tmp` and `/run` use private tmpfs.
+The wrapper does not prevent source writes. Each build or test must limit those
+writes to its declared outputs and retain source changes for review.
 The container drops capabilities, disables privilege escalation and has no
 network by default. It receives no host authentication or display credentials.
 Artifacts and package staging directories are retained for inspection.

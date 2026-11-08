@@ -2256,6 +2256,10 @@
     "The microphone disconnected.": "The microphone disconnected.",
     "Microphone capture did not stop.": "Microphone capture did not stop.",
     "The draft's environment is unavailable for transcript cleanup.": "The draft's environment is unavailable for transcript cleanup.",
-    "Transcript cleanup failed. The original transcript was added.": "Transcript cleanup failed. The original transcript was added."
+    "Transcript cleanup failed. The original transcript was added.": "Transcript cleanup failed. The original transcript was added.",
+    "Reconnect ChatGPT": "Reconnect ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "On OpenAI, sign in with the account you choose here.",
+    "Use a different account": "Use a different account",
+    "Change account": "Change account"
   }
 }

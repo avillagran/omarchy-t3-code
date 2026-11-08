@@ -23,6 +23,11 @@ fn visible_instance(id:&str,instance:&Value,config:&Value,definition:Option<&Val
             secrets[key]=json!(value.as_str().is_some_and(|s|!s.is_empty()));
         } else if value.is_string() || value.is_boolean() {fields[key]=value.clone();}
     }
+    // Hidden form metadata still identifies the actual native auth controller.
+    // Absence never implies managed mode; do not expose any other hidden field.
+    if kind=="codex" && matches!(instance["config"]["setupMode"].as_str(),Some("managed"|"existing")) {
+        fields["setupMode"]=instance["config"]["setupMode"].clone();
+    }
     let env=instance["environment"].as_array().into_iter().flatten().filter_map(|v|{
         let name=text(v,"name");if name.is_empty(){return None}
         let sensitive=v["sensitive"]==true;

@@ -1,0 +1,15 @@
+{
+  "revision": "a9e709f15f825cacac1b6d665fa1920c328d68b7",
+  "nativeCommit": "1b952135a1",
+  "files": {
+    "packages/contracts/src/providerSetup.ts": "8951e8c7507c2fa1538ef51795fced9b41f05ec9ed739abb7398781ba4262b5f",
+    "packages/contracts/src/clientRpcPermissions.ts": "e06cef4b3031be87859118dc0814f916035b0dec3de4239fd3864834638ee636",
+    "apps/web/src/components/settings/ChatGptAccountPicker.tsx": "87de02479a5f49fdbbd21157e7f11d176c642ebd7a523ddef7118e1630fc4c2a",
+    "apps/web/src/components/settings/CodexSetupSection.tsx": "8fac8a1429b9d15f2ef5ab194890e4f3f2e5bb85007128ee9f1c54030436970f",
+    "packages/contracts/src/settings.ts": "6ab407488bb0619f78e146c36972f3643216b16946067f91458fc63d4ba8e6ec",
+    "apps/web/src/components/settings/CodexSetupSection.logic.ts": "f0060b3e92e21fe17f27f36553862538573e771d7c77e0b79694c9502257580b"
+  },
+  "sourceOnly": true,
+  "runtimeVerified": false,
+  "qualification": "Actual native method metadata and original selection/removal UI lifecycle only. Local managed auth-store implementation remains pending."
+}

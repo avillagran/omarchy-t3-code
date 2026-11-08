@@ -2256,7 +2256,11 @@
     "The microphone disconnected.": "The microphone disconnected.",
     "Microphone capture did not stop.": "Microphone capture did not stop.",
     "The draft's environment is unavailable for transcript cleanup.": "The draft's environment is unavailable for transcript cleanup.",
-    "Transcript cleanup failed. The original transcript was added.": "Transcript cleanup failed. The original transcript was added."
+    "Transcript cleanup failed. The original transcript was added.": "Transcript cleanup failed. The original transcript was added.",
+    "Reconnect ChatGPT": "Reconnect ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "On OpenAI, sign in with the account you choose here.",
+    "Use a different account": "Use a different account",
+    "Change account": "Change account"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4515,7 +4519,11 @@
     "The microphone disconnected.": "El micrófono se desconectó.",
     "Microphone capture did not stop.": "La captura del micrófono no se detuvo.",
     "The draft's environment is unavailable for transcript cleanup.": "El entorno del borrador no está disponible para corregir la transcripción.",
-    "Transcript cleanup failed. The original transcript was added.": "La corrección de la transcripción falló. Se añadió la transcripción original."
+    "Transcript cleanup failed. The original transcript was added.": "La corrección de la transcripción falló. Se añadió la transcripción original.",
+    "Reconnect ChatGPT": "Reconectar ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "En OpenAI, inicia sesión con la cuenta que elijas aquí.",
+    "Use a different account": "Usar otra cuenta",
+    "Change account": "Cambiar cuenta"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6774,7 +6782,11 @@
     "The microphone disconnected.": "O microfone foi desconectado.",
     "Microphone capture did not stop.": "A captura do microfone não parou.",
     "The draft's environment is unavailable for transcript cleanup.": "O ambiente do rascunho não está disponível para corrigir a transcrição.",
-    "Transcript cleanup failed. The original transcript was added.": "A correção da transcrição falhou. A transcrição original foi adicionada."
+    "Transcript cleanup failed. The original transcript was added.": "A correção da transcrição falhou. A transcrição original foi adicionada.",
+    "Reconnect ChatGPT": "Reconectar o ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "Na OpenAI, entre com a conta que escolher aqui.",
+    "Use a different account": "Usar outra conta",
+    "Change account": "Mudar de conta"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9033,7 +9045,11 @@
     "The microphone disconnected.": "Le microphone a été déconnecté.",
     "Microphone capture did not stop.": "La capture du microphone ne s’est pas arrêtée.",
     "The draft's environment is unavailable for transcript cleanup.": "L’environnement du brouillon n’est pas disponible pour corriger la transcription.",
-    "Transcript cleanup failed. The original transcript was added.": "La correction de la transcription a échoué. La transcription originale a été ajoutée."
+    "Transcript cleanup failed. The original transcript was added.": "La correction de la transcription a échoué. La transcription originale a été ajoutée.",
+    "Reconnect ChatGPT": "Reconnecter ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "Sur OpenAI, connectez-vous avec le compte choisi ici.",
+    "Use a different account": "Utiliser un autre compte",
+    "Change account": "Changer de compte"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11292,7 +11308,11 @@
     "The microphone disconnected.": "Das Mikrofon wurde getrennt.",
     "Microphone capture did not stop.": "Die Mikrofonaufnahme wurde nicht beendet.",
     "The draft's environment is unavailable for transcript cleanup.": "Die Umgebung des Entwurfs ist für die Korrektur der Transkription nicht verfügbar.",
-    "Transcript cleanup failed. The original transcript was added.": "Die Korrektur der Transkription ist fehlgeschlagen. Die ursprüngliche Transkription wurde hinzugefügt."
+    "Transcript cleanup failed. The original transcript was added.": "Die Korrektur der Transkription ist fehlgeschlagen. Die ursprüngliche Transkription wurde hinzugefügt.",
+    "Reconnect ChatGPT": "ChatGPT erneut verbinden",
+    "On OpenAI, sign in with the account you choose here.": "Melde dich bei OpenAI mit dem hier ausgewählten Konto an.",
+    "Use a different account": "Anderes Konto verwenden",
+    "Change account": "Konto wechseln"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13551,7 +13571,11 @@
     "The microphone disconnected.": "Il microfono si è disconnesso.",
     "Microphone capture did not stop.": "L’acquisizione del microfono non si è arrestata.",
     "The draft's environment is unavailable for transcript cleanup.": "L’ambiente della bozza non è disponibile per correggere la trascrizione.",
-    "Transcript cleanup failed. The original transcript was added.": "La correzione della trascrizione non è riuscita. È stata aggiunta la trascrizione originale."
+    "Transcript cleanup failed. The original transcript was added.": "La correzione della trascrizione non è riuscita. È stata aggiunta la trascrizione originale.",
+    "Reconnect ChatGPT": "Riconnetti ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "Su OpenAI, accedi con l'account che scegli qui.",
+    "Use a different account": "Usa un altro account",
+    "Change account": "Cambia account"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15810,7 +15834,11 @@
     "The microphone disconnected.": "De microfoon is losgekoppeld.",
     "Microphone capture did not stop.": "De microfoonopname is niet gestopt.",
     "The draft's environment is unavailable for transcript cleanup.": "De omgeving van het concept is niet beschikbaar om de transcriptie te corrigeren.",
-    "Transcript cleanup failed. The original transcript was added.": "De correctie van de transcriptie is mislukt. De oorspronkelijke transcriptie is toegevoegd."
+    "Transcript cleanup failed. The original transcript was added.": "De correctie van de transcriptie is mislukt. De oorspronkelijke transcriptie is toegevoegd.",
+    "Reconnect ChatGPT": "ChatGPT opnieuw verbinden",
+    "On OpenAI, sign in with the account you choose here.": "Meld je bij OpenAI aan met het account dat je hier kiest.",
+    "Use a different account": "Een ander account gebruiken",
+    "Change account": "Account wijzigen"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18069,7 +18097,11 @@
     "The microphone disconnected.": "Mikrofon został odłączony.",
     "Microphone capture did not stop.": "Przechwytywanie dźwięku z mikrofonu nie zatrzymało się.",
     "The draft's environment is unavailable for transcript cleanup.": "Środowisko wersji roboczej jest niedostępne do korekty transkrypcji.",
-    "Transcript cleanup failed. The original transcript was added.": "Korekta transkrypcji nie powiodła się. Dodano oryginalną transkrypcję."
+    "Transcript cleanup failed. The original transcript was added.": "Korekta transkrypcji nie powiodła się. Dodano oryginalną transkrypcję.",
+    "Reconnect ChatGPT": "Połącz ponownie ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "W OpenAI zaloguj się na konto wybrane tutaj.",
+    "Use a different account": "Użyj innego konta",
+    "Change account": "Zmień konto"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20328,7 +20360,11 @@
     "The microphone disconnected.": "Микрофон отключился.",
     "Microphone capture did not stop.": "Захват звука с микрофона не остановился.",
     "The draft's environment is unavailable for transcript cleanup.": "Окружение черновика недоступно для исправления транскрипции.",
-    "Transcript cleanup failed. The original transcript was added.": "Не удалось исправить транскрипцию. Добавлена исходная транскрипция."
+    "Transcript cleanup failed. The original transcript was added.": "Не удалось исправить транскрипцию. Добавлена исходная транскрипция.",
+    "Reconnect ChatGPT": "Переподключить ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "В OpenAI войдите в аккаунт, выбранный здесь.",
+    "Use a different account": "Использовать другой аккаунт",
+    "Change account": "Сменить аккаунт"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22587,7 +22623,11 @@
     "The microphone disconnected.": "Мікрофон від’єднався.",
     "Microphone capture did not stop.": "Захоплення звуку з мікрофона не зупинилося.",
     "The draft's environment is unavailable for transcript cleanup.": "Середовище чернетки недоступне для виправлення транскрипції.",
-    "Transcript cleanup failed. The original transcript was added.": "Не вдалося виправити транскрипцію. Додано початкову транскрипцію."
+    "Transcript cleanup failed. The original transcript was added.": "Не вдалося виправити транскрипцію. Додано початкову транскрипцію.",
+    "Reconnect ChatGPT": "Повторно підключити ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "В OpenAI увійдіть до облікового запису, вибраного тут.",
+    "Use a different account": "Використати інший обліковий запис",
+    "Change account": "Змінити обліковий запис"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24846,7 +24886,11 @@
     "The microphone disconnected.": "マイクの接続が切れました。",
     "Microphone capture did not stop.": "マイクの音声取得が停止しませんでした。",
     "The draft's environment is unavailable for transcript cleanup.": "下書きの環境を利用できないため、文字起こしを修正できません。",
-    "Transcript cleanup failed. The original transcript was added.": "文字起こしの修正に失敗しました。元の文字起こしを追加しました。"
+    "Transcript cleanup failed. The original transcript was added.": "文字起こしの修正に失敗しました。元の文字起こしを追加しました。",
+    "Reconnect ChatGPT": "ChatGPT に再接続",
+    "On OpenAI, sign in with the account you choose here.": "OpenAI では、ここで選択したアカウントでサインインしてください。",
+    "Use a different account": "別のアカウントを使用",
+    "Change account": "アカウントを変更"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27105,7 +27149,11 @@
     "The microphone disconnected.": "마이크 연결이 끊겼습니다.",
     "Microphone capture did not stop.": "마이크 캡처가 중지되지 않았습니다.",
     "The draft's environment is unavailable for transcript cleanup.": "초안의 환경을 사용할 수 없어 전사 내용을 다듬을 수 없습니다.",
-    "Transcript cleanup failed. The original transcript was added.": "전사 내용 다듬기에 실패했습니다. 원래 전사 내용이 추가되었습니다."
+    "Transcript cleanup failed. The original transcript was added.": "전사 내용 다듬기에 실패했습니다. 원래 전사 내용이 추가되었습니다.",
+    "Reconnect ChatGPT": "ChatGPT 다시 연결",
+    "On OpenAI, sign in with the account you choose here.": "OpenAI에서 여기서 선택한 계정으로 로그인하세요.",
+    "Use a different account": "다른 계정 사용",
+    "Change account": "계정 변경"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29364,7 +29412,11 @@
     "The microphone disconnected.": "麦克风已断开连接。",
     "Microphone capture did not stop.": "麦克风采集未停止。",
     "The draft's environment is unavailable for transcript cleanup.": "草稿环境不可用，无法整理转录文本。",
-    "Transcript cleanup failed. The original transcript was added.": "转录文本整理失败。已添加原始转录文本。"
+    "Transcript cleanup failed. The original transcript was added.": "转录文本整理失败。已添加原始转录文本。",
+    "Reconnect ChatGPT": "重新连接 ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "在 OpenAI 上，使用此处选择的账号登录。",
+    "Use a different account": "使用其他账号",
+    "Change account": "切换账号"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31623,7 +31675,11 @@
     "The microphone disconnected.": "انقطع اتصال الميكروفون.",
     "Microphone capture did not stop.": "لم يتوقف التقاط الميكروفون.",
     "The draft's environment is unavailable for transcript cleanup.": "بيئة المسودة غير متاحة لتنقيح النص المحوّل.",
-    "Transcript cleanup failed. The original transcript was added.": "فشل تنقيح النص المحوّل. أُضيف النص الأصلي."
+    "Transcript cleanup failed. The original transcript was added.": "فشل تنقيح النص المحوّل. أُضيف النص الأصلي.",
+    "Reconnect ChatGPT": "إعادة توصيل ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "في OpenAI، سجّل الدخول بالحساب الذي تختاره هنا.",
+    "Use a different account": "استخدام حساب آخر",
+    "Change account": "تغيير الحساب"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33882,7 +33938,11 @@
     "The microphone disconnected.": "Mikrofonun bağlantısı kesildi.",
     "Microphone capture did not stop.": "Mikrofon yakalaması durmadı.",
     "The draft's environment is unavailable for transcript cleanup.": "Döküm düzenleme için taslağın ortamı kullanılamıyor.",
-    "Transcript cleanup failed. The original transcript was added.": "Döküm düzenleme başarısız oldu. Özgün döküm eklendi."
+    "Transcript cleanup failed. The original transcript was added.": "Döküm düzenleme başarısız oldu. Özgün döküm eklendi.",
+    "Reconnect ChatGPT": "ChatGPT'yi yeniden bağla",
+    "On OpenAI, sign in with the account you choose here.": "OpenAI'da burada seçtiğiniz hesapla oturum açın.",
+    "Use a different account": "Farklı bir hesap kullan",
+    "Change account": "Hesabı değiştir"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36141,7 +36201,11 @@
     "The microphone disconnected.": "Mikrofonen kopplades från.",
     "Microphone capture did not stop.": "Mikrofoninspelningen stoppades inte.",
     "The draft's environment is unavailable for transcript cleanup.": "Utkastets miljö är inte tillgänglig för transkriptionsbearbetning.",
-    "Transcript cleanup failed. The original transcript was added.": "Transkriptionsbearbetningen misslyckades. Den ursprungliga transkriptionen lades till."
+    "Transcript cleanup failed. The original transcript was added.": "Transkriptionsbearbetningen misslyckades. Den ursprungliga transkriptionen lades till.",
+    "Reconnect ChatGPT": "Återanslut ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "Logga in på OpenAI med kontot du väljer här.",
+    "Use a different account": "Använd ett annat konto",
+    "Change account": "Byt konto"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -38400,7 +38464,11 @@
     "The microphone disconnected.": "Mikrofonen blev afbrudt.",
     "Microphone capture did not stop.": "Mikrofonoptagelsen stoppede ikke.",
     "The draft's environment is unavailable for transcript cleanup.": "Kladdens miljø er ikke tilgængeligt til bearbejdning af transskriptionen.",
-    "Transcript cleanup failed. The original transcript was added.": "Bearbejdning af transskriptionen mislykkedes. Den oprindelige transskription blev tilføjet."
+    "Transcript cleanup failed. The original transcript was added.": "Bearbejdning af transskriptionen mislykkedes. Den oprindelige transskription blev tilføjet.",
+    "Reconnect ChatGPT": "Forbind ChatGPT igen",
+    "On OpenAI, sign in with the account you choose here.": "Log ind på OpenAI med den konto, du vælger her.",
+    "Use a different account": "Brug en anden konto",
+    "Change account": "Skift konto"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -40659,7 +40727,11 @@
     "The microphone disconnected.": "Mikrofonen ble koblet fra.",
     "Microphone capture did not stop.": "Mikrofonopptaket stoppet ikke.",
     "The draft's environment is unavailable for transcript cleanup.": "Utkastets miljø er utilgjengelig for bearbeiding av transkripsjonen.",
-    "Transcript cleanup failed. The original transcript was added.": "Bearbeiding av transkripsjonen mislyktes. Den opprinnelige transkripsjonen ble lagt til."
+    "Transcript cleanup failed. The original transcript was added.": "Bearbeiding av transkripsjonen mislyktes. Den opprinnelige transkripsjonen ble lagt til.",
+    "Reconnect ChatGPT": "Koble til ChatGPT på nytt",
+    "On OpenAI, sign in with the account you choose here.": "Logg inn på OpenAI med kontoen du velger her.",
+    "Use a different account": "Bruk en annen konto",
+    "Change account": "Bytt konto"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -42918,7 +42990,11 @@
     "The microphone disconnected.": "Mikrofonin yhteys katkesi.",
     "Microphone capture did not stop.": "Mikrofonin tallennus ei pysähtynyt.",
     "The draft's environment is unavailable for transcript cleanup.": "Luonnoksen ympäristö ei ole käytettävissä litteroinnin viimeistelyyn.",
-    "Transcript cleanup failed. The original transcript was added.": "Litteroinnin viimeistely epäonnistui. Alkuperäinen litterointi lisättiin."
+    "Transcript cleanup failed. The original transcript was added.": "Litteroinnin viimeistely epäonnistui. Alkuperäinen litterointi lisättiin.",
+    "Reconnect ChatGPT": "Yhdistä ChatGPT uudelleen",
+    "On OpenAI, sign in with the account you choose here.": "Kirjaudu OpenAIhin tässä valitsemallasi tilillä.",
+    "Use a different account": "Käytä toista tiliä",
+    "Change account": "Vaihda tiliä"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -45177,6 +45253,10 @@
     "The microphone disconnected.": "Mikrofon byl odpojen.",
     "Microphone capture did not stop.": "Snímání mikrofonu se nezastavilo.",
     "The draft's environment is unavailable for transcript cleanup.": "Prostředí konceptu není dostupné pro úpravu přepisu.",
-    "Transcript cleanup failed. The original transcript was added.": "Úprava přepisu selhala. Byl přidán původní přepis."
+    "Transcript cleanup failed. The original transcript was added.": "Úprava přepisu selhala. Byl přidán původní přepis.",
+    "Reconnect ChatGPT": "Znovu připojit ChatGPT",
+    "On OpenAI, sign in with the account you choose here.": "V OpenAI se přihlaste účtem, který zde vyberete.",
+    "Use a different account": "Použít jiný účet",
+    "Change account": "Změnit účet"
   }
 }
