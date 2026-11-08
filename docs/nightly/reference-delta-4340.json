@@ -1,0 +1,970 @@
+{
+  "previousReference": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "targetTag": "v0.1.8-nightly.20261107.4340",
+  "targetRevision": "a9e709f15f825cacac1b6d665fa1920c328d68b7",
+  "officialReleaseUrl": "https://github.com/pingdotgg/t3code/releases/tag/v0.1.8-nightly.20261107.4340",
+  "verifiedAtUtc": "2026-11-08T06:50:00.273312+00:00",
+  "equivalenceArtifactSha256": "833a85636b405d6eb996d1fbf95f277cfdbafec081bf5535361a674df8a208ba",
+  "unchangedOriginalFootprints": [
+    {
+      "path": "apps/server/src/mcp/AcpMcpStdioBridge.test.ts",
+      "beforeSha256": "9bc5fe4140068d8c45edb36ce055239ed039029950d85f8d2246bc33d37afc0a",
+      "afterSha256": "9bc5fe4140068d8c45edb36ce055239ed039029950d85f8d2246bc33d37afc0a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/AcpMcpStdioBridge.ts",
+      "beforeSha256": "776c25e62971fd1360c5f6ed7db89c3ab4e73fd14d6c8334456dc418169223d8",
+      "afterSha256": "776c25e62971fd1360c5f6ed7db89c3ab4e73fd14d6c8334456dc418169223d8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpDeviceToolkit.test.ts",
+      "beforeSha256": "1a509eae5d6fea99993d5079aaf479f20f972ee6fb33ee0fc1bdad545aa3cc89",
+      "afterSha256": "1a509eae5d6fea99993d5079aaf479f20f972ee6fb33ee0fc1bdad545aa3cc89",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpHttpServer.test.ts",
+      "beforeSha256": "cc66ba21c845762956e388594352601f628252fbbd93d0ca1df8b137c793fb76",
+      "afterSha256": "cc66ba21c845762956e388594352601f628252fbbd93d0ca1df8b137c793fb76",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpHttpServer.ts",
+      "beforeSha256": "db5991c125a4db32083fb6e779f8f659eeeaddcd03886d0f2e53577f006f3069",
+      "afterSha256": "db5991c125a4db32083fb6e779f8f659eeeaddcd03886d0f2e53577f006f3069",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpInvocationContext.test.ts",
+      "beforeSha256": "a6f616e37a50fea35b3ea74ba46910a4db2b26849b74312c1e2bf1e38e0b3862",
+      "afterSha256": "a6f616e37a50fea35b3ea74ba46910a4db2b26849b74312c1e2bf1e38e0b3862",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpInvocationContext.ts",
+      "beforeSha256": "c0bf05105036c1e05a872219a2e548d05ba4ae1b7fc79bde581dd5dec63782f0",
+      "afterSha256": "c0bf05105036c1e05a872219a2e548d05ba4ae1b7fc79bde581dd5dec63782f0",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpSessionRegistry.test.ts",
+      "beforeSha256": "74072abc876b844a30ebe7416a27de6ea2d1437043f0c083a6cd89ae5232d2d5",
+      "afterSha256": "74072abc876b844a30ebe7416a27de6ea2d1437043f0c083a6cd89ae5232d2d5",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpSessionRegistry.testkit.ts",
+      "beforeSha256": "733740582821c7895288c788e2cf73faef2884a64cd0f5258b25a4f0f3560880",
+      "afterSha256": "733740582821c7895288c788e2cf73faef2884a64cd0f5258b25a4f0f3560880",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpSessionRegistry.ts",
+      "beforeSha256": "324094b7befdfc2cf488d95a7393948ccec55ae63fafe8c281ccd27ee89c8345",
+      "afterSha256": "324094b7befdfc2cf488d95a7393948ccec55ae63fafe8c281ccd27ee89c8345",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.race.test.ts",
+      "beforeSha256": "7417888d2bea2e9adc2d50e18cc4fb244142746b53fd8cc153abe28da021f68d",
+      "afterSha256": "7417888d2bea2e9adc2d50e18cc4fb244142746b53fd8cc153abe28da021f68d",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.test.ts",
+      "beforeSha256": "ef1b3fd9ed62be4d3e5ee63f42567c0f2abd080ad38bfd2b5fa707426bb810b4",
+      "afterSha256": "ef1b3fd9ed62be4d3e5ee63f42567c0f2abd080ad38bfd2b5fa707426bb810b4",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.testkit.ts",
+      "beforeSha256": "499d3dc5b2584a78a82dc8a551f2cbc2f3fea6b9823c31d234d25bbc6a08d666",
+      "afterSha256": "499d3dc5b2584a78a82dc8a551f2cbc2f3fea6b9823c31d234d25bbc6a08d666",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/McpToolAccess.ts",
+      "beforeSha256": "17a5a70ffa74153911e3092c4358a6e6d3dd3703d78512914434850df1250df1",
+      "afterSha256": "17a5a70ffa74153911e3092c4358a6e6d3dd3703d78512914434850df1250df1",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpService.activity.test.ts",
+      "beforeSha256": "a731d68f5263f8595106f32fdbb273076e48d6e503f385c36d66be3f13525662",
+      "afterSha256": "a731d68f5263f8595106f32fdbb273076e48d6e503f385c36d66be3f13525662",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpService.test.ts",
+      "beforeSha256": "f3e345d5826ab7e4219a1a9d26443b2e9a490ad05e1b5c0caca9cee2d8cb767a",
+      "afterSha256": "f3e345d5826ab7e4219a1a9d26443b2e9a490ad05e1b5c0caca9cee2d8cb767a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpService.ts",
+      "beforeSha256": "11a7215f6c55129a5908b5cc9189ad50458db844ccab64c7e2b71db2f7a5372a",
+      "afterSha256": "11a7215f6c55129a5908b5cc9189ad50458db844ccab64c7e2b71db2f7a5372a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/OrchestratorMcpToolkit.integration.test.ts",
+      "beforeSha256": "efaa36b47fe1aa0a91fd6a0b850d7953824ef7f91841a2323fbdfbd25c7315ad",
+      "afterSha256": "efaa36b47fe1aa0a91fd6a0b850d7953824ef7f91841a2323fbdfbd25c7315ad",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/PreviewAutomationBroker.test.ts",
+      "beforeSha256": "16432343fbd7a4d22291aa031d0f82583cd694c921a7f2a0965da33c4fb60540",
+      "afterSha256": "16432343fbd7a4d22291aa031d0f82583cd694c921a7f2a0965da33c4fb60540",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/PreviewAutomationBroker.ts",
+      "beforeSha256": "25207d4e247dcae0b84d352890956ba9c300a0f728d098ca921805306643cf86",
+      "afterSha256": "25207d4e247dcae0b84d352890956ba9c300a0f728d098ca921805306643cf86",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/TaskCancelNativeSubagent.integration.test.ts",
+      "beforeSha256": "8ada7f7dfc154c0fe9449b9612757759396a1b1bff72fc7791b978b672940bac",
+      "afterSha256": "8ada7f7dfc154c0fe9449b9612757759396a1b1bff72fc7791b978b672940bac",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/TaskCancelUsageLimit.integration.test.ts",
+      "beforeSha256": "87c8863c74c0b91880099c074ab8994f777027e930f622fe4d08bb9e99f9bcca",
+      "afterSha256": "87c8863c74c0b91880099c074ab8994f777027e930f622fe4d08bb9e99f9bcca",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/ThreadMetadataMcpService.ts",
+      "beforeSha256": "2dbcfe8edc8f5232b724c69ff5a1d84cccc0325211df9b1a366905417ad887a4",
+      "afterSha256": "2dbcfe8edc8f5232b724c69ff5a1d84cccc0325211df9b1a366905417ad887a4",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/WorktreeMcpService.test.ts",
+      "beforeSha256": "43df25bf4f6f47bda0acdc0d4d82d9e43fb62d03a6d93001bf71ae257eeee921",
+      "afterSha256": "43df25bf4f6f47bda0acdc0d4d82d9e43fb62d03a6d93001bf71ae257eeee921",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/WorktreeMcpService.ts",
+      "beforeSha256": "749aa9f3e8983f9e72925482f3f3cd018a031ce7211213025ca809c6c97b0db6",
+      "afterSha256": "749aa9f3e8983f9e72925482f3f3cd018a031ce7211213025ca809c6c97b0db6",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/advertisedJsonSchema.test.ts",
+      "beforeSha256": "7ca437a236c3d1c2db8aba3c6bdc5f0f9ad7340a867c28c84a7aa43c2ba58529",
+      "afterSha256": "7ca437a236c3d1c2db8aba3c6bdc5f0f9ad7340a867c28c84a7aa43c2ba58529",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/advertisedJsonSchema.ts",
+      "beforeSha256": "9cb38df27973daa7a74f694130b3c8b2713563417801c99edd06c72aa8467dab",
+      "afterSha256": "9cb38df27973daa7a74f694130b3c8b2713563417801c99edd06c72aa8467dab",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/delegatedTaskModes.ts",
+      "beforeSha256": "041447811a67bcf62c2af83c4165572dae6dc90af51cf7e039f72b52f82b8909",
+      "afterSha256": "041447811a67bcf62c2af83c4165572dae6dc90af51cf7e039f72b52f82b8909",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/linkOrigin.test.ts",
+      "beforeSha256": "8c788ab4b05c359319c89d0baa62cf08f06c775bce17f5796643f82b1654d6e0",
+      "afterSha256": "8c788ab4b05c359319c89d0baa62cf08f06c775bce17f5796643f82b1654d6e0",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/linkOrigin.ts",
+      "beforeSha256": "bd52b6ab0ec776d53aedcc5ea84492c478b4d225153432ac015dd83be38b5796",
+      "afterSha256": "bd52b6ab0ec776d53aedcc5ea84492c478b4d225153432ac015dd83be38b5796",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/threadAccess.test.ts",
+      "beforeSha256": "fef766f130bd50e15ccddb19461b254e9e1e34f6eafa883d4b0796c01bdf6498",
+      "afterSha256": "fef766f130bd50e15ccddb19461b254e9e1e34f6eafa883d4b0796c01bdf6498",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/threadAccess.ts",
+      "beforeSha256": "a8e9d2ca932736b4826ae3b9166937dc7e57f2cab50c3c807b5db6da415a577a",
+      "afterSha256": "a8e9d2ca932736b4826ae3b9166937dc7e57f2cab50c3c807b5db6da415a577a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/attachment/handlers.ts",
+      "beforeSha256": "339673d811543493f5fe2e5b66abc928316b8b62a8d7987d2d82e58359fe57db",
+      "afterSha256": "339673d811543493f5fe2e5b66abc928316b8b62a8d7987d2d82e58359fe57db",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/attachment/input.ts",
+      "beforeSha256": "e496ad80bb4b689a605982ecbd0f3d9696a4233c6e7c56886e6cc08da38a26c2",
+      "afterSha256": "e496ad80bb4b689a605982ecbd0f3d9696a4233c6e7c56886e6cc08da38a26c2",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/attachment/tools.ts",
+      "beforeSha256": "9920324ac60af1a107384d0b72da727ba25acfc08b01513e3d9ac9249aeadc5b",
+      "afterSha256": "9920324ac60af1a107384d0b72da727ba25acfc08b01513e3d9ac9249aeadc5b",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/core.test.ts",
+      "beforeSha256": "cc9bf5796e1c1fe912266016157c178797d34f6cc983285c6dde30ec1928faca",
+      "afterSha256": "cc9bf5796e1c1fe912266016157c178797d34f6cc983285c6dde30ec1928faca",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/device/handlers.test.ts",
+      "beforeSha256": "6dd78a8a389b8900a4714b53a78f4c068db1be330498210b80723df258d01ae4",
+      "afterSha256": "6dd78a8a389b8900a4714b53a78f4c068db1be330498210b80723df258d01ae4",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/device/handlers.ts",
+      "beforeSha256": "2649ec8769ced4468b4dacd25d67c85cad2c5ccc52f3ce7dc9f2c7f9eb9a0383",
+      "afterSha256": "2649ec8769ced4468b4dacd25d67c85cad2c5ccc52f3ce7dc9f2c7f9eb9a0383",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/device/tools.ts",
+      "beforeSha256": "e7e01aec20ebc5ebccbd59c3b24ea1b77a826e361d3dcc631070fa35d79956d8",
+      "afterSha256": "e7e01aec20ebc5ebccbd59c3b24ea1b77a826e361d3dcc631070fa35d79956d8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/environment/handlers.test.ts",
+      "beforeSha256": "12022c74b53265d7c14b27ae243e3afe1d988bb5a2c334173ce656e73487c2c3",
+      "afterSha256": "12022c74b53265d7c14b27ae243e3afe1d988bb5a2c334173ce656e73487c2c3",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/environment/handlers.ts",
+      "beforeSha256": "681b19d5d97ff1ca9c18827c791de307f202f6d5fa0ea07468a0f3df6971e551",
+      "afterSha256": "681b19d5d97ff1ca9c18827c791de307f202f6d5fa0ea07468a0f3df6971e551",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/environment/tools.ts",
+      "beforeSha256": "47f8b39a2e2a346b8279ca9aa82dc62ce3b1ff63c917b1618d7239fb0450a658",
+      "afterSha256": "47f8b39a2e2a346b8279ca9aa82dc62ce3b1ff63c917b1618d7239fb0450a658",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/html/handlers.ts",
+      "beforeSha256": "6a157bbb8a8d9463ec34c37d0284550d854792bc5b24a1b8771de3f53c1e379c",
+      "afterSha256": "6a157bbb8a8d9463ec34c37d0284550d854792bc5b24a1b8771de3f53c1e379c",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/html/tools.ts",
+      "beforeSha256": "978081a0287522e0c8c4973e1c6d3ef176dc83ed171952c4e6599429d952ba76",
+      "afterSha256": "978081a0287522e0c8c4973e1c6d3ef176dc83ed171952c4e6599429d952ba76",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/orchestrator/handlers.ts",
+      "beforeSha256": "ce9941d24795e63718c13e7c33dce637ac7af8914490173ab78dd4e04b8ca70b",
+      "afterSha256": "ce9941d24795e63718c13e7c33dce637ac7af8914490173ab78dd4e04b8ca70b",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/orchestrator/tools.test.ts",
+      "beforeSha256": "073a6e29071e09f133b67b4ccc47b164c0e51f690236075daf519f1e0c6c407a",
+      "afterSha256": "073a6e29071e09f133b67b4ccc47b164c0e51f690236075daf519f1e0c6c407a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/orchestrator/tools.ts",
+      "beforeSha256": "6831a30ebed5de5f10329b7e150aff3e88e4278e6c08e56237198a4252e2f01e",
+      "afterSha256": "6831a30ebed5de5f10329b7e150aff3e88e4278e6c08e56237198a4252e2f01e",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/handlers.test.ts",
+      "beforeSha256": "3e827a34e97009a9e87bef06793be7d1af0a5e4b5ef806af0af76742fa8b0f96",
+      "afterSha256": "3e827a34e97009a9e87bef06793be7d1af0a5e4b5ef806af0af76742fa8b0f96",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/handlers.ts",
+      "beforeSha256": "72f759f56dbb9ce70db1197a489930a1c78090d86462e775c4b5feee8beae31b",
+      "afterSha256": "72f759f56dbb9ce70db1197a489930a1c78090d86462e775c4b5feee8beae31b",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/tools.test.ts",
+      "beforeSha256": "103fbc5f9cb77b07b7c2f5f92aab6f1085d2c67397264a4281cc8dd943843330",
+      "afterSha256": "103fbc5f9cb77b07b7c2f5f92aab6f1085d2c67397264a4281cc8dd943843330",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/preview/tools.ts",
+      "beforeSha256": "bfb5b9d6d87560e1dc3baeaae67eb21a78bc94507b94417d82c0472fe4718b9c",
+      "afterSha256": "bfb5b9d6d87560e1dc3baeaae67eb21a78bc94507b94417d82c0472fe4718b9c",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/previewControls/handlers.test.ts",
+      "beforeSha256": "4fa9854d94f8cb40c6cd60a8438099681257edc0262a5b3f0ac49482f463fcb2",
+      "afterSha256": "4fa9854d94f8cb40c6cd60a8438099681257edc0262a5b3f0ac49482f463fcb2",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/previewControls/handlers.ts",
+      "beforeSha256": "6446b43974be49411cdbc0ab40a5d53d09439be4c87b92396b2aa769ca47cdfa",
+      "afterSha256": "6446b43974be49411cdbc0ab40a5d53d09439be4c87b92396b2aa769ca47cdfa",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/previewControls/tools.ts",
+      "beforeSha256": "98ad1c1d81bbb0224279938c130eca444b1b2142507998e458d190065f47f0f8",
+      "afterSha256": "98ad1c1d81bbb0224279938c130eca444b1b2142507998e458d190065f47f0f8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/project/handlers.test.ts",
+      "beforeSha256": "d195ebc334b66d238a062a07c7c9484768b4bd9ef4d330af78b36a9efb51c99d",
+      "afterSha256": "d195ebc334b66d238a062a07c7c9484768b4bd9ef4d330af78b36a9efb51c99d",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/project/handlers.ts",
+      "beforeSha256": "0d7027332a51cf6d8e23222484daf50be263e61f8b2c665ccbe66dbdd4bb0284",
+      "afterSha256": "0d7027332a51cf6d8e23222484daf50be263e61f8b2c665ccbe66dbdd4bb0284",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/project/tools.ts",
+      "beforeSha256": "ccaba4a185d959ce0c3c0b812f23cbc5196e21dfa87349f06b15904b66bd0d6c",
+      "afterSha256": "ccaba4a185d959ce0c3c0b812f23cbc5196e21dfa87349f06b15904b66bd0d6c",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/pullRequests/handlers.test.ts",
+      "beforeSha256": "cea99b02a9298d412b67a3cf502e317c366bac888ddc4ffb5efdc5a1cc999b52",
+      "afterSha256": "cea99b02a9298d412b67a3cf502e317c366bac888ddc4ffb5efdc5a1cc999b52",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/pullRequests/handlers.ts",
+      "beforeSha256": "243ec445589b59a3a14fa68bb3b599c596c1787a5f08da553e930a7c5f3a5d91",
+      "afterSha256": "243ec445589b59a3a14fa68bb3b599c596c1787a5f08da553e930a7c5f3a5d91",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/pullRequests/tools.ts",
+      "beforeSha256": "a595d596e3a3c9d90dd7abff4ad24bae86226bd8b962021c83f42591f28ffe1b",
+      "afterSha256": "a595d596e3a3c9d90dd7abff4ad24bae86226bd8b962021c83f42591f28ffe1b",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/thread/handlers.ts",
+      "beforeSha256": "5d59fa9fdac547c69870e19f23bb02e0799203ac5bc3e60b3efcd4131e76bcb3",
+      "afterSha256": "5d59fa9fdac547c69870e19f23bb02e0799203ac5bc3e60b3efcd4131e76bcb3",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/thread/tools.ts",
+      "beforeSha256": "2197e8ededd75df3fd94d57e993f3fe405203418774cddf10738fbf5c31b2a05",
+      "afterSha256": "2197e8ededd75df3fd94d57e993f3fe405203418774cddf10738fbf5c31b2a05",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/worktree/handlers.ts",
+      "beforeSha256": "4f6638b523c7791cb1eeaa0bf41fd1cf4f82c23667a5dc6bf914aa1e3a454bc8",
+      "afterSha256": "4f6638b523c7791cb1eeaa0bf41fd1cf4f82c23667a5dc6bf914aa1e3a454bc8",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/mcp/toolkits/worktree/tools.ts",
+      "beforeSha256": "d480aca924808901f3695afeca614bb573b317bde90c71235002cef976bea55f",
+      "afterSha256": "d480aca924808901f3695afeca614bb573b317bde90c71235002cef976bea55f",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/preview/ServerBrowser.ts",
+      "beforeSha256": "e8b025a1c7de82ba8089c5fa7d4439ee69e1d19a74af7657a26a419a51cdfab6",
+      "afterSha256": "e8b025a1c7de82ba8089c5fa7d4439ee69e1d19a74af7657a26a419a51cdfab6",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/server/src/preview/ServerBrowserPage.ts",
+      "beforeSha256": "d5e1058f13b57c9f0a52f2ac68f88b656958e202a1ca81050a093bd7e8f1001b",
+      "afterSha256": "d5e1058f13b57c9f0a52f2ac68f88b656958e202a1ca81050a093bd7e8f1001b",
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/contracts/src/preview.ts",
+      "beforeSha256": "d93c13bf3c0510629d61cce4249192cc083b3849d00c7e9f2c4abd70b1d4fb3d",
+      "afterSha256": "d93c13bf3c0510629d61cce4249192cc083b3849d00c7e9f2c4abd70b1d4fb3d",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/web/src/browser/BrowserProfileReporter.ts",
+      "beforeSha256": "ec8dbd094cf6bff0eb545478e57ed8b3255f80d13193a9b9141e967505112045",
+      "afterSha256": "ec8dbd094cf6bff0eb545478e57ed8b3255f80d13193a9b9141e967505112045",
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/client-runtime/src/state/serverConfigProjection.ts",
+      "beforeSha256": "9b2e59b961a8d366e3679918e8d7a49b659cd7b8a1d459787c9ce88c4bbf2662",
+      "afterSha256": "9b2e59b961a8d366e3679918e8d7a49b659cd7b8a1d459787c9ce88c4bbf2662",
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/client-runtime/src/state/presentation.ts",
+      "beforeSha256": "beac3c8a1cec697205568b9c041cbb3f41a5148b8505f9dd1aa299c8a781b6f8",
+      "afterSha256": "beac3c8a1cec697205568b9c041cbb3f41a5148b8505f9dd1aa299c8a781b6f8",
+      "byteIdentical": true
+    }
+  ],
+  "changedOriginalPaths": [
+    "apps/desktop/src/ipc/DesktopIpcHandlers.ts",
+    "apps/desktop/src/ipc/channels.ts",
+    "apps/desktop/src/ipc/methods/localEnvironment.test.ts",
+    "apps/desktop/src/ipc/methods/localEnvironment.ts",
+    "apps/desktop/src/preload.ts",
+    "apps/mobile/modules/t3-terminal/android/src/main/java/expo/modules/t3terminal/T3TerminalView.kt",
+    "apps/mobile/modules/t3-terminal/android/src/main/java/expo/modules/t3terminal/TerminalNavigationKeyListener.kt",
+    "apps/mobile/modules/t3-terminal/android/src/test/java/expo/modules/t3terminal/TerminalNavigationKeyListenerTest.kt",
+    "apps/mobile/src/components/ui/AppBar.android.tsx",
+    "apps/mobile/src/features/pull-requests/PullRequestAgentRow.tsx",
+    "apps/mobile/src/features/pull-requests/PullRequestControls.tsx",
+    "apps/mobile/src/features/pull-requests/pullRequestAgentTasks.test.ts",
+    "apps/mobile/src/features/pull-requests/pullRequestAgentTasks.ts",
+    "apps/mobile/src/features/pull-requests/usePullRequestAgentActions.ts",
+    "apps/mobile/src/features/settings/SettingsProviderAccountsRouteScreen.tsx",
+    "apps/mobile/src/features/threads/NewTaskRouteScreen.tsx",
+    "apps/mobile/src/features/threads/ThreadSettingsSheet.tsx",
+    "apps/mobile/src/features/threads/useStartSideChat.ts",
+    "apps/mobile/src/features/usage/UsageLimitsPooled.tsx",
+    "apps/mobile/src/features/usage/UsageLimitsSection.tsx",
+    "apps/mobile/src/features/usage/UsageRouteScreen.tsx",
+    "apps/mobile/src/features/usage/usageLimitsRefresh.ts",
+    "apps/mobile/src/state/thread-task-permissions.test.ts",
+    "apps/mobile/src/state/usage.ts",
+    "apps/mobile/src/state/use-thread-composer-state.ts",
+    "apps/server/scripts/acp-mock-agent.ts",
+    "apps/server/src/auth/RpcAuthorization.ts",
+    "apps/server/src/environmentTheme.test.ts",
+    "apps/server/src/environmentTheme.ts",
+    "apps/server/src/observability/RpcInstrumentation.ts",
+    "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts",
+    "apps/server/src/orchestration-v2/Adapters/AcpRegistryAdapterV2.test.ts",
+    "apps/server/src/orchestration-v2/testkit/fixtures/acp_titled_multiselect/input.ts",
+    "apps/server/src/orchestration-v2/testkit/fixtures/acp_titled_multiselect/output.ts",
+    "apps/server/src/orchestration-v2/testkit/fixtures/acp_titled_multiselect/registry_transcript.ndjson",
+    "apps/server/src/orchestration-v2/testkit/fixtures/index.ts",
+    "apps/server/src/preview/PortScanner.test.ts",
+    "apps/server/src/preview/PortScanner.ts",
+    "apps/server/src/provider/CodexChatGptAuth.test.ts",
+    "apps/server/src/provider/CodexChatGptAuth.ts",
+    "apps/server/src/provider/Drivers/AntigravityDriver.test.ts",
+    "apps/server/src/provider/Drivers/AntigravityDriver.ts",
+    "apps/server/src/provider/ProviderAuthService.ts",
+    "apps/server/src/provider/ProviderOrchestrationAdapterInfrastructure.ts",
+    "apps/server/src/provider/acp/AntigravityAcpSupport.ts",
+    "apps/server/src/provider/providerInstallation.test.ts",
+    "apps/server/src/provider/providerInstallation.ts",
+    "apps/server/src/pullRequest/linkedThreads.test.ts",
+    "apps/server/src/pullRequest/linkedThreads.ts",
+    "apps/server/src/server.ts",
+    "apps/server/src/usage/UsageService.test.ts",
+    "apps/server/src/usage/UsageService.ts",
+    "apps/server/src/ws.test.ts",
+    "apps/server/src/ws.ts",
+    "apps/web/src/appInit.tsx",
+    "apps/web/src/components/ChatView.tsx",
+    "apps/web/src/components/auth/ConnectAgentSurface.logic.test.ts",
+    "apps/web/src/components/auth/ConnectAgentSurface.logic.ts",
+    "apps/web/src/components/auth/ConnectAgentSurface.tsx",
+    "apps/web/src/components/chat/ComposerModelEffort.tsx",
+    "apps/web/src/components/chat/useSideChat.ts",
+    "apps/web/src/components/settings/AcpSessionManagementSection.browser.test.tsx",
+    "apps/web/src/components/settings/AcpSessionManagementSection.tsx",
+    "apps/web/src/components/settings/ArchivedThreadsPanel.tsx",
+    "apps/web/src/components/settings/ChatGptAccountPicker.tsx",
+    "apps/web/src/components/settings/CodexSetupSection.tsx",
+    "apps/web/src/components/settings/ProviderSettingsPanel.tsx",
+    "apps/web/src/components/settings/SettingsSidebarNav.tsx",
+    "apps/web/src/components/settings/UsageProviderSettings.tsx",
+    "apps/web/src/components/settings/settingsSearch.test.ts",
+    "apps/web/src/components/settings/settingsSearch.ts",
+    "apps/web/src/components/settings/useAvailableSettingsSearchItems.ts",
+    "apps/web/src/components/usage/UsageLimits.tsx",
+    "apps/web/src/components/usage/UsageLimitsPooled.tsx",
+    "apps/web/src/components/usage/UsagePage.tsx",
+    "apps/web/src/hooks/useDefaultTheme.ts",
+    "apps/web/src/hooks/useEnvironmentTheme.test.ts",
+    "apps/web/src/hooks/useThreadActions.permissions.test.ts",
+    "apps/web/src/hooks/useThreadActions.ts",
+    "apps/web/src/state/primaryEnvironment.test.ts",
+    "apps/web/src/state/primaryEnvironment.ts",
+    "apps/web/src/state/server.ts",
+    "apps/web/src/state/usage.ts",
+    "apps/web/src/themePalette.ts",
+    "docs/user/appearance.md",
+    "docs/user/outside-agents.md",
+    "docs/user/thread-sidebar.md",
+    "docs/user/usage.md",
+    "packages/client-runtime/src/modelTraits.test.ts",
+    "packages/client-runtime/src/modelTraits.ts",
+    "packages/client-runtime/src/state/commandPermissions.test.ts",
+    "packages/client-runtime/src/state/pendingUserInput.test.ts",
+    "packages/client-runtime/src/state/pendingUserInput.ts",
+    "packages/client-runtime/src/state/server.ts",
+    "packages/client-runtime/src/state/threadRequests.test.ts",
+    "packages/client-runtime/src/state/threadRequests.ts",
+    "packages/client-runtime/src/state/usage.test.ts",
+    "packages/client-runtime/src/state/usage.ts",
+    "packages/contracts/src/clientRpcPermissions.ts",
+    "packages/contracts/src/ipc.ts",
+    "packages/contracts/src/providerSetup.ts",
+    "packages/contracts/src/pullRequest.ts",
+    "packages/contracts/src/rpc.ts",
+    "packages/contracts/src/settings.ts",
+    "packages/contracts/src/usage.ts",
+    "packages/effect-acp/scripts/generate.ts",
+    "packages/effect-acp/src/_generated/schema-v1.gen.ts",
+    "packages/effect-acp/src/_generated/schema.gen.ts",
+    "packages/effect-acp/src/agent.ts",
+    "packages/effect-acp/src/client.test.ts",
+    "packages/effect-acp/src/client.ts",
+    "packages/effect-acp/src/protocol.test.ts",
+    "packages/effect-acp/src/protocol.ts",
+    "packages/effect-acp/src/schema.test.ts",
+    "packages/provider-acp/src/server/adapter.ts",
+    "packages/provider-acp/src/server/clientTerminals.test.ts",
+    "packages/provider-acp/src/server/clientTerminals.ts",
+    "packages/provider-acp/src/server/elicitationForm.test.ts",
+    "packages/provider-acp/src/server/elicitationForm.ts",
+    "packages/provider-core/src/server/auth.ts",
+    "packages/provider-core/src/server/providerAuthFlow.test.ts",
+    "packages/provider-core/src/server/providerAuthFlow.ts",
+    "packages/provider-core/src/server/usage.ts",
+    "packages/provider-cursor/package.json",
+    "packages/provider-cursor/src/server/CursorAccountReader.ts",
+    "packages/provider-cursor/src/server/CursorKeychain.ts",
+    "packages/provider-cursor/src/server/CursorUsageAccounts.ts",
+    "packages/provider-cursor/src/server/accountCache.ts",
+    "packages/provider-cursor/src/server/accountUsage.test.ts",
+    "packages/provider-cursor/src/server/accountUsage.ts",
+    "packages/provider-cursor/src/server/driver.test.ts",
+    "packages/provider-cursor/src/server/driver.ts",
+    "packages/provider-cursor/src/server/usageLimits.test.ts",
+    "packages/provider-cursor/src/server/usageLimits.ts",
+    "packages/provider-grok/src/server/xaiAcpExtension.test.ts",
+    "packages/provider-grok/src/server/xaiAcpExtension.ts",
+    "packages/provider-pi/src/server/adapter.test.ts",
+    "packages/provider-pi/src/server/adapter.ts",
+    "packages/shared/src/markdownLinks.test.ts",
+    "packages/shared/src/markdownLinks.ts",
+    "packages/shared/src/usageFormat.test.ts",
+    "packages/shared/src/usageFormat.ts",
+    "packages/source-control-azure-devops/src/server/AzureDevOpsCli.ts",
+    "packages/source-control-azure-devops/src/server/AzureDevOpsSourceControlProvider.test.ts",
+    "packages/source-control-azure-devops/src/server/AzureDevOpsSourceControlProvider.ts",
+    "packages/source-control-forgejo/src/shared/definition.test.ts",
+    "packages/source-control-forgejo/src/shared/definition.ts",
+    "packages/source-control-github/src/server/gitHubPullRequestJson.test.ts",
+    "packages/source-control-github/src/server/gitHubPullRequestJson.ts",
+    "packages/source-control-gitlab/src/shared/definition.test.ts",
+    "packages/source-control-gitlab/src/shared/definition.ts",
+    "pnpm-lock.yaml"
+  ],
+  "changes": [
+    {
+      "commit": "a9e709f15f825cacac1b6d665fa1920c328d68b7",
+      "subject": "fix(mobile): center Android header confirmation buttons (#32239)",
+      "changedPaths": [
+        "apps/mobile/src/components/ui/AppBar.android.tsx"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "af96a01afd78a693314d0a5bcf2bb7505afa976e",
+      "subject": "fix(mobile): shorten the model picker save action (#32551)",
+      "changedPaths": [
+        "apps/mobile/src/features/threads/ThreadSettingsSheet.tsx"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "0080084c7109b0c0e9dff2904674b2ce75f76f2a",
+      "subject": "fix(mobile): group settled PR threads in the continue menu (#27941)",
+      "changedPaths": [
+        "apps/mobile/src/features/pull-requests/PullRequestAgentRow.tsx",
+        "apps/mobile/src/features/pull-requests/PullRequestControls.tsx",
+        "apps/mobile/src/features/pull-requests/pullRequestAgentTasks.test.ts",
+        "apps/mobile/src/features/pull-requests/pullRequestAgentTasks.ts",
+        "apps/mobile/src/features/pull-requests/usePullRequestAgentActions.ts",
+        "apps/server/src/pullRequest/linkedThreads.test.ts",
+        "apps/server/src/pullRequest/linkedThreads.ts",
+        "packages/contracts/src/pullRequest.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "511238c3bd8388f26824f59c0ae1a4e70e0ee52d",
+      "subject": "fix(mobile): Android terminal sends hardware-keyboard arrows, Tab, and Escape to the PTY (#32666)",
+      "changedPaths": [
+        "apps/mobile/modules/t3-terminal/android/src/main/java/expo/modules/t3terminal/T3TerminalView.kt",
+        "apps/mobile/modules/t3-terminal/android/src/main/java/expo/modules/t3terminal/TerminalNavigationKeyListener.kt",
+        "apps/mobile/modules/t3-terminal/android/src/test/java/expo/modules/t3terminal/TerminalNavigationKeyListenerTest.kt"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "25bf84ab07f53f141c20239c63e383823a9d5ea0",
+      "subject": "fix(mobile): center the Choose project empty-state buttons (#27450)",
+      "changedPaths": [
+        "apps/mobile/src/features/threads/NewTaskRouteScreen.tsx"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "e455200077ce60806a01c8f28435b58860dcfc74",
+      "subject": "fix: side chats start with the parent's permission mode and reasoning level (#32315)",
+      "changedPaths": [
+        "apps/mobile/src/features/threads/useStartSideChat.ts",
+        "apps/mobile/src/state/thread-task-permissions.test.ts",
+        "apps/mobile/src/state/use-thread-composer-state.ts",
+        "apps/web/src/components/ChatView.tsx",
+        "apps/web/src/components/chat/useSideChat.ts",
+        "docs/user/thread-sidebar.md"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "97d04c3bb791f47d9893da5a33c51e94a9011345",
+      "subject": "fix(forgejo): tea's `pull` and `m` aliases count as shell merges (#32401)",
+      "changedPaths": [
+        "packages/source-control-forgejo/src/shared/definition.test.ts",
+        "packages/source-control-forgejo/src/shared/definition.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "a601caaffd45ba7527bf2e8dcb1e8b966c70fa92",
+      "subject": "fix(gitlab): `glab mr accept` counts as a shell merge (#32400)",
+      "changedPaths": [
+        "packages/source-control-gitlab/src/shared/definition.test.ts",
+        "packages/source-control-gitlab/src/shared/definition.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "917ce994e4c64864bad3eed39044607b86896320",
+      "subject": "fix(web): agent sign-in defaults to Auto access (#32186)",
+      "changedPaths": [
+        "apps/web/src/components/auth/ConnectAgentSurface.logic.test.ts",
+        "apps/web/src/components/auth/ConnectAgentSurface.logic.ts",
+        "apps/web/src/components/auth/ConnectAgentSurface.tsx",
+        "docs/user/outside-agents.md"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "4c3a9d58184f20bd76833bd599c3544d2c09e3eb",
+      "subject": "fix(cursor): use the SDK account for usage data (#32448)",
+      "changedPaths": [
+        "apps/mobile/src/features/usage/UsageLimitsPooled.tsx",
+        "apps/mobile/src/features/usage/UsageLimitsSection.tsx",
+        "apps/mobile/src/features/usage/UsageRouteScreen.tsx",
+        "apps/mobile/src/features/usage/usageLimitsRefresh.ts",
+        "apps/mobile/src/state/usage.ts",
+        "apps/server/src/provider/ProviderOrchestrationAdapterInfrastructure.ts",
+        "apps/server/src/server.ts",
+        "apps/server/src/usage/UsageService.test.ts",
+        "apps/server/src/usage/UsageService.ts",
+        "apps/web/src/components/settings/ProviderSettingsPanel.tsx",
+        "apps/web/src/components/settings/SettingsSidebarNav.tsx",
+        "apps/web/src/components/settings/UsageProviderSettings.tsx",
+        "apps/web/src/components/settings/settingsSearch.test.ts",
+        "apps/web/src/components/settings/settingsSearch.ts",
+        "apps/web/src/components/settings/useAvailableSettingsSearchItems.ts",
+        "apps/web/src/components/usage/UsageLimits.tsx",
+        "apps/web/src/components/usage/UsageLimitsPooled.tsx",
+        "apps/web/src/components/usage/UsagePage.tsx",
+        "apps/web/src/state/usage.ts",
+        "docs/user/usage.md",
+        "packages/client-runtime/src/state/server.ts",
+        "packages/client-runtime/src/state/usage.test.ts",
+        "packages/client-runtime/src/state/usage.ts",
+        "packages/contracts/src/settings.ts",
+        "packages/contracts/src/usage.ts",
+        "packages/provider-core/src/server/usage.ts",
+        "packages/provider-cursor/package.json",
+        "packages/provider-cursor/src/server/CursorAccountReader.ts",
+        "packages/provider-cursor/src/server/CursorKeychain.ts",
+        "packages/provider-cursor/src/server/CursorUsageAccounts.ts",
+        "packages/provider-cursor/src/server/accountCache.ts",
+        "packages/provider-cursor/src/server/accountUsage.test.ts",
+        "packages/provider-cursor/src/server/accountUsage.ts",
+        "packages/provider-cursor/src/server/driver.test.ts",
+        "packages/provider-cursor/src/server/driver.ts",
+        "packages/provider-cursor/src/server/usageLimits.test.ts",
+        "packages/provider-cursor/src/server/usageLimits.ts",
+        "packages/shared/src/usageFormat.test.ts",
+        "packages/shared/src/usageFormat.ts",
+        "pnpm-lock.yaml"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "9f00ced8da5c6cd65d7a05492185154924c3705a",
+      "subject": "fix(antigravity): explain missing SOCKS dependency during refresh (#19660)",
+      "changedPaths": [
+        "apps/server/scripts/acp-mock-agent.ts",
+        "apps/server/src/provider/Drivers/AntigravityDriver.test.ts",
+        "apps/server/src/provider/Drivers/AntigravityDriver.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "f016a16b390f0a0237f71c691596fbd7bce43bc7",
+      "subject": "fix(acp): preserve native form questions and typed answers (#19659)",
+      "changedPaths": [
+        "apps/server/scripts/acp-mock-agent.ts",
+        "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts",
+        "apps/server/src/orchestration-v2/testkit/fixtures/acp_titled_multiselect/input.ts",
+        "apps/server/src/orchestration-v2/testkit/fixtures/acp_titled_multiselect/output.ts",
+        "apps/server/src/orchestration-v2/testkit/fixtures/acp_titled_multiselect/registry_transcript.ndjson",
+        "apps/server/src/orchestration-v2/testkit/fixtures/index.ts",
+        "apps/server/src/provider/Drivers/AntigravityDriver.test.ts",
+        "apps/server/src/provider/acp/AntigravityAcpSupport.ts",
+        "packages/client-runtime/src/state/pendingUserInput.test.ts",
+        "packages/client-runtime/src/state/pendingUserInput.ts",
+        "packages/client-runtime/src/state/threadRequests.test.ts",
+        "packages/client-runtime/src/state/threadRequests.ts",
+        "packages/effect-acp/scripts/generate.ts",
+        "packages/effect-acp/src/_generated/schema-v1.gen.ts",
+        "packages/effect-acp/src/_generated/schema.gen.ts",
+        "packages/effect-acp/src/client.test.ts",
+        "packages/effect-acp/src/schema.test.ts",
+        "packages/provider-acp/src/server/adapter.ts",
+        "packages/provider-acp/src/server/elicitationForm.test.ts",
+        "packages/provider-acp/src/server/elicitationForm.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "e3441535afbbdf7af5349f619b7cc96dc2da44ef",
+      "subject": "fix(antigravity): check account access after installation (#32446)",
+      "changedPaths": [
+        "apps/server/src/provider/providerInstallation.test.ts",
+        "apps/server/src/provider/providerInstallation.ts",
+        "apps/server/src/server.ts",
+        "apps/server/src/ws.test.ts",
+        "apps/server/src/ws.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "67fdc53823894f96e5946da80fac5b6c34c0487d",
+      "subject": "fix(desktop): published themes reach the app when it uses this machine's service (#26324)",
+      "changedPaths": [
+        "apps/desktop/src/ipc/DesktopIpcHandlers.ts",
+        "apps/desktop/src/ipc/channels.ts",
+        "apps/desktop/src/ipc/methods/localEnvironment.test.ts",
+        "apps/desktop/src/ipc/methods/localEnvironment.ts",
+        "apps/desktop/src/preload.ts",
+        "apps/web/src/appInit.tsx",
+        "apps/web/src/hooks/useDefaultTheme.ts",
+        "apps/web/src/hooks/useEnvironmentTheme.test.ts",
+        "apps/web/src/state/primaryEnvironment.test.ts",
+        "apps/web/src/state/primaryEnvironment.ts",
+        "apps/web/src/state/server.ts",
+        "apps/web/src/themePalette.ts",
+        "docs/user/appearance.md",
+        "packages/contracts/src/ipc.ts",
+        "packages/effect-acp/src/protocol.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "eeb6e236750da8d63f585ea4aa30af0320dd5ca2",
+      "subject": "fix(web): keep Pi thinking controls visible before selection (#27397)",
+      "changedPaths": [
+        "apps/web/src/components/chat/ComposerModelEffort.tsx",
+        "packages/client-runtime/src/modelTraits.test.ts",
+        "packages/client-runtime/src/modelTraits.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "beaeeff40ef108e2cdb37112bfd0dd31b4660eae",
+      "subject": "fix(acp): bound unread raw notification retention (#19585)",
+      "changedPaths": [
+        "packages/effect-acp/src/agent.ts",
+        "packages/effect-acp/src/client.ts",
+        "packages/effect-acp/src/protocol.test.ts",
+        "packages/effect-acp/src/protocol.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "5cb2a7d08802f3f046dcd10b0e802c1e63e570c8",
+      "subject": "fix(pi): preserve explicit thinking when switching models (#32389)",
+      "changedPaths": [
+        "packages/provider-pi/src/server/adapter.test.ts",
+        "packages/provider-pi/src/server/adapter.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "2d0a9dfd5137b3c0e90bec7329ee018b27643b46",
+      "subject": "fix(provider-acp): preserve UTF-8 across interleaved terminal streams (#32391)",
+      "changedPaths": [
+        "packages/provider-acp/src/server/clientTerminals.test.ts",
+        "packages/provider-acp/src/server/clientTerminals.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "c864b1c1e110294607303c19a8595a24a209b4b4",
+      "subject": "feat(web): delete archived threads from the archive page (#22160)",
+      "changedPaths": [
+        "apps/web/src/components/settings/ArchivedThreadsPanel.tsx",
+        "apps/web/src/hooks/useThreadActions.permissions.test.ts",
+        "apps/web/src/hooks/useThreadActions.ts"
+      ],
+      "status": "accepted-component-awaiting-publication",
+      "qualification": "Direct Delete and pending row guards pass actual private Qt fixture. Local integration44a476a; public branch remainsba6324b pending independent Wayland work. No real deletion or full4340 acceptance."
+    },
+    {
+      "commit": "95e7dbfdaf6d3c452eaeebd34c2d9712e2245358",
+      "subject": "fix(github): keep review-required until required reviewers approve (#32395)",
+      "changedPaths": [
+        "packages/source-control-github/src/server/gitHubPullRequestJson.test.ts",
+        "packages/source-control-github/src/server/gitHubPullRequestJson.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "a9752171080f264c7df6a979425d4dc2448a85b8",
+      "subject": "fix(grok): long command titles no longer end in a broken character (#32408)",
+      "changedPaths": [
+        "packages/provider-grok/src/server/xaiAcpExtension.test.ts",
+        "packages/provider-grok/src/server/xaiAcpExtension.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "ce9b80671bbdf274d64109465963dc967cbe076a",
+      "subject": "fix(server): theme files saved with a UTF-8 BOM are published instead of rejected (#32405)",
+      "changedPaths": [
+        "apps/server/src/environmentTheme.test.ts",
+        "apps/server/src/environmentTheme.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "48bb784e3d239be6ed2a581cbd9d052d0b07c4d7",
+      "subject": "fix(shared): inline code like `allocator.cc:217` becomes a file chip (#32403)",
+      "changedPaths": [
+        "packages/shared/src/markdownLinks.test.ts",
+        "packages/shared/src/markdownLinks.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "7f7bf263a8367418fd1eafc4e55b58f20ddb8f6d",
+      "subject": "fix(web): recover ACP settings when projects change (#32409)",
+      "changedPaths": [
+        "apps/web/src/components/settings/AcpSessionManagementSection.browser.test.tsx",
+        "apps/web/src/components/settings/AcpSessionManagementSection.tsx"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "fd1adc888a676d5f658da48f687247bb09a374c3",
+      "subject": "fix(acp): retain streamed child tool output (#32411)",
+      "changedPaths": [
+        "apps/server/src/orchestration-v2/Adapters/AcpRegistryAdapterV2.test.ts",
+        "packages/provider-acp/src/server/adapter.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "1b952135a150f180a49f442d3ed66639266d1bf0",
+      "subject": "fix(providers): remove incomplete ChatGPT connections (#29280)",
+      "changedPaths": [
+        "apps/mobile/src/features/settings/SettingsProviderAccountsRouteScreen.tsx",
+        "apps/server/src/auth/RpcAuthorization.ts",
+        "apps/server/src/observability/RpcInstrumentation.ts",
+        "apps/server/src/provider/CodexChatGptAuth.test.ts",
+        "apps/server/src/provider/CodexChatGptAuth.ts",
+        "apps/server/src/provider/ProviderAuthService.ts",
+        "apps/server/src/ws.ts",
+        "apps/web/src/components/settings/ChatGptAccountPicker.tsx",
+        "apps/web/src/components/settings/CodexSetupSection.tsx",
+        "packages/client-runtime/src/state/commandPermissions.test.ts",
+        "packages/client-runtime/src/state/server.ts",
+        "packages/contracts/src/clientRpcPermissions.ts",
+        "packages/contracts/src/providerSetup.ts",
+        "packages/contracts/src/rpc.ts",
+        "packages/provider-core/src/server/auth.ts",
+        "packages/provider-core/src/server/providerAuthFlow.test.ts",
+        "packages/provider-core/src/server/providerAuthFlow.ts"
+      ],
+      "status": "source-implementation",
+      "qualification": "SDK/server dispatch/client remote methods consumer in isolated auth-method4340 worktrees. Native managed registration controller/store remains absent; CLI-only controllers must retain original unsupported result."
+    },
+    {
+      "commit": "bc46c0ff682395baa5c1ef1093571bc21d28d51d",
+      "subject": "perf(server): avoid lsof polling when Linux proc is usable (#30011)",
+      "changedPaths": [
+        "apps/server/src/preview/PortScanner.test.ts",
+        "apps/server/src/preview/PortScanner.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    },
+    {
+      "commit": "fad24fc863ae4a4ae55649bd4868c1b103c3faf9",
+      "subject": "fix(azure-devops): default-branch lookup no longer fails for missing --repository (#29586)",
+      "changedPaths": [
+        "packages/source-control-azure-devops/src/server/AzureDevOpsCli.ts",
+        "packages/source-control-azure-devops/src/server/AzureDevOpsSourceControlProvider.test.ts",
+        "packages/source-control-azure-devops/src/server/AzureDevOpsSourceControlProvider.ts"
+      ],
+      "status": "pending-review",
+      "qualification": "Requires actual O3 consumer mapping and scoped validation."
+    }
+  ],
+  "qualification": "Source delta ledger, not a supported-feature inventory. Identical original footprints retain only their existing qualified component receipts. Pending-review does not assert missing or working behavior. Mobile changes remain explicit pending Android/desktop scope review. Global validated pin, schema coverage and SDK vendor remain unchanged."
+}
