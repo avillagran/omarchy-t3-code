@@ -182,8 +182,8 @@ pub fn markdown_render(input: &str, blocks:Option<&[Value]>, math:bool) -> Strin
         Event::Html(value) | Event::InlineHtml(value) => Some(Event::Text(value)),
         // Paths in inline code are links in the text itself, as T3's file link chips.
         Event::Code(code) => Some(match inline_code_path(&code) {
-            Some(path) => Event::Html(format!("<a href=\"file://{}\"><code>{}</code></a>",path_href(&path),html_text(&code)).into()),
-            None => Event::Code(code),
+            Some(path) if path.len() <= 4096 && !path.chars().any(char::is_control) && !path.contains("://") => Event::Html(format!("<a href=\"file://{}\"><code>{}</code></a>",path_href(&path),html_text(&code)).into()),
+            _ => Event::Code(code),
         }),
         other => Some(other),
     });
@@ -236,25 +236,8 @@ pub fn markdown_search_text(input:&str)->String{
 }
 fn html_text(s:&str)->String{s.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;").replace('"',"&quot;")}
 fn path_href(path:&str)->String{path.bytes().map(|b|if b.is_ascii_alphanumeric()||b"/._-~:".contains(&b){(b as char).to_string()}else{format!("%{b:02X}")}).collect()}
-/// T3 inlineCodeFilePathCandidate: inline code that names a file or folder.
-pub fn inline_code_path(code:&str)->Option<String>{
- let t=code.trim();
- if t.is_empty()||t.len()>4096||t.chars().any(|c|c.is_whitespace()||c=='`'||c.is_control())||t.contains("://"){return None}
- let c=t.replace('\\',"/");
- let (body,position)=match c.rsplit_once(':'){Some((b,n)) if !b.is_empty()&&!n.is_empty()&&n.chars().all(|d|d.is_ascii_digit())=>{let b=b.rsplit_once(':').filter(|(x,n)|!x.is_empty()&&n.chars().all(|d|d.is_ascii_digit())).map(|(x,_)|x).unwrap_or(b);(b.to_string(),true)},_=>(c.clone(),false)};
- if !position&&!body.contains('/'){return None}
- if body.starts_with('/')||body.starts_with("~/")||body.starts_with("./")||body.starts_with("../"){return Some(c)}
- if body.contains(':'){return None}
- let first=body.split('/').next().unwrap_or("");
- let host=first.contains('.')&&!first.starts_with('.')&&body.contains('/')&&first.rsplit('.').next().is_some_and(|tld|tld.len()>=2&&tld.chars().all(|ch|ch.is_ascii_alphabetic()));
- if host{return None}
- let base=body.trim_end_matches('/').rsplit('/').next().unwrap_or("");
- let ext=base.rsplit_once('.').is_some_and(|(n,e)|!n.is_empty()&&!e.is_empty()&&e.chars().all(|ch|ch.is_ascii_alphanumeric()||ch=='_'||ch=='-'));
- let version=base.as_bytes().windows(3).any(|w|w[0].is_ascii_digit()&&w[1]==b'.'&&w[2].is_ascii_digit());
- if version&&!position{return None}
- if !position&&!ext{return None}
- Some(c)
-}
+mod markdown_inline_path;
+pub use markdown_inline_path::inline_code_path;
 pub fn file_references(input:&str)->Vec<Value>{
  use pulldown_cmark::{Event,Parser,Tag};
  let mut paths=HashSet::new();
@@ -890,6 +873,17 @@ pub fn snapshot(client: &Client) -> Result<Value> {
 #[cfg(test)]
 mod inline_path_tests {
     use super::*;
+    #[test]
+    fn inline_code_paths_match_original_nightly_4340_cases() {
+        let fixture:Value=serde_json::from_str(include_str!("../data/inline-code-path-native-4340.json")).unwrap();
+        assert_eq!(fixture["originalRows"],12);
+        let cases=fixture["cases"].as_array().unwrap();
+        assert_eq!(cases.len(),87);
+        for row in cases {
+            let input=row[0].as_str().unwrap();
+            assert_eq!(inline_code_path(input).as_deref(),row[1].as_str(),"{input:?}");
+        }
+    }
     #[test]
     fn inline_code_paths_follow_t3_rules() {
         for p in ["/home","/home/node/report.html","./src/main.rs","~/notes.md","src/lib.rs","src/lib.rs:12:3","Cargo.toml:4"] { assert!(inline_code_path(p).is_some(),"{p}"); }
