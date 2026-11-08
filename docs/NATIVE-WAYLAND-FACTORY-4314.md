@@ -83,3 +83,10 @@ literal for combined Clippy. The production prefix is byte-identical; its hash
 and the old/new full test-source hashes are recorded separately. The original
 test artifact hashes remain the exact executed receipt, without relabeling the
 follow-up as another executed test build.
+
+A later combined source check uses the primary public SDK `ecfdfa8` with all of
+these integrated browser source files unchanged. The voice integration checkout
+passes strict all-target Clippy and the actual client binary build at
+`/var/tmp/o3-build/voice-host-bridge-build-20261107-v4/result.json`. Its additional
+voice work remains separate; this is compilation evidence for the combined
+browser/SDK source, not a rerun or relabeling of the SDK `74f0052` physical proof.
