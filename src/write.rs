@@ -480,7 +480,18 @@ pub fn execute(input:&Value) -> Result<Value> {
         "diff"=>crate::diff_review::execute(&e,input),
         "manage"=>manage(&e,input),
         // T3 ThreadVisitWatermark: the open thread is seen up to its updatedAt; Woke is cleared at wokeAt.
-        "thread-visit"=>{let thread=text(input,"thread");let at=text(input,"visitedAt");if !valid_id(thread)||chrono::DateTime::parse_from_rfc3339(at).is_err(){return Err("invalid_command".into())}dispatch_command(&e,&json!({"type":"thread.visit","commandId":format!("omarchy-visit-{}",uuid::Uuid::new_v4()),"threadId":thread,"visitedAt":at}))},
+        "thread-visit"=>{
+            let thread=text(input,"thread");let at=text(input,"visitedAt");
+            if !valid_id(thread)||chrono::DateTime::parse_from_rfc3339(at).is_err(){return Err("invalid_command".into())}
+            let mut command=json!({"type":"thread.visit","commandId":format!("omarchy-visit-{}",uuid::Uuid::new_v4()),"threadId":thread,"visitedAt":at});
+            if let Some(opened)=input.get("opened") {
+                if !opened.is_boolean(){return Err("invalid_command".into())}command["opened"]=opened.clone();
+            }
+            if let Some(query)=input.get("searchQuery") {
+                if !query.as_str().is_some_and(|q|q.encode_utf16().count()<=200){return Err("invalid_command".into())}command["searchQuery"]=query.clone();
+            }
+            dispatch_command(&e,&command)
+        },
         "upload"=>upload(&e,text(input,"url")),
         "delete-upload"=>protocol::api::assets::delete_attachment(&e.connection(true)?,text(input,"attachmentId")),
         "approval"|"question"|"send"|"stop"|"queue"=>dispatch(&e,input),

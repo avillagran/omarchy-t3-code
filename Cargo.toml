@@ -32,6 +32,11 @@ opt-level = "s"
 lto = "thin"
 strip = true
 
+# Compile the canonical application entrypoint into a separate private-test slot.
+[[example]]
+name = "nightly_search_client"
+path = "src/main.rs"
+
 [patch."https://github.com/avillagran/lib-t3-rust"]
 t3-protocol = { path = "vendor/t3-protocol" }
 

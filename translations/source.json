@@ -2260,6 +2260,15 @@
     "Reconnect ChatGPT": "Reconnect ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "On OpenAI, sign in with the account you choose here.",
     "Use a different account": "Use a different account",
-    "Change account": "Change account"
+    "Change account": "Change account",
+    "Search is unavailable.": "Search is unavailable.",
+    "In messages": "In messages",
+    "ID or link": "ID or link",
+    "Environment": "Environment",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Search titles, branches, pull requests and messages",
+    "Thread search results": "Thread search results",
+    "Searching thread messages…": "Searching thread messages…",
+    "No threads found": "No threads found"
   }
 }

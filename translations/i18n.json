@@ -2260,7 +2260,16 @@
     "Reconnect ChatGPT": "Reconnect ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "On OpenAI, sign in with the account you choose here.",
     "Use a different account": "Use a different account",
-    "Change account": "Change account"
+    "Change account": "Change account",
+    "Search is unavailable.": "Search is unavailable.",
+    "In messages": "In messages",
+    "ID or link": "ID or link",
+    "Environment": "Environment",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Search titles, branches, pull requests and messages",
+    "Thread search results": "Thread search results",
+    "Searching thread messages…": "Searching thread messages…",
+    "No threads found": "No threads found"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4523,7 +4532,16 @@
     "Reconnect ChatGPT": "Reconectar ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "En OpenAI, inicia sesión con la cuenta que elijas aquí.",
     "Use a different account": "Usar otra cuenta",
-    "Change account": "Cambiar cuenta"
+    "Change account": "Cambiar cuenta",
+    "Search is unavailable.": "La búsqueda no está disponible.",
+    "In messages": "En los mensajes",
+    "ID or link": "ID o enlace",
+    "Environment": "Entorno",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Busca títulos, ramas, pull requests y mensajes",
+    "Thread search results": "Resultados de búsqueda de hilos",
+    "Searching thread messages…": "Buscando mensajes de hilos…",
+    "No threads found": "No se encontraron hilos"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6786,7 +6804,16 @@
     "Reconnect ChatGPT": "Reconectar o ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "Na OpenAI, entre com a conta que escolher aqui.",
     "Use a different account": "Usar outra conta",
-    "Change account": "Mudar de conta"
+    "Change account": "Mudar de conta",
+    "Search is unavailable.": "A pesquisa não está disponível.",
+    "In messages": "Nas mensagens",
+    "ID or link": "ID ou link",
+    "Environment": "Ambiente",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Pesquisar títulos, branches, pull requests e mensagens",
+    "Thread search results": "Resultados da pesquisa de conversas",
+    "Searching thread messages…": "Pesquisando mensagens das conversas…",
+    "No threads found": "Nenhuma conversa encontrada"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9049,7 +9076,16 @@
     "Reconnect ChatGPT": "Reconnecter ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "Sur OpenAI, connectez-vous avec le compte choisi ici.",
     "Use a different account": "Utiliser un autre compte",
-    "Change account": "Changer de compte"
+    "Change account": "Changer de compte",
+    "Search is unavailable.": "La recherche est indisponible.",
+    "In messages": "Dans les messages",
+    "ID or link": "ID ou lien",
+    "Environment": "Environnement",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Rechercher dans les titres, branches, pull requests et messages",
+    "Thread search results": "Résultats de recherche des fils",
+    "Searching thread messages…": "Recherche dans les messages des fils…",
+    "No threads found": "Aucun fil trouvé"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11312,7 +11348,16 @@
     "Reconnect ChatGPT": "ChatGPT erneut verbinden",
     "On OpenAI, sign in with the account you choose here.": "Melde dich bei OpenAI mit dem hier ausgewählten Konto an.",
     "Use a different account": "Anderes Konto verwenden",
-    "Change account": "Konto wechseln"
+    "Change account": "Konto wechseln",
+    "Search is unavailable.": "Die Suche ist nicht verfügbar.",
+    "In messages": "In Nachrichten",
+    "ID or link": "ID oder Link",
+    "Environment": "Umgebung",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Titel, Branches, Pull Requests und Nachrichten durchsuchen",
+    "Thread search results": "Thread-Suchergebnisse",
+    "Searching thread messages…": "Thread-Nachrichten werden durchsucht…",
+    "No threads found": "Keine Threads gefunden"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13575,7 +13620,16 @@
     "Reconnect ChatGPT": "Riconnetti ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "Su OpenAI, accedi con l'account che scegli qui.",
     "Use a different account": "Usa un altro account",
-    "Change account": "Cambia account"
+    "Change account": "Cambia account",
+    "Search is unavailable.": "La ricerca non è disponibile.",
+    "In messages": "Nei messaggi",
+    "ID or link": "ID o collegamento",
+    "Environment": "Ambiente",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Cerca titoli, branch, pull request e messaggi",
+    "Thread search results": "Risultati della ricerca nelle conversazioni",
+    "Searching thread messages…": "Ricerca nei messaggi delle conversazioni…",
+    "No threads found": "Nessuna conversazione trovata"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -15838,7 +15892,16 @@
     "Reconnect ChatGPT": "ChatGPT opnieuw verbinden",
     "On OpenAI, sign in with the account you choose here.": "Meld je bij OpenAI aan met het account dat je hier kiest.",
     "Use a different account": "Een ander account gebruiken",
-    "Change account": "Account wijzigen"
+    "Change account": "Account wijzigen",
+    "Search is unavailable.": "Zoeken is niet beschikbaar.",
+    "In messages": "In berichten",
+    "ID or link": "ID of link",
+    "Environment": "Omgeving",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Zoek in titels, branches, pull requests en berichten",
+    "Thread search results": "Zoekresultaten voor gesprekken",
+    "Searching thread messages…": "Berichten in gesprekken doorzoeken…",
+    "No threads found": "Geen gesprekken gevonden"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18101,7 +18164,16 @@
     "Reconnect ChatGPT": "Połącz ponownie ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "W OpenAI zaloguj się na konto wybrane tutaj.",
     "Use a different account": "Użyj innego konta",
-    "Change account": "Zmień konto"
+    "Change account": "Zmień konto",
+    "Search is unavailable.": "Wyszukiwanie jest niedostępne.",
+    "In messages": "W wiadomościach",
+    "ID or link": "ID lub link",
+    "Environment": "Środowisko",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Szukaj w tytułach, gałęziach, pull requestach i wiadomościach",
+    "Thread search results": "Wyniki wyszukiwania wątków",
+    "Searching thread messages…": "Wyszukiwanie wiadomości w wątkach…",
+    "No threads found": "Nie znaleziono wątków"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20364,7 +20436,16 @@
     "Reconnect ChatGPT": "Переподключить ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "В OpenAI войдите в аккаунт, выбранный здесь.",
     "Use a different account": "Использовать другой аккаунт",
-    "Change account": "Сменить аккаунт"
+    "Change account": "Сменить аккаунт",
+    "Search is unavailable.": "Поиск недоступен.",
+    "In messages": "В сообщениях",
+    "ID or link": "ID или ссылка",
+    "Environment": "Окружение",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Поиск по заголовкам, веткам, запросам на слияние и сообщениям",
+    "Thread search results": "Результаты поиска обсуждений",
+    "Searching thread messages…": "Поиск сообщений в обсуждениях…",
+    "No threads found": "Обсуждения не найдены"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22627,7 +22708,16 @@
     "Reconnect ChatGPT": "Повторно підключити ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "В OpenAI увійдіть до облікового запису, вибраного тут.",
     "Use a different account": "Використати інший обліковий запис",
-    "Change account": "Змінити обліковий запис"
+    "Change account": "Змінити обліковий запис",
+    "Search is unavailable.": "Пошук недоступний.",
+    "In messages": "У повідомленнях",
+    "ID or link": "ID або посилання",
+    "Environment": "Середовище",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Пошук у заголовках, гілках, запитах на злиття та повідомленнях",
+    "Thread search results": "Результати пошуку обговорень",
+    "Searching thread messages…": "Пошук повідомлень в обговореннях…",
+    "No threads found": "Обговорень не знайдено"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24890,7 +24980,16 @@
     "Reconnect ChatGPT": "ChatGPT に再接続",
     "On OpenAI, sign in with the account you choose here.": "OpenAI では、ここで選択したアカウントでサインインしてください。",
     "Use a different account": "別のアカウントを使用",
-    "Change account": "アカウントを変更"
+    "Change account": "アカウントを変更",
+    "Search is unavailable.": "検索を利用できません。",
+    "In messages": "メッセージ内",
+    "ID or link": "ID またはリンク",
+    "Environment": "環境",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "タイトル、ブランチ、プルリクエスト、メッセージを検索",
+    "Thread search results": "スレッドの検索結果",
+    "Searching thread messages…": "スレッド内のメッセージを検索中…",
+    "No threads found": "スレッドが見つかりません"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27153,7 +27252,16 @@
     "Reconnect ChatGPT": "ChatGPT 다시 연결",
     "On OpenAI, sign in with the account you choose here.": "OpenAI에서 여기서 선택한 계정으로 로그인하세요.",
     "Use a different account": "다른 계정 사용",
-    "Change account": "계정 변경"
+    "Change account": "계정 변경",
+    "Search is unavailable.": "검색을 사용할 수 없습니다.",
+    "In messages": "메시지에서",
+    "ID or link": "ID 또는 링크",
+    "Environment": "환경",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "제목, 브랜치, 풀 리퀘스트 및 메시지 검색",
+    "Thread search results": "스레드 검색 결과",
+    "Searching thread messages…": "스레드 메시지 검색 중…",
+    "No threads found": "스레드를 찾을 수 없습니다"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29416,7 +29524,16 @@
     "Reconnect ChatGPT": "重新连接 ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "在 OpenAI 上，使用此处选择的账号登录。",
     "Use a different account": "使用其他账号",
-    "Change account": "切换账号"
+    "Change account": "切换账号",
+    "Search is unavailable.": "搜索不可用。",
+    "In messages": "消息中",
+    "ID or link": "ID 或链接",
+    "Environment": "环境",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "搜索标题、分支、拉取请求和消息",
+    "Thread search results": "对话搜索结果",
+    "Searching thread messages…": "正在搜索对话消息…",
+    "No threads found": "未找到对话"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31679,7 +31796,16 @@
     "Reconnect ChatGPT": "إعادة توصيل ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "في OpenAI، سجّل الدخول بالحساب الذي تختاره هنا.",
     "Use a different account": "استخدام حساب آخر",
-    "Change account": "تغيير الحساب"
+    "Change account": "تغيير الحساب",
+    "Search is unavailable.": "البحث غير متاح.",
+    "In messages": "في الرسائل",
+    "ID or link": "المعرّف أو الرابط",
+    "Environment": "البيئة",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "ابحث في العناوين والفروع وطلبات السحب والرسائل",
+    "Thread search results": "نتائج البحث عن المحادثات",
+    "Searching thread messages…": "جارٍ البحث في رسائل المحادثات…",
+    "No threads found": "لم يتم العثور على محادثات"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33942,7 +34068,16 @@
     "Reconnect ChatGPT": "ChatGPT'yi yeniden bağla",
     "On OpenAI, sign in with the account you choose here.": "OpenAI'da burada seçtiğiniz hesapla oturum açın.",
     "Use a different account": "Farklı bir hesap kullan",
-    "Change account": "Hesabı değiştir"
+    "Change account": "Hesabı değiştir",
+    "Search is unavailable.": "Arama kullanılamıyor.",
+    "In messages": "Mesajlarda",
+    "ID or link": "Kimlik veya bağlantı",
+    "Environment": "Ortam",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Başlıklarda, dallarda, çekme isteklerinde ve mesajlarda ara",
+    "Thread search results": "Konuşma arama sonuçları",
+    "Searching thread messages…": "Konuşma mesajları aranıyor…",
+    "No threads found": "Konuşma bulunamadı"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -36205,7 +36340,16 @@
     "Reconnect ChatGPT": "Återanslut ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "Logga in på OpenAI med kontot du väljer här.",
     "Use a different account": "Använd ett annat konto",
-    "Change account": "Byt konto"
+    "Change account": "Byt konto",
+    "Search is unavailable.": "Sökning är inte tillgänglig.",
+    "In messages": "I meddelanden",
+    "ID or link": "ID eller länk",
+    "Environment": "Miljö",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Sök i titlar, grenar, pull requests och meddelanden",
+    "Thread search results": "Sökresultat för trådar",
+    "Searching thread messages…": "Söker i trådmeddelanden…",
+    "No threads found": "Inga trådar hittades"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -38468,7 +38612,16 @@
     "Reconnect ChatGPT": "Forbind ChatGPT igen",
     "On OpenAI, sign in with the account you choose here.": "Log ind på OpenAI med den konto, du vælger her.",
     "Use a different account": "Brug en anden konto",
-    "Change account": "Skift konto"
+    "Change account": "Skift konto",
+    "Search is unavailable.": "Søgning er ikke tilgængelig.",
+    "In messages": "I beskeder",
+    "ID or link": "ID eller link",
+    "Environment": "Miljø",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Søg i titler, grene, pull requests og beskeder",
+    "Thread search results": "Søgeresultater for tråde",
+    "Searching thread messages…": "Søger i trådbeskeder…",
+    "No threads found": "Ingen tråde fundet"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -40731,7 +40884,16 @@
     "Reconnect ChatGPT": "Koble til ChatGPT på nytt",
     "On OpenAI, sign in with the account you choose here.": "Logg inn på OpenAI med kontoen du velger her.",
     "Use a different account": "Bruk en annen konto",
-    "Change account": "Bytt konto"
+    "Change account": "Bytt konto",
+    "Search is unavailable.": "Søk er ikke tilgjengelig.",
+    "In messages": "I meldinger",
+    "ID or link": "ID eller lenke",
+    "Environment": "Miljø",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Søk i titler, grener, pull requests og meldinger",
+    "Thread search results": "Søkeresultater for tråder",
+    "Searching thread messages…": "Søker i trådmeldinger…",
+    "No threads found": "Ingen tråder funnet"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -42994,7 +43156,16 @@
     "Reconnect ChatGPT": "Yhdistä ChatGPT uudelleen",
     "On OpenAI, sign in with the account you choose here.": "Kirjaudu OpenAIhin tässä valitsemallasi tilillä.",
     "Use a different account": "Käytä toista tiliä",
-    "Change account": "Vaihda tiliä"
+    "Change account": "Vaihda tiliä",
+    "Search is unavailable.": "Haku ei ole käytettävissä.",
+    "In messages": "Viesteissä",
+    "ID or link": "Tunniste tai linkki",
+    "Environment": "Ympäristö",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Hae otsikoista, haaroista, vetopyynnöistä ja viesteistä",
+    "Thread search results": "Keskustelujen hakutulokset",
+    "Searching thread messages…": "Haetaan keskustelujen viesteistä…",
+    "No threads found": "Keskusteluja ei löytynyt"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -45257,6 +45428,15 @@
     "Reconnect ChatGPT": "Znovu připojit ChatGPT",
     "On OpenAI, sign in with the account you choose here.": "V OpenAI se přihlaste účtem, který zde vyberete.",
     "Use a different account": "Použít jiný účet",
-    "Change account": "Změnit účet"
+    "Change account": "Změnit účet",
+    "Search is unavailable.": "Vyhledávání není dostupné.",
+    "In messages": "Ve zprávách",
+    "ID or link": "ID nebo odkaz",
+    "Environment": "Prostředí",
+    "PR": "PR",
+    "Search titles, branches, pull requests and messages": "Hledat v názvech, větvích, pull requestech a zprávách",
+    "Thread search results": "Výsledky hledání vláken",
+    "Searching thread messages…": "Hledání zpráv ve vláknech…",
+    "No threads found": "Nebyla nalezena žádná vlákna"
   }
 }

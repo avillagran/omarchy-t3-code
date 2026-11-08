@@ -132,6 +132,68 @@ try:
     assert json.loads(raw['resultJson'])['picks'][0]['query'] == 'x\udc00'
     scenarios += 1
 
+    # The original sidebar separates title matches from message-only rows.
+    original_rows = [row('thread-1', 'Fix workspace search'), row('thread-2', 'Review providers'),
+                     row('thread-3', 'WORKTREE cleanup'), row('thread-4', 'Homework notes')]
+    clocks = ['2026-10-20T00:00:00.000Z', '2026-10-22T00:00:00.000Z',
+              '2026-09-01T00:00:00.000Z', '2026-10-22T00:00:00.000Z']
+    for value, clock in zip(original_rows, clocks):
+        value['thread'].update(createdAt='2026-01-01T00:00:00.000Z', updatedAt=clock,
+                               latestUserMessageAt=clock, branch=None, opens=None)
+        value['projectTitle'] = 'Work project'
+    result('snapshot', rows=original_rows)
+    content = [{'threadId': 'thread-1', 'environmentId': 'private', 'snippet': 'Work details', 'hits': 2},
+               {'threadId': 'thread-2', 'environmentId': 'private', 'snippet': 'work', 'hits': 1}]
+    ordered = result('sidebar', query='work', keys=[value['key'] for value in original_rows],
+                     messageQuery='work', messageMatches=content, now=1792713600000)
+    assert ordered['titleKeys'] == ['thread-1', 'thread-3', 'thread-4']
+    assert ordered['keys'] == ['thread-1', 'thread-3', 'thread-4', 'thread-2']
+    assert [match['key'] for match in ordered['contentMatches']] == ['thread-2']
+    scenarios += 1
+
+    branch = row('branch', 'Unrelated title')
+    branch['thread']['branch'] = 'feature/日本語-café'
+    result('snapshot', rows=[branch])
+    assert result('sidebar', query='日本語 cafe', keys=['branch'])['keys'] == ['branch']
+    assert result('sidebar', query='Private project', keys=['branch'])['keys'] == []
+    scenarios += 1
+
+    topics = [row('s' + str(index), 'Topic ' + str(index)) for index in range(3)]
+    result('snapshot', rows=topics)
+    content = [{'threadId': 's' + str(index), 'environmentId': 'private',
+                'snippet': 'needle', 'quality': 1, 'hits': 10-index} for index in range(2)]
+    first = result('sidebar', query='needle', keys=['s0', 's1', 's2'],
+                   messageQuery='needle', messageMatches=content)
+    late = {'threadId': 's2', 'environmentId': 'private', 'snippet': 'needle', 'quality': 1, 'hits': 1000}
+    second = result('sidebar', query='needle', keys=['s0', 's1', 's2'],
+                    messageQuery='needle', messageMatches=content+[late], shownOrder=first['shownOrder'])
+    assert first['keys'] == ['s0', 's1'] and second['keys'] == ['s0', 's1', 's2']
+    scenarios += 1
+
+    accent = {**content[0], 'messageId': 'entry-native', 'snippet': 'Cafeteria / Café / fixed'}
+    found = result('sidebar', query='fix cafe', keys=['s0'],
+                   messageQuery='fix cafe', messageMatches=[accent])
+    assert found['contentMatches'][0]['find'] == {'query': 'Café', 'start': {'entryId': 'entry-native', 'occurrence': 0}}
+    scenarios += 1
+
+    unrelated = result('sidebar', query='billing', keys=['s0', 's1', 's2'],
+                       messageQuery='needle', messageMatches=content)
+    assert unrelated['keys'] == [] and unrelated['contentMatches'] == []
+    scenarios += 1
+
+    assert result('query', query='ab') == {'query': 'ab', 'searchMessages': False, 'canSearch': False, 'visibleQuery': ''}
+    assert result('query', query='日本') == {'query': '日本', 'searchMessages': True, 'canSearch': True, 'visibleQuery': ''}
+    assert result('query', query='ab', anyOlderSettled=True)['canSearch'] is True
+    assert result('query', query='needle', titlesOnly=True)['searchMessages'] is False
+    assert result('query', query='  ' + 'x' * 220 + '  ')['query'] == 'x' * 200
+    scenarios += 1
+
+    assert result('query', query='CÁFÉ', previousQuery='cafe reconnect')['visibleQuery'] == 'cafe reconnect'
+    assert result('query', query='billing', previousQuery='cafe reconnect')['visibleQuery'] == ''
+    packed = call('query', payloadJson=json.dumps({'query': 'a' * 199 + '😀'}))
+    assert json.loads(packed['resultJson'])['query'] == 'a' * 199 + '\ud83d'
+    scenarios += 1
+
     assert result('quit')['closed'] is True
     child.stdin.close()
     assert child.wait(timeout=5) == 0

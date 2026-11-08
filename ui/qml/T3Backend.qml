@@ -12,6 +12,7 @@ import Quickshell.Io
 import qs.Commons
 import "../js/DocumentTheme.js" as DocumentTheme
 import "../js/SidebarModel.js" as Sidebar
+import "../js/ThreadSearch.js" as ThreadSearch
 import "../js/ProviderUpdates.js" as Updates
 import "../js/NativeKeybindings.js" as NativeKeys
 import "../js/UsageLimits.js" as Usage
@@ -32,7 +33,7 @@ Singleton {
   property var state: ({threads: [], environments: [], working: 0, pending: 0})
   property var inboxReturnState:({working:null,returned:{}})
   function observeInboxReturns(){inboxReturnState=(viewState || {}).sidebarCompact?Sidebar.observeReturns(inboxReturnState,state.threads || [],Date.now()):{working:null,returned:{}}}
-  onStateChanged:{observeInboxReturns();finishProjectOpen();if(panelVisible)ensureRuntimeKeybindings(false)}
+  onStateChanged:{observeInboxReturns();finishProjectOpen();if(panelVisible)ensureRuntimeKeybindings(false);if(threadSearch&&threadSearch.query)ThreadSearch.queue(root,"palette",threadSearch.query,threadSearchScope())}
   onViewStateChanged:observeInboxReturns()
   property var backendStart:({busy:false,error:"",status:""})
   property var localBackend:({owner:"unknown",running:false,canControl:false,installed:false})
@@ -42,6 +43,28 @@ Singleton {
   function controlBackend(action,server){if(action==="start"&&!server){backendChoiceRequested();return;}if(backendStart.busy)return;if(!worker.running){backendStart={busy:false,error:"disconnected",status:""};return;}backendStart={busy:true,error:"",status:""};send({op:"backend-control",action:action,server:server || "",requestId:uuid()})}
   signal copyFinished(string requestId,string error)
   function copyText(value,primary){var id=uuid();send({op:"copy",kind:"text",text:value,primary:primary===true,requestId:id});return id}
+  property var nativeSearchPending:({})
+  function nativeSearchRows(){
+    var several=(state.environments||[]).length>1
+    return (state.threads||[]).filter(function(t){return !!t.searchShell}).map(function(t){
+      return {key:t.key,thread:t.searchShell,projectTitle:t.project||null,
+        environmentLabel:several?(t.environmentName||t.environmentId):null}
+    })
+  }
+  function nativeSearch(input,callback){
+    if(!worker || !worker.running){if(callback)callback(null,"disconnected");return ""}
+    var id=uuid(),pending=Object.assign({},nativeSearchPending)
+    if(callback)pending[id]=callback
+    nativeSearchPending=pending
+    send({op:"native-search",action:input.action,requestId:id,
+      payloadJson:JSON.stringify(Object.assign({},input,{rows:nativeSearchRows()}))})
+    return id
+  }
+  function nativeSearchLost(){
+    var pending=nativeSearchPending;nativeSearchPending=({})
+    Object.keys(pending).forEach(function(id){pending[id](null,"disconnected")})
+    ThreadSearch.lost(root)
+  }
   function copyImage(attachment){var id=uuid();send({op:"copy",kind:"image",environment:selectedEnvironment,thread:selectedThread,attachment:attachment,requestId:id});return id}
   function startBackend(server){controlBackend("start",server)}
   property int localRecoveryAttempts:0
@@ -346,7 +369,7 @@ Singleton {
     send({op:"ui-state-set",state:Object.assign({},viewState,{sidebarCollapsed:sidebarCollapsed,selectedEnvironment:selectedEnvironment,selectedThread:selectedThread,query:query})})
   }
   onSidebarCollapsedChanged: persistView.restart()
-  onQueryChanged: persistView.restart()
+  onQueryChanged:{persistView.restart();searchSidebar(query)}
   Timer { id: persistView; interval: 200; onTriggered: root.persistViewNow() }
   readonly property bool panelVisible: visiblePanels > 0
   readonly property int pollInterval: panelVisible || (!stale && state.working > 0) ? 10000 : 60000
@@ -821,8 +844,15 @@ Singleton {
   readonly property bool selectedWorking:!!selectedInfo.working
   onSelectedWorkingChanged:if(!selectedWorking)branchCheckDelay.restart()
   // Server-wide thread search (orchestration.searchThreads) for the command palette.
-  property var threadSearch:({query:"",busy:false,matches:[],requestId:""})
-  function searchThreads(query){var q=String(query||"").trim();if(q.length<2){threadSearch={query:q,busy:false,matches:[],requestId:""};return}var id=uuid();threadSearch={query:q,busy:worker.running,matches:threadSearch.query&&q.indexOf(threadSearch.query)===0?threadSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
+  property var threadSearch:({query:"",settledQuery:"",busy:false,matches:[],requestId:""})
+  function threadSearchScope(){
+    var environments=(state.environments||[]).filter(function(e){return e.state==="ready"})
+    return {environmentIds:environments.map(function(e){return e.id}),
+      anyOlderSettled:environments.some(function(e){return !!(e.olderSettled||{}).before})}
+  }
+  function searchThreads(value){ThreadSearch.queue(root,"palette",value,threadSearchScope())}
+  function restartThreadSearchDebounce(channel){if(channel==="sidebar")sidebarSearchDebounce.restart();else paletteSearchDebounce.restart()}
+  Timer{id:paletteSearchDebounce;interval:120;onTriggered:ThreadSearch.debounced(root,"palette")}
   // Answers to agents' secret requests, keyed by turn item. The typed value is sent once
   // and never kept in QML state.
   property var secretAnswers:({})
@@ -957,16 +987,52 @@ Singleton {
   function openSubagent(sub){if(sub&&sub.childThreadId)selectThread(selectedEnvironment,sub.childThreadId)}
   // T3 ThreadVisitWatermark: the open thread is seen up to its updatedAt, which
   // clears Done and Woke. Unseen completions go at once, the rest every 10 s.
-  property var visitState:({key:"",at:0,sent:0})
-  function visitThread(env,thread,ms){if(!env||!thread||!(ms>0)||!worker.running)return;send({op:"thread-visit",environment:env,thread:thread,visitedAt:new Date(ms).toISOString(),requestId:uuid()})}
+  property var visitState:({key:"",generation:0,at:0,sent:0,claiming:false,claimed:false,openPending:false,explicitPick:false,pickedQuery:undefined})
+  function beginThreadVisit(key,pickedQuery,explicitPick){
+    visitDispatchDelay.stop()
+    visitState={key:key,generation:visitState.generation+1,at:0,sent:0,claiming:false,claimed:false,openPending:false,explicitPick:explicitPick===true,pickedQuery:pickedQuery}
+    Qt.callLater(watermarkVisit)
+  }
+  function visitThread(env,thread,ms,opened,pickedQuery){
+    if(!env||!thread||!(ms>0)||!worker.running)return
+    var request={op:"thread-visit",environment:env,thread:thread,visitedAt:new Date(ms).toISOString(),requestId:uuid()}
+    if(opened){request.opened=true;if(pickedQuery!==undefined)request.searchQuery=pickedQuery}
+    send(request)
+  }
+  function visitTrackingKnown(thread){return thread&&thread.searchShell?thread.searchShell.lastVisitedAt!==undefined:thread&&thread.lastVisitedAt!==undefined}
   function watermarkVisit(){
-    var t=selectedInfo;if(localDraft||!panelVisible||!t.key||!(t.updatedAt>0)||(catalogs[t.environmentId] || {}).canWrite===false||(t.lastVisitedAt || 0)>=t.updatedAt)return
-    if(visitState.key===t.key&&visitState.at===t.updatedAt)return
-    var unseen=(t.latestRunCompletedAt || 0)>(t.lastVisitedAt || 0),now=Date.now()
-    if(!unseen&&visitState.key===t.key&&now-visitState.sent<10000)return
-    visitState={key:t.key,at:t.updatedAt,sent:now};visitThread(t.environmentId,t.id,t.updatedAt)
+    visitDispatchDelay.stop()
+    var t=selectedInfo
+    if(localDraft||!panelVisible||!t.key||!(t.updatedAt>0)||!worker.running)return
+    if(visitState.key!==t.key)beginThreadVisit(t.key,undefined)
+    if(!visitState.claimed){
+      if(visitState.claiming)return
+      var generation=visitState.generation,key=t.key,picked=visitState.pickedQuery
+      visitState=Object.assign({},visitState,{claiming:true})
+      var request={action:"open",key:key,now:Date.now()};if(picked!==undefined)request.query=picked
+      nativeSearch(request,function(result,error){
+        if(root.visitState.generation!==generation||root.visitState.key!==key||root.selectedKey!==key)return
+        root.visitState=Object.assign({},root.visitState,{claiming:false})
+        if(error||!result||typeof result.send!=="boolean")return
+        root.visitState=Object.assign({},root.visitState,{claimed:true,openPending:result.send||root.visitState.explicitPick,pickedQuery:result.searchQuery})
+        root.watermarkVisit()
+      })
+      return
+    }
+    // Claiming local recency is independent of server write/visit support.
+    if(!visitTrackingKnown(t)||(catalogs[t.environmentId] || {}).canWrite===false)return
+    var at=Math.max(t.updatedAt,t.wokeAt || 0),last=t.lastVisitedAt || 0
+    if(!visitState.openPending&&(last>=at||visitState.at>=at))return
+    var unseen=(t.latestRunCompletedAt || 0)>last,wakeLatest=(t.wokeAt || 0)>t.updatedAt,now=Date.now(),elapsed=now-visitState.sent
+    if(!visitState.openPending&&!unseen&&!wakeLatest&&elapsed<10000){visitDispatchDelay.interval=10000-elapsed;visitDispatchDelay.restart();return}
+    var opened=visitState.openPending,pickedQuery=visitState.pickedQuery
+    var dispatchAt=opened&&visitState.explicitPick?t.updatedAt:at
+    visitState=Object.assign({},visitState,{at:dispatchAt,sent:now,openPending:false})
+    visitThread(t.environmentId,t.id,dispatchAt,opened,pickedQuery)
+    if(dispatchAt<at)Qt.callLater(watermarkVisit)
   }
   onSelectedInfoChanged:Qt.callLater(watermarkVisit)
+  Timer{id:visitDispatchDelay;interval:10000;onTriggered:root.watermarkVisit()}
   Timer{interval:3000;repeat:true;running:root.panelVisible&&!!root.selectedKey;onTriggered:root.watermarkVisit()}
   property var workflowScript:({busy:false,error:"",contents:"",path:"",requestId:""})
   signal workflowScriptRequested()
@@ -2027,6 +2093,16 @@ Singleton {
     send({op:"diff",environment:selectedEnvironment,thread:selectedThread,requestId:id,fromTurnCount:captured.fromTurnCount,toTurnCount:captured.toTurnCount,summary:captured,ignoreWhitespace:ws})
   }
   function action(data) {
+    if(data.op==="native-search"){
+      var callback=nativeSearchPending[data.requestId],pending=Object.assign({},nativeSearchPending)
+      delete pending[data.requestId];nativeSearchPending=pending
+      var result=data.result||null,error=data.error||""
+      if(!error&&result&&typeof result.resultJson==="string"){
+        try{result=JSON.parse(result.resultJson)}catch(_){result=null;error="native_search_protocol_failed"}
+      }
+      if(callback)callback(result,error)
+      return
+    }
     if(data.op==="settings" && pendingProjectOpen && pendingProjectOpen.stage==="models" && pendingProjectOpen.requestId===data.requestId){
       var pending=pendingProjectOpen
       if(data.environment!==pending.environment)return
@@ -2172,7 +2248,7 @@ Singleton {
     if(data.op==="scheduled-tasks"){if(data.requestId!==scheduledTasks.requestId)return;scheduledTasks=Object.assign({},scheduledTasks,{busy:false,error:data.error||"",tasks:data.error?scheduledTasks.tasks:(data.result.tasks||[]),supportsThreadModes:!data.error&&data.result.supportsThreadModes===true});return}
     if(data.op==="usage-summary"){if(data.requestId!==usage.requestId)return;usage=Object.assign({},usage,{busy:false,error:data.error||"",data:data.error?usage.data:data.result});return}
     if(data.op==="secret-answer"){var key=Object.keys(secretAnswers).find(function(k){return secretAnswers[k].requestId===data.requestId});if(!key)return;var all=Object.assign({},secretAnswers);all[key]={busy:false,error:data.error||""};secretAnswers=all;if(!data.error)fetchMessages();return}
-    if(data.op==="thread-search"){if(!data.error)refresh();if(data.requestId&&data.requestId===sidebarSearch.requestId){sidebarSearch=Object.assign({},sidebarSearch,{matches:data.error?[]:((data.result||{}).matches||[])});return}if(data.requestId!==threadSearch.requestId)return;threadSearch=Object.assign({},threadSearch,{busy:false,error:data.error||"",matches:data.error?[]:(data.result.matches||[])});return}
+    if(data.op==="thread-search"){ThreadSearch.accept(root,data);return}
     if(data.op==="branch-check"||data.op==="branch-resolve"){if(data.requestId!==branchMismatch.requestId)return;var m=data.error?null:(data.result||{}).mismatch||null;var same=!!m&&!!branchMismatch.value&&m.currentBranch===branchMismatch.value.currentBranch&&m.threadBranch===branchMismatch.value.threadBranch;branchMismatch=Object.assign({},branchMismatch,{busy:false,error:data.error||"",value:m,dismissed:same&&!!branchMismatch.dismissed});if(data.op==="branch-resolve")refresh();return}
     if(data.op==="branch-refs"){if(data.requestId!==branchRefs.requestId)return;branchRefs=Object.assign({},branchRefs,{busy:false,error:data.error||"",refs:data.error?branchRefs.refs:(data.result.refs||[])});return}
     if(data.op==="branch-switch"){if(data.requestId!==branchRefs.switchRequestId)return;branchRefs=Object.assign({},branchRefs,{switching:false,pendingBranch:data.error?"":(data.result.branch||""),error:data.error||""});if(data.error)branchSwitchFailed(data.error);refresh();branchCheckDelay.restart();return}
@@ -2564,13 +2640,21 @@ Singleton {
     return failedEntries&&a.count>1?T3I18n.tr("{activity} · {count} failed",{activity:label,count:failedEntries}):label
   }
   function refresh() { send({op: "refresh"}) }
-  function search(value) { query = value; sidebarSearchDebounce.restart() }
+  function search(value) { query = value }
   // Message matches for the sidebar search, separate from the command palette's.
-  property var sidebarSearch: ({query:"",matches:[],requestId:""})
-  Timer { id: sidebarSearchDebounce; interval: 260; onTriggered: root.searchSidebar(root.query) }
-  function searchSidebar(value){var q=Sidebar.freeText(value);if(q.length<3){sidebarSearch={query:q,matches:[],requestId:""};return}var id=uuid();sidebarSearch={query:q,matches:sidebarSearch.query&&q.indexOf(sidebarSearch.query)===0?sidebarSearch.matches:[],requestId:id};send({op:"thread-search",query:q,requestId:id})}
+  property var sidebarSearch: ({query:"",settledQuery:"",busy:false,matches:[],requestId:""})
+  property bool sidebarSearchActive:false
+  function setSidebarSearchActive(value){sidebarSearchActive=value;searchSidebar(query)}
+  property var sidebarSearchScope:threadSearchScope()
+  onSidebarSearchScopeChanged:searchSidebar(query)
+  Timer{id:sidebarSearchDebounce;interval:120;onTriggered:ThreadSearch.debounced(root,"sidebar")}
+  function searchSidebar(value){ThreadSearch.queue(root,"sidebar",sidebarSearchActive?value:"",sidebarSearchScope)}
   function clearSelection(){clearInlineDocuments();closeDocument();documentOpen=({busy:false,error:"",requestId:""});dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""};threadWillChange();resetHistory();requestedSerial++;send({op:"clear-select"});selectedEnvironment="";selectedThread="";selectedKey="";selectedTitle="";selectedProject="";planView=({plans:[],ready:null});planOperation=({busy:false,error:"",command:null});transcript=[];activity=[];questions=[];approvals=[];tasks=null;queue=({items:[]});loadingMessages=false;messageError="";liveConnected=false;persistView.restart()}
-  function selectThread(env, thread, localCreation) {
+  function selectThread(env, thread, localCreation, pickedQuery) {
+    var sameSelection=selectedEnvironment===env&&selectedThread===thread
+    var pickTarget=(state.threads || []).find(function(t){return t.key===env+"/"+thread})
+    var explicitPick=!sameSelection&&typeof pickedQuery==="string"&&pickedQuery.trim().length>0&&!pickedQuery.startsWith(">")&&visitTrackingKnown(pickTarget)
+    if(!sameSelection||visitState.key!==env+"/"+thread)beginThreadVisit(env+"/"+thread,explicitPick?pickedQuery:undefined,explicitPick)
     dismissWorkingReview();dismissGit();rewindPreview={busy:false,error:"",requestId:""}
     if (selectedEnvironment === env && selectedThread === thread) { if(localDraft&&!localCreation)refreshLocalDraftDefaults(selectedKey);fetchMessages(); return }
     clearInlineDocuments();closeDocument();favoriteError="";liveConnected=false;contextWindow=null;threadSubagents=[];branchRefs=({});branchMismatch=({});branchCheckDelay.restart();documentOpen=({busy:false,error:"",requestId:""});imageStates=({});dismissDiff();dismissSuggestions();threadWillChange()
@@ -2794,6 +2878,8 @@ Singleton {
       if(root.gitView.scope.requestId)root.requestGit()
       root.send({op:"rewind-list",requestId:root.uuid()})
       root.requestClientSettings();root.send({op: "visible", value: root.panelVisible}); root.send({op: "search", query: ""})
+      if(root.panelVisible)root.searchSidebar(root.query)
+      if(root.threadSearch.query)root.searchThreads(root.threadSearch.query)
       if(root.browserImportWizard.open&&root.browserImportOperation.state!=="uncertain")ImportFlow.refresh(root,false);
       root.syncPreview(true);Devices.visibility(root);if(root.browserProfileView.environments.length)root.requestBrowserProfiles(root.browserProfileView.environments,true);root.syncKeybindingWatches(true);root.ensureRuntimeKeybindings(true)
       if (root.selectedEnvironment&&(!root.localDraft||root.localDraftConnected(LocalDrafts.metadata(root,root.selectedKey)))) root.send({op: "catalog", environment: root.selectedEnvironment})
@@ -2804,7 +2890,7 @@ Singleton {
       Object.keys(root.drafts).forEach(function(key){ if(root.projectDraftTransferKey(key))return;if(root.drafts[key].loading)root.send({op:"draft-load",key:key,projectId:root.draftProject(key)});else root.flushDraft(key) })
     }
     stdout: SplitParser { onRead: function(line) { root.receive(line) } }
-    onExited: { ProfileReporting.lost(root);ImportFlow.lost(root);root.browserCleanups=({}); BrowserSurface.dismiss(root);Previews.lost(root); root.connectionLost(); root.stale = true; root.error = "disconnected"; reconnect.restart() }
+    onExited: { root.nativeSearchLost();ProfileReporting.lost(root);ImportFlow.lost(root);root.browserCleanups=({}); BrowserSurface.dismiss(root);Previews.lost(root); root.connectionLost(); root.stale = true; root.error = "disconnected"; reconnect.restart() }
   }
   Timer { id: reconnect; interval: 5000; onTriggered: worker.running = true }
 

@@ -1,6 +1,8 @@
 {
-  "revision": "6417151c093e54dbba0e6c824c69d03983793b9a",
+  "revision": "ade473018d32003658b7d38693e083ee2e314bd8",
   "sourceFiles": {
+    "apps/web/src/components/Sidebar.logic.ts": "0389fec57b596f9a7f0c16c1416b86cfaabf766419d3dd9b2e3e6068863a39c5",
+    "apps/web/src/components/Sidebar.logic.test.ts": "3b082310c441c8187d98021f2785ec42ef15afc19c6a1c85cdaf456d8c7ce7b1",
     "packages/shared/src/paletteSearch.ts": "1cf17bf43e0bf3c0c508b67bb707caf234c3e1eac6d068a7d5875d8d0633c2db",
     "packages/shared/src/paletteSearch.test.ts": "2160115ffc05f020a856e997a41b9d369afafe86a0c7ee5e2c4cddf157cc735e",
     "packages/shared/src/git.ts": "2a17d67d3a1c00366e998d33bc57797094ede743339bef5520fa9887add23a1c",
@@ -13,7 +15,7 @@
   },
   "compilerLockSha256": "0d0bc93378fbd6079ea207a9c5ce482a8ab750f4e019d8dd74f70ac408dbe378",
   "node": "26.13.0",
-  "outputSha256": "de144c42fe1ebaea9f08d9e30a378bbbec54cb34660349193333e3329b66b290",
+  "outputSha256": "3b801ebcec6eba56fdad0a3d2d954447835edd1dcc8976df985ae2a470f7b1f4",
   "modules": [
     {
       "file": "packages/shared/src/paletteSearch.ts",
@@ -192,6 +194,7 @@
         "localThreadOpens",
         "localThreadOpensVersion",
         "claimThreadOpen",
+        "threadSearchMatchKey",
         "threadSearchSubject",
         "subjectCache",
         "buildThreadSearchSubject",
@@ -201,6 +204,7 @@
       ],
       "exports": [
         "claimThreadOpen",
+        "threadSearchMatchKey",
         "threadSearchSubject",
         "nextShownOrder",
         "visibleThreadSearch"
@@ -231,11 +235,22 @@
       "exports": [
         "findForMessageMatch"
       ]
+    },
+    {
+      "file": "apps/web/src/components/Sidebar.logic.ts",
+      "name": "NativeSidebar",
+      "declarations": [
+        "EMPTY_CONTENT_MATCH_KEYS",
+        "searchSidebarThreads"
+      ],
+      "exports": [
+        "searchSidebarThreads"
+      ]
     }
   ],
   "adaptations": [
     "TypeScript erasure, exact native branch-prefix linkage and explicit original module dependency linkage",
-    "Complete paletteSearch, threadPullRequests and threadSort modules; original pure declaration closures for threadSearch, command-palette filtering and matched-message find navigation",
+    "Complete paletteSearch, threadPullRequests and threadSort modules; original pure declaration closures for threadSearch, command-palette filtering matched-message find navigation and sidebar search",
     "No algorithm, cache, regular expression, numeric scoring, native limit or ordering substitution"
   ],
   "scope": "Local V8 search algorithms and original subject/open/order helpers; Effect search subscriptions and UI catalog consumers are separate integrations"

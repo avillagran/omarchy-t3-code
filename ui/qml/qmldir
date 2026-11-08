@@ -39,6 +39,7 @@ T3ModelPicker 1.0 T3ModelPicker.qml
 T3ProviderIcon 1.0 T3ProviderIcon.qml
 
 T3ThreadRow 1.0 T3ThreadRow.qml
+T3SidebarSearchRow 1.0 T3SidebarSearchRow.qml
 
 T3CompactionSettings 1.0 T3CompactionSettings.qml
 T3AgentMemorySettings 1.0 T3AgentMemorySettings.qml

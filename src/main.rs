@@ -405,7 +405,8 @@ fn device_pool(browser: browser_sessions::Manager) -> mpsc::SyncSender<Value> {
     sender
 }
 fn watch(client: Client) -> Result<()> {
-    let gui_clipboard = gui_clipboard::start().map(|session| std::sync::Arc::new(std::sync::Mutex::new(session)));
+    let gui_clipboard =
+        gui_clipboard::start().map(|session| std::sync::Arc::new(std::sync::Mutex::new(session)));
     binary_update::spawn();
     let external = local_quotas::ExternalHttp::shared()?;
     emit("ui-state", ui_state::load());
@@ -557,14 +558,33 @@ fn watch(client: Client) -> Result<()> {
             if let Ok(mut v) = serde_json::from_str::<Value>(&line) {
                 if v["op"] == "native-search" {
                     if let Err(error) = native_search.submit(v.clone()) {
-                        emit("action", json!({"op":"native-search","requestId":v["requestId"],"error":error}));
+                        emit(
+                            "action",
+                            json!({"op":"native-search","requestId":v["requestId"],"error":error}),
+                        );
                     }
+                    continue;
+                }
+                if v["op"] == "thread-search-mount" {
+                    let result = shell_state::mount_search(
+                        text(&v, "consumer"),
+                        text(&v, "key"),
+                        &v["rows"],
+                    );
+                    emit(
+                        "action",
+                        json!({"op":"thread-search-mount", "requestId":v["requestId"],
+                        "error":result.err()}),
+                    );
                     continue;
                 }
                 // Apply mounted lease controls in input order before any query
                 // worker can observe this conversation's lifecycle.
                 if let Some(result) = file_metadata_runtime::control(&v) {
-                    emit("action",json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
+                    emit(
+                        "action",
+                        json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}),
+                    );
                     continue;
                 }
                 if v["op"] == "stream-resync" {
@@ -694,7 +714,11 @@ fn watch(client: Client) -> Result<()> {
                 }
                 if matches!(
                     text(&v, "op"),
-                    "browser-show" | "browser-hide" | "browser-input" | "browser-control" | "browser-permission"
+                    "browser-show"
+                        | "browser-hide"
+                        | "browser-input"
+                        | "browser-control"
+                        | "browser-permission"
                 ) {
                     browser_manager.request(v, input_visible);
                     continue;
@@ -911,23 +935,35 @@ fn watch(client: Client) -> Result<()> {
                         static BUSY: std::sync::Mutex<()> = std::sync::Mutex::new(());
                         let guard = BUSY.try_lock();
                         let result = match guard {
-                            Ok(_guard) if v["server"] == owned_runtime::ENVIRONMENT_ID => (|| -> Result<Value> {
-                                let mut runtime = owned.try_lock().map_err(|_| "backend_control_busy")?;
-                                match text(&v, "action") {
-                                    "start" => {
-                                        if runtime.is_some() { return Err("owned_backend_already_running".into()); }
-                                        let launched = owned_runtime::Runtime::launch(&backend_service::owned_config()?, browser)?;
-                                        let status = launched.status();
-                                        *runtime = Some(launched);
-                                        Ok(status)
+                            Ok(_guard) if v["server"] == owned_runtime::ENVIRONMENT_ID => {
+                                (|| -> Result<Value> {
+                                    let mut runtime =
+                                        owned.try_lock().map_err(|_| "backend_control_busy")?;
+                                    match text(&v, "action") {
+                                        "start" => {
+                                            if runtime.is_some() {
+                                                return Err("owned_backend_already_running".into());
+                                            }
+                                            let launched = owned_runtime::Runtime::launch(
+                                                &backend_service::owned_config()?,
+                                                browser,
+                                            )?;
+                                            let status = launched.status();
+                                            *runtime = Some(launched);
+                                            Ok(status)
+                                        }
+                                        "stop" => {
+                                            if let Some(mut old) = runtime.take() {
+                                                old.stop()?;
+                                            }
+                                            Ok(
+                                                json!({"id":owned_runtime::ENVIRONMENT_ID,"owner":"gui","running":false}),
+                                            )
+                                        }
+                                        _ => Err("invalid_backend_action".into()),
                                     }
-                                    "stop" => {
-                                        if let Some(mut old) = runtime.take() { old.stop()?; }
-                                        Ok(json!({"id":owned_runtime::ENVIRONMENT_ID,"owner":"gui","running":false}))
-                                    }
-                                    _ => Err("invalid_backend_action".into()),
-                                }
-                            })(),
+                                })()
+                            }
                             Ok(_guard) => write::execute(&v),
                             Err(_) => Err("backend_control_busy".into()),
                         };
@@ -942,7 +978,9 @@ fn watch(client: Client) -> Result<()> {
                 if v["op"] == "quit" {
                     let _ = cloud_manager.cancel_active();
                     if let Ok(mut runtime) = input_owned_desktop.lock() {
-                        if let Some(mut owned) = runtime.take() { let _ = owned.stop(); }
+                        if let Some(mut owned) = runtime.take() {
+                            let _ = owned.stop();
+                        }
                     }
                     let _ = browser_manager.shutdown();
                 }
@@ -1152,13 +1190,27 @@ fn watch(client: Client) -> Result<()> {
                     });
                     continue;
                 }
+                if v["op"] == "thread-search" {
+                    std::thread::spawn(move || {
+                        let result = thread_search::search_with_progress(&v, |partial| {
+                            emit(
+                                "action",
+                                json!({"op":"thread-search","requestId":v["requestId"],"result":partial}),
+                            );
+                        });
+                        emit(
+                            "action",
+                            json!({"op":"thread-search","requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}),
+                        );
+                    });
+                    continue;
+                }
                 if matches!(
                     text(&v, "op"),
                     "branch-refs"
                         | "branch-switch"
                         | "branch-check"
                         | "branch-resolve"
-                        | "thread-search"
                         | "secret-answer"
                         | "pull-request-action"
                         | "thread-pull-request"
@@ -1224,7 +1276,9 @@ fn watch(client: Client) -> Result<()> {
         }
         let _ = cloud_manager.cancel_active();
         if let Ok(mut runtime) = input_owned_desktop.lock() {
-            if let Some(mut owned) = runtime.take() { let _ = owned.stop(); }
+            if let Some(mut owned) = runtime.take() {
+                let _ = owned.stop();
+            }
         }
         let _ = browser_manager.shutdown();
         if let Err(error) = native_search.close() {
@@ -1436,10 +1490,19 @@ fn watch(client: Client) -> Result<()> {
             Err(_) => return Ok(()),
         };
         match text(&cmd, "op") {
-            "native-search-result" => emit("action", json!({"op":"native-search",
-                "requestId":cmd["requestId"],"result":cmd["result"],"error":cmd["error"]})),
-            "rpc-session-state" | "file-metadata-invalidated" => emit(text(&cmd,"op"),cmd.clone()),
-            "browser-profile-targets-ready" => { for target in profile_reporting.take_targets() { emit("browser-profile-target",target); } },
+            "native-search-result" => emit(
+                "action",
+                json!({"op":"native-search",
+                "requestId":cmd["requestId"],"result":cmd["result"],"error":cmd["error"]}),
+            ),
+            "rpc-session-state" | "file-metadata-invalidated" => {
+                emit(text(&cmd, "op"), cmd.clone())
+            }
+            "browser-profile-targets-ready" => {
+                for target in profile_reporting.take_targets() {
+                    emit("browser-profile-target", target);
+                }
+            }
             "browser-profile-report" => profile_reporting.submit(&cmd),
             "ui-state-set" => {
                 if let Err(error) = ui_state::save(&cmd["state"]) {
@@ -1981,6 +2044,5 @@ mod notification_tests {
         let image = image::open(lines[position + 1]).unwrap();
         assert_eq!((image.width(), image.height()), (96, 96));
         assert!(args.contains("Input required"));
-
     }
 }

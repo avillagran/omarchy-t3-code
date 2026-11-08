@@ -9,8 +9,10 @@ if (!fs.existsSync('/run/.containerenv') || process.versions.node !== '26.13.0')
   throw Error('Private pinned build runtime required');
 const [native, compiler, output] = process.argv.slice(2);
 if (!native || !compiler || !output) throw Error('Expected native, compiler and output directories');
-const revision = '6417151c093e54dbba0e6c824c69d03983793b9a';
+const revision = 'ade473018d32003658b7d38693e083ee2e314bd8';
 const sourceFiles = {
+  'apps/web/src/components/Sidebar.logic.ts': '0389fec57b596f9a7f0c16c1416b86cfaabf766419d3dd9b2e3e6068863a39c5',
+  'apps/web/src/components/Sidebar.logic.test.ts': '3b082310c441c8187d98021f2785ec42ef15afc19c6a1c85cdaf456d8c7ce7b1',
   'packages/shared/src/paletteSearch.ts': '1cf17bf43e0bf3c0c508b67bb707caf234c3e1eac6d068a7d5875d8d0633c2db',
   'packages/shared/src/paletteSearch.test.ts': '2160115ffc05f020a856e997a41b9d369afafe86a0c7ee5e2c4cddf157cc735e',
   'packages/shared/src/git.ts': '2a17d67d3a1c00366e998d33bc57797094ede743339bef5520fa9887add23a1c',
@@ -47,7 +49,11 @@ function link(file, name, selected, bindings, extraExports = []) {
   for (const original of parse(source[file]).program.body) {
     if (original.type === 'ImportDeclaration') continue;
     const declaration = original.type === 'ExportNamedDeclaration' ? original.declaration : original;
-    if (!declaration) throw Error('Unexpected native re-export: ' + file);
+    if (!declaration) {
+      if (selected && original.type === 'ExportNamedDeclaration' &&
+          original.specifiers.every(specifier => !selected.includes(specifier.exported.name))) continue;
+      throw Error('Unexpected native re-export: ' + file);
+    }
     const declared = declaration.type === 'FunctionDeclaration' ? [declaration.id.name]
       : declaration.type === 'VariableDeclaration' ? declaration.declarations.map(item => {
         if (item.id.type !== 'Identifier') throw Error('Unexpected destructured native declaration');
@@ -89,7 +95,7 @@ code += link('packages/client-runtime/src/state/threadSort.ts', 'NativeThreadSor
 code += link('packages/client-runtime/src/state/threadSearch.ts', 'NativeThreadSearch', [
   'sentThreadOpens', 'localThreadOpens', 'localThreadOpensVersion', 'claimThreadOpen',
   'threadSearchSubject', 'subjectCache', 'buildThreadSearchSubject', 'LATE_ROOM',
-  'nextShownOrder', 'visibleThreadSearch',
+  'nextShownOrder', 'visibleThreadSearch', 'threadSearchMatchKey',
 ], 'const {foldSearchQuery,THREAD_OPEN_DEDUPE_MS}=NativePalette;\n' +
    'const {threadSearchPullRequests}=NativePullRequests;\n' +
    'const {getThreadSortTimestamp}=NativeThreadSort;');
@@ -101,7 +107,11 @@ code += link('apps/web/src/components/CommandPalette.logic.ts', 'NativeCommandPa
 code += link('apps/web/src/components/chat/threadFindStore.ts', 'NativeThreadFind', [
   'findForMessageMatch',
 ], 'const {messagePhrase,messageSearchTokens,findSearchTokenRanges}=NativePalette;');
-code += 'module.exports=Object.freeze({...NativePalette,...NativeThreadSearch,...NativeCommandPalette,...NativeThreadFind});\n';
+code += link('apps/web/src/components/Sidebar.logic.ts', 'NativeSidebar', [
+  'EMPTY_CONTENT_MATCH_KEYS', 'searchSidebarThreads',
+], 'const {foldSearchQuery,rankSearchItems,scoreThreadSearch}=NativePalette;\n' +
+   'const {threadSearchSubject,threadSearchMatchKey}=NativeThreadSearch;');
+code += 'module.exports=Object.freeze({...NativePalette,...NativeThreadSearch,...NativeCommandPalette,...NativeThreadFind,...NativeSidebar});\n';
 const undeclared = new Set();
 Babel.traverse(Babel.parseSync(code, {sourceType: 'script', configFile: false, babelrc: false}), {
   ReferencedIdentifier(site) {
@@ -118,7 +128,7 @@ fs.writeFileSync(path.join(output, 'NativeSearchRuntime.sources.json'), JSON.str
   outputSha256: hash(code), modules,
   adaptations: [
     'TypeScript erasure, exact native branch-prefix linkage and explicit original module dependency linkage',
-    'Complete paletteSearch, threadPullRequests and threadSort modules; original pure declaration closures for threadSearch, command-palette filtering and matched-message find navigation',
+    'Complete paletteSearch, threadPullRequests and threadSort modules; original pure declaration closures for threadSearch, command-palette filtering matched-message find navigation and sidebar search',
     'No algorithm, cache, regular expression, numeric scoring, native limit or ordering substitution',
   ],
   scope: 'Local V8 search algorithms and original subject/open/order helpers; Effect search subscriptions and UI catalog consumers are separate integrations',

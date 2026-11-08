@@ -127,15 +127,61 @@ function searchDispatch(request) {
     return {closed: true};
   }
   searchRequire(request.query, typeof request.query === 'string');
+  if (request.op === 'query') {
+    // Exact useThreadSearch normalization and admission, evaluated by the same
+    // V8 implementation as the native Unicode message tokeniser.
+    const query = request.query.trim().slice(0, 200).trim();
+    const searchMessages = request.titlesOnly !== true &&
+      searchNative.messageSearchTokens(query).long.length > 0;
+    const previous = {query: request.previousQuery ?? '', matches: []};
+    return {query, searchMessages,
+      canSearch: searchMessages || request.anyOlderSettled === true && query.length >= 2,
+      visibleQuery: searchNative.visibleThreadSearch(query, null, previous).query};
+  }
   if (request.op === 'palette') return searchPalette(request, now);
   if (request.op === 'sidebar') {
-    const query = searchNative.foldSearchQuery(request.query);
     const keys = searchRequire(request.keys, Array.isArray(request.keys));
-    return {keys: searchNative.rankSearchItems(keys, (key, options) => {
-      const subject = searchSubject(key);
-      return subject ? searchNative.scoreThreadSearch(query, subject, now,
-        {...options, picks: false}) : null;
-    }).map(row => row.item)};
+    searchRequire(keys, keys.every(key => typeof key === 'string') && new Set(keys).size === keys.length);
+    const rows = keys.map(key => searchRows.get(key)?.value).filter(row => row !== undefined);
+    const threads = rows.map(row => row.thread);
+    const byMatchKey = new Map(rows.map(row => [searchNative.threadSearchMatchKey({
+      environmentId: row.thread.environmentId, threadId: row.thread.id}), row]));
+    const keyOf = thread => byMatchKey.get(searchNative.threadSearchMatchKey({
+      environmentId: thread.environmentId, threadId: thread.id})).key;
+    const previous = {query: request.messageQuery ?? '', matches: request.messageMatches ?? []};
+    searchRequire(previous.matches, Array.isArray(previous.matches));
+    const normalized = searchNative.foldSearchQuery(request.query);
+    const ready = searchNative.foldSearchQuery(previous.query) === normalized ? previous : null;
+    const visible = searchNative.visibleThreadSearch(request.query, ready, previous);
+    const ranked = searchNative.rankMessageMatches(visible.matches, match => {
+      const row = byMatchKey.get(searchNative.threadSearchMatchKey(match));
+      return row ? searchNative.threadSearchSubject(row.thread, null) : undefined;
+    }, normalized, now, {picks: false});
+    const matches = new Map(ranked.map(match => [searchNative.threadSearchMatchKey(match), match]));
+    const shownOrder = searchNative.nextShownOrder(request.shownOrder ?? null, visible.query,
+      [...matches.keys()], Number.POSITIVE_INFINITY);
+    const result = searchNative.searchSidebarThreads(threads, request.query, new Set(shownOrder.keys), now);
+    const ordered = [...result.titleMatches, ...result.contentMatches];
+    const content = result.contentMatches.flatMap(thread => {
+      const match = matches.get(searchNative.threadSearchMatchKey({
+        environmentId: thread.environmentId, threadId: thread.id}));
+      return match ? [{key: keyOf(thread), match,
+        find: searchNative.findForMessageMatch(match, visible.query)}] : [];
+    });
+    const contentByKey = new Map(content.map(item => [item.key, item]));
+    return {
+      keys: ordered.map(keyOf),
+      titleKeys: result.titleMatches.map(keyOf), shownOrder,
+      contentMatches: content,
+      items: ordered.map(thread => {
+        const key = keyOf(thread), matched = contentByKey.get(key);
+        return {key, find: matched?.find ?? null,
+          titleParts: searchNative.splitSearchText(thread.title,
+            searchNative.findSearchTokenRanges(thread.title, normalized)),
+          snippetParts: matched ? searchNative.splitSearchText(matched.match.snippet ?? '',
+            searchNative.findSearchTokenRanges(matched.match.snippet ?? '', visible.query)) : null};
+      }),
+    };
   }
   throw Error('invalid_native_search_request');
 }

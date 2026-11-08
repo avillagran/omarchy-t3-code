@@ -426,7 +426,7 @@ impl Manager {
             || text(&input, "requestId").is_empty()
             || !matches!(
                 text(&input, "action"),
-                "snapshot" | "open" | "palette" | "sidebar"
+                "snapshot" | "open" | "palette" | "sidebar" | "query"
             )
         {
             return Err("invalid_native_search_request".into());

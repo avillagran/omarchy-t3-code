@@ -40,4 +40,4 @@ Evidence:
 
 - Browser: `/var/tmp/o3-server/status-native-4367-to-4380-2ragbree/equivalence.json`, SHA256 `0140ad6274291816f51c119ec2a3930cff5a3c7414aac2d66189c990c76f9fac`.
 - Search/visits: `/var/tmp/o3-build/thread-open-4380-source-equivalence-o2j6ptbn/review.json`, SHA256 `828c75c0c29b0a8090fa6f497bc2c12398aa2712b3090c8d3d2a41db93a68799`.
-- [Native search runtime and consumer candidate](NATIVE-SEARCH-RUNTIME-4380.md) distinguishes real V8/protocol passes from the uncompiled Rust/QML integration.
+- [Native search runtime and consumers](NATIVE-SEARCH-RUNTIME-4380.md) records the current public-SDK/main compile, worker protocol, owned row lifetime and private Sidebar/palette UI passes, alongside the remaining live-RPC, UTF16 transport and complete-action requirements.
