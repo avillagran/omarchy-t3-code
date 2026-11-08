@@ -67,6 +67,7 @@ copies = {
     'ui/voice/electron-capture-renderer.mjs': 'electron-capture-renderer.mjs',
     'ui/voice/browser-capture-owner.mjs': 'browser-capture-owner.mjs',
     'ui/voice/browser-microphones.mjs': 'browser-microphones.mjs',
+    'ui/voice/browser-microphone-monitor.mjs': 'browser-microphone-monitor.mjs',
     'ui/js/NativePcmCapture.js': 'NativePcmCapture.js',
     'tools/fixtures/voice-microphone-identity.py': 'controller.py',
 }

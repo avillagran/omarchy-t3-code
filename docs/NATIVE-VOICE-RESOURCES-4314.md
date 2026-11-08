@@ -260,6 +260,25 @@ private binary capture channel. Exact selected-device constraints are unchanged;
 an unavailable device fails instead of switching to another microphone.
 
 The current selector receives metadata after a successfully prepared recording.
+The same explicitly authorized capture observes `devicechange`, and the settings
+refresh button can request a new list from that existing capture. Enumeration
+uses the complete original helper without opening another stream or changing
+the selected device. One enumeration runs at a time, with one coalesced follow-up
+and at least 250 ms between requests. A three-second timeout disables that
+observer for the current capture rather than accumulating unresolved native
+requests; recording and PCM remain independent.
+
+The refresh button is disabled while idle. The last accepted list remains
+selectable between recordings, so a different microphone can be saved for the
+next recording. A failed or timed-out initial enumeration reports unavailable
+metadata and preserves that cache. A successful empty enumeration replaces it.
+Owner/profile realm changes and helper loss invalidate cached metadata. Late
+events or refresh completions after stop, cancellation or owner replacement
+cannot update the current view or change preferences. Repeated synchronization
+of the identical owner tuple leaves an active observer intact. Metadata revision
+numbers increase up to JavaScript's safe-integer limit; exhausting that limit
+closes only the metadata observer, without changing recording or PCM state.
+
 On a fresh application launch it offers the system default and any saved ID as
 unavailable until a recording supplies the current list. It does not request
 permission or open a stream merely because settings were opened. Background
@@ -278,6 +297,47 @@ permission refusal, cancellation during permission, PCM delivery and confirmed
 process closure. It never mounts host audio devices, audio services or a display.
 This test does not compile or accept the Rust profile/discovery/host integration
 or the mounted Qt settings UI; those require coordinated build checks.
+
+## Active capture refresh validation
+
+The 2026-11-08 refresh change has the following local evidence. Receipt paths are
+development artifacts on the validation machine; the scopes below distinguish
+compile checks, metadata peers and actual capture/SDK execution.
+
+| Check | Result and boundary | Receipt |
+| --- | --- | --- |
+| Rust strict and builds | `clippy --all-targets -- -D warnings`, library test build and client build passed; these commands do not execute the full test suite. | `/var/tmp/o3-build/voice-microphone-refresh-build-1/result.json` |
+| Typed watch example build | Current example linked against the same frozen refresh sources, with no executable copy. | `/var/tmp/o3-build/voice-refresh-watch-example-build-1/result.json` |
+| Rust metadata parser | All eight current parser cases passed; 168 other tests were filtered out. Covers initial/repeated metadata, ordering, payload bounds, unavailable status, stop/close and safe-integer exhaustion. | `/var/tmp/o3-build/voice-microphone-parser-8-w58qipzg/result.json` |
+| Monitor in Node 26.13.0 | Six cases passed for the unchanged monitor module: original enumeration, coalescing, cancellation, errors and timeout. This older receipt's eight controller cases are superseded by the next row. | `/var/tmp/o3-build/voice-microphone-refresh-ke1f7hsq/result.json` |
+| Current controller/Host in Qt | Nine cases passed using the actual original controller/platform and Qt QJSEngine with an explicit metadata transport peer. Covers idle/prepermission refusal, current scope, stale completions, owner loss, retained cache and successful empty lists. | `/var/tmp/o3-build/voice-microphone-refresh-8nu26_be/result.json` |
+| Mounted settings QML | Actual backend/settings/select/button passed with the metadata peer: three refresh requests, two explicit permission scopes, original preference revisions `10 → 11 → 12`, literal labels, idle selection and unavailable/empty distinction. | `/var/tmp/o3-device-panel-v7zbrbr_/result.json` |
+| Actual Electron capture JavaScript | Two sequential, explicitly authorized synthetic captures passed with stable selected device IDs and confirmed shutdown. A fixture-only second descriptor injects fixed DOM device-change events and enumeration failures/empty results; production scripts remain unchanged. | `/var/tmp/o3-build/voice-refresh-runtime-probe-2-f3jh53bz/result.json` |
+| Actual Qt/watch/Rust Host/SDK | Passed through the production watch parser and typed synthetic example: one refresh RPC coalesces two API calls, two three-device lists, one explicit permission, 16,064 bytes of synthetic PCM, original draft insertion, idle cache and EOF shutdown with no remaining namespace processes. | `/var/tmp/o3-build/voice-microphone-watch-_v0xri5i/result.json` |
+
+The current compiled client is 215,940,744 bytes with SHA-256
+`bbb597ae1edab9b7fd4a43fa3bf7fa626a9b00563d8a0ad5e3fc4d5605c38983`.
+The parser test artifact is 151,132,864 bytes with SHA-256
+`fe38ecaa79d28231b78ba84fab6f39249c4fdb13c14e687b0160d53c974c1dfd`.
+The actual watch example is 160,748,544 bytes with SHA-256
+`d4120ad12d75684ebd253df5c9636ec211e461a3d2c2db1330d9417eb4202904`.
+The runtime remains the exact 72-file Electron 44.10.1 graph and the reviewed
+16,408-byte addon remains pinned to
+`6cbce632628b75d8e214d76a0f84fdc543071a9e8f3b0406746079a08aa1ccc2`.
+
+Runtime checks use private rootless Podman. The native watch proof mounts source,
+executables, runtime and addon read-only, creates its own private HOME/config and
+application state in RAM, and makes no binary/runtime copies. The QML metadata
+peer writes only its own retained evidence directory. No check uses host audio,
+host display, real credentials, a user's browser profile or an external server.
+The SDK proof's HTTP peer runs on the container's private loopback interface.
+
+Injected DOM events prove device-change plumbing, not physical microphone
+hotplug. Fresh/idle device discovery remains unimplemented: denied enumeration
+was separately observed to expose one blank-ID audio input both before and after
+a prior recording. No permission grant or hidden stream is added to expand that
+list. Physical microphone reconnection, cloud/provider setup, the full installer
+and the full Rust runtime test suite remain outside this refresh acceptance.
 
 Electron's pinned [session API](https://github.com/electron/electron/blob/v44.10.1/docs/api/session.md)
 defines persistent path sessions. Its pinned

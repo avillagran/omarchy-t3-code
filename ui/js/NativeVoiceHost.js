@@ -55,7 +55,12 @@ function create(adapters) {
             scope.owner.environment === owner.environment && scope.owner.epoch === owner.epoch &&
             choice && choice !== "off" && choice.id === scope.grantId
     }
-    function abortScope(scope) { if (scope) send({action:"abort", session:scope.id}) }
+    function closeMicrophones(scope) {
+        if(!scope)return
+        scope.microphonesOpen=false;scope.microphonesPrepared=false
+        if(scope===current&&adapters.onMicrophonesActive)adapters.onMicrophonesActive(false)
+    }
+    function abortScope(scope) { if (scope) {closeMicrophones(scope);send({action:"abort", session:scope.id})} }
     function live(scope) {return scope===current && active(scope) && !(scope.signal && scope.signal.aborted)}
     function dispose(scope) {
         if (!scope || scope.disposing) return Promise.resolve()
@@ -156,7 +161,13 @@ function create(adapters) {
                 prepareToRecordAsync:function() {
                     if (!captureSignal) return Promise.reject(error("voice_not_prepared"))
                     captureSignal.throwIfAborted()
-                    return rpc("capture-prepare", {mode:transcription.streaming ? "streaming" : "buffered", microphoneId:input.getMicrophoneId()}, scope, captureSignal)
+                    scope.microphonesOpen=true;scope.microphonesPrepared=false
+                    return rpc("capture-prepare", {mode:transcription.streaming ? "streaming" : "buffered", microphoneId:input.getMicrophoneId()}, scope, captureSignal).then(function(value){
+                        if(!live(scope)||!scope.microphonesOpen)throw error("voice_owner_changed")
+                        scope.microphonesPrepared=true
+                        if(adapters.onMicrophonesActive)adapters.onMicrophonesActive(true)
+                        return value
+                    }).catch(function(failure){closeMicrophones(scope);throw failure})
                 },
                 record:function(options) {
                     rpc("record", {seconds:options.forDuration}, scope, captureSignal).catch(function(failure) {
@@ -164,6 +175,7 @@ function create(adapters) {
                     })
                 },
                 stop:function() {
+                    closeMicrophones(scope)
                     return rpc("stop", {}, scope).then(function(value) {
                         if(scope.disposed){uri=null;return}
                         uri = value.uri || null
@@ -173,7 +185,7 @@ function create(adapters) {
             }
             scope.captureInput = input
             return {recorder:recorder,
-                cancelRecording:function() { return rpc("release-capture", {}, scope) },
+                cancelRecording:function() { closeMicrophones(scope);return rpc("release-capture", {}, scope) },
                 deleteRecording:function(value) {
                     if (recordings.get(value) !== scope) return
                     rpc("delete-recording", {uri:value}, scope).then(function() {
@@ -210,7 +222,7 @@ function create(adapters) {
                 var previous = current
                 var scope = {id:value.session, owner:capturedOwner, grantId:capturedChoice.id,
                     prepared:{id:value.session}, projectWords:projectWords, uris:new Set(), disposed:false, configured:Promise.resolve()}
-                scopes.set(scope.id, scope);current=scope;binding.scope=scope
+                scopes.set(scope.id, scope);current=scope;binding.scope=scope;closeMicrophones(scope)
                 scope.signal=options.signal;scope.abort=function(){abortScope(scope);if(scope.stream)scope.stream.rejectReady(error("voice_cancelled"))}
                 options.signal.addEventListener("abort",scope.abort,{once:true})
                 collect(previous)
@@ -264,6 +276,10 @@ function create(adapters) {
             }
         },
         ownerChanged:function(key, environment, epoch) {
+            if(key!==owner.key||environment!==owner.environment||epoch!==owner.epoch){
+                if(adapters.onMicrophonesInvalidated)adapters.onMicrophonesInvalidated()
+                closeMicrophones(current)
+            }
             owner={key:key,environment:environment,epoch:epoch}
             send({action:"owner", ownerKey:key, draftEnvironment:environment, epoch:epoch})
         },
@@ -271,6 +287,7 @@ function create(adapters) {
             if (!event || stopped) return
             if (event.kind === "ready") {
                 available=event.available===true
+                if(!available&&adapters.onMicrophonesInvalidated)adapters.onMicrophonesInvalidated()
                 if(adapters.onAvailable)adapters.onAvailable(available)
                 api.ownerChanged(owner.key,owner.environment,owner.epoch)
                 if(available)snapshotRpc("snapshot").catch(function(failure){if(adapters.onCleanupError)adapters.onCleanupError(failure)})
@@ -289,7 +306,8 @@ function create(adapters) {
             var scope=scopes.get(event.session)
             if(!scope || !live(scope))return
             if(event.kind==="permission")adapters.onPermission(scope.id,event.permissionId)
-            else if(event.kind==="microphones"&&adapters.onMicrophones)adapters.onMicrophones(event.devices)
+            else if(event.kind==="microphones"&&scope.microphonesOpen&&adapters.onMicrophones)adapters.onMicrophones(event.devices)
+            else if(event.kind==="microphones-error"&&scope.microphonesOpen&&adapters.onMicrophonesError)adapters.onMicrophonesError(event.error)
             else if(event.kind==="level")scope.captureInput.onLevel(event.value)
             else if(event.kind==="duration-limit")scope.captureInput.onDurationLimit()
             else if(event.kind==="capture-error")scope.captureInput.onError(error(event.error).message)
@@ -305,6 +323,19 @@ function create(adapters) {
             if(!scope)return Promise.reject(error("voice_owner_changed"))
             return rpc("permission",{permissionId:permissionId,allow:allow===true && active(scope)},scope)
         },
+        refreshMicrophones:function() {
+            var scope=current
+            if(!scope||!live(scope)||!scope.microphonesOpen||!scope.microphonesPrepared)return Promise.reject(error("voice_capture_not_active"))
+            if(scope.microphoneRefresh)return scope.microphoneRefresh
+            var request=rpc("refresh-microphones",{},scope,scope.signal).then(function(value){
+                if(!live(scope)||!scope.microphonesOpen)throw error("voice_owner_changed")
+                return value
+            })
+            scope.microphoneRefresh=request
+            function clear(){if(scope.microphoneRefresh===request)scope.microphoneRefresh=null}
+            request.then(clear,clear)
+            return request
+        },
         isVoicePatch:function(patch){return Object.keys(patch || {}).some(function(key){return ["voiceMicrophone","voiceShortcutMode","speechLanguage","speechTranslateToEnglish","speechCustomWords","speechSilenceFiltering","speechRemoveFillerWords","speechPostProcessingPrompt","speechCorrectionWord"].indexOf(key)>=0})},
         preferences:function(value){return rpc("decode-preferences",{valueJson:JSON.stringify(value)}).then(function(result){return JSON.parse(result.valueJson)})},
         updatePreferences:function(patch,revision){return rpc("update-preferences",{patch:patch,revision:revision})},
@@ -314,6 +345,8 @@ function create(adapters) {
         pendingCloud:function(destination) { return rpc("pending-cloud",{destinationJson:JSON.stringify(destination)}) },
         acknowledgeCloud:function(acknowledgement) { return snapshotRpc("acknowledge-cloud",{acknowledgement:acknowledgement}) },
         lost:function() {
+            if(adapters.onMicrophonesInvalidated)adapters.onMicrophonesInvalidated()
+            closeMicrophones(current)
             stopped=true;available=false
             if(adapters.onAvailable)adapters.onAvailable(false)
             pending.forEach(function(request) {

@@ -367,6 +367,10 @@ impl Assets {
                     include_bytes!("../../ui/voice/browser-microphones.mjs"),
                 ),
                 (
+                    "browser-microphone-monitor.mjs",
+                    include_bytes!("../../ui/voice/browser-microphone-monitor.mjs"),
+                ),
+                (
                     "NativePcmCapture.js",
                     include_bytes!("../../ui/js/NativePcmCapture.js"),
                 ),

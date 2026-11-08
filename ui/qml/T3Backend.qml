@@ -1013,6 +1013,22 @@ Singleton {
   property bool nativeVoiceInitialized:false
   property var nativeVoicePreferences:null
   property var nativeVoiceMicrophones:[]
+  property bool nativeVoiceMicrophonesActive:false
+  property bool nativeVoiceMicrophonesRefreshing:false
+  property string nativeVoiceMicrophonesError:""
+  property int nativeVoiceMicrophonesRefreshEpoch:0
+  function refreshNativeVoiceMicrophones(){
+    if(!nativeVoiceMicrophonesActive||nativeVoiceMicrophonesRefreshing)return Promise.resolve(false)
+    var epoch=++nativeVoiceMicrophonesRefreshEpoch
+    nativeVoiceMicrophonesRefreshing=true;nativeVoiceMicrophonesError=""
+    return nativeVoiceHost.refreshMicrophones().then(function(){
+      if(epoch===root.nativeVoiceMicrophonesRefreshEpoch)root.nativeVoiceMicrophonesRefreshing=false
+      return true
+    },function(failure){
+      if(epoch===root.nativeVoiceMicrophonesRefreshEpoch){root.nativeVoiceMicrophonesRefreshing=false;root.nativeVoiceMicrophonesError=String(failure.message||failure)}
+      return false
+    })
+  }
   function refreshNativeVoicePreferences(){
     if(!nativeVoiceAvailable){nativeVoicePreferences=null;return}
     var data=clientSettings.data
@@ -1044,7 +1060,13 @@ Singleton {
       if(changed)root.releaseVoiceController()
     },
     onPermission:function(session,id){root.nativeVoicePermission={session:session,id:id}},
-    onMicrophones:function(devices){root.nativeVoiceMicrophones=devices},
+    onMicrophones:function(devices){root.nativeVoiceMicrophones=devices;root.nativeVoiceMicrophonesError=""},
+    onMicrophonesError:function(error){root.nativeVoiceMicrophonesError=String(error)},
+    onMicrophonesInvalidated:function(){root.nativeVoiceMicrophones=[]},
+    onMicrophonesActive:function(active){
+      root.nativeVoiceMicrophonesActive=active
+      if(!active){root.nativeVoiceMicrophonesRefreshing=false;root.nativeVoiceMicrophonesError="";root.nativeVoiceMicrophonesRefreshEpoch++}
+    },
     onLevel:function(value){root.nativeVoiceLevel=value},
     onDurationLimit:function(){if(root.voiceController)root.voiceController.stop()},
     onText:function(value){root.nativeVoicePreview=value},

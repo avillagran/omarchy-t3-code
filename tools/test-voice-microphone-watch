@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""Reuse compiled artifacts for a current native Rust microphone refresh proof."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+for name in ['runtime','addon','qt-harness','build-receipt','strict-receipt','core-freeze']:
+    parser.add_argument('--'+name,type=Path,required=True)
+arguments = parser.parse_args()
+root = Path(__file__).resolve().parent.parent
+def digest(path):
+    with path.open('rb') as source:
+        return hashlib.file_digest(source,'sha256').hexdigest()
+def owned_file(path, expected, size=None, immutable=False):
+    assert path.is_absolute() and path.resolve() == path and not path.is_symlink()
+    metadata=path.lstat()
+    assert stat.S_ISREG(metadata.st_mode) and metadata.st_uid==os.getuid()
+    if immutable:
+        assert metadata.st_nlink==1 and not metadata.st_mode & 0o222
+    assert size is None or metadata.st_size==size
+    assert digest(path)==expected
+    return metadata
+build=json.loads(arguments.build_receipt.read_text())
+strict=json.loads(arguments.strict_receipt.read_text())
+assert build['complete'] and build['exit']==0 and build['exampleBuild']==0 and build['sourceUnchanged']
+assert strict['complete'] and strict['exit']==0 and strict['strict']==0 and strict['sourceUnchanged']
+artifact=next(value for value in build['artifacts'] if value['role']=='voice-watch-fixture')
+binary=Path(artifact['path'])
+owned_file(binary,artifact['sha256'],artifact['bytes'])
+owned_file(arguments.qt_harness,'1bb2f0eb399bd965e6a1f5ff7ff09d0662b1feec5b3e241733cd174403a8003c',54488,True)
+owned_file(arguments.addon,'6cbce632628b75d8e214d76a0f84fdc543071a9e8f3b0406746079a08aa1ccc2',16408,True)
+assert arguments.runtime.is_absolute() and arguments.runtime.resolve()==arguments.runtime
+runtime_metadata=arguments.runtime.lstat()
+assert stat.S_ISDIR(runtime_metadata.st_mode) and runtime_metadata.st_uid==os.getuid() and not runtime_metadata.st_mode & 0o022
+freeze=json.loads(arguments.core_freeze.read_text())['sourceSha256']
+compiled=json.loads((arguments.build_receipt.parent/'inputs.json').read_text())
+strict_inputs=json.loads((arguments.strict_receipt.parent/'inputs.json').read_text())
+for name,expected in compiled.items():
+    assert digest(root/name)==expected, 'Compiled source differs: '+name
+assert all(strict_inputs[name]==expected for name,expected in compiled.items())
+assert all(compiled[name]==expected and digest(root/name)==expected for name,expected in freeze.items())
+extras=['tools/test-voice-microphone-watch','tools/fixtures/voice-refresh-watch-driver.js',
+    'tools/fixtures/voice-watch-qt.cpp','src/voice_watch.rs','examples/voice_watch_fixture.rs',
+    'ui/js/VoicePlatform.js','ui/js/NativeVoice.js','ui/js/NativeVoiceInput.js',
+    'ui/js/NativeVoicePreferences.js','ui/voice/browser-microphones.mjs','ui/voice/browser-capture-owner.mjs',
+    'ui/js/NativePcmCapture.js','ui/voice/native-consent.cjs','ui/voice/consent-helper.cjs','ui/voice/consent-storage.cjs']
+fence={**freeze,**{name:digest(root/name) for name in extras}}
+assert 'src/voice_capture/microphones.rs' in fence and 'ui/voice/browser-microphone-monitor.mjs' in fence
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+out=Path(tempfile.mkdtemp(prefix='voice-microphone-watch-',dir='/var/tmp/o3-build'))
+out.chmod(0o700)
+scripts=['ui/js/VoicePlatform.js','ui/js/NativeVoice.js','ui/js/NativeVoiceInput.js',
+    'ui/js/NativeVoicePreferences.js','ui/js/NativeVoiceHost.js','tools/fixtures/voice-refresh-watch-driver.js']
+image='sha256:1b9c2f3a1a72268cab659ab3f20956bb6ce730e8dd716fe90754ba03a8870e19'
+command=['podman','--remote=false','run','--rm','--init','--timeout=75','--pull=never','--http-proxy=false',
+    '--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}',
+    '--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined',
+    '--memory=2g','--memory-swap=2g','--pids-limit=256','--shm-size=256m','--ulimit=core=0:0',
+    '--tmpfs','/tmp:rw,exec,size=128m,mode=1777','--tmpfs','/run:rw,size=32m,mode=755',
+    '--tmpfs','/state:rw,exec,size=256m,mode=1777',
+    '-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',f'{root}:/repo:ro',
+    '-v',f'{arguments.runtime}:/electron:ro','-v',f'{arguments.addon}:/source/electron-private-fd.node:ro',
+    '-v',f'{binary}:/fixture-entry:ro','-v',f'{arguments.qt_harness}:/qt-helper:ro']
+for key,value in {'HOME':'/state/home','TMPDIR':'/tmp','XDG_CONFIG_HOME':'/state/config','XDG_CACHE_HOME':'/state/cache',
+        'XDG_DATA_HOME':'/state/data','XDG_STATE_HOME':'/state/app-state','LANG':'C.UTF-8','PATH':'/usr/bin:/bin'}.items():
+    command+=['--env',key+'='+value]
+bootstrap='''set -eu
+umask 077
+mkdir -m700 /state/home /state/config /state/cache /state/data /state/app-state
+exec "$@"
+'''
+command+=[image,'/usr/bin/sh','-c',bootstrap,'private-watch-bootstrap','/qt-helper','/fixture-entry',*['/repo/'+name for name in scripts]]
+(out/'command.json').write_text(json.dumps(command,indent=2)+'\n')
+proof={'complete':False,'sourceSha256':fence,'buildReceipt':str(arguments.build_receipt),
+    'buildReceiptSha256':digest(arguments.build_receipt),'strictReceipt':str(arguments.strict_receipt),
+    'strictReceiptSha256':digest(arguments.strict_receipt),'binary':artifact,'qtHarnessSha256':digest(arguments.qt_harness),
+    'addonSha256':digest(arguments.addon),'imageId':image,'rootless':True,'hostWritableMounts':[],
+    'binaryCopies':0,'runtimeCopies':0,'scope':'Current actual Qt QProcess/production watch parser/Rust Host/capture/SDK with typed synthetic microphone and private fixture HTTP; no production QML, external network, physical hotplug/audio, installation or Cargo execution'}
+run=subprocess.run(command,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=90)
+(out/'runtime.json').write_text(run.stdout)
+(out/'runtime.log').write_text(run.stderr)
+proof['runtimeExit']=run.returncode
+proof['sourceUnchanged']=all(digest(root/name)==expected for name,expected in fence.items())
+proof['binaryUnchanged']=digest(binary)==artifact['sha256']
+proof['exit']=run.returncode or (0 if proof['sourceUnchanged'] and proof['binaryUnchanged'] else 1)
+if run.returncode==0:
+    proof['receipt']=json.loads(run.stdout)
+    proof['complete']=proof['exit']==0
+else:
+    proof['failureStderrTail']=run.stderr[-16384:]
+(out/'result.json').write_text(json.dumps(proof,indent=2)+'\n')
+print(out)
+raise SystemExit(proof['exit'])

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('voiceCapture',{
  },
  ready:()=>ipcRenderer.send('o3-voice-renderer-ready',nonce),
  result:(id,ok,value)=>ipcRenderer.send('o3-voice-result',nonce,id,ok,value),
+ microphones:devices=>ipcRenderer.send('o3-voice-microphones',nonce,devices),
  pcm:(kind,bytes)=>ipcRenderer.send('o3-voice-pcm',nonce,kind,bytes),
  level:value=>ipcRenderer.send('o3-voice-level',nonce,value),
  failed:()=>ipcRenderer.send('o3-voice-failed',nonce),

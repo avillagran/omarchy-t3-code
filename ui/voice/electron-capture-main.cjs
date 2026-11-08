@@ -31,9 +31,10 @@ const files={
  'renderer.mjs':fs.readFileSync(path.join(__dirname,'electron-capture-renderer.mjs')),
  'browser-capture-owner.mjs':fs.readFileSync(path.join(__dirname,'browser-capture-owner.mjs')),
  'browser-microphones.mjs':fs.readFileSync(path.join(__dirname,'browser-microphones.mjs')),
+ 'browser-microphone-monitor.mjs':fs.readFileSync(path.join(__dirname,'browser-microphone-monitor.mjs')),
 };
 const origin='o3-voice://capture';
-let window,ready=false,closing=false,terminal=false,sequence=0,totalPcm=0,bufferDelivered=false,permissionAllowed=false,captureMode,recording=false,ordered=Promise.resolve(),queued=0;
+let window,ready=false,closing=false,terminal=false,sequence=0,totalPcm=0,bufferDelivered=false,permissionAllowed=false,captureMode,recording=false,ordered=Promise.resolve(),queued=0,microphonesActive=false,microphonesRevision=0,microphonesRefreshPending=false;
 const pending=new Map(),permissions=new Map();
 function fatal(){if(terminal)return;terminal=true;closing=true;for(const decision of permissions.values())decision(false);permissions.clear();if(window&&!window.isDestroyed())window.destroy();pipe.destroy();app.exit(2)}
 function packet(kind,body){
@@ -48,7 +49,14 @@ function invoke(command){
  if(!ready||terminal)return Promise.reject(Error('Capture unavailable'));
  return new Promise((resolve,reject)=>{pending.set(command.id,{resolve,reject,type:command.type});window.webContents.send('o3-voice-command',nonce,command)});
 }
-function denyPermissions(){permissionAllowed=false;for(const decision of permissions.values())decision(false);permissions.clear()}
+function denyPermissions(){permissionAllowed=false;microphonesActive=false;for(const decision of permissions.values())decision(false);permissions.clear()}
+function validMicrophones(devices){return Array.isArray(devices)&&devices.length<=256&&Buffer.byteLength(JSON.stringify(devices))<=MaxControl-512&&!devices.some(device=>!device||Array.isArray(device)||Object.keys(device).sort().join(',')!=='deviceId,label'||typeof device.deviceId!=='string'||typeof device.label!=='string'||Buffer.byteLength(device.deviceId)>1024||Buffer.byteLength(device.label)>4096)}
+function publishMicrophones(devices){
+ if(!validMicrophones(devices))return fatal();
+ if(microphonesRevision>=Number.MAX_SAFE_INTEGER){microphonesActive=false;window.webContents.send('o3-voice-command',nonce,{type:'microphones-ended'});return}
+ control({type:'microphones',revision:++microphonesRevision,devices});
+ if(microphonesRevision===Number.MAX_SAFE_INTEGER){microphonesActive=false;window.webContents.send('o3-voice-command',nonce,{type:'microphones-ended'})}
+}
 async function close(command){
  if(closing)throw Error('Capture closing');closing=true;denyPermissions();
  const result=await invoke(command);
@@ -68,11 +76,18 @@ function input(value){
   if(Object.keys(value).some(key=>!['type','id','captureId'].includes(key)))return fatal();
   void close(value).catch(fatal);return;
  }
+ if(value.type==='refresh-microphones'){
+  if(Object.keys(value).some(key=>!['type','id','captureId'].includes(key)))return fatal();
+  if(closing||!ready||!microphonesActive||!permissionAllowed||microphonesRefreshPending)return control({type:'result',id:value.id,ok:false,value:{error:'microphones_unavailable'}});
+  // Metadata cannot hold up the ordered record/stop queue or urgent close.
+  microphonesRefreshPending=true;void invoke(value).then(result=>{if(!closing)control({type:'result',id:value.id,...result})}).catch(fatal).finally(()=>{microphonesRefreshPending=false});return;
+ }
  if(closing||!ready||queued>=8)return fatal();
  if(value.type==='prepare'){
   if(Object.keys(value).some(key=>!['type','id','captureId','mode','microphoneId'].includes(key))||!['streaming','buffered'].includes(value.mode)||typeof value.microphoneId!=='string')return fatal();
  }else if(!['record','stop'].includes(value.type)||Object.keys(value).some(key=>!['type','id','captureId'].includes(key)))return fatal();
- queued++;ordered=ordered.then(async()=>{if(closing)return;if(value.type==='prepare')captureMode=value.mode;if(value.type==='record')recording=true;const result=await invoke(value);if(value.type==='stop'||result.ok!==true)recording=false;if(!closing){if(value.type==='prepare'&&result.ok){control({type:'microphones',devices:result.value.microphones});result.value=null}control({type:'result',id:value.id,...result})}}).catch(fatal).finally(()=>queued--);
+ if(value.type==='stop')microphonesActive=false;
+ queued++;ordered=ordered.then(async()=>{if(closing)return;if(value.type==='prepare')captureMode=value.mode;if(value.type==='record')recording=true;const result=await invoke(value);if(value.type==='stop'||result.ok!==true)recording=false;if(!closing){if(value.type==='prepare'&&result.ok){if(result.value.microphones===null)control({type:'microphones-unavailable'});else publishMicrophones(result.value.microphones);microphonesActive=true;result.value=null}control({type:'result',id:value.id,...result})}}).catch(fatal).finally(()=>queued--);
 }
 let chunks=[],received=0,expected;
 pipe.on('data',chunk=>{
@@ -91,9 +106,14 @@ ipcMain.on('o3-voice-result',(event,identity,id,ok,value)=>{
  if(!own(event,identity)||typeof ok!=='boolean'||!pending.has(id))return fatal();
  const completion=pending.get(id);
  if(ok&&completion.type==='prepare'){
-  if(!value||Object.keys(value).length!==1||!Array.isArray(value.microphones)||value.microphones.length>256||Buffer.byteLength(JSON.stringify(value))>MaxControl-256||value.microphones.some(device=>!device||Array.isArray(device)||Object.keys(device).sort().join(',')!=='deviceId,label'||typeof device.deviceId!=='string'||typeof device.label!=='string'||device.deviceId.length>1024||device.label.length>4096))return fatal();
+  if(!value||Object.keys(value).length!==1||value.microphones!==null&&!validMicrophones(value.microphones))return fatal();
  }else if(Buffer.byteLength(JSON.stringify(value??null))>1024)return fatal();
  pending.delete(id);completion.resolve({ok,value});
+});
+ipcMain.on('o3-voice-microphones',(event,identity,devices)=>{
+ if(!own(event,identity))return fatal();
+ if(closing||!microphonesActive)return;
+ if(!permissionAllowed)return fatal();publishMicrophones(devices);
 });
 ipcMain.on('o3-voice-pcm',(event,identity,kind,bytes)=>{
  if(!own(event,identity)||!(bytes instanceof ArrayBuffer)||!['stream','buffer'].includes(kind)||!bytes.byteLength||bytes.byteLength%4||bytes.byteLength>MaxPcm-totalPcm||(kind==='stream'&&bytes.byteLength>32000)||(kind==='buffer'&&bufferDelivered))return fatal();

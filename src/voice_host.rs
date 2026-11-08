@@ -56,8 +56,10 @@ pub fn bundled_metadata(verify: bool) -> io::Result<Value> {
         }
         .verify()?;
     }
-    Ok(json!({"schema":1,"target":"linux-x64","runtimeVersion":"44.10.1",
-        "addonSha256":configuration.sha256,"addonBytes":configuration.bytes}))
+    Ok(
+        json!({"schema":1,"target":"linux-x64","runtimeVersion":"44.10.1",
+        "addonSha256":configuration.sha256,"addonBytes":configuration.bytes}),
+    )
 }
 type DisplayRequest = SyncSender<io::Result<Arc<Display>>>;
 struct DisplayOwner {
@@ -686,6 +688,12 @@ impl Host {
                     let id=self.capture_request(&session,ticket)?;let recorder=session.recorder.lock().map_err(|_|unavailable())?;
                     recorder.as_ref().ok_or_else(unavailable)?.permission(id,text(input,"permissionId").into(),input["allow"].as_bool().ok_or_else(unavailable)?).map_err(|_|unavailable())?;Ok(json!({"deferred":true}))
                 }
+                "refresh-microphones"=>{
+                    if input.as_object().is_none_or(|object|object.keys().any(|key|!matches!(key.as_str(),"action"|"requestId"|"session"))){return Err("voice_microphone_refresh_invalid".into());}
+                    if session.startup.is_cancelled()||session.stopped.load(Ordering::Acquire)||session.released.load(Ordering::Acquire)||session.closed.load(Ordering::Acquire){return Err("voice_capture_not_active".into());}
+                    let id=self.capture_request(&session,ticket)?;
+                    session.recorder.lock().map_err(|_|unavailable())?.as_ref().ok_or_else(unavailable)?.refresh_microphones(id).map_err(|_|unavailable())?;Ok(json!({"deferred":true}))
+                }
                 "record"=>{
                     let id=self.capture_request(&session,ticket)?;let duration=input["seconds"].as_f64().filter(|v|v.is_finite()&&*v>0.0&&*v<=300.0).ok_or_else(unavailable)?;
                     session.recorder.lock().map_err(|_|unavailable())?.as_ref().ok_or_else(unavailable)?.record(id,std::time::Duration::from_secs_f64(duration)).map_err(|_|unavailable())?;Ok(json!({"deferred":true}))
@@ -936,7 +944,26 @@ if let Some(worker)=session.stream.lock().map_err(|_|unavailable())?.take(){work
         };
         match event {
             RecorderEvent::Microphones(devices) => {
-                (self.0.emit)(json!({"kind":"microphones","session":id,"devices":devices}))
+                if session.active.load(Ordering::Acquire)
+                    && !session.startup.is_cancelled()
+                    && !session.stopped.load(Ordering::Acquire)
+                    && !session.released.load(Ordering::Acquire)
+                    && !session.closed.load(Ordering::Acquire)
+                {
+                    (self.0.emit)(json!({"kind":"microphones","session":id,"devices":devices}))
+                }
+            }
+            RecorderEvent::MicrophonesUnavailable => {
+                if session.active.load(Ordering::Acquire)
+                    && !session.startup.is_cancelled()
+                    && !session.stopped.load(Ordering::Acquire)
+                    && !session.released.load(Ordering::Acquire)
+                    && !session.closed.load(Ordering::Acquire)
+                {
+                    (self.0.emit)(
+                        json!({"kind":"microphones-error","session":id,"error":"microphones_unavailable"}),
+                    )
+                }
             }
             RecorderEvent::Prepared => {
                 if let Ok(mut pending) = session.prepare_request.lock() {
@@ -956,6 +983,7 @@ if let Some(worker)=session.stream.lock().map_err(|_|unavailable())?.take(){work
             }
             RecorderEvent::Recorded { id } => complete(id, json!({})),
             RecorderEvent::PermissionResult { id, ok } => complete(id, json!({"allowed":ok})),
+            RecorderEvent::MicrophonesRefreshed { id } => complete(id, json!({})),
             RecorderEvent::Stopped {
                 id: operation,
                 recording,

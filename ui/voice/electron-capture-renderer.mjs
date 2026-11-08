@@ -1,9 +1,10 @@
 import {createCapture} from './compiled.mjs';
 import {createBrowserCaptureOwner} from './browser-capture-owner.mjs';
-import {listBrowserMicrophones} from './browser-microphones.mjs';
-let owner,mode;
+import {createMicrophoneMonitor} from './browser-microphone-monitor.mjs';
+let owner,mode,microphones;
 const bridge=window.voiceCapture;
 bridge.subscribe(async command=>{
+ if(command.type==='microphones-ended'){if(microphones)microphones.stop();return}
  try{
   let value=null;
   if(command.type==='prepare'){
@@ -14,18 +15,22 @@ bridge.subscribe(async command=>{
     onLevel:bridge.level,onDurationLimit:bridge.limit,onError:bridge.failed,
    });
    await owner.prepare(mode);
-   // Enumeration is read-only. It follows the recording's explicit native
-   // permission instead of opening a stream merely to populate settings.
-   try{value={microphones:await listBrowserMicrophones()}}catch(_){value={microphones:[]}}
+   microphones=createMicrophoneMonitor({publish:bridge.microphones});
+   // Only an explicitly prepared capture starts the read-only device observer.
+   try{value={microphones:await microphones.start()}}catch(_){value={microphones:null}}
+  }else if(command.type==='refresh-microphones'){
+   if(!microphones)throw Error('microphones_unavailable');await microphones.refresh();
   }else if(command.type==='record')owner.record();
   else if(command.type==='stop'){
+   if(microphones)microphones.stop();
    const pcm=await owner.stop();
    if(pcm)bridge.pcm('buffer',pcm);
    value={mode,pcmBytes:pcm?pcm.byteLength:owner.inspect().deliveredBytes};
   }else if(command.type==='close'){
+   if(microphones)microphones.stop();
    if(owner)await owner.close();value={cleanup:'confirmed'};
   }else throw Error('Unsupported capture command');
   bridge.result(command.id,true,value);
- }catch(error){bridge.result(command.id,false,{error:error?.name==='AbortError'?'capture_cancelled':error?.name==='NotAllowedError'?'capture_permission_denied':'capture_failed'})}
+ }catch(error){bridge.result(command.id,false,{error:error?.name==='AbortError'?'capture_cancelled':command.type==='refresh-microphones'?'microphones_unavailable':error?.name==='NotAllowedError'?'capture_permission_denied':'capture_failed'})}
 });
 bridge.ready();

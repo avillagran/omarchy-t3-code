@@ -103,12 +103,16 @@ pub enum RecorderEvent {
         id: u64,
         ok: bool,
     },
+    MicrophonesRefreshed {
+        id: u64,
+    },
     Failed {
         id: Option<u64>,
         error: &'static str,
     },
     Closed(Cleanup),
     Microphones(Vec<crate::voice_capture::Microphone>),
+    MicrophonesUnavailable,
 }
 enum Command {
     Record {
@@ -123,11 +127,15 @@ enum Command {
         request_id: String,
         allow: bool,
     },
+    RefreshMicrophones {
+        id: u64,
+    },
 }
 enum Pending {
     Record(u64),
     Stop(u64),
     Permission(u64),
+    RefreshMicrophones(u64),
 }
 pub struct RecorderPlan {
     pub transport: Arc<BoundSpeech>,
@@ -334,6 +342,9 @@ impl RecorderWorker {
             allow,
         })
     }
+    pub fn refresh_microphones(&self, id: u64) -> io::Result<()> {
+        self.send(Command::RefreshMicrophones { id })
+    }
     /// Urgent, independent of the ordinary queue or pending permission.
     pub fn abort(&self) {
         if let Some(stream) = &self.streaming {
@@ -390,7 +401,8 @@ fn pump(
                 let id = match &command {
                     Command::Record { id, .. }
                     | Command::Stop { id }
-                    | Command::Permission { id, .. } => *id,
+                    | Command::Permission { id, .. }
+                    | Command::RefreshMicrophones { id } => *id,
                 };
                 if !plan.transport.current(&|| (plan.owner)()) {
                     return Err("voice_consent_revoked");
@@ -414,6 +426,9 @@ fn pump(
                     } => capture
                         .permission(&request_id, allow)
                         .map(|capture_id| (capture_id, Pending::Permission(id))),
+                    Command::RefreshMicrophones { id } => capture
+                        .refresh_microphones()
+                        .map(|capture_id| (capture_id, Pending::RefreshMicrophones(id))),
                 };
                 match operation {
                     Ok((capture_id, operation)) => {
@@ -443,6 +458,7 @@ fn pump(
             Some(Event::DurationLimit) => notify(RecorderEvent::DurationLimit),
             Some(Event::CaptureError) => return Err("capture_failed"),
             Some(Event::Microphones(devices)) => notify(RecorderEvent::Microphones(devices)),
+            Some(Event::MicrophonesUnavailable) => notify(RecorderEvent::MicrophonesUnavailable),
             Some(Event::Pcm(mut bytes)) => {
                 if !plan.transport.current(&|| (plan.owner)()) {
                     bytes.zeroize();
@@ -477,7 +493,10 @@ fn pump(
                 }
                 let operation = pending.remove(&id).ok_or("capture_response_unavailable")?;
                 let request = match &operation {
-                    Pending::Record(id) | Pending::Stop(id) | Pending::Permission(id) => *id,
+                    Pending::Record(id)
+                    | Pending::Stop(id)
+                    | Pending::Permission(id)
+                    | Pending::RefreshMicrophones(id) => *id,
                 };
                 if !ok {
                     notify(RecorderEvent::Failed {
@@ -490,6 +509,9 @@ fn pump(
                     Pending::Record(id) => notify(RecorderEvent::Recorded { id }),
                     Pending::Permission(id) => {
                         notify(RecorderEvent::PermissionResult { id, ok: true })
+                    }
+                    Pending::RefreshMicrophones(id) => {
+                        notify(RecorderEvent::MicrophonesRefreshed { id })
                     }
                     Pending::Stop(id) => {
                         let recording = (!pcm.is_empty()).then(|| Recording {

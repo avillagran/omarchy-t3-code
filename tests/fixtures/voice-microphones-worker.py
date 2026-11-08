@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 import uuid
 
 if '--inert-preflight' in sys.argv:
@@ -25,10 +26,11 @@ if 'voice-watch' not in sys.argv:
     raise SystemExit(0)
 
 proof = dict(scope='Metadata transport only; no hardware, PCM or Rust CAS execution',
-    permissions=[], preferences=[], captures=[], scopes=[], actions=[], staleMetadata=0, explicitChoices=0)
+    permissions=[], preferences=[], captures=[], scopes=[], actions=[], refreshes=[], staleMetadata=0, explicitChoices=0)
 choice = None
 prepared = {}
 sequence = 0
+active = {}
 
 def save():
     root = Path('/evidence')
@@ -48,7 +50,7 @@ def reply(packet, value=None, error=None):
     emit(dict(kind='result', requestId=packet['requestId'], session=packet.get('session'),
         value=value or {}, error=error))
 
-def microphones(session, successor=False):
+def microphones(session, successor=False, refreshed=False):
     devices = [dict(deviceId='default', label='Fixture default input'),
         dict(deviceId=USB, label='<b>USB & "quoted"</b>'),
         dict(deviceId=LINE, label='Line input')]
@@ -56,6 +58,10 @@ def microphones(session, successor=False):
         devices = [dict(deviceId=LINE, label='Successor line input'),
             dict(deviceId='default', label='Successor default input'),
             dict(deviceId=USB, label='<i>USB successor & literal</i>')]
+    if refreshed:
+        devices = [dict(deviceId=LINE, label='Refreshed line input'),
+            dict(deviceId='default', label='Refreshed default input'),
+            dict(deviceId=USB, label='<em>Refreshed USB & literal</em>')]
     emit(dict(kind='microphones', session=session, devices=devices))
 
 emit(dict(kind='ready', available=True))
@@ -102,7 +108,23 @@ for line in sys.stdin:
     elif action in ['configure', 'stream-ticket', 'stream-connect', 'record']:
         reply(packet)
     elif action == 'stop':
+        active[packet['session']] = False
         reply(packet, dict(uri=None))
+    elif action == 'stream-finish':
+        reply(packet, dict(text='voice'))
+    elif action == 'refresh-microphones':
+        assert active.get(packet['session']) is True, 'Only the already explicitly permitted current capture may refresh'
+        proof['refreshes'].append(dict(session=packet['session']))
+        save()
+        time.sleep(0.2)
+        if len(proof['refreshes']) == 1:
+            microphones(packet['session'], refreshed=True)
+            reply(packet)
+        elif len(proof['refreshes']) == 3:
+            emit(dict(kind='microphones', session=packet['session'], devices=[]))
+            reply(packet)
+        else:
+            reply(packet, error='microphones_unavailable')
     elif action == 'capture-prepare':
         prepared[packet['session']] = packet
         proof['captures'].append(dict(session=packet['session'], microphoneId=packet['microphoneId']))
@@ -111,7 +133,11 @@ for line in sys.stdin:
         held = prepared.pop(packet['session'])
         assert packet['allow'] is True, 'Fixture requires its explicit permission action'
         proof['permissions'].append(dict(session=packet['session'], allow=True))
-        microphones(packet['session'], successor=len(proof['scopes']) > 1)
+        active[packet['session']] = True
+        if len(proof['scopes']) > 1 and len(proof['refreshes']) >= 2:
+            emit(dict(kind='microphones-error', session=packet['session'], error='microphones_unavailable'))
+        else:
+            microphones(packet['session'], successor=len(proof['scopes']) > 1)
         if len(proof['scopes']) > 1:
             emit(dict(kind='microphones', session=proof['scopes'][0],
                 devices=[dict(deviceId='late-old-device', label='<b>Old scope</b>')]))
@@ -120,6 +146,8 @@ for line in sys.stdin:
         reply(packet)
         emit(dict(kind='stream', session=packet['session'], value=dict(event='ready')))
     elif action in ['abort', 'dispose', 'release-capture', 'delete-recording']:
+        if action != 'delete-recording':
+            active[packet.get('session')] = False
         held = prepared.pop(packet.get('session'), None)
         if held:
             reply(held, error='voice_cancelled')

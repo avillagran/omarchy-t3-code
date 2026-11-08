@@ -1,4 +1,5 @@
 //! One private native capture process. Audio never enters JSON or a status log.
+mod microphones;
 mod profile_retirement;
 pub mod resources;
 use resources::{Assets, Profile, Runtime};
@@ -103,6 +104,7 @@ pub enum Event {
     DurationLimit,
     CaptureError,
     Microphones(Vec<Microphone>),
+    MicrophonesUnavailable,
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -196,6 +198,7 @@ enum Operation {
     Record,
     Stop,
     Permission,
+    RefreshMicrophones,
 }
 pub struct Capture {
     runtime: Arc<Runtime>,
@@ -217,7 +220,7 @@ pub struct Capture {
     pcm_bytes: usize,
     close_ack: bool,
     cleanup: Option<Cleanup>,
-    microphones_received: bool,
+    microphones: microphones::Updates,
 }
 impl Capture {
     /// Only the native factory supplies admitted application artifacts and an
@@ -482,7 +485,7 @@ impl Capture {
             pcm_bytes: 0,
             close_ack: false,
             cleanup: None,
-            microphones_received: false,
+            microphones: microphones::Updates::default(),
         };
         let prepared = (|| {
             let ready = owner
@@ -561,6 +564,21 @@ impl Capture {
         self.phase = Phase::Stopping;
         Ok(id)
     }
+    pub fn refresh_microphones(&mut self) -> io::Result<u64> {
+        if !matches!(self.phase, Phase::Prepared | Phase::Recording)
+            || !self.microphones.available()
+            || self
+                .pending
+                .values()
+                .any(|operation| matches!(operation, Operation::RefreshMicrophones))
+        {
+            return Err(failed());
+        }
+        self.send(
+            Operation::RefreshMicrophones,
+            json!({"type":"refresh-microphones"}),
+        )
+    }
     pub fn next(&mut self, budget: Duration) -> io::Result<Option<Event>> {
         let deadline = Instant::now() + budget;
         while let Some(packet) = self.packet(deadline)? {
@@ -618,20 +636,22 @@ impl Capture {
                 Some("duration-limit") => return Ok(Some(Event::DurationLimit)),
                 Some("capture-error") => return Ok(Some(Event::CaptureError)),
                 Some("microphones") => {
-                    if self.phase != Phase::Preparing || self.microphones_received {
-                        return Err(failed());
+                    if let Some(devices) = self.microphones.accept(
+                        &value,
+                        self.phase,
+                        self.gate.0.closed.load(Ordering::Acquire),
+                    )? {
+                        return Ok(Some(Event::Microphones(devices)));
                     }
-                    let devices: Vec<Microphone> =
-                        serde_json::from_value(value["devices"].clone()).map_err(|_| failed())?;
-                    if devices.len() > 256
-                        || devices.iter().any(|device| {
-                            device.device_id.len() > 1024 || device.label.len() > 4096
-                        })
-                    {
-                        return Err(failed());
+                }
+                Some("microphones-unavailable") => {
+                    if self.microphones.unavailable(
+                        &value,
+                        self.phase,
+                        self.gate.0.closed.load(Ordering::Acquire),
+                    )? {
+                        return Ok(Some(Event::MicrophonesUnavailable));
                     }
-                    self.microphones_received = true;
-                    return Ok(Some(Event::Microphones(devices)));
                 }
                 Some("result") => {
                     let id = value["id"].as_u64().ok_or_else(failed)?;
@@ -655,7 +675,12 @@ impl Capture {
                     }
                     if ok {
                         match operation {
-                            Operation::Prepare => self.phase = Phase::Prepared,
+                            Operation::Prepare => {
+                                if !self.microphones.initial_received() {
+                                    return Err(failed());
+                                }
+                                self.phase = Phase::Prepared;
+                            }
                             Operation::Stop => {
                                 if value["value"]["mode"] != self.mode.name()
                                     || value["value"]["pcmBytes"].as_u64()
@@ -667,7 +692,7 @@ impl Capture {
                             }
                             _ => {}
                         }
-                    } else {
+                    } else if !matches!(operation, Operation::RefreshMicrophones) {
                         self.phase = Phase::Failed;
                     }
                     let error = if ok {
@@ -683,7 +708,8 @@ impl Capture {
                                             | "capture_permission_denied"
                                             | "capture_failed"
                                             | "stale_permission"
-                                    )
+                                    ) || matches!(operation, Operation::RefreshMicrophones)
+                                        && *value == "microphones_unavailable"
                                 })
                                 .ok_or_else(failed)?
                                 .to_owned(),
