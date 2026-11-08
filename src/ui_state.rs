@@ -429,6 +429,23 @@ pub fn sanitize(input: &Value) -> Value {
         out["starfieldMode"] = input["starfieldMode"].clone();
     }
     for (key, allowed) in [
+        (
+            "preferencesPage",
+            &[
+                "general",
+                "appearance",
+                "projects",
+                "shortcuts",
+                "providers",
+                "integrations",
+                "source-control",
+                "connections",
+                "storage",
+                "memory",
+                "archived",
+                "licenses",
+            ][..],
+        ),
         ("interfaceLayout", &["classic", "focus", "projects"][..]),
         ("starfieldSpeed", &["slow", "normal", "fast"][..]),
         ("starfieldMeteors", &["none", "few", "normal", "many"][..]),
