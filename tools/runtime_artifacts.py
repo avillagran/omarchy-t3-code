@@ -31,9 +31,9 @@ def snapshot(debug, artifacts, destination, *, reflink=False):
             mode = before.st_mode
             if not stat.S_ISREG(mode):
                 raise ValueError("Runtime artifact is not a regular file")
-            destination_fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+            destination_fd = os.open(target, os.O_RDWR | os.O_CREAT | os.O_EXCL |
                                      os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
-            with os.fdopen(destination_fd, "wb") as copied:
+            with os.fdopen(destination_fd, "w+b") as copied:
                 created = os.fstat(copied.fileno())
                 if (created.st_dev, created.st_ino) == (before.st_dev, before.st_ino):
                     raise ValueError("Runtime snapshot must have a distinct inode")
@@ -64,10 +64,15 @@ def snapshot(debug, artifacts, destination, *, reflink=False):
                     raise ValueError("Runtime source changed during snapshot")
                 if os.fstat(copied.fileno()).st_size != before.st_size:
                     raise ValueError("Runtime snapshot size differs from its source")
-        target.chmod(0o500 if mode & 0o111 else 0o400)
-        with target.open("rb") as stream:
-            digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        record = {"path": str(relative), "sha256": digest, "bytes": target.stat().st_size}
+                os.fchmod(copied.fileno(), 0o500 if mode & 0o111 else 0o400)
+                copied.seek(0)
+                digest = hashlib.file_digest(copied, "sha256").hexdigest()
+                if identity(before) != identity(os.fstat(original.fileno())):
+                    raise ValueError("Runtime source changed during snapshot hashing")
+                current = target.lstat()
+                if (current.st_dev, current.st_ino) != (created.st_dev, created.st_ino):
+                    raise ValueError("Runtime snapshot path was replaced")
+        record = {"path": str(relative), "sha256": digest, "bytes": before.st_size}
         if reflink:
             record["copyMode"] = "reflink" if cloned else "reserved-copy"
         records.append(record)

@@ -97,6 +97,29 @@ class ArtifactTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     snapshot(debug, [source], root / 'refused')
 
+    def test_replaced_destination_cannot_redirect_chmod_or_hash(self):
+        with retained_directory(prefix='runtime-artifacts-path-') as directory:
+            root = pathlib.Path(directory)
+            debug = root / 'debug'
+            debug.mkdir()
+            source = debug / 'fixture'
+            source.write_bytes(b'owned-source')
+            canary = root / 'owned-canary'
+            canary.write_bytes(b'owned-canary')
+            canary.chmod(0o600)
+            import shutil
+            actual_copy = shutil.copyfileobj
+            def replaced(original, copied, length):
+                actual_copy(original, copied, length)
+                target = root / 'snapshot/fixture'
+                target.rename(root / 'retained-original')
+                target.symlink_to(canary)
+            with mock.patch('runtime_artifacts.shutil.copyfileobj', side_effect=replaced):
+                with self.assertRaises(ValueError):
+                    snapshot(debug, [source], root / 'snapshot')
+            self.assertEqual(canary.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(canary.read_bytes(), b'owned-canary')
+
     def test_owned_link_and_external_artifact_are_rejected(self):
         with retained_directory(prefix='runtime-artifacts-reject-') as directory:
             root = pathlib.Path(directory)

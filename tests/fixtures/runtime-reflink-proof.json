@@ -2,12 +2,12 @@
   "schema": 1,
   "scope": "Optional immutable runtime snapshot reflink; default callers retain copy behavior",
   "sourceHashes": {
-    "tools/runtime_artifacts.py": "b9c79d552b6e352289a6c1ea672ff0cb61b23756fa316358f572925f60078dba",
-    "tools/test_runtime_artifacts.py": "fec15701f965e4a04bd013e60704d9945e84da6e5939da237edd1c02cced51e1"
+    "tools/runtime_artifacts.py": "cc27556df1712a31016f87458d04b173bf700423a3fa8519877f0a2e9db78f16",
+    "tools/test_runtime_artifacts.py": "dc6cdb2f8725a5c683aaa0355c5eaf003b60fb432cad3f5362ff9cc3cb90fbbe"
   },
-  "physicalReceipt": "/var/tmp/o3-build/private-reflink-artifacts-2297xlj3",
+  "physicalReceipt": "/var/tmp/o3-build/private-reflink-artifacts-ke8rdh_m",
   "filesystem": "btrfs, same filesystem source/destination",
-  "tests": 5,
+  "tests": 6,
   "returncode": 0,
   "checks": [
     "Actual FICLONE required and observed",
@@ -17,7 +17,8 @@
     "copy fallback reserves complete size before transfer",
     "failed ENOSPC reservation never starts copy",
     "source stat mutation during copy is refused",
-    "original containment and owned-only link fixtures retained"
+    "original containment and owned-only link fixtures retained",
+    "Destination chmod and SHA use retained descriptor; replaced pathname rejected without touching owned symlink canary"
   ],
   "negativeQualification": {
     "receipt": "/home/node/BuildCache/o3-desktop-next/reflink-artifacts-next",
@@ -26,5 +27,6 @@
     "action": "No target/evidence moves or deletion; further HOME builds paused"
   },
   "callerOptInRequired": true,
-  "oldArtifactsDeleted": false
+  "oldArtifactsDeleted": false,
+  "previousPhysicalReceipt": "/var/tmp/o3-build/private-reflink-artifacts-2297xlj3"
 }
