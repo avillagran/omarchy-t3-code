@@ -39,6 +39,18 @@ pub fn response(v: &Value) -> Result<Value> {
     })
 }
 pub fn run(e: &Environment, input: &Value) -> Result<Value> {
+    if text(input, "action") == "remove-auth-method" {
+        let request = provider::AuthRemoveMethodInput::from_json(input)?;
+        let connection = e.connection(true)?;
+        let session = connection.request_json("GET", "/api/auth/session", None, false)?;
+        let allowed = session["authenticated"] == true
+            && session.get("permissions").or_else(|| session.get("scopes"))
+                .and_then(Value::as_array)
+                .is_some_and(|scopes| scopes.iter().any(|scope| scope == "providers:manage"));
+        if !allowed { return Err("permission_denied".into()); }
+        let state = provider::auth_remove_method(&connection, &request.instance_id, &request.method_id)?;
+        return Ok(json!({"instanceId":request.instance_id,"kind":"auth","state":state}));
+    }
     let instance = op_id(input, "instanceId")?;
     let c = || e.connection(true);
     let (kind, state) = match text(input, "action") {
@@ -46,7 +58,10 @@ pub fn run(e: &Environment, input: &Value) -> Result<Value> {
         "remove" => ("install", provider::install_remove(&c()?, &instance)?),
         "cancel-install" => ("install", provider::install_cancel(&c()?, &instance, &op_id(input, "operationId")?)?),
         "install-state" => ("install", first(e, streams::provider_install_spec(&instance)?)?),
-        "login" => ("auth", provider::auth_start(&c()?, &instance, op_id(input, "methodId").ok().as_deref(), None, None)?),
+        "login" => {
+            let method = provider::auth_start_method_id(input)?;
+            ("auth", provider::auth_start(&c()?, &instance, method, None, None)?)
+        }
         "logout" => ("auth", provider::auth_logout(&c()?, &instance)?),
         "cancel-login" => ("auth", provider::auth_cancel(&c()?, &instance, &op_id(input, "flowId")?)?),
         "respond" => {
