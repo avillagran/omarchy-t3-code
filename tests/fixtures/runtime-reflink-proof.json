@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "scope": "Optional immutable runtime snapshot reflink; default callers retain copy behavior",
+  "sourceHashes": {
+    "tools/runtime_artifacts.py": "b9c79d552b6e352289a6c1ea672ff0cb61b23756fa316358f572925f60078dba",
+    "tools/test_runtime_artifacts.py": "fec15701f965e4a04bd013e60704d9945e84da6e5939da237edd1c02cced51e1"
+  },
+  "physicalReceipt": "/var/tmp/o3-build/private-reflink-artifacts-2297xlj3",
+  "filesystem": "btrfs, same filesystem source/destination",
+  "tests": 5,
+  "returncode": 0,
+  "checks": [
+    "Actual FICLONE required and observed",
+    "distinct destination inode, never hardlink",
+    "post-snapshot source modification and replacement leave copy unchanged",
+    "source and destination nofollow/exclusive/CLOEXEC admission",
+    "copy fallback reserves complete size before transfer",
+    "failed ENOSPC reservation never starts copy",
+    "source stat mutation during copy is refused",
+    "original containment and owned-only link fixtures retained"
+  ],
+  "negativeQualification": {
+    "receipt": "/home/node/BuildCache/o3-desktop-next/reflink-artifacts-next",
+    "result": "4 tests passed; require-FICLONE case failed because ext4 correctly used reserved-copy",
+    "targetActualPath": "/home/node/BuildCache/o3-code/client-nightly-target-20261106",
+    "action": "No target/evidence moves or deletion; further HOME builds paused"
+  },
+  "callerOptInRequired": true,
+  "oldArtifactsDeleted": false
+}
