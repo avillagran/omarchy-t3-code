@@ -104,15 +104,76 @@
     "hostDisplayBusAuthNetworkMounted": false,
     "realProviderRpcExecuted": false,
     "managedAccountStoreVerified": false,
-    "actualRustConsumerRpcTestsExecuted": false,
+    "actualRustConsumerRpcTestsExecuted": true,
     "wholeNightlyAccepted": false,
     "primaryClientCheckoutChanged": false,
     "reservedExecutablesPreserved": true,
-    "noNewFinalBinaryLinked": true
+    "noNewFinalBinaryLinked": true,
+    "actualRustConsumerRpcScope": "Unchanged two-case provider-setup integration source, real compiled consumer/SDK library, synthetic private loopback HTTP authorization and WebSocket peer only."
   },
   "remaining": [
-    "Run the two existing Rust provider_auth_remove consumer tests in a separately reviewed private container without overwriting the reserved CLI, GUI, watch, libtest or classifier probe binaries.",
     "Validate real server authorization/controller eligibility and managed registration/session persistence separately; current metadata peer never performs real account removal.",
     "Public consumer CI, primary checkout integration and complete nightly parity remain outside this checkpoint."
+  ],
+  "clientRustRpcAttempts": [
+    {
+      "name": "RPC1",
+      "status": "failed",
+      "qualification": "Library-only build passed; selector rejected the root library path before compiling a probe or running tests. The original static intended-stage flags are superseded by the explicit actual-reached-stages receipt.",
+      "receipt": "/var/tmp/o3-build/auth-method-4340-client-rpc-plan-40y3urre/rpc-result.json",
+      "receiptSha256": "65a9d65a81556087f9da5574c14176a2c7d3f287e352d86b09d6821f5bd849e7",
+      "runtimeLog": "/var/tmp/o3-build/auth-method-4340-client-rpc-plan-40y3urre/rpc-runtime.log",
+      "runtimeLogSha256": "732731ab4668288274888ddc09e4fd20868286b99414bc4ed50ae90aa8fff158",
+      "containerTerminalReceipt": "/var/tmp/o3-build/auth-method-4340-client-rpc-plan-40y3urre/rpc-container-terminal.json",
+      "containerTerminalSha256": "f260d916d7059c0b226dce8a3e46b971afc78056cc9acc7ecde1a54901ced56b",
+      "actualProbeLinked": false,
+      "actualTestsExecuted": false,
+      "actualReachedStagesReceipt": "/var/tmp/o3-build/auth-method-4340-client-rpc-plan-40y3urre/actual-reached-stages.json",
+      "actualReachedStagesSha256": "db51d7ff034f984a5c8d7a6181578fb96b2abdfe39dbf443fdbc433158793df4"
+    },
+    {
+      "name": "RPC2",
+      "status": "failed",
+      "qualification": "Exact artifact graph selection passed; direct rustc linking failed because the pinned image lacked the unversioned SQLite development link. No tests ran; the zero-byte reserved probe leaf is retained.",
+      "receipt": "/var/tmp/o3-build/auth-method-4340-client-rpc2-plan-q9vrk4wy/rpc-result.json",
+      "receiptSha256": "7fc82e64b64664b41a76bb797d15b43b736cd59ca9d72cbd64fa6ed1a1869997",
+      "runtimeLog": "/var/tmp/o3-build/auth-method-4340-client-rpc2-plan-q9vrk4wy/rpc-runtime.log",
+      "runtimeLogSha256": "77c503569033377e20c0cfa0cb0ed27b82aac07760a63db579f0b8ed346efb2e",
+      "containerTerminalReceipt": "/var/tmp/o3-build/auth-method-4340-client-rpc2-plan-q9vrk4wy/rpc-container-terminal.json",
+      "containerTerminalSha256": "8e58ff73428d59d1acb3e7296c39b0414132a6c3436ff6300b6d22f979ae03f6",
+      "actualProbeLinked": false,
+      "actualTestsExecuted": false
+    },
+    {
+      "name": "RPC3",
+      "status": "passed",
+      "qualification": "Both unchanged actual Rust consumer tests passed using the real root library and private HTTP/WebSocket peers. SQLite came from the pinned image through a hash-admitted RAM symlink; no host libraries, downloads or persistent cache changes.",
+      "receipt": "/var/tmp/o3-build/auth-method-4340-client-rpc3-plan-lgk4jzkn/rpc-result.json",
+      "receiptSha256": "9aa673f41e3d8697dcd702ea5a406c828c6a7fb7a0adf34438c3f4452ba677ca",
+      "runtimeLog": "/var/tmp/o3-build/auth-method-4340-client-rpc3-plan-lgk4jzkn/rpc-runtime.log",
+      "runtimeLogSha256": "86a0dd7dfa0db3996b639704d7426f76d941c783fe3afcb8581bbab2f2373870",
+      "containerTerminalReceipt": "/var/tmp/o3-build/auth-method-4340-client-rpc3-plan-lgk4jzkn/rpc-container-terminal.json",
+      "containerTerminalSha256": "27b091c16fb945a71fd7e2845011114dff4f038b098375d96a46fa94fbb5d147",
+      "actualProbeLinked": true,
+      "actualTestsExecuted": true,
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "cases": [
+        "reconnect_forwards_the_present_native_method_and_never_defaults_invalid_input",
+        "removal_refreshes_authorization_and_sends_the_exact_selected_method_once"
+      ],
+      "marker": "AUTH_CONSUMER_RPC_TWO_CASE_PASS",
+      "libraryOnlyCargoBuild": true,
+      "rootLibrarySha256": "57ea04bc9717c267996f0572899e6fdb575980351d092c82c3c55547ec6984a2",
+      "probe": {
+        "path": "/home/node/BuildCache/o3-client-voice-4314/target/debug/auth-method-4340-consumer-rpc-probe2",
+        "bytes": 158510040,
+        "sha256": "f39bc5c1fc2a6b79bd03dda9a3038ec7a7285e812be5814c6ed79f1c8dfd7085"
+      },
+      "imageSqliteSha256": "317d80bf5d592f98a71e14d2330591d6a339f631f37c5977835af748a1f26715",
+      "reservedExecutablesUnchanged": 5,
+      "sourcePathsUnchanged": 1696
+    }
   ]
 }
