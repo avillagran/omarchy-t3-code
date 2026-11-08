@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Stage, archive, or extract the fixed native voice application bundle."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import tarfile
+import tempfile
+import uuid
+import native_voice_bundle as voice
+
+BASE = ['bin/omarchy-t3-client', 'bin/libt3-document.so', 'bin/libt3-qml-preview.so',
+    'bin/libt3-browser.so', 'bin/t3-browser-secret', 'bin/ot3-dictate',
+    'bin/qml/O3/Terminal/libo3terminal.so', 'bin/qml/O3/Terminal/qmldir',
+    'bin/qml/O3/Terminal/Ghostty-LICENSE', 'bin/qml/O3/Terminal/GHOSTTY_VERSION',
+    'COMMIT', 'BUILD-INFO']
+
+
+def client_metadata(client, verify=False):
+    command = [str(voice.canonical(client)), '__native-voice-bundle']
+    if not verify:
+        command.append('metadata')
+    result = subprocess.run(command, env={'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'},
+        check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
+    if len(result.stdout.encode()) > 4096:
+        raise ValueError('Oversized compiled native voice metadata')
+    return json.loads(result.stdout)
+
+
+def overlay(stage, bundle, output):
+    stage = voice.directory(stage)
+    expected = voice.compiled(voice.verify(bundle)) if bundle is not None else None
+    if client_metadata(stage / 'bin/omarchy-t3-client') != expected:
+        raise ValueError('Client compiled native voice pins differ from the packaged bundle')
+    voice.directory(output.parent)
+    temporary = output.parent / ('.' + output.name + '.partial-' + uuid.uuid4().hex)
+    with temporary.open('xb') as destination, tarfile.open(fileobj=destination, mode='w:gz') as archive:
+        for name in BASE:
+            executable = name.startswith('bin/') and name not in BASE[7:10]
+            voice.add_file(archive, stage / name, name, executable=executable, immutable=False)
+        if bundle is not None:
+            voice.add_bundle(archive, bundle)
+    temporary.replace(output)
+
+
+def install_client(client, bundle, destination, cargo_output=False):
+    """Prepare both candidates before activation; restore the old pair on error."""
+    destination = Path(destination)
+    parent = voice.directory(destination.parent)
+    if destination.name != 'omarchy-t3-client':
+        raise ValueError('Only the fixed client executable may be installed')
+    transaction = Path(tempfile.mkdtemp(prefix='.native-voice-transaction-', dir=parent))
+    transaction.chmod(0o700)
+    candidate = transaction / 'new-client'
+    voice.copy_member(client, candidate, executable=True, immutable=False,
+        single_link=not cargo_output)
+    candidate.chmod(0o755)
+    expected = voice.compiled(voice.verify(bundle)) if bundle is not None else None
+    if client_metadata(candidate) != expected:
+        raise ValueError('Prepared client pins differ from the new bundle')
+    if bundle is not None and bundle.stat().st_dev != parent.stat().st_dev:
+        local = transaction / 'candidate-bundle'
+        voice.stage(bundle / voice.RUNTIME, bundle / voice.ADDON, local)
+        bundle = local
+    backup = transaction / 'old-client'
+    had_client = destination.exists() or destination.is_symlink()
+    if had_client:
+        # Preserve bytes in a new inode. Replacing the active executable must
+        # still mark running /proc/self/exe as deleted for the existing watcher.
+        voice.copy_member(destination, backup, executable=True, immutable=False)
+        backup.chmod(0o755)
+    bundle_destination = parent / 'native-voice'
+    retired_bundle = None
+    bundle_active = False
+    client_active = False
+    try:
+        if bundle is not None:
+            retired_bundle = voice.activate(bundle, bundle_destination)
+            bundle_active = True
+        candidate.replace(destination)
+        client_active = True
+        if client_metadata(destination, verify=True) != expected:
+            raise ValueError('Installed client default bundle admission failed')
+    except BaseException as failure:
+        try:
+            if bundle_active:
+                bundle_destination.rename(transaction / 'failed-bundle')
+                if retired_bundle is not None:
+                    retired_bundle.rename(bundle_destination)
+            if client_active:
+                if had_client:
+                    # Unlink the failed active inode so any concurrently
+                    # restarted worker also observes the normal deleted marker.
+                    backup.replace(destination)
+                else:
+                    destination.rename(transaction / 'failed-first-client')
+        except BaseException as rollback:
+            raise RuntimeError('Client/bundle rollback failed; retained artifacts: '
+                + str(transaction)) from rollback
+        raise failure
+    return {'client': str(destination), 'transaction': str(transaction),
+        'retiredClient': str(backup) if had_client else None,
+        'retiredBundle': str(retired_bundle) if retired_bundle is not None else None}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest='command', required=True)
+    stage = commands.add_parser('stage')
+    stage.add_argument('--runtime', type=Path, required=True)
+    stage.add_argument('--addon', type=Path, required=True)
+    stage.add_argument('--destination', type=Path, required=True)
+    overlay_parser = commands.add_parser('overlay')
+    overlay_parser.add_argument('--stage', type=Path, required=True)
+    overlay_parser.add_argument('--bundle', type=Path)
+    overlay_parser.add_argument('--output', type=Path, required=True)
+    extract = commands.add_parser('extract')
+    extract.add_argument('--archive', type=Path, required=True)
+    extract.add_argument('--destination', type=Path, required=True)
+    activate = commands.add_parser('activate')
+    activate.add_argument('--bundle', type=Path, required=True)
+    activate.add_argument('--destination', type=Path, required=True)
+    verify = commands.add_parser('verify')
+    verify.add_argument('--client', type=Path, required=True)
+    verify.add_argument('--bundle', type=Path)
+    verify.add_argument('--admit', action='store_true')
+    install = commands.add_parser('install-client')
+    install.add_argument('--client', type=Path, required=True)
+    install.add_argument('--bundle', type=Path)
+    install.add_argument('--destination', type=Path, required=True)
+    install.add_argument('--cargo-output', action='store_true',
+        help='the mutable client input is a Cargo output that may share its build inode')
+    arguments = parser.parse_args()
+    if arguments.command == 'stage':
+        print(json.dumps(voice.stage(arguments.runtime, arguments.addon, arguments.destination)))
+    elif arguments.command == 'overlay':
+        overlay(arguments.stage, arguments.bundle, arguments.output)
+    elif arguments.command == 'extract':
+        print(json.dumps(voice.extract(arguments.archive, arguments.destination)))
+    elif arguments.command == 'activate':
+        retired = voice.activate(arguments.bundle, arguments.destination)
+        print(json.dumps({'retired': str(retired) if retired is not None else None}))
+    elif arguments.command == 'install-client':
+        print(json.dumps(install_client(arguments.client, arguments.bundle,
+            arguments.destination, arguments.cargo_output)))
+    else:
+        expected = voice.compiled(voice.verify(arguments.bundle)) if arguments.bundle else None
+        if client_metadata(arguments.client, arguments.admit) != expected:
+            raise ValueError('Client compiled native voice pins differ from the packaged bundle')
+        print(json.dumps(expected))
+
+
+if __name__ == '__main__':
+    main()

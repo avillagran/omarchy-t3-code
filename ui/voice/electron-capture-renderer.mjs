@@ -1,5 +1,6 @@
 import {createCapture} from './compiled.mjs';
 import {createBrowserCaptureOwner} from './browser-capture-owner.mjs';
+import {listBrowserMicrophones} from './browser-microphones.mjs';
 let owner,mode;
 const bridge=window.voiceCapture;
 bridge.subscribe(async command=>{
@@ -13,6 +14,9 @@ bridge.subscribe(async command=>{
     onLevel:bridge.level,onDurationLimit:bridge.limit,onError:bridge.failed,
    });
    await owner.prepare(mode);
+   // Enumeration is read-only. It follows the recording's explicit native
+   // permission instead of opening a stream merely to populate settings.
+   try{value={microphones:await listBrowserMicrophones()}}catch(_){value={microphones:[]}}
   }else if(command.type==='record')owner.record();
   else if(command.type==='stop'){
    const pcm=await owner.stop();

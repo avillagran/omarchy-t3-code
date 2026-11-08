@@ -1775,6 +1775,22 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("__native-voice-bundle") {
+        let arguments: Vec<_> = std::env::args().skip(2).collect();
+        let verify = match arguments.as_slice() {
+            [] => true,
+            [mode] if mode == "metadata" => false,
+            _ => std::process::exit(2),
+        };
+        match voice_host::bundled_metadata(verify) {
+            Ok(metadata) => println!("{metadata}"),
+            Err(error) => {
+                eprintln!("{error}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     if std::env::args().nth(1).as_deref() == Some("remote-surfaces-serve") {
         let args: Vec<_> = std::env::args().skip(2).collect();
         let result = if args.len() == 2 {

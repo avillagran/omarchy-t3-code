@@ -289,6 +289,7 @@ function create(adapters) {
             var scope=scopes.get(event.session)
             if(!scope || !live(scope))return
             if(event.kind==="permission")adapters.onPermission(scope.id,event.permissionId)
+            else if(event.kind==="microphones"&&adapters.onMicrophones)adapters.onMicrophones(event.devices)
             else if(event.kind==="level")scope.captureInput.onLevel(event.value)
             else if(event.kind==="duration-limit")scope.captureInput.onDurationLimit()
             else if(event.kind==="capture-error")scope.captureInput.onError(error(event.error).message)

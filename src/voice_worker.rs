@@ -108,6 +108,7 @@ pub enum RecorderEvent {
         error: &'static str,
     },
     Closed(Cleanup),
+    Microphones(Vec<crate::voice_capture::Microphone>),
 }
 enum Command {
     Record {
@@ -145,6 +146,7 @@ pub struct CaptureFactory {
     display: Arc<crate::browser_native_display::Display>,
     microphone_id: String,
     synthetic: bool,
+    profile: Option<Arc<crate::voice_capture::resources::Profile>>,
 }
 impl CaptureFactory {
     pub fn new(
@@ -161,6 +163,7 @@ impl CaptureFactory {
             display,
             microphone_id,
             synthetic: false,
+            profile: None,
         }
     }
     /// Synthetic media is an explicit private-container fixture capability,
@@ -172,28 +175,27 @@ impl CaptureFactory {
         self.synthetic = true;
         Ok(self)
     }
+    pub(crate) fn with_profile(
+        mut self,
+        profile: Arc<crate::voice_capture::resources::Profile>,
+    ) -> Self {
+        self.profile = Some(profile);
+        self
+    }
     fn launch(self, mode: Mode, startup: &StartupCancellation) -> io::Result<Capture> {
-        if self.synthetic {
-            Capture::synthetic_cancellable(
-                self.runtime,
-                self.assets,
-                &self.directory,
-                self.display,
+        Capture::factory_cancellable(
+            self.runtime,
+            self.assets,
+            &self.directory,
+            self.display,
+            crate::voice_capture::FactoryOptions {
                 mode,
-                &self.microphone_id,
+                microphone_id: &self.microphone_id,
                 startup,
-            )
-        } else {
-            Capture::launch_cancellable(
-                self.runtime,
-                self.assets,
-                &self.directory,
-                self.display,
-                mode,
-                &self.microphone_id,
-                startup,
-            )
-        }
+                synthetic: self.synthetic,
+                profile: self.profile,
+            },
+        )
     }
 }
 /// The native factory owns all paths/programs and the one-shot cancellation.
@@ -440,6 +442,7 @@ fn pump(
             Some(Event::Level(level)) => notify(RecorderEvent::Level(level)),
             Some(Event::DurationLimit) => notify(RecorderEvent::DurationLimit),
             Some(Event::CaptureError) => return Err("capture_failed"),
+            Some(Event::Microphones(devices)) => notify(RecorderEvent::Microphones(devices)),
             Some(Event::Pcm(mut bytes)) => {
                 if !plan.transport.current(&|| (plan.owner)()) {
                     bytes.zeroize();

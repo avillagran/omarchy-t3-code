@@ -5,6 +5,7 @@ use std::{
     collections::BTreeSet,
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
+    os::fd::AsRawFd,
     os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Component, Path, PathBuf},
 };
@@ -242,6 +243,95 @@ pub struct DescriptorArtifact {
     pub sha256: String,
     pub bytes: u64,
 }
+impl DescriptorArtifact {
+    /// Read-only admission for package checks; never load or execute the addon.
+    pub fn verify(&self) -> io::Result<()> {
+        VerifiedFile::admit(self.path.clone(), &self.sha256, self.bytes)?.verify()
+    }
+}
+
+/// One application-owned Chromium identity, never an existing browser profile.
+/// The lease survives every capture using it and excludes a second application
+/// process. Chromium's local identity persists; each capture gates media anew.
+pub struct Profile {
+    path: PathBuf,
+    directory_identity: (u64, u64),
+    lock: File,
+    lock_identity: (u64, u64),
+}
+impl Profile {
+    pub fn open(path: &Path) -> io::Result<Self> {
+        let parent = path.parent().ok_or_else(invalid)?;
+        canonical(parent)?;
+        let metadata = fs::symlink_metadata(parent)?;
+        if !metadata.is_dir()
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.mode() & 0o077 != 0
+        {
+            return Err(invalid());
+        }
+        match fs::DirBuilder::new().mode(0o700).create(path) {
+            Ok(()) => (),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => (),
+            Err(error) => return Err(error),
+        }
+        let directory_identity = Self::check_directory(path)?;
+        let lock = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK)
+            .open(path.join("owner.lock"))?;
+        let identity = Self::lock_identity(&lock.metadata()?)?;
+        if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+            return Err(io::Error::other("voice_profile_busy"));
+        }
+        let profile = Self {
+            path: path.into(),
+            directory_identity,
+            lock,
+            lock_identity: identity,
+        };
+        profile.verify()?;
+        Ok(profile)
+    }
+    fn check_directory(path: &Path) -> io::Result<(u64, u64)> {
+        canonical(path)?;
+        let metadata = fs::symlink_metadata(path)?;
+        if !metadata.is_dir()
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.mode() & 0o077 != 0
+        {
+            return Err(invalid());
+        }
+        Ok((metadata.dev(), metadata.ino()))
+    }
+    fn lock_identity(metadata: &fs::Metadata) -> io::Result<(u64, u64)> {
+        if !metadata.is_file()
+            || metadata.nlink() != 1
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.mode() & 0o077 != 0
+        {
+            return Err(invalid());
+        }
+        Ok((metadata.dev(), metadata.ino()))
+    }
+    pub fn verify(&self) -> io::Result<()> {
+        if Self::check_directory(&self.path)? != self.directory_identity
+            || Self::lock_identity(&self.lock.metadata()?)? != self.lock_identity
+            || Self::lock_identity(&fs::symlink_metadata(self.path.join("owner.lock"))?)?
+                != self.lock_identity
+        {
+            return Err(invalid());
+        }
+        Ok(())
+    }
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+}
 pub struct Assets {
     root: PathBuf,
     files: Vec<VerifiedFile>,
@@ -271,6 +361,10 @@ impl Assets {
                 (
                     "browser-capture-owner.mjs",
                     include_bytes!("../../ui/voice/browser-capture-owner.mjs"),
+                ),
+                (
+                    "browser-microphones.mjs",
+                    include_bytes!("../../ui/voice/browser-microphones.mjs"),
                 ),
                 (
                     "NativePcmCapture.js",
@@ -372,4 +466,93 @@ fn snapshot(directory: &Path, name: &str, bytes: &[u8]) -> io::Result<VerifiedFi
         &format!("{:x}", Sha256::digest(bytes)),
         bytes.len() as u64,
     )
+}
+
+#[cfg(test)]
+mod profile_tests {
+    use super::*;
+    use std::{os::unix::fs::symlink, sync::Arc};
+
+    fn fixture() -> PathBuf {
+        assert!(Path::new("/run/.containerenv").exists());
+        let root = std::env::temp_dir().join(format!("voice-profile-{}", uuid::Uuid::new_v4()));
+        fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+        root
+    }
+    fn clear(root: &Path) {
+        // Delete only the known files created by this fixture, never a tree.
+        fs::remove_file(root.join("profile/owner.lock")).unwrap();
+        fs::remove_dir(root.join("profile")).unwrap();
+        fs::remove_dir(root).unwrap();
+    }
+
+    #[test]
+    fn retained_profile_lease_excludes_a_second_owner() {
+        let root = fixture();
+        let profile = Arc::new(Profile::open(&root.join("profile")).unwrap());
+        let capture = profile.clone();
+        drop(profile);
+        assert!(Profile::open(&root.join("profile")).is_err());
+        capture.verify().unwrap();
+        drop(capture);
+        drop(Profile::open(&root.join("profile")).unwrap());
+        clear(&root);
+    }
+
+    #[test]
+    fn profile_never_adopts_a_symlink_to_another_fixture_directory() {
+        let root = fixture();
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(root.join("other"))
+            .unwrap();
+        symlink(root.join("other"), root.join("profile")).unwrap();
+        assert!(Profile::open(&root.join("profile")).is_err());
+        fs::remove_file(root.join("profile")).unwrap();
+        fs::remove_dir(root.join("other")).unwrap();
+        fs::remove_dir(root).unwrap();
+    }
+
+    #[test]
+    fn profile_rejects_public_modes_and_replaced_lock_identity() {
+        let root = fixture();
+        let path = root.join("profile");
+        let profile = Profile::open(&path).unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(profile.verify().is_err());
+        assert!(Profile::open(&path).is_err());
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::rename(path.join("owner.lock"), path.join("retired.lock")).unwrap();
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path.join("owner.lock"))
+            .unwrap();
+        assert!(profile.verify().is_err());
+        drop(profile);
+        fs::remove_file(path.join("retired.lock")).unwrap();
+        clear(&root);
+    }
+
+    #[test]
+    fn profile_rejects_replaced_directory_even_when_the_lock_is_preserved() {
+        let root = fixture();
+        let path = root.join("profile");
+        let retired = root.join("retired");
+        let profile = Profile::open(&path).unwrap();
+        let lock_identity = profile.lock_identity;
+        fs::rename(&path, &retired).unwrap();
+        fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
+        fs::rename(retired.join("owner.lock"), path.join("owner.lock")).unwrap();
+        assert_eq!(
+            Profile::lock_identity(&fs::symlink_metadata(path.join("owner.lock")).unwrap())
+                .unwrap(),
+            lock_identity
+        );
+        assert!(profile.verify().is_err());
+        drop(profile);
+        fs::remove_dir(retired).unwrap();
+        clear(&root);
+    }
 }

@@ -1,6 +1,7 @@
 //! One private native capture process. Audio never enters JSON or a status log.
+mod profile_retirement;
 pub mod resources;
-use resources::{Assets, Runtime};
+use resources::{Assets, Profile, Runtime};
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -36,6 +37,15 @@ pub enum Mode {
 struct LaunchControl<'a> {
     synthetic: bool,
     startup: Option<&'a StartupCancellation>,
+    profile: Option<Arc<Profile>>,
+}
+/// Native factory inputs; none of these fields can come from a wire request.
+pub(crate) struct FactoryOptions<'a> {
+    pub mode: Mode,
+    pub microphone_id: &'a str,
+    pub startup: &'a StartupCancellation,
+    pub synthetic: bool,
+    pub profile: Option<Arc<Profile>>,
 }
 impl Mode {
     fn name(self) -> &'static str {
@@ -60,23 +70,20 @@ impl std::fmt::Display for StartupFailure {
     }
 }
 impl std::error::Error for StartupFailure {}
-struct PendingChild(Option<Child>);
+struct PendingChild(Option<Child>, Option<Arc<Profile>>);
 impl Drop for PendingChild {
     fn drop(&mut self) {
         if let Some(mut child) = self.0.take() {
+            let profile = self.1.take();
             // No wait can release this identity before its single group fence.
-            if let Ok(group) = i32::try_from(child.id()) {
-                unsafe {
-                    libc::kill(-group, libc::SIGKILL);
-                }
+            let fenced = if let Ok(group) = i32::try_from(child.id()) {
+                (unsafe { libc::kill(-group, libc::SIGKILL) }) == 0
+                    || io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
             } else {
                 let _ = child.kill();
-            }
-            let _ = std::thread::Builder::new()
-                .name("capture-start-reap".into())
-                .spawn(move || {
-                    let _ = child.wait();
-                });
+                false
+            };
+            profile_retirement::retire(child, profile, fenced, "capture-start-reap");
         }
     }
 }
@@ -95,6 +102,13 @@ pub enum Event {
     },
     DurationLimit,
     CaptureError,
+    Microphones(Vec<Microphone>),
+}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Microphone {
+    pub device_id: String,
+    pub label: String,
 }
 struct Gate {
     closed: AtomicBool,
@@ -187,6 +201,7 @@ pub struct Capture {
     runtime: Arc<Runtime>,
     assets: Arc<Assets>,
     _display: Arc<crate::browser_native_display::Display>,
+    profile: Option<Arc<Profile>>,
     child: Option<Child>,
     pidfd: OwnedFd,
     group: i32,
@@ -202,6 +217,7 @@ pub struct Capture {
     pcm_bytes: usize,
     close_ack: bool,
     cleanup: Option<Cleanup>,
+    microphones_received: bool,
 }
 impl Capture {
     /// Only the native factory supplies admitted application artifacts and an
@@ -224,6 +240,7 @@ impl Capture {
             LaunchControl {
                 synthetic: false,
                 startup: None,
+                profile: None,
             },
         )
     }
@@ -250,6 +267,7 @@ impl Capture {
             LaunchControl {
                 synthetic: true,
                 startup: None,
+                profile: None,
             },
         )
     }
@@ -274,6 +292,7 @@ impl Capture {
             LaunchControl {
                 synthetic: false,
                 startup: Some(startup),
+                profile: None,
             },
         )
     }
@@ -299,6 +318,31 @@ impl Capture {
             LaunchControl {
                 synthetic: true,
                 startup: Some(startup),
+                profile: None,
+            },
+        )
+    }
+    pub(crate) fn factory_cancellable(
+        runtime: Arc<Runtime>,
+        assets: Arc<Assets>,
+        directory: &Path,
+        display: Arc<crate::browser_native_display::Display>,
+        options: FactoryOptions<'_>,
+    ) -> io::Result<Self> {
+        if options.synthetic && !Path::new("/run/.containerenv").exists() {
+            return Err(failed());
+        }
+        Self::launch_inner(
+            runtime,
+            assets,
+            directory,
+            display,
+            options.mode,
+            options.microphone_id,
+            LaunchControl {
+                synthetic: options.synthetic,
+                startup: Some(options.startup),
+                profile: options.profile,
             },
         )
     }
@@ -311,12 +355,19 @@ impl Capture {
         microphone_id: &str,
         control: LaunchControl<'_>,
     ) -> io::Result<Self> {
-        let LaunchControl { synthetic, startup } = control;
+        let LaunchControl {
+            synthetic,
+            startup,
+            profile,
+        } = control;
         if let Some(startup) = startup {
             startup.claim()?;
         }
         runtime.verify()?;
         assets.verify()?;
+        if let Some(profile) = &profile {
+            profile.verify()?;
+        }
         let parent = directory.parent().ok_or_else(failed)?;
         let metadata = fs::symlink_metadata(parent)?;
         if parent.canonicalize()? != parent
@@ -335,8 +386,8 @@ impl Capture {
             crate::desktop_browser_ipc::duplicate_child_source(child_endpoint.as_raw_fd())?;
         let descriptor = child_source.as_raw_fd();
         let parent_pid = unsafe { libc::getpid() };
-        let payload =
-            json!({"fd":descriptor,"peerPid":parent_pid,"captureId":capture,"directory":directory});
+        let payload = json!({"fd":descriptor,"peerPid":parent_pid,"captureId":capture,
+            "directory":directory,"profile":profile.as_ref().map_or(directory, |profile|profile.path())});
         let mut command = Command::new(runtime.executable());
         command.arg("--disable-setuid-sandbox");
         if synthetic {
@@ -385,7 +436,7 @@ impl Capture {
             });
         }
         let writer = reader.try_clone()?;
-        let mut pending_child = PendingChild(Some(command.spawn()?));
+        let mut pending_child = PendingChild(Some(command.spawn()?), profile.clone());
         if let Some(startup) = startup {
             startup.0.child_started.store(true, Ordering::Release);
         }
@@ -415,6 +466,7 @@ impl Capture {
             runtime,
             assets,
             _display: display,
+            profile,
             child: pending_child.0.take(),
             pidfd,
             group,
@@ -430,6 +482,7 @@ impl Capture {
             pcm_bytes: 0,
             close_ack: false,
             cleanup: None,
+            microphones_received: false,
         };
         let prepared = (|| {
             let ready = owner
@@ -564,6 +617,22 @@ impl Capture {
                 }
                 Some("duration-limit") => return Ok(Some(Event::DurationLimit)),
                 Some("capture-error") => return Ok(Some(Event::CaptureError)),
+                Some("microphones") => {
+                    if self.phase != Phase::Preparing || self.microphones_received {
+                        return Err(failed());
+                    }
+                    let devices: Vec<Microphone> =
+                        serde_json::from_value(value["devices"].clone()).map_err(|_| failed())?;
+                    if devices.len() > 256
+                        || devices.iter().any(|device| {
+                            device.device_id.len() > 1024 || device.label.len() > 4096
+                        })
+                    {
+                        return Err(failed());
+                    }
+                    self.microphones_received = true;
+                    return Ok(Some(Event::Microphones(devices)));
+                }
                 Some("result") => {
                     let id = value["id"].as_u64().ok_or_else(failed)?;
                     let ok = value["ok"].as_bool().ok_or_else(failed)?;
@@ -714,21 +783,23 @@ impl Capture {
         let mut cleanup = Cleanup::Unknown;
         if let Some(mut child) = self.child.take() {
             if exited {
-                if child.wait().is_ok_and(|status| status.success())
+                let waited = child.wait();
+                let reaped = waited.is_ok();
+                if waited.is_ok_and(|status| status.success())
                     && self.close_ack
                     && fenced
                     && !self.gate.0.broken.load(Ordering::Acquire)
                 {
                     cleanup = Cleanup::Confirmed
                 }
+                if !reaped || !fenced {
+                    profile_retirement::quarantine(child, self.profile.take());
+                }
             } else {
                 // The numeric identity is never signalled again after wait can
                 // reap it. A failed exit observation retains uncertainty.
-                let _ = std::thread::Builder::new()
-                    .name("capture-reap".into())
-                    .spawn(move || {
-                        let _ = child.wait();
-                    });
+                let profile = self.profile.take();
+                profile_retirement::retire(child, profile, fenced, "capture-reap");
             }
         }
         self.cleanup = Some(cleanup);

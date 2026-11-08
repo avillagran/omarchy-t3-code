@@ -1044,6 +1044,7 @@ Singleton {
       if(changed)root.releaseVoiceController()
     },
     onPermission:function(session,id){root.nativeVoicePermission={session:session,id:id}},
+    onMicrophones:function(devices){root.nativeVoiceMicrophones=devices},
     onLevel:function(value){root.nativeVoiceLevel=value},
     onDurationLimit:function(){if(root.voiceController)root.voiceController.stop()},
     onText:function(value){root.nativeVoicePreview=value},

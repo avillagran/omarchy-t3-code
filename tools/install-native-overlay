@@ -1,0 +1,480 @@
+#!/usr/bin/env python3
+"""Install a prepared overlay and source revision with guarded joint rollback."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import stat
+import subprocess
+import tarfile
+import tempfile
+import native_voice_bundle as voice
+
+PACKAGE = runpy.run_path(str(voice.ROOT / 'tools/package-native-voice'))
+ASSETS = [name for name in PACKAGE['BASE'] if name.startswith('bin/')]
+TEXT_ASSETS = {'bin/qml/O3/Terminal/qmldir', 'bin/qml/O3/Terminal/Ghostty-LICENSE',
+    'bin/qml/O3/Terminal/GHOSTTY_VERSION'}
+
+
+def extract_overlay(archive_path, destination, expected_commit):
+    """Write only the fixed overlay files, never archive paths or links."""
+    voice.directory(destination.parent, private=True)
+    archive_file, before, _ = voice.regular(archive_path, immutable=False)
+    selected = {}
+    try:
+        with tarfile.open(fileobj=archive_file, mode='r:gz') as archive:
+            count, total = 0, 0
+            for member in archive:
+                count += 1
+                total += member.size
+                if member.size < 0 or count > 256 or total > 1024 * 1024 * 1024:
+                    raise FenceChanged('Overlay exceeds package bounds')
+                if member.name not in PACKAGE['BASE']:
+                    continue
+                if (member.name in selected or not member.isfile()
+                        or member.size > (512 * 1024 * 1024 if member.name in ASSETS else 65536)):
+                    raise FenceChanged('Invalid or duplicate overlay member')
+                selected[member.name] = member
+            if set(selected) != set(PACKAGE['BASE']):
+                raise FenceChanged('Incomplete overlay package')
+            destination.mkdir(mode=0o700)
+            for name, member in selected.items():
+                target = destination / name
+                target.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+                descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                with os.fdopen(descriptor, 'wb') as output, archive.extractfile(member) as source:
+                    while data := source.read(1024 * 1024):
+                        output.write(data)
+                    output.flush()
+                    os.fsync(output.fileno())
+                target.chmod(0o755 if name in ASSETS and name not in TEXT_ASSETS else 0o644)
+        voice.stable(archive_file, archive_path, before, immutable=False)
+    finally:
+        archive_file.close()
+    commit_file, _, _ = voice.regular(destination / 'COMMIT', immutable=False)
+    with commit_file:
+        if commit_file.read(129).decode('ascii').strip() != expected_commit:
+            raise FenceChanged('Overlay commit differs from expected source')
+    return {'stage': str(destination), 'assets': len(ASSETS), 'commit': expected_commit}
+
+
+class FenceChanged(RuntimeError):
+    pass
+
+
+class RollbackUnknown(RuntimeError):
+    pass
+
+
+def git(repo, *arguments, check=True):
+    environment = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    environment.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null')
+    command = ['git', '--no-pager', '-c', 'core.hooksPath=/dev/null',
+        '-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false',
+        '-c', 'core.autocrlf=false', '-C', str(repo), *arguments]
+    return subprocess.run(command, env=environment, check=check,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
+
+
+def head(repo):
+    return git(repo, 'rev-parse', '--verify', 'HEAD^{commit}').stdout.decode().strip()
+
+
+def branch(repo):
+    result = git(repo, 'symbolic-ref', '-q', 'HEAD', check=False)
+    if result.returncode not in (0, 1):
+        raise FenceChanged('Cannot inspect the installed source branch')
+    return result.stdout.decode().strip() if result.returncode == 0 else None
+
+
+def clean_tracked(repo):
+    for arguments in [('diff', '--quiet', '--no-ext-diff', '--no-textconv'),
+            ('diff', '--cached', '--quiet', '--no-ext-diff', '--no-textconv')]:
+        if git(repo, *arguments, check=False).returncode != 0:
+            raise FenceChanged('Tracked source or index changed')
+
+
+def tree(repo, revision):
+    records = {}
+    for entry in git(repo, 'ls-tree', '-r', '-t', '-z', '--full-tree', revision).stdout.split(b'\0'):
+        if not entry:
+            continue
+        attributes, name = entry.split(b'\t', 1)
+        mode, kind, oid = attributes.decode('ascii').split()
+        records[os.fsdecode(name)] = {'mode': mode, 'kind': kind, 'oid': oid}
+    return records
+
+
+def relative(name):
+    if not name or name.startswith('/') or any(part in ('', '.', '..', '.git') for part in name.split('/')):
+        raise FenceChanged('Invalid source path')
+    return name.split('/')
+
+
+def identity(metadata, directory=False):
+    if directory:
+        return [metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_uid, metadata.st_gid]
+    return [metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_uid,
+        metadata.st_nlink, metadata.st_size, metadata.st_mtime_ns, metadata.st_ctime_ns]
+
+
+def entry_state(path, object_format):
+    metadata = path.lstat()
+    result = {'identity': identity(metadata, stat.S_ISDIR(metadata.st_mode))}
+    if stat.S_ISDIR(metadata.st_mode):
+        result['kind'] = 'tree'
+    elif stat.S_ISLNK(metadata.st_mode):
+        data = os.readlink(os.fsencode(path))
+        result.update(kind='link', target=os.fsdecode(data),
+            oid=hashlib.new(object_format, b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest())
+    elif stat.S_ISREG(metadata.st_mode):
+        descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, 'rb') as source:
+            if identity(os.fstat(source.fileno())) != result['identity']:
+                raise FenceChanged('Source changed while opening')
+            blob = hashlib.new(object_format, b'blob ' + str(metadata.st_size).encode() + b'\0')
+            digest = hashlib.sha256()
+            while data := source.read(1024 * 1024):
+                blob.update(data)
+                digest.update(data)
+            if (identity(os.fstat(source.fileno())) != result['identity']
+                    or identity(path.lstat()) != result['identity']):
+                raise FenceChanged('Source changed while reading')
+        result.update(kind='blob', oid=blob.hexdigest(), sha256=digest.hexdigest(),
+            executable=bool(metadata.st_mode & 0o111))
+    else:
+        raise FenceChanged('Special source entries cannot be replaced')
+    return result
+
+
+def snapshot(repo, paths, expected, object_format):
+    """Inspect each affected path and every ancestor without following links."""
+    states = {}
+    for name in paths:
+        parts = relative(name)
+        chain = []
+        for index in range(len(parts)):
+            prefix = '/'.join(parts[:index + 1])
+            wanted = expected.get(prefix)
+            path = repo.joinpath(*parts[:index + 1])
+            try:
+                metadata = path.lstat()
+                if wanted is None and (index == len(parts) - 1 or not stat.S_ISDIR(metadata.st_mode)):
+                    raise FenceChanged('Untracked or ignored source collision: ' + prefix)
+                observed = entry_state(path, object_format)
+            except FileNotFoundError:
+                if wanted is not None:
+                    raise FenceChanged('Tracked source path is missing: ' + prefix)
+                chain.append({'path': prefix, 'kind': 'absent'})
+                break
+            final = index == len(parts) - 1
+            if wanted is None:
+                if observed['kind'] != 'tree' or final:
+                    raise FenceChanged('Untracked or ignored source collision: ' + prefix)
+            elif wanted['kind'] == 'tree':
+                if observed['kind'] != 'tree':
+                    raise FenceChanged('Source directory was substituted: ' + prefix)
+            elif wanted['mode'] in ('100644', '100755'):
+                if (observed['kind'] != 'blob' or observed['oid'] != wanted['oid']
+                        or observed['executable'] != (wanted['mode'] == '100755')):
+                    raise FenceChanged('Source bytes or mode differ from the expected tree: ' + prefix)
+            elif wanted['mode'] == '120000':
+                if observed['kind'] != 'link' or observed['oid'] != wanted['oid']:
+                    raise FenceChanged('Source link differs from the expected tree: ' + prefix)
+            else:
+                raise FenceChanged('Unsupported changed source entry: ' + prefix)
+            chain.append({'path': prefix, **observed})
+            if observed['kind'] != 'tree':
+                break
+        states[name] = chain
+    return states
+
+
+def directory_collisions(repo, current, destination):
+    """A directory becoming a file/link must contain only current tracked entries."""
+    for name, wanted in destination.items():
+        if wanted['kind'] == 'tree' or current.get(name, {}).get('kind') != 'tree':
+            continue
+        pending = [repo / name]
+        while pending:
+            directory = pending.pop()
+            for entry in directory.iterdir():
+                relative_name = os.fsdecode(os.fsencode(entry.relative_to(repo)))
+                declared = current.get(relative_name)
+                if declared is None:
+                    raise FenceChanged('Untracked or ignored directory collision: ' + relative_name)
+                metadata = entry.lstat()
+                if stat.S_ISDIR(metadata.st_mode):
+                    if declared['kind'] != 'tree':
+                        raise FenceChanged('Source directory type changed')
+                    pending.append(entry)
+
+
+def asset_state(repo, name):
+    parts = relative(name)
+    for index in range(len(parts) - 1):
+        parent = repo.joinpath(*parts[:index + 1])
+        try:
+            metadata = parent.lstat()
+        except FileNotFoundError:
+            return None
+        if not stat.S_ISDIR(metadata.st_mode) or parent.resolve() != parent:
+            raise FenceChanged('Asset ancestor cannot be a link or special file')
+    path = repo / name
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISREG(metadata.st_mode):
+        raise FenceChanged('Installed asset cannot be a link or special file')
+    source, before, digest = voice.regular(path, immutable=False)
+    source.close()
+    return {'identity': list(before), 'sha256': digest, 'mode': stat.S_IMODE(metadata.st_mode)}
+
+
+def ensure_parent(repo, name, created):
+    parts = relative(name)
+    for index in range(1, len(parts)):
+        path = repo.joinpath(*parts[:index])
+        try:
+            path.mkdir(mode=0o755)
+            created.append((path, identity(path.lstat(), True)))
+        except FileExistsError:
+            voice.directory(path)
+
+
+def source_fence(plan, revision, states):
+    repo = plan['repo']
+    if head(repo) != revision or branch(repo) != plan['branch']:
+        raise FenceChanged('Source HEAD or branch changed')
+    clean_tracked(repo)
+    current = snapshot(repo, plan['paths'], plan['trees'][revision], plan['objectFormat'])
+    if current != states:
+        raise FenceChanged('Affected source identities changed')
+
+
+def prepare(repo, expected_commit, stage, bundle=None, inspector=None):
+    repo = voice.directory(repo)
+    git_directory = voice.directory(repo / '.git')
+    if git_directory.stat().st_dev != repo.stat().st_dev:
+        raise FenceChanged('Source metadata and overlay must share one filesystem')
+    if Path(os.fsdecode(git(repo, 'rev-parse', '--show-toplevel').stdout).strip()) != repo:
+        raise FenceChanged('An ordinary installed source checkout is required')
+    if not re.fullmatch('[0-9a-f]{40}|[0-9a-f]{64}', expected_commit):
+        raise FenceChanged('An exact expected commit is required')
+    expected_commit = git(repo, 'rev-parse', '--verify', expected_commit + '^{commit}').stdout.decode().strip()
+    old = head(repo)
+    original_branch = branch(repo)
+    if git(repo, 'merge-base', '--is-ancestor', old, expected_commit, check=False).returncode != 0:
+        raise FenceChanged('Expected source must fast-forward the installed revision')
+    clean_tracked(repo)
+    object_format = git(repo, 'rev-parse', '--show-object-format').stdout.decode().strip()
+    if object_format not in ('sha1', 'sha256'):
+        raise FenceChanged('Unsupported Git object format')
+    paths = [os.fsdecode(name) for name in git(repo, 'diff', '--no-ext-diff', '--no-textconv',
+        '--no-renames', '--name-only', '-z', old, expected_commit, '--').stdout.split(b'\0') if name]
+    trees = {old: tree(repo, old), expected_commit: tree(repo, expected_commit)}
+    for name in paths:
+        parts = relative(name)
+        for index in range(len(parts)):
+            prefix = '/'.join(parts[:index + 1])
+            for source in trees.values():
+                entry = source.get(prefix)
+                if entry is not None and entry['mode'] not in ('040000', '100644', '100755', '120000'):
+                    raise FenceChanged('Unsupported changed source entry: ' + prefix)
+    for name in ASSETS:
+        parts = relative(name)
+        for index in range(len(parts)):
+            prefix = '/'.join(parts[:index + 1])
+            for source in trees.values():
+                entry = source.get(prefix)
+                if entry is not None and (index == len(parts) - 1 or entry['kind'] != 'tree'):
+                    raise FenceChanged('Generated assets must not overlap tracked source')
+    if any(name == 'bin/native-voice' or name.startswith('bin/native-voice/') for name in paths):
+        raise FenceChanged('Native voice resources must not overlap tracked source')
+    plan = {'repo': repo, 'old': old, 'expected': expected_commit, 'branch': original_branch,
+        'paths': paths, 'trees': trees, 'objectFormat': object_format,
+        'sourceBefore': snapshot(repo, paths, trees[old], object_format),
+        'inspector': inspector or PACKAGE['client_metadata'], 'bundle': bundle}
+    directory_collisions(repo, trees[old], trees[expected_commit])
+    stage = voice.directory(stage)
+    commit_file, _, _ = voice.regular(stage / 'COMMIT', immutable=False)
+    with commit_file:
+        staged_commit = commit_file.read(129).decode('ascii').strip()
+    if staged_commit != expected_commit:
+        raise FenceChanged('Overlay commit differs from expected source')
+    transaction = Path(tempfile.mkdtemp(prefix='o3-overlay-', dir=git_directory))
+    transaction.chmod(0o700)
+    plan.update(transaction=transaction, before={}, candidate={}, candidateStates={}, active={},
+        backed={}, attempted=[], createdDirectories=[])
+    for name in ASSETS:
+        ancestor = (repo / name).parent
+        while not ancestor.exists():
+            ancestor = ancestor.parent
+        if voice.directory(ancestor).stat().st_dev != transaction.stat().st_dev:
+            raise FenceChanged('Installed assets must share the transaction filesystem')
+        plan['before'][name] = asset_state(repo, name)
+        new = transaction / 'new' / name
+        new.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+        voice.copy_member(stage / name, new, executable=name not in TEXT_ASSETS, immutable=False)
+        new.chmod(0o644 if name in TEXT_ASSETS else 0o755)
+        plan['candidate'][name] = new
+        plan['candidateStates'][name] = asset_state(transaction / 'new', name)
+        if plan['before'][name] is not None:
+            backup = transaction / 'old' / name
+            backup.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+            voice.copy_member(repo / name, backup, executable=name not in TEXT_ASSETS, immutable=False)
+            backup.chmod(plan['before'][name]['mode'])
+            plan['backed'][name] = backup
+    if bundle is not None:
+        local = transaction / 'new-bundle'
+        voice.stage(bundle / voice.RUNTIME, bundle / voice.ADDON, local)
+        plan['bundle'] = local
+    plan['bundleBefore'] = None
+    target_bundle = repo / 'bin/native-voice'
+    if target_bundle.exists() or target_bundle.is_symlink():
+        voice.directory(target_bundle, private=True)
+        plan['bundleBefore'] = list(identity(target_bundle.lstat(), True))
+    expected = voice.compiled(voice.verify(plan['bundle'])) if plan['bundle'] else None
+    if plan['inspector'](plan['candidate']['bin/omarchy-t3-client']) != expected:
+        raise FenceChanged('Prepared client pins differ from the complete overlay')
+    plan['metadata'] = expected
+    source_fence(plan, old, plan['sourceBefore'])
+    for name in ASSETS:
+        if asset_state(repo, name) != plan['before'][name]:
+            raise FenceChanged('Installed asset changed during staging')
+    return plan
+
+
+def rollback(plan):
+    repo = plan['repo']
+    revision = head(repo)
+    if revision == plan['expected'] and plan['old'] != plan['expected']:
+        expected_states = plan.get('sourceAfter')
+        if expected_states is None:
+            expected_states = snapshot(repo, plan['paths'], plan['trees'][revision], plan['objectFormat'])
+        source_fence(plan, revision, expected_states)
+        directory_collisions(repo, plan['trees'][revision], plan['trees'][plan['old']])
+    elif revision == plan['old']:
+        source_fence(plan, revision, plan['sourceBefore'])
+    else:
+        raise FenceChanged('Unknown source revision prevents rollback')
+    for name in plan['attempted']:
+        if name in plan['active']:
+            continue
+        observed = asset_state(repo, name)
+        if observed == plan['before'][name]:
+            continue
+        candidate = plan['candidateStates'][name]
+        if (observed is None or observed['sha256'] != candidate['sha256']
+                or observed['mode'] != candidate['mode']
+                or observed['identity'][:2] != candidate['identity'][:2]):
+            raise FenceChanged('Unknown asset replacement outcome: ' + name)
+        plan['active'][name] = observed
+    for name, expected in plan['active'].items():
+        if asset_state(repo, name) != expected:
+            raise FenceChanged('Installed asset changed before rollback: ' + name)
+    if plan.get('bundleActive'):
+        if list(identity((repo / 'bin/native-voice').lstat(), True)) != plan['bundleActive']:
+            raise FenceChanged('Installed bundle directory changed before rollback')
+        if voice.compiled(voice.verify(repo / 'bin/native-voice')) != plan['metadata']:
+            raise FenceChanged('Installed bundle pins changed before rollback')
+    if revision != plan['old']:
+        # The two-tree checkout refuses conflicts. Its fences also cover absent
+        # tracked paths now occupied by ignored/untracked user entries.
+        git(repo, 'read-tree', '-u', '-m', plan['expected'], plan['old'])
+        git(repo, 'update-ref', 'HEAD', plan['old'], plan['expected'])
+        clean_tracked(repo)
+    if plan.get('bundleActive'):
+        (repo / 'bin/native-voice').rename(plan['transaction'] / 'failed-bundle')
+        if plan.get('oldBundle') is not None:
+            plan['oldBundle'].rename(repo / 'bin/native-voice')
+    for name in reversed(ASSETS):
+        if name not in plan['active']:
+            continue
+        if name in plan['backed']:
+            plan['backed'][name].replace(repo / name)
+        else:
+            # Exact identity was checked above; restore this known file's
+            # original absence without traversing or deleting a directory tree.
+            (repo / name).unlink()
+    for directory, expected_identity in reversed(plan['createdDirectories']):
+        try:
+            metadata = directory.lstat()
+        except FileNotFoundError:
+            continue
+        if identity(metadata, True) != expected_identity:
+            raise FenceChanged('A created asset directory was replaced')
+        if not any(directory.iterdir()):
+            directory.rmdir()
+
+
+def install_overlay(repo, expected_commit, stage, bundle=None, inspector=None, checkpoint=None):
+    plan = prepare(repo, expected_commit, stage, bundle, inspector)
+    repo = plan['repo']
+    try:
+        if checkpoint:
+            checkpoint('prepared', plan)
+        source_fence(plan, plan['old'], plan['sourceBefore'])
+        target_bundle = repo / 'bin/native-voice'
+        observed_bundle = list(identity(target_bundle.lstat(), True)) if target_bundle.exists() or target_bundle.is_symlink() else None
+        if observed_bundle != plan['bundleBefore']:
+            raise FenceChanged('Installed bundle changed during staging')
+        if plan['bundle'] is not None:
+            plan['oldBundle'] = voice.activate(plan['bundle'], repo / 'bin/native-voice')
+            plan['bundleActive'] = list(identity((repo / 'bin/native-voice').lstat(), True))
+        for name in ASSETS:
+            ensure_parent(repo, name, plan['createdDirectories'])
+            plan['attempted'].append(name)
+            plan['candidate'][name].replace(repo / name)
+            plan['active'][name] = asset_state(repo, name)
+        if checkpoint:
+            checkpoint('assets-installed', plan)
+        source_fence(plan, plan['old'], plan['sourceBefore'])
+        directory_collisions(repo, plan['trees'][plan['old']], plan['trees'][plan['expected']])
+        if plan['old'] != plan['expected']:
+            git(repo, 'merge', '--ff-only', plan['expected'])
+        plan['sourceAfter'] = snapshot(repo, plan['paths'], plan['trees'][plan['expected']], plan['objectFormat'])
+        if checkpoint:
+            checkpoint('source-advanced', plan)
+        if plan['inspector'](repo / 'bin/omarchy-t3-client', verify=True) != plan['metadata']:
+            raise FenceChanged('Installed overlay default resource admission failed')
+        if checkpoint:
+            checkpoint('admitted', plan)
+    except BaseException as failure:
+        try:
+            rollback(plan)
+        except BaseException as blocked:
+            raise RollbackUnknown('Rollback refused or incomplete; retained artifacts: '
+                + str(plan['transaction'])) from blocked
+        raise failure
+    return {'sourceBefore': plan['old'], 'sourceAfter': head(repo),
+        'assets': len(ASSETS), 'transaction': str(plan['transaction']),
+        'defaultAdmission': plan['metadata'], 'sourcePathsChecked': len(plan['paths'])}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--repo', type=Path)
+    parser.add_argument('--expected-commit', required=True)
+    parser.add_argument('--stage', type=Path, required=True)
+    parser.add_argument('--bundle', type=Path)
+    parser.add_argument('--extract-archive', type=Path)
+    arguments = parser.parse_args()
+    if arguments.extract_archive is not None:
+        if arguments.repo is not None or arguments.bundle is not None:
+            parser.error('Extraction does not accept an installed checkout or bundle')
+        print(json.dumps(extract_overlay(arguments.extract_archive, arguments.stage,
+            arguments.expected_commit)))
+        return
+    if arguments.repo is None:
+        parser.error('--repo is required for installation')
+    print(json.dumps(install_overlay(arguments.repo, arguments.expected_commit,
+        arguments.stage, arguments.bundle)))
+
+
+if __name__ == '__main__':
+    main()

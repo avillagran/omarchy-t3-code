@@ -4,7 +4,7 @@ function runVoiceWatchFixture(factories) {
     function deferred(){var resolve,reject;var promise=new Promise(function(a,b){resolve=a;reject=b});return {promise:promise,resolve:resolve,reject:reject}}
     function check(value,message){if(!value)throw new Error(message)}
     var available=deferred(),finished=deferred(),queue=[],pending=new Map(),drainers=[],actions=[],states=[],commits=[],sequence=0
-    var controller,binding,recordConfirmed=false,stopStarted=false,permissionCount=0,closed=false
+    var controller,binding,recordConfirmed=false,stopStarted=false,permissionCount=0,closed=false,microphoneEvents=[]
     var primitives=factories.primitives(),runtime=factories.voice(primitives)
     var draft={ownerKey:"qt-draft",text:"hello ",selection:{start:6,end:6},revision:1}
     var settings={voiceMicrophone:"",voiceShortcutMode:"auto",speechLanguage:"auto",speechTranslateToEnglish:false,speechCustomWords:[],speechSilenceFiltering:true,speechRemoveFillerWords:true,speechPostProcessingPrompt:{mode:"default",customInstructions:""},speechCorrectionWord:""}
@@ -14,14 +14,20 @@ function runVoiceWatchFixture(factories) {
     function stop(){if(stopStarted||!recordConfirmed||!controller||controller.currentState.phase!=="recording")return;stopStarted=true;controller.stop().then(function(){
         check(commits.length===1&&commits[0]==="hello qt hosted transcript","Actual original draft insertion")
         check(controller.currentState.phase==="idle","Original controller finished idle")
+        check(permissionCount===1&&microphoneEvents.length===1,"Current owned microphone metadata follows its explicit permission")
         return drain()
-    }).then(function(){controller.dispose();binding.dispose();return drain()}).then(function(){finished.resolve({states:states,actions:actions,commits:commits,permissionCount:permissionCount,realWire:true})},fail)}
+    }).then(function(){controller.dispose();binding.dispose();return drain()}).then(function(){finished.resolve({states:states,actions:actions,commits:commits,permissionCount:permissionCount,microphoneEvents:microphoneEvents,realWire:true})},fail)}
     var host=factories.host({primitives:primitives,runtime:runtime,inputFactory:factories.input,preferencesFactory:factories.preferences,
         uuid:function(){return "qt-request-"+(++sequence)},
         send:function(packet){if(closed)throw new Error("Fixture wire closed");actions.push(packet.action);if(packet.requestId)pending.set(packet.requestId,packet.action);queue.push(JSON.stringify(packet))},
         readLatest:function(){return {clientSettings:settings,input:{environmentId:"draft-unavailable",ownerKey:draft.ownerKey,projectId:null,projectName:null,cleanup:false},cleanupPrepared:false}},
         onAvailable:function(value){if(value)available.resolve();else fail(new Error("Actual native Host unavailable"))},
         onPermission:function(session,id){permissionCount++;host.permission(session,id,true).catch(fail)},
+        onMicrophones:function(devices){
+            check(permissionCount===1&&Array.isArray(devices)&&devices.length>0,"Actual post-permission microphone list")
+            check(devices.every(function(device){return typeof device.deviceId==="string"&&device.deviceId.length>0&&typeof device.label==="string"}),"Original microphone metadata shape")
+            microphoneEvents.push({count:devices.length,hasNonDefault:devices.some(function(device){return device.deviceId!=="default"})})
+        },
         onLevel:function(level){if(recordConfirmed&&level>0)stop()},
         onDurationLimit:function(){fail(new Error("Unexpected recording duration limit"))},
         onText:function(){fail(new Error("Buffered path received stream text"))},

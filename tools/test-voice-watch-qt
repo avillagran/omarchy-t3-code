@@ -23,7 +23,7 @@ assert image.startswith('sha256:') and len(image)==71
 out=Path(tempfile.mkdtemp(prefix='voice-watch-qt-',dir='/var/tmp/o3-server'));out.chmod(0o700)
 source=out/'source';source.mkdir(mode=0o700);state=out/'state';state.mkdir(mode=0o700)
 for name in ['build-home','build-tmp']:(out/name).mkdir(mode=0o700)
-files=['tools/test-voice-watch-qt','examples/voice_watch_fixture.rs','src/main.rs','src/voice_watch.rs','tools/fixtures/voice-watch-qt.cpp','tools/fixtures/voice-watch-driver.js','ui/js/VoicePlatform.js','ui/js/NativeVoice.js','ui/js/NativeVoiceInput.js','ui/js/NativeVoicePreferences.js','ui/js/NativeVoiceHost.js','ui/js/NativeVoice.sources.json','ui/js/NativeVoiceInput.sources.json','ui/js/NativeVoicePreferences.sources.json','src/lib.rs','src/voice_host.rs','src/voice_context.rs','src/voice_worker.rs','src/voice_worker/stream.rs','src/voice_capture/mod.rs','src/voice_capture/resources.rs','src/voice_consent.rs','src/voice_transport.rs','src/browser_native_display.rs','src/desktop_browser_ipc.rs','ui/voice/consent-helper.cjs','ui/voice/consent-storage.cjs','ui/voice/native-consent.cjs','ui/voice/native-consent.sources.json','ui/voice/electron-runtime-44.10.1-linux-x64.json','ui/voice/electron-capture-main.cjs','ui/voice/electron-capture-preload.cjs','ui/voice/electron-capture-renderer.mjs','ui/voice/browser-capture-owner.mjs','ui/js/NativePcmCapture.js','ui/browser/electron-private-fd.c','vendor/t3-protocol/UPSTREAM.json','Cargo.toml','Cargo.lock']
+files=['tools/test-voice-watch-qt','examples/voice_watch_fixture.rs','src/main.rs','src/voice_watch.rs','tools/fixtures/voice-watch-qt.cpp','tools/fixtures/voice-watch-driver.js','ui/js/VoicePlatform.js','ui/js/NativeVoice.js','ui/js/NativeVoiceInput.js','ui/js/NativeVoicePreferences.js','ui/js/NativeVoiceHost.js','ui/js/NativeVoice.sources.json','ui/js/NativeVoiceInput.sources.json','ui/js/NativeVoicePreferences.sources.json','src/lib.rs','src/voice_host.rs','src/voice_host/resource_discovery.rs','src/voice_context.rs','src/voice_worker.rs','src/voice_worker/stream.rs','src/voice_capture/mod.rs','src/voice_capture/resources.rs','src/voice_capture/profile_retirement.rs','src/voice_consent.rs','src/voice_transport.rs','src/browser_native_display.rs','src/desktop_browser_ipc.rs','ui/voice/consent-helper.cjs','ui/voice/consent-storage.cjs','ui/voice/native-consent.cjs','ui/voice/native-consent.sources.json','ui/voice/electron-runtime-44.10.1-linux-x64.json','ui/voice/electron-capture-main.cjs','ui/voice/electron-capture-preload.cjs','ui/voice/electron-capture-renderer.mjs','ui/voice/browser-capture-owner.mjs','ui/voice/browser-microphones.mjs','ui/voice/browser-microphones.sources.json','ui/js/NativePcmCapture.js','ui/browser/electron-private-fd.c','vendor/t3-protocol/UPSTREAM.json','Cargo.toml','Cargo.lock']
 def digest(path):
  with path.open('rb')as data:return hashlib.file_digest(data,'sha256').hexdigest()
 fence={name:digest(root/name)for name in files}
@@ -44,8 +44,20 @@ try:
    assert previous['buildExit']==0 and previous['strictAllTargetsExit']==0
    qt_only={'tools/test-voice-watch-qt','tools/fixtures/voice-watch-qt.cpp','tools/fixtures/voice-watch-driver.js'}
    assert all(digest(root/name)==expected for name,expected in previous['sourceSha256'].items()if name not in qt_only)
-   binary=a.reuse_build/'source/watch-fixture'
-   assert digest(binary)==previous['binarySha256']
+   if previous.get('binary') is not None:
+    # A coordinated build may retain its only executable in the existing Cargo
+    # target. Recheck its original strict/source receipt instead of copying it.
+    strict_path=Path(previous['strictProof'])
+    strict=json.loads(strict_path.read_text())
+    assert strict['complete'] and strict['exit']==0 and strict['sourceUnchanged']
+    strict_inputs=json.loads((strict_path.parent/'inputs.json').read_text())
+    assert strict_inputs==previous['sourceSha256'] and previous['sourceUnchanged']
+    artifact=previous['binary'];binary=Path(artifact['path'])
+    assert binary.is_absolute() and not binary.is_symlink() and binary.is_file()
+    assert binary.stat().st_size==artifact['bytes'] and digest(binary)==artifact['sha256']
+   else:
+    binary=a.reuse_build/'source/watch-fixture'
+    assert digest(binary)==previous['binarySha256']
    proof.update(buildExit=0,strictAllTargetsExit=0,binarySha256=digest(binary),binaryBytes=binary.stat().st_size,reusedRustProof=str(a.reuse_build/'result.json'))
    save()
   else:

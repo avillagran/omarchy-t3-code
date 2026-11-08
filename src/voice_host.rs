@@ -1,5 +1,7 @@
 //! Private watch-process bridge for the original Qt platform/controller. Wire
 //! actions contain metadata and opaque handles, never audio or executable paths.
+mod resource_discovery;
+
 use crate::{
     browser_native_display::Display,
     json,
@@ -9,7 +11,7 @@ use crate::{
     },
     text,
     voice_capture::{
-        resources::{Assets, DescriptorArtifact, Runtime},
+        resources::{Assets, DescriptorArtifact, Profile, Runtime},
         Cleanup, Mode, StartupCancellation,
     },
     voice_consent::{CloudAcknowledgement, ConsentChange, ConsentOwner, Snapshot},
@@ -37,6 +39,25 @@ type Emit = Arc<dyn Fn(Value) + Send + Sync>;
 type Resolve = Arc<dyn Fn(&str) -> crate::Result<Environment> + Send + Sync>;
 fn unavailable() -> String {
     "voice_host_unavailable".into()
+}
+
+/// Build/install inspection only. No profile, display, consent helper or audio
+/// owner is created, and runtime environment overrides cannot change its pins.
+pub fn bundled_metadata(verify: bool) -> io::Result<Value> {
+    let Some(configuration) = resource_discovery::bundled()? else {
+        return Ok(Value::Null);
+    };
+    if verify {
+        Runtime::admit(&configuration.runtime)?.verify()?;
+        DescriptorArtifact {
+            path: configuration.addon,
+            sha256: configuration.sha256.clone(),
+            bytes: configuration.bytes,
+        }
+        .verify()?;
+    }
+    Ok(json!({"schema":1,"target":"linux-x64","runtimeVersion":"44.10.1",
+        "addonSha256":configuration.sha256,"addonBytes":configuration.bytes}))
 }
 type DisplayRequest = SyncSender<io::Result<Arc<Display>>>;
 struct DisplayOwner {
@@ -151,6 +172,7 @@ pub struct Resources {
     assets: Arc<Assets>,
     consent: ConsentOwner,
     root: PathBuf,
+    capture_profile: Arc<Profile>,
     display: Mutex<Option<DisplayOwner>>,
     synthetic: bool,
 }
@@ -163,6 +185,7 @@ impl Resources {
     ) -> io::Result<Self> {
         private_directory(root)?;
         private_directory(namespace)?;
+        let capture_profile = Arc::new(Profile::open(&namespace.join("capture-profile"))?);
         let process = root.join(format!("host-{}", uuid::Uuid::new_v4()));
         private_directory(&process)?;
         let assets = Arc::new(Assets::capture(
@@ -184,6 +207,7 @@ impl Resources {
             assets,
             consent,
             root: process,
+            capture_profile,
             display: Mutex::new(None),
             synthetic: false,
         })
@@ -195,25 +219,17 @@ impl Resources {
         self.synthetic = true;
         Ok(self)
     }
-    /// Explicit trusted startup configuration, separate from browser selection.
-    /// Missing resources leave the ordinary application usable.
+    /// Trusted startup overrides or an executable-relative, build-pinned bundle.
+    /// Admission failures leave the ordinary application usable.
     pub fn configured() -> io::Result<Option<Self>> {
-        let Some(runtime) = std::env::var_os("O3_NATIVE_VOICE_RUNTIME") else {
+        let Some(configuration) = resource_discovery::configured()? else {
             return Ok(None);
         };
-        let addon = std::env::var_os("O3_NATIVE_VOICE_ADDON")
-            .ok_or_else(|| io::Error::other("voice_addon_unavailable"))?;
-        let sha256 = std::env::var("O3_NATIVE_VOICE_ADDON_SHA256")
-            .map_err(|_| io::Error::other("voice_addon_unavailable"))?;
-        let bytes = std::env::var("O3_NATIVE_VOICE_ADDON_BYTES")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .ok_or_else(|| io::Error::other("voice_addon_unavailable"))?;
-        let runtime = Arc::new(Runtime::admit(Path::new(&runtime))?);
+        let runtime = Arc::new(Runtime::admit(&configuration.runtime)?);
         let descriptor = DescriptorArtifact {
-            path: PathBuf::from(addon),
-            sha256,
-            bytes,
+            path: configuration.addon,
+            sha256: configuration.sha256,
+            bytes: configuration.bytes,
         };
         Self::new(
             runtime,
@@ -241,7 +257,8 @@ impl Resources {
                 .join(format!("recording-{}", uuid::Uuid::new_v4())),
             display,
             microphone,
-        );
+        )
+        .with_profile(self.capture_profile.clone());
         if self.synthetic {
             factory.with_synthetic_device()
         } else {
@@ -918,6 +935,9 @@ if let Some(worker)=session.stream.lock().map_err(|_|unavailable())?.take(){work
             }
         };
         match event {
+            RecorderEvent::Microphones(devices) => {
+                (self.0.emit)(json!({"kind":"microphones","session":id,"devices":devices}))
+            }
             RecorderEvent::Prepared => {
                 if let Ok(mut pending) = session.prepare_request.lock() {
                     if let Some(request) = pending.take() {

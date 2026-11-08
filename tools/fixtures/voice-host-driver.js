@@ -6,7 +6,7 @@ function runNativeVoiceHostOracle(factories) {
     var results=[]
     function scenario(mode, cleanup, deny, retry, lateEvents, unavailable, deferred) {
         var primitives=factories.primitives(),runtime=factories.voice(primitives)
-        var sequence=0,session=0,requests=[],sessions={},states=[],commits=[],failures=0,binding,prepareError="",durationEvents=0,textEvents=0,heldPrepare=null,heldDispose=null
+        var sequence=0,session=0,requests=[],sessions={},states=[],commits=[],failures=0,binding,prepareError="",durationEvents=0,textEvents=0,microphoneEvents=0,heldPrepare=null,heldDispose=null
         var draft={ownerKey:"draft/one",text:"hello ",selection:{start:6,end:6},revision:1}
         var settings={voiceMicrophone:"chosen-mic",voiceShortcutMode:"auto",speechLanguage:"auto",
             speechTranslateToEnglish:false,speechCustomWords:[],speechSilenceFiltering:true,
@@ -37,6 +37,7 @@ function runNativeVoiceHostOracle(factories) {
                     check(packet.mode===mode,"original platform selected mode")
                     if(deferred&&packet.session==="session-1"){heldPrepare=packet;break}
                     if(deny){reply(packet,null,"capture_permission_denied");break}
+                    host.receive({kind:"microphones",session:packet.session,devices:[{deviceId:"chosen-mic",label:"Selected microphone"}]})
                     reply(packet)
                     if(mode==="streaming") {check(state.connected,"capture follows handle insertion");host.receive({kind:"stream",session:packet.session,value:{event:"ready"}})}
                     break
@@ -63,6 +64,7 @@ function runNativeVoiceHostOracle(factories) {
             preferencesFactory:factories.preferences,uuid:function(){return "request-"+(++sequence)},send:send,
             readLatest:function(){return {clientSettings:settings,input:{environmentId:"draft",ownerKey:draft.ownerKey,projectId:"project",projectName:"Project",cleanup:true},cleanupPrepared:true}},
             onLevel:function(){},onDurationLimit:function(){durationEvents++},onText:function(){textEvents++},onError:function(message){throw new Error(message)},
+            onMicrophones:function(devices){check(devices.length===1&&devices[0].deviceId==="chosen-mic"&&devices[0].label==="Selected microphone","native device metadata reaches current owner only");microphoneEvents++},
             onAvailable:function(value){if(!value&&controller){controller.dispose();binding.dispose()}},
             onPermission:function(){throw new Error("Synthetic peer has no microphone permission prompt")}})
         host.ownerChanged(draft.ownerKey,"draft",1)
@@ -100,6 +102,7 @@ function runNativeVoiceHostOracle(factories) {
                 return
             }
             check(controller.currentState.phase==="recording","actual controller recording: "+mode+" "+controller.currentState.error+" "+prepareError+" "+JSON.stringify(requests))
+            check(microphoneEvents===1,"prepared capture publishes one current microphone list")
             if(unavailable){
                 host.receive({kind:"ready",available:false})
                 return settle().then(function(){
@@ -119,7 +122,9 @@ function runNativeVoiceHostOracle(factories) {
                             host.receive({kind:"capture-error",session:oldSession,error:"late-old-error"})
                             host.receive({kind:"duration-limit",session:oldSession})
                             host.receive({kind:"stream",session:oldSession,value:{event:"text",text:{committed:"old",tentative:""}}})
+                            host.receive({kind:"microphones",session:oldSession,devices:[{deviceId:"old-mic",label:"Stale microphone"}]})
                             check(durationEvents===0&&textEvents===0,"old retained recording cannot update successor callbacks")
+                            check(microphoneEvents===2,"old retained recording cannot replace successor device metadata")
                             previousController.dispose();previousBinding.dispose()
                             return settle().then(function(){
                                 check(!sessions["session-"+session].released,"old cleanup cannot release successor capture")

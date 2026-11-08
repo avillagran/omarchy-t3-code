@@ -1,7 +1,5 @@
 //! Opt-in private artifact admission; never opens an audio device or process.
-#[path = "../src/voice_capture/resources.rs"]
-mod resources;
-use resources::{Assets, DescriptorArtifact, Runtime};
+use omarchy_t3_client::voice_capture::resources::{Assets, DescriptorArtifact, Runtime};
 use sha2::{Digest, Sha256};
 use std::{fs, os::unix::fs::PermissionsExt, path::PathBuf};
 fn main() {
@@ -11,7 +9,7 @@ fn main() {
     );
     let runtime = Runtime::admit(std::path::Path::new("/electron")).unwrap();
     runtime.verify().unwrap();
-    assert_eq!(runtime.executable(), PathBuf::from("/electron/electron"));
+    assert!(std::path::Path::new("/electron/electron").is_file());
     let source = PathBuf::from("/source/electron-private-fd.node");
     let descriptor = DescriptorArtifact {
         sha256: format!("{:x}", Sha256::digest(fs::read(&source).unwrap())),
@@ -20,23 +18,14 @@ fn main() {
     };
     let assets = Assets::capture(std::path::Path::new("/state/accepted"), &descriptor).unwrap();
     assets.verify().unwrap();
-    assert_eq!(
-        assets.entry(),
-        PathBuf::from("/state/accepted/electron-capture-main.cjs")
-    );
+    assert!(std::path::Path::new("/state/accepted/electron-capture-main.cjs").is_file());
     assert!(Assets::capture(std::path::Path::new("/state/accepted"), &descriptor).is_err());
     let consent = Assets::consent(std::path::Path::new("/state/consent"), &descriptor).unwrap();
     consent.verify().unwrap();
-    assert_eq!(
-        consent.entry(),
-        PathBuf::from("/state/consent/consent-helper.cjs")
-    );
-    assert_eq!(
-        consent.descriptor(),
-        PathBuf::from("/state/consent/electron-private-fd.node")
-    );
+    assert!(std::path::Path::new("/state/consent/consent-helper.cjs").is_file());
+    assert!(std::path::Path::new("/state/consent/electron-private-fd.node").is_file());
     let stale = Assets::capture(std::path::Path::new("/state/stale"), &descriptor).unwrap();
-    let entry = stale.entry();
+    let entry = PathBuf::from("/state/stale/electron-capture-main.cjs");
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o600)).unwrap();
     fs::write(&entry, b"retained owned drift fixture").unwrap();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o400)).unwrap();
@@ -72,5 +61,6 @@ fn main() {
     assert!(Assets::capture(std::path::Path::new("/state/bad-link"), &bad).is_err());
     runtime.verify().unwrap();
     assets.verify().unwrap();
-    println!("{{\"runtimeFiles\":72,\"capturedAssetFiles\":6,\"refusals\":6,\"actualChildLaunched\":false,\"audioOpened\":false}}");
+    let captured_files = fs::read_dir("/state/accepted").unwrap().count();
+    println!("{{\"runtimeFiles\":72,\"capturedAssetFiles\":{captured_files},\"refusals\":6,\"actualChildLaunched\":false,\"audioOpened\":false}}");
 }

@@ -5,6 +5,12 @@ set -euo pipefail
 # The brace group is parsed whole before it runs, so `curl | bash` never executes a partial download.
 {
 fail() { printf 'omarchy-t3-code: %s\n' "$*" >&2; exit 1; }
+# Installer Git operations ignore caller overrides and never execute repository hooks.
+git_safe() (
+  for task_git_variable in "${!GIT_@}"; do unset "$task_git_variable"; done
+  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null command git --no-pager \
+    -c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.untrackedCache=false "$@"
+)
 # set -e would otherwise stop silently; name the step that failed.
 trap 'printf "omarchy-t3-code: step failed (line %s): %s\n" "$LINENO" "$BASH_COMMAND" >&2' ERR
 [[ $EUID -ne 0 ]] || fail 'Run as your desktop user, not root.'
@@ -15,8 +21,9 @@ t3_base=${T3CODE_HOME:-$HOME/.t3}
 t3_base=${t3_base/#\~/$HOME}
 
 source_build=${OT3_BUILD_FROM_SOURCE:-0}
-packages=(ttf-firacode-nerd git curl ripgrep jq libsecret sqlite openssh wl-clipboard librsvg qt6-declarative qt6-webengine)
-if [[ $source_build == 1 ]]; then packages+=(base-devel pkgconf nodejs python); fi
+packages=(ttf-firacode-nerd git curl ripgrep jq python libsecret sqlite openssh wl-clipboard librsvg qt6-declarative qt6-webengine)
+if [[ $(uname -m) == x86_64 ]]; then packages+=(xorg-server-xvfb gtk3 nss alsa-lib libpulse libcups); fi
+if [[ $source_build == 1 ]]; then packages+=(base-devel cmake pkgconf nodejs); fi
 if [[ $source_build == 1 ]] && ! cargo --version >/dev/null 2>&1 && ! command -v rustup >/dev/null; then packages+=(rust); fi
 missing=()
 for package in "${packages[@]}"; do pacman -Q "$package" >/dev/null 2>&1 || missing+=("$package"); done
@@ -111,58 +118,103 @@ canonical=$plugins_dir/$plugin_id
 [[ ! -e "$canonical" || ! -e "$plugin_dir" ]] || fail 'Two plugin copies exist; keep one installation before continuing.'
 if [[ -d "$canonical" ]]; then plugin_dir=$canonical; fi
 stage=''
-cleanup() { if [[ -n "$stage" && -d "$stage" ]]; then rm -rf -- "$stage"; fi; }
-trap cleanup EXIT
+downloads=''
+# Retain incomplete downloads, checkouts, and rollback artifacts for explicit review.
+retain_staging() {
+  if [[ -n $stage && -d $stage ]]; then printf 'Retained installation staging: %s\n' "$stage" >&2; fi
+  if [[ -n $downloads && -d $downloads ]]; then printf 'Retained package staging: %s\n' "$downloads" >&2; fi
+}
+trap retain_staging EXIT
+snapshot_overlay_tools() {
+  for task_tool_file in tools/install-native-overlay tools/prepare-source-overlay tools/package-native-voice tools/native_voice_bundle.py tools/prepare-native-voice-build-metadata ui/voice/electron-runtime-44.10.1-linux-x64.json ui/browser/electron-private-fd.c LICENSE; do
+    install -dm700 "$(dirname -- "$overlay_tools_dir/$task_tool_file")"
+    git_safe -C "$build_dir" show "$expected_commit:$task_tool_file" > "$overlay_tools_dir/$task_tool_file"
+    chmod 400 "$overlay_tools_dir/$task_tool_file"
+  done
+}
 mkdir -p "$plugins_dir"
 if [[ -e "$plugin_dir" ]]; then
   [[ -d "$plugin_dir/.git" ]] || fail "Existing directory is not a Git checkout: $plugin_dir"
-  origin=$(git -C "$plugin_dir" remote get-url origin)
+  origin=$(git_safe -C "$plugin_dir" remote get-url origin)
   case "$origin" in https://github.com/avillagran/omarchy-t3-code.git|git@github.com:avillagran/omarchy-t3-code.git) ;; *) fail 'Existing checkout has a different origin; refusing to update it.';; esac
-  [[ -z $(git -C "$plugin_dir" status --porcelain) ]] || fail 'Existing checkout has local changes; commit or stash them before updating.'
-  git -C "$plugin_dir" fetch origin "$release_ref"
-  expected_commit=$(git -C "$plugin_dir" rev-parse 'FETCH_HEAD^{commit}')
+  [[ -z $(git_safe -C "$plugin_dir" status --porcelain) ]] || fail 'Existing checkout has local changes; commit or stash them before updating.'
+  git_safe -C "$plugin_dir" fetch origin "$release_ref"
+  expected_commit=$(git_safe -C "$plugin_dir" rev-parse 'FETCH_HEAD^{commit}')
   # Verify the package before changing an existing installation.
-  if ! git -C "$plugin_dir" merge-base --is-ancestor HEAD "$expected_commit"; then
-    # Commit messages were rewritten once (trees unchanged). Move a clean checkout to the
-    # rewritten commit with the identical tree; anything else really diverges.
-    head_tree=$(git -C "$plugin_dir" rev-parse 'HEAD^{tree}')
-    same_commit=$(git -C "$plugin_dir" log --format='%H %T' "$expected_commit" | awk -v tree="$head_tree" '$2 == tree { print $1; exit }')
-    [[ -n "$same_commit" ]] || fail 'Installed source is ahead of or diverges from this release. Use OT3_BUILD_FROM_SOURCE=1 for main.'
-    git -C "$plugin_dir" reset -q --hard "$same_commit"
-  fi
+  git_safe -C "$plugin_dir" merge-base --is-ancestor HEAD "$expected_commit" || fail 'Installed source is ahead of or diverges from this release; reconcile the checkout before updating.'
   build_dir=$plugin_dir
 else
   stage=$(mktemp -d "$plugins_dir/.t3-install.XXXXXXXX")
-  git clone --branch "$release_ref" -- https://github.com/avillagran/omarchy-t3-code.git "$stage"
+  git_safe clone --branch "$release_ref" -- https://github.com/avillagran/omarchy-t3-code.git "$stage"
   build_dir=$stage
-  expected_commit=$(git -C "$build_dir" rev-parse HEAD)
+  expected_commit=$(git_safe -C "$build_dir" rev-parse HEAD)
 fi
 if [[ $source_build == 1 ]]; then
+  git_safe -C "$build_dir" cat-file -e "$expected_commit:tools/prepare-source-overlay" 2>/dev/null || fail 'This source revision predates isolated transactional source builds; select a newer revision.'
+  downloads=$(mktemp -d)
+  overlay_tools_dir=$downloads/voice-source
+  snapshot_overlay_tools
+  source_stage=$downloads/source-build
+  PYTHONDONTWRITEBYTECODE=1 python3 "$overlay_tools_dir/tools/prepare-source-overlay" --repo "$build_dir" --expected-commit "$expected_commit" --destination "$source_stage" > "$downloads/source-preparation.json"
   if [[ -z "$stage" ]]; then
     quickshell ipc -p "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-t3-code/app" call "$plugin_id" quit >/dev/null 2>&1 || true
     omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
-    git -C "$plugin_dir" merge --ff-only "$expected_commit"
   fi
-  "$build_dir/bin/build-client"
+  overlay_install=(--repo "$build_dir" --expected-commit "$expected_commit" --stage "$source_stage")
+  if [[ -d $source_stage/bin/native-voice ]]; then overlay_install+=(--bundle "$source_stage/bin/native-voice"); fi
+  PYTHONDONTWRITEBYTECODE=1 python3 "$overlay_tools_dir/tools/install-native-overlay" "${overlay_install[@]}" > "$downloads/overlay-activation.json"
 else
   downloads=$(mktemp -d)
-  trap 'rm -rf -- "$downloads"; cleanup' EXIT
   asset="omarchy-t3-code-$release_ref-linux-$arch.tar.gz"
   base_url="https://github.com/avillagran/omarchy-t3-code/releases/download/$release_ref"
   curl -fsSL "$base_url/$asset" -o "$downloads/$asset"
   curl -fsSL "$base_url/$asset.sha256" -o "$downloads/$asset.sha256"
   (cd "$downloads" && sha256sum -c "$asset.sha256") || fail 'Binary checksum failed.'
   [[ $(tar -xOf "$downloads/$asset" COMMIT) == "$expected_commit" ]] || fail 'Binary and source revisions differ.'
-  mkdir "$downloads/unpacked"
-  tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so bin/libt3-qml-preview.so bin/libt3-browser.so bin/t3-browser-secret
+  overlay_tools_dir=''
+  if git_safe -C "$build_dir" cat-file -e "$expected_commit:tools/install-native-overlay" 2>/dev/null; then
+    overlay_tools_dir=$downloads/voice-source
+    snapshot_overlay_tools
+    PYTHONDONTWRITEBYTECODE=1 python3 "$overlay_tools_dir/tools/install-native-overlay" --extract-archive "$downloads/$asset" --stage "$downloads/unpacked" --expected-commit "$expected_commit" > "$downloads/overlay-extraction.json"
+  else
+    mkdir "$downloads/unpacked"
+    tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/omarchy-t3-client bin/libt3-document.so bin/libt3-qml-preview.so bin/libt3-browser.so bin/t3-browser-secret
+  fi
   terminal_runtime=()
   # Older source releases do not contain the embedded terminal surface.
-  if [[ -f "$build_dir/ui/qml/T3TerminalViewport.qml" ]]; then
-    tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/qml/O3/Terminal/libo3terminal.so bin/qml/O3/Terminal/qmldir bin/qml/O3/Terminal/Ghostty-LICENSE bin/qml/O3/Terminal/GHOSTTY_VERSION
+  if git_safe -C "$build_dir" cat-file -e "$expected_commit:ui/qml/T3TerminalViewport.qml" 2>/dev/null; then
+    if [[ -z $overlay_tools_dir ]]; then
+      tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/qml/O3/Terminal/libo3terminal.so bin/qml/O3/Terminal/qmldir bin/qml/O3/Terminal/Ghostty-LICENSE bin/qml/O3/Terminal/GHOSTTY_VERSION
+    fi
     terminal_runtime+=("$downloads/unpacked/bin/qml/O3/Terminal/libo3terminal.so")
   fi
   # The dictation helper is optional: packages built without CMake lack it.
-  tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/ot3-dictate 2>/dev/null || true
+  if [[ -z $overlay_tools_dir ]]; then tar -xzf "$downloads/$asset" -C "$downloads/unpacked" bin/ot3-dictate 2>/dev/null || true; fi
+  voice_runtime=''
+  voice_tools_dir=''
+  # New clients expose their compiled pins without opening audio or a display.
+  # Extraction accepts only the exact source-pinned application subset.
+  if git_safe -C "$build_dir" cat-file -e "$expected_commit:tools/package-native-voice" 2>/dev/null; then
+    # An installed checkout still has the previous release until validation
+    # succeeds. Read the new, commit-matched tools without updating it early.
+    voice_tools_dir=$downloads/voice-source
+    if [[ -z $overlay_tools_dir ]]; then
+      for file in tools/package-native-voice tools/native_voice_bundle.py tools/prepare-native-voice-build-metadata ui/voice/electron-runtime-44.10.1-linux-x64.json ui/browser/electron-private-fd.c LICENSE; do
+        install -dm700 "$(dirname -- "$voice_tools_dir/$file")"
+        git_safe -C "$build_dir" show "$expected_commit:$file" > "$voice_tools_dir/$file"
+        chmod 400 "$voice_tools_dir/$file"
+      done
+    fi
+    mkdir -m700 "$downloads/unpacked/bin/native-voice-parent"
+    PYTHONDONTWRITEBYTECODE=1 python3 "$voice_tools_dir/tools/package-native-voice" extract --archive "$downloads/$asset" --destination "$downloads/unpacked/bin/native-voice-parent/native-voice" > "$downloads/voice-extraction.json"
+    voice_verify=()
+    if [[ -d "$downloads/unpacked/bin/native-voice-parent/native-voice" ]]; then
+      mv -- "$downloads/unpacked/bin/native-voice-parent/native-voice" "$downloads/unpacked/bin/native-voice"
+      voice_runtime=$downloads/unpacked/bin/native-voice
+      voice_verify=(--bundle "$voice_runtime")
+    fi
+    PYTHONDONTWRITEBYTECODE=1 python3 "$voice_tools_dir/tools/package-native-voice" verify --client "$downloads/unpacked/bin/omarchy-t3-client" "${voice_verify[@]}" --admit > "$downloads/voice-verification.json"
+  fi
   ldd "$downloads/unpacked/bin/omarchy-t3-client" "$downloads/unpacked/bin/libt3-document.so" "$downloads/unpacked/bin/libt3-qml-preview.so" "$downloads/unpacked/bin/libt3-browser.so" "$downloads/unpacked/bin/t3-browser-secret" "${terminal_runtime[@]}" $([[ -f $downloads/unpacked/bin/ot3-dictate ]] && printf '%s' "$downloads/unpacked/bin/ot3-dictate") > "$downloads/libraries"
   if rg -q 'not found' "$downloads/libraries"; then
     cat "$downloads/libraries" >&2
@@ -171,21 +223,33 @@ else
   if [[ -z "$stage" ]]; then
     quickshell ipc -p "${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-t3-code/app" call "$plugin_id" quit >/dev/null 2>&1 || true
     omarchy-shell "$plugin_id" closePanel >/dev/null 2>&1 || true
-    git -C "$plugin_dir" merge --ff-only "$expected_commit"
+    if [[ -z $overlay_tools_dir ]]; then git_safe -C "$plugin_dir" merge --ff-only "$expected_commit"; fi
   fi
-  install -m755 "$downloads/unpacked/bin/omarchy-t3-client" "$build_dir/bin/omarchy-t3-client.new"
-  mv -f "$build_dir/bin/omarchy-t3-client.new" "$build_dir/bin/omarchy-t3-client"
-  for file in libt3-document.so libt3-qml-preview.so libt3-browser.so t3-browser-secret; do
-    install -m755 "$downloads/unpacked/bin/$file" "$build_dir/bin/$file"
-  done
-  if ((${#terminal_runtime[@]})); then
-    install -dm755 "$build_dir/bin/qml/O3/Terminal"
-    install -m755 "${terminal_runtime[0]}" "$build_dir/bin/qml/O3/Terminal/libo3terminal.so"
-    for file in qmldir Ghostty-LICENSE GHOSTTY_VERSION; do
-      install -m644 "$downloads/unpacked/bin/qml/O3/Terminal/$file" "$build_dir/bin/qml/O3/Terminal/$file"
+  if [[ -n $overlay_tools_dir ]]; then
+    overlay_install=(--repo "$build_dir" --expected-commit "$expected_commit" --stage "$downloads/unpacked")
+    if [[ -n $voice_runtime ]]; then overlay_install+=(--bundle "$voice_runtime"); fi
+    PYTHONDONTWRITEBYTECODE=1 python3 "$overlay_tools_dir/tools/install-native-overlay" "${overlay_install[@]}" > "$downloads/overlay-activation.json"
+  elif [[ -n "$voice_tools_dir" ]]; then
+    voice_install=(--client "$downloads/unpacked/bin/omarchy-t3-client" --destination "$build_dir/bin/omarchy-t3-client")
+    if [[ -n "$voice_runtime" ]]; then voice_install+=(--bundle "$voice_runtime"); fi
+    PYTHONDONTWRITEBYTECODE=1 python3 "$voice_tools_dir/tools/package-native-voice" install-client "${voice_install[@]}" > "$downloads/voice-activation.json"
+  else
+    install -m755 "$downloads/unpacked/bin/omarchy-t3-client" "$build_dir/bin/omarchy-t3-client.new"
+    mv -f "$build_dir/bin/omarchy-t3-client.new" "$build_dir/bin/omarchy-t3-client"
+  fi
+  if [[ -z $overlay_tools_dir ]]; then
+    for file in libt3-document.so libt3-qml-preview.so libt3-browser.so t3-browser-secret; do
+      install -m755 "$downloads/unpacked/bin/$file" "$build_dir/bin/$file"
     done
+    if ((${#terminal_runtime[@]})); then
+      install -dm755 "$build_dir/bin/qml/O3/Terminal"
+      install -m755 "${terminal_runtime[0]}" "$build_dir/bin/qml/O3/Terminal/libo3terminal.so"
+      for file in qmldir Ghostty-LICENSE GHOSTTY_VERSION; do
+        install -m644 "$downloads/unpacked/bin/qml/O3/Terminal/$file" "$build_dir/bin/qml/O3/Terminal/$file"
+      done
+    fi
+    if [[ -f $downloads/unpacked/bin/ot3-dictate ]]; then install -m755 "$downloads/unpacked/bin/ot3-dictate" "$build_dir/bin/ot3-dictate"; fi
   fi
-  if [[ -f $downloads/unpacked/bin/ot3-dictate ]]; then install -m755 "$downloads/unpacked/bin/ot3-dictate" "$build_dir/bin/ot3-dictate"; fi
 fi
 # OmaBridge is bundled but optional: without it, connections keep their saved routes.
 if [[ -x "$build_dir/bin/fetch-omabridge" ]]; then
