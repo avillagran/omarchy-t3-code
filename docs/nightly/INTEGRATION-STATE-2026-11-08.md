@@ -10,9 +10,10 @@ complete compatibility has not been accepted.
 
 | Repository | Integration state | Remaining work |
 | --- | --- | --- |
-| Client | `feat/nightly-4247-parity` was at `785c145` during this audit, 12 commits ahead of public `ba6324b` in draft PR #35. Auth draft PR #36 (`eed75bb`) is also integrated locally with 21 byte-identical files. | Combined build and remaining GUI teardown acceptance; publication of the pending GUI-containing branch remains gated. |
+| Client | `feat/nightly-4247-parity` contains unpublished implementation through `785c145` and audit documentation in `ce7e2ac`. Public draft PR #35 remains at `ba6324b`. Auth draft PR #36 (`eed75bb`) is also integrated locally with 21 byte-identical files. | Combined build and remaining GUI teardown acceptance; pending GUI work is not published. |
 | Server | Public `feat/nightly-4247-fresh-context` is `6be0e55`, draft PR #50. The accepted no-tab/negative source work is already integrated. | Native-launch fixture correction, complete present Status and managed-account controller/store work remain separate source candidates. CI at the public head passes default mode and fails minimal on the old JSON publication fixture. |
 | SDK | Public `feat/nightly-4340-auth-remove-method` is `64e322be`, draft PR #40, clean. Required native and Android artifact CI passed at this head. | Whole-client/server integration and actual managed-store acceptance remain separate from SDK acceptance. |
+| Android | `/home/node/Work/o3-android` is clean at `f3aa34034ed459160773eed728cc79efe52d2b6b`, on `feat/android-client-parity-20261106`, 15 commits ahead of `origin/main` (`f7888857`). A read-only remote check found no published feature branch; no upstream is configured. | The 15 commits are saved locally, but are not published on this branch or merged into `main`. No Android build or tests were run for this audit. |
 
 The main client checkout `/home/node/Work/o3-code` still selects
 `fix/share-t3-o3-label`; the Nightly working checkout is
@@ -51,6 +52,14 @@ local checkpoints. The exact before/after evidence is retained in
 read-only audit is `/var/tmp/o3-build/git-integration-audit-20261108.json`.
 No active branch, working tree or source file was removed.
 
+A second independent check resolved all 15 refs and verified that all 291
+captured files still match their saved bytes and file identities. The later
+integration report is the only additional committed path in the primary tree.
+The GUI and reload checkpoints are not ancestors of the integration branch.
+Reload still changes all 148 files with `git diff -w`; it must not be discarded
+as a formatting-only change without reviewing the actual diff. The seven
+primary prototypes and 21 GUI files also remain separate work in progress.
+
 ## Disk review
 
 A new inventory identified 39 old, regular, single-link compiler-cache leaves,
@@ -65,11 +74,42 @@ The reviewed plan requires all 39 compressed backups to be fsynced and verified
 by decompression hash and length before any exact leaf unlink. Source and
 backup descriptors, directory identities, free-space bounds and protected
 artifacts are checked throughout. No directory or symlink is removed.
-The first execution stopped at its initial guard because an unrelated compiler
-was active. No archive or deletion occurred in that execution. A fresh attempt
-requires a real quiescent window and a separate receipt; old executors are never
-resumed.
+Both executions stopped at their initial guard because an unrelated compiler
+was active. Neither created archives or deleted files. No third attempt was
+started. The 39 candidate files and all 16 protected artifacts remain unchanged.
 
 Inventory: `/var/tmp/o3-build/stale-own-server-cache-inventory-llx9tc2z/inventory.json`.
 Root exclusion evidence: `/var/tmp/o3-build/cache-retirement-root-review-20261108.json`.
 Final cleanup results, if any, must be recorded separately from this inventory.
+
+## Final disk observation
+
+The later read-only observation found 63,542,906,880 available bytes on HOME
+(about 59.2 GiB), 2,525,261,824 on ROOT (about 2.35 GiB), and 220,889,088 on
+`/mnt/avd` (about 211 MiB). Free space changed while unrelated work was running;
+this audit did not establish its cause and does not claim that space as its own
+cleanup result. The HOME cache plan would consume scarce ROOT space for its
+backups, so it was not attempted again.
+
+BuildCache accounts for approximately 522.5 GB of allocated space. On ROOT,
+`/var/tmp/o3-build` accounts for approximately 50.1 GB and
+`/var/tmp/o3-server` for 50.4 GB. These include source worktrees, retained runtime
+fixtures, evidence and backups, so their total sizes are not reclaim estimates.
+In particular, their `tmp` directories contain approximately 9.27 GB and
+26.66 GB of retained fixtures.
+
+A bounded scan identified 1,182,683,136 allocated bytes (about 1.10 GiB) of old
+incremental compiler files under
+`/var/tmp/o3-build/lib-nightly-4247/target/debug/incremental`. Another 19 old
+regular `.rlib`/`.rmeta` leaves in ROOT targets account for 482,652,160 bytes.
+These are candidates for an ownership and input-manifest check, not approved
+deletions or demonstrated reclaim. Current protected targets remain excluded.
+
+`/mnt/avd` also contains system and development snapshots and incident rescue
+data. Its `android-avd` area accounts for about 25.07 GB, including 13.86 GB
+under `RESCATE-2026-11-05`; it is not a disposable emulator cache. No snapshot,
+rescue data, AVD, worktree, source, evidence or archive was removed.
+
+The final disk audit is
+`/var/tmp/o3-build/root-cache-and-disk-audit-20261108.json`, SHA-256
+`f7ceca784376d710a606f19175aa34b71de40c534ec61127552df392e0c09282`.
