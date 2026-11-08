@@ -8,7 +8,9 @@ evidence and per-commit paths are in `reference-delta-4340.json`.
 
 An unchanged original footprint retains only its earlier qualified component
 evidence. It does not accept changed schemas, dependencies, callers, or the
-whole application. The global validated pin and SDK vendor remain unchanged.
+whole application. The global validated pin remains unchanged. The auth slice
+now uses the separately reviewed SDK `64e322be` snapshot; this does not validate
+the remaining nightly changes.
 The table records new work explicitly; pending review makes no assertion about
 whether an existing O3 implementation already handles that change. Mobile work
 requires an explicit platform/Android review and is not silently excluded.
@@ -40,7 +42,7 @@ requires an explicit platform/Android review and is not silently excluded.
 | `48bb784e` | fix(shared): inline code like `allocator.cc:217` becomes a file chip (#32403) | scalar classifier: 87 native comparisons pass; whole-library build and renderer UI pending |
 | `7f7bf263` | fix(web): recover ACP settings when projects change (#32409) | pending review |
 | `fd1adc88` | fix(acp): retain streamed child tool output (#32411) | pending review |
-| `1b952135` | fix(providers): remove incomplete ChatGPT connections (#29280) | source implementation |
+| `1b952135` | fix(providers): remove incomplete ChatGPT connections (#29280) | consumer strict, actual Qt picker and two synthetic HTTP/WS consumer cases pass; draft PR #36, managed controller/store acceptance pending |
 | `bc46c0ff` | perf(server): avoid lsof polling when Linux proc is usable (#30011) | pending review |
 | `fad24fc8` | fix(azure-devops): default-branch lookup no longer fails for missing --repository (#29586) | pending review |
 
@@ -48,5 +50,11 @@ The archive slice uses actual Qt controls and inert transport receipts; it
 deletes no real thread. The new managed auth removal consumer must use actual
 methods and `canRemove` data. Existing local CLI controllers do not own the
 managed registration store and must refuse unsupported removal truthfully.
+The auth source and proof from [draft PR #36](https://github.com/avillagran/omarchy-t3-code/pull/36)
+are also integrated in this local feature checkout as `1b68886` and `1af1e16`.
+All 21 auth files match the reviewed branch byte for byte. This integration
+has not had a combined client build or runtime check and has not been pushed
+with the pending GUI changes. Component receipts remain scoped to their
+original source snapshots; see [the auth proof](../NATIVE-PROVIDER-AUTH-REMOVE-4340.md).
 Full physical browser STATUS, GUI input context, transport bounds, cloud and
 emulator work remain tracked independently from this incremental source delta.
