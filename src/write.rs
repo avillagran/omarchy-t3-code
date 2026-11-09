@@ -481,8 +481,8 @@ pub fn execute(input:&Value) -> Result<Value> {
         "manage"=>manage(&e,input),
         // T3 ThreadVisitWatermark: the open thread is seen up to its updatedAt; Woke is cleared at wokeAt.
         "thread-visit"=>{
-            let thread=text(input,"thread");let at=text(input,"visitedAt");
-            if !valid_id(thread)||chrono::DateTime::parse_from_rfc3339(at).is_err(){return Err("invalid_command".into())}
+            let thread=text(input,"thread");let at=input.get("visitedAt").and_then(Value::as_str).ok_or("invalid_command")?;
+            if !valid_id(thread){return Err("invalid_command".into())}
             let mut command=json!({"type":"thread.visit","commandId":format!("omarchy-visit-{}",uuid::Uuid::new_v4()),"threadId":thread,"visitedAt":at});
             if let Some(opened)=input.get("opened") {
                 if !opened.is_boolean(){return Err("invalid_command".into())}command["opened"]=opened.clone();

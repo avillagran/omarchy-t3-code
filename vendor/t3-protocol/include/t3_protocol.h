@@ -86,6 +86,15 @@ extern "C" {
  * stream_timeout the host cancels, then subscribes again from its cursor. */
 void *t3_client_new(void);
 char *t3_client_call(void *handle, const uint8_t *input, size_t len);
+/* Lossless JavaScript UTF-16 JSON, including isolated surrogate escapes.
+ * Same handle/memory/freeing contract and 8 MiB bound. Request shapes:
+ * {"op":"rpc","tag":...,"payload":RAW_JSON,"timeoutMs"?:1..300000}
+ * {"op":"searchThreadsUtf16","query":RAW_JSON_STRING,"options"?:{...}}
+ * Success {"ok":true,"data":RAW_JSON}; server rejection preserves
+ * {"ok":false,"error":"rpc_rejected","cause":RAW_JSON}. Transport errors
+ * keep the ordinary error envelope. JSON syntax is validated; no repair occurs. */
+char *t3_client_call_raw(void *handle, const uint8_t *input, size_t len);
+
 /* Upload read/release callbacks may run on an HTTP worker. With both callbacks
  * present, ownership of context transfers even on invalid input. release runs
  * exactly once when Rust drops the reader. Return 0 for EOF or -1 for error;

@@ -13,6 +13,7 @@ import qs.Commons
 import "../js/DocumentTheme.js" as DocumentTheme
 import "../js/SidebarModel.js" as Sidebar
 import "../js/ThreadSearch.js" as ThreadSearch
+import "../js/NativeJson.js" as NativeJson
 import "../js/ProviderUpdates.js" as Updates
 import "../js/NativeKeybindings.js" as NativeKeys
 import "../js/UsageLimits.js" as Usage
@@ -57,7 +58,7 @@ Singleton {
     if(callback)pending[id]=callback
     nativeSearchPending=pending
     send({op:"native-search",action:input.action,requestId:id,
-      payloadJson:JSON.stringify(Object.assign({},input,{rows:nativeSearchRows()}))})
+      payloadJson:NativeJson.stringify(Object.assign({},input,{rows:nativeSearchRows()}))})
     return id
   }
   function nativeSearchLost(){
@@ -995,9 +996,7 @@ Singleton {
   }
   function visitThread(env,thread,ms,opened,pickedQuery){
     if(!env||!thread||!(ms>0)||!worker.running)return
-    var request={op:"thread-visit",environment:env,thread:thread,visitedAt:new Date(ms).toISOString(),requestId:uuid()}
-    if(opened){request.opened=true;if(pickedQuery!==undefined)request.searchQuery=pickedQuery}
-    send(request)
+    send(ThreadSearch.visitPacket(env,thread,ms,opened,pickedQuery,uuid()))
   }
   function visitTrackingKnown(thread){return thread&&thread.searchShell?thread.searchShell.lastVisitedAt!==undefined:thread&&thread.lastVisitedAt!==undefined}
   function watermarkVisit(){
@@ -2614,7 +2613,11 @@ Singleton {
   readonly property bool historyCollectionPending:releasedHistoryGc.running
   Timer{id:releasedHistoryGc;interval:2000;onTriggered:if(typeof gc==="function")gc()}
   function releaseUnusedMemory() { if(typeof gc === "function")gc(); send({op:"memory-trim"}) }
-  function send(data) { if (worker.running) worker.write(JSON.stringify(data) + "\n") }
+  function send(data) {
+    if(!worker.running)return
+    var lossless=data.op==="native-search"||data.op==="thread-search"||data.op==="thread-search-mount"||data.op==="thread-visit"
+    worker.write((lossless?NativeJson.stringify(data):JSON.stringify(data))+"\n")
+  }
   function setPanelVisible(value) { visiblePanels = Math.max(0, visiblePanels + (value ? 1 : -1)) }
   onPanelVisibleChanged: {
     send({op: "visible", value: panelVisible});syncPreview(false);Devices.visibility(root);syncKeybindingWatches(true);if(panelVisible){if(browserProfileView.environments.length)requestBrowserProfiles(browserProfileView.environments,true);probeScroll();ensureSidebarCatalogs();ensureRuntimeKeybindings(true)}
@@ -2818,7 +2821,7 @@ Singleton {
       else if(event.type==="document-frame" && data.requestId===documentOpen.requestId){documentOpen=Object.assign({},documentOpen,{frameUrl:data.url || documentOpen.frameUrl,frameRevision:data.revision || documentOpen.frameRevision,frameWidth:data.width || documentOpen.frameWidth,frameHeight:data.height || documentOpen.frameHeight,error:data.error || ""})}
       else if (event.type === "action") action(data)
       else if (event.type === "backend-status") {acceptBackendStatus(data)}
-      else if (event.type === "snapshot") { snapshotAboutToChange(); state = data; stale = data.stale; error = "";ensureSidebarCatalogs()
+      else if (event.type === "snapshot") { data=ThreadSearch.unpackSnapshot(data); snapshotAboutToChange(); state = data; stale = data.stale; error = "";ensureSidebarCatalogs()
         if(data.clientPreferences&&!clientSettings.busy){clientSettings=Object.assign({},clientSettings,{data:data.clientPreferences,error:""});ProfileReporting.settings(root,data.clientPreferences)}
         var current = state.threads.find(function(t) { return t.key === root.selectedKey })
         if (current) { selectedTitle = current.title; selectedProject = current.project }ensureThreadFamily()

@@ -124,12 +124,22 @@ pub fn supplement(env: &str, page: &Value) -> crate::Result<()> {
 /// Multiple consumers of the same key share one mount; closing either releases
 /// only its own hold. Read data never replaces an authoritative shell row.
 pub fn mount_search(owner: &str, key: &str, pages: &Value) -> crate::Result<()> {
+    mount_search_impl(owner, key, pages, false)
+}
+fn mount_search_impl(owner: &str, key: &str, pages: &Value, raw_admitted: bool) -> crate::Result<()> {
     if !matches!(owner, "sidebar" | "palette") {
         return Err("invalid_search_consumer".into());
     }
-    let pages = pages.as_array().ok_or("malformed_shell_page")?;
+    let mut pages = pages.as_array().ok_or("malformed_shell_page")?.clone();
+    if !raw_admitted {
+        for page in &mut pages {
+            if let Some(rows) = page["read"]["threads"].as_array_mut() {
+                for row in rows { strip_raw_marker(row); }
+            }
+        }
+    }
     let mut reads = HashMap::new();
-    for page in pages {
+    for page in &pages {
         let env = page["environmentId"]
             .as_str()
             .filter(|id| crate::valid_id(id))
@@ -177,6 +187,25 @@ pub fn mount_search(owner: &str, key: &str, pages: &Value) -> crate::Result<()> 
     }
     Ok(())
 }
+/// Lossless search pages use the same owner, sequence and replacement rules.
+/// Only routing/projection metadata enters Value; the complete row is retained
+/// as validated JSON and restored at the Qt boundary before it becomes visible.
+pub fn mount_search_json(input: &Value) -> crate::Result<()> {
+    let fields = crate::search_json::request(input)?;
+    let owner: String = crate::search_json::scalar(crate::search_json::field(&fields, "consumer")?)?;
+    let key: String = crate::search_json::scalar(crate::search_json::field(&fields, "key")?)?;
+    let mut pages = Vec::new();
+    for page in crate::search_json::array(crate::search_json::field(&fields, "rows")?)? {
+        let page = crate::search_json::object(&page)?;
+        let environment: String = crate::search_json::scalar(crate::search_json::field(&page, "environmentId")?)?;
+        let read = crate::search_json::object(crate::search_json::field(&page, "read")?)?;
+        let sequence: u64 = crate::search_json::scalar(crate::search_json::field(&read, "snapshotSequence")?)?;
+        let rows = crate::search_json::array(crate::search_json::field(&read, "threads")?)?
+            .iter().map(|row| crate::search_json::row_metadata(row)).collect::<crate::Result<Vec<_>>>()?;
+        pages.push(json!({"environmentId":environment,"read":{"snapshotSequence":sequence,"threads":rows}}));
+    }
+    mount_search_impl(&owner, &key, &Value::Array(pages), true)
+}
 pub fn update_older_counts(env: &str, before: &str, page: &Value) -> crate::Result<()> {
     let sequence = page["snapshotSequence"]
         .as_u64()
@@ -198,7 +227,15 @@ pub fn update_older_counts(env: &str, before: &str, page: &Value) -> crate::Resu
         Ok(())
     })
 }
+fn strip_raw_marker(row: &mut Value) {
+    if let Some(row) = row.as_object_mut() { row.remove("o3SearchRowJson"); }
+}
 pub fn enriched(env: &str, mut shell: Value) -> Value {
+    // The internal raw channel can only originate in admitted search mounts.
+    // Neither a server-supplied field nor a normal supplemental row grants it.
+    if let Some(rows) = shell["threads"].as_array_mut() {
+        for row in rows { strip_raw_marker(row); }
+    }
     with(env, |e| {
         if let Some((before, counts)) = &e.older_counts {
             if shell["olderSettled"]["before"] == *before
@@ -211,7 +248,8 @@ pub fn enriched(env: &str, mut shell: Value) -> Value {
         let cut = shell["olderSettled"]["asOfSequence"].as_u64().unwrap_or(0);
         if let Some(rows) = shell["threads"].as_array_mut() {
             for (_, row) in e.supplemental.values() {
-                upsert(rows, row.clone());
+                let mut row = row.clone(); strip_raw_marker(&mut row);
+                upsert(rows, row);
             }
             for mount in &e.search_mounts {
                 let sequence = mount.read["snapshotSequence"].as_u64().unwrap_or(0);

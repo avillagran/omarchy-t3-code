@@ -66,6 +66,7 @@ pub use t3_protocol::prompt_recall;
 pub mod git_controls;
 pub mod branch_picker;
 pub use t3_protocol::latex;
+pub mod search_json;
 pub mod thread_search;
 pub mod nightly;
 pub mod pull_request_actions;
@@ -671,7 +672,7 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
     let mut ids = HashSet::new();
     for t in rows {
         let id = text(t, "id");
-        if !valid_id(id) || !ids.insert(id) || !t["title"].is_string() {
+        if !valid_id(id) || !ids.insert(id) || (!t["title"].is_string() && !search_json::has_raw_title(t)?) {
             return Err("malformed".into());
         }
         if truth(&t["deletedAt"]) || truth(&t["archivedAt"]) {
@@ -757,6 +758,7 @@ pub fn normalize(d: &Value, env: &str, now: i64) -> Result<Vec<Value>> {
         if t["lineage"]["relationshipToParent"]=="subagent" && t["creationSource"]=="provider" {row["providerSubagent"]=json!(true);}
         for (key,value) in protocol::sidebar::sort_timestamps(t).as_object().unwrap(){row[key]=value.clone();}
         if let Some(clock)=crate::thread_activity::shell_clock(t){row["activityClock"]=clock;}
+        search_json::decorate_item(t, env, &mut row)?;
         result.push(row);
     }
     result.sort_by(|a, b| {

@@ -35,7 +35,7 @@ fn call(handle: &Mutex<Handle>, request: Value) -> Result<Value> {
             "operations":["connectBearer","connectRelay","request","requestOk","rpc","rpcWithTimeout","disconnect","subscribe","pollSubscription","cancelSubscription","wakeSubscriptions","fetchDescriptor","pairBearer","boundedThread","historyPage","pullRequestDiff","document","assetBytes","projectFavicon","registryIconBytes","cancelRegistryIcon"],
             "binaryOperations":["image","assetBytes","projectFavicon","registryIconBytes"],
             "connectionOptions":["requestTimeoutMs","connectTimeoutMs","poolIdleTimeoutMs","maxBytes"],
-            "nativeAttachmentUpload":true,"nativeImageDownload":true,
+            "nativeAttachmentUpload":true,"nativeImageDownload":true,"rawJsonRpc":true,
             "maxAssetBytes":assets::MAX_ASSET_BYTES}),
         ))),
         "call" => crate::ffi_call::call(&request, || connection(handle)),
@@ -292,6 +292,82 @@ fn response(result: Result<Value>) -> *mut c_char {
         Err(error) => crate::ffi_call::error_envelope(&error),
     };
     CString::new(response.to_string()).unwrap().into_raw()
+}
+/// Lossless JSON counterpart for raw RPC and typed UTF-16 search. The original
+/// Value-based ABI is unchanged. Success data and rejection causes remain raw.
+/// # Safety
+/// Same handle/input ownership as t3_client_call, with at most 8 MiB input.
+#[no_mangle]
+pub unsafe extern "C" fn t3_client_call_raw(
+    handle: *mut std::ffi::c_void,
+    input: *const u8,
+    len: usize,
+) -> *mut c_char {
+    let result = std::panic::catch_unwind(|| -> Result<crate::RawRpcExit> {
+        if handle.is_null() || input.is_null() || len > MAX_BYTES as usize {
+            return Err("invalid_input".into());
+        }
+        let request: std::collections::BTreeMap<String, Box<crate::RawJson>> =
+            serde_json::from_slice(std::slice::from_raw_parts(input, len))
+                .map_err(|_| "malformed")?;
+        let text = |key: &str| -> Result<String> {
+            serde_json::from_str(request.get(key).ok_or("invalid_input")?.get())
+                .map_err(|_| "invalid_input".into())
+        };
+        let op = text("op")?;
+        let timeout = request
+            .get("timeoutMs")
+            .map(|value| {
+                serde_json::from_str::<Value>(value.get()).map_err(|_| "invalid_rpc_timeout")
+            })
+            .transpose()?;
+        let timeout = crate::api::timeout(timeout.as_ref())?;
+        let native = &*handle.cast::<Mutex<Handle>>();
+        match op.as_str() {
+            "rpc" => {
+                let tag = text("tag")?;
+                let payload = request.get("payload").ok_or("invalid_input")?;
+                let timeout = timeout.unwrap_or(std::time::Duration::from_secs(20));
+                connection(native)?.rpc_raw_with_timeout(&tag, payload, timeout)
+            }
+            "searchThreadsUtf16" => {
+                if timeout.is_some() {
+                    return Err("invalid_input".into());
+                }
+                let query = crate::wtf16::Wtf16String::from_json(
+                    request.get("query").ok_or("invalid_query")?,
+                )?;
+                let options = request
+                    .get("options")
+                    .map(|v| serde_json::from_str::<Value>(v.get()).map_err(|_| "invalid_input"))
+                    .transpose()?
+                    .unwrap_or_else(|| json!({}));
+                let payload =
+                    crate::api::orchestration::search_threads_utf16_payload(&query, &options)?;
+                connection(native)?.rpc_raw_with_timeout(
+                    "orchestration.searchThreads",
+                    &payload,
+                    crate::api::orchestration::SEARCH_THREADS.timeout(),
+                )
+            }
+            _ => Err("invalid_input".into()),
+        }
+    })
+    .unwrap_or_else(|_| Err("internal_error".into()));
+    let output = match result {
+        Ok(crate::RawRpcExit::Success(Some(value))) => {
+            format!("{{\"ok\":true,\"data\":{}}}", value.get())
+        }
+        Ok(crate::RawRpcExit::Success(None)) => "{\"ok\":true}".to_owned(),
+        Ok(crate::RawRpcExit::Failure(cause)) => format!(
+            "{{\"ok\":false,\"error\":\"rpc_rejected\",\"cause\":{}}}",
+            cause.get()
+        ),
+        Err(error) => crate::ffi_call::error_envelope(&error).to_string(),
+    };
+    CString::new(output)
+        .expect("Serialized JSON has no raw NUL")
+        .into_raw()
 }
 /// # Safety
 /// Takes ownership of context if both callbacks are present, including on errors.

@@ -165,9 +165,8 @@ fn main() {
             .collect::<Vec<_>>(),
         ["slow", "fast"]
     );
-    assert!(result["errors"]["failed"]
-        .as_str()
-        .is_some_and(|error| !error.is_empty()));
+    assert_eq!(result["errors"]["failed"]["code"], "rpc_rejected");
+    assert_eq!(result["errors"]["failed"]["cause"]["error"]["message"], "Private unsupported search");
     assert!(
         shell_state::enriched("slow", shell.clone())["threads"]
             .as_array()

@@ -40,6 +40,9 @@ pub mod projects;
 pub mod tasks;
 pub mod i18n;
 pub mod stream;
+pub mod raw_stream;
+mod raw_http;
+pub use raw_stream::{RawStreamExit, RawStreamTick};
 pub mod session;
 pub use session::{PendingRpc, RpcCancellation, RpcSession, SessionClosed, SessionOptions};
 pub mod projection;
@@ -487,6 +490,15 @@ impl Connection {
         body: Option<&Value>,
         protocol: bool,
     ) -> Result<(Response, bool)> {
+        self.send_serialized(method, path, body, protocol)
+    }
+    fn send_serialized<T: serde::Serialize + ?Sized>(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&T>,
+        protocol: bool,
+    ) -> Result<(Response, bool)> {
         let url = endpoint(&self.base, path)?;
         let method =
             reqwest::Method::from_bytes(method.as_bytes()).map_err(|_| "invalid_method")?;
@@ -885,3 +897,9 @@ pub mod parity;
 pub mod quota_present;
 
 pub mod registry_icon;
+
+/// Lossless JavaScript string and raw JSON transport boundaries.
+pub mod wtf16;
+mod raw_rpc;
+pub use raw_rpc::RawRpcExit;
+pub use serde_json::value::RawValue as RawJson;
