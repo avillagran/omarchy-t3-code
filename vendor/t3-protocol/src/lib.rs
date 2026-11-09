@@ -40,6 +40,9 @@ pub mod projects;
 pub mod tasks;
 pub mod i18n;
 pub mod stream;
+pub mod raw_stream;
+mod raw_http;
+pub use raw_stream::{RawStreamExit, RawStreamTick};
 pub mod session;
 pub use session::{PendingRpc, RpcCancellation, RpcSession, SessionClosed, SessionOptions};
 pub mod projection;
@@ -485,6 +488,15 @@ impl Connection {
         method: &str,
         path: &str,
         body: Option<&Value>,
+        protocol: bool,
+    ) -> Result<(Response, bool)> {
+        self.send_serialized(method, path, body, protocol)
+    }
+    fn send_serialized<T: serde::Serialize + ?Sized>(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&T>,
         protocol: bool,
     ) -> Result<(Response, bool)> {
         let url = endpoint(&self.base, path)?;

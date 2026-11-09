@@ -776,3 +776,16 @@ fn strings(a: &Args, name: &str) -> Result<Option<Vec<String>>> {
         })
         .transpose()
 }
+
+/// Original validated shell subscription options with lossless native wire items.
+/// Retry, cursor reduction and snapshot/patch ownership remain with the host.
+pub fn subscribe_shell_raw(conn:&Connection,sub:&ShellSub,cancel:impl Fn()->bool,probe:impl FnMut()->Option<std::time::Instant>,receive:impl FnMut(crate::RawStreamTick)->Result<()>)->Result<crate::RawStreamExit>{
+ let payload=serde_json::value::to_raw_value(&sub.payload()?).map_err(|_|"invalid_input")?;
+ conn.subscribe_raw_probed(SUBSCRIBE_SHELL.tag.unwrap_or(SUBSCRIBE_SHELL.name),&payload,cancel,probe,receive)
+}
+/// Original thread option admission with raw wire items. Compact-ID/body opt-ins
+/// are forwarded unchanged; the host must apply their native decoding itself.
+pub fn subscribe_thread_raw(conn:&Connection,sub:&ThreadSub,cancel:impl Fn()->bool,probe:impl FnMut()->Option<std::time::Instant>,receive:impl FnMut(crate::RawStreamTick)->Result<()>)->Result<crate::RawStreamExit>{
+ let payload=serde_json::value::to_raw_value(&sub.payload()?).map_err(|_|"invalid_input")?;
+ conn.subscribe_raw_probed(SUBSCRIBE_THREAD.tag.unwrap_or(SUBSCRIBE_THREAD.name),&payload,cancel,probe,receive)
+}
