@@ -5,6 +5,37 @@ Git copies. The work is **not fully integrated or published**. Local checkpoint
 refs protect the observed source versions on this machine; they are not an
 off-machine backup, feature acceptance, or a merge into the application branch.
 
+## Implementation follow-up after the audit cut
+
+The inventory counts and storage candidates below retain their original
+23:59 UTC cut. They have not been presented as a new complete inventory after
+the following implementation work.
+
+- The Nightly client published `71a6ed9d` in draft PR #35, including original
+  palette submenu navigation and nested search. Strict compilation and the real
+  Qt/main fixture passed. The same 13 prototypes remain locally checkpointed.
+- SDK `1c6c8c82fed581ce09e2e0cd9c0d19c00a772af8` is public in draft
+  [PR #43](https://github.com/avillagran/lib-t3-rust/pull/43), stacked on the
+  public lossless RPC work. Eight WebSocket cases, four HTTP cases and the
+  affected original DPOP regression passed; all seven CI jobs passed on that
+  exact commit. This covers the additive Rust transport.
+- The active Nightly checkout still uses SDK `39b73284`. The isolated client
+  candidate `3c94a377` combines the palette changes with exactly 141 canonical
+  vendor leaves from public SDK `1c6c8c82`; it has not been compiled or run.
+  A public SDK and a preserved candidate are separate from client integration.
+- Browser source checkpoint `7086c366` passed four compile-only commands. The
+  prior real PNG component produced 640×480. The latest Encoder runtime still
+  fails during its auxiliary browser launch; no video was accepted. The abort
+  cause remains unconfirmed, and Browser work remains unpublished.
+- Auth checkpoint `592509b5` preserves guarded session publication and owned
+  installation/retirement. Twelve regression fixtures are written and unrun;
+  its updated compiler proposal has not launched. Complete session-manager and
+  MCP capability-ceiling integration remain pending.
+
+No cleanup was performed for these follow-ups. Current reserved executables,
+source worktrees and validation receipts remain retained. Full Nightly parity
+and integration into the application remain incomplete.
+
 ## Integration
 
 | Component | Observed state | Remaining integration |
