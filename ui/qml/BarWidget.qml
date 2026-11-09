@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "../js/BarMenuModel.js" as BarMenu
 
 // The bar side of O3 Code. The app itself runs in its own process
 // (bin/o3, app/shell.qml); this widget only shows the status the app
@@ -39,6 +40,14 @@ BarWidget {
     if (launch.running) { root.queued = root.queued.filter(function(q) { return !(args[0] === "anchor" && q[0] === "anchor") }).concat([args]); return }
     launch.command = [root.launcher].concat(args); launch.running = true
   }
+  // Quick menu (right click on the icon). The bar loads no translations: the app
+  // writes the labels, already translated, into its status and the last ones
+  // are kept for when it is stopped.
+  property var menuLabels: ({})
+  onStatusChanged: if (status.menu) root.menuLabels = status.menu
+  readonly property string client: Qt.resolvedUrl("../../bin/omarchy-t3-client").toString().replace(/^file:\/\//, "")
+  Process { id: serverControl }
+  function server(action) { if (!serverControl.running) { serverControl.command = [root.client, "backend-control", action]; serverControl.running = true } }
   Process { id: launch; onExited: if (root.queued.length) { var next = root.queued[0]; root.queued = root.queued.slice(1); root.run(next) } }
   // Where the T3 button sits, so the app can show its panel under it, as the
   // in-shell popup did (app/shell.qml draws a transparent twin of this bar).
@@ -92,6 +101,7 @@ BarWidget {
   }
   BarIconButton {
     id: button
+    objectName: "t3BarIcon"
     x: 0
     y: 0
     width: root.vertical ? Style.bar.statusSlot : root.statusWidth
@@ -106,6 +116,53 @@ BarWidget {
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton) root.togglePanel()
       else if (mouseButton === Qt.MiddleButton) root.run(["call", "refresh"])
+      else if (mouseButton === Qt.RightButton) menu.open = !menu.open
+    }
+  }
+  PopupCard {
+    id: menu
+    objectName: "t3BarMenu"
+    anchorItem: button
+    bar: root.bar
+    contentWidth: menu.fittedContentWidth(Style.space(190))
+    contentHeight: menu.fittedContentHeight(entries.implicitHeight)
+    Column {
+      id: entries
+      anchors.fill: parent
+      spacing: Style.space(2)
+      Repeater {
+        model: BarMenu.entries(root.menuLabels, root.running)
+        delegate: Item {
+          id: entry
+          required property var modelData
+          readonly property bool header: !!modelData.header
+          readonly property bool current: BarMenu.checked(modelData, root.running, root.status.animationMode)
+          width: entries.width
+          height: header ? Style.space(24) : Style.space(26)
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left; anchors.leftMargin: Style.space(entry.header ? 4 : 10)
+            anchors.right: parent.right
+            textFormat: Text.PlainText; elide: Text.ElideRight
+            text: (entry.current ? "✓ " : "") + (entry.header ? entry.modelData.header : entry.modelData.label)
+            color: root.bar ? root.bar.foreground : Color.popups.text
+            opacity: entry.header ? 0.55 : 1
+            font.pixelSize: entry.header ? Style.font.caption : Style.font.body
+            font.bold: entry.header
+          }
+          Rectangle { anchors.fill: parent; radius: Style.space(5); z: -1; visible: !entry.header && hover.hovered; color: Qt.rgba(1, 1, 1, 0.1) }
+          HoverHandler { id: hover; enabled: !entry.header }
+          TapHandler {
+            enabled: !entry.header
+            onTapped: {
+              menu.open = false
+              var c = BarMenu.command(entry.modelData)
+              if (c && c.launcher) root.run(c.launcher)
+              else if (c && c.server) root.server(c.server)
+            }
+          }
+        }
+      }
     }
   }
 }

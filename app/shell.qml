@@ -112,11 +112,18 @@ ShellRoot {
     Qt.callLater(Qt.quit)
   }
 
+  // "full", "light" or "off" as the bar's quick menu sets them; "" for Auto.
+  readonly property string animationMode: {
+    var v = backend.viewState
+    if (v.animationsEnabled === false || v.starfieldMode === "off") return "off"
+    return v.starfieldMode === "light" || v.starfieldMode === "full" ? v.starfieldMode : ""
+  }
   // What the bar widget shows, written on change and every 30 s: the bar
   // treats a status older than 90 s as a stopped app.
   readonly property var statusValue: ({
     running: true, pid: Quickshell.processId, opened: app.opened, counts: app.counts,
-    stale: backend.stale, animationsEnabled: backend.viewState.animationsEnabled !== false, indicatorStyle: backend.viewState.barIndicator || "orbit", brandGlyph: backend.viewState.brandGlyph || "o",
+    stale: backend.stale, animationsEnabled: backend.viewState.animationsEnabled !== false, animationMode: app.animationMode,
+    menu: { animations: T3I18n.tr("Animations"), full: T3I18n.tr("Full"), light: T3I18n.tr("Light"), off: T3I18n.tr("Off"), server: T3I18n.tr("Server"), restart: T3I18n.tr("Restart"), stop: T3I18n.tr("Stop"), app: T3I18n.tr("Application"), quit: T3I18n.tr("Quit") }, indicatorStyle: backend.viewState.barIndicator || "orbit", brandGlyph: backend.viewState.brandGlyph || "o",
     tooltip: T3I18n.tr("Working: {working} · Ready: {ready} · Waiting for input: {waiting}", { working: app.counts.working, ready: app.counts.done, waiting: app.counts.waiting }) + ConnectionStatus.failures(backend).map(function(e){return "\n"+(e.name || e.id)+": "+(ConnectionStatus.reason(e.state)?T3I18n.tr(ConnectionStatus.reason(e.state)):T3I18n.error(e.state))+" ("+e.state+")"}).join(""),
     omabridge: app.bridgeIndicator ? bridgeStatus.value : null
   })
@@ -161,6 +168,7 @@ ShellRoot {
         case "trimMemory": b.releaseUnusedMemory(); break
         case "capturePreferences": if(!p.preferencesView || !value.startsWith("/"))return "not-ready"; p.preferencesView.grabToImage(function(image){image.saveToFile(value)}); return "requested"
         case "animations": b.rememberView({animationsEnabled:value!=="false"}); break
+        case "animationMode": if (["full", "light", "off"].indexOf(value) < 0) return "invalid"; b.rememberView(value === "off" ? {animationsEnabled:false} : {animationsEnabled:true, starfieldMode:value}); break
         case "hosts": p.openHosts(p.hostsAnchor()); break
         case "closeHosts": p.hostsPopup.close(); break
         case "usage": p.usageCollapsed = value === "true"; break

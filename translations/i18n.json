@@ -2076,7 +2076,9 @@
     "The selected server is not installed.": "The selected server is not installed.",
     "Another local server is already running.": "Another local server is already running.",
     "The local server could not start.": "The local server could not start.",
-    "The local server configuration is invalid.": "The local server configuration is invalid."
+    "The local server configuration is invalid.": "The local server configuration is invalid.",
+    "Application": "Application",
+    "Quit": "Quit"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -4155,7 +4157,9 @@
     "The selected server is not installed.": "El servidor seleccionado no está instalado.",
     "Another local server is already running.": "Ya hay otro servidor local en ejecución.",
     "The local server could not start.": "No se pudo iniciar el servidor local.",
-    "The local server configuration is invalid.": "La configuración del servidor local no es válida."
+    "The local server configuration is invalid.": "La configuración del servidor local no es válida.",
+    "Application": "Aplicación",
+    "Quit": "Salir"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -6234,7 +6238,9 @@
     "The selected server is not installed.": "O servidor selecionado não está instalado.",
     "Another local server is already running.": "Outro servidor local já está em execução.",
     "The local server could not start.": "Não foi possível iniciar o servidor local.",
-    "The local server configuration is invalid.": "A configuração do servidor local é inválida."
+    "The local server configuration is invalid.": "A configuração do servidor local é inválida.",
+    "Application": "Aplicativo",
+    "Quit": "Sair"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -8313,7 +8319,9 @@
     "The selected server is not installed.": "Le serveur sélectionné n’est pas installé.",
     "Another local server is already running.": "Un autre serveur local est déjà en cours d’exécution.",
     "The local server could not start.": "Le serveur local n’a pas pu démarrer.",
-    "The local server configuration is invalid.": "La configuration du serveur local n’est pas valide."
+    "The local server configuration is invalid.": "La configuration du serveur local n’est pas valide.",
+    "Application": "Application",
+    "Quit": "Quitter"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -10392,7 +10400,9 @@
     "The selected server is not installed.": "Der ausgewählte Server ist nicht installiert.",
     "Another local server is already running.": "Ein anderer lokaler Server läuft bereits.",
     "The local server could not start.": "Der lokale Server konnte nicht gestartet werden.",
-    "The local server configuration is invalid.": "Die Konfiguration des lokalen Servers ist ungültig."
+    "The local server configuration is invalid.": "Die Konfiguration des lokalen Servers ist ungültig.",
+    "Application": "App",
+    "Quit": "Beenden"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -12471,7 +12481,9 @@
     "The selected server is not installed.": "Il server selezionato non è installato.",
     "Another local server is already running.": "Un altro server locale è già in esecuzione.",
     "The local server could not start.": "Impossibile avviare il server locale.",
-    "The local server configuration is invalid.": "La configurazione del server locale non è valida."
+    "The local server configuration is invalid.": "La configurazione del server locale non è valida.",
+    "Application": "Applicazione",
+    "Quit": "Esci"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14550,7 +14562,9 @@
     "The selected server is not installed.": "De geselecteerde server is niet geïnstalleerd.",
     "Another local server is already running.": "Er draait al een andere lokale server.",
     "The local server could not start.": "De lokale server kon niet worden gestart.",
-    "The local server configuration is invalid.": "De configuratie van de lokale server is ongeldig."
+    "The local server configuration is invalid.": "De configuratie van de lokale server is ongeldig.",
+    "Application": "Applicatie",
+    "Quit": "Afsluiten"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16629,7 +16643,9 @@
     "The selected server is not installed.": "Wybrany serwer nie jest zainstalowany.",
     "Another local server is already running.": "Inny lokalny serwer już działa.",
     "The local server could not start.": "Nie udało się uruchomić lokalnego serwera.",
-    "The local server configuration is invalid.": "Konfiguracja lokalnego serwera jest nieprawidłowa."
+    "The local server configuration is invalid.": "Konfiguracja lokalnego serwera jest nieprawidłowa.",
+    "Application": "Aplikacja",
+    "Quit": "Zakończ"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18708,7 +18724,9 @@
     "The selected server is not installed.": "Выбранный сервер не установлен.",
     "Another local server is already running.": "Другой локальный сервер уже запущен.",
     "The local server could not start.": "Не удалось запустить локальный сервер.",
-    "The local server configuration is invalid.": "Недопустимая конфигурация локального сервера."
+    "The local server configuration is invalid.": "Недопустимая конфигурация локального сервера.",
+    "Application": "Приложение",
+    "Quit": "Выйти"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20787,7 +20805,9 @@
     "The selected server is not installed.": "Вибраний сервер не встановлено.",
     "Another local server is already running.": "Інший локальний сервер уже запущено.",
     "The local server could not start.": "Не вдалося запустити локальний сервер.",
-    "The local server configuration is invalid.": "Конфігурація локального сервера недійсна."
+    "The local server configuration is invalid.": "Конфігурація локального сервера недійсна.",
+    "Application": "Застосунок",
+    "Quit": "Вийти"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22866,7 +22886,9 @@
     "The selected server is not installed.": "選択したサーバーはインストールされていません。",
     "Another local server is already running.": "別のローカルサーバーが既に実行中です。",
     "The local server could not start.": "ローカルサーバーを起動できませんでした。",
-    "The local server configuration is invalid.": "ローカルサーバーの設定が無効です。"
+    "The local server configuration is invalid.": "ローカルサーバーの設定が無効です。",
+    "Application": "アプリ",
+    "Quit": "終了"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24945,7 +24967,9 @@
     "The selected server is not installed.": "선택한 서버가 설치되어 있지 않습니다.",
     "Another local server is already running.": "다른 로컬 서버가 이미 실행 중입니다.",
     "The local server could not start.": "로컬 서버를 시작할 수 없습니다.",
-    "The local server configuration is invalid.": "로컬 서버 구성이 올바르지 않습니다."
+    "The local server configuration is invalid.": "로컬 서버 구성이 올바르지 않습니다.",
+    "Application": "앱",
+    "Quit": "종료"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -27024,7 +27048,9 @@
     "The selected server is not installed.": "未安装所选服务器。",
     "Another local server is already running.": "另一个本地服务器已在运行。",
     "The local server could not start.": "无法启动本地服务器。",
-    "The local server configuration is invalid.": "本地服务器配置无效。"
+    "The local server configuration is invalid.": "本地服务器配置无效。",
+    "Application": "应用",
+    "Quit": "退出"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29103,7 +29129,9 @@
     "The selected server is not installed.": "الخادم المحدد غير مثبت.",
     "Another local server is already running.": "هناك خادم محلي آخر قيد التشغيل بالفعل.",
     "The local server could not start.": "تعذر تشغيل الخادم المحلي.",
-    "The local server configuration is invalid.": "إعدادات الخادم المحلي غير صالحة."
+    "The local server configuration is invalid.": "إعدادات الخادم المحلي غير صالحة.",
+    "Application": "التطبيق",
+    "Quit": "خروج"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31182,7 +31210,9 @@
     "The selected server is not installed.": "Seçilen sunucu yüklü değil.",
     "Another local server is already running.": "Başka bir yerel sunucu zaten çalışıyor.",
     "The local server could not start.": "Yerel sunucu başlatılamadı.",
-    "The local server configuration is invalid.": "Yerel sunucu yapılandırması geçersiz."
+    "The local server configuration is invalid.": "Yerel sunucu yapılandırması geçersiz.",
+    "Application": "Uygulama",
+    "Quit": "Çık"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33261,7 +33291,9 @@
     "The selected server is not installed.": "Den valda servern är inte installerad.",
     "Another local server is already running.": "En annan lokal server körs redan.",
     "The local server could not start.": "Den lokala servern kunde inte startas.",
-    "The local server configuration is invalid.": "Den lokala serverns konfiguration är ogiltig."
+    "The local server configuration is invalid.": "Den lokala serverns konfiguration är ogiltig.",
+    "Application": "Appen",
+    "Quit": "Avsluta"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35340,7 +35372,9 @@
     "The selected server is not installed.": "Den valgte server er ikke installeret.",
     "Another local server is already running.": "En anden lokal server kører allerede.",
     "The local server could not start.": "Den lokale server kunne ikke starte.",
-    "The local server configuration is invalid.": "Den lokale servers konfiguration er ugyldig."
+    "The local server configuration is invalid.": "Den lokale servers konfiguration er ugyldig.",
+    "Application": "Appen",
+    "Quit": "Afslut"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37419,7 +37453,9 @@
     "The selected server is not installed.": "Den valgte serveren er ikke installert.",
     "Another local server is already running.": "En annen lokal server kjører allerede.",
     "The local server could not start.": "Den lokale serveren kunne ikke starte.",
-    "The local server configuration is invalid.": "Den lokale serverens konfigurasjon er ugyldig."
+    "The local server configuration is invalid.": "Den lokale serverens konfigurasjon er ugyldig.",
+    "Application": "Appen",
+    "Quit": "Avslutt"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -39498,7 +39534,9 @@
     "The selected server is not installed.": "Valittua palvelinta ei ole asennettu.",
     "Another local server is already running.": "Toinen paikallinen palvelin on jo käynnissä.",
     "The local server could not start.": "Paikallista palvelinta ei voitu käynnistää.",
-    "The local server configuration is invalid.": "Paikallisen palvelimen asetukset ovat virheelliset."
+    "The local server configuration is invalid.": "Paikallisen palvelimen asetukset ovat virheelliset.",
+    "Application": "Sovellus",
+    "Quit": "Lopeta"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -41577,6 +41615,8 @@
     "The selected server is not installed.": "Vybraný server není nainstalován.",
     "Another local server is already running.": "Jiný místní server již běží.",
     "The local server could not start.": "Místní server se nepodařilo spustit.",
-    "The local server configuration is invalid.": "Konfigurace místního serveru je neplatná."
+    "The local server configuration is invalid.": "Konfigurace místního serveru je neplatná.",
+    "Application": "Aplikace",
+    "Quit": "Ukončit"
   }
 }
