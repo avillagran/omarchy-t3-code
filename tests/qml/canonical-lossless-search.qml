@@ -29,6 +29,7 @@ ShellRoot {
  property var queries:["a".repeat(199)+"\ud83d","ab\udc00","ab\ud83d\ude00","ab\ud800"]
  ProcessInspector{id:inspector}
  Test.T3Panel{id:panel;bridge:root.backend}
+ Connections{target:panel;function onOpenedChanged(){root.backend.setPanelVisible(panel.opened)}}
  function check(ok,why){if(!ok)throw Error(why)}
  function diagnostics(){
   var q=queries[index]||"",search=backend.threadSearch||{},sidebar=backend.sidebarSearch||{}
