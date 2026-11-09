@@ -1,9 +1,9 @@
 {
   "repository": "https://github.com/avillagran/lib-t3-rust",
-  "revision": "39b73284d27d83f8a26c836d00986b484d3c4eb5",
+  "revision": "5867a17ef461cff94490362ecfbcea9d553ff3e5",
   "upstreamFiles": {
     "Cargo.lock": "81506c76f29ee31ae440831f0b21bbd5365157b9f3b37a30247f70a8bf7638e6",
-    "Cargo.toml": "20ae562cd7cd42becb21a3e35a3234ea43326d846e01a266d8f93ab31a268ad8",
+    "Cargo.toml": "eed773fca20a89743e938bd112dd9237c5553e76268c98b2f5f8552f576bd736",
     "LICENSE": "98b4fb12ec1ed281fc5a3b026f2b5c307bd7ce90e8557e59845aef6e1cb6f5fe",
     "README.md": "a319ad76437549d147b83b5743a4e5fd3d9c36a34e8c910a638e5ed457b4778f",
     "data/i18n.json": "6760b8bdeefd0a4095829593cc47fc6fb4ebdfbedece05539f4c8aed93de996a",
@@ -12,6 +12,7 @@
     "docs/ANDROID.md": "2dbcafe80f412e434c92d62742ddbe93abafee50625a953db36cf597f291f93d",
     "docs/ANDROID_PARITY.md": "90da5b06d8533a5f02c8906b3ad2d3c5bdb0600b9313378268b8c21fe30df375",
     "docs/DEVICE_MEDIA_TICKETS.md": "f9ad753510d70ce455069923a5640ac22af5315c2dacb85b412d49c367c5fa1f",
+    "docs/LOSSLESS-UTF16-RPC.md": "7d32623622ce2e3abcf635300ef340904b93309eebf1171e9ecfc953268e778f",
     "docs/NATIVE-FALLBACK-MODEL.md": "7487243c046cc9a502aec981d66e5ff6adc7ba6752b469ed5253023502f6ed35",
     "docs/NIGHTLY_3726.md": "920b696a61f83421b2458fdbfadad3d36ee102b8fc2143c7eab01af019044a71",
     "docs/OT3_REEXPORTS.md": "5b860c02b2c90ad0f6c1fd8c399f593d5b85ef5b12cfaac7fdacbbcc2b683c24",
@@ -29,7 +30,7 @@
     "docs/TERMINAL.md": "ae05bd2163c2cca6143fc07ed4ebfd6487597b052ec074cc9a481185cd369457",
     "docs/THREAD_VISIT_OPEN_HISTORY.md": "43f2fe02344a93039dc55e51df0b8e5a5cdc1c8ff0d04f7828740db56c952b7d",
     "docs/UPSTREAM.md": "d58be514f7dda4975004f143fc94020fe4d04eacdd2db92a2f89ac78b408cadb",
-    "include/t3_protocol.h": "a0cb67983efe9753cf303b57c6884e60d1f55af8f310e1275c41a1239970dd21",
+    "include/t3_protocol.h": "7212e1c7e09ba83203fcf12c2e25eaa7ea7c55370d23fcf5d806885f64c7bd21",
     "src/activity.rs": "acb886d41c88b407543be7ded15b3d77bb71679e401751aa9036eeac6d0fe46f",
     "src/api/agent_sessions.rs": "3e9f33f99db4b7ed3541690f4edf20de4b984c6d2c788f65e8bf5fbdc3e7964d",
     "src/api/assets.rs": "16a68a7177928ccd6ba8388dcece88a1e933765ec38c0928fc7545689552d3c5",
@@ -40,7 +41,7 @@
     "src/api/ids.rs": "0d4889b384f8783b272c068e03adbcac2e2f4cce160d041d4c2527bc20ab68a1",
     "src/api/mcp_apps.rs": "0514c9e65cf06a1214c4522dd05115320615e2856130d788a614720a98d840e3",
     "src/api/mod.rs": "b51412c7dfd4fcfca69e6e7eb76355fa1e0b79e23fca16215a6d2db23e7711ba",
-    "src/api/orchestration.rs": "b8fa72857f283e3d5c2df9c571f498d410649a89f162121aa30d783c20c1cc78",
+    "src/api/orchestration.rs": "1c0d4d6d50efeb3fb9b8a64848c7c80efa217b1401f5e711d2365993acf88901",
     "src/api/preview.rs": "b655240893285b18dfb9cf6f0e262b384c0f6008b954b8777dab03b8d91c9afb",
     "src/api/project_clone.rs": "f70f55a31a2ff0f7815aaeaf7e62f998c42a393928f0bac24e14ffb866678922",
     "src/api/projects.rs": "83cec80aa01ad8315063d0e017092fff93e342cc83b8cbb31e7096fd88e6eadb",
@@ -80,7 +81,7 @@
     "src/domain/usage.rs": "0c03262973bc0095f8992b75d9ebdfeb9cd161ad99ef9816e811871dee0ee493",
     "src/errors.rs": "2c84a654b8bf256e91c269536b9e9d567d87ecc4a3a1f618a9d3bdb1b66922cc",
     "src/failure_context.rs": "3a6ad4367f0c129071d8a8e8bebbfacccd5b41e7c00b6f5944c03a01b792371c",
-    "src/ffi.rs": "6c5081a50f6718ed057b9d132245179a20d5a359e69b6c00a6200f1b4cb46e35",
+    "src/ffi.rs": "f6e2d825a827eb7b018c15d01aeb70299bf111a5a5804fff25809195205272ca",
     "src/ffi_attachments.rs": "49aacf0b3d137875c1709eaa507303fc405ca4eda1a4d39e3fc996817b753b4c",
     "src/ffi_call.rs": "30ce6ab03ab25da5bb59fe286d7476aae6089e5d11a965409526e0dd28aa8646",
     "src/ffi_stream.rs": "35aa093e79911c9c48a5657df3045f3743b24ef9337230611ad5ef7671e38a0d",
@@ -89,7 +90,7 @@
     "src/i18n.rs": "267dad708638a1703fd069a0c1f599741969e3e263f61ab4e5c508a9392644db",
     "src/js.rs": "c49f71aee7cf7eebecebd26412be72603bf407848c272ae278b236b94baed01a",
     "src/latex.rs": "1a90aac9e6596a581e18f9ab2b5f87df6b77dd80960779d6e8004f75d25311e0",
-    "src/lib.rs": "8c4d515dcb9cc69e57f93b605ad4e6e02640a3469fc768a955376c88f48c1fea",
+    "src/lib.rs": "f6a968bf8923632d026898339bd70d8d0f02fc3c70eb9ffe8002e146ed8f0e53",
     "src/lifecycle.rs": "920f0e58ebda80f2baca829cb1eef148342da9095807fc4e19794adef996d4e3",
     "src/long_rpc.rs": "744839152c488fd105211e09410aa40a0233a26cf1f239c13452a6c6b2a2dd8e",
     "src/markdown.rs": "99df427b0ef29f2a1a080b3413ec17bf3d4aa3e338d3d6a5a1fc26b0056315c7",
@@ -111,6 +112,7 @@
     "src/queue.rs": "bd5bb0a1779a34cea376ac12eae781bef38310e1c4353a303829991cd80a5410",
     "src/quota_present.rs": "724d9f4bb1d08b0348e3e698a09080f83640d987f0f42f3066258e7278037791",
     "src/quota_sources.rs": "d20bc7d4326156106bfccf662a1d05413628be19b32f85c33d8c78bf6f565126",
+    "src/raw_rpc.rs": "54e8fe772833381258775768a9dad2ede9813acd7d112d116f97e0f0a3e592a6",
     "src/reconnect.rs": "cb42c9b941f6fd699c78fe59b915ab18bba73ff4fb374e9faeb8e8fcea02df1e",
     "src/registry_icon.rs": "e613b6942f0767f2ce41353fdef60a5f039036b4b414d08a20cddf4c1b01a857",
     "src/scoped_settings.rs": "692aeb10554c30b9c5bae503a6931245e3da3f741bb9e03989bd14219b573dc8",
@@ -136,7 +138,8 @@
     "src/tool_inspector.rs": "625dc00ea1237f5165ef61e5eb7fddcfec2efdb592c90c414bc71e1e5573624f",
     "src/usage_summary.rs": "97519c8e4f2c01538ee5d6d563d1b57bd72e42a7d1d66c95d303fdeee1547dc1",
     "src/util.rs": "79696b6085304893beaf82582f953b67711b899ceb1c0d6234885c31f4b072bb",
-    "src/wire.rs": "31d536e0a6aeac4ca87edf2dd071a028ea997fdf41147205222a0dece5566287"
+    "src/wire.rs": "31d536e0a6aeac4ca87edf2dd071a028ea997fdf41147205222a0dece5566287",
+    "src/wtf16.rs": "58e6637038e87b876deb1ad26d76fbf387afe5efd3041b7321b9cdc371695ef1"
   },
   "localChanges": []
 }

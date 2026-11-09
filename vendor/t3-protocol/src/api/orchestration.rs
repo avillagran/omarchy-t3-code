@@ -205,19 +205,73 @@ fn stop_workflow_payload(thread_id: &str, subagent_id: &str) -> Result<Value> {
     Ok(json!({"threadId":ids::id("threadId", thread_id)?,"subagentId":ids::id("subagentId", subagent_id)?}))
 }
 /// `orchestration.searchThreads`: `{matches[{threadId, projectId, source, snippet, messageCreatedAt}]}`.
-/// `query` is 2..=200 characters once trimmed; `limit` 1..=50.
+/// `query` is 2..=200 UTF-16 units after ECMAScript trim; `limit` 1..=50.
 pub fn search_threads(conn: &Connection, query: &str, limit: Option<u64>) -> Result<Value> {
     send(conn, &SEARCH_THREADS, search_threads_payload(query, limit)?)
 }
 fn search_threads_payload(query: &str, limit: Option<u64>) -> Result<Value> {
-    let query = ids::text("query", query, 200)?;
-    if query.chars().count() < 2 {
+    let query = crate::wtf16::Wtf16String::from(query).trim_ecmascript();
+    if !(2..=200).contains(&query.units().len()) {
         return Err(ids::invalid("query"));
     }
-    let mut v = json!({"query":query});
-    put(&mut v, "limit", limit.map(|l| super::reader::int("limit", l, 1, 50)).transpose()?);
+    let mut v = json!({"query":query.to_utf8()?});
+    put(
+        &mut v,
+        "limit",
+        limit
+            .map(|l| super::reader::int("limit", l, 1, 50))
+            .transpose()?,
+    );
     Ok(v)
 }
+/// Lossless query counterpart. The caller performs any original UI clipping;
+/// this boundary only applies the server's ECMA trim and UTF-16 unit bounds.
+/// `options` is the ordinary SEARCH_THREADS options object without `query`.
+/// Both success values and rejection causes retain raw JSON, including isolated
+/// surrogate escapes in native snippets or error messages.
+pub fn search_threads_utf16(
+    conn: &Connection,
+    query: &crate::wtf16::Wtf16String,
+    options: &Value,
+) -> Result<crate::RawRpcExit> {
+    let payload = search_threads_utf16_payload(query, options)?;
+    conn.rpc_raw_with_timeout(
+        "orchestration.searchThreads",
+        &payload,
+        SEARCH_THREADS.timeout(),
+    )
+}
+/// Build without opening a socket. No surrogate is replaced, combined or cut.
+pub fn search_threads_utf16_payload(
+    query: &crate::wtf16::Wtf16String,
+    options: &Value,
+) -> Result<Box<crate::RawJson>> {
+    let query = query.trim_ecmascript();
+    if !(2..=200).contains(&query.units().len()) {
+        return Err(ids::invalid("query"));
+    }
+    let mut arguments = options.as_object().cloned().ok_or("invalid_input")?;
+    if arguments.contains_key("query") {
+        return Err("invalid_input".into());
+    }
+    arguments.insert("query".into(), json!("ab"));
+    let mut validated = SEARCH_THREADS.payload(&Value::Object(arguments))?;
+    validated
+        .as_object_mut()
+        .ok_or("invalid_input")?
+        .remove("query");
+    let mut raw = std::collections::BTreeMap::<String, Box<crate::RawJson>>::new();
+    for (key, value) in validated.as_object().ok_or("invalid_input")? {
+        raw.insert(
+            key.clone(),
+            crate::RawJson::from_string(value.to_string()).map_err(|_| "invalid_input")?,
+        );
+    }
+    raw.insert("query".into(), query.to_json());
+    crate::RawJson::from_string(serde_json::to_string(&raw).map_err(|_| "invalid_input")?)
+        .map_err(|_| "invalid_input".into())
+}
+
 /// `orchestration.getArchivedShellSnapshot`: `{schemaVersion, snapshotSequence, projects[], threads[]}`.
 pub fn archived_shell(conn: &Connection) -> Result<Value> {
     send(conn, &GET_ARCHIVED_SHELL_SNAPSHOT, json!({}))
@@ -818,7 +872,8 @@ impl Command {
             Self::ThreadMarkUnread { command_id, thread_id } => simple("thread.mark-unread", command_id, thread_id)?,
             Self::ThreadVisit { command_id, thread_id, visited_at, opened, search_query } => {
                 let mut v = simple("thread.visit", command_id, thread_id)?;
-                v["visitedAt"] = json!(timestamp("visitedAt", visited_at)?);
+                // IsoDateTime is Schema.String; only the native server owns DateTime.make.
+                v["visitedAt"] = json!(visited_at);
                 if let Some(opened) = opened { v["opened"] = json!(opened); }
                 if let Some(query) = search_query {
                     if query.encode_utf16().count() > 200 { return Err(ids::invalid("searchQuery")); }

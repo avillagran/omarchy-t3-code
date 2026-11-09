@@ -555,7 +555,7 @@ fn watch(client: Client) -> Result<()> {
             if line.len() > 256 * 1024 * 1024 {
                 continue;
             }
-            if let Ok(mut v) = serde_json::from_str::<Value>(&line) {
+            if let Ok(mut v) = search_json::pipe_input(&line) {
                 if v["op"] == "native-search" {
                     if let Err(error) = native_search.submit(v.clone()) {
                         emit(
@@ -566,11 +566,7 @@ fn watch(client: Client) -> Result<()> {
                     continue;
                 }
                 if v["op"] == "thread-search-mount" {
-                    let result = shell_state::mount_search(
-                        text(&v, "consumer"),
-                        text(&v, "key"),
-                        &v["rows"],
-                    );
+                    let result = shell_state::mount_search_json(&v);
                     emit(
                         "action",
                         json!({"op":"thread-search-mount", "requestId":v["requestId"],
@@ -1192,7 +1188,7 @@ fn watch(client: Client) -> Result<()> {
                 }
                 if v["op"] == "thread-search" {
                     std::thread::spawn(move || {
-                        let result = thread_search::search_with_progress(&v, |partial| {
+                        let result = thread_search::search_packed(&v, |partial| {
                             emit(
                                 "action",
                                 json!({"op":"thread-search","requestId":v["requestId"],"result":partial}),
@@ -1306,6 +1302,18 @@ fn watch(client: Client) -> Result<()> {
                         break;
                     }
                 }
+            }
+            if input["op"] == "thread-visit" {
+                let response = thread_search::visit_raw(&input);
+                let mut event = json!({"op":"action_result","input":input});
+                match response {
+                    Ok(protocol::RawRpcExit::Success(Some(value))) => event["result"] = json!({"resultJson":value.get()}),
+                    Ok(protocol::RawRpcExit::Success(None)) => event["result"] = json!({"void":true}),
+                    Ok(protocol::RawRpcExit::Failure(cause)) => { event["error"] = json!("rpc_rejected"); event["errorJson"] = json!(cause.get()); },
+                    Err(error) => event["error"] = json!(error),
+                }
+                let _ = result_tx.send(event);
+                continue;
             }
             let result = write::execute(&input);
             if matches!(
@@ -1516,10 +1524,9 @@ fn watch(client: Client) -> Result<()> {
                 let _ = action_tx.send(cmd);
             }
             "action_result" => {
-                emit(
-                    "action",
-                    json!({"op":cmd["input"]["op"],"environment":cmd["input"]["environment"],"thread":cmd["input"]["thread"],"requestId":cmd["input"]["requestId"],"result":cmd["result"],"error":cmd["error"]}),
-                );
+                let mut reply = json!({"op":cmd["input"]["op"],"environment":cmd["input"]["environment"],"thread":cmd["input"]["thread"],"requestId":cmd["input"]["requestId"],"result":cmd["result"],"error":cmd["error"]});
+                if let Some(error) = cmd.get("errorJson") { reply["errorJson"] = error.clone(); }
+                emit("action", reply);
                 if matches!(
                     text(&cmd["input"], "op"),
                     "backend-start"

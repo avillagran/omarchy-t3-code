@@ -885,3 +885,9 @@ pub mod parity;
 pub mod quota_present;
 
 pub mod registry_icon;
+
+/// Lossless JavaScript string and raw JSON transport boundaries.
+pub mod wtf16;
+mod raw_rpc;
+pub use raw_rpc::RawRpcExit;
+pub use serde_json::value::RawValue as RawJson;
