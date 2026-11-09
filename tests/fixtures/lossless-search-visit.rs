@@ -1,6 +1,5 @@
 //! Private genuine client/SDK/WebSocket/V8 acceptance; never execute on the host.
 use omarchy_t3_client::{
-    json,
     native_search::Engine,
     normalize,
     protocol::{wtf16::Wtf16String, RawJson, RawRpcExit},
@@ -8,7 +7,7 @@ use omarchy_t3_client::{
     shell_state, thread_search,
     voice_capture::resources::Runtime,
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{
     fs, net::TcpListener, os::unix::fs::PermissionsExt, path::Path, sync::Arc, thread,
     time::Duration,

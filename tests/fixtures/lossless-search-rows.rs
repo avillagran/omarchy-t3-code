@@ -1,10 +1,10 @@
 //! Actual shell mounts and projection, including raw String title validation.
 use omarchy_t3_client::{
-    json, normalize,
+    normalize,
     protocol::{wtf16::Wtf16String, RawJson},
     search_json, shell_state,
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 fn mount(owner: &str, key: &str, sequence: u64, id: &str) -> Value {
     let title = Wtf16String::from_units(vec![97, 0xdc00]).to_json();
     let row = format!(
