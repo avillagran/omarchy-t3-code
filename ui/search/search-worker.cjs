@@ -45,6 +45,10 @@ function searchSubject(key) {
 function searchPaletteItem(item) {
   searchRequire(item, item && typeof item.value === 'string' && typeof item.title === 'string' &&
     Array.isArray(item.searchTerms) && item.searchTerms.every(term => typeof term === 'string'));
+  if (item.kind === 'submenu') {
+    const groups = searchRequire(item.groups, Array.isArray(item.groups));
+    item = {...item, groups:groups.map(group => ({...group, items:searchItems(group.items)}))};
+  }
   if (item.threadKey === undefined) return item;
   const subject = searchSubject(item.threadKey);
   return subject ? {...item, threadSearch: subject} : null;
@@ -69,10 +73,13 @@ function searchPalette(request, now) {
   };
   if (request.allOptions !== undefined) {
     const options = request.allOptions;
+    const rootGroups = searchRequire(options.rootGroups, Array.isArray(options.rootGroups)).map(group =>
+      ({...group, items: searchItems(group.items)}));
     input.allOptions = {
-      rootGroups: searchRequire(options.rootGroups, Array.isArray(options.rootGroups)).map(group =>
-        ({...group, items: searchItems(group.items)})),
-      nestedItems: searchItems(options.nestedItems),
+      rootGroups,
+      nestedItems: options.nestedItems === undefined
+        ? searchNative.buildNestedSearchItems(rootGroups.flatMap(group => group.items), request.query)
+        : searchItems(options.nestedItems),
     };
   }
   const normalized = searchNative.foldSearchQuery(request.query.startsWith('>')
