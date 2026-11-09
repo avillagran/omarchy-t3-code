@@ -19,18 +19,54 @@ ShellRoot {
  property bool paletteReleased:false
  property int index:0
  property int visits:0
+ property int packetCount:0
+ property int searchPacketCount:0
+ property int matchingSearchPacketCount:0
+ property int snapshotPacketCount:0
+ property int lastPending:-1
+ property int lastMatches:-1
+ property int lastRawRows:-1
  property var queries:["a".repeat(199)+"\ud83d","ab\udc00","ab\ud83d\ude00","ab\ud800"]
  ProcessInspector{id:inspector}
  Test.T3Panel{id:panel;bridge:root.backend}
  function check(ok,why){if(!ok)throw Error(why)}
- function fail(error){console.error("CANONICAL_LOSSLESS_QT_FAIL "+String(error));Qt.exit(1)}
+ function diagnostics(){
+  var q=queries[index]||"",search=backend.threadSearch||{},sidebar=backend.sidebarSearch||{}
+  var row=(backend.state.threads||[]).find(function(t){return t.key==="good/older"}),key="",decoded=null,keyDecoded=false
+  try{key=JSON.parse(search.mountSignature||"[]")[0]||"";decoded=JSON.parse(key);keyDecoded=true}catch(_){}
+  return {qualification:"after-failure-non-atomic",index:index,visits:visits,attached:attached,
+   actualWorkerRunning:!!(actualWorker&&actualWorker.running),packets:packetCount,searchPackets:searchPacketCount,
+   matchingSearchPackets:matchingSearchPacketCount,snapshotPackets:snapshotPacketCount,
+   resultSeen:resultSeen,causeSeen:causeSeen,queryEqual:search.query===q,settledEqual:search.settledQuery===q,
+   queryLength:(search.query||"").length,settledLength:(search.settledQuery||"").length,busy:!!search.busy,
+   errorPresent:!!search.error,planReady:!!search.planReady,canSearch:search.plan?!!search.plan.canSearch:null,
+   searchMessages:search.plan?!!search.plan.searchMessages:null,lastPending:lastPending,lastMatches:lastMatches,lastRawRows:lastRawRows,
+   rowPresent:!!row,titleString:!!(row&&typeof row.title==="string"),
+   titleUnit8Matches:!!(row&&typeof row.title==="string"&&row.title.charCodeAt(8)===q.charCodeAt(q.length-1)),
+   titleUnit2Matches:!!(row&&typeof row.title==="string"&&row.title.charCodeAt(2)===0xd800),
+   trustedRowScope:!!(row&&row.environmentId==="good"),rawShellPresent:!!(row&&row.searchShell),
+   trustedShellScope:!!(row&&row.searchShell&&row.searchShell.environmentId==="good"),
+   branchUnitMatches:!!(row&&row.searchShell&&typeof row.searchShell.branch==="string"&&row.searchShell.branch.charCodeAt(1)===0xdc00),
+   mountKeyDecoded:keyDecoded,mountQueryEqual:!!(decoded&&decoded[1]===q),
+   mountPairLiteral:key.indexOf("\ud83d\ude00")>=0,mountIsolatedEscaped:key.indexOf("\\ud83d")>=0,
+   selected:selected,sharedChecked:sharedChecked,sidebarRequested:sidebarRequested,paletteReleased:paletteReleased,
+   releaseAck:releaseAck,sidebarBusy:!!sidebar.busy,sidebarSettledEqual:sidebar.settledQuery===q,
+   allVisitsDone:allVisitsDone,finishing:finishing,viewStateLoaded:!!backend.viewStateLoaded,panelVisible:!!backend.panelVisible}
+ }
+ function fail(error){
+  try{console.error("CANONICAL_LOSSLESS_DIAGNOSTICS "+JSON.stringify(diagnostics()))}catch(_){console.error("CANONICAL_LOSSLESS_DIAGNOSTICS_UNAVAILABLE")}
+  console.error("CANONICAL_LOSSLESS_QT_FAIL "+String(error));Qt.exit(1)
+ }
  function observe(line){try{
   var packet=JSON.parse(line),d=packet.data||{}
+  packetCount++;if(packet.type==="snapshot")snapshotPacketCount++
   check(packet.type!=="native-search-error","actual native worker close error")
   if(packet.type!=="action")return
   if(d.op==="thread-search"&&d.result&&typeof d.result.resultJson==="string"){
+   searchPacketCount++
    var r=JSON.parse(d.result.resultJson)
    if(r.query!==queries[index])return
+   matchingSearchPacketCount++;lastPending=typeof r.pending==="number"?r.pending:-1;lastMatches=(r.matches||[]).length;lastRawRows=(r.rows||[]).length
    if(r.matches.length){check(r.matches[0].environmentId==="good","trusted RPC scope");check(r.matches[0].snippet.length===240&&r.matches[0].snippet.charCodeAt(239)===0xd83d,"canonical snippet240");resultSeen=true}
    if(r.errors&&r.errors.bad){check(r.errors.bad.cause.query===queries[index],"canonical raw failure query");causeSeen=true}
   }

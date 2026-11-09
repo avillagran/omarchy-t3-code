@@ -82,5 +82,5 @@ finally:
  STOP.set()
  for server,thread in SERVERS:server.shutdown();server.server_close();thread.join()
  with LOCK:
-  result={'searchQueryUnits':[units(q)for q in SEARCHES],'allFourQueriesBothRealPeers':all(SEARCHES.get(q)=={'good','bad'}for q in QUERIES),'visits':VISITS,'errors':ERRORS,'allPeerThreadsJoined':True}
+  result={'searchQueryUnits':[units(q)for q in SEARCHES],'queryRoles':[{'case':QUERIES.index(q),'units':units(q),'roles':sorted(roles),'roleCount':len(roles)}for q,roles in SEARCHES.items()],'allFourQueriesBothRealPeers':all(SEARCHES.get(q)=={'good','bad'}for q in QUERIES),'visits':VISITS,'errors':ERRORS,'allPeerThreadsJoined':True}
  saved('terminal.json',result);print('CANONICAL_PRIVATE_PEERS_TERMINAL',flush=True)
