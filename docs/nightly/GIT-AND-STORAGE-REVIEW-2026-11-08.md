@@ -1,5 +1,8 @@
 # Git integration and storage review — 2026-11-08
 
+> Current status: see the [23:59 UTC audit](GIT-STORAGE-STATUS-2026-11-08.md).
+> The observations below are retained as historical evidence.
+
 ## Latest observed state — 22:39 UTC
 
 The project is not fully integrated or published. The opened client checkout is
