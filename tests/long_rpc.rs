@@ -8,6 +8,10 @@ use std::{
     time::Duration,
 };
 #[test]
+#[expect(
+    clippy::result_large_err,
+    reason = "The handshake callback must return Tungstenite ErrorResponse."
+)]
 fn explicit_lifecycle_deadline_survives_the_original_twenty_second_limit_and_heartbeats() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
@@ -145,6 +149,10 @@ fn timeout_interrupts_without_replay_and_invalid_deadlines_never_connect() {
     server.join().unwrap();
 }
 #[test]
+#[expect(
+    clippy::result_large_err,
+    reason = "The handshake callback must return Tungstenite ErrorResponse."
+)]
 fn lifecycle_uses_existing_dpop_ticket_admission_without_exporting_bound_credentials() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
@@ -209,8 +217,14 @@ fn rejections_keep_the_servers_reason_but_no_other_cause_data() {
     let error = protocol::rejection_for_test(&cause);
     assert_eq!(error, "rpc_rejected: Project p-1 was not found.");
     assert_eq!(protocol::error_code(&error), "rpc_rejected");
-    assert_eq!(protocol::rejection_for_test(&json!({"private":"PRIVATE"})), "rpc_rejected");
-    assert_eq!(protocol::rejection_for_test(&json!({"_tag":"Die","defect":"boom"})), "rpc_rejected: boom");
+    assert_eq!(
+        protocol::rejection_for_test(&json!({"private":"PRIVATE"})),
+        "rpc_rejected"
+    );
+    assert_eq!(
+        protocol::rejection_for_test(&json!({"_tag":"Die","defect":"boom"})),
+        "rpc_rejected: boom"
+    );
     assert_eq!(protocol::error_code("Not a code: text"), "Not a code: text");
     assert_eq!(protocol::error_code("invalid_id"), "invalid_id");
 }
@@ -231,7 +245,11 @@ fn vendored_protocol_base_matches_the_existing_pinned_dependency_exactly() {
     fn walk(dir: &std::path::Path, root: &std::path::Path, out: &mut Vec<String>) {
         for entry in std::fs::read_dir(dir).unwrap() {
             let path = entry.unwrap().path();
-            let name = path.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+            let name = path
+                .strip_prefix(root)
+                .unwrap()
+                .to_string_lossy()
+                .into_owned();
             if path.is_dir() {
                 if name != "target" {
                     walk(&path, root, out);

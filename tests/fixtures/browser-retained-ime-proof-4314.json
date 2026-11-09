@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "scope": "Actual Qt same-scope retained-frame input delivery; no new compositor or NativeMain acceptance",
+  "cases": [
+    {
+      "artifact": "browser-input-method-7y2mc93m",
+      "scope": "Before: enabled0, retained240x240, emptycancel dropped",
+      "returncode": 1,
+      "runtimeLogSha256": "04c4ad4e0e53fa6bf245eaa608bc64f12736c9b7c92bec041106e50b1b1beb6a",
+      "artifactsSha256": "55008dbadd16274308f70cfce02e00cb4bac76d6ccf87ad1df6703d8d32556ad"
+    },
+    {
+      "artifact": "browser-input-method-raseaze7",
+      "scope": "Matched sameproducer afterone-linegate removal: preedit/commit/cancel PASS",
+      "returncode": 0,
+      "runtimeLogSha256": "8cf344270522256ad54b494006faff4b905f4f81ae9bdb91349a837cd9a69b4b",
+      "artifactsSha256": "8b94abe62fb91f06c231b9bbd63f8851ab348c96657b199f2a4e72639936c937"
+    },
+    {
+      "artifact": "browser-input-method-gyjeyzxp",
+      "scope": "Extended metadata proof: querybinding/geometry unavailable whileloading, basicIME remainsactive",
+      "returncode": 0,
+      "runtimeLogSha256": "8cf344270522256ad54b494006faff4b905f4f81ae9bdb91349a837cd9a69b4b",
+      "artifactsSha256": "34e88c52245359fac61a5133aeb5ed7f442a7e9dd7aaafddf73ec794e00704c5"
+    },
+    {
+      "artifact": "browser-input-method-9j0ph8i2",
+      "scope": "ActualPage/Rustregistration/reset/ownership regression PASS",
+      "returncode": 0,
+      "runtimeLogSha256": "9104d9ec3e27f85f5c455ff938c56dc71ebe2f9feffafb1c2b5a332adcf553cf",
+      "artifactsSha256": "1e5bc6546606e9af44ec7721b77ec717c5ea4d8d92f5c94e7a6f77cf3b075d7b"
+    }
+  ],
+  "matchedProducerSha256": "7fc9a4f5a33fc0975a0fa6ccb6f2d9a54880cfce90c96a110be728e51db0ccb2",
+  "sourceHashes": {
+    "ui/qml/T3BrowserPage.qml": "c711621414dfd6e4c598cb0da126d264e4172a6601de1dee23e0337f107d232f",
+    "tools/fixtures/browser-retained-ime.cpp": "c2ac64d76b4e98565fba704f93ac461fc80eb878c7b8b7787ee125ab9a492794",
+    "tools/fixtures/browser-input-method.cpp": "f154d7e14f1e04b4c6a0922ccdffc6c2e3a1d93b8b9897ac0f0dceecda3787d2",
+    "tools/test-browser-input-method": "f0d745b7cdbc2711d3a0334332a8f7a589c9c942d7c7598751dd6e8f3be2291a"
+  },
+  "nativeEnginePolicyChanged": false,
+  "contextAutoBoundFromStatePacket": false,
+  "publicSelectorEnabled": false
+}

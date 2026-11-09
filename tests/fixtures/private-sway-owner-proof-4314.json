@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "scope": "Private modified Sway native admission acceptance; no Electron hosting or public selector",
+  "sourceCommit": "e537cda",
+  "sourceHashes": {
+    "native/browser/waylandowner.h": "7bf0d604a98724486bf6b64ca7d7334d9a86ba1f00a71fbdf74b9efb76692fb6",
+    "native/browser/private-sway-owner-1.12.patch": "ba6c877b8279e40543c898cd00470eb08f1528eb7e3ad0d2f4f1fe5efd6eeb5e",
+    "tools/fixtures/private-sway-owner-check.py": "13160e3a56b774009d23c9b7a843086c676870d67ed88ed04b4a11c739056d6c",
+    "tools/fixtures/private-sway-owner-cc.py": "bedc30c175cacbdc189dac4d46c3598b47efbe7cb1af2c238ea872a7745e1898"
+  },
+  "downloads": [
+    {
+      "file": "sway-1.12.tar.gz",
+      "url": "https://codeload.github.com/swaywm/sway/tar.gz/refs/tags/1.12",
+      "bytes": 5590239,
+      "sha256": "29ca7caac960d13e02d8213418d91a5422c7c23102a283ceab944c57c5e1efcf"
+    },
+    {
+      "file": "meson-1.12.1-2-any.pkg.tar.zst",
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/meson-1.12.1-2-any.pkg.tar.zst",
+      "bytes": 2639950,
+      "sha256": "d7dd6a03661d12e52b739381f5290579bcc79189316513c1000a7c6cb3f2f900"
+    },
+    {
+      "file": "ninja-1.13.2-3-x86_64.pkg.tar.zst",
+      "url": "https://geo.mirror.pkgbuild.com/extra/os/x86_64/ninja-1.13.2-3-x86_64.pkg.tar.zst",
+      "bytes": 177532,
+      "sha256": "19e12c1a169d27e427c3fa678ed3573825ac2a1043c6d47dd96e76ec3d34236c"
+    }
+  ],
+  "libinputHeader": {
+    "package": "libinput-1.31.3-1-x86_64.pkg.tar.zst",
+    "sha256": "9720a30d93827ac2856ced3ba54d64558562efef75b1331397d5fcee7287b2be",
+    "headerSha256": "cf03264f0ca4c4e13dcb413d7c789c84847ff3339801f1625138c3bab22e314c",
+    "source": "Original signed sway package BUILDINFO exact libinput version; header only, no library replacement"
+  },
+  "artifact": {
+    "scope": "App-private modified Sway, not original signed binary",
+    "sha256": "7d16f7764c0e51555e5f3b1b8b2e94cceac48199c2dce50bb455b6a9cc655bc1",
+    "sourceArchiveSha256": "29ca7caac960d13e02d8213418d91a5422c7c23102a283ceab944c57c5e1efcf",
+    "headerSha256": "7bf0d604a98724486bf6b64ca7d7334d9a86ba1f00a71fbdf74b9efb76692fb6",
+    "explicitGNUOnly": [
+      "sway/server.c",
+      "sway/ipc-server.c"
+    ],
+    "strictBuild": 0
+  },
+  "receipt": "/home/node/BuildCache/o3-desktop-next/private-sway-build-1.12/runtime-proof5",
+  "nativeResult": 0,
+  "strictBuild": 0,
+  "runtimeAssurance": {
+    "rootless": true,
+    "network": "none",
+    "headless": true,
+    "renderer": "pixman",
+    "hostDisplayOrDevicesMounted": false,
+    "coreSoftAndHard": 0,
+    "signedCompositorFilesUnchanged": true,
+    "electronRuntimeFilesUnchanged": true
+  },
+  "qualifiedFailures": [
+    "runtime-proof1: PID1 supervisor is refused; changed to owned supervised fixture",
+    "runtime-proof2: reset can precede first request; rejection branch accepts EPIPE/ECONNRESET",
+    "runtime-proof3: native exit does not guarantee queued IPC response before process exit",
+    "runtime-proof4: closing IPC before server reads can discard exit; hold socket until waitpid"
+  ],
+  "buildQualifications": [
+    "Scoped explicit -D_GNU_SOURCE only on two patched translation units; no global GNU feature change",
+    "Original signed Sway BUILDINFO libinput1.31.3 header used with current compatible libinput1.32 runtime; no library replacement",
+    "No warning suppression; upstream Werror retained",
+    "App-private artifact, never original signed binary; no host installation"
+  ],
+  "remaining": [
+    "Kernel-authenticated early engine spawn identity and frontend factory",
+    "Wayland-hosted native clipboard lazy ingress/egress/lifetime",
+    "Full GUI/Pool native hosting acceptance before public selection"
+  ],
+  "libraryHashes": {
+    "prefix/usr/lib/libwlroots-0.20.so": "7edca9a7d65855addda68e29ba5db94d57c803eb5fa7d0f86db3136b90ca9837",
+    "prefix/usr/lib/libliftoff.so": "f062e3f341937c84e40979406a494f35f00f20a3de208a39070dadba04cfe08f",
+    "prefix/usr/lib/libliftoff.so.0": "f062e3f341937c84e40979406a494f35f00f20a3de208a39070dadba04cfe08f"
+  },
+  "sourceControlledRunnerProof": {
+    "receipt": "/home/node/BuildCache/o3-desktop-next/private-sway-owner-3q2xgewl",
+    "returncode": 0,
+    "runnerSha256": "beaf7ee073a75d75647ac0dce76dcd503362e85d8824b987112e13f769834314",
+    "scope": "Actual frozen artifact through source-controlled admission runner; no rebuild"
+  }
+}

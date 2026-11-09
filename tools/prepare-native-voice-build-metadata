@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""Print build metadata for an existing immutable Linux x64 descriptor addon.
+
+This tool neither builds nor executes the addon, installs artifacts, nor changes
+the caller's environment. Its JSON environment object can be passed directly to
+subprocess.run(..., env=...) while building the client. It is not a runtime receipt.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import struct
+
+MAX_ADDON_BYTES = 1024 * 1024
+VERSION = "44.10.1"
+PLATFORM = "linux-x64"
+ARCHIVE_SHA256 = "2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167"
+
+
+def _sha256(value):
+    return (isinstance(value, str) and len(value) == 64
+            and all(character in "0123456789abcdef" for character in value))
+
+
+def validate_manifest(manifest):
+    """Check the source-controlled runtime pin, without reading runtime files."""
+    if (not isinstance(manifest, dict)
+            or manifest.get("version") != VERSION
+            or manifest.get("platform") != PLATFORM
+            or manifest.get("archiveSha256") != ARCHIVE_SHA256):
+        raise ValueError("unsupported native voice runtime pin")
+    files = manifest.get("files")
+    if not isinstance(files, list) or len(files) != 72:
+        raise ValueError("native voice runtime requires exactly 72 pinned members")
+    seen = set()
+    for member in files:
+        if not isinstance(member, dict):
+            raise ValueError("invalid native voice runtime member")
+        name = member.get("path")
+        if (not isinstance(name, str) or not name or "\\" in name
+                or any(part in ("", ".", "..") for part in name.split("/"))
+                or name in seen):
+            raise ValueError("invalid native voice runtime member path")
+        seen.add(name)
+        size = member.get("bytes")
+        if (type(size) is not int or size < 0
+                or not _sha256(member.get("sha256"))
+                or type(member.get("executable")) is not bool):
+            raise ValueError("invalid native voice runtime member pin")
+    if "electron" not in seen:
+        raise ValueError("native voice runtime has no pinned executable")
+
+
+def _identity(metadata):
+    if (not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != os.geteuid()
+            or metadata.st_nlink != 1
+            or metadata.st_mode & 0o222
+            or not 0 < metadata.st_size <= MAX_ADDON_BYTES):
+        raise ValueError("addon must be an owned, immutable, single-link regular file under 1 MiB")
+    return tuple(getattr(metadata, key) for key in (
+        "st_dev", "st_ino", "st_mode", "st_uid", "st_gid", "st_nlink",
+        "st_size", "st_mtime_ns", "st_ctime_ns"))
+
+
+def validate_elf(data):
+    """Check the ELF target header, not the addon's ABI or implementation."""
+    if (len(data) < 64 or data[:7] != b"\x7fELF\x02\x01\x01"
+            or struct.unpack_from("<HHI", data, 16) != (3, 62, 1)
+            or struct.unpack_from("<H", data, 52)[0] != 64):
+        raise ValueError("addon must be an ELF64 little-endian x86-64 shared object")
+
+
+def addon_metadata(path):
+    path = Path(path)
+    if not path.is_absolute() or path.resolve(strict=True) != path:
+        raise ValueError("addon path must be absolute and canonical without symlinks")
+    before = _identity(path.lstat())
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        if _identity(os.fstat(descriptor)) != before:
+            raise ValueError("addon changed before metadata preparation")
+        chunks = []
+        total = 0
+        while True:
+            chunk = os.read(descriptor, min(65536, MAX_ADDON_BYTES + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > MAX_ADDON_BYTES:
+                raise ValueError("addon exceeds size limit")
+        if (_identity(os.fstat(descriptor)) != before
+                or _identity(path.lstat()) != before
+                or path.resolve(strict=True) != path):
+            raise ValueError("addon changed during metadata preparation")
+    finally:
+        os.close(descriptor)
+    data = b"".join(chunks)
+    if len(data) != before[6]:
+        raise ValueError("addon size changed during metadata preparation")
+    validate_elf(data)
+    return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+
+
+def prepare(path, root):
+    manifest_path = root / "ui/voice/electron-runtime-44.10.1-linux-x64.json"
+    validate_manifest(json.loads(manifest_path.read_text()))
+    addon = addon_metadata(path)
+    return {
+        "schema": 1,
+        "target": PLATFORM,
+        "runtimeVersion": VERSION,
+        "runtimeArchiveSha256": ARCHIVE_SHA256,
+        "addonSourceSha256": hashlib.sha256(
+            (root / "ui/browser/electron-private-fd.c").read_bytes()).hexdigest(),
+        "addon": addon,
+        "environment": {
+            "O3_NATIVE_VOICE_BUNDLED_ADDON_SHA256": addon["sha256"],
+            "O3_NATIVE_VOICE_BUNDLED_ADDON_BYTES": str(addon["bytes"]),
+        },
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--addon", required=True, type=Path,
+                        help="existing immutable addon; no build or file copy is performed")
+    arguments = parser.parse_args()
+    try:
+        metadata = prepare(arguments.addon, Path(__file__).resolve().parent.parent)
+    except (OSError, ValueError, TypeError) as error:
+        parser.exit(1, f"Cannot prepare native voice build metadata: {error}\n")
+    print(json.dumps(metadata, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

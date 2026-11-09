@@ -20,6 +20,7 @@ pub mod ffi;
 mod ffi_stream;
 mod ffi_attachments;
 pub mod activity;
+pub mod speech;
 pub mod models;
 pub mod terminal;
 pub mod code_blocks;
@@ -39,6 +40,8 @@ pub mod projects;
 pub mod tasks;
 pub mod i18n;
 pub mod stream;
+pub mod session;
+pub use session::{PendingRpc, RpcCancellation, RpcSession, SessionClosed, SessionOptions};
 pub mod projection;
 pub mod util;
 pub mod checkpoint_revert;
@@ -875,3 +878,10 @@ pub mod settings;
 pub mod device_hub;
 
 mod long_rpc;
+
+/// Shared Android/Desktop presentation contracts.
+pub mod parity;
+
+pub mod quota_present;
+
+pub mod registry_icon;

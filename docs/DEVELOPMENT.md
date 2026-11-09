@@ -38,6 +38,14 @@ curl -fsSL https://raw.githubusercontent.com/avillagran/omarchy-t3-code/main/ins
 
 For a release, commit and push the source, then run
 `CARGO_BUILD_JOBS=2 tools/package-binaries` natively on each architecture.
+The x86_64 package additionally requires
+`O3_NATIVE_VOICE_BUILD_RUNTIME=/absolute/path/to/admitted/electron/runtime`.
+The builder verifies the exact Electron 44.10.1 linux-x64 graph, builds the
+reviewed descriptor addon and compiles its digest and size into the client.
+It packages that runtime with its original licenses and immutable file modes.
+The aarch64 package currently contains the ordinary client without this voice
+runtime pin. See [native voice resources](NATIVE-VOICE-RESOURCES-4314.md) for the
+explicit source-build and isolated package verification contracts.
 mbp-intel provides the x86_64 builder; ARM64 builds run on the development machine.
 Packages include the Rust client, document and browser Qt libraries, and the original browser secret helper. Manifest/Cargo versions, `--version`, archive filenames and `BUILD-INFO` carry the same release version. Create an annotated `vVERSION` tag for the source commit.
 Write the release notes in `docs/releases/vVERSION.md` (what changed for users,
@@ -82,6 +90,22 @@ omarchy plugin validate .
 omarchy plugin enable io.github.avillagran.omarchy-t3-code
 omarchy restart shell
 ```
+
+For an x86_64 source build with native voice resources, set
+`O3_NATIVE_VOICE_BUILD_RUNTIME` to the absolute admitted runtime directory before
+`bin/build-client`. No runtime is borrowed from a system Electron installation or
+downloaded by this builder. A build without this input leaves the ordinary client
+usable and native voice unavailable unless a complete explicit startup override
+is supplied. Package construction requires the input on x86_64.
+
+The installer prepares source builds in a separate retained checkout, requires the
+complete client/library/terminal asset group, and then installs it with the source
+revision through the same guarded transaction as modern prebuilt packages.
+`CARGO_TARGET_DIR` selects an existing coordinated Cargo target; the default is
+the installed checkout's target directory. Failed staging leaves active assets
+and source untouched. Retained stages and rollback artifacts are never removed
+recursively. See the native voice resource document for rollback fences and the
+separate acceptance limits of the full installer and actual source compilation.
 
 Press Super+Shift+A, run `bin/o3` or click the T3 icon in the status bar to show the app. Configure local and remote
 connections in the official T3 client; this plugin inherits them. It does not

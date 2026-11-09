@@ -639,43 +639,21 @@ pub fn preview_with(sessions: &[Session], local_home: &Path, vault_config: Optio
 fn stamp() -> String {
     chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string()
 }
-/// Builds the archive host-sync-apply.sh reads, with GNU tar from a private folder.
+/// Build the same regular-file PAX payload directly in memory. No temporary
+/// filesystem tree or recursive cleanup is needed before the SSH transfer.
 fn archive(planned: &[&Planned], vault: Option<(&Vault, &str, &str)>, stamp: &str) -> Result<Vec<u8>> {
-    let dir = tempfile_dir()?;
-    let result = (|| -> Result<Vec<u8>> {
-        let mut plan = String::new();
-        let mut group = String::new();
-        for p in planned {
-            if !p.group.is_empty() && p.group != group {
-                group = p.group.clone();
-                plan.push_str(&format!("G{SEP}{group}\n"));
-            }
-            let file = dir.join("files").join(&p.path);
-            fs::create_dir_all(file.parent().ok_or("local_error")?).map_err(|_| "local_error")?;
-            fs::write(&file, &p.bytes).map_err(|_| "local_error")?;
-            fs::set_permissions(&file, fs::Permissions::from_mode(p.mode | 0o600)).map_err(|_| "local_error")?;
-            plan.push_str(&format!("F{SEP}{}{SEP}{}\n", p.path, p.expected));
-        }
-        if let Some((v, mode, origin)) = vault {
-            plan.push_str(&format!("V{SEP}{}{SEP}{}{SEP}{mode}{SEP}{origin}{SEP}{}{SEP}{}\n", v.path, v.url, v.name, v.email));
-        }
-        fs::create_dir_all(dir.join("files")).map_err(|_| "local_error")?;
-        fs::write(dir.join("plan"), plan).map_err(|_| "local_error")?;
-        fs::write(dir.join("stamp"), stamp).map_err(|_| "local_error")?;
-        let out = Command::new("tar").args(["--format=pax", "-C"]).arg(&dir).args(["-cf", "-", "stamp", "plan", "files"]).stdin(Stdio::null()).stderr(Stdio::null()).output().map_err(|_| "local_error")?;
-        if !out.status.success() {
-            return Err("local_error".into());
-        }
-        Ok(out.stdout)
-    })();
-    let _ = fs::remove_dir_all(&dir);
-    result
-}
-fn tempfile_dir() -> Result<PathBuf> {
-    use std::os::unix::fs::DirBuilderExt;
-    let dir = std::env::temp_dir().join(format!("ot3-host-sync-{}", uuid::Uuid::new_v4()));
-    fs::DirBuilder::new().mode(0o700).create(&dir).map_err(|_| "local_error")?;
-    Ok(dir)
+    let mut plan=String::new();let mut group=String::new();
+    for p in planned {
+        if !p.group.is_empty()&&p.group!=group{group=p.group.clone();plan.push_str(&format!("G{SEP}{group}\n"));}
+        plan.push_str(&format!("F{SEP}{}{SEP}{}\n",p.path,p.expected));
+    }
+    if let Some((v,mode,origin))=vault{plan.push_str(&format!("V{SEP}{}{SEP}{}{SEP}{mode}{SEP}{origin}{SEP}{}{SEP}{}\n",v.path,v.url,v.name,v.email));}
+    let mut tar=crate::pax_archive::Archive::new();
+    tar.file("stamp",stamp.as_bytes(),0o600).map_err(|_|"local_error")?;
+    tar.file("plan",plan.as_bytes(),0o600).map_err(|_|"local_error")?;
+    tar.directory("files").map_err(|_|"local_error")?;
+    for p in planned{tar.file(&format!("files/{}",p.path),&p.bytes,p.mode|0o600).map_err(|_|"local_error")?;}
+    Ok(tar.finish())
 }
 /// Sync the chosen items: probe again, then one command writes every file whose
 /// host copy did not change since, after backing up what it replaces.
@@ -852,7 +830,7 @@ mod tests {
     #[test]
     fn a_file_changed_on_the_host_after_the_probe_is_not_overwritten() {
         let base = std::env::temp_dir().join(format!("ot3-host-sync-cas-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&base);
+
         let home = base.join("there");
         fs::create_dir_all(home.join(".codex")).unwrap();
         fs::write(home.join(".codex/AGENTS.md"), "before\n").unwrap();
@@ -866,6 +844,6 @@ mod tests {
         assert!(out.contains(&format!("F{SEP}.codex/AGENTS.md{SEP}changed")) && out.contains(&format!("F{SEP}.codex/NEW.md{SEP}ok")), "{out}");
         assert_eq!(fs::read_to_string(home.join(".codex/AGENTS.md")).unwrap(), "edited meanwhile\n");
         assert!(safe_rel("a/b") && !safe_rel("../a") && !safe_rel("/a") && !safe_rel("a//b") && !safe_rel("a/\nb"));
-        let _ = fs::remove_dir_all(&base);
+
     }
 }

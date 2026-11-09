@@ -1,0 +1,21 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "files": {
+    "packages/shared/src/usageLimits.ts": "f183c8bbd0c438f06e6033b9e6355951c9ad906663c79aaf6cd9ef5fbf526889",
+    "packages/contracts/src/settings.ts": "d6441e2560891ddec76d444f5ea835fd0f6b60c6c0bb63a6557f358401cb9fe2",
+    "packages/contracts/src/model.ts": "754f9f6611fadefcd72ccc1211102379a878026643092abca27e5f90fee00cf9",
+    "packages/contracts/src/server.ts": "1d361c2b4023c97002dcf50cbe4322f8bcf3ffa0ab6f1a96ad23b99653e4dcf1",
+    "packages/contracts/src/providerInstance.ts": "ade67de404651ff6c5373ba1b0359f598c06d49f5e4de2aa77ebf396ab91233a"
+  },
+  "constants": {
+    "file": "tests/fixtures/new-thread-model-4301.json",
+    "sha256": "2d55cfcb4263ae49d7d28c8f033e1f5d5672c3f504339e91c25ae00fc28228f2"
+  },
+  "outputSha256": "ae70c2d986d5102793b235aa0cba2733a1fe19091196690954de2b9f7597e64b",
+  "adaptations": [
+    "Complete selected native functions after TypeScript/import/export removal",
+    "Nominal constant ID sets evaluated with real native constructors in the canonical oracle",
+    "Object.hasOwn uses equivalent hasOwnProperty.call for Qt",
+    "Availability delegates to the unchanged native predicate already extracted for usage presentation"
+  ]
+}

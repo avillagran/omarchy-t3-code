@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Compile a terminal test and execute it only inside a private rootless container."""
+import argparse
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--oracle-source", type=Path, help="Regenerate the oracle from this pinned T3 checkout inside the container")
+options = parser.parse_args()
+root = Path(__file__).resolve().parent.parent
+subprocess.run([str(root / "tools/build-terminal-surface")], check=True)
+sdk = Path(subprocess.check_output([str(root / "tools/build-ghostty-vt")], text=True).strip())
+build_root = Path(os.environ.get("O3_TERMINAL_BUILD_ROOT", "/var/tmp"))
+build_root.mkdir(parents=True, exist_ok=True)
+build = Path(tempfile.mkdtemp(prefix="o3-terminal-native-test-", dir=build_root))
+build.chmod(0o700)
+moc = subprocess.check_output(["pkg-config", "--variable=libexecdir", "Qt6Core"], text=True).strip() + "/moc"
+subprocess.run([moc, str(root / "native/terminal/tests.cpp"), "-o", str(build / "tests.moc")], check=True)
+subprocess.run([moc, str(root / "native/terminal/terminalsurface.h"), "-o", str(build / "moc_terminalsurface.cpp")], check=True)
+flags = subprocess.check_output(["pkg-config", "--cflags", "--libs", "Qt6Quick", "Qt6Qml", "Qt6Gui", "Qt6Test"], text=True).split()
+command = ["flock", "/var/tmp/o3-build/o3-parity-compile.lock", "c++", "-std=c++17", "-Os", "-fPIC",
+           str(root / "native/terminal/tests.cpp"), str(root / "native/terminal/terminalsurface.cpp"),
+           str(build / "moc_terminalsurface.cpp"), "-I"+str(root / "native/terminal"), "-I"+str(build),
+           "-I"+str(sdk / "include"), str(sdk / "lib/libghostty-vt.a"), "-o", str(build / "terminal-tests"), *flags]
+subprocess.run(command, check=True)
+args = ["podman", "run", "--rm", "--userns=keep-id", "--user", f"{os.getuid()}:{os.getgid()}",
+        "--read-only", "--tmpfs", "/tmp:rw,size=512m,mode=1777", "--tmpfs", "/run:rw,size=64m,mode=755",
+        "--network=none", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=256", "--memory=2g"]
+for key, value in {"HOME":"/tmp/home", "XDG_RUNTIME_DIR":"/tmp/runtime", "QT_QPA_PLATFORM":"offscreen",
+                   "QT_QUICK_BACKEND":"software", "O3_TERMINAL_SOURCE":str(root)}.items():
+    args += ["--env", f"{key}={value}"]
+mounts = {Path("/usr"), Path("/etc/fonts"), root, build}
+if options.oracle_source:
+    source = options.oracle_source.resolve(strict=True)
+    common_git = Path(subprocess.check_output(["git", "-C", str(source), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True).strip())
+    mounts.update([source, common_git])
+for mount in sorted(mounts):
+    args += ["-v", f"{mount}:{mount}:ro"]
+evidence = build / "evidence"
+evidence.mkdir(mode=0o700)
+args += ["-v", f"{evidence}:/evidence:rw"]
+image = "docker.io/library/archlinux:latest"
+if options.oracle_source:
+    oracle = subprocess.run([*args, image, "node", str(root / "tools/generate-terminal-fixtures.mjs"), str(source),
+                             "/evidence/oracle/fixtures.json"], capture_output=True, text=True, timeout=60)
+    print(oracle.stdout + oracle.stderr)
+    if oracle.returncode:
+        raise SystemExit(oracle.returncode)
+    link_oracle = subprocess.run([*args, image, "node", str(root / "tools/generate-terminal-link-fixtures.mjs"), str(source),
+                                  "/evidence/oracle/link-fixtures.json"], capture_output=True, text=True, timeout=60)
+    print(link_oracle.stdout + link_oracle.stderr)
+    if link_oracle.returncode:
+        raise SystemExit(link_oracle.returncode)
+    args += ["--env", "O3_TERMINAL_ORACLE=/evidence/oracle/fixtures.json",
+             "--env", "O3_TERMINAL_LINK_ORACLE=/evidence/oracle/link-fixtures.json"]
+result = subprocess.run([*args, image, str(build / "terminal-tests"), "-o", "/evidence/results.txt,txt"], capture_output=True, text=True, timeout=60)
+print(f"Terminal native evidence: {evidence}")
+log = (evidence / "results.txt").read_text() if (evidence / "results.txt").exists() else result.stdout + result.stderr
+print(log)
+raise SystemExit(result.returncode)

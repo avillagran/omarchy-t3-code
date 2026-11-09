@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Compare complete native PCM worklet/resampler bytes in private Node and Qt."""
+import argparse,fcntl,hashlib,json,os,pathlib,shlex,stat,subprocess,tempfile
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--native',required=True,type=pathlib.Path)
+parser.add_argument('--node',required=True,type=pathlib.Path)
+parser.add_argument('--component',choices=['dsp','lifecycle','device','integers'],default='dsp')
+parser.add_argument('--reuse-node-artifact',type=pathlib.Path,help='Existing private read-only pinned Node snapshot; rechecked before and after runtime')
+args=parser.parse_args();root=pathlib.Path(__file__).resolve().parent.parent
+if subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+evidence=pathlib.Path(tempfile.mkdtemp(prefix='native-pcm-qt-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));evidence.chmod(0o700)
+def digest(data):return hashlib.sha256(data).hexdigest()
+fixture={'dsp':'pcm-capture','lifecycle':'pcm-lifecycle','device':'pcm-device','integers':'pcm-device'}[args.component]
+driver={'lifecycle':'pcm-lifecycle','integers':'pcm-integer'}.get(args.component,'pcm-capture')
+files=['tools/test-native-pcm-qt','tools/fixtures/'+fixture+'-qt.cpp','tools/fixtures/'+driver+'-driver.js','tools/fixtures/'+driver+'-native.mjs','ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json']
+if args.component!='lifecycle':files+=['native/voice/voicemath.h','native/voice/voicemath.cpp','native/voice/vendor/v8/UPSTREAM.json','native/voice/vendor/v8/src/base/ieee754.cc','native/voice/vendor/v8/src/base/ieee754.h','native/voice/vendor/v8/src/base/overflowing-math.h','native/voice/v8-compat/src/base/base-export.h','native/voice/v8-compat/src/base/build_config.h','native/voice/v8-compat/src/base/macros.h']
+else:files+=['ui/js/VoicePlatform.js']
+if args.component in ('device','integers'):files+=['native/voice/pcmdsp.h','native/voice/pcmdsp.cpp','native/voice/vendor/chromium/UPSTREAM.json','native/voice/vendor/chromium/LICENSE','native/voice/vendor/chromium/media/base/audio_sample_types.h']
+if args.component=='integers':files+=['tools/fixtures/pcm-codecs-native.cpp']
+source=evidence/'source';source.mkdir(mode=0o700);fence={}
+for name in files:
+ data=(root/name).read_bytes();fence[name]=digest(data);target=source/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);target.chmod(0o400)
+metadata=json.loads((source/'ui/js/NativePcmCapture.sources.json').read_text());assert metadata['outputSha256']==fence['ui/js/NativePcmCapture.js']
+if args.component!='lifecycle':
+ upstream=json.loads((source/'native/voice/vendor/v8/UPSTREAM.json').read_text())
+ assert all(fence[name]==expected for name,expected in upstream['vendoredFiles'].items()),'Changed original V8 math bytes'
+if args.component in ('device','integers'):
+ upstream=json.loads((source/'native/voice/vendor/chromium/UPSTREAM.json').read_text())
+ assert upstream['revision']=='92a6f15143569cf59b340472d0b5030465d95722' and all(fence[name]==expected for name,expected in upstream['sourceFiles'].items()),'Changed original Chromium sample bytes'
+for name,expected in metadata['sourceFiles'].items():assert digest((args.native/name).read_bytes())==expected
+if args.reuse_node_artifact:
+ node=args.reuse_node_artifact
+ assert node.is_absolute() and os.path.normpath(node)==str(node)
+ current=pathlib.Path('/')
+ for part in node.parts[1:]:
+  current=current/part;info=current.lstat();assert not stat.S_ISLNK(info.st_mode)
+ info=node.lstat();assert stat.S_ISREG(info.st_mode) and info.st_uid==os.getuid() and info.st_nlink==1 and stat.S_IMODE(info.st_mode)==0o500
+else:
+ node=evidence/'node';fd=os.open(args.node,os.O_RDONLY|os.O_NOFOLLOW)
+ with os.fdopen(fd,'rb')as original:
+  before=os.fstat(original.fileno());assert stat.S_ISREG(before.st_mode)and before.st_mode&0o111 and not before.st_mode&0o6000
+  with node.open('xb')as target:
+   while data:=original.read(1024*1024):target.write(data)
+  after=os.fstat(original.fileno());assert (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)==(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns)
+ node.chmod(0o500)
+node_digest=digest(node.read_bytes());assert node_digest=='0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b'
+node_info=node.stat();node_identity=(node_info.st_dev,node_info.st_ino,node_info.st_size,node_info.st_mtime_ns,node_info.st_ctime_ns)
+binary=evidence/'pcm-capture-qt'
+codec_probe=evidence/'pcm-codecs-native'
+with pathlib.Path('/var/tmp/o3-build/o3-parity-compile.lock').open('a')as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Core','Qt6Qml']+(['Qt6Multimedia'] if args.component in ('device','integers') else []),text=True))
+ with(evidence/'compile.log').open('w')as log:
+  extra=[]
+  if args.component!='lifecycle':
+   moc_inputs=[('tools/fixtures/'+fixture+'-qt.cpp','tools/fixtures/'+fixture+'-qt.moc'),('native/voice/voicemath.h','native/voice/voicemath.moc')]
+   if args.component in ('device','integers'):moc_inputs+=[('native/voice/pcmdsp.h','native/voice/moc_pcmdsp.cpp')]
+   for header,output in moc_inputs:
+    moc=subprocess.run(['/usr/lib/qt6/moc',str(source/header),'-o',str(source/output)],stdout=log,stderr=subprocess.STDOUT)
+    if moc.returncode:print(evidence);raise SystemExit(moc.returncode)
+   extra=['-I'+str(source/'native/voice/v8-compat'),'-I'+str(source/'native/voice/vendor/v8'),str(source/'native/voice/voicemath.cpp'),str(source/'native/voice/vendor/v8/src/base/ieee754.cc')]
+   if args.component in ('device','integers'):extra+=[str(source/'native/voice/pcmdsp.cpp'),str(source/'native/voice/moc_pcmdsp.cpp')]
+  compiled=subprocess.run(['c++','-std=c++20','-fPIC','-O3','-fno-fast-math','-ffp-contract=off','-fvisibility=hidden','-Wall','-Wextra','-Werror',str(source/'tools/fixtures'/ (fixture+'-qt.cpp')),*extra,'-o',str(binary),*flags],stdout=log,stderr=subprocess.STDOUT)
+  if compiled.returncode==0 and args.component=='integers':compiled=subprocess.run(['clang++','-std=c++20','-O3','-fno-fast-math','-ffp-contract=off','-Wall','-Wextra','-Werror',str(source/'tools/fixtures/pcm-codecs-native.cpp'),'-o',str(codec_probe)],stdout=log,stderr=subprocess.STDOUT)
+ if compiled.returncode:print(evidence);raise SystemExit(compiled.returncode)
+binary.chmod(0o500)
+state=evidence/'state';state.mkdir(mode=0o700)
+for name in ['home','tmp','config','cache','data','runtime']:(state/name).mkdir(mode=0o700)
+base=['podman','--remote=false','run','--rm','--pull=never','--timeout=120','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--read-only','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64','--memory=2g','--ulimit','core=0','--workdir','/state','-v',f'{source}:/source:ro','-v',f'{node}:/pcm-node:ro','-v',f'{binary}:/pcm-qt:ro','-v',f'{args.native.resolve()}:/native:ro','-v',f'{state}:/state:rw','-v','/usr:/usr:ro','--env','HOME=/state/home','--env','TMPDIR=/state/tmp','--env','XDG_CONFIG_HOME=/state/config','--env','XDG_CACHE_HOME=/state/cache','--env','XDG_DATA_HOME=/state/data','--env','XDG_RUNTIME_DIR=/state/runtime','localhost/o3-rust-tests:latest']
+codec_hash=None
+if args.component=='integers':
+ codec_probe.chmod(0o500)
+ probe_base=base[:-1]+['-v',f'{codec_probe}:/pcm-codecs-native:ro']+base[-1:]
+ with(evidence/'codecs.log').open('w')as log:generated=subprocess.run([*probe_base,'/pcm-codecs-native','/state/codecs.bin'],stdout=log,stderr=subprocess.STDOUT,timeout=30)
+ if generated.returncode:print(evidence);raise SystemExit(generated.returncode)
+ codec_file=state/'codecs.bin';codec_file.chmod(0o400);codec_hash=digest(codec_file.read_bytes())
+ base=base[:-1]+['-v',f'{codec_file}:/pcm-codecs.bin:ro']+base[-1:]
+commands={'native':['/pcm-node','--experimental-vm-modules','/source/tools/fixtures/'+driver+'-native.mjs','/native','/source/tools/fixtures/'+driver+'-driver.js'],'qt':['/pcm-qt','/source/ui/js/NativePcmCapture.js','/source/tools/fixtures/'+driver+'-driver.js']};results={}
+if args.component=='lifecycle':commands['qt']+=['/source/ui/js/VoicePlatform.js']
+if args.component=='integers':
+ commands['native']+=['/pcm-codecs.bin'];commands['qt']+=['/pcm-codecs.bin']
+for name,command in commands.items():
+ with(evidence/(name+'.json')).open('w')as output,(evidence/(name+'.log')).open('w')as log:results[name]=subprocess.run([*base,*command],stdout=output,stderr=log,timeout=135).returncode
+ if results[name]:break
+proof={'exitCodes':results,'sourceSha256':fence,'nodeSha256':node_digest,'binarySha256':digest(binary.read_bytes()),'scope':'Whole native DSP only, exact coefficient/PCM/meter bytes. Private rootless runtime, synthetic inputs; no hardware capture/consent/transport activation.'}
+if args.component=='lifecycle':proof['scope']='Whole original browser capture callback lifecycle with controlled browser primitives in actual Node and Qt; no hardware, consent or transport activation.'
+if args.component=='device':proof['scope']='Actual C++ Qt device-byte DSP consumer, synthetic Float32 interleaved channels and split frames, compared with whole original Node DSP. No hardware, integer-format, consent or transport acceptance.'
+if args.component=='device':proof.update({'deviceFormatRefusals':5,'queuedCallbackCancellationCases':1})
+if args.component=='integers':proof.update({'scope':'Actual Qt device byte adapter against complete Chromium traits compiled with Clang and whole original Node worklet; synthetic U8/S16/S32 mono/stereo. No microphone, consent or transport acceptance.','codecCorpusSha256':codec_hash,'codecProbeSha256':digest(codec_probe.read_bytes()),'deviceFormatRefusals':5,'queuedCallbackCancellationCases':1})
+if all(results.get(name)==0 for name in commands):
+ native=json.loads((evidence/'native.json').read_text());qt=json.loads((evidence/'qt.json').read_text());equal=native==qt
+ if args.component in ('dsp','device'):
+  proof.update({'equal':equal,'mathEqual':native['mathDigest']==qt['mathDigest'],'mathPrimitiveObservations':native['mathPrimitiveObservations'],'wholeModuleCases':native['wholeModuleCases'],'fullLimitSamples':native['fullLimitSamples'],'differences':[{'case':index,'rate':left['input']['rate'],'pattern':left['input']['pattern'],'fields':[key for key in left if left[key]!=right[key]]}for index,(left,right)in enumerate(zip(native['cases'],qt['cases']))if left!=right]})
+  proof['exit']=0 if equal and native['fullLimitSamples']==4800000 else 1
+ elif args.component=='lifecycle':
+  proof.update({'equal':equal,'wholeCaptureCases':native['wholeCaptureCases'],'differences':[{'case':index,'native':left,'qt':right}for index,(left,right)in enumerate(zip(native['cases'],qt['cases']))if left!=right]})
+  proof['exit']=0 if equal and native['wholeCaptureCases']==25 else 1
+ else:
+  proof.update({'equal':equal,'integerDeviceCases':native['integerDeviceCases'],'codecCorpusSamples':native['codecCorpusSamples'],'differences':[{'case':index,'format':left['format'],'rate':left['rate'],'channels':left['channels'],'fields':[key for key in left if left[key]!=right[key]]}for index,(left,right)in enumerate(zip(native['cases'],qt['cases']))if left!=right]})
+  proof['exit']=0 if equal and native['integerDeviceCases']==18 and native['codecCorpusSamples']==393219 else 1
+else:proof['exit']=1
+assert all(digest((root/name).read_bytes())==expected for name,expected in fence.items()),'Source changed during runtime'
+node_info=node.stat();assert node_identity==(node_info.st_dev,node_info.st_ino,node_info.st_size,node_info.st_mtime_ns,node_info.st_ctime_ns) and digest(node.read_bytes())==node_digest,'Pinned Node snapshot changed during runtime'
+if codec_hash:assert digest(codec_file.read_bytes())==codec_hash,'Native sample corpus changed during runtime'
+(evidence/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(evidence);raise SystemExit(proof['exit'])

@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Compare the whole original voice platform and its Qt compilation privately."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import subprocess
+import tempfile
+
+p=argparse.ArgumentParser(description=__doc__)
+for name in ['native','dependencies','compiler','node']:p.add_argument('--'+name,required=True,type=Path)
+a=p.parse_args();root=Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+out=Path(tempfile.mkdtemp(prefix='native-voice-platform-',dir='/var/tmp/o3-build'));out.chmod(0o700)
+source=out/'source';source.mkdir(mode=0o700)
+names=['tools/fixtures/voice-platform-driver.js','tools/fixtures/voice-platform-native.mjs','tools/fixtures/voice-platform-qt.cpp','tools/fixtures/effect-4.1.2.manifest.json','ui/js/NativeVoiceInput.js','ui/js/NativeVoiceInput.sources.json','ui/js/NativeVoice.js','ui/js/NativeVoice.sources.json','ui/js/VoicePlatform.js','tools/voice-compiler/package-lock.json']
+digest=lambda data:hashlib.sha256(data).hexdigest()
+fence={}
+for name in names:
+ data=(root/name).read_bytes();fence[name]=digest(data);dest=source/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data);dest.chmod(0o400)
+manifest=json.loads((root/'ui/js/NativeVoiceInput.sources.json').read_text())
+assert manifest['outputSha256']==fence['ui/js/NativeVoiceInput.js']
+assert digest((a.compiler/'package-lock.json').read_bytes())==manifest['compilerLockSha256']
+native_fence={**manifest['sourceFiles'],**json.loads((root/'ui/js/NativeVoice.sources.json').read_text())['sourceFiles']}
+for name,expected in native_fence.items():assert digest((a.native/name).read_bytes())==expected
+effect=json.loads((root/'tools/fixtures/effect-4.1.2.manifest.json').read_text())
+for name,expected in effect['files'].items():
+ dependency=a.dependencies/'node_modules/effect'/name
+ assert dependency.is_file()and not dependency.is_symlink()and digest(dependency.read_bytes())==expected
+assert digest(a.node.read_bytes())=='0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b'
+binary=out/'platform-qt'
+with Path('/var/tmp/o3-build/o3-parity-compile.lock').open('a')as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Core','Qt6Qml'],text=True))
+ with(out/'compile.log').open('w')as log:r=subprocess.run(['c++','-std=c++17','-fPIC','-O2','-Wall','-Wextra','-Werror',str(source/'tools/fixtures/voice-platform-qt.cpp'),'-o',str(binary),*flags],stdout=log,stderr=subprocess.STDOUT)
+ if r.returncode:print(out);raise SystemExit(r.returncode)
+binary.chmod(0o500)
+state=out/'state';state.mkdir(mode=0o700)
+for name in ['home','tmp','runtime','cache','config','data']:(state/name).mkdir(mode=0o700)
+base=['podman','--remote=false','run','--rm','--pull=never','--http-proxy=false','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=64','--memory=2g','--ulimit','core=0','--workdir','/state','-v',f'{source}:/source:ro','-v',f'{binary}:/platform-qt:ro','-v',f'{a.native.resolve()}:/native:ro','-v',f'{a.dependencies.resolve()}:/dependencies:ro','-v',f'{a.compiler.resolve()}:/compiler:ro','-v',f'{a.node.resolve()}:/voice-node:ro','-v',f'{state}:/state:rw','-v','/usr:/usr:ro']
+for key,value in {'HOME':'home','TMPDIR':'tmp','XDG_RUNTIME_DIR':'runtime','XDG_CACHE_HOME':'cache','XDG_CONFIG_HOME':'config','XDG_DATA_HOME':'data'}.items():base+=['--env',key+'=/state/'+value]
+base+=['localhost/o3-rust-tests:latest']
+commands={
+ 'native':['/voice-node','--experimental-vm-modules','/source/tools/fixtures/voice-platform-native.mjs','/native','/dependencies','/compiler','/source/tools/fixtures/voice-platform-driver.js'],
+ 'qt':['/platform-qt','/source/ui/js/VoicePlatform.js','/source/ui/js/NativeVoice.js','/source/ui/js/NativeVoiceInput.js','/source/tools/fixtures/voice-platform-driver.js'],
+}
+codes={}
+for name,command in commands.items():
+ with(out/(name+'.json')).open('w')as output,(out/(name+'.log')).open('w')as log:codes[name]=subprocess.run([*base,*command],stdout=output,stderr=log,timeout=45).returncode
+ if codes[name]:break
+proof={'exitCodes':codes,'sourceSha256':fence,'nativeSourceSha256':native_fence,'effectFilesVerified':len(effect['files']),'nodeSha256':digest(a.node.read_bytes()),'binarySha256':digest(binary.read_bytes()),'scope':'Whole original browser platform/language declarations versus Qt, actual canonical Effect; synthetic capture/HTTP/SDK boundaries, no UI activation or microphone acceptance'}
+proof['exit']=1
+if all(codes.get(name)==0 for name in commands):
+ native=json.loads((out/'native.json').read_text());qt=json.loads((out/'qt.json').read_text());proof.update(equal=native==qt,cases=native['count'])
+ if native!=qt:proof['firstDifferentCase']=next((index for index,(a,b)in enumerate(zip(native['cases'],qt['cases']))if a!=b),None)
+ else:proof['exit']=0
+assert all(digest((root/name).read_bytes())==expected for name,expected in fence.items())
+assert all(digest((a.native/name).read_bytes())==expected for name,expected in native_fence.items())
+(out/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(out);raise SystemExit(proof['exit'])

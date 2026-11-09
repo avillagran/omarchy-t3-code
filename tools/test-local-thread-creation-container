@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""Accept local draft creation through an immutable client/server in a private container."""
+import argparse, hashlib, json, os, stat, subprocess, tempfile
+from pathlib import Path
+p=argparse.ArgumentParser(description=__doc__)
+p.add_argument('--client-artifacts',required=True,type=Path)
+p.add_argument('--server',type=Path,default=Path('/home/node/BuildCache/o3-device-viewer-access-next/o3-server-c44fb8aba78b'))
+p.add_argument('--server-checkout',type=Path,default=Path('/var/tmp/o3-server/fresh-context'))
+a=p.parse_args();root=Path(__file__).resolve().parent.parent
+def regular(path):
+    if not stat.S_ISREG(path.lstat().st_mode):raise SystemExit('Regular no-follow input required: '+str(path))
+    return path.read_bytes()
+def digest(data):return hashlib.sha256(data).hexdigest()
+if subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+out=Path(tempfile.mkdtemp(prefix='creation-',dir='/home/node/BuildCache/o3-local-draft-4301'));out.chmod(0o700)
+bundle=out/'bundle';bundle.mkdir();receipt=json.loads(regular(a.client_artifacts));source=Path(receipt['directory'])
+for item in receipt['files']:
+    data=regular(source/item['path'])
+    if digest(data)!=item['sha256']:raise SystemExit('Immutable client input hash mismatch')
+    target=bundle/item['path'];target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);target.chmod(0o500 if '.so' not in target.name else 0o400)
+server=regular(a.server)
+if digest(server)!='2d0699f571596069a5f864b545080f11ccbbb6c975af046b6c303f36ca792ed6':raise SystemExit('Unexpected server artifact')
+(bundle/'o3-server').write_bytes(server);(bundle/'o3-server').chmod(0o500)
+renderer=regular(root/'bin/libt3-browser.so');(bundle/'libt3-browser.so').write_bytes(renderer)
+provider=subprocess.check_output(['git','-C',str(a.server_checkout),'show','c099d4b:tests/fixtures/concurrent-codex.py'])
+(bundle/'concurrent-codex.py').write_bytes(provider);(bundle/'concurrent-codex.py').chmod(0o500)
+(out/'inputs.json').write_text(json.dumps({'client':receipt,'serverSha256':digest(server),'providerSha256':digest(provider),'rendererSha256':digest(renderer)},indent=2)+'\n')
+inner=r'''
+import json,os,pathlib,queue,socket,subprocess,threading,time,uuid
+assert pathlib.Path('/run/.containerenv').is_file()
+os.umask(0o077)
+profile=pathlib.Path('/tmp/private-server');profile.mkdir();pathlib.Path('/tmp/project').mkdir()
+(profile/'userdata').mkdir()
+(profile/'userdata'/'settings.json').write_text(json.dumps({'providerInstances':{'codex':{'driver':'codex','enabled':True,'config':{'binaryPath':'/bundle/concurrent-codex.py'},'environment':[{'name':'T3CODE_HOME','value':str(profile)}]}}}))
+(profile/'release-1').touch()
+env=os.environ.copy();env['T3CODE_HOME']=str(profile)
+token=subprocess.check_output(['/bundle/o3-server','auth','session','issue','--base-dir',str(profile),'--ttl','1h','--subject','private-fixture','--token-only'],env=env,text=True).strip()
+pathlib.Path('/tmp/token').write_text(token);pathlib.Path('/tmp/token').chmod(0o600)
+pathlib.Path('/tmp/environments.json').write_text(json.dumps({'environments':[{'id':'fixture','name':'Private fixture','base_url':'http://127.0.0.1:14328','token_file':'/tmp/token','write_token_file':'/tmp/token'}]}))
+server=subprocess.Popen(['/bundle/o3-server','serve','--base-dir',str(profile),'--port','14328','--host','127.0.0.1'],env=env,stdout=open('/evidence/server.log','w'),stderr=subprocess.STDOUT)
+try:
+    deadline=time.monotonic()+15
+    while True:
+        try:
+            with socket.create_connection(('127.0.0.1',14328),timeout=.1):break
+        except OSError:
+            assert server.poll() is None and time.monotonic()<deadline,'Server readiness failed'
+            time.sleep(.05)
+    clientenv=os.environ.copy();clientenv['OMARCHY_T3_FIXTURE_ENVIRONMENTS']='/tmp/environments.json'
+    bootstrap=subprocess.Popen(['/bundle/omarchy-t3-client','watch'],env=clientenv,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=open('/evidence/bootstrap-stderr.log','w'),text=True)
+    events=queue.Queue()
+    def read():
+        for line in bootstrap.stdout:
+            try:events.put(json.loads(line))
+            except ValueError:pass
+    threading.Thread(target=read,daemon=True).start()
+    request=str(uuid.uuid4());bootstrap.stdin.write(json.dumps({'op':'manage','action':'add-project','environment':'fixture','workspaceRoot':'/tmp/project','requestId':request})+'\n');bootstrap.stdin.flush()
+    deadline=time.monotonic()+15
+    while True:
+        event=events.get(timeout=max(.1,deadline-time.monotonic()))
+        if event.get('type')=='action' and event.get('data',{}).get('requestId')==request:
+            assert not event['data'].get('error'),event
+            break
+        assert time.monotonic()<deadline
+    bootstrap.stdin.write('{"op":"quit"}\n');bootstrap.stdin.flush();bootstrap.wait(timeout=10);assert bootstrap.returncode==0
+    for name in ['home','runtime','qml','.X11-unix']:pathlib.Path('/tmp',name).mkdir(exist_ok=True)
+    pathlib.Path('/tmp/runtime').chmod(0o700);pathlib.Path('/tmp/.X11-unix').chmod(0o1777)
+    for name in ['Commons','Ui','plugins','services']:pathlib.Path('/tmp/qml',name).symlink_to('/usr/share/omarchy/shell/'+name)
+    pathlib.Path('/tmp/qml/UnderTest').symlink_to('/source')
+    pathlib.Path('/tmp/qml/shell.qml').write_text('//@ pragma OmarchyLoadPatch\n//@ pragma RespectSystemStyle\n'+pathlib.Path('/source/tests/qml/local-thread-draft-server.qml').read_text())
+    display=subprocess.Popen(['Xvfb',':9','-screen','0','1280x1024x24','-nolisten','tcp','-extension','GLX'],stdout=open('/evidence/display.log','w'),stderr=subprocess.STDOUT)
+    try:
+        deadline=time.monotonic()+5
+        while not pathlib.Path('/tmp/.X11-unix/X9').is_socket():
+            assert display.poll() is None and time.monotonic()<deadline
+            time.sleep(.02)
+        clientenv.update(DISPLAY=':9',QT_QPA_PLATFORM='xcb',QT_QUICK_BACKEND='software',QT_QUICK_CONTROLS_STYLE='OmarchyT3',QML_IMPORT_PATH='/source/ui/style:/source/bin/qml')
+        result=subprocess.run(['quickshell','-p','/tmp/qml/shell.qml'],env=clientenv,stdout=open('/evidence/qml.log','w'),stderr=subprocess.STDOUT,timeout=55)
+        assert result.returncode==0,'Actual QML acceptance failed'
+        deadline=time.monotonic()+15
+        while not (profile/'started-1').is_file():
+            assert server.poll() is None and time.monotonic()<deadline,'No synthetic provider turn was started'
+            time.sleep(.05)
+        methods=(profile/'peer-methods.log').read_text();assert 'thread/start' in methods and 'turn/start' in methods
+        pathlib.Path('/evidence/provider-methods.log').write_text(methods)
+    finally:
+        display.terminate();display.wait(timeout=5)
+finally:
+    pathlib.Path('/evidence/profile-files.json').write_text(json.dumps([str(path.relative_to(profile)) for path in profile.iterdir()]))
+    if (profile/'peer-methods.log').is_file():pathlib.Path('/evidence/provider-methods.log').write_text((profile/'peer-methods.log').read_text())
+    server.terminate();server.wait(timeout=10)
+'''
+(out/'private.py').write_text(inner)
+command=['podman','--remote=false','run','--rm','--network=none','--read-only','--cap-drop=all','--security-opt=no-new-privileges','--pids-limit=256','--memory=3g','--tmpfs','/tmp:rw,nosuid,nodev,size=512m','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','XDG_STATE_HOME=/tmp/state','--env','XDG_CONFIG_HOME=/tmp/config','--env','XDG_DATA_HOME=/tmp/data','--env','LD_LIBRARY_PATH=/bundle:/bundle/deps','--env','QML_XHR_ALLOW_FILE_READ=1','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(root)+':/source:ro','-v',str(bundle)+':/bundle:ro','-v',str(bundle/'omarchy-t3-client')+':/source/bin/omarchy-t3-client:ro','-v',str(out)+':/evidence:rw','localhost/o3-qml-wayland-tests:local','python3','/evidence/private.py']
+result=subprocess.run(command,capture_output=True,text=True,timeout=100);(out/'container.log').write_text(result.stdout+result.stderr);(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');print('Evidence:',out);print(result.stdout+result.stderr);raise SystemExit(result.returncode)

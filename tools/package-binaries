@@ -5,19 +5,30 @@ cd -- "$(dirname -- "$0")/.."
 [[ -z $(git status --porcelain --untracked-files=normal) ]] || { echo 'Commit changes before packaging.' >&2; exit 1; }
 arch=$(uname -m)
 case "$arch" in aarch64|x86_64) ;; *) echo "Unsupported architecture: $arch" >&2; exit 1;; esac
+if [[ $arch == x86_64 ]]; then
+  [[ -n ${O3_NATIVE_VOICE_BUILD_RUNTIME:-} ]] || { echo 'Set O3_NATIVE_VOICE_BUILD_RUNTIME to the admitted Electron 44.10.1 linux-x64 runtime before packaging.' >&2; exit 1; }
+elif [[ -n ${O3_NATIVE_VOICE_BUILD_RUNTIME+x} ]]; then
+  echo 'The native voice runtime pin currently supports Linux x86_64 only.' >&2; exit 1
+fi
 commit=$(git rev-parse HEAD)
 version="v$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')"
 [[ $(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1) == "${version#v}" ]] || { echo 'Version mismatch.' >&2; exit 1; }
 OT3_PORTABLE=1 bin/build-client
-for file in omarchy-t3-client libt3-document.so libt3-qml-preview.so libt3-browser.so t3-browser-secret ot3-dictate; do [[ -s bin/$file ]]; done
+for file in omarchy-t3-client libt3-document.so libt3-qml-preview.so libt3-browser.so t3-browser-secret ot3-dictate qml/O3/Terminal/libo3terminal.so qml/O3/Terminal/qmldir qml/O3/Terminal/Ghostty-LICENSE qml/O3/Terminal/GHOSTTY_VERSION; do [[ -s bin/$file ]]; done
 mkdir -p dist
-stage=$(mktemp -d)
-trap 'rm -rf -- "$stage"' EXIT
+stage=$(mktemp -d "${TMPDIR:-/var/tmp}/o3-package.XXXXXXXX")
+# Keep prepared files and interrupted output for explicit owner review.
+trap 'printf "Retained package staging: %s\n" "$stage" >&2' EXIT
 mkdir "$stage/bin"
 install -m755 bin/omarchy-t3-client bin/libt3-document.so bin/libt3-qml-preview.so bin/libt3-browser.so bin/t3-browser-secret bin/ot3-dictate "$stage/bin/"
+mkdir -p "$stage/bin/qml/O3/Terminal"
+install -m755 bin/qml/O3/Terminal/libo3terminal.so "$stage/bin/qml/O3/Terminal/"
+install -m644 bin/qml/O3/Terminal/qmldir bin/qml/O3/Terminal/Ghostty-LICENSE bin/qml/O3/Terminal/GHOSTTY_VERSION "$stage/bin/qml/O3/Terminal/"
 printf '%s\n' "$commit" > "$stage/COMMIT"
 printf 'version=%s\narchitecture=%s\nqt=%s\nglibc=%s\nrust=%s\n' "$version" "$arch" "$(pkg-config --modversion Qt6Core)" "$(getconf GNU_LIBC_VERSION)" "$(rustc --version)" > "$stage/BUILD-INFO"
 asset="omarchy-t3-code-$version-linux-$arch.tar.gz"
-tar -czf "dist/$asset" -C "$stage" bin COMMIT BUILD-INFO
+voice_bundle=()
+if [[ $arch == x86_64 ]]; then voice_bundle=(--bundle "$PWD/bin/native-voice"); fi
+PYTHONDONTWRITEBYTECODE=1 python3 tools/package-native-voice overlay --stage "$stage" "${voice_bundle[@]}" --output "$PWD/dist/$asset"
 (cd dist && sha256sum "$asset" > "$asset.sha256")
 printf 'Packaged %s (%s)\n' "$asset" "$commit"

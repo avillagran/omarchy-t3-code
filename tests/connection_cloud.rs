@@ -93,7 +93,7 @@ time.sleep(0.1)
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.root);
+
     }
 }
 fn finish(rx: &mpsc::Receiver<Value>) -> (Value, Vec<Value>) {

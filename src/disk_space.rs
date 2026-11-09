@@ -23,7 +23,12 @@ const MAX_WORKTREES: usize = 64;
 pub fn threshold_bytes(ui_state: &Value) -> Option<u64> {
     match ui_state.get("lowDiskThresholdGb") {
         Some(Value::Null) => None,
-        Some(v) => Some(v.as_u64().filter(|n| (1..=1000).contains(n)).unwrap_or(DEFAULT_THRESHOLD_GB) * GB),
+        Some(v) => Some(
+            v.as_u64()
+                .filter(|n| (1..=1000).contains(n))
+                .unwrap_or(DEFAULT_THRESHOLD_GB)
+                * GB,
+        ),
         None => Some(DEFAULT_THRESHOLD_GB * GB),
     }
 }
@@ -36,7 +41,11 @@ pub(crate) fn worktrees_root() -> PathBuf {
 }
 fn watched_path() -> PathBuf {
     let worktrees = worktrees_root();
-    if worktrees.is_dir() { worktrees } else { t3_home() }
+    if worktrees.is_dir() {
+        worktrees
+    } else {
+        t3_home()
+    }
 }
 fn statvfs(path: &Path) -> Option<(u64, u64)> {
     let c = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()).ok()?;
@@ -52,8 +61,12 @@ pub fn status(ui_state: &Value) -> Value {
     let path = watched_path();
     let threshold = threshold_bytes(ui_state);
     match statvfs(&path) {
-        Some((free, total)) => json!({"path":path,"freeBytes":free,"totalBytes":total,"thresholdBytes":threshold,"low":low(free,threshold)}),
-        None => json!({"path":path,"error":"disk_space_unavailable","thresholdBytes":threshold,"low":false}),
+        Some((free, total)) => {
+            json!({"path":path,"freeBytes":free,"totalBytes":total,"thresholdBytes":threshold,"low":low(free,threshold)})
+        }
+        None => {
+            json!({"path":path,"error":"disk_space_unavailable","thresholdBytes":threshold,"low":false})
+        }
     }
 }
 
@@ -62,9 +75,13 @@ pub(crate) fn disk_usage(root: &Path) -> u64 {
     let mut total = 0;
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
-            let Ok(meta) = entry.path().symlink_metadata() else { continue };
+            let Ok(meta) = entry.path().symlink_metadata() else {
+                continue;
+            };
             total += meta.blocks() * 512;
             if meta.is_dir() {
                 stack.push(entry.path());
@@ -98,22 +115,44 @@ fn merged_into_default(dir: &Path) -> Option<bool> {
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .filter(|s| !s.is_empty())
         .or_else(|| {
-            ["main", "master"].into_iter().find(|b| git(dir, &["rev-parse", "--verify", "--quiet", b]).is_some_and(|o| o.status.success())).map(String::from)
+            ["main", "master"]
+                .into_iter()
+                .find(|b| {
+                    git(dir, &["rev-parse", "--verify", "--quiet", b])
+                        .is_some_and(|o| o.status.success())
+                })
+                .map(String::from)
         })?;
-    Some(git(dir, &["merge-base", "--is-ancestor", "HEAD", &base])?.status.success())
+    Some(
+        git(dir, &["merge-base", "--is-ancestor", "HEAD", &base])?
+            .status
+            .success(),
+    )
 }
 
 /// The local environment's shell: the live stream's copy, or one HTTP read.
 pub(crate) fn local_shell(client: &Client) -> Result<Value> {
     shell_state::live("local").map(Ok).unwrap_or_else(|| {
-        environments()?.into_iter().find(|e| e.id == "local").ok_or("unknown_environment".to_string()).and_then(|e| client.get(&e, "/api/orchestration/shell", true))
+        environments()?
+            .into_iter()
+            .find(|e| e.id == "local")
+            .ok_or("unknown_environment".to_string())
+            .and_then(|e| client.get(&e, "/api/orchestration/shell", true))
     })
 }
 /// Checkouts under T3's worktree folder (`<project>/<worktree>` with a `.git` entry).
 pub(crate) fn worktree_folders() -> Vec<PathBuf> {
     let mut out = vec![];
-    for project in std::fs::read_dir(worktrees_root()).into_iter().flatten().flatten() {
-        for tree in std::fs::read_dir(project.path()).into_iter().flatten().flatten() {
+    for project in std::fs::read_dir(worktrees_root())
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        for tree in std::fs::read_dir(project.path())
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
             if tree.path().join(".git").exists() {
                 out.push(tree.path());
             }
@@ -126,9 +165,21 @@ pub(crate) fn worktree_folders() -> Vec<PathBuf> {
 fn candidates(client: &Client) -> BTreeMap<PathBuf, Value> {
     let mut found = BTreeMap::new();
     let shell = local_shell(client);
-    for t in shell.as_ref().ok().and_then(|s| s["threads"].as_array()).into_iter().flatten() {
-        let Some(path) = t["worktreePath"].as_str().filter(|p| !p.is_empty()) else { continue };
-        let merged_pr = t["pullRequests"].as_array().into_iter().flatten().any(|pr| pr["snapshot"]["state"] == "merged");
+    for t in shell
+        .as_ref()
+        .ok()
+        .and_then(|s| s["threads"].as_array())
+        .into_iter()
+        .flatten()
+    {
+        let Some(path) = t["worktreePath"].as_str().filter(|p| !p.is_empty()) else {
+            continue;
+        };
+        let merged_pr = t["pullRequests"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|pr| pr["snapshot"]["state"] == "merged");
         found.entry(PathBuf::from(path)).or_insert_with(|| json!({"threadId":t["id"],"title":t["title"],"branch":t["branch"],"pullRequestMerged":merged_pr}));
     }
     for tree in worktree_folders() {
@@ -145,8 +196,14 @@ pub fn report(client: &Client, ui_state: &Value) -> Value {
         .map(|(path, mut info)| {
             let target = path.join("target");
             info["path"] = json!(path);
-            info["targetBytes"] = json!(if target.is_dir() { disk_usage(&target) } else { 0 });
-            info["merged"] = json!(info["pullRequestMerged"] == true || merged_into_default(&path) == Some(true));
+            info["targetBytes"] = json!(if target.is_dir() {
+                disk_usage(&target)
+            } else {
+                0
+            });
+            info["merged"] = json!(
+                info["pullRequestMerged"] == true || merged_into_default(&path) == Some(true)
+            );
             info["hasChanges"] = json!(has_changes(&path));
             info
         })
@@ -163,8 +220,15 @@ mod tests {
     #[test]
     fn threshold_defaults_to_15_gb_and_null_turns_it_off() {
         assert_eq!(threshold_bytes(&json!({})), Some(15 * GB));
-        assert_eq!(threshold_bytes(&json!({"lowDiskThresholdGb":40})), Some(40 * GB));
-        assert_eq!(threshold_bytes(&json!({"lowDiskThresholdGb":0})), Some(15 * GB), "out of range falls back");
+        assert_eq!(
+            threshold_bytes(&json!({"lowDiskThresholdGb":40})),
+            Some(40 * GB)
+        );
+        assert_eq!(
+            threshold_bytes(&json!({"lowDiskThresholdGb":0})),
+            Some(15 * GB),
+            "out of range falls back"
+        );
         assert_eq!(threshold_bytes(&json!({"lowDiskThresholdGb":null})), None);
         assert!(low(14 * GB, Some(15 * GB)));
         assert!(!low(15 * GB, Some(15 * GB)));
@@ -178,8 +242,8 @@ mod tests {
         std::fs::write(root.join("big"), vec![1u8; 1024 * 1024]).unwrap();
         std::os::unix::fs::symlink(root.join("big"), root.join("target/link")).unwrap();
         let used = disk_usage(&root.join("target"));
-        assert!(used >= 64 * 1024 && used < 1024 * 1024, "{used}");
+        assert!((64 * 1024..1024 * 1024).contains(&used), "{used}");
         assert!(status(&json!({}))["freeBytes"].as_u64().is_some());
-        std::fs::remove_dir_all(root).unwrap();
+
     }
 }

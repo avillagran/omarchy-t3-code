@@ -9,10 +9,12 @@ use crate::{activity, approvals, awareness, changes, code_blocks, composer, conn
 use serde_json::{json, Value};
 
 mod git;
+mod parity;
 mod presentation;
 mod review;
 mod settings;
 mod usage;
+mod terminal;
 
 /// One registry row. Built with `domain_fn!`.
 #[derive(Clone, Copy)]
@@ -157,7 +159,7 @@ pub const FUNCTIONS: &[DomainFn] = &[
             if events.is_empty() {
                 return Err("invalid_event".into());
             }
-            let mut applied=0;for e in events {if projection::try_apply(&mut p,&e)? {applied+=1;}}
+            let mut applied=0;for e in events {if projection::try_apply(&mut p,e)? {applied+=1;}}
             Ok(json!({"projection":p,"changed":applied > 0,"applied":applied}))
         },
     },
@@ -418,7 +420,7 @@ pub const FUNCTIONS: &[DomainFn] = &[
 ];
 
 /// The registry: this file's functions, then each area's.
-const MODULES: &[&[DomainFn]] = &[FUNCTIONS, review::FUNCTIONS, usage::FUNCTIONS, git::FUNCTIONS, settings::FUNCTIONS, presentation::FUNCTIONS];
+const MODULES: &[&[DomainFn]] = &[FUNCTIONS, review::FUNCTIONS, usage::FUNCTIONS, git::FUNCTIONS, settings::FUNCTIONS, presentation::FUNCTIONS, parity::FUNCTIONS, terminal::FUNCTIONS];
 /// Every domain function, in a stable order.
 pub fn functions() -> impl Iterator<Item = &'static DomainFn> {
     MODULES.iter().flat_map(|m| m.iter())

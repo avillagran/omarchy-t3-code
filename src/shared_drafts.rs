@@ -284,7 +284,7 @@ pub fn execute(input: &Value) -> Result<Value> {
         if journal
             .pending
             .as_ref()
-            .is_some_and(|old| old != &input["command"])
+            .is_some_and(|old| !crate::composer_context::semantic_equal(old, &input["command"]))
         {
             return Err("shared_drafts_pending_preserved".into());
         }

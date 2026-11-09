@@ -75,7 +75,7 @@ impl Connection {
     pub fn device_hub(&self, hub_base_path: &str, host_id: &str) -> Result<HubAccess> {
         let base = hub_base(hub_base_path)?.to_string();
         let host_id = hub_id(host_id, 128)?.to_string();
-        let ticket = self.request_json("POST", "/api/auth/websocket-ticket", None, false)?;
+        let ticket = self.request_json("POST", "/api/auth/websocket-ticket/media", None, false)?;
         Ok(HubAccess {
             base,
             host_id,
@@ -238,14 +238,21 @@ impl<R: Read> Iterator for MjpegFrames<R> {
     }
 }
 
-/// One Android access unit: `SEMU` magic, version, flags (bit 0 = keyframe),
-/// two reserved bytes and a big-endian u64 presentation time, then H.264
-/// Annex-B data.
+/// One Android access unit behind a recognized `SEMU` metadata header.
+/// Version 1 has a 16-byte header; version 2 adds an eight-byte server timestamp.
+/// The returned payload borrows the original Annex-B bytes without metadata.
+/// Empty version-1 headers remain accepted for existing callers. Truncated
+/// version-2 headers and unrecognized versions are not access units.
 pub fn parse_semu(packet: &[u8]) -> Option<(bool, &[u8])> {
     if packet.len() < 16 || packet[..4] != [0x53, 0x45, 0x4d, 0x55] {
         return None;
     }
-    Some((packet[5] & 1 == 1, &packet[16..]))
+    let header = match packet[4] {
+        1 => 16,
+        2 if packet.len() > 24 => 24,
+        _ => return None,
+    };
+    Some((packet[5] & 1 == 1, &packet[header..]))
 }
 
 /// Input from the panel, in screen-normalized coordinates (0..1).
@@ -360,7 +367,7 @@ mod tests {
         packet.extend_from_slice(&[0, 0, 0, 1, 0x65]);
         assert_eq!(parse_semu(&packet), Some((true, &[0, 0, 0, 1, 0x65][..])));
         packet[5] = 0;
-        assert_eq!(parse_semu(&packet).unwrap().0, false);
+        assert!(!parse_semu(&packet).unwrap().0);
         assert!(parse_semu(b"nope").is_none());
     }
     #[test]
@@ -452,7 +459,7 @@ mod tests {
         assert_eq!(config[0], 0x82);
         ws.send(input_message(Platform::Ios, &json!({"type":"touch","phase":"down","x":0.5,"y":0.5})).unwrap()).unwrap();
         let seen = server.join().unwrap();
-        assert_eq!(seen[0], "/api/auth/websocket-ticket");
+        assert_eq!(seen[0], "/api/auth/websocket-ticket/media");
         assert_eq!(seen[1], "/api/device-hub/vendor/serve-sim/helper/UDID-1/stream.mjpeg?hostId=local&wsTicket=tick-1");
         assert_eq!(seen[2], "/api/device-hub/vendor/serve-sim/api/screenshot?device=UDID-1&hostId=local&wsTicket=tick-1");
         assert_eq!(seen[3], "/api/device-hub/vendor/serve-sim/helper/ws?device=UDID-1&hostId=local&wsTicket=tick-1");

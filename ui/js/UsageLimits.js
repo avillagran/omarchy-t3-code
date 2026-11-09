@@ -26,6 +26,7 @@ function present(data, now) {
         return {label:w.label,availablePercent:Native.remainingPercent(w),reset:Native.formatResetsIn(w,now)}
       })
       return {key:a.key,label:a.displayName || a.email || ("Account "+(i+1)),plan:a.plan || "",
+        redeem:a.redeem || null,resetCredits:a.limits.resetCredits || null,
         hosts:a.environments.map(function(e){return e.label}).join(", ") || a.sourceLabel || "",windows:windows}
     })
     return {provider:pool.driver,label:label(pool.driver),accounts:accountRows,windows:rows,

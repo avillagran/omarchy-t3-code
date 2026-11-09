@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+"""Run only the reviewed decoder process tests with immutable private inputs."""
+import fcntl, hashlib, json, os, pathlib, subprocess, tempfile, uuid
+from runtime_artifacts import snapshot
+root=pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+base=pathlib.Path(os.environ.get('O3_DECODER_EVIDENCE','/home/node/BuildCache/o3-device-decoder-next'));base.mkdir(parents=True,exist_ok=True)
+evidence=pathlib.Path(tempfile.mkdtemp(prefix='decoder-',dir=base));evidence.chmod(0o700)
+for name in ['fixtures','home','diagnostics']:(evidence/name).mkdir(mode=0o700)
+print('Decoder evidence: '+str(evidence),flush=True)
+env=dict(os.environ,CARGO_BUILD_JOBS='2');env.setdefault('CARGO_TARGET_DIR','/var/tmp/o3-build/client-nightly-target')
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ result=subprocess.run(['cargo','test','--locked','--offline','--test','device_decoder','--bin','omarchy-t3-client','--no-run','--message-format=json'],cwd=root,env=env,capture_output=True,text=True)
+ (evidence/'compile.jsonl').write_text(result.stdout);(evidence/'compile.log').write_text(result.stderr)
+ if result.returncode:
+  for line in result.stdout.splitlines():
+   item=json.loads(line)
+   if item.get('reason')=='compiler-message':print(item['message'].get('rendered',''))
+  print(result.stderr);raise SystemExit(result.returncode)
+ binaries=[(item['target']['name'],pathlib.Path(item['executable'])) for line in result.stdout.splitlines() if (item:=json.loads(line)).get('executable') and item.get('profile',{}).get('test')]
+ assert len(binaries)==2 and {name for name,_ in binaries}=={'device_decoder','omarchy-t3-client'};debug=binaries[0][1].parent.parent
+ frozen=debug.resolve().parent/('test-runtime-decoder-'+uuid.uuid4().hex);records=snapshot(debug,[binary for _,binary in binaries],frozen)
+ image='localhost/o3-qml-wayland-tests:local'
+runtimes=[];surface_assertions={}
+for name,binary in binaries:
+ command=['podman','run','--rm','--http-proxy=false','--network=none','--read-only','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=4096','--tmpfs','/tmp:rw,size=1g','--tmpfs','/run:rw','-e','HOME=/evidence/home','-e','TMPDIR=/evidence/fixtures','-e','OMARCHY_T3_DEVICE_DIAGNOSTICS_DIR=/evidence/diagnostics','-v',str(evidence)+':/evidence:rw','-v',str(root)+':'+str(root)+':ro','-v',str(frozen)+':'+str(debug)+':ro','-v','/usr:/usr:ro',image,str(debug/binary.relative_to(debug)),*(['device_screen::flow_tests'] if name=='omarchy-t3-client' else []),'--test-threads=1','--nocapture']
+ result=subprocess.run(command,capture_output=True,text=True,timeout=120)
+ text=result.stdout+result.stderr;(evidence/(name+'.log')).write_text(text);print(text)
+ runtimes.append({'target':name,'exit':result.returncode})
+ if result.returncode:break
+ if name=='omarchy-t3-client':
+  events=[]
+  for line in result.stdout.splitlines():
+   position=line.find('{"type":"device-surface"')
+   if position>=0:events.append(json.loads(line[position:])['data'])
+  failed=[event for event in events if event['requestId']=='private-decoder-failure'];live=[event for event in events if event['requestId']=='private-decoder-live']
+  assert failed and all(event.get('decoder') is not True and event.get('stage')!='live' and event['kind']!='frame' for event in failed)
+  assert failed[-1]['stage']=='error' and failed[-1]['input'] is False and failed[-1]['decoder'] is False
+  assert any(event['kind']=='frame' for event in live) and any(event.get('stage')=='live' and event.get('decoder') is True for event in live)
+  closed=[event for event in events if event['requestId']=='private-native-startup-close'];assert closed and all(event['kind']!='frame' and event.get('decoder') is not True for event in closed);assert closed[-1]['input'] is False and closed[-1]['decoder'] is False
+  surface_assertions={'failedDecoderNeverLive':True,'failedDecoderInputDisabled':True,'realSyntheticDecoderPublishedFrame':True,'successRequiresPublishedFrame':True,'emptyNativeStartupCloseDisablesInput':True}
+proof={'complete':len(runtimes)==len(binaries),'exit':next((value['exit'] for value in runtimes if value['exit']),0),'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'sourceHashes':{name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in ['src/device_screen.rs','src/device_screen/decoder.rs','src/device_screen/flow_tests.rs','tests/device_decoder.rs']},'runtimeSnapshot':str(frozen),'runtimeArtifacts':records,'network':'none','fixturesRetained':True,'runtimes':runtimes,'surfaceAssertions':surface_assertions,'scope':'Explicit decoder integration target and reviewed main flow_tests filter only; full runtime audit marker remains'}
+(evidence/'result.json').write_text(json.dumps(proof,indent=2)+'\n');raise SystemExit(proof['exit'])

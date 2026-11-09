@@ -18,9 +18,9 @@ grep -Fx "Environment=T3CODE_HOME=$base" "$unit" >/dev/null || grep -Fx "Environ
 lock="$base/userdata/ot3-update.lock"
 if ! mkdir "$lock" 2>/dev/null; then
   [ -n "$(find "$lock" -maxdepth 0 -mmin +20 2>/dev/null)" ] || exit 12
-  rm -rf "$lock"; mkdir "$lock" || exit 12
+  rmdir "$lock" 2>/dev/null || exit 12; mkdir "$lock" || exit 12
 fi
-trap 'rm -rf "$lock"' EXIT
+trap 'rmdir "$lock" 2>/dev/null || true' EXIT
 # The runtime the service runs knows its own version; a desktop app's wrapper
 # would report the app's bundled one instead.
 service_cli() { sed -n 's/^ExecStart=\(\/.*\/t3\) __service-launcher$/\1/p' "$unit" | head -n 1; }

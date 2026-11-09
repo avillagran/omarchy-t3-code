@@ -16,4 +16,4 @@ let serial=0;function copy(input){return new Promise((resolve,reject)=>{const id
  result=await copy({kind:'image',environment:'fixture',attachment:{id:'image',name:'fixture.png',mimeType:'image/png'}});assert(!result.error,JSON.stringify(result));assert(fs.readFileSync(offer).equals(png));assert.equal(fs.readFileSync(type,'utf8'),'image/png');
  fs.writeFileSync(fail,'');result=await copy({kind:'text',text:'must report failure'});assert.equal(result.error,'clipboard_unavailable');
  console.log('COPY_PROCESS_PASS: exact UTF-8/Markdown, cached native attachment bytes with image/png, clipboard failure surfaced; real clipboard untouched');
- }finally{child.kill('SIGTERM');await new Promise(r=>child.once('exit',r));fs.rmSync(root,{recursive:true,force:true})}})().catch(e=>{console.error(e);process.exitCode=1});
+ }finally{child.kill('SIGTERM');await new Promise(r=>child.once('exit',r));}})().catch(e=>{console.error(e);process.exitCode=1});

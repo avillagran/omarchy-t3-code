@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "scope": "Opt-in early actual child pidfd report; later trusted-main confirmation remains independent",
+  "sourceHashes": {
+    "src/browser_engine_identity.rs": "5b9af31b2b3632ffb4acae2166a3418771cc8078c37af24a45644bf128222fdf",
+    "src/browser_electron.rs": "b1890246cb1c7e0fd07cf79e55407cb9e9363c764fa61e92643ff544f57db63a",
+    "src/browser_runtime.rs": "4311251609904c316fc1c05f701ccb7916543e85ad79ef05f488a3a2e126852d"
+  },
+  "receipt": "/home/node/BuildCache/o3-desktop-next/engine-spawn-next",
+  "strictLib": 0,
+  "nativeTests": 2,
+  "ignored": 0,
+  "testQualification": "Own synthetic renderer/engine processes with actual kernel SCM_CREDENTIALS/pidfds; no Electron/compositor/clipboard/GUI acceptance",
+  "checks": [
+    "spawn credential must equal expected renderer",
+    "pidfd-derived engine must be actual renderer child and live",
+    "later main sender kernel PID must equal pidfd engine",
+    "confirmation must equal still-live previously admitted engine",
+    "foreign renderer credential refused",
+    "renderer possessing engine pidfd cannot impersonate engine main",
+    "dead child pidfd report refused",
+    "negative recv returns before ancillary traversal"
+  ],
+  "activation": {
+    "internalOptIn": "privateEngineSpawn true with already-confined identity endpoint",
+    "existingSingleStageAPI": "preserved",
+    "waylandFactoryCallerInstalled": false,
+    "publicSelectorEnabled": false
+  }
+}

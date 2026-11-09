@@ -50,7 +50,9 @@ fn req(body:&str)->String{format!("`{{{body}}}`")}
 /// device claims. This device only dials out, so it pairs behind a private
 /// relay or a firewall that drops inbound traffic, and the agent approves on
 /// the host: starting from ot3 is the user's approval. Returns the next step.
-fn pair_here(p:&mut String,n:usize,host:&str,inviter:&str,bin:&str,client:&str,id:&str,services:&str,manage:bool,share_ssh:bool)->usize{
+struct PairingHost<'a> {host:&'a str,inviter:&'a str,bin:&'a str,client:&'a str,id:&'a str,manage:bool,share_ssh:bool}
+fn pair_here(p:&mut String,n:usize,host:PairingHost<'_>,services:&str)->usize{
+ let PairingHost{host,inviter,bin,client,id,manage,share_ssh}=host;
  p.push_str(&format!("{n}. Pair `{host}` with {inviter}, the device you run on. The host invites and this device claims, so this device only dials out and no port is opened. Here, `{bin} manage` takes one JSON request on stdin, like the host's `omabridge manage`. If this device's `read` already lists the host's `device.id` under `peers`, skip to step {}.\n",n+3));
  p.push_str(&format!("{}. On the host, write the invitation into a private directory (`mktemp -d`): {}; keep `created.path`. Copy it here without printing it: `umask 077; l=$(mktemp -d); ssh {host} cat <created.path> > \"$l/invite.json\"`, then remove the host's directory.\n",n+1,req(&format!("\"action\":\"invite\",\"services\":{services},\"qr\":false,\"ttl\":600,\"manage\":false,\"directory\":\"<that directory>\",\"confirmed\":true"))));
  p.push_str(&format!("{}. Here, {} must show `invitation.id` equal to the host's `device.id`; stop if not. Then {}. It waits under `awaiting` for the host: there, approve exactly this device, {} (its request is named {inviter}; starting this from ot3 is my approval, so do not ask me). Then here {} until `paired.status` is `approved`. Remove `$l`.\n",n+2,
@@ -70,7 +72,7 @@ fn pair_here(p:&mut String,n:usize,host:&str,inviter:&str,bin:&str,client:&str,i
  n+=1;
  p.push_str(&format!("{n}. Verify here: `read` lists the host's id under `peers`{}, and `timeout 20 {bin} connect --peer <the host's id> --service ssh </dev/null | head -c 64` prints an SSH banner when the host shares SSH. Name peers by id, not by name: an older identity of the same device may share its name. If you see one, mention it; do not revoke it.\n",if manage{" with `managed` true"}else{""}));
  p.push_str(&format!("{}. If the host runs T3 Code (`t3` among its published services), add it to ot3's connections here. `{client} connections-view` lists the saved ones and their `revision`; unless the host's T3 environment is among them, pipe {} into `{client} connections-manage` (a `user@` in `{host}` goes to `username`, without it `username` is null). It checks the host over SSH and answers with the saved connections, or `{{\"error\":<code>}}`. ot3 picks it up by itself.\n",n+1,
-  req(&format!("\"action\":\"save-route\",\"revision\":\"<that revision>\",\"kind\":\"ssh\",\"label\":\"<the host's OmaBridge name>\",\"ssh\":{{\"alias\":\"<host without user@>\",\"hostname\":\"<host without user@>\",\"username\":<user or null>,\"port\":null}}"))));
+  req("\"action\":\"save-route\",\"revision\":\"<that revision>\",\"kind\":\"ssh\",\"label\":\"<the host's OmaBridge name>\",\"ssh\":{\"alias\":\"<host without user@>\",\"hostname\":\"<host without user@>\",\"username\":<user or null>,\"port\":null}")));
  p.push_str(&format!("{}. If this device granted `t3` and the host has O3 Code (`~/.config/omarchy/plugins/omarchy-t3-code/bin/omarchy-t3-client` there), pipe `{{\"action\":\"run\"}}` into its `omarchy-t3-client omabridge-share` on the host: under `peers`, this device's id must reach `state` `shared`. Otherwise quote its `error`; do not work around it.\n",n+2));
  n+3
 }
@@ -96,7 +98,7 @@ fn prompt_with(input:&Value,bin:&str,client:&str)->Result<String>{
   p.push_str(&format!("Connect the existing device `{host}` with {inviter} through OmaBridge. It is already set up: do not install, update or reset anything, do not recreate its identity, publish or unpublish services, or change T3, SSH, firewall or service configuration.\n\n"));
   p.push_str(&format!("Work on your own from start to end over SSH (`ssh {host}`), as that device's normal user. Never print, paste or log tokens, keys, invitation contents or pairing codes; refer to files by path only. Stop and tell me if a step fails instead of working around it. {codes}\n\n"));
   p.push_str("1. On the host, find OmaBridge (`command -v omabridge`, `~/.local/bin/omabridge` or `~/.config/omarchy/plugins/omarchy-t3-code/bin/omabridge`) and send `{\"action\":\"read\"}` to its `manage`: `identity` must be true and `published.active` true with `t3` and/or `ssh` in `published.services`. Otherwise stop and say what is missing; setting it up is the other assistant's job. Keep the host's existing peers and grants.\n");
-  pair_here(&mut p,2,host,&inviter,bin,client,id,"<the host's published services among \"t3\" and \"ssh\">",manage,share_ssh);
+  pair_here(&mut p,2,PairingHost{host,inviter:&inviter,bin,client,id,manage,share_ssh},"<the host's published services among \"t3\" and \"ssh\">");
   p.push_str("\nAt the end, summarize what was paired, what each device can reach, and anything I still need to do.");
   return Ok(p)
  }
@@ -131,7 +133,7 @@ fn prompt_with(input:&Value,bin:&str,client:&str)->Result<String>{
  let publish=if bridge{"\"t3\":false,\"ssh\":true"}else{"\"t3\":true,\"ssh\":<true if an SSH server listens on 127.0.0.1:22>"};
  p.push_str(&format!("{n}. Check that OmaBridge can be managed: `echo '{{\"action\":\"read\"}}' | omabridge manage` must print a JSON snapshot. If it says the command is unknown, this OmaBridge is too old for the next steps: stop and tell me.\n"));
  p.push_str(&format!("{}. On that device, create its identity and publish it, using `omabridge manage` with one JSON request on stdin each time:\n   - `{{\"action\":\"identity-create\",\"confirmed\":true}}`\n   - `{{\"action\":\"publish\",{publish},\"confirmed\":true}}`, then `read` and check `published.active`.\n",n+1));
- if here{pair_here(&mut p,n+2,host,&inviter,bin,client,id,granted,manage,share_ssh);}else{
+ if here{pair_here(&mut p,n+2,PairingHost{host,inviter:&inviter,bin,client,id,manage,share_ssh},granted);}else{
   p.push_str(&format!("{}. Copy the one-use invitation from {inviter} (already here, at `{invitation}`) to it without printing it: `scp {invitation} {host}:~/omabridge-invite.json` and `ssh {host} chmod 600 ~/omabridge-invite.json`. Then delete `{invitation}` here. It expires within an hour.\n",n+2));
   p.push_str(&format!("{}. Pair from it on that device: `{{\"action\":\"invite-inspect\",\"path\":\"<absolute path of the copy>\"}}` first, to see the inviting device's `id`, then `{{\"action\":\"pair\",\"path\":\"<absolute path of the copy>\",\"expect\":\"<that id>\"{}{},\"confirmed\":true}}`. Delete the copy afterwards.\n",n+3,if manage{",\"allowManage\":true"}else{""},""));
   if manage{p.push_str(&format!("   I chose to let {inviter} manage that one: `allowManage` is my explicit consent, and the invitation asks for it.\n"));}

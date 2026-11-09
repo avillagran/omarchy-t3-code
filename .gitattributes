@@ -1,0 +1,2 @@
+# Preserve the pinned upstream protocol bytes, including its original whitespace.
+tools/fixtures/input-method-unstable-v2.xml whitespace=-trailing-space

@@ -1,0 +1,17 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "source": "packages/client-runtime/src/clock.ts",
+  "sourceSha256": "a79464d13df7dd7b30290d2a1f1d304e04ffb697968e8d19e1118adf4c18865d",
+  "execution": "Whole native clock.ts with injected Date and timer services",
+  "qtPlatformService": {
+    "path": "ui/js/NativeLiveSet.js",
+    "sha256": "b5e57345a20924576dc3d1a47a52eec15a50247826a7dd8dacfcbf39ada01799"
+  },
+  "adaptations": [
+    "TypeScript erasure",
+    "Qt factory injects timer and Date services",
+    "Only minuteTick is exposed",
+    "Factory-local live listener Set adapts Qt reentrant iteration"
+  ],
+  "outputSha256": "cb378ccf4e8ef7c18781c7d84063b875ab95e5fc4b28022326bcf4508b37a981"
+}

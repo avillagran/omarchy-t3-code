@@ -173,6 +173,7 @@ fn cleanup_report(settings: &Value, bearer: &str) -> Result<(Value, Value)> {
     let projects = shell["projects"].as_array().ok_or("invalid_shell")?;
     let threads = shell["threads"].as_array().ok_or("invalid_shell")?;
     let mut claims = Vec::new();
+    let mut context_order = Vec::new();
     for t in threads {
         let root = t["worktreePath"]
             .as_str()
@@ -202,10 +203,19 @@ fn cleanup_report(settings: &Value, bearer: &str) -> Result<(Value, Value)> {
             return Err("idle_not_proven".into());
         }
         use sha2::{Digest, Sha256};
-        claims.push(json!({"threadId":id,"fingerprint":format!("{:x}",Sha256::digest(restored["projection"].to_string().as_bytes()))}));
+        if let Some(proof) = crate::composer_context::context_order_proof(&restored["projection"]) {
+            context_order.push(json!([id, proof]));
+        }
+        let mut legacy = restored["projection"].clone();
+        legacy.sort_all_objects();
+        claims.push(json!({"threadId":id,"fingerprint":format!("{:x}",Sha256::digest(legacy.to_string().as_bytes()))}));
     }
     let mut report = crate::build_cleanup::remote_report(&shell, settings)?;
     report["idleClaims"] = json!(claims);
+    if !context_order.is_empty() {
+        report["nativeContextOrderFingerprint"] =
+            json!(crate::composer_context::stable_hash(&json!(context_order)));
+    }
     Ok((shell, report))
 }
 fn vault_config(paths: &journal_vault::Paths) -> Result<Value> {
@@ -303,7 +313,7 @@ pub fn execute(input: &Value, settings: &Value, bearer: &str) -> Result<Value> {
                     files.push(json!({"file":relative,"state":journal_vault::block_state(std::str::from_utf8(&bytes).map_err(|_|"read_unavailable")?,text(&config,"path")),"fingerprint":format!("{:x}",Sha256::digest(bytes))}));
                 }
                 Ok(
-                    json!({"configured":config["enabled"]==true && state["state"]=="clone","steps":{"clone":state["state"]=="clone","instructions":files.iter().all(|f|f["state"]=="current")},"localState":state["state"],"git":state,"enabled":config["enabled"],"instructions":config["agentInstructions"],"vaultIdentity":vault,"configuration":({use sha2::{Digest,Sha256};format!("{:x}",Sha256::digest(config.to_string().as_bytes()))}),"files":files,"scope":"local-host"}),
+                    json!({"configured":config["enabled"]==true && state["state"]=="clone","steps":{"clone":state["state"]=="clone","instructions":files.iter().all(|f|f["state"]=="current")},"localState":state["state"],"git":state,"enabled":config["enabled"],"instructions":config["agentInstructions"],"vaultIdentity":vault,"configuration":crate::composer_context::stable_hash(&config),"files":files,"scope":"local-host"}),
                 )
             }
             "build-cleanup" => cleanup_report(settings, bearer).map(|(_, report)| report),
@@ -360,10 +370,9 @@ pub fn execute(input: &Value, settings: &Value, bearer: &str) -> Result<Value> {
             if report != input["report"] {
                 return Err("stale_report".into());
             }
-            report
-                .as_object_mut()
-                .ok_or("invalid_report")?
-                .remove("idleClaims");
+            let body=report.as_object_mut().ok_or("invalid_report")?;
+            body.remove("idleClaims");
+            body.remove("nativeContextOrderFingerprint");
             crate::build_cleanup::remote_run(&shell, &current, &report)
         }
         _ => Err("invalid_command".into()),
@@ -414,9 +423,12 @@ mod tests {
         fs::write(&path, "x".repeat(65537)).unwrap();
         assert!(statuses(&path).is_err());
         fs::remove_file(&path).unwrap();
-        std::os::unix::fs::symlink("/dev/zero", &path).unwrap();
+        let target=dir.join("owned-valid-ledger.json");
+        fs::write(&target,"{}").unwrap();
+        assert!(statuses(&target).is_ok());
+        std::os::unix::fs::symlink(&target, &path).unwrap();
         assert!(statuses(&path).is_err());
-        fs::remove_dir_all(dir).unwrap();
+
     }
     #[test]
     fn host_sync_status_preserves_native_outcomes_time_and_counts_without_backups() {

@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "scope": "Internal real Pool native Wayland factory; no public selector/GUI clipboard/IME query acceptance",
+  "receipt": "/var/tmp/o3-build/wayland-factory-coherent-final",
+  "sourceHashes": {
+    "src/browser_engine_identity.rs": "09bfd929cd29691efeafa6589449e53f35bfc326aed08783fec7d43bc6a5240f",
+    "src/browser_electron.rs": "cc62a5770ac4c8119e9d2f97518e006a7801059ad34bafaa8f65dc4e91363e0c",
+    "src/browser_runtime.rs": "4311251609904c316fc1c05f701ccb7916543e85ad79ef05f488a3a2e126852d",
+    "src/browser_guest.rs": "00e34fd811174ca028b85878308f4e061f92d76351987f82a94240ca37f5be5b",
+    "src/browser_wayland.rs": "31c99400cfe3800e776d2078c5a7d60c0cae40e77f7ba4d1c6a834ca326f85db",
+    "src/browser_wayland_transport.rs": "cb4c699ee86e9433d428155b71adcfd0276a6b95f7b1a8322c60f9dff33d16ea",
+    "src/lib.rs": "5e4479e8aa285e20dc2950edce40a1be8fe921f143f13e804ea1346bc84337fb",
+    "examples/native_wayland_pool_probe.rs": "1c2a42ea54e4d6af7f1d54f0c49bbde0ba181440b94d0707691400be5f8b21ab"
+  },
+  "helperSourceSha256": "cc27556df1712a31016f87458d04b173bf700423a3fa8519877f0a2e9db78f16",
+  "strict": {
+    "libAndActualExample": 0,
+    "log": "build-0.log",
+    "wholeMatrixClaimed": false
+  },
+  "focusedRuntime": {
+    "identityTests": 3,
+    "transportTests": 7,
+    "ignored": 0,
+    "returncodes": [
+      0,
+      0
+    ]
+  },
+  "actualNativePool": {
+    "returncode": 0,
+    "checks": [
+      "real Command::spawn child pidfd before display-dependent JS confirmation",
+      "independent actual trusted-main addon confirms same engine",
+      "real private Sway, GTK/Ozone frontend streams and unchanged NativeHost/Guest",
+      "actual CDP page evaluation with require/process/Buffer absent",
+      "actual frame delivered to Pool callback",
+      "foreign idle frontend rejected while legitimate guest still evaluates",
+      "normal Pool close path executed (void API; no separate graceful-status assertion)",
+      "actual renderer pidfd SIGKILL fixture makes actual Electron engine pidfd readable",
+      "no system clipboard requests or host GUI compositor adoption"
+    ],
+    "engineVersion": "44.10.1",
+    "runtimePinsSource": "ui/voice/electron-runtime-44.10.1-linux-x64.json",
+    "runtimePinsSha256": "59ba60542eeb35c2427d8a58d0d7ba5dd0ae7a61c5123abe752e18265263008a",
+    "nativeAssets": {
+      "native-electron-main.cjs": "0446a160a97065d9a9ce2cacb464e15ca34b7e432d299516ced6b21c2ae5534e",
+      "electron-human-input.cjs": "99ca6c23f2bf8814c800b829644c9f8d658c714c5995da8751cbf60aac680131",
+      "qt-target-scope.js": "eb2e3deab5f43635d7b406d9240b2045f4328c0ebcea5e570ffaf255269d834e",
+      "electron-private-fd.node": "48fd7a4c74bc35a46e005c0f3441bdae34115d8ddbb48b89d16b0d96b0e165cf",
+      "native-electron-services.cjs": "88b56e91a6c89678516e8997c7e34683fb1976fbe9cee5f2c9a624b4eb7a7eae"
+    },
+    "nativeAssetsDirectory": "/var/tmp/o3-build/wayland-factory-actual-next/native-assets"
+  },
+  "artifactFiles": [
+    {
+      "path": "deps/libdisplaydoc-c08e7d60f9fcabdc.so",
+      "sha256": "ad166b1bbfe164c5975fc2d9c1649fd59db963a7ab1bd045c7c16845c7a9705b",
+      "bytes": 7941640,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "deps/libserde_derive-46f31dee4ac56ee4.so",
+      "sha256": "5ed6d1583811f13c3c7f65cd7b77bdac5b0beb5439cf01fa8e5540a6128c4a2d",
+      "bytes": 9340264,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "deps/libthiserror_impl-0bcc80a0652a3e89.so",
+      "sha256": "e0549b707ce2f8206d3e71bd121469e624b12d0b06ddae14168ca68afd755ae0",
+      "bytes": 8346976,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "deps/libyoke_derive-0eb9381c67580006.so",
+      "sha256": "a61fa74da6a1eb79f98e2ea53c900c5280af3b6aec772473196e1a7a2e60a498",
+      "bytes": 8164960,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "deps/libzerofrom_derive-1d1673c37dae2f89.so",
+      "sha256": "fe1fc21b32127c2cfac130f2eff663df3c7da67a5cc393f14677dba1ec499b0e",
+      "bytes": 8298856,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "deps/libzerovec_derive-13c8e1215e8744d3.so",
+      "sha256": "715542aa00189e651347e4b62160960f810dda5a7bfb893d42adfb229cf8bd33",
+      "bytes": 8116960,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "deps/omarchy_t3_client-2e0956b850f22bbd",
+      "sha256": "63ef194ae695ab30aacec086041ed722c27980107d2671ba9b667062e7dd1f19",
+      "bytes": 154833000,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "examples/native_wayland_pool_probe",
+      "sha256": "66a9e52e5c2824128e9e60fcf55d110aaf532a3bb74547cfbeef797ec86e0e4b",
+      "bytes": 141787720,
+      "copyMode": "reserved-copy"
+    },
+    {
+      "path": "omarchy-t3-client",
+      "sha256": "9c986b26a52e9d74b6fd1aa42d110971acab46bff2163709f22d5662b8dedaac",
+      "bytes": 213895568,
+      "copyMode": "reserved-copy"
+    }
+  ],
+  "orchestrationHashes": {
+    "build.py": "d9e883ae9ba9965d53ff40c38aee2d00754d32111723a131d6e27f409f6159aa",
+    "run-tests.py": "03deb9dd9371805ed9422ff229a0acb42a31238cb81001015888da2850179007",
+    "run-physical.py": "98cdfe598fbfd7e0c29bbcc8c4ba970ed0c2b8eef4cb611d69905f109045727c",
+    "run-acceptance.py": "1148752eb062f9410beaa520a62833e54bfdfdb9f035b19faedd47ac4eeb1523"
+  },
+  "resources": {
+    "maxAcceptedConnectionsPerEngineLifetime": 8,
+    "allocatedQueuedBytesPerDirection": 1048576,
+    "queuedRightsPerDirection": 64,
+    "singleReceiveBytes": 65536,
+    "backendConnect": "one nonblocking CLOEXEC socket attempt; live engine/compositor pidfds and cancellation checked before/after, fail-closed without waiting for backlog",
+    "teardownPollMilliseconds": 50,
+    "extraNativeCommandDeadline": false,
+    "temporaryDirectoriesRetained": true,
+    "socketUnlink": "exact owned frontend socket inode only",
+    "snapshots": "reserved cross-filesystem copies on btrfs; no source target/evidence moved or deleted"
+  },
+  "qualifiedPreviousReceipts": [
+    {
+      "receipt": "/home/node/BuildCache/o3-desktop-next/engine-spawn-next",
+      "qualification": "initial2 early-identity cases and initial transport2; PID1 fixture negative retained"
+    },
+    {
+      "receipt": "/var/tmp/o3-build/wayland-factory-actual-next",
+      "qualification": "first real normal factory positive, before bounded backend connect and allocated-capacity correction"
+    },
+    {
+      "receipt": "/var/tmp/o3-build/wayland-factory-bounded-final",
+      "qualification": "bounded connect positive and actual foreign refusal; first copied unit wrapper used older baseline, corrected9-case pass kept separately"
+    },
+    {
+      "receipt": "/var/tmp/o3-build/wayland-factory-budgets-final",
+      "qualification": "allocated-budget invariant passed; partial-send fixture incorrectly retained all receive chunks and backpressured itself, FAIL retained; no engine run on that failed partition"
+    }
+  ],
+  "remaining": [
+    "native host GUI clipboard lazy ingress/egress with unchanged permission semantics, fresh cached-Allow bytes and current-offer lifetime",
+    "actual GUI frame-bound context observer/registration/query consumer on this factory",
+    "actual GUI keyboard/pointer/IME acceptance on this factory (CDP evaluation/frame is not that proof)",
+    "packaging/owned-mode UI and actual supervisor/provider pipeline activation after those gates"
+  ],
+  "publicSelectorEnabled": false,
+  "originalSignedCompositorFilesChanged": false,
+  "electronRuntimeFilesChanged": false,
+  "buildQualification": {
+    "sdkPin": "74f0052ea0770df1fd754ca82638e9107a81e538",
+    "cargoTomlSha256": "43e984b4552621c71fac2023c9d07a27cf7ce12e0977113e6b72a6b67ec60bad",
+    "cargoLockSha256": "17a6c4b74dec4a7466d06da90edbd4c744b6b3aea7ef3f39cf312ccad5facc89",
+    "statement": "Isolated audit worktree build, not a relabel of the later primary SDK combination"
+  },
+  "testOnlyFollowup": {
+    "path": "src/browser_wayland_transport.rs",
+    "beforeSha256": "cb4c699ee86e9433d428155b71adcfd0276a6b95f7b1a8322c60f9dff33d16ea",
+    "afterSha256": "7cb7f2fb2cce28f1b586c06a1cf10591129e13b7d0e3a86e7e0ac4d9d0886a47",
+    "productionPrefixSha256": "930826d66cdb670f7db962243a298a02a7f10272ec5dcef0d0d64cb9357af4f1",
+    "qualification": "Only cfg(test) Queue literal initialization changed for combined Clippy. Original test binary/physical source hashes above remain the exact executed evidence; no new execution claimed."
+  }
+}

@@ -5,7 +5,8 @@ static CACHE:OnceLock<Mutex<HashMap<String,(Instant,Value)>>>=OnceLock::new();
 pub fn query(e:&Environment,input:&Value)->Result<Value>{
  let kind=text(input,"kind");let query=text(input,"query");let thread=text(input,"thread");let instance=text(input,"instanceId");
  if !valid_id(thread)||query.chars().count()>256||!["path","skill","command"].contains(&kind){return Err("invalid_suggestion_query".into())}
- let key=format!("{}/{}/{}",e.id,thread,instance);
+ let socket=if kind=="path"{Some(crate::rpc_sessions::session(&e.id,false)?)}else{None};
+ let key=format!("{}/{}/{}/{}",e.id,thread,instance,socket.as_ref().map(|s|s.id()).unwrap_or(""));
  let cache=CACHE.get_or_init(||Mutex::new(HashMap::new()));
  let saved=cache.lock().unwrap().get(&key).filter(|(t,_)|t.elapsed()<Duration::from_secs(300)).map(|(_,v)|v.clone());
  let context=if let Some(v)=saved{v}else{
@@ -19,7 +20,7 @@ pub fn query(e:&Environment,input:&Value)->Result<Value>{
  let cwd=text(&context,"cwd");
  if kind=="path"{
   if cwd.is_empty(){return Err("workspace_unavailable".into())}
-  let result=protocol::api::projects::search_entries(&e.connection(true)?,cwd,query,40,None,None)?;
+  let result=crate::file_metadata_runtime::global().seeded_read(&e.id,&protocol::api::projects::SEARCH_ENTRIES,&json!({"cwd":cwd,"query":query,"limit":40}),cwd,false)?;
   return Ok(json!({"items":protocol::composer::paths(&result),"truncated":result["truncated"]}));
  }
  let config=if context["config"].is_object(){context["config"].clone()}else{

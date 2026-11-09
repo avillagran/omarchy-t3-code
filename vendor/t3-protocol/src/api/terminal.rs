@@ -1,4 +1,4 @@
-//! `terminal.*` unary RPCs: open, write and resize a thread's terminal.
+//! `terminal.*` unary RPCs: open, write, resize, clear and close a thread's terminal.
 //! `terminal.attach` is a stream. `crate::terminal` keeps the host helpers
 //! (`context`, `attach`, `Output`) and builds `session`/`write`/`resize` with
 //! the validators here, under its older error codes.
@@ -37,7 +37,24 @@ pub const RESIZE: Function = api_fn! {
     args: [(threadId, Id, required), (terminalId, Token, required), (cols, Integer, required), (rows, Integer, required)],
     payload: |a| resize_payload(a.req("threadId")?, a.req("terminalId")?, a.req_u64("cols")?, a.req_u64("rows")?),
 };
-pub const FUNCTIONS: &[Function] = &[OPEN, WRITE, RESIZE];
+pub const CLEAR: Function = api_fn! {
+    name: "terminal.clear", module: "terminal", tag: Some("terminal.clear"),
+    kind: IdempotentMutation, scope: Fixed("terminal:operate"),
+    args: [(threadId, Id, required), (terminalId, Token, required)],
+    payload: |a| session_payload(a.req("threadId")?, a.req("terminalId")?),
+};
+pub const CLOSE: Function = api_fn! {
+    name: "terminal.close", module: "terminal", tag: Some("terminal.close"),
+    kind: IdempotentMutation, scope: Fixed("terminal:operate"),
+    args: [(threadId, Id, required), (terminalId, Token, optional), (deleteHistory, Bool, optional)],
+    payload: |a| {
+        let mut p=json!({"threadId":ids::id("threadId",a.req("threadId")?)?});
+        if let Some(id)=a.str("terminalId")? {p["terminalId"]=json!(ids::token("terminalId",id,TERMINAL_ID_MAX)?);}
+        put(&mut p,"deleteHistory",a.bool("deleteHistory")?);
+        Ok(p)
+    },
+};
+pub const FUNCTIONS: &[Function] = &[OPEN, WRITE, RESIZE, CLEAR, CLOSE];
 
 pub(crate) fn session_payload(thread_id: &str, terminal_id: &str) -> Result<Value> {
     Ok(json!({"threadId":ids::id("threadId", thread_id)?,"terminalId":ids::token("terminalId", terminal_id, TERMINAL_ID_MAX)?}))
@@ -126,4 +143,16 @@ pub(crate) fn resize_payload(thread_id: &str, terminal_id: &str, cols: u64, rows
     v["cols"] = json!(cols);
     v["rows"] = json!(rows);
     Ok(v)
+}
+
+/// Clear the selected terminal's server history and display.
+pub fn clear(conn: &Connection, thread_id: &str, terminal_id: &str) -> Result<Value> {
+    send(conn, &CLEAR, session_payload(thread_id, terminal_id)?)
+}
+/// Close one terminal or every terminal in a thread. History deletion is explicit.
+pub fn close(conn: &Connection, thread_id: &str, terminal_id: Option<&str>, delete_history: Option<bool>) -> Result<Value> {
+    let mut payload=json!({"threadId":thread_id});
+    put(&mut payload,"terminalId",terminal_id);
+    put(&mut payload,"deleteHistory",delete_history);
+    CLOSE.call(conn,&payload,None)
 }

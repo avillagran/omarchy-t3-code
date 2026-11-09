@@ -28,5 +28,5 @@ fn layout_targets_only_verified_ot3_window_and_repeated_modes_do_not_toggle() {
     assert_eq!(calls.matches("prop = \"border_size\", value = \"3\"").count(), 4);
     assert_eq!(calls.matches("prop = \"no_follow_mouse\", value = \"false\"").count(), 4);
     std::env::set_var("PATH", old);
-    fs::remove_dir_all(root).unwrap();
+
 }

@@ -31,9 +31,9 @@ fn legacy_super_enter_never_submits_and_always_opens_terminal() {
             .status()
             .unwrap();
         assert!(status.success());
-        assert_eq!(marker.exists(), true);
+        assert!(marker.exists());
     }
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]

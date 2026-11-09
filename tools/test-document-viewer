@@ -22,5 +22,5 @@ p.on('exit',code=>{exited=true;exitCode=code});
  send({type:'key',key:65,text:'a',modifiers:0x10000000});await sleep(120);send({type:'key',key:67,text:'c',modifiers:0x10000000});await waitFor(()=>clip.includes('Inside the panel'));
  send({type:'resize',width:740,height:420});send({type:'zoom',value:1.25});await waitFor(()=>latest.width===740&&latest.height===420);assert(frames>=3);
  if(process.env.T3_DOCUMENT_TEST_CAPTURE)fs.copyFileSync(dir+'/'+latest.frame,process.env.T3_DOCUMENT_TEST_CAPTURE);send({type:'close'});await waitFor(()=>exited);assert.equal(exitCode,0);console.log('DOCUMENT_VIEWER_PASS: embedded transport, real HTML click, delayed repaint, no idle captures, copy, resize/zoom, authored CSS, sandbox and no desktop window');
- }catch(error){console.error(error);process.exitCode=1}finally{if(!exited){send({type:'close'});await sleep(700);if(!exited)p.kill()}fs.rmSync(dir,{recursive:true,force:true});}})();
+ }catch(error){console.error(error);process.exitCode=1}finally{if(!exited){send({type:'close'});await sleep(700);if(!exited)p.kill()}}})();
 NODE_DOCUMENT_TEST

@@ -1,0 +1,32 @@
+{
+  "reference": {
+    "revision": "a9e709f15f825cacac1b6d665fa1920c328d68b7",
+    "files": {
+      "path.ts": "5d8e50477165341bff87df2c12208b87f6f4d1363b3497d141de1ed0cdb3261c",
+      "fileLinks.ts": "a3fc61051a12bc886a2ce61387f505a79a42d94ad1b30486bc03d3b5b5cd265d",
+      "markdownLinks.ts": "d7ebf7690c65a544b4b82d0a219016d63f5b9faf3bfe347ed88140e13b61e139",
+      "markdownLinks.test.ts": "5de610b410e5676d8369860573bbb114e1f7007f8bdbae782933a19ba78735ec"
+    }
+  },
+  "cases": 87,
+  "originalRows": 12,
+  "nativeExit": 0,
+  "hostPostprocessingInitiallyFailed": true,
+  "hostPostprocessingRecoveredWithoutRuntimeRepeat": true,
+  "rustRuntime": {
+    "exit": 0,
+    "cases": 87,
+    "originalRows": 12,
+    "actualCaseMarker": true,
+    "actualSummary": true,
+    "containerGone": true,
+    "sourcesAndBinaryUnchanged": true,
+    "accepted": true
+  },
+  "rustModuleSha256": "32748e5537e53bb67f74f9381cbf603fca1df825939228fd145ecf9d090f2669",
+  "rustBuildOnlyReceipt": "/var/tmp/o3-build/inline-files-oracle-4340/rust-build-receipt.json",
+  "evidenceDirectory": "/var/tmp/o3-build/inline-files-oracle-4340",
+  "wholeLibraryBuildExecuted": false,
+  "rendererUiExecuted": false,
+  "globalNightlyAccepted": false
+}

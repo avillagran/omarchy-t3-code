@@ -35,7 +35,7 @@ pub mod worktree_setup;
 
 pub mod streams;
 
-pub use orchestration::{Command, ThreadLaunch};
+pub use orchestration::{Command, CommandWithContext, ThreadLaunch};
 
 /// T3 checkout the registry was verified against (`tests/fixtures/t3-contract.json`).
 pub const CONTRACT: &str = "t3code@3f9448747";

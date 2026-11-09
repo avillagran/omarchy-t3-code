@@ -22,6 +22,6 @@ try{
  console.log('BACKEND_OWNERSHIP_PASS: isolated headless PID recognized and gracefully stopped; production owner='+current.owner);
 }finally{
  if(started){try{run('systemctl',['--user','stop',unit],{stdio:['ignore','pipe','ignore']})}catch{}}
- fs.rmSync(root,{recursive:true,force:true});
+
 }
 JS

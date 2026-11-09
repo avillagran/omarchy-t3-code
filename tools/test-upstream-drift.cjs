@@ -37,4 +37,4 @@ try{
  // A supported item ot3 stops referencing is a regression.
  fs.writeFileSync(corpus,'"old.method"');r=run('--check');assert.equal(r.status,1);assert.match(r.stderr,/marked supported but ot3 no longer references it: rpc:server\.getConfig/);
  console.log('UPSTREAM_DRIFT_PASS: new/removed/breaking surface, settings and keybindings, commits by area, inventory sync/check, pin guarded by the inventory');
-}finally{fs.rmSync(dir,{recursive:true,force:true})}
+}finally{}

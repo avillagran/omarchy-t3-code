@@ -32,6 +32,7 @@ function render(input, fontSize, scale, foreground, muted, surface, border) {
   return '<style>'+
     'p,ul,ol,blockquote,pre,table{margin-top:'+px(10.4)+';margin-bottom:'+px(10.4)+';}' +
     'p,li{line-height:150%;}li{margin-top:'+px(4)+';}' +
+    'b,strong{font-weight:700;}' +
     'ul,ol{margin-left:'+px(20)+';padding-left:0;}' +
     'h1,h2,h3,h4,h5,h6{margin-top:'+px(20)+';margin-bottom:'+px(8)+';font-weight:600;line-height:130%;color:'+foreground+';}' +
     'h1{font-size:'+px(20)+';}h2{font-size:'+px(18)+';}h3{font-size:'+px(16)+';}h4,h5,h6{font-size:'+fontSize+'px;}' +

@@ -1237,17 +1237,24 @@ dependencies = [
 
 [[package]]
 name = "t3-protocol"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "base64 0.22.1",
+ "bytes",
  "chrono",
+ "futures-util",
+ "http-body",
  "p256",
  "pulldown-cmark",
  "rand_core 0.6.4",
  "reqwest",
  "serde_json",
  "sha2",
+ "socket2",
+ "tokio",
+ "tokio-tungstenite",
  "tungstenite",
+ "unicode-normalization",
  "uuid",
  "zeroize",
 ]
@@ -1310,6 +1317,22 @@ checksum = "c9cc2678c2cdd569ef8215e2afd7954ada2ae20b4fdd2c5fe6139a3b02d105db"
 dependencies = [
  "rustls",
  "tokio",
+]
+
+[[package]]
+name = "tokio-tungstenite"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d25a406cddcc431a75d3d9afc6a7c0f7428d4891dd973e4d54c56b46127bf857"
+dependencies = [
+ "futures-util",
+ "log",
+ "rustls",
+ "rustls-pki-types",
+ "tokio",
+ "tokio-rustls",
+ "tungstenite",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -1419,6 +1442,15 @@ name = "unicode-ident"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
+
+[[package]]
+name = "unicode-normalization"
+version = "0.1.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fd4f6878c9cb28d874b009da9e8d183b5abc80117c40bbd187a1fde336be6e8"
+dependencies = [
+ "tinyvec",
+]
 
 [[package]]
 name = "untrusted"

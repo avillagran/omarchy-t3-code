@@ -1,6 +1,6 @@
-// The outbox keeps the exact command JSON it sends: commands now travel through the
-// typed `Command`/`ThreadLaunch` of t3-protocol, and what reaches T3 (first send and
-// explicit retry) must be byte for byte the JSON persisted before sending.
+// The outbox retains immutable persisted bytes and payload identity across retries.
+// Typed SDK builders may reorder structural fields; canonical comparison preserves
+// meaningful source order inside forward-compatible context payloads.
 use omarchy_t3_client::*;
 use serde_json::{json, Value};
 use std::{
@@ -15,11 +15,11 @@ fn outbox(root: &Path, id: &str) -> PathBuf {
     root.join("omarchy-t3-code/outbox").join(format!("{id}.json"))
 }
 fn bytes(v: &Value) -> String {
-    serde_json::to_string(v).unwrap()
+    composer_context::canonical_json(v)
 }
 
 #[test]
-fn outbox_commands_reach_t3_byte_for_byte_on_send_and_retry() {
+fn outbox_commands_keep_canonical_payload_and_immutable_file_bytes_on_retry() {
     let root = std::env::temp_dir().join(format!("t3-outbox-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&root).unwrap();
     std::env::set_var("XDG_STATE_HOME", &root);
@@ -104,11 +104,11 @@ fn outbox_commands_reach_t3_byte_for_byte_on_send_and_retry() {
         assert_eq!(next(), first, "a retry resends the same bytes");
         assert_eq!(std::fs::read(outbox(&root, &id)).unwrap(), stored);
     }
-    std::fs::remove_dir_all(root).unwrap();
+
 }
 
 /// Commands ot3 builds outside the outbox paths above: parsing them into `Command`
-/// and back must not change a byte.
+/// and back must preserve the canonical payload, including future context order.
 #[test]
 fn typed_commands_keep_the_json_ot3_builds() {
     let commands = [

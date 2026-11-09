@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Run focused metadata fixtures with reused Node/Qt binaries in private Podman."""
+import argparse
+from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--node', type=Path, required=True)
+parser.add_argument('--qt-harness', type=Path, required=True)
+parser.add_argument('--core-freeze', type=Path, required=True)
+parser.add_argument('--only', choices=['monitor','controller','both'], default='both')
+arguments = parser.parse_args()
+root = Path(__file__).resolve().parent.parent
+def digest(path):
+    with path.open('rb') as source:
+        return hashlib.file_digest(source, 'sha256').hexdigest()
+assert arguments.node.resolve() == arguments.node and arguments.qt_harness.resolve() == arguments.qt_harness
+assert digest(arguments.node) == '0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b'
+assert digest(arguments.qt_harness) == '16639df7dbc2b7dc369b2cebd3c29ac31d55a3011031801334a0ce8eac94d00f'
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+freeze = json.loads(arguments.core_freeze.read_text())['sourceSha256']
+assert all(digest(root / name) == expected for name, expected in freeze.items())
+extras = ['tools/test-voice-microphone-refresh','tools/fixtures/voice-microphone-monitor.mjs',
+    'tools/fixtures/voice-microphone-refresh-driver.js','ui/js/VoicePlatform.js','ui/js/NativeVoice.js',
+    'ui/js/NativeVoiceInput.js','ui/js/NativeVoicePreferences.js','ui/voice/browser-microphones.mjs']
+fence = {**freeze, **{name:digest(root / name) for name in extras}}
+out = Path(tempfile.mkdtemp(prefix='voice-microphone-refresh-',dir='/var/tmp/o3-build'))
+out.chmod(0o700)
+base = ['podman','--remote=false','run','--rm','--init','--timeout=35','--pull=never','--http-proxy=false',
+    '--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}',
+    '--cap-drop=ALL','--security-opt=no-new-privileges','--memory=512m','--memory-swap=512m',
+    '--pids-limit=64','--ulimit=core=0:0','--tmpfs','/tmp:rw,size=32m,mode=1777',
+    '-v','/usr:/usr:ro','-v',f'{root}:/repo:ro','--env','HOME=/tmp','--env','TMPDIR=/tmp']
+image = 'sha256:1b9c2f3a1a72268cab659ab3f20956bb6ce730e8dd716fe90754ba03a8870e19'
+commands = {
+    'monitor': [*base,'-v',f'{arguments.node}:/sealed-node:ro',image,'/sealed-node','/repo/tools/fixtures/voice-microphone-monitor.mjs'],
+    'controller': [*base,'-v',f'{arguments.qt_harness}:/qt-helper:ro',image,'/qt-helper',
+        *['/repo/'+name for name in ['ui/js/VoicePlatform.js','ui/js/NativeVoice.js','ui/js/NativeVoiceInput.js',
+            'ui/js/NativeVoicePreferences.js','ui/js/NativeVoiceHost.js','tools/fixtures/voice-microphone-refresh-driver.js']]],
+}
+if arguments.only != 'both':
+    commands = {arguments.only:commands[arguments.only]}
+def run(item):
+    name,command = item
+    (out / (name+'-command.json')).write_text(json.dumps(command,indent=2)+'\n')
+    result = subprocess.run(command,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=45)
+    (out / (name+'.json')).write_text(result.stdout)
+    (out / (name+'.log')).write_text(result.stderr)
+    return name,result.returncode
+with ThreadPoolExecutor(max_workers=2) as executor:
+    codes = dict(executor.map(run,commands.items()))
+assert all(digest(root / name) == expected for name, expected in fence.items()), 'Source changed during focused tests'
+proof = {'exitCodes':codes,'sourceSha256':fence,'rootless':True,'hostWritableMounts':[],
+    'scope':'Selected focused monitor and/or actual original Qt controller/platform/Host cases with metadata transport peer; no Rust parser execution, physical hotplug/audio/display, Cargo or binary copies',
+    'imageId':image,'nodeSha256':digest(arguments.node),'qtHarnessSha256':digest(arguments.qt_harness)}
+for name, code in codes.items():
+    if code == 0:
+        proof[name] = json.loads((out / (name+'.json')).read_text())
+proof['exit'] = 0 if all(code == 0 for code in codes.values()) else 1
+(out / 'result.json').write_text(json.dumps(proof,indent=2)+'\n')
+print(out)
+raise SystemExit(proof['exit'])

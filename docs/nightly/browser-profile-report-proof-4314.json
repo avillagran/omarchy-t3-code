@@ -1,0 +1,145 @@
+{
+  "baseClientCommit": "d899fee3b9916bdcc4a74ca443fe5f2831022e7c",
+  "nativeCommit": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "sourceSha256": {
+    "src/browser_profile_reporting.rs": "0f3c73ecbb1af01c66640034d951af8b760f25758d9c14d7c755a2a99f02bde1",
+    "src/main.rs": "fbcdbb8d391ba5af78a87652caa4f7ac10870e6bf797c88481ee47e0031d396b",
+    "src/lib.rs": "b997668c0da330bc028371daf9db6057169582a080fc707ae1c73760ff3daab4",
+    "ui/qml/T3Backend.qml": "0d0e8136e83dd7634b8480fcd91c9d5f52a5c6f4a1aacfdabe0237aafd66cc28",
+    "ui/js/NativeBrowserProfileReporting.js": "32e5c5a7bdbfae575abeca871d1d184dc36a5bd259c2f519c408eea7ce6cc91d",
+    "tools/generate-browser-profile-report-helper.py": "082a5f035b49dcb46f94a7828392f26115b385bb76c120d030fe31284bcfba09",
+    "tools/test-browser-profile-report-helper.mjs": "b7fc8cb9cf7b6760e2bfa3383e127b08533a3b7af30e752efb0f21130fa82ab6",
+    "tools/test-browser-profile-config-projection.mjs": "e566189f045067aa3b74d00041387e6bb91346f0617951495c2aa725fc51e822",
+    "tools/test-device-panel-container": "17fb83375494f02ffb94fd2af5320e490b0bc54713461a80b30893e2c1411fa4",
+    "tests/browser_profile_reporting.rs": "c400585b52d86518bb47ca282a64d0c65edaa98902197399a06b7e2a1d35e54a",
+    "tests/fixtures/browser-profile-config-projection-4314.json": "4d19373726c24a0761feccddc24bf7d11f2cd0199888d40910e61700662684e1",
+    "tests/fixtures/browser-profile-report-worker.py": "27119de5f7b0871a70b5151702bc947f5da1eb942a288d867530eec541de5e07",
+    "tests/qml/browser-profile-reporting.qml": "aa75b7b56b3c10dd2e8cf416570ca20c29136f8ed962b849322b41408e902bb5"
+  },
+  "strictBuild": {
+    "complete": true,
+    "exit": 0,
+    "strict": 0,
+    "commands": [
+      {
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--offline",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "freeBefore": 6531354624,
+        "exit": 0,
+        "seconds": 10.915339573984966,
+        "freeAfter": 6530498560
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--lib",
+          "--test",
+          "browser_profile_reporting",
+          "--no-run",
+          "--message-format=json"
+        ],
+        "freeBefore": 6530498560,
+        "exit": 0,
+        "seconds": 16.63160880401847,
+        "freeAfter": 6529732608
+      }
+    ],
+    "sourceUnchanged": true,
+    "artifacts": [
+      {
+        "target": "omarchy_t3_client",
+        "path": "/home/node/BuildCache/o3-client-voice-4314/target/debug/deps/omarchy_t3_client-dbc6b054bb0921d1",
+        "bytes": 151288584,
+        "sha256": "b9d2e22b494a3958491a7c60eb396a046fe759820773f31f7af9fa5b49fc3d73"
+      },
+      {
+        "target": "browser_profile_reporting",
+        "path": "/home/node/BuildCache/o3-client-voice-4314/target/debug/deps/browser_profile_reporting-ab4c09bd34c0c80f",
+        "bytes": 161977360,
+        "sha256": "cf1e212dd5fe5ac3a32d077fa11a657623e7cb46f6f9f13432e64fa6e4239947"
+      }
+    ],
+    "seconds": 27.905154094012687,
+    "freeAfter": 6529536000,
+    "qualification": "Strict all-target compilation plus library/integration no-run only. Existing target, reviewed addon pins, incremental disabled. No runtime, binary copy or installation."
+  },
+  "focusedRust": {
+    "exit": 0,
+    "records": [
+      {
+        "target": "omarchy_t3_client",
+        "exit": 0,
+        "seconds": 0.3143412299978081,
+        "artifact": {
+          "target": "omarchy_t3_client",
+          "path": "/home/node/BuildCache/o3-client-voice-4314/target/debug/deps/omarchy_t3_client-dbc6b054bb0921d1",
+          "bytes": 151288584,
+          "sha256": "b9d2e22b494a3958491a7c60eb396a046fe759820773f31f7af9fa5b49fc3d73"
+        },
+        "artifactUnchanged": true,
+        "sourceUnchanged": true
+      },
+      {
+        "target": "browser_profile_reporting",
+        "exit": 0,
+        "seconds": 1.6166310209955554,
+        "artifact": {
+          "target": "browser_profile_reporting",
+          "path": "/home/node/BuildCache/o3-client-voice-4314/target/debug/deps/browser_profile_reporting-ab4c09bd34c0c80f",
+          "bytes": 161977360,
+          "sha256": "cf1e212dd5fe5ac3a32d077fa11a657623e7cb46f6f9f13432e64fa6e4239947"
+        },
+        "artifactUnchanged": true,
+        "sourceUnchanged": true
+      }
+    ],
+    "globalBuildLockHeldThroughRuntime": true,
+    "qualification": "Exactly3 new library cases plus1 actualclient HTTP/WS syntheticpeer case only; no fullsuite, servermodel, browser, GUI or account. Original readonly binaries/hashchecked before/after underglobalcompilelock, no binary/runtimecopy."
+  },
+  "nativeHelper": {
+    "exit": 0,
+    "sourceUnchanged": true,
+    "inputs": {
+      "ui/js/NativeBrowserProfileReporting.js": "32e5c5a7bdbfae575abeca871d1d184dc36a5bd259c2f519c408eea7ce6cc91d",
+      "tools/test-browser-profile-report-helper.mjs": "b7fc8cb9cf7b6760e2bfa3383e127b08533a3b7af30e752efb0f21130fa82ab6"
+    },
+    "seconds": 0.3643893100088462,
+    "nodeSha256": "0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b",
+    "qualification": "Whole pinned native helper and actual consumer JS; no QML/Rust/network/browser/server catalog execution"
+  },
+  "nativeProjection": {
+    "exit": 0,
+    "sourceUnchanged": true,
+    "sourceSha256": "e566189f045067aa3b74d00041387e6bb91346f0617951495c2aa725fc51e822",
+    "seconds": 0.5147180680069141,
+    "qualification": "Whole original projection and withoutProviders, actual Effect Option/Equal/Duration; no Rust or transport runtime"
+  },
+  "actualQml": {
+    "evidence": "/var/tmp/o3-device-panel-njvpuqf4",
+    "result": {
+      "returncode": 0,
+      "fixture": "browser-profile-reporting"
+    },
+    "sourceSha256": {
+      "tools/test-device-panel-container": "17fb83375494f02ffb94fd2af5320e490b0bc54713461a80b30893e2c1411fa4",
+      "tests/qml/browser-profile-reporting.qml": "aa75b7b56b3c10dd2e8cf416570ca20c29136f8ed962b849322b41408e902bb5",
+      "tests/fixtures/browser-profile-report-worker.py": "27119de5f7b0871a70b5151702bc947f5da1eb942a288d867530eec541de5e07",
+      "ui/qml/T3Backend.qml": "0d0e8136e83dd7634b8480fcd91c9d5f52a5c6f4a1aacfdabe0237aafd66cc28",
+      "ui/js/NativeBrowserProfileReporting.js": "32e5c5a7bdbfae575abeca871d1d184dc36a5bd259c2f519c408eea7ce6cc91d"
+    },
+    "reportCount": 9,
+    "hiddenEnvironments": 2
+  },
+  "qualification": "Focused original helper/projection, actual singleton with metadata peer, and actual client HTTP/WS synthetic protocol peer pass separately. No composed GUI/real worker/actual server catalog, full ServerConfig schema, browser or public selector acceptance. No broad runtime suite, binary copy or installation."
+}

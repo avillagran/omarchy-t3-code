@@ -24,7 +24,7 @@ fn native_launch_owns_workspace_and_initial_message_with_exact_retries(){
  let mut changed=launch.clone();changed["text"]=json!("Changed retry");assert_eq!(write::manage(&e,&changed).unwrap_err().to_string(),"retry_payload_changed");
  for strategy in [json!({"type":"root"}),json!({"type":"existing_worktree","worktreePath":"/remote/worktree"})]{let mut request=launch.clone();request["requestId"]=json!(uuid::Uuid::new_v4().to_string());request["launchWithMessage"]=json!(false);request["workspaceStrategy"]=strategy;write::manage(&e,&request).unwrap();}
  let mut invalid=launch;invalid["workspaceStrategy"]["baseRef"]=json!("");assert_eq!(write::manage(&e,&invalid).unwrap_err().to_string(),"invalid_workspace");
- remote.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+ remote.join().unwrap();
 }
 
 #[test]
@@ -49,5 +49,5 @@ fn approval_is_saved_in_native_settings_and_project_overrides_are_respected(){
  assert_eq!(write::workspace_preference(&e,&read).unwrap()["startFromOrigin"],false);
  assert!(write::workspace_preference(&e,&read).is_err());
  assert!(write::workspace_preference(&e,&json!({"action":"workspace-update","projectId":"p","mode":"arbitrary"})).is_err());
- remote.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+ remote.join().unwrap();
 }

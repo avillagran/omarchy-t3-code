@@ -1,0 +1,57 @@
+{
+  "revision": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "sourceFiles": {
+    "apps/web/src/speech/browserVoiceInput.ts": "6e06aa3b3211720a175378383a487adad2058431e3429bc1c2c5b4aa6ec6bb73",
+    "packages/shared/src/speech.ts": "af32fbbc5e6028bb6ef0c652a1ed26163da61034c1b4330a54093d749f7c9523"
+  },
+  "selected": [
+    {
+      "source": "packages/shared/src/speech.ts",
+      "names": [
+        "cloudSpeechLanguages"
+      ]
+    },
+    {
+      "source": "packages/shared/src/speech.ts",
+      "names": [
+        "effectiveSpeechLanguage"
+      ]
+    },
+    {
+      "source": "apps/web/src/speech/browserVoiceInput.ts",
+      "names": [
+        "isVoiceTranscriptionError"
+      ]
+    },
+    {
+      "source": "apps/web/src/speech/browserVoiceInput.ts",
+      "names": [
+        "createBrowserVoiceInputPlatform"
+      ]
+    }
+  ],
+  "compilerLockSha256": "0d0bc93378fbd6079ea207a9c5ce482a8ab750f4e019d8dd74f70ac408dbe378",
+  "node": "26.13.0",
+  "outputSha256": "3ad236b788bedab5fad40b5d0d97a883bdecf7d445e63146690ffaeaf69e2c6c",
+  "dependencies": [
+    "Schema",
+    "VoiceTranscriptionError",
+    "requireCloudSpeechKey",
+    "transcribeCloudPcm",
+    "getEnvironmentSpeechStatus",
+    "getEnvironmentSpeechStreamUrl",
+    "openSpeechStream",
+    "throwIfVoiceTranscriptionAborted",
+    "transcribeEnvironmentPcm",
+    "createBrowserPcmCapture",
+    "runEnvironmentSpeech",
+    "fetch",
+    "Uint8Array"
+  ],
+  "adaptations": [
+    "Whole original declarations retained; TypeScript/import/export linkage only",
+    "Standard Babel async/class/optional-catch transforms for Qt",
+    "Host capture and shared SDK runtime dependencies supplied explicitly"
+  ],
+  "scope": "Original platform factory and language selection; host adapters and production UI activation require separate acceptance"
+}

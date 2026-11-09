@@ -1,0 +1,17 @@
+{
+  "revision": "ade473018d32003658b7d38693e083ee2e314bd8",
+  "sourcePath": "apps/web/src/components/CommandPalette.logic.ts",
+  "sourceSha256": "68f65fa1b148c5c2fc64ac7f3bb3681283c60d6f877374a49b902976c9ebd5c1",
+  "declarations": [
+    "createCommandPaletteSearchState",
+    "reduceCommandPaletteSearchState",
+    "getCommandPaletteMode",
+    "getCommandPaletteInputPlaceholder"
+  ],
+  "outputSha256": "3cea693e14474b5f45b7a8d4c98b6b7fb04f17d645c80207c7bdbe4a7033459d",
+  "node": "26.13.0",
+  "compilerLockSha256": "0d0bc93378fbd6079ea207a9c5ce482a8ab750f4e019d8dd74f70ac408dbe378",
+  "adaptations": [
+    "TypeScript erasure, export removal and standard Babel object-spread lowering for Qt; standard Array.at coercion/bounds polyfill; complete original declarations and closure verification"
+  ]
+}

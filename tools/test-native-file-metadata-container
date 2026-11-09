@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Run the exact nightly file-metadata tests/modules in a private rootless container."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('checkout',type=Path)
+parser.add_argument('dependencies',type=Path,help='Private npm cache with exact Effect/Vitest dependencies; no install scripts')
+args=parser.parse_args()
+root=Path(__file__).resolve().parent.parent
+source=args.checkout.resolve();dependencies=args.dependencies.resolve()
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':
+    raise SystemExit('Rootless Podman is required')
+common=Path(subprocess.check_output(['git','-C',str(source),'rev-parse','--git-common-dir'],text=True).strip())
+if not common.is_absolute():common=(source/common).resolve()
+node=Path(subprocess.check_output(['node','-p','process.execPath'],text=True).strip()).resolve()
+artifacts=Path(os.environ.get('O3_NATIVE_ORACLE_ROOT','/var/tmp'))
+artifacts.mkdir(parents=True,exist_ok=True)
+evidence=Path(tempfile.mkdtemp(prefix='o3-native-metadata-',dir=artifacts));evidence.chmod(0o700)
+staged=evidence/'native';staged.mkdir(mode=0o700)
+base=['podman','run','--rm','--pull=never','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}',
+      '--read-only','--network=none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--memory=2g',
+      '--tmpfs','/tmp:rw,size=1g,mode=1777','-e','HOME=/tmp/home','-e','XDG_CONFIG_HOME=/tmp/config','-e','XDG_STATE_HOME=/tmp/state','-v','/usr:/usr:ro']
+image='docker.io/library/archlinux:latest'
+stage=base+['-v',f'{source}:/source:ro','-v',f'{common}:{common}:ro','-v',f'{root}:/client:ro','-v',f'{staged}:/out:rw',image,'python3','/client/tools/build-native-file-metadata-oracle.py','/source','/out']
+with (evidence/'stage.log').open('w') as output:result=subprocess.run(stage,stdout=output,stderr=subprocess.STDOUT)
+print('Native metadata evidence:',evidence,flush=True)
+if result.returncode:print((evidence/'stage.log').read_text());raise SystemExit(result.returncode)
+command=base+['-v',f'{dependencies}:/deps:ro','-v',f'{staged}:/native:ro','-w','/native']
+node_command=str(node)
+if Path('/usr') not in node.parents:
+    installation=node.parent.parent
+    if installation==Path('/'):raise SystemExit('Node must have a dedicated installation directory')
+    command+=['-v',f'{installation}:/node:ro'];node_command='/node/bin/node'
+command+=['-e',f'PATH={str(Path(node_command).parent)}:/usr/bin:/bin',image,'python3','-c',r'''
+import json,os,pathlib,subprocess,sys
+expected={'effect':'4.1.2','@effect/vitest':'4.1.2','vitest':'5.0.5','@noble/hashes':'1.8.0'}
+for name,version in expected.items():
+    actual=json.loads((pathlib.Path('/deps/node_modules')/name/'package.json').read_text())['version']
+    assert actual==version,(name,actual,version)
+modules=pathlib.Path('/tmp/native-node_modules');modules.mkdir(mode=0o700)
+for entry in pathlib.Path('/deps/node_modules').iterdir():
+    if entry.name!='@t3tools':(modules/entry.name).symlink_to(entry)
+(modules/'@t3tools').mkdir(mode=0o700)
+for package in ['contracts','shared','client-runtime']:(modules/'@t3tools'/package).symlink_to('/native/packages/'+package)
+os.makedirs('/tmp/home',mode=0o700)
+raise SystemExit(subprocess.run([sys.argv[1],'/deps/node_modules/vitest/vitest.mjs','run','--no-fsModuleCache','--fsModuleCachePath','/tmp/vitest-modules','--configLoader','native','--config','/native/vitest.config.mjs','/native/packages/client-runtime/src/state/fileMetadata.test.ts']).returncode)
+''',node_command]
+with (evidence/'tests.log').open('w') as output:result=subprocess.run(command,stdout=output,stderr=subprocess.STDOUT)
+(evidence/'result.json').write_text(json.dumps({'revision':'32a0531748c44b25072d7495ce0b9bd7e9450a87','exitCode':result.returncode})+'\n')
+log=(evidence/'tests.log').read_text()
+if result.returncode:print(log)
+else:print('\n'.join(line for line in log.splitlines() if 'passed' in line or 'tests)' in line))
+raise SystemExit(result.returncode)

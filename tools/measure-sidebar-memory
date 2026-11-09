@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import contextlib
 """Compare isolated sidebar/panel workloads and history cycles; reports UI memory.
 --revision HEAD loads that revision of T3ThreadRow (and T3Panel with --panel).
 Other files stay current. No servers are connected in the panel workload.
@@ -45,7 +46,7 @@ if args.revision_file and not args.revision:
 for name in args.revision_file:
     if Path(name).name != name or not (repo / 'ui/qml' / name).is_file():
         parser.error('revision-file must be an existing QML basename')
-with tempfile.TemporaryDirectory(prefix='ot3-sidebar-memory-') as directory:
+with contextlib.nullcontext(tempfile.mkdtemp(prefix='ot3-sidebar-memory-')) as directory:
     root = Path(directory)
     for name in ('Commons', 'Ui', 'plugins', 'services'):
         (root / name).symlink_to(Path('/usr/share/omarchy/shell') / name)

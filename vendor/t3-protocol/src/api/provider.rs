@@ -31,7 +31,7 @@ pub const AUTH_START: Function = api_fn! {
     name: "provider.auth.start", module: "provider", tag: Some("provider.auth.start"),
     kind: UnrepeatableMutation, scope: Fixed("providers:manage"),
     args: [(instanceId, Slug, required), (methodId, Token, optional), (returnUrl, Text, optional), (callbackMode, Enum(CALLBACK_MODES), optional)],
-    payload: |a| auth_start_payload(a.req("instanceId")?, a.str("methodId")?, a.str("returnUrl")?, a.str("callbackMode")?),
+    payload: |a| auth_start_payload(a.req("instanceId")?, auth_start_method_id(a.all())?, a.str("returnUrl")?, a.str("callbackMode")?),
 };
 pub const AUTH_RESPOND: Function = api_fn! {
     name: "provider.auth.respond", module: "provider", tag: Some("provider.auth.respond"),
@@ -44,6 +44,15 @@ pub const AUTH_CANCEL: Function = api_fn! {
     kind: IdempotentMutation, scope: Fixed("providers:manage"),
     args: [(instanceId, Slug, required), (flowId, Token, required)],
     payload: |a| auth_cancel_payload(a.req("instanceId")?, a.req("flowId")?),
+};
+/// Nightly 4340 adds this method to the base contract. Its provenance is kept
+/// separately in `tests/fixtures/provider-auth-remove-method-4340-source.json`.
+pub const AUTH_REMOVE_METHOD: Function = api_fn! {
+    name: "provider.auth.removeMethod", module: "provider", tag: Some("provider.auth.removeMethod"),
+    kind: UnrepeatableMutation, scope: Fixed("providers:manage"),
+    args: [(instanceId, Slug, required), (methodId, Token, required)],
+    payload: |a| AuthRemoveMethodInput::from_json(a.all())?.payload(),
+    open_args: true,
 };
 pub const AUTH_LOGOUT: Function = api_fn! {
     name: "provider.auth.logout", module: "provider", tag: Some("provider.auth.logout"),
@@ -69,9 +78,52 @@ pub const INSTALL_REMOVE: Function = api_fn! {
     args: [(instanceId, Slug, required)],
     payload: |a| instance_payload(a.req("instanceId")?),
 };
+/// Spend one displayed reset credit. The server owns provider-specific redemption.
+/// This mutation has no replay identity and is never retried implicitly.
+pub const CONSUME_RESET_CREDIT: Function = api_fn! {
+    name: "provider.consumeResetCredit", module: "provider", tag: Some("provider.consumeResetCredit"),
+    kind: UnrepeatableMutation, scope: Fixed("providers:manage"),
+    args: [(instanceId, Slug, optional), (sourceId, Text, optional), (accountId, Text, optional), (creditId, Text, optional)],
+    payload: |a| ResetCreditInput::from_json(a.all())?.payload(),
+    open_args: true,
+};
+
+/// Exact native union: a provider instance, or one observed source credit.
+/// Source IDs are raw strings; account/credit IDs use JavaScript trim semantics.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ResetCreditInput {
+    Provider { instance_id: String },
+    Source { source_id: String, account_id: String, credit_id: String },
+}
+impl ResetCreditInput {
+    pub fn from_json(value: &Value) -> Result<Self> {
+        value.as_object().ok_or("invalid_reset_credit_input")?;
+        if let Some(id)=value["instanceId"].as_str() {
+            let id=id.trim_matches(crate::js::is_space);
+            if ids::slug("instanceId",id).is_ok(){return Ok(Self::Provider{instance_id:id.to_owned()})}
+        }
+        let source_id=value["sourceId"].as_str().ok_or("invalid_reset_credit_input")?;
+        let account_id=reset_credit_text(value["accountId"].as_str().ok_or("invalid_reset_credit_input")?)?;
+        let credit_id=reset_credit_text(value["creditId"].as_str().ok_or("invalid_reset_credit_input")?)?;
+        Ok(Self::Source{source_id:source_id.to_owned(),account_id,credit_id})
+    }
+    pub fn payload(&self) -> Result<Value> {
+        match self {
+            Self::Provider{instance_id}=>Ok(json!({"instanceId":ids::slug("instanceId",instance_id.trim_matches(crate::js::is_space))?})),
+            Self::Source{source_id,account_id,credit_id}=>Ok(json!({"sourceId":source_id,"accountId":reset_credit_text(account_id)?,"creditId":reset_credit_text(credit_id)?})),
+        }
+    }
+}
+fn reset_credit_text(value:&str)->Result<String>{
+    let value=value.trim_matches(crate::js::is_space);
+    if value.is_empty(){Err("invalid_reset_credit_input".into())}else{Ok(value.to_owned())}
+}
+/// Send once; uncertain transport outcomes must not be replayed automatically.
+pub fn consume_reset_credit(conn:&Connection,input:&ResetCreditInput)->Result<Value>{send(conn,&CONSUME_RESET_CREDIT,input.payload()?)}
+
 pub const FUNCTIONS: &[Function] = &[
-    REFRESH_PROVIDERS, UPDATE_PROVIDER, AUTH_START, AUTH_RESPOND, AUTH_CANCEL, AUTH_LOGOUT,
-    INSTALL_START, INSTALL_CANCEL, INSTALL_REMOVE,
+    REFRESH_PROVIDERS, UPDATE_PROVIDER, AUTH_START, AUTH_RESPOND, AUTH_CANCEL, AUTH_REMOVE_METHOD, AUTH_LOGOUT,
+    INSTALL_START, INSTALL_CANCEL, INSTALL_REMOVE, CONSUME_RESET_CREDIT,
 ];
 
 /// `server.refreshProviders`: `{providers}`. `cwd` only applies with `instance_id`;
@@ -104,13 +156,57 @@ fn operation_id<'a>(field: &str, value: &'a str) -> Result<&'a str> {
 fn instance_payload(instance_id: &str) -> Result<Value> {
     Ok(json!({"instanceId":ids::slug("instanceId", instance_id)?}))
 }
+/// `ProviderAuthRemoveMethodInput` for Rust-representable strings: JavaScript trim, the provider slug,
+/// and a nonblank method ID bounded to 128 UTF-16 code units. Internal control
+/// characters have no additional restriction in the original schema.
+/// Generic serde_json ingress cannot represent isolated UTF-16 surrogates; the
+/// original-schema fixture records that separate compatibility gap.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuthRemoveMethodInput {
+    pub instance_id: String,
+    pub method_id: String,
+}
+impl AuthRemoveMethodInput {
+    pub fn from_json(input: &Value) -> Result<Self> {
+        let object = input.as_object().ok_or("invalid_input")?;
+        let instance = object.get("instanceId").and_then(Value::as_str)
+            .ok_or("invalid_instance_id")?.trim_matches(crate::js::is_space);
+        let method = auth_method_id(object.get("methodId").and_then(Value::as_str)
+            .ok_or("invalid_method_id")?)?;
+        ids::slug("instanceId", instance)?;
+        Ok(Self { instance_id: instance.into(), method_id: method.into() })
+    }
+    pub fn payload(&self) -> Result<Value> {
+        // Public struct construction never bypasses the original decoder.
+        let input = Self::from_json(&json!({"instanceId":self.instance_id,"methodId":self.method_id}))?;
+        Ok(json!({"instanceId":input.instance_id,"methodId":input.method_id}))
+    }
+}
+/// Native auth method IDs use JavaScript trim and a UTF-16 length bound.
+/// This does not change the stricter validators of flow/interaction IDs.
+pub fn auth_method_id(value: &str) -> Result<&str> {
+    let value = value.trim_matches(crate::js::is_space);
+    if value.is_empty() || value.encode_utf16().count() > OPERATION_ID_MAX {
+        Err("invalid_method_id".into())
+    } else {
+        Ok(value)
+    }
+}
+/// Decode only the optional auth-start method: absent means the provider default;
+/// a present null, non-string or invalid ID is an error, never a default choice.
+pub fn auth_start_method_id(input: &Value) -> Result<Option<&str>> {
+    let object = input.as_object().ok_or("invalid_input")?;
+    object.get("methodId").map(|value| {
+        auth_method_id(value.as_str().ok_or("invalid_method_id")?)
+    }).transpose()
+}
 /// `provider.auth.start`: `ProviderAuthState`. Starts a sign-in flow: not repeatable.
 pub fn auth_start(conn: &Connection, instance_id: &str, method_id: Option<&str>, return_url: Option<&str>, callback_mode: Option<&str>) -> Result<Value> {
     send(conn, &AUTH_START, auth_start_payload(instance_id, method_id, return_url, callback_mode)?)
 }
 fn auth_start_payload(instance_id: &str, method_id: Option<&str>, return_url: Option<&str>, callback_mode: Option<&str>) -> Result<Value> {
     let mut v = instance_payload(instance_id)?;
-    put(&mut v, "methodId", method_id.map(|m| operation_id("methodId", m)).transpose()?);
+    put(&mut v, "methodId", method_id.map(auth_method_id).transpose()?);
     put(&mut v, "returnUrl", return_url.map(|u| ids::path("returnUrl", u)).transpose()?);
     put(&mut v, "callbackMode", callback_mode.map(|m| one_of("callbackMode", m, CALLBACK_MODES)).transpose()?);
     Ok(v)
@@ -207,6 +303,13 @@ fn auth_respond_payload(instance_id: &str, flow_id: &str, interaction_id: &str, 
 /// `provider.auth.cancel`: `ProviderAuthState`.
 pub fn auth_cancel(conn: &Connection, instance_id: &str, flow_id: &str) -> Result<Value> {
     send(conn, &AUTH_CANCEL, auth_cancel_payload(instance_id, flow_id)?)
+}
+/// Remove one incomplete saved sign-in method and return `ProviderAuthState`.
+/// The server owns method eligibility. A lost outcome is never replayed;
+/// reconcile through `provider.auth.subscribe` before another user action.
+pub fn auth_remove_method(conn: &Connection, instance_id: &str, method_id: &str) -> Result<Value> {
+    let input = AuthRemoveMethodInput { instance_id: instance_id.into(), method_id: method_id.into() };
+    send(conn, &AUTH_REMOVE_METHOD, input.payload()?)
 }
 fn auth_cancel_payload(instance_id: &str, flow_id: &str) -> Result<Value> {
     let mut v = instance_payload(instance_id)?;

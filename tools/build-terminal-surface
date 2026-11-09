@@ -1,0 +1,21 @@
+#!/bin/bash
+# Build the pinned Ghostty display; Rust owns terminal sessions and profiles.
+set -eu
+cd -- "$(dirname -- "$0")/.."
+task_sdk="$(tools/build-ghostty-vt)"
+mkdir -p bin/qml/O3/Terminal
+task_build_root="${O3_TERMINAL_BUILD_ROOT:-/var/tmp}"
+mkdir -p -- "$task_build_root"
+task_build_dir="$(mktemp -d "$task_build_root/o3-terminal-build-XXXXXXXX")"
+exec 9>/var/tmp/o3-build/o3-parity-compile.lock
+flock 9
+task_moc="$(pkg-config --variable=libexecdir Qt6Core)/moc"
+"$task_moc" native/terminal/terminalsurface.h -o "$task_build_dir/moc_terminalsurface.cpp"
+"$task_moc" native/terminal/plugin.cpp -o "$task_build_dir/plugin.moc"
+c++ -std=c++17 -Os -fPIC -fvisibility=hidden -shared native/terminal/terminalsurface.cpp native/terminal/plugin.cpp "$task_build_dir/moc_terminalsurface.cpp" -Inative/terminal -I"$task_build_dir" -I"$task_sdk/include" -o "$task_build_dir/libo3terminal.so" "$task_sdk/lib/libghostty-vt.a" -Wl,--exclude-libs,ALL $(pkg-config --cflags --libs Qt6Quick Qt6Qml Qt6Gui)
+cp "$task_build_dir/libo3terminal.so" bin/qml/O3/Terminal/libo3terminal.so.next
+mv bin/qml/O3/Terminal/libo3terminal.so.next bin/qml/O3/Terminal/libo3terminal.so
+cp native/terminal/qmldir bin/qml/O3/Terminal/qmldir
+cp "$task_sdk/share/licenses/ghostty/LICENSE" bin/qml/O3/Terminal/Ghostty-LICENSE
+cp native/terminal/GHOSTTY_VERSION bin/qml/O3/Terminal/GHOSTTY_VERSION
+printf 'Terminal plugin: %s\n' "$PWD/bin/qml/O3/Terminal/libo3terminal.so"

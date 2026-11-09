@@ -38,16 +38,25 @@ impl CookieRead {
         }
     }
 }
+struct CookieAttributes {
+    secure: bool,
+    http_only: bool,
+    expiration_date: Option<f64>,
+    same_site: &'static str,
+}
 fn cookie(
     host: &str,
     name: &str,
     value: &str,
     path: &str,
-    secure: bool,
-    http_only: bool,
-    expiration_date: Option<f64>,
-    same_site: &'static str,
+    attributes: CookieAttributes,
 ) -> ImportedCookie {
+    let CookieAttributes {
+        secure,
+        http_only,
+        expiration_date,
+        same_site,
+    } = attributes;
     let bare = host.strip_prefix('.').unwrap_or(host);
     let authority = if bare.contains(':') && !(bare.starts_with('[') && bare.ends_with(']')) {
         format!("[{bare}]")
@@ -110,13 +119,15 @@ pub fn read_firefox(path: &Path) -> Result<CookieRead> {
             r[1].text()?,
             r[2].text()?,
             r[3].text()?,
-            r[5].number()? == 1.,
-            r[6].number()? == 1.,
-            expiration,
-            if value == Some(1.) && raw == Some(0.) {
-                "unspecified"
-            } else {
-                same_site(value)
+            CookieAttributes {
+                secure: r[5].number()? == 1.,
+                http_only: r[6].number()? == 1.,
+                expiration_date: expiration,
+                same_site: if value == Some(1.) && raw == Some(0.) {
+                    "unspecified"
+                } else {
+                    same_site(value)
+                },
             },
         ));
     }
@@ -321,14 +332,16 @@ pub fn read_chromium(path: &Path, keys: &LinuxKeys) -> Result<CookieRead> {
                     name,
                     &value,
                     path,
-                    secure,
-                    http_only,
-                    if expires <= 0. {
-                        None
-                    } else {
-                        Some(expires - 11_644_473_600.)
+                    CookieAttributes {
+                        secure,
+                        http_only,
+                        expiration_date: if expires <= 0. {
+                            None
+                        } else {
+                            Some(expires - 11_644_473_600.)
+                        },
+                        same_site: site,
                     },
-                    site,
                 ));
             }
             None => {

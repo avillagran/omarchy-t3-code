@@ -1,3 +1,5 @@
+#[path="support/retaining_fs.rs"]
+mod retaining_fs;
 use omarchy_t3_client::{
     browser_cleanup::{Lease, Runtime, Scope},
     browser_cookies::ImportedCookie,
@@ -73,7 +75,10 @@ impl Server {
                 let request: Value =
                     serde_json::from_str(ws.read().unwrap().to_text().unwrap()).unwrap();
                 // Background subscriptions the worker opens on its own.
-                if matches!(request["tag"].as_str(), Some("orchestration.subscribeShell" | "subscribeServerConfig")) {
+                if matches!(
+                    request["tag"].as_str(),
+                    Some("orchestration.subscribeShell" | "subscribeServerConfig")
+                ) {
                     continue;
                 }
                 assert_eq!(request["tag"], "server.getConfig");
@@ -151,7 +156,7 @@ impl Data {
 }
 impl Drop for Data {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.root).unwrap();
+
     }
 }
 fn settings() -> Value {
@@ -237,7 +242,7 @@ impl Drop for Held {
 }
 fn view(s: &Server, d: &Data, r: &dyn Runtime) -> Value {
     import::read_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         &json!({"environment":"fixture"}),
         &d.home,
         &d.path,
@@ -247,7 +252,7 @@ fn view(s: &Server, d: &Data, r: &dyn Runtime) -> Value {
 }
 fn apply(s: &Server, d: &Data, input: &Value, r: &dyn Runtime) -> Result<Value> {
     import::apply_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         input,
         &d.home,
         &d.path,
@@ -395,7 +400,8 @@ fn real_qt_destination_imports_synthetic_firefox_and_registers_only_after_verifi
     .unwrap();
     let env = s.env.clone();
     let (tx, rx) = std::sync::mpsc::channel();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |id| {
             if id == env.id {
@@ -408,6 +414,7 @@ fn real_qt_destination_imports_synthetic_firefox_and_registers_only_after_verifi
         move |v| {
             let _ = tx.send(v);
         },
+        move |path| remover.remove(path),
     );
     let v = view(&s, &d, &manager);
     let req = request(&v, "new");
@@ -426,7 +433,7 @@ fn real_qt_destination_imports_synthetic_firefox_and_registers_only_after_verifi
 fn actual_watch_routes_confirmed_import_to_qt_and_does_not_replay_consumed_view() {
     use std::{
         io::{BufRead, BufReader},
-        os::unix::fs::{symlink, PermissionsExt},
+        os::unix::fs::PermissionsExt,
         process::{Command, Stdio},
         time::Instant,
     };
@@ -438,12 +445,8 @@ fn actual_watch_routes_confirmed_import_to_qt_and_does_not_replay_consumed_view(
     fs::create_dir_all(&bin).unwrap();
     let executable = bin.join("omarchy-t3-client");
     fs::copy(env!("CARGO_BIN_EXE_omarchy-t3-client"), &executable).unwrap();
-    symlink(
-        repo.join("bin/libt3-browser.so"),
-        bin.join("libt3-browser.so"),
-    )
-    .unwrap();
-    symlink(repo.join("ui"), d.root.join("ui")).unwrap();
+    fs::copy(repo.join("bin/libt3-browser.so"),bin.join("libt3-browser.so")).unwrap();
+    copy_fixture_resources(&repo.join("ui"),&d.root.join("ui"));
     let token = d.root.join("token");
     fs::write(&token, "synthetic").unwrap();
     fs::set_permissions(&token, fs::Permissions::from_mode(0o600)).unwrap();
@@ -551,11 +554,13 @@ fn empty_native_import_neither_creates_qt_storage_nor_registers_metadata() {
     )
     .unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path| remover.remove(path),
     );
     let before = fs::read(&d.path).unwrap();
     let v = view(&s, &d, &manager);
@@ -595,11 +600,13 @@ fn existing_qt_profile_keeps_other_cookies_and_does_not_rewrite_metadata() {
     )
     .unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path| remover.remove(path),
     );
     let scopes = [Scope {
         environment: "fixture".into(),
@@ -672,17 +679,20 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
     let config =
         browser_guest::Config::isolated(d.root.join("missing/bin/client"), &d.root).unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let deletion=retaining_fs::RetainingFs::new(d.root.clone());
+    let remover=deletion.clone();
+    let manager = browser_sessions::Manager::start_with_removal(
         config,
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path|remover.remove(path),
     );
     assert!(manager.available());
     assert!(!manager.can_import());
     assert_eq!(
         import::read_at(
-            &[s.env.clone()],
+            std::slice::from_ref(&s.env),
             &json!({"environment":"fixture"}),
             &d.home,
             &d.path,
@@ -692,7 +702,7 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
         "sessionUnavailable"
     );
     let v = browser_profiles::read_with_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         &json!({"environments":["fixture"]}),
         &d.path,
         Some(&manager),
@@ -700,13 +710,14 @@ fn missing_renderer_blocks_import_before_source_or_key_access_but_keeps_local_cl
     .unwrap();
     assert_eq!(v["available"], true);
     let result = browser_profiles::apply_with_at(
-        &[s.env.clone()],
+        std::slice::from_ref(&s.env),
         &json!({"viewId":v["viewId"],"action":"clear","profileId":"work","confirmed":true}),
         &d.path,
         Some(&manager),
     )
     .unwrap();
     assert_eq!(result["state"], "complete");
+    assert!(deletion.receipts().is_empty(),"an absent partition requires no filesystem deletion");
     manager.shutdown().unwrap();
 }
 
@@ -764,11 +775,13 @@ fn imported_firefox_cookie_is_usable_by_real_qt_http_after_registration() {
     )
     .unwrap();
     let env = s.env.clone();
-    let manager = browser_sessions::Manager::start(
+    let remover = retaining_fs::RetainingFs::new(d.root.clone());
+    let manager = browser_sessions::Manager::start_with_removal(
         config.clone(),
         move |_| Ok(env.clone()),
         || Ok(json!({})),
         |_| {},
+        move |path| remover.remove(path),
     );
     let v = view(&s, &d, &manager);
     let req = request(&v, "new");
@@ -781,7 +794,7 @@ fn imported_firefox_cookie_is_usable_by_real_qt_http_after_registration() {
     });
     let page = json!({"threadId":"thread","tabId":"proof","navStatus":{"_tag":"Success","url":format!("{}/proof",s.env.base_url),"title":"Proof"},"canGoBack":false,"canGoForward":false,"updatedAt":"","profileId":req["target"]["profileId"],"runtime":"desktop"});
     let origin = format!("{:x}", Sha256::digest(s.env.base_url.as_bytes()));
-    pool.show("fixture", &origin, &page, "proof", 640, 400, &json!(1))
+    pool.show("fixture", &origin, &page, "proof", (640, 400), &json!(1))
         .unwrap();
     let end = Instant::now() + Duration::from_secs(5);
     while s.proof_requests.lock().unwrap().is_empty() && Instant::now() < end {
@@ -830,4 +843,15 @@ fn expired_source_cookies_are_skipped_without_touching_target_or_metadata() {
     assert_eq!(result["skippedDomains"], json!(["example.test"]));
     assert!(!dest.events.lock().unwrap().contains(&"write".into()));
     assert_eq!(fs::read(&d.path).unwrap(), before);
+}
+
+// Copy read-only runtime resources into the fixture; never create host-pointing links.
+fn copy_fixture_resources(source:&std::path::Path,target:&std::path::Path){
+    fs::create_dir_all(target).unwrap();
+    for entry in fs::read_dir(source).unwrap(){
+        let entry=entry.unwrap();let kind=entry.file_type().unwrap();
+        assert!(!kind.is_symlink(),"fixture resources must not follow symbolic links");
+        if kind.is_dir(){copy_fixture_resources(&entry.path(),&target.join(entry.file_name()))}
+        else if kind.is_file(){fs::copy(entry.path(),target.join(entry.file_name())).unwrap();}
+    }
 }

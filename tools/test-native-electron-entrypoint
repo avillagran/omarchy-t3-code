@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Exercise the actual native entrypoint with a private synthetic FD parent."""
+import argparse, hashlib, json, os, pathlib, subprocess, tempfile
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime', type=pathlib.Path, required=True)
+parser.add_argument('--baseline', type=pathlib.Path, required=True)
+parser.add_argument('--gui-baseline',type=pathlib.Path)
+parser.add_argument('--sustain-seconds',type=int,choices=[0,15],default=0)
+parser.add_argument('--xvfb-glx',action='store_true')
+parser.add_argument('--shm-megabytes',type=int,choices=[64,256],default=64)
+parser.add_argument('--input-trace',type=pathlib.Path)
+parser.add_argument('--qt-image',action='store_true')
+parser.add_argument('--inspect-selection',action='store_true')
+parser.add_argument('--module-manifest',action='store_true')
+parser.add_argument('--empty-font-cache',action='store_true')
+parser.add_argument('--linker-cache',type=pathlib.Path)
+parser.add_argument('--inspect-native-focus',action='store_true')
+options = parser.parse_args()
+if options.input_trace and options.sustain_seconds:parser.error('timeline replay does not add a sustain delay')
+root = pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip() == 'true'
+runtime = options.runtime.resolve()
+baseline = options.baseline.resolve()
+manifest = json.loads((runtime.parent/'artifact.json').read_text())
+assert manifest['version'] == '44.10.1'
+assert manifest['archiveSha256'] == '2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
+records = json.loads((baseline/'app-artifacts.json').read_text())
+addon = baseline/'app/electron-private-fd.node'
+assert hashlib.sha256(addon.read_bytes()).hexdigest() == records[addon.name]
+assert (baseline/'electron-private-fd.c').read_bytes() == (root/'ui/browser/electron-private-fd.c').read_bytes()
+out = pathlib.Path(tempfile.mkdtemp(prefix='native-electron-entrypoint-',dir='/home/node/BuildCache/o3-desktop-next'))
+print('Actual native entrypoint evidence: '+str(out),flush=True)
+inputs = {}
+for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-scope.js']:
+    data = (root/'ui/browser'/name).read_bytes()
+    (out/name).write_bytes(data)
+    inputs[name] = hashlib.sha256(data).hexdigest()
+for name in ['native-electron-entrypoint.py','native-ime-page.html']:
+    data = (root/'tools/fixtures'/name).read_bytes()
+    (out/name).write_bytes(data)
+    inputs[name] = hashlib.sha256(data).hexdigest()
+for name in ['native-electron-services.cjs','electron-private-fd.node']:
+    data=(baseline/'app'/name).read_bytes()
+    (out/name).write_bytes(data)
+    inputs[name]=hashlib.sha256(data).hexdigest()
+owner = baseline/'clipboard-owner'
+owner_sha = json.loads((baseline/'clipboard-owner.json').read_text())['sha256']
+assert hashlib.sha256(owner.read_bytes()).hexdigest() == owner_sha
+assert (baseline/'clipboard-owner.cpp').read_bytes() == (root/'tools/fixtures/electron-clipboard-owner.cpp').read_bytes()
+(out/'clipboard-owner').write_bytes(owner.read_bytes())
+(out/'clipboard-owner').chmod(0o500)
+inputs['clipboard-owner'] = owner_sha
+# Reuse the exact HTTP documents from the real Manager acceptance producer.
+source = (root/'examples/native_clipboard_manager_probe.rs').read_text()
+import re
+pages = re.findall(r'r#"(<html><body><script>setTimeout.*?</html>)"#', source)
+assert len(pages) == 3
+for name, content in zip(['write-custom.html','read-custom.html','read-text.html'], pages):
+    (out/name).write_text(content)
+    inputs[name] = hashlib.sha256(content.encode()).hexdigest()
+if options.gui_baseline:
+    gui_baseline=options.gui_baseline.resolve()
+    for name in ['native-entrypoint-gui.qml','native-entrypoint-gui.py']:
+        data=(root/'tools/fixtures'/name).read_bytes();(out/name).write_bytes(data);inputs[name]=hashlib.sha256(data).hexdigest()
+    for name in ['T3BrowserPage.qml','T3BrowserInputMethod.qml']:
+        data=(root/'ui/qml'/name).read_bytes();target=out/'root/ui/qml'/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);inputs['ui/qml/'+name]=hashlib.sha256(data).hexdigest()
+if options.linker_cache:
+    file=options.linker_cache
+    assert file.is_file() and not file.is_symlink() and file.stat().st_size<=1048576
+    data=file.read_bytes();(out/'fixture-ld.so.cache').write_bytes(data);inputs['fixture-ld.so.cache']=hashlib.sha256(data).hexdigest()
+if options.input_trace:
+    trace=options.input_trace
+    assert trace.is_file() and not trace.is_symlink() and trace.stat().st_size<=131072
+    data=trace.read_bytes();(out/'input-replay.json').write_bytes(data);inputs['input-replay.json']=hashlib.sha256(data).hexdigest()
+(out/'runtime.json').write_text(json.dumps(manifest)+'\n')
+(out/'inputs.json').write_text(json.dumps({'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'files':inputs,'addon':records[addon.name]},indent=2)+'\n')
+args = ['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--ulimit=core=0:0','--memory=2g','--pids-limit=256','--tmpfs','/tmp:rw,exec,size=256m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(runtime)+':/electron:ro','-v',str(out)+':/fixture/electron:ro','-v',str(out)+':/proof:ro']
+args += ['--env','HOME=/tmp/home','--env','LIBGL_ALWAYS_SOFTWARE=1','--env','__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json','docker.io/library/archlinux:latest','python3','/proof/native-electron-entrypoint.py']
+if options.gui_baseline:
+    args[3:3]=['-v',str(gui_baseline)+':/gui-baseline:ro','--env','QT_QPA_PLATFORM=wayland','--env','QT_QUICK_BACKEND=software']
+    args[args.index('docker.io/library/archlinux:latest')]='localhost/o3-qml-wayland-tests:local'
+    args[-1]='/proof/native-entrypoint-gui.py'
+if options.qt_image and not options.gui_baseline:args[args.index('docker.io/library/archlinux:latest')]='localhost/o3-qml-wayland-tests:local'
+if options.linker_cache:args[3:3]=['-v',str(out/'fixture-ld.so.cache')+':/etc/ld.so.cache:ro']
+if options.empty_font_cache:args[3:3]=['--tmpfs','/var/cache/fontconfig:rw,size=16m,mode=1777']
+if options.inspect_native_focus:args[3:3]=['--env','O3_NATIVE_ENTRYPOINT_INSPECT_FOCUS=1']
+if options.module_manifest:args[3:3]=['--env','O3_NATIVE_ENTRYPOINT_MODULE_MANIFEST=1']
+if options.inspect_selection:args[3:3]=['--env','O3_NATIVE_ENTRYPOINT_INSPECT_SELECTION=1']
+if options.input_trace:
+    args[3:3]=['--env','O3_NATIVE_ENTRYPOINT_REPLAY=1']
+    if options.gui_baseline:args[3:3]=['--env','O3_NATIVE_ENTRYPOINT_GUI_REPLAY=1']
+if options.shm_megabytes!=64:args[3:3]=['--shm-size='+str(options.shm_megabytes)+'m']
+if options.xvfb_glx:args[3:3]=['--env','O3_NATIVE_ENTRYPOINT_GLX=1']
+if options.sustain_seconds:args[3:3]=['--env','O3_NATIVE_ENTRYPOINT_SUSTAIN='+str(options.sustain_seconds)]
+(out/'podman-command.json').write_text(json.dumps(args)+'\n')
+with (out/'runtime.log').open('w') as log:
+    result = subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=90)
+aux_marker='ACTUAL_NATIVE_ENTRYPOINT_AUXILIARY_MANIFEST '
+for line in (out/'runtime.log').read_text().splitlines():
+    if aux_marker in line:
+        value,_=json.JSONDecoder().raw_decode(line.partition(aux_marker)[2]);(out/'auxiliary-manifest.json').write_text(json.dumps(value,indent=2)+'\n')
+renderer_marker='ACTUAL_NATIVE_ENTRYPOINT_RENDERER_MANIFEST '
+for line in (out/'runtime.log').read_text().splitlines():
+    if renderer_marker in line:
+        value,_=json.JSONDecoder().raw_decode(line.partition(renderer_marker)[2]);(out/'renderer-manifest.json').write_text(json.dumps(value,indent=2)+'\n')
+module_marker='ACTUAL_NATIVE_ENTRYPOINT_MODULE_MANIFEST '
+for line in (out/'runtime.log').read_text().splitlines():
+    if module_marker in line:
+        value,_=json.JSONDecoder().raw_decode(line.partition(module_marker)[2]);(out/'module-manifest.json').write_text(json.dumps(value,indent=2)+'\n')
+trace_marker='ACTUAL_NATIVE_ENTRYPOINT_INPUT_TRACE '
+for line in (out/'runtime.log').read_text().splitlines():
+    if trace_marker in line:
+        value,_=json.JSONDecoder().raw_decode(line.partition(trace_marker)[2]);(out/'input-trace.json').write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n')
+raise SystemExit(result.returncode)

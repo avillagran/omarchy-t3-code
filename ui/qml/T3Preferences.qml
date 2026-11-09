@@ -258,8 +258,11 @@ Rectangle {
           Text{text:T3I18n.tr("One reply per line");color:Color.popups.text;font.pixelSize:Style.font.caption}
         }}
       }
+      T3PreferenceSection{objectName:"preferencesNativeVoice";visible:root.page==="general"&&(!root.query.trim()||root.matches("Voice settings")||root.matches("Microphone")||root.matches("Transcribe with")||root.matches("Cleanup"));Layout.fillWidth:true;title:"Voice settings";icon:"mic"
+        body:Component{T3NativeVoiceSettings{width:parent.width;bridge:root.bridge}}
+      }
       // ot3-dictate: whisper.cpp on this computer, models downloaded on demand.
-      T3PreferenceSection{objectName:"preferencesDictation";visible:root.page==="general"&&(!root.query.trim()||root.matches("Dictation")||root.matches("Dictation model")||root.matches("Dictation language")||root.matches("Vocabulary")||root.matches("Keep recordings"));Layout.fillWidth:true;title:"Dictation";icon:"mic"
+      T3PreferenceSection{objectName:"preferencesDictation";visible:root.bridge.nativeVoiceAvailable!==true&&root.bridge.nativeVoiceInitialized!==true&&root.page==="general"&&(!root.query.trim()||root.matches("Dictation")||root.matches("Dictation model")||root.matches("Dictation language")||root.matches("Vocabulary")||root.matches("Keep recordings"));Layout.fillWidth:true;title:"Dictation";icon:"mic"
        body:Component{Column{width:parent.width
         readonly property var b:root.bridge
         readonly property var download:b.dictationDownload || ({busy:false,bytes:0,total:0,error:""})

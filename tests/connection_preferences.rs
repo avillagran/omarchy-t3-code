@@ -1,8 +1,4 @@
-// Standalone integration test until the parent wires the module into lib.rs.
-pub use omarchy_t3_client::{browser_preferences, read_catalog, t3_home, Result, Url, MAX_BYTES};
-#[path = "../src/connection_preferences.rs"]
-mod preferences;
-use preferences::*;
+use omarchy_t3_client::{connection_preferences::*, Result};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, os::unix::fs::{symlink, PermissionsExt}};
@@ -41,7 +37,7 @@ fn client_settings_cas_preserves_unknown_fields_legacy_shape_and_symlinks() {
     assert_eq!(persisted["future"]["untouched"],true);
     assert_eq!(persisted["settings"]["chatWidth"],"wide");
     assert_eq!(fs::metadata(&path).unwrap().permissions().mode() & 0o777,0o600);
-    fs::remove_dir_all(dir).unwrap();
+
 }
 #[test]
 fn invalid_settings_are_never_overwritten_and_nonpreferred_weights_are_rejected() {
@@ -53,7 +49,7 @@ fn invalid_settings_are_never_overwritten_and_nonpreferred_weights_are_rejected(
     for patch in [json!({"environmentId":"remote","weight":75}),json!({"environmentId":"remote","weight":101}),json!({"loadBalancingEnabled":"yes"}),json!({"bad":true})]{
         assert_eq!(update_client_preferences_at(&path,&hash,&patch).unwrap_err(),"invalid_client_preference");
     }
-    assert_eq!(fs::read(&path).unwrap(),b"{}");fs::remove_dir_all(dir).unwrap();
+    assert_eq!(fs::read(&path).unwrap(),b"{}");
 }
 #[test]
 fn trust_key_covers_saved_routes_in_any_order_but_not_learned_routes() {
@@ -119,7 +115,7 @@ fn standalone_module_exports_bridge_functions_without_touching_live_native_stora
 
 #[test]
 fn legacy_plan_flag_uses_existing_native_client_file_and_cas(){
- let dir=temp_dir();let path=dir.join("settings.json");let raw=b"{\"settings\":{\"planModeEnabled\":false,\"fontSizeInterface\":14}}";fs::write(&path,raw).unwrap();let rev=format!("{:x}",Sha256::digest(raw));let view=update_client_preferences_at(&path,&rev,&json!({"planModeEnabled":true})).unwrap();assert_eq!(view["planModeEnabled"],true);let saved:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(saved["settings"]["fontSizeInterface"],14);assert!(saved.get("planModeEnabled").is_none());assert_eq!(update_client_preferences_at(&path,&rev,&json!({"planModeEnabled":false})).unwrap_err(),"client_settings_changed_reload");fs::remove_dir_all(dir).unwrap();
+ let dir=temp_dir();let path=dir.join("settings.json");let raw=b"{\"settings\":{\"planModeEnabled\":false,\"fontSizeInterface\":14}}";fs::write(&path,raw).unwrap();let rev=format!("{:x}",Sha256::digest(raw));let view=update_client_preferences_at(&path,&rev,&json!({"planModeEnabled":true})).unwrap();assert_eq!(view["planModeEnabled"],true);let saved:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(saved["settings"]["fontSizeInterface"],14);assert!(saved.get("planModeEnabled").is_none());assert_eq!(update_client_preferences_at(&path,&rev,&json!({"planModeEnabled":false})).unwrap_err(),"client_settings_changed_reload");
 }
 
 #[test]
@@ -129,9 +125,9 @@ fn native_diff_defaults_and_layout_cas_preserve_other_fields_and_local_view_opti
   let rev=format!("{:x}",Sha256::digest(&bytes));let result=update_client_preferences_at(&path,&rev,&json!({"diffLayout":"split"})).unwrap();assert_eq!(result["diffLayout"],"split");assert_eq!(result["wordWrap"],false);assert_eq!(result["diffIgnoreWhitespace"],false);assert_eq!(result["diffFilesCollapsed"],false);assert!(!result.to_string().contains("SYNTHETIC-PRIVATE"));
   let saved:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();let mut expected=original.clone();if wrapped{expected["settings"]["diffLayout"]=json!("split")}else{expected["diffLayout"]=json!("split")};assert_eq!(saved,expected);
   let valid=result["revision"].as_str().unwrap();for value in [json!("unified"),json!(true),json!(1),Value::Null]{assert_eq!(update_client_preferences_at(&path,valid,&json!({"diffLayout":value})).unwrap_err(),"invalid_client_preference");}assert_eq!(update_client_preferences_at(&path,valid,&json!({"wordWrap":true})).unwrap_err(),"invalid_client_preference");assert_eq!(update_client_preferences_at(&path,&rev,&json!({"diffLayout":"stacked"})).unwrap_err(),"client_settings_changed_reload");
-  fs::remove_dir_all(dir).unwrap();
+
  }
- let dir=temp_dir();let path=dir.join("client-settings.json");let raw=b"{}";fs::write(&path,raw).unwrap();let rev=format!("{:x}",Sha256::digest(raw));let default=update_client_preferences_at(&path,&rev,&json!({"diffLayout":"stacked"})).unwrap();assert_eq!(default["wordWrap"],true);assert_eq!(default["diffIgnoreWhitespace"],true);assert_eq!(default["diffFilesCollapsed"],true);fs::remove_dir_all(dir).unwrap();
+ let dir=temp_dir();let path=dir.join("client-settings.json");let raw=b"{}";fs::write(&path,raw).unwrap();let rev=format!("{:x}",Sha256::digest(raw));let default=update_client_preferences_at(&path,&rev,&json!({"diffLayout":"stacked"})).unwrap();assert_eq!(default["wordWrap"],true);assert_eq!(default["diffIgnoreWhitespace"],true);assert_eq!(default["diffFilesCollapsed"],true);
 }
 
 #[test]
@@ -145,7 +141,7 @@ fn native_thread_delete_confirmation_defaults_and_explicit_false_are_read_only()
     assert_eq!(data["confirmThreadDelete"],false);
     assert!(update_client_preferences_at(&path,data["revision"].as_str().unwrap(),&json!({"confirmThreadDelete":true})).is_err());
     assert_eq!(fs::read(&path).unwrap(),before);
-    fs::remove_dir_all(dir).unwrap();
+
 }
 
 #[test]
@@ -157,7 +153,7 @@ fn follow_up_behavior_reads_steer_by_default_and_writes_only_queue_or_steer(){
  let view=update_client_preferences_at(&path,&rev,&json!({"followUpBehavior":"steer"})).unwrap();assert_eq!(view["followUpBehavior"],"steer");
  let queued=update_client_preferences_at(&path,view["revision"].as_str().unwrap(),&json!({"followUpBehavior":"queue"})).unwrap();assert_eq!(queued["followUpBehavior"],"queue");
  let saved:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(saved["settings"]["followUpBehavior"],"queue");assert_eq!(saved["settings"]["fontSizeInterface"],14);
- fs::remove_dir_all(dir).unwrap();
+
 }
 
 #[test]
@@ -166,5 +162,5 @@ fn timestamp_format_uses_native_settings_cas_and_preserves_siblings() {
  let before=read_client_preferences_at(&path).unwrap();assert_eq!(before["timestampFormat"],"locale");
  let next=update_client_preferences_at(&path,before["revision"].as_str().unwrap(),&json!({"timestampFormat":"24-hour"})).unwrap();assert_eq!(next["timestampFormat"],"24-hour");
  assert_eq!(update_client_preferences_at(&path,next["revision"].as_str().unwrap(),&json!({"timestampFormat":"13-hour"})).unwrap_err(),"invalid_client_preference");
- let raw:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(raw["settings"]["fontSizeInterface"],14);fs::remove_dir_all(dir).unwrap();
+ let raw:Value=serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();assert_eq!(raw["settings"]["fontSizeInterface"],14);
 }

@@ -32,7 +32,7 @@ fn native_approval_validates_once_and_replays_exactly_after_resolution() {
         let mut bytes = [0; 4096];
         let n = stream.read(&mut bytes).unwrap();
         assert!(String::from_utf8_lossy(&bytes[..n])
-            .starts_with("GET /api/orchestration/threads/chat/bounded?compactTurnItems=1 "));
+            .starts_with("GET /api/orchestration/threads/chat/bounded?compactTurnItems=1&dedupeBodies=1&compactIds=1 "));
         let body=json!({"projection":{"messages":[],"runtimeRequests":[{"id":request,"kind":"command","status":"pending","responseCapability":{"type":"live"}}],"turnItems":[{"type":"approval_request","requestId":request,"prompt":"cargo test"}]}}).to_string();
         write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
         drop(stream);
@@ -64,7 +64,7 @@ fn native_approval_validates_once_and_replays_exactly_after_resolution() {
         "retry_payload_changed"
     );
     server.join().unwrap();
-    std::fs::remove_dir_all(root).unwrap();
+
 }
 #[test]
 fn approvals_reach_chat_and_disappear_on_live_resolution() {

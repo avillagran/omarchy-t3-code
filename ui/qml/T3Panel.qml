@@ -15,12 +15,37 @@ import "../js/ProjectTree.js" as ProjectTree
 import "../js/WheelMotion.js" as Motion
 import "../js/NativeKeybindings.js" as Native
 import "../js/KeybindingLabels.js" as KeyLabels
+import "../js/NativeThreadActivity.js" as ThreadActivity
+import "../js/NativeThreadRelativeTime.js" as ThreadRelativeTime
 
 Item {
   id: root
   property var anchorItem: null
   property var bar: null
   required property var bridge
+  // The conversation remains mounted when its popup is hidden. Retain its
+  // metadata through visibility and virtualized-row changes, like ChatView.
+  // A selected-thread change destroys the old owner before mounting its successor.
+  property string metadataScope: bridge.selectedKey
+  onMetadataScopeChanged: { metadataLease.active = false; Qt.callLater(syncMetadataLease) }
+  function syncMetadataLease() {
+    metadataLease.active = bridge.previewWorkerReady && !!bridge.selectedThread
+  }
+  Connections { target: root.bridge; function onPreviewWorkerReadyChanged() { root.syncMetadataLease() } }
+  Loader {
+    id: metadataLease
+    active: false
+    sourceComponent: T3FileMetadataLease {
+      bridge: root.bridge
+      environment: root.bridge.selectedEnvironment
+      thread: root.bridge.selectedThread
+      cwd: root.bridge.selectedInfo.worktreePath || ((root.bridge.state.projects || []).find(function(p) { return p.id === root.bridge.selectedInfo.projectId && p.environmentId === root.bridge.selectedEnvironment }) || {}).workspaceRoot || ""
+      checkpoints: { var value = root.bridge.metadataCheckpoints; return value && value.environment === environment && value.thread === thread ? value.data : null }
+    }
+  }
+  property string rowMinute: new Date().toISOString().slice(0,16)
+  property var rowClockUnsubscribe: null
+  function subscribeRowClock(){rowClockUnsubscribe=T3ThreadClock.subscribe(function(){root.rowMinute=T3ThreadClock.getSnapshot()});rowMinute=T3ThreadClock.getSnapshot()}
   property var prTarget:null
   property bool pullRequestsOpen:false
   // Multi-purpose side panel next to the chat (T3SidePanel): browser,
@@ -35,7 +60,7 @@ Item {
     var current=String(bridge.draft.text||"");var next=current.trim()?current.replace(/\s+$/,"")+"\n\n"+quote+"\n\n":quote+"\n\n"
     bridge.patchDraft(bridge.selectedKey,{text:next});Qt.callLater(function(){composerPanel.inputField.forceActiveFocus();composerPanel.inputField.cursorPosition=composerPanel.inputField.length})
   }
-  function openPreferencesPage(page,environment){preferencesOpen=true;Qt.callLater(function(){var p=preferencesLoader.item;if(!p)return;if(environment)p.selectEnvironment(environment);p.page=page})}
+  function openPreferencesPage(page,environment){rememberPreferencesPage(page);preferencesOpen=true;Qt.callLater(function(){var p=preferencesLoader.item;if(!p)return;if(environment)p.selectEnvironment(environment);p.page=page})}
   // Command palette groups, built when it opens (T3 CommandPalette: actions, threads, projects, settings).
   function paletteGroups(){
     var b=bridge,thread=!!b.selectedThread,actions=[]
@@ -69,12 +94,12 @@ Item {
     add("usage","Open usage","chart-no-axes-column",true,function(){usagePage.show()},"Ctrl+U")
     add("settings","Open settings","settings",true,function(){preferencesOpen=true})
     add("shortcuts","Keyboard shortcuts","keyboard",true,function(){keyHelp.open()},"F1")
-    var threads=(b.state.threads||[]).filter(function(t){return t.key!==b.selectedKey}).slice().sort(function(x,y){return (y.updatedAt||0)-(x.updatedAt||0)}).map(function(t){return {id:"thread:"+t.key,title:String(t.title||T3I18n.tr("Untitled thread")),detail:String(t.project||""),icon:t.working?"circle-dot":"message-square",run:function(){b.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}}})
+    var threads=(b.state.threads||[]).map(function(t){return {id:"thread:"+t.key,threadKey:t.key,secondary:t.key===b.selectedKey,title:String(t.title||T3I18n.tr("Untitled thread")),detail:String(t.project||""),icon:t.working?"circle-dot":"message-square",run:function(query){b.selectThread(t.environmentId,t.id,false,query);composerPanel.inputField.forceActiveFocus()}}})
     var projects=(b.state.projects||[]).filter(function(p){return !p.isScratch}).map(function(p){return {id:"project:"+p.key,title:String(p.title||""),detail:T3I18n.tr("New thread"),icon:"folder-git-2",run:function(){sidebarActions.newThread(null,p.key)}}})
     var pages=[["general","General","settings"],["appearance","Appearance","layers"],["projects","Projects","folder-git-2"],["shortcuts","Keyboard shortcuts","keyboard"],["providers","Providers","acp"],["integrations","Integrations","plug"],["source-control","Source control","git-branch"],["connections","Connections","server"],["storage","Storage","hard-drive"],["memory","Memory/Obsidian","book-open"],["archived","Archive","archive"]].map(function(p){return {id:"settings:"+p[0],title:p[1],detail:T3I18n.tr("Settings"),icon:p[2],run:function(){openPreferencesPage(p[0])}}})
-    return [{label:"Actions",items:actions,limit:actions.length},{label:"Recent threads",items:threads,limit:8},{label:"Projects",items:projects,limit:6},{label:"Settings",items:pages,limit:pages.length}]
+    return [{value:"actions",label:"Actions",items:actions},{value:"recent-threads",label:"Recent threads",items:threads},{value:"projects-search",label:"Projects",items:projects},{value:"settings-search",label:"Settings",items:pages}]
   }
-  function toggleCommandPalette(){if(commandPalette.opened){commandPalette.close();return}commandPalette.groups=paletteGroups();commandPalette.show()}
+  function toggleCommandPalette(){if(commandPalette.opened){commandPalette.close();return}commandPalette.show()}
   // Thread details card (T3 ThreadDetailsPanel), remembered across threads.
   readonly property bool threadDetailsOpen:bridge.viewState.threadDetailsOpen===true
   // Its size is the content's until the user drags an edge (double-click resets).
@@ -140,7 +165,7 @@ Item {
     if(JSON.stringify(list)!==JSON.stringify(renderList))renderList=list
     if(!renderAttachment&&latest)renderAttachment=latest
   }
-  Connections{target:root.bridge;function onMessagesUpdated(){root.followRenders()}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.qmlCode={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
+  Connections{target:root.bridge;function onTerminalBrowserRequested(){Qt.callLater(function(){root.openSide("browser")})}function onMessagesUpdated(){root.followRenders();root.tryPaletteFind()}function onHistoryOperationChanged(){Qt.callLater(root.tryPaletteFind)}function onSelectedKeyChanged(){if(root.sideTab==="renders")root.closeSide();root.renderAttachment=null;root.renderList=[];root.diagrams=[];root.qmlCode={}}function onDiagramRequested(attachment){root.showDiagram(attachment)}function onQmlPreviewRequested(attachment){root.showQmlPreview(attachment)}}
   // Diagnostics (IPC profileScroll): scroll like a touchpad (pixel deltas
   // every 8 ms through the normal wheel path) and record the intervals
   // between presented frames; profileResult reads them back.
@@ -168,6 +193,9 @@ Item {
   function browserKeyFocus(){var item=nativeFocusItem;while(item){if(item.objectName==="t3BrowserWorkspace")return true;item=item.parent}return false}
   readonly property bool browserFocused:browserShown&&browserKeyFocus()
   property bool preferencesOpen:false
+  // Last settings page, kept in the view state so reopening or reloading the panel returns to it.
+  readonly property string preferencesPage:bridge.viewState.preferencesPage || "general"
+  function rememberPreferencesPage(page){if(page&&bridge.viewState.preferencesPage!==page)bridge.rememberView({preferencesPage:page})}
   property string preferencesProjectKey:""
   function openProjectSettings(key){preferencesProjectKey=key;preferencesOpen=true;var loader=preferencesLoader;if(loader&&loader.item){loader.item.initialProjectKey=key;loader.item.selectInitialProject()}}
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
@@ -191,6 +219,31 @@ Item {
   function toggleFold(id){var next=Object.assign({},expandedFolds);if(next[id])delete next[id];else next[id]=true;expandedFolds=next}
   property string findQuery:""
   property int findIndex:-1
+  property var pendingPaletteFind:null
+  onFindOpenChanged:if(!findOpen)pendingPaletteFind=null
+  function openPaletteFind(key,find){
+    if(!find||!find.query||bridge.selectedKey!==key)return
+    pendingPaletteFind={key:key,entryId:find.start?find.start.entryId:"",cursor:null}
+    findQuery=find.query;openFind();tryPaletteFind()
+  }
+  function tryPaletteFind(){
+    var pending=pendingPaletteFind
+    if(!pending)return
+    if(bridge.selectedKey!==pending.key||!findOpen){pendingPaletteFind=null;return}
+    if(bridge.loadingMessages||restoringConversation)return
+    if(!pending.entryId){pendingPaletteFind=null;findDebounce.restart();return}
+    var entry=bridge.transcript.find(function(row){return row.id===pending.entryId})
+    if(entry){
+      pendingPaletteFind=null;findDebounce.stop()
+      findIndex=findMatches.findIndex(function(match){return match.id===entry.id&&match.ordinal===0})
+      jumpTimelineItem(entry);findSelection.restart();return
+    }
+    if(bridge.historyOperation.error||!bridge.hasEarlier){pendingPaletteFind=null;return}
+    if(!bridge.historyOperation.busy&&pending.cursor!==bridge.historyCursor){
+      pendingPaletteFind=Object.assign({},pending,{cursor:bridge.historyCursor});bridge.loadEarlier()
+    }
+  }
+  Connections{target:root;function onRestoringConversationChanged(){if(!root.restoringConversation)Qt.callLater(root.tryPaletteFind)}}
   readonly property var findMatches:{
     var q=findQuery.toLocaleLowerCase(),matches=[]
     if(!q)return matches
@@ -204,7 +257,7 @@ Item {
     findIndex=(findIndex+step+findMatches.length)%findMatches.length
     var match=findMatches[findIndex];jumpTimelineItem(match);findSelection.restart()
   }
-  Timer{id:findDebounce;interval:140;onTriggered:if(root.findOpen)root.navigateFind(1)}
+  Timer{id:findDebounce;interval:140;onTriggered:if(root.findOpen&&!root.pendingPaletteFind)root.navigateFind(1)}
   Timer{id:findSelection;interval:90;onTriggered:{
     var m=root.findMatches[root.findIndex];if(!root.findOpen||!m)return
     if(root.restoringConversation){restart();return}
@@ -222,7 +275,7 @@ Item {
   readonly property real composerColumnWidth: composerPanel.width
   readonly property var searchInput: searchField
   readonly property var projectThreads:projectTreeLoader.item
-  readonly property var sidebarView: projectLayout && projectThreads ? projectThreads : threads
+  readonly property var sidebarView: searching ? sidebarSearchList : projectLayout && projectThreads ? projectThreads : threads
   property bool usageCollapsed: bridge.viewState.usageExpanded !== true
   onUsageCollapsedChanged: if(initialized && bridge.viewState.usageExpanded !== !usageCollapsed) bridge.rememberView({usageExpanded:!usageCollapsed,quotaCollapsed:usageCollapsed})
   property real sidebarWidth: Math.max(260,Math.min(600,bridge.viewState.sidebarWidth || 300))
@@ -251,6 +304,7 @@ Item {
   function focusSidebar() {
     if(composerExpanded)expandComposer(false)
     if(sidebarCollapsed)toggleSidebar(false)
+    if(searching){sidebarSearchList.forceActiveFocus();sidebarSearchList.currentIndex=sidebarSearchActiveIndex;sidebarSearchList.positionViewAtIndex(sidebarSearchActiveIndex,ListView.Contain);return}
     var items=sidebarFocusItems(),choice=items.find(function(r){return r.key===root.bridge.selectedKey})
     if(!choice){var groups=[{rows:pinnedRows,header:pinnedToggle},{rows:workingRows,header:workingToggle},{rows:inputRows,header:inputToggle},{rows:snoozedRows,header:snoozedToggle},{rows:settledRows,header:settledToggle}];var group=groups.find(function(g){return g.rows.some(function(t){return t.key===root.bridge.selectedKey})});if(group)choice={item:group.header,index:-1}}
     choice=choice||items[0]||{item:threads,index:0};choice.item.forceActiveFocus()
@@ -283,6 +337,7 @@ Item {
   Timer{id:sidebarRefocus;interval:0;onTriggered:if(root.opened)root.focusSidebar()}
   // One focus order across cards and shelf headers, matching the native sidebar.
   function sidebarFocusItems(){
+    if(searching)return sidebarSearchResults.map(function(entry,index){return {item:sidebarSearchList,index:index,key:entry.thread.key}})
     if(projectLayout&&projectThreads)return projectThreads.entries.map(function(e,i){return {item:projectThreads,index:i,key:e.kind==="thread"?e.key:undefined}})
     var out=[]
     function list(view,rows){rows.forEach(function(t,i){out.push({item:view,index:i,key:t.key})})}
@@ -309,8 +364,8 @@ Item {
   readonly property var lastUserMessage:(bridge.transcript || []).filter(function(m){return m.role==="user"}).slice(-1)[0] || null
   readonly property var nativeFocusItem:panelLayout.Window.activeFocusItem
   function editableKeyFocus(){var item=nativeFocusItem;while(item){if(typeof item.cursorPosition==="number"&&item.readOnly!==true||typeof item.editText==="string")return true;item=item.parent}return false}
-  readonly property var nativeShortcutContext:({terminalFocus:false,terminalOpen:false,previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:false,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
-  readonly property bool nativeModalOpen:documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
+  readonly property var nativeShortcutContext:({terminalFocus:!!(root.sidePanelItem&&root.sidePanelItem.terminalItem&&root.sidePanelItem.terminalItem.terminalFocused),terminalOpen:root.sideShown&&root.sideTab==="terminal",previewFocus:root.browserFocused,previewOpen:root.browserShown,editableFocus:editableKeyFocus(),modelPickerOpen:composerPanel.modelPickerOpen,composerFocus:composerPanel.inputField.activeFocus,draftThreadRoute:!!bridge.localDraft,turnRunning:!!bridge.selectedInfo.activeRunId,isWeb:false,isDesktop:true,usagePageOpen:usagePage.opened})
+  readonly property bool nativeModalOpen:browserPermission.opened||documentPopup.visible||imagePopup.visible||diffPopup.visible||toolPopup.visible||gitPopup.visible||keyHelp.visible||rewindWorkflow.opened||sidebarActions.dialogActive||composerPanel.permissionPickerOpen
   readonly property bool nativeKeysActive:shortcutActive&&!boardOpen&&!mosaicOpen&&!preferencesOpen&&!pullRequestsOpen&&!nativeModalOpen&&!(bridge.keybindingCaptureActive || false)
   Connections{target:root.bridge;ignoreUnknownSignals:true
     function onSettleNavigationPlanning(){if(root.opened)root.bridge.settleNavigationOrder=root.pinnedRows.concat(root.activeRows).concat(root.workingRows).concat(root.inputRows).concat(root.snoozedRows).concat(root.settledRows)}
@@ -320,7 +375,7 @@ Item {
       Qt.callLater(function(){if(root.opened&&!root.bridge.selectedKey&&root.bridge.selectionEpoch===epoch)sidebarActions.newThread(null,thread.projectKey)})
     }
   }
-  function nativeThreadRows(){if(projectLayout&&projectThreads)return projectThreads.visibleThreads;return visiblePinnedRows.concat(activeRows).concat(visibleWorkingRows).concat(visibleInputRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
+  function nativeThreadRows(){if(searching)return sidebarSearchResults.map(function(entry){return entry.thread});if(projectLayout&&projectThreads)return projectThreads.visibleThreads;return visiblePinnedRows.concat(activeRows).concat(visibleWorkingRows).concat(visibleInputRows).concat(visibleSnoozedRows).concat(visibleSettledRows)}
   function supportsNativeShortcut(command){
     if(!nativeKeybindingsEnabled)return false
     if(workingPopup.visible)return command==="diff.toggle"
@@ -335,6 +390,7 @@ Item {
     if(command==="preview.refresh")return browserShown&&!!bridge.previewState&&!!bridge.previewState.snapshot&&bridge.previewWatch.canOperate&&!bridge.previewWatch.busy
     if(["preview.zoomIn","preview.zoomOut","preview.resetZoom"].indexOf(command)>=0)return browserShown&&!!bridge.browserSurface.interactive
     if(command==="terminal.toggle")return bridge.canOpenTerminal===true
+    if(["terminal.new","terminal.split","terminal.splitVertical","terminal.close"].indexOf(command)>=0)return root.sideShown&&root.sideTab==="terminal"&&bridge.canOpenTerminal===true
     if(command==="diff.toggle")return bridge.canOpenGit===true
     if(command==="modelPicker.toggle")return composerPanel.modelPickerAvailable
     if(command==="composer.mode")return composerPanel.permissionPickerAvailable
@@ -368,7 +424,10 @@ Item {
     else if(command==="preview.focusUrl")focusBrowserUrl()
     else if(command==="preview.refresh"){if(browserWorkspaceItem)browserWorkspaceItem.refresh()}
     else if(command==="preview.zoomIn"||command==="preview.zoomOut"||command==="preview.resetZoom")bridge.browserControl(command==="preview.zoomIn"?"zoom-in":command==="preview.zoomOut"?"zoom-out":"zoom-reset")
-    else if(command==="terminal.toggle")bridge.openTerminal()
+    else if(command==="terminal.toggle"){if(root.sideShown&&root.sideTab==="terminal")root.closeSide();else bridge.openTerminal()}
+    else if(command==="terminal.new")bridge.newTerminal(false)
+    else if(command==="terminal.split"||command==="terminal.splitVertical")bridge.newTerminal(true,undefined,command==="terminal.splitVertical")
+    else if(command==="terminal.close"){var tab=bridge.terminalTab();if(tab)bridge.closeTerminal(tab.activeTerminalId)}
     else if(command==="diff.toggle"){if(workingPopup.visible)workingPopup.close();else{bridge.requestWorkingReview("working-tree","",bridge.diffPreferences.ignoreWhitespace,"");workingPopup.open()}}
     else if(command.indexOf("modelPicker.")===0||command==="composer.mode"||command==="composer.effort"||command==="composer.increaseEffort"||command==="composer.decreaseEffort"||command==="composer.branch")composerPanel.nativeModelControl(command)
     else if(command==="thread.undo"){if(!bridge.undoThreadAction||!bridge.undoThreadAction())bridge.requestRewindPreview(lastUserMessage.id)}
@@ -381,7 +440,7 @@ Item {
     else if(command==="thread.editQueuedMessage"){var items=bridge.queue.items;bridge.beginQueueEdit(items[items.length-1]);composerPanel.inputField.forceActiveFocus()}
   }
   function localShortcutAvailable(sequence){return !nativeKeybindingsEnabled||!nativeShortcuts.claimsSequence(sequence)}
-  Component.onCompleted: { initialized = true;syncConversation() }
+  Component.onCompleted: { initialized = true;syncConversation();syncMetadataLease();subscribeRowClock() }
   property bool panelOpen:false
   // Run as the desktop app (app/shell.qml). The bar popup ("panel") needs the
   // bar's place, which the app learns from the bar widget; without it, a window.
@@ -393,7 +452,7 @@ Item {
   readonly property var managedToplevel:ToplevelManager.toplevels.values.find(function(t){return t.title===desktop.title&&t.appId===Quickshell.appId}) || null
   onManagedToplevelChanged:if(opened&&detached&&managedToplevel){applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})}
   readonly property bool shortcutActive:opened&&(!detached||!!(managedToplevel&&managedToplevel.activated))
-  Connections{target:root.bridge;function onTerminalOpened(){if(!root.detached)root.close()}}
+  Connections{target:root.bridge;function onTerminalOpened(){root.openSide("terminal")}}
   // A chat opened with a prompt to review (for example from OmaBridge) is shown at once.
   Connections{target:root.bridge;function onPromptedChatStarted(){root.preferencesOpen=false;root.open()}}
   // The bar panel covers the screen, so step aside while a screenshot is taken.
@@ -430,14 +489,14 @@ Item {
   readonly property color healthy: Color.accent
   property string hostFilter: bridge.viewState.hostFilter || ""
   property var sidebarInteractionThreads:[]
-  readonly property var sidebarSourceThreads:sidebarUpdatesPaused?sidebarInteractionThreads:bridge.state.threads
+  readonly property var sidebarSourceThreads:sidebarUpdatesPaused?sidebarInteractionThreads:(bridge.threadItems || bridge.state.threads)
   readonly property var hostThreads: sidebarSourceThreads.filter(function(t){return (!root.hostFilter || t.environmentId===root.hostFilter)&&(!root.threadGroupFilter || root.groupOf(t)===root.threadGroupFilter)})
   // Groups the user makes from a thread's menu (Groups): one name per thread.
   readonly property var threadGroups: bridge.viewState.threadGroups || ({})
   // A whole project can join a group too; a thread's own group wins.
   readonly property var groupProjects: bridge.viewState.groupProjects || ({})
   function groupOf(t) { return threadGroups[t.key] || groupProjects[t.projectKey] || "" }
-  readonly property var threadGroupMap: { var map = {}; bridge.state.threads.forEach(function(t) { var g = root.groupOf(t); if (g) map[t.key] = g }); return map }
+  readonly property var threadGroupMap: { var map = {}; (bridge.threadItems || bridge.state.threads).forEach(function(t) { var g = root.groupOf(t); if (g) map[t.key] = g }); return map }
   property string threadGroupFilter: bridge.viewState.threadGroupFilter || ""
   onThreadGroupFilterChanged: if(initialized && (bridge.viewState.threadGroupFilter || "")!==threadGroupFilter)bridge.rememberView({threadGroupFilter:threadGroupFilter})
   readonly property var hostItems: [{id:"",name:T3I18n.tr("All hosts")}].concat((bridge.state.environments || []).map(function(e){return {id:e.id,name:e.name || e.label || e.id}}))
@@ -445,7 +504,7 @@ Item {
   readonly property bool mosaicOpen: bridge.viewState.mosaicOpen===true
   onMosaicOpenChanged: if(!mosaicOpen)mosaicRevealKey=""
   readonly property var mosaicRows: {
-    var rows=Sidebar.rows(root.hostThreads,root.statusFilter,root.projectScope,true,root.bridge.query,root.searchContext).filter(function(t){return !t.sectionHeader})
+    var rows=root.searching?root.sidebarSearchResults.map(function(entry){return entry.thread}):Sidebar.rows(root.hostThreads,root.statusFilter,root.projectScope,true,"").filter(function(t){return !t.sectionHeader})
     // An expanded sidebar child can be visible through its parent even when it
     // does not match the parent's filter. Explicit navigation must still work.
     if(mosaicRevealKey&&!rows.some(function(t){return t.key===root.mosaicRevealKey})) {
@@ -651,6 +710,7 @@ Item {
     bridge.persistViewNow()
   }
   onOpenedChanged: {
+    if(typeof bridge.setSidebarSearchActive==="function")bridge.setSidebarSearchActive(opened)
     if (opened) {
       restoringSidebar = true; restorePosition(threads,activeRows,"@sidebar",false,function(){root.restoringSidebar=false})
       restoringSettled = true; restorePosition(settledThreads,visibleSettledRows,"@settled",false,function(){root.restoringSettled=false})
@@ -659,7 +719,7 @@ Item {
       restoringConversation = true; restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})
     } else {documentPopup.close();bridge.closeDocument();conversation.stopWheel();captureState()}
   }
-  Component.onDestruction: captureState()
+  Component.onDestruction: {if(typeof rowClockUnsubscribe==="function")rowClockUnsubscribe();if(typeof bridge.setSidebarSearchActive==="function")bridge.setSidebarSearchActive(false);captureState()}
   property real clockNow: Date.now()
   Timer { interval: 1000; repeat: true; running: root.opened && root.bridge.state.threads.some(function(t){return !!t.working||!!t.snoozed}); onTriggered: root.clockNow = Date.now() }
   function duration(start) {
@@ -669,20 +729,71 @@ Item {
   }
   readonly property var projectGroups:Projects.groups(bridge.state.projects,Object.assign({},bridge.viewState,{nativeProjectGrouping:bridge.state.nativeProjectGrouping}))
   readonly property var projectScope:Projects.scope(projectFilter,projectGroups)
-  readonly property var sidebarRows: Sidebar.rows(hostThreads, statusFilter, projectScope, settledExpanded, bridge.query, searchContext)
-  // Host names and the server's message matches for the current search.
-  readonly property bool searching: Sidebar.terms(bridge.query).length > 0
-  // While searching, every group lists its best matches first (Sidebar.rank).
-  readonly property var searchRanks: searching ? Sidebar.rank(hostThreads.filter(function(t) { return Sidebar.matches(t, root.statusFilter, root.projectScope) }), bridge.query, searchContext) : ({})
-  function rankFirst(compare) { return function(a, b) { if (root.searching) { var d = (root.searchRanks[b.key] || 0) - (root.searchRanks[a.key] || 0); if (d) return d } return compare(a, b) } }
-  readonly property var searchContext: {
-    var hosts = {}, hits = {}, s = bridge.sidebarSearch || {}
-    ;(bridge.state.environments || []).forEach(function(e) { hosts[e.id] = e.name || e.label || e.id })
-    if (s.query && Sidebar.fold(s.query) === Sidebar.fold(Sidebar.freeText(bridge.query))) (s.matches || []).forEach(function(m) { hits[m.environmentId + "/" + m.threadId] = true })
-    return {hosts: hosts, hits: hits, groups: threadGroupMap}
+  readonly property var sidebarRows: Sidebar.rows(hostThreads, statusFilter, projectScope, settledExpanded, "")
+  readonly property bool searching: String(bridge.query || "").trim().length > 0
+  function rankFirst(compare) { return compare }
+  readonly property var sidebarSearchableThreads:hostThreads.filter(function(thread){return Sidebar.matches(thread,root.statusFilter,root.projectScope)})
+  readonly property var sidebarQueryScope:{
+    var environments=(bridge.state.environments||[]).filter(function(e){return e.state==="ready"&&(!root.hostFilter||e.id===root.hostFilter)})
+    var scope={environmentIds:environments.map(function(e){return e.id}).sort(),anyOlderSettled:environments.some(function(e){return !!(e.olderSettled||{}).before})}
+    if(root.projectScope)scope.projectIds=(bridge.state.projects||[]).filter(function(project){return Array.isArray(root.projectScope)?root.projectScope.indexOf(project.key)>=0:root.projectScope===project.key}).map(function(project){return project.id})
+    return scope
   }
+  Binding{target:root.bridge;property:"sidebarSearchScope";when:root.opened&&typeof root.bridge.searchSidebar==="function";value:root.sidebarQueryScope}
+  property int sidebarRankGeneration:0
+  property bool sidebarRankBusy:false
+  property string sidebarRankError:""
+  property var sidebarRankResult:({query:"",items:[],shownOrder:null})
+  readonly property var sidebarRankingInput:({query:bridge.query,keys:sidebarSearchableThreads.map(function(thread){return thread.key}),rowsVersion:bridge.state.threads,messageQuery:(bridge.sidebarSearch||{}).settledQuery||"",messageMatches:(bridge.sidebarSearch||{}).matches||[]})
+  onSidebarRankingInputChanged:requestSidebarRanking()
+  function requestSidebarRanking(){
+    var generation=++sidebarRankGeneration,input=sidebarRankingInput
+    if(!searching){sidebarRankBusy=false;sidebarRankError="";sidebarRankResult={query:"",items:[],shownOrder:null};return}
+    if(typeof bridge.nativeSearch!=="function"){sidebarRankError="native_search_unavailable";return}
+    sidebarRankBusy=true
+    bridge.nativeSearch({action:"sidebar",query:input.query,keys:input.keys,messageQuery:input.messageQuery,
+      messageMatches:input.messageMatches,shownOrder:sidebarRankResult.shownOrder},function(result,error){
+      if(generation!==root.sidebarRankGeneration)return
+      root.sidebarRankBusy=false;root.sidebarRankError=error||""
+      root.sidebarRankResult={query:input.query,items:error?[]:result.items||[],shownOrder:error?null:result.shownOrder}
+    })
+  }
+  readonly property var sidebarSearchResults:{
+    if(sidebarRankResult.query!==bridge.query)return []
+    var byKey={};sidebarSearchableThreads.forEach(function(thread){byKey[thread.key]=thread})
+    return (sidebarRankResult.items||[]).filter(function(item){return !!byKey[item.key]}).map(function(item){return {key:item.key,thread:byKey[item.key],item:item}})
+  }
+  property string sidebarSearchHighlightKey:""
+  readonly property int sidebarSearchActiveIndex:Math.max(0,sidebarSearchResults.findIndex(function(entry){return entry.key===root.sidebarSearchHighlightKey}))
+  function moveSidebarSearch(step){
+    var count=sidebarSearchResults.length;if(!count)return
+    var index=(sidebarSearchActiveIndex+step+count)%count
+    sidebarSearchHighlightKey=sidebarSearchResults[index].key
+    sidebarSearchList.positionViewAtIndex(index,ListView.Contain)
+  }
+  function activateSidebarSearch(entry){
+    if(!entry)return
+    var thread=entry.thread,find=entry.item.find
+    bridge.search("");boardOpen=false;pullRequestsOpen=false;preferencesOpen=false
+    bridge.selectThread(thread.environmentId,thread.id)
+    if(find)openPaletteFind(thread.key,find)
+  }
+  ListModel{id:sidebarSearchModel;dynamicRoles:true}
+  property var sidebarSearchModelKeys:[]
+  function syncSidebarSearch(){
+    var rows=sidebarSearchResults,keys=sidebarSearchModelKeys.slice(),wanted={}
+    rows.forEach(function(entry){wanted[entry.key]=true})
+    for(var index=keys.length-1;index>=0;index--)if(!wanted[keys[index]]){sidebarSearchModel.remove(index);keys.splice(index,1)}
+    rows.forEach(function(entry,index){
+      var old=keys.indexOf(entry.key)
+      if(old<0){sidebarSearchModel.insert(index,{entry:entry});keys.splice(index,0,entry.key)}
+      else{if(old!==index){sidebarSearchModel.move(old,index,1);keys.splice(index,0,keys.splice(old,1)[0])}sidebarSearchModel.setProperty(index,"entry",entry)}
+    })
+    sidebarSearchModelKeys=keys
+  }
+  onSidebarSearchResultsChanged:Qt.callLater(syncSidebarSearch)
   // Filtering animates like a snapshot change: rows leave and arrive.
-  Connections { target: root.bridge; function onQueryChanged() { root.rowMotionPending = true } }
+  Connections { target: root.bridge; function onQueryChanged() { root.rowMotionPending = true;root.sidebarSearchHighlightKey="" } }
   // Settled matches show while searching; shelves the user folded stay folded.
   readonly property bool settledShown: settledExpanded || searching
   readonly property var inboxRows: sidebarRows.filter(function(t) { return !t.sectionHeader && !t.settled && !t.snoozed })
@@ -722,8 +833,8 @@ Item {
       })
     });return missing
   }
-  readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(root.rankFirst(root.orderByReply?Sidebar.compareReply:Sidebar.compareSettled)))
-  readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,bridge.query,searchContext).filter(function(t){return !t.sectionHeader && !!t.snoozed}).sort(root.rankFirst(root.orderByReply?Sidebar.compareReply:function(){return 0})))
+  readonly property var settledRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,"").filter(function(t) { return !t.sectionHeader && t.settled && !t.snoozed }).sort(root.rankFirst(root.orderByReply?Sidebar.compareReply:Sidebar.compareSettled)))
+  readonly property var snoozedRows: nestRows(Sidebar.rows(hostThreads,statusFilter,projectScope,true,"").filter(function(t){return !t.sectionHeader && !!t.snoozed}).sort(root.rankFirst(root.orderByReply?Sidebar.compareReply:function(){return 0})))
   readonly property var projectItems: [{key: "", title: T3I18n.tr("All projects")}].concat(projectGroups)
   // A project group's colour is its first project's, so grouped projects share it.
   // One chip per thread group, ahead of the project chips; a click filters by it.
@@ -870,10 +981,20 @@ Item {
     if (dirty) stateChangedAt = changed
   }
   Connections { target: root.bridge; function onStateChanged() { root.trackThreadStates() } }
-  function threadTime(t){return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)}
+  function threadTime(t){
+    if(t.activityClock){
+      if(t.working)return root.duration(t.startedAt)
+      var timestamp=t.settled?ThreadActivity.resolveSettledThreadTimestamp(t.activityClock):ThreadActivity.resolveThreadActivityTimestamp(t.activityClock)
+      var label=ThreadRelativeTime.relativeLabel({timestamp:timestamp},root.rowMinute)
+      return label===null?"":label==="now"?T3I18n.tr("now"):label
+    }
+    // Legacy shells retain their existing clock encoding and display fallback.
+    return root.orderByReply?root.age(Sidebar.replyTime(t)):t.working?root.duration(t.startedAt):t.snoozed&&t.snoozedUntil?root.snoozeRemaining(t.snoozedUntil):root.age(t.settled?t.settledSortAt || t.updatedAt:t.updatedAt)
+  }
   function stateColor(t) { return T3Palette.detailColor(Sidebar.detail(t)) }
+  Connections{target:root.bridge;function onBrowserPermissionChanged(){if(root.bridge.browserPermission)root.open()}}
   function open() { windowApplyAttempts=0;panelOpen=true;if(detached){desktop.minimized=false;applyWindowMode.restart();Qt.callLater(function(){if(root.managedToplevel)root.managedToplevel.activate()})} }
-  function close() { documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();captureState(); panelOpen = false }
+  function close() { if(browserPermission.opened)browserPermission.choose(false);documentPopup.close();imagePopup.close();diffPopup.close();workingPopup.close();toolPopup.close();gitPopup.close();rewindWorkflow.dismiss();commandPalette.close();captureState(); panelOpen = false }
   function toggle() { opened ? close() : open() }
   // Above the sidebar footer button that opened it, kept inside the window.
   // y follows the popup's height, which is only known once its rows are laid out.
@@ -1021,7 +1142,7 @@ Item {
     }
   }
   Timer{id:saveWindowSize;interval:200;onTriggered:if(desktop.visible&&root.windowMode==="floating")root.bridge.rememberView({windowWidth:desktop.width/Style.space(1),windowHeight:desktop.height/Style.space(1)})}
-  Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
+  Component{id:sidePanelComponent;T3SidePanel{bridge:root.bridge;metadataLeaseId:metadataLease.item?metadataLease.item.leaseId:"";browserComponent:browserWorkspaceComponent;tab:root.sideTab;renders:root.renderList;renderAttachment:root.renderAttachment;onTabRequested:function(tab){root.sideTab=tab};onRenderRequested:function(a){root.renderAttachment=a};onClosed:root.closeSide();onIntegrationsRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   Component{id:browserWorkspaceComponent;T3BrowserWorkspace{bridge:root.bridge;onClosed:root.closeSide();onPreferencesRequested:{root.preferencesOpen=true;Qt.callLater(function(){if(preferencesLoader.item)preferencesLoader.item.page="integrations"})}}}
   PinnedKeyboardPanel {
     id: popup
@@ -1033,7 +1154,7 @@ Item {
     resizable: true
     onResized: function(w,h) { root.resizePanel(w/Style.space(1),h/Style.space(1)) }
     padding: 0
-    focusTarget: root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
+    focusTarget: browserPermission.opened ? browserPermission.defaultFocusItem : root.sidebarCollapsed || root.composerExpanded ? (root.bridge.selectedThread ? composerPanel.inputField : null) : searchField
     T3Starfield {
       id:sky;objectName:"t3Starfield"
       parent:root.detached?desktop.contentItem:popup.surfaceItem
@@ -1109,10 +1230,10 @@ Item {
           }
         }
       }
-      T3CommandPalette{id:commandPalette;onSearched:function(q){root.bridge.searchThreads(q);if(typeof root.bridge.searchVault==="function")root.bridge.searchVault(q)};onClosed:{root.bridge.searchThreads("");if(typeof root.bridge.searchVault==="function")root.bridge.searchVault("")}
-        liveGroups:{var b=root.bridge,s=b.threadSearch;if(!s.query||s.query!==commandPalette.query.trim()&&commandPalette.query.trim().indexOf(s.query)!==0)return [];var seen={};var items=(s.matches||[]).filter(function(m){var k=m.environmentId+"/"+m.threadId;if(seen[k])return false;seen[k]=true;return true}).map(function(m){var t=(b.state.threads||[]).find(function(x){return x.id===m.threadId&&x.environmentId===m.environmentId});return {id:"match:"+m.environmentId+"/"+m.threadId,title:t?String(t.title||T3I18n.tr("Untitled thread")):T3I18n.tr("Untitled thread"),detail:String(m.snippet||"").replace(/\s+/g," ").trim(),icon:"search",run:function(){b.selectThread(m.environmentId,m.threadId);composerPanel.inputField.forceActiveFocus()}}});var groups=items.length?[{label:"Messages",items:items,limit:12,live:true}]:[];
+      T3CommandPalette{id:commandPalette;groups:root.paletteGroups();onRankingRequested:function(input,callback){root.bridge.nativeSearch(Object.assign({action:"palette"},input),callback)};messageQuery:root.bridge.threadSearch.settledQuery||"";onSearched:function(q){root.bridge.searchThreads(q);if(typeof root.bridge.searchVault==="function")root.bridge.searchVault(q)};onClosed:{root.bridge.searchThreads("");if(typeof root.bridge.searchVault==="function")root.bridge.searchVault("")}
+        liveGroups:{var b=root.bridge,s=b.threadSearch;var seen={};var items=(s.matches||[]).filter(function(m){var k=m.environmentId+"/"+m.threadId;if(seen[k])return false;seen[k]=true;return true}).map(function(m){var t=(b.state.threads||[]).find(function(x){return x.id===m.threadId&&x.environmentId===m.environmentId});return {id:"match:"+m.environmentId+"/"+m.threadId,threadKey:m.environmentId+"/"+m.threadId,messageMatch:m,title:t?String(t.title||T3I18n.tr("Untitled thread")):T3I18n.tr("Untitled thread"),detail:String(m.snippet||"").replace(/\s+/g," ").trim(),icon:"search",run:function(query,find){b.selectThread(m.environmentId,m.threadId,false,query);root.openPaletteFind(m.environmentId+"/"+m.threadId,find)}}});var groups=items.length?[{value:"threads-messages",label:"Messages",items:items,live:true}]:[];
           // Notes of the development vault: a thread link opens that thread, anything else the note in Obsidian.
-          var v=b.vaultSearch||{};if(v.query&&(v.query===commandPalette.query.trim()||commandPalette.query.trim().indexOf(v.query)===0)){var notes=(v.hits||[]).map(function(h){var t=h.thread?(b.state.threads||[]).find(function(x){return x.id===h.thread}):null;return {id:"vault:"+h.file+":"+h.line,title:t?String(t.title||h.title):String(h.title),detail:h.file+" · "+String(h.snippet||""),icon:t?"message-circle-question":"book-open",run:function(){if(t){b.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}else b.openVaultNote(h.file)}}});if(notes.length)groups.push({label:"Memory (Obsidian)",items:notes,limit:8,live:true})}
+          var v=b.vaultSearch||{};if(v.query&&(v.query===commandPalette.query.trim()||commandPalette.query.trim().indexOf(v.query)===0)){var notes=(v.hits||[]).map(function(h){var t=h.thread?(b.state.threads||[]).find(function(x){return x.id===h.thread}):null;return {id:"vault:"+h.file+":"+h.line,title:t?String(t.title||h.title):String(h.title),detail:h.file+" · "+String(h.snippet||""),icon:t?"message-circle-question":"book-open",run:function(){if(t){b.selectThread(t.environmentId,t.id);composerPanel.inputField.forceActiveFocus()}else b.openVaultNote(h.file)}}});if(notes.length)groups.push({value:"vault-messages",extension:true,label:"Memory (Obsidian)",items:notes,limit:8,live:true})}
           return groups}}
       Controls.Popup {
         id:imagePopup
@@ -1283,6 +1404,7 @@ Item {
         }
       }
       Keys.onEscapePressed: {if(root.preferencesOpen)root.preferencesOpen=false;else if(root.sideShown){root.closeSide()}else if(root.findOpen){root.findOpen=false;root.findQuery=""}else if(root.composerExpanded)root.expandComposer();else root.close()}
+      T3BrowserPermission{id:browserPermission;popupHost:panelLayout;bridge:root.bridge}
       T3WorkspaceConfirmation {popupHost:panelLayout;bridge:root.bridge}
       T3SidebarActions { id: sidebarActions; popupHost:panelLayout; bridge: root.bridge; projects: root.bridge.state.projects || []; preferredProjectKey:Array.isArray(root.projectScope)?root.projectScope.length===1?root.projectScope[0]:"":root.projectScope }
       Controls.Popup {
@@ -1382,8 +1504,11 @@ Item {
                 font.pixelSize: Style.font.body
                 background: Rectangle { color: "transparent" }
                 onTextEdited: root.bridge.search(text)
-                Keys.onEscapePressed: if(root.bridge.query)root.bridge.search("");else root.close()
-                Keys.onDownPressed: root.focusSidebar()
+                Keys.onEscapePressed: if(!inputMethodComposing){if(root.bridge.query)root.bridge.search("");else root.close()}
+                Keys.onDownPressed: if(!inputMethodComposing){if(root.searching)root.moveSidebarSearch(1);else root.focusSidebar()}
+                Keys.onUpPressed: if(!inputMethodComposing&&root.searching)root.moveSidebarSearch(-1)
+                Keys.onReturnPressed: if(!inputMethodComposing&&root.searching)root.activateSidebarSearch(root.sidebarSearchResults[root.sidebarSearchActiveIndex])
+                Keys.onEnterPressed: if(!inputMethodComposing&&root.searching)root.activateSidebarSearch(root.sidebarSearchResults[root.sidebarSearchActiveIndex])
               }
               T3IconButton{objectName:"clearThreadSearch";name:"x";implicitWidth:Style.space(20);implicitHeight:implicitWidth;visible:!!root.bridge.query;tooltipText:T3I18n.tr("Clear search");onClicked:{root.bridge.search("");searchField.forceActiveFocus()}}
               T3IconButton {
@@ -1400,7 +1525,7 @@ Item {
               objectName:"t3SearchHint"
               Layout.fillWidth:true;Layout.leftMargin:Style.space(12);Layout.rightMargin:Style.space(12);Layout.topMargin:-Style.space(8)
               visible:searchField.activeFocus&&!root.bridge.query
-              text:T3I18n.tr("Title, project, group or branch, by the start of a word or its initials. p: project · g: group · b: branch · h: host · is: input, working, done, pinned · \"exact words\" · a leading minus leaves a word out")
+              text:T3I18n.tr("Search titles, branches, pull requests and messages")
               color:root.dim;font.pixelSize:Style.font.caption-Style.space(1);wrapMode:Text.Wrap;textFormat:Text.PlainText
             }
             RowLayout {
@@ -1511,8 +1636,38 @@ Item {
               Text { objectName:"t3ManagementError"; Layout.fillWidth: true; text: T3I18n.error(root.bridge.managementError); color: Color.urgent; font.pixelSize: Style.font.caption; wrapMode: Text.Wrap; maximumLineCount: 6; elide: Text.ElideRight; textFormat: Text.PlainText }
               T3IconButton { name: "refresh-cw"; visible: !!root.bridge.managementRequest; tooltipText: T3I18n.tr("Retry action"); onClicked: root.bridge.manage({}) }
             }
+            ListView {
+              id:sidebarSearchList;objectName:"t3ThreadSearchResults"
+              visible:root.searching
+              Layout.fillWidth:true;Layout.fillHeight:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
+              clip:true;spacing:Style.space(2);model:sidebarSearchModel
+              currentIndex:root.sidebarSearchActiveIndex
+              Accessible.role:Accessible.List;Accessible.name:T3I18n.tr("Thread search results")
+              Keys.onDownPressed:root.moveSidebarSearch(1)
+              Keys.onUpPressed:root.moveSidebarSearch(-1)
+              Keys.onReturnPressed:root.activateSidebarSearch(root.sidebarSearchResults[root.sidebarSearchActiveIndex])
+              Keys.onEnterPressed:root.activateSidebarSearch(root.sidebarSearchResults[root.sidebarSearchActiveIndex])
+              Keys.onEscapePressed:{root.bridge.search("");searchField.forceActiveFocus()}
+              delegate:T3SidebarSearchRow {
+                required property var entry
+                required property int index
+                width:ListView.view.width
+                thread:entry.thread;result:entry.item
+                routeActive:entry.thread.key===root.bridge.selectedKey
+                highlighted:root.sidebarSearchActiveIndex===index
+                manyHosts:(root.bridge.state.environments||[]).length>1
+                onHighlightRequested:root.sidebarSearchHighlightKey=entry.key
+                onThreadChosen:root.activateSidebarSearch(entry)
+              }
+              Text{
+                anchors.centerIn:parent;width:parent.width-Style.space(24);horizontalAlignment:Text.AlignHCenter
+                visible:sidebarSearchList.count===0
+                text:root.sidebarRankBusy||(root.bridge.sidebarSearch||{}).busy?T3I18n.tr("Searching thread messages…"):T3I18n.tr("No threads found")
+                color:root.dim;font.pixelSize:Style.font.body;textFormat:Text.PlainText;wrapMode:Text.Wrap
+              }
+            }
             Loader {
-              id:projectTreeLoader;objectName:"t3ProjectSidebarLoader";visible:active;active:root.projectLayout
+              id:projectTreeLoader;objectName:"t3ProjectSidebarLoader";visible:active;active:root.projectLayout&&!root.searching
               Layout.fillWidth:true;Layout.fillHeight:true;Layout.leftMargin:Style.space(8);Layout.rightMargin:Style.space(8)
               sourceComponent:T3ProjectSidebar {
                 bridge:root.bridge;threads:root.mosaicRows;groups:root.projectGroups;grouped:root.sidebarGrouped;threadDelegate:sidebarThreadComponent;updatesPaused:root.sidebarUpdatesPaused
@@ -1520,7 +1675,7 @@ Item {
               }
             }
             ColumnLayout {
-              visible:!root.projectLayout;Layout.fillWidth:true;Layout.fillHeight:true;spacing:0
+              visible:!root.projectLayout&&!root.searching;Layout.fillWidth:true;Layout.fillHeight:true;spacing:0
             // Pinned threads, on top; a ready one moves down to head Ready.
             T3ShelfResizer{objectName:"pinnedShelfResizer";label:"Pinned threads height";visible:pinnedReveal.shown&&!pinnedReveal.moving;value:root.pinnedShelfHeight;defaultValue:220;onResized:function(h){root.resizeShelf("pinnedShelfHeight",h)}}
             T3Reveal {
@@ -1948,7 +2103,7 @@ Item {
             onSubthreadsToggled:function(source){root.toggleSubthreads(source)}
             renderer:function(message,width){return root.renderMessage(message,width)};threads:root.boardThreads;sectionData:root.boardSections;onClosed:root.boardOpen=false;onIdeaRequested:function(text){sidebarActions.newThread();sidebarActions.initialPrompt=text};onThreadRequested:function(t){root.boardOpen=false;root.bridge.selectThread(t.environmentId,t.id)}}
         }
-        Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
+        Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;page:root.preferencesPage;onPageChanged:root.rememberPreferencesPage(page);initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         Loader {
           id:mosaicLoader
           anchors.fill:parent;active:root.opened&&root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
@@ -2014,7 +2169,7 @@ Item {
             anchors.fill:parent
             T3TextField {
               id:chatFindInput;objectName:"t3ChatFindInput";Layout.fillWidth:true;text:root.findQuery;placeholderText:T3I18n.tr("Find in conversation")
-              onTextEdited:root.findQuery=text
+              onTextEdited:{root.pendingPaletteFind=null;root.findQuery=text}
               Keys.onReturnPressed:function(event){root.navigateFind(event.modifiers&Qt.ShiftModifier?-1:1);event.accepted=true}
               Keys.onEscapePressed:function(event){root.findOpen=false;root.findQuery="";event.accepted=true}
             }
@@ -2035,12 +2190,24 @@ Item {
             objectName:"t3HeaderUsage"
             anchors.left:parent.left;anchors.right:parent.right
             providers:root.bridge.providers
+            creditBridge:root.bridge
             notices:root.bridge.quotaNotices || []
             external:root.bridge.quotaExternal || []
             onRefreshRequested:root.bridge.refreshQuotas()
             // The reveal does the collapsing so the strip keeps its height.
             showHeader:false;collapsed:false
           }
+          }
+          T3ResetCreditConfirmation {bridge:root.bridge;popupHost:panelLayout}
+          Repeater {
+            model:Object.values(root.bridge.resetCreditOperations).filter(function(operation){return operation.busy || !!operation.status})
+            Text {
+              required property var modelData
+              objectName:"t3ResetCreditStatus"
+              Layout.fillWidth:true;Layout.leftMargin:Style.space(24);Layout.rightMargin:Style.space(24)
+              text:modelData.account.label+": "+(modelData.busy?T3I18n.tr("Using reset credit…"):modelData.status)
+              textFormat:Text.PlainText;wrapMode:Text.Wrap;color:Color.popups.text;font.pixelSize:Style.font.caption
+            }
           }
           T3SubthreadBar {
             visible:root.bridge.subthread&&!root.composerExpanded
@@ -2236,6 +2403,7 @@ Item {
                     visible:message.foldExpanded
                   anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin:Style.space(message.userMessage?12:4);rightMargin:Style.space(message.userMessage?12:4);topMargin:message.folded?message.foldHeaderHeight:message.verticalInset }
                     spacing: Style.space(6)
+                    Text{objectName:"t3FreshSessionRow";visible:message.userMessage&&modelData.freshContext===true;width:parent.width;text:T3I18n.tr("Fresh session");color:Qt.rgba(Color.popups.text.r,Color.popups.text.g,Color.popups.text.b,0.6);font.pixelSize:Style.font.caption}
                     TextEdit {
                       id:messageText;objectName:"chatMessageText"
                       HoverHandler{objectName:"chatLinkCursor";cursorShape:messageText.hoveredLink?Qt.PointingHandCursor:Qt.IBeamCursor}
@@ -2505,6 +2673,10 @@ Item {
           T3PickerButton {
             objectName:"undoThreadSettle";Layout.alignment:Qt.AlignHCenter;primary:false
             visible:!!root.bridge.threadUndoNotice;text:T3I18n.tr("Undo settle");onClicked:root.bridge.undoThreadAction()
+          }
+          T3ModelFallback {
+            Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter
+            bridge:root.bridge
           }
           T3UsageRecovery {
             Layout.fillWidth:false;Layout.preferredWidth:root.composerColumnWidth;Layout.maximumWidth:root.composerColumnWidth;Layout.alignment:Qt.AlignHCenter

@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Compile the real Rust consent owner; run only in a private rootless container."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--runtime',required=True,type=pathlib.Path)
+parser.add_argument('--target',required=True,type=pathlib.Path)
+args=parser.parse_args()
+assert args.target.is_absolute()
+root=pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+out=pathlib.Path(tempfile.mkdtemp(prefix='voice-consent-process-',dir='/var/tmp/o3-build'))
+out.chmod(0o700)
+files=['tools/test-voice-consent-process','examples/voice_consent_process.rs','examples/voice_capture_resources.rs','src/lib.rs','src/voice_consent.rs','src/voice_capture/mod.rs','src/voice_capture/resources.rs','src/desktop_browser_ipc.rs','ui/voice/consent-helper.cjs','ui/voice/consent-storage.cjs','ui/voice/native-consent.cjs','ui/voice/native-consent.sources.json','ui/voice/electron-runtime-44.10.1-linux-x64.json','ui/browser/electron-private-fd.c','Cargo.toml','Cargo.lock']
+files+=['src/voice_host.rs','src/voice_context.rs','src/voice_preferences.rs','src/voice_transport.rs','src/connection_preferences.rs','src/main.rs','src/voice_watch.rs','tests/connection_preferences.rs']
+fence={name:hashlib.sha256((root/name).read_bytes()).hexdigest()for name in files}
+env={**os.environ,'CARGO_TARGET_DIR':str(args.target),'CARGO_BUILD_JOBS':'2'}
+source=out/'source'
+source.mkdir(mode=0o700)
+proof={'exit':None,'sourceSha256':fence,'scope':'Actual Rust consent owner, persistent event demux, original metadata codecs and voice preference CAS; no composer/audio/SDK activation'}
+with pathlib.Path('/var/tmp/o3-build/o3-parity-compile.lock').open('a')as lock:
+    fcntl.flock(lock,fcntl.LOCK_EX)
+    with(out/'compile.jsonl').open('w')as output,(out/'compile.log').open('w')as log:
+        compiled=subprocess.run(['cargo','build','--locked','--offline','--example','voice_consent_process','--message-format=json'],cwd=root,env=env,stdout=output,stderr=log)
+    proof['compileExit']=compiled.returncode
+    if compiled.returncode:
+        (out/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(out);raise SystemExit(compiled.returncode)
+    rows=[json.loads(line)for line in(out/'compile.jsonl').read_text().splitlines()]
+    binaries=[row['executable']for row in rows if row.get('executable')and row.get('target',{}).get('name')=='voice_consent_process'and row['target']['kind']==['example']]
+    assert len(binaries)==1
+    binary=source/'process-check'
+    with open(binaries[0],'rb')as original,binary.open('xb')as output:
+        while data:=original.read(1024*1024):output.write(data)
+    binary.chmod(0o500)
+    with(out/'strict.log').open('w')as log:
+        strict=subprocess.run(['cargo','clippy','--locked','--offline','--all-targets','--','-D','warnings'],cwd=root,env=env,stdout=log,stderr=subprocess.STDOUT)
+    proof['strictAllTargetsExit']=strict.returncode
+    if strict.returncode:
+        (out/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(out);raise SystemExit(strict.returncode)
+    with(out/'addon.log').open('w')as log:
+        subprocess.run(['cc','-shared','-fPIC','-O2','-Wall','-Wextra','-Werror','-I/usr/include/node',str(root/'ui/browser/electron-private-fd.c'),'-o',str(source/'electron-private-fd.node')],stdout=log,stderr=subprocess.STDOUT,check=True)
+(source/'electron-private-fd.node').chmod(0o500)
+state=out/'state'
+state.mkdir(mode=0o700)
+command=['podman','--remote=false','run','--rm','--pull=never','--http-proxy=false','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--memory=1g','--pids-limit=96','--ulimit=core=0:0','-v','/usr:/usr:ro','-v',f'{args.runtime.resolve()}:/electron:ro','-v',f'{source}:/source:ro','-v',f'{state}:/state:rw','--env','HOME=/state','docker.io/library/archlinux:latest','/source/process-check']
+with(out/'runtime.json').open('w')as output,(out/'runtime.log').open('w')as log:
+    result=subprocess.run(command,stdout=output,stderr=log,timeout=90)
+assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==digest for name,digest in fence.items()),'Consent source changed during run'
+proof['exit']=result.returncode
+proof['binarySha256']=hashlib.sha256(binary.read_bytes()).hexdigest()
+if result.returncode==0:
+    proof['receipt']=json.loads((out/'runtime.json').read_text())
+(out/'result.json').write_text(json.dumps(proof,indent=2)+'\n')
+print(out)
+raise SystemExit(result.returncode)

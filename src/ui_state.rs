@@ -4,31 +4,96 @@ use serde_json::{json, Value};
 use std::{fs, io::Read, os::unix::fs::PermissionsExt};
 pub fn sanitize(input: &Value) -> Value {
     let mut out = json!({"schemaVersion":1,"positions":{}});
-    if let Some(columns)=input["boardColumns"].as_object(){
-        let mut clean=serde_json::Map::new();
-        for (key,value) in columns.iter().take(16){
-            if !matches!(key.as_str(),"ideas"|"pinned"|"ready"|"input"|"waiting"|"working"|"failed"|"idle"|"done"|"snoozed"|"settled"){continue}
-            let mut settings=serde_json::Map::new();
-            if value["order"].as_str().is_some_and(|v|matches!(v,"sidebar"|"reply"|"updated"|"title"|"project"|"environmentName")){settings.insert("order".into(),value["order"].clone());}
-            for name in ["reverse","collapsed","live"]{if value[name].is_boolean(){settings.insert(name.into(),value[name].clone());}}
-            clean.insert(key.clone(),Value::Object(settings));
+    if let Some(windows) = input["modelFallbackDismissedWindows"].as_object() {
+        out["modelFallbackDismissedWindows"] = Value::Object(
+            windows
+                .iter()
+                .take(128)
+                .filter(|(key, value)| {
+                    valid_id(key)
+                        && value
+                            .as_str()
+                            .is_some_and(|text| text.len() <= 512 && !text.contains('\0'))
+                })
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect(),
+        );
+    }
+    if input.get("localDraftThreads").is_some() {
+        out["localDraftThreads"] = local_drafts::metadata(&input["localDraftThreads"]);
+    }
+    if input.get("stickyModelSelectionByProvider").is_some() {
+        out["stickyModelSelectionByProvider"] =
+            local_drafts::sticky(&input["stickyModelSelectionByProvider"]);
+    }
+    if input.get("stickyOptionsByModelByProvider").is_some() {
+        out["stickyOptionsByModelByProvider"] =
+            local_drafts::sticky_options(&input["stickyOptionsByModelByProvider"]);
+    }
+    if let Some(provider) = input["stickyActiveProvider"]
+        .as_str()
+        .filter(|id| out["stickyModelSelectionByProvider"].get(*id).is_some())
+    {
+        out["stickyActiveProvider"] = json!(provider);
+    }
+
+    if let Some(columns) = input["boardColumns"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (key, value) in columns.iter().take(16) {
+            if !matches!(
+                key.as_str(),
+                "ideas"
+                    | "pinned"
+                    | "ready"
+                    | "input"
+                    | "waiting"
+                    | "working"
+                    | "failed"
+                    | "idle"
+                    | "done"
+                    | "snoozed"
+                    | "settled"
+            ) {
+                continue;
+            }
+            let mut settings = serde_json::Map::new();
+            if value["order"].as_str().is_some_and(|v| {
+                matches!(
+                    v,
+                    "sidebar" | "reply" | "updated" | "title" | "project" | "environmentName"
+                )
+            }) {
+                settings.insert("order".into(), value["order"].clone());
+            }
+            for name in ["reverse", "collapsed", "live"] {
+                if value[name].is_boolean() {
+                    settings.insert(name.into(), value[name].clone());
+                }
+            }
+            clean.insert(key.clone(), Value::Object(settings));
         }
-        out["boardColumns"]=Value::Object(clean);
+        out["boardColumns"] = Value::Object(clean);
     }
     // Independent board notes are user-authored text, not transcript or credentials.
     // Keep multiline text verbatim, with a total budget below the state-file limit.
-    if let Some(notes)=input["boardIdeas"].as_array().filter(|n|n.len()<=128){
-        let mut seen=std::collections::HashSet::new();
-        let mut bytes=0usize;
-        let mut clean=Vec::new();
+    if let Some(notes) = input["boardIdeas"].as_array().filter(|n| n.len() <= 128) {
+        let mut seen = std::collections::HashSet::new();
+        let mut bytes = 0usize;
+        let mut clean = Vec::new();
         for note in notes {
-            let (Some(key),Some(text))=(note["key"].as_str(),note["text"].as_str()) else {continue};
-            if !valid_id(key)||!seen.insert(key)||text.contains('\0'){continue}
-            bytes=bytes.saturating_add(text.len());
-            if bytes>600_000 {break}
+            let (Some(key), Some(text)) = (note["key"].as_str(), note["text"].as_str()) else {
+                continue;
+            };
+            if !valid_id(key) || !seen.insert(key) || text.contains('\0') {
+                continue;
+            }
+            bytes = bytes.saturating_add(text.len());
+            if bytes > 600_000 {
+                break;
+            }
             clean.push(json!({"key":key,"text":text}));
         }
-        out["boardIdeas"]=json!(clean);
+        out["boardIdeas"] = json!(clean);
     }
 
     for key in [
@@ -38,62 +103,443 @@ pub fn sanitize(input: &Value) -> Value {
         "usageExpanded",
         "queueExpanded",
         "tasksExpanded",
-        "settledExpanded","snoozedExpanded","sidebarCompact","sidebarGrouped","workingExpanded","pinnedExpanded","inputExpanded",
+        "settledExpanded",
+        "snoozedExpanded",
+        "sidebarCompact",
+        "sidebarGrouped",
+        "workingExpanded",
+        "pinnedExpanded",
+        "inputExpanded",
         "sidebarCollapsed",
         "english",
-        "composerExpanded","detached",
-        "screenshotButton","screenshotHidePanel","dictationButton",
-        "animationsEnabled","fpsMeter","mosaicOpen","quickRepliesButton","boardLive","boardShowPinned",
-        "omabridgeIndicator","sharedDraftsEnabled","remoteDocumentsEnabled","remoteMaintenanceEnabled",
-        "threadDetailsOpen","projectColors","projectChips","chipsExpanded",
+        "composerExpanded",
+        "detached",
+        "screenshotButton",
+        "screenshotHidePanel",
+        "dictationButton",
+        "animationsEnabled",
+        "fpsMeter",
+        "mosaicOpen",
+        "quickRepliesButton",
+        "boardLive",
+        "boardShowPinned",
+        "omabridgeIndicator",
+        "sharedDraftsEnabled",
+        "remoteDocumentsEnabled",
+        "remoteMaintenanceEnabled",
+        "threadDetailsOpen",
+        "projectColors",
+        "projectChips",
+        "chipsExpanded",
     ] {
         if let Some(v) = input[key].as_bool() {
             out[key] = json!(v)
         }
     }
-    if input["sharedDraftsAuthority"].as_str().is_some_and(omabridge_route::valid_peer){out["sharedDraftsAuthority"]=input["sharedDraftsAuthority"].clone();}
-    if input["remoteDocumentsConsent"].as_str().is_some_and(valid_id){out["remoteDocumentsConsent"]=input["remoteDocumentsConsent"].clone();}
-    if input["remoteMaintenanceConsent"].as_str().is_some_and(valid_id){out["remoteMaintenanceConsent"]=input["remoteMaintenanceConsent"].clone();}
-    if let Some(roots)=input["remoteMaintenanceRoots"].as_array().filter(|r|r.len()<=16){
-        if roots.iter().all(|v|v.as_str().is_some_and(|s|s.starts_with('/')&&s.len()<=2048&&!s.chars().any(char::is_control))){out["remoteMaintenanceRoots"]=json!(roots);}
+    if input["sharedDraftsAuthority"]
+        .as_str()
+        .is_some_and(omabridge_route::valid_peer)
+    {
+        out["sharedDraftsAuthority"] = input["sharedDraftsAuthority"].clone();
     }
-    for (key,min,max) in [("idleReleaseMinutes",1,1440),("autoCompactFallbackMinutes",1,1440),("autoCompactMinTokens",1000,1000000)] {if let Some(n)=input[key].as_u64().filter(|n|*n>=min&&*n<=max){out[key]=json!(n)}}
-    if let Some(map)=input["idleReleaseProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if value.is_null()||value.as_u64().is_some_and(|n|(1..=1440).contains(&n)){clean.insert(key.clone(),value.clone());}}}out["idleReleaseProviderMinutes"]=Value::Object(clean);}
-    if let Some(map)=input["autoCompactProviderMinutes"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if valid_id(key)||key.split_once('/').is_some_and(|(e,p)|valid_id(e)&&valid_id(p)){if let Some(n)=value.as_u64().filter(|n|*n>=1&&*n<=1440){clean.insert(key.clone(),json!(n));}}}out["autoCompactProviderMinutes"]=Value::Object(clean);}
-    if let Some(map)=input["projectTreeCollapsed"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(4096){if k.starts_with("project/")&&k.len()<=2200&&!k.chars().any(char::is_control){if let Some(b)=v.as_bool(){clean.insert(k.clone(),json!(b));}}}out["projectTreeCollapsed"]=Value::Object(clean);}
+    if input["remoteDocumentsConsent"]
+        .as_str()
+        .is_some_and(valid_id)
+    {
+        out["remoteDocumentsConsent"] = input["remoteDocumentsConsent"].clone();
+    }
+    if input["remoteMaintenanceConsent"]
+        .as_str()
+        .is_some_and(valid_id)
+    {
+        out["remoteMaintenanceConsent"] = input["remoteMaintenanceConsent"].clone();
+    }
+    if let Some(roots) = input["remoteMaintenanceRoots"]
+        .as_array()
+        .filter(|r| r.len() <= 16)
+    {
+        if roots.iter().all(|v| {
+            v.as_str().is_some_and(|s| {
+                s.starts_with('/') && s.len() <= 2048 && !s.chars().any(char::is_control)
+            })
+        }) {
+            out["remoteMaintenanceRoots"] = json!(roots);
+        }
+    }
+    for (key, min, max) in [
+        ("idleReleaseMinutes", 1, 1440),
+        ("autoCompactFallbackMinutes", 1, 1440),
+        ("autoCompactMinTokens", 1000, 1000000),
+    ] {
+        if let Some(n) = input[key].as_u64().filter(|n| *n >= min && *n <= max) {
+            out[key] = json!(n)
+        }
+    }
+    if let Some(map) = input["idleReleaseProviderMinutes"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (key, value) in map.iter().take(64) {
+            if key
+                .split_once('/')
+                .is_some_and(|(e, p)| valid_id(e) && valid_id(p))
+                && (value.is_null() || value.as_u64().is_some_and(|n| (1..=1440).contains(&n)))
+            {
+                clean.insert(key.clone(), value.clone());
+            }
+        }
+        out["idleReleaseProviderMinutes"] = Value::Object(clean);
+    }
+    if let Some(map) = input["autoCompactProviderMinutes"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (key, value) in map.iter().take(64) {
+            if valid_id(key)
+                || key
+                    .split_once('/')
+                    .is_some_and(|(e, p)| valid_id(e) && valid_id(p))
+            {
+                if let Some(n) = value.as_u64().filter(|n| *n >= 1 && *n <= 1440) {
+                    clean.insert(key.clone(), json!(n));
+                }
+            }
+        }
+        out["autoCompactProviderMinutes"] = Value::Object(clean);
+    }
+    if let Some(map) = input["projectTreeCollapsed"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (k, v) in map.iter().take(4096) {
+            if k.starts_with("project/") && k.len() <= 2200 && !k.chars().any(char::is_control) {
+                if let Some(b) = v.as_bool() {
+                    clean.insert(k.clone(), json!(b));
+                }
+            }
+        }
+        out["projectTreeCollapsed"] = Value::Object(clean);
+    }
     // Provider sign-in notices hidden per host, by the set of providers they named.
-    if let Some(map)=input["signInDismissed"].as_object(){let mut clean=serde_json::Map::new();for (key,value) in map.iter().take(64){if let Some(v)=value.as_str().filter(|v|valid_id(key)&&v.len()<=2048){clean.insert(key.clone(),json!(v));}}out["signInDismissed"]=Value::Object(clean);}
-    if let Some(list)=input["autoCompactExcludedThreads"].as_array(){out["autoCompactExcludedThreads"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|s.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)))).take(1024).collect::<Vec<_>>());}
+    if let Some(map) = input["signInDismissed"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (key, value) in map.iter().take(64) {
+            if let Some(v) = value.as_str().filter(|v| valid_id(key) && v.len() <= 2048) {
+                clean.insert(key.clone(), json!(v));
+            }
+        }
+        out["signInDismissed"] = Value::Object(clean);
+    }
+    if let Some(list) = input["autoCompactExcludedThreads"].as_array() {
+        out["autoCompactExcludedThreads"] = json!(list
+            .iter()
+            .filter(|v| v.as_str().is_some_and(|s| s
+                .split_once('/')
+                .is_some_and(|(e, t)| valid_id(e) && valid_id(t))))
+            .take(1024)
+            .collect::<Vec<_>>());
+    }
     // Provider update notices the user closed: "env=driver:version|…" keys.
-    if let Some(list)=input["providerUpdateDismissals"].as_array(){out["providerUpdateDismissals"]=json!(list.iter().filter(|v|v.as_str().is_some_and(|s|!s.is_empty()&&s.len()<=2048&&!s.chars().any(char::is_control))).take(32).collect::<Vec<_>>());}
+    if let Some(list) = input["providerUpdateDismissals"].as_array() {
+        out["providerUpdateDismissals"] = json!(list
+            .iter()
+            .filter(|v| v.as_str().is_some_and(|s| !s.is_empty()
+                && s.len() <= 2048
+                && !s.chars().any(char::is_control)))
+            .take(32)
+            .collect::<Vec<_>>());
+    }
     // Low disk space warning threshold in GB; null switches the warning off.
-    match input.get("lowDiskThresholdGb"){Some(Value::Null)=>{out["lowDiskThresholdGb"]=Value::Null;},Some(v)=>{if let Some(n)=v.as_u64().filter(|n|(1..=1000).contains(n)){out["lowDiskThresholdGb"]=json!(n);}},None=>{}}
+    match input.get("lowDiskThresholdGb") {
+        Some(Value::Null) => {
+            out["lowDiskThresholdGb"] = Value::Null;
+        }
+        Some(v) => {
+            if let Some(n) = v.as_u64().filter(|n| (1..=1000).contains(n)) {
+                out["lowDiskThresholdGb"] = json!(n);
+            }
+        }
+        None => {}
+    }
     // Automatic build output cleanup after this many idle days; null switches it off.
-    for k in ["buildCleanupWorktreeDays","buildCleanupCheckoutDays"]{match input.get(k){Some(Value::Null)=>{out[k]=Value::Null;},Some(v)=>{if let Some(n)=v.as_u64().filter(|n|(1..=365).contains(n)){out[k]=json!(n);}},None=>{}}}
-    for k in ["threadDetailsWidth","threadDetailsHeight"]{if let Some(n)=input[k].as_f64().filter(|n|n.is_finite()&&*n>=0.0&&*n<=4000.0){out[k]=json!(n.round() as i64);}}
-    if let Some(v)=input["preferredEditor"].as_str().filter(|v|!v.is_empty()&&v.len()<=64&&v.chars().all(|c|c.is_ascii_alphanumeric()||c=='-'||c=='_')){out["preferredEditor"]=json!(v);}
+    for k in ["buildCleanupWorktreeDays", "buildCleanupCheckoutDays"] {
+        match input.get(k) {
+            Some(Value::Null) => {
+                out[k] = Value::Null;
+            }
+            Some(v) => {
+                if let Some(n) = v.as_u64().filter(|n| (1..=365).contains(n)) {
+                    out[k] = json!(n);
+                }
+            }
+            None => {}
+        }
+    }
+    for k in ["threadDetailsWidth", "threadDetailsHeight"] {
+        if let Some(n) = input[k]
+            .as_f64()
+            .filter(|n| n.is_finite() && *n >= 0.0 && *n <= 4000.0)
+        {
+            out[k] = json!(n.round() as i64);
+        }
+    }
+    if let Some(v) = input["preferredEditor"].as_str().filter(|v| {
+        !v.is_empty()
+            && v.len() <= 64
+            && v.chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    }) {
+        out["preferredEditor"] = json!(v);
+    }
     // Sub-threads the user expanded or collapsed under a parent thread ("env/thread").
-    if let Some(map)=input["subthreadsExpanded"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){if let Some(b)=v.as_bool(){clean.insert(k.clone(),json!(b));}}}out["subthreadsExpanded"]=Value::Object(clean);}
-    if let Some(map)=input["sidebarProjectGroupingOverrides"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(512){if k.len()<=2200&&!k.chars().any(char::is_control)&&matches!(v.as_str(),Some("inherit"|"repository"|"repository_path"|"separate")){clean.insert(k.clone(),v.clone());}}out["sidebarProjectGroupingOverrides"]=Value::Object(clean);}
+    if let Some(map) = input["subthreadsExpanded"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (k, v) in map.iter().take(512) {
+            if k.split_once('/')
+                .is_some_and(|(e, t)| valid_id(e) && valid_id(t))
+            {
+                if let Some(b) = v.as_bool() {
+                    clean.insert(k.clone(), json!(b));
+                }
+            }
+        }
+        out["subthreadsExpanded"] = Value::Object(clean);
+    }
+    if let Some(map) = input["sidebarProjectGroupingOverrides"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (k, v) in map.iter().take(512) {
+            if k.len() <= 2200
+                && !k.chars().any(char::is_control)
+                && matches!(
+                    v.as_str(),
+                    Some("inherit" | "repository" | "repository_path" | "separate")
+                )
+            {
+                clean.insert(k.clone(), v.clone());
+            }
+        }
+        out["sidebarProjectGroupingOverrides"] = Value::Object(clean);
+    }
     // The user's thread groups: "env/thread" (threadGroups) or a whole project,
     // "env/project" (groupProjects), to a short group name.
-    for key in ["threadGroups","groupProjects"]{if let Some(map)=input[key].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(2048){if !k.split_once('/').is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){continue}if let Some(name)=v.as_str().map(str::trim).filter(|n|!n.is_empty()&&n.chars().count()<=48&&!n.chars().any(char::is_control)){clean.insert(k.clone(),json!(name));}}out[key]=Value::Object(clean);}}
+    for key in ["threadGroups", "groupProjects"] {
+        if let Some(map) = input[key].as_object() {
+            let mut clean = serde_json::Map::new();
+            for (k, v) in map.iter().take(2048) {
+                if !k
+                    .split_once('/')
+                    .is_some_and(|(e, t)| valid_id(e) && valid_id(t))
+                {
+                    continue;
+                }
+                if let Some(name) = v.as_str().map(str::trim).filter(|n| {
+                    !n.is_empty() && n.chars().count() <= 48 && !n.chars().any(char::is_control)
+                }) {
+                    clean.insert(k.clone(), json!(name));
+                }
+            }
+            out[key] = Value::Object(clean);
+        }
+    }
+    // Terminal layout stores identifiers only; history and processes stay on the server.
+    if let Some(map) = input["terminalLayouts"].as_object() {
+        let mut clean = serde_json::Map::new();
+        let mut bytes = 0;
+        for (key, layout) in map.iter().take(512) {
+            if !key
+                .split_once('/')
+                .is_some_and(|(e, t)| valid_id(e) && valid_id(t))
+            {
+                continue;
+            }
+            let Some(tabs) = layout["tabs"].as_array().filter(|v| v.len() <= 16) else {
+                continue;
+            };
+            let mut kept = Vec::new();
+            for tab in tabs {
+                let (Some(id), Some(active), Some(ids)) = (
+                    tab["id"].as_str(),
+                    tab["activeTerminalId"].as_str(),
+                    tab["terminalIds"].as_array(),
+                ) else {
+                    continue;
+                };
+                if ids.is_empty()
+                    || ids.len() > 8
+                    || protocol::terminal::session("layout", id).is_err()
+                    || !ids.iter().all(|id| {
+                        id.as_str()
+                            .is_some_and(|id| protocol::terminal::session("layout", id).is_ok())
+                    })
+                    || !ids.iter().any(|id| id == active)
+                {
+                    continue;
+                }
+                kept.push(json!({"id":id,"terminalIds":ids,"activeTerminalId":active,"vertical":tab["vertical"]==true}));
+            }
+            let active = layout["active"]
+                .as_str()
+                .filter(|id| kept.iter().any(|tab| tab["id"] == *id))
+                .or_else(|| kept.first().and_then(|tab| tab["id"].as_str()))
+                .unwrap_or("");
+            let value = json!({"tabs":kept,"active":active});
+            bytes += key.len() + value.to_string().len();
+            if bytes > 256 * 1024 {
+                break;
+            }
+            clean.insert(key.clone(), value);
+        }
+        out["terminalLayouts"] = Value::Object(clean);
+    }
     // Per host: machine icon, colour swatch and whether threads show its name.
-    if let Some(map)=input["hostStyles"].as_object(){let mut clean=serde_json::Map::new();for(k,v)in map.iter().take(64){if !valid_id(k){continue}let mut style=serde_json::Map::new();if let Some(i)=v["icon"].as_str().filter(|i|matches!(*i,"server"|"cloud"|"linux"|"desktop"|"laptop"|"mac-mini"|"mac-studio")){style.insert("icon".into(),json!(i));}if let Some(c)=v["color"].as_str().filter(|c|c.is_empty()||(c.len()==7&&c.starts_with('#')&&c[1..].chars().all(|h|h.is_ascii_hexdigit()))){style.insert("color".into(),json!(c));}if let Some(b)=v["showName"].as_bool(){style.insert("showName".into(),json!(b));}clean.insert(k.clone(),Value::Object(style));}out["hostStyles"]=Value::Object(clean);}
-    if matches!(input["sidebarProjectGroupingMode"].as_str(),Some("repository"|"repository_path"|"separate")){out["sidebarProjectGroupingMode"]=input["sidebarProjectGroupingMode"].clone();}
-    if matches!(input["starfieldMode"].as_str(),Some("auto"|"full"|"light"|"off")){out["starfieldMode"]=input["starfieldMode"].clone();}
-    for (key,allowed) in [("interfaceLayout",&["classic","focus","projects"][..]),("starfieldSpeed",&["slow","normal","fast"][..]),("starfieldMeteors",&["none","few","normal","many"][..]),("threadWorkingEffect",&["comet","pulse","off"][..]),("threadInputEffect",&["glints","pulse","static","off"][..]),("threadChangeEffect",&["star","flash","off"][..]),("threadEffectIntensity",&["subtle","normal","vivid"][..]),("threadMoveEffect",&["arc","glide","fade","off"][..]),("threadMoveSpeed",&["slow","normal","fast"][..]),("htmlRenders",&["inline","side"][..]),("animationRate",&["adaptive","saver","max"][..]),("barIndicator",&["orbit","scanner","equalizer","heartbeat","ticks","logo"][..]),("threadNotifications",&["notifications","notifications-and-sound","sound","off"][..]),("transitionStyle",&["nebula","warp","fold","spring","instant"][..]),("transitionSpeed",&["slow","normal","fast"][..]),("t3ServerUpdates",&["auto","notify","off"][..]),("brandGlyph",&["o","omarchy"][..]),("threadRowSize",&["compact","large"][..]),("threadTitleOverflow",&["elide","marquee"][..]),("threadOrder",&["reply","t3"][..]),("sidebarStyle",&["sober","vivid"][..])] {
-        if input[key].as_str().is_some_and(|v|allowed.contains(&v)){out[key]=input[key].clone();}
+    if let Some(map) = input["hostStyles"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (k, v) in map.iter().take(64) {
+            if !valid_id(k) {
+                continue;
+            }
+            let mut style = serde_json::Map::new();
+            if let Some(i) = v["icon"].as_str().filter(|i| {
+                matches!(
+                    *i,
+                    "server" | "cloud" | "linux" | "desktop" | "laptop" | "mac-mini" | "mac-studio"
+                )
+            }) {
+                style.insert("icon".into(), json!(i));
+            }
+            if let Some(c) = v["color"].as_str().filter(|c| {
+                c.is_empty()
+                    || (c.len() == 7
+                        && c.starts_with('#')
+                        && c[1..].chars().all(|h| h.is_ascii_hexdigit()))
+            }) {
+                style.insert("color".into(), json!(c));
+            }
+            if let Some(b) = v["showName"].as_bool() {
+                style.insert("showName".into(), json!(b));
+            }
+            clean.insert(k.clone(), Value::Object(style));
+        }
+        out["hostStyles"] = Value::Object(clean);
     }
-    if matches!(input["windowMode"].as_str(),Some("panel"|"floating"|"tiled")){out["windowMode"]=input["windowMode"].clone();}
-    if matches!(input["dictationModel"].as_str(),Some("base"|"small")){out["dictationModel"]=input["dictationModel"].clone();}
-    if matches!(input["dictationRecordings"].as_str(),Some("thread"|"day"|"week"|"month"|"off")){out["dictationRecordings"]=input["dictationRecordings"].clone();}
-    if input["dictationLanguage"].as_str().is_some_and(|v|v=="auto"||(matches!(v.len(),2|3)&&v.chars().all(|c|c.is_ascii_lowercase()))){out["dictationLanguage"]=input["dictationLanguage"].clone();}
-    for key in ["workingShelfHeight","snoozedShelfHeight","settledShelfHeight","pinnedShelfHeight","inputShelfHeight"] {
-        if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=60.0 && *n<=1200.0){out[key]=json!(value);}
+    if matches!(
+        input["sidebarProjectGroupingMode"].as_str(),
+        Some("repository" | "repository_path" | "separate")
+    ) {
+        out["sidebarProjectGroupingMode"] = input["sidebarProjectGroupingMode"].clone();
     }
-    for key in ["panelWidth","panelHeight","sidebarWidth","browserPanelWidth","renderPanelWidth","windowWidth","windowHeight"] {
-        if let Some(value)=input[key].as_f64().filter(|n|n.is_finite() && *n>=100.0 && *n<=10000.0){out[key]=json!(value);}
+    if matches!(
+        input["starfieldMode"].as_str(),
+        Some("auto" | "full" | "light" | "off")
+    ) {
+        out["starfieldMode"] = input["starfieldMode"].clone();
+    }
+    for (key, allowed) in [
+        (
+            "preferencesPage",
+            &[
+                "general",
+                "appearance",
+                "projects",
+                "shortcuts",
+                "providers",
+                "integrations",
+                "source-control",
+                "connections",
+                "storage",
+                "memory",
+                "archived",
+                "licenses",
+            ][..],
+        ),
+        ("interfaceLayout", &["classic", "focus", "projects"][..]),
+        ("starfieldSpeed", &["slow", "normal", "fast"][..]),
+        ("starfieldMeteors", &["none", "few", "normal", "many"][..]),
+        ("threadWorkingEffect", &["comet", "pulse", "off"][..]),
+        (
+            "threadInputEffect",
+            &["glints", "pulse", "static", "off"][..],
+        ),
+        ("threadChangeEffect", &["star", "flash", "off"][..]),
+        ("threadEffectIntensity", &["subtle", "normal", "vivid"][..]),
+        ("threadMoveEffect", &["arc", "glide", "fade", "off"][..]),
+        ("threadMoveSpeed", &["slow", "normal", "fast"][..]),
+        ("htmlRenders", &["inline", "side"][..]),
+        ("animationRate", &["adaptive", "saver", "max"][..]),
+        (
+            "barIndicator",
+            &[
+                "orbit",
+                "scanner",
+                "equalizer",
+                "heartbeat",
+                "ticks",
+                "logo",
+            ][..],
+        ),
+        (
+            "threadNotifications",
+            &["notifications", "notifications-and-sound", "sound", "off"][..],
+        ),
+        (
+            "transitionStyle",
+            &["nebula", "warp", "fold", "spring", "instant"][..],
+        ),
+        ("transitionSpeed", &["slow", "normal", "fast"][..]),
+        ("t3ServerUpdates", &["auto", "notify", "off"][..]),
+        ("brandGlyph", &["o", "omarchy"][..]),
+        ("threadRowSize", &["compact", "large"][..]),
+        ("threadTitleOverflow", &["elide", "marquee"][..]),
+        ("threadOrder", &["reply", "t3"][..]),
+        ("sidebarStyle", &["sober", "vivid"][..]),
+    ] {
+        if input[key].as_str().is_some_and(|v| allowed.contains(&v)) {
+            out[key] = input[key].clone();
+        }
+    }
+    if matches!(
+        input["windowMode"].as_str(),
+        Some("panel" | "floating" | "tiled")
+    ) {
+        out["windowMode"] = input["windowMode"].clone();
+    }
+    if matches!(input["dictationModel"].as_str(), Some("base" | "small")) {
+        out["dictationModel"] = input["dictationModel"].clone();
+    }
+    if matches!(
+        input["dictationRecordings"].as_str(),
+        Some("thread" | "day" | "week" | "month" | "off")
+    ) {
+        out["dictationRecordings"] = input["dictationRecordings"].clone();
+    }
+    if input["dictationLanguage"].as_str().is_some_and(|v| {
+        v == "auto" || (matches!(v.len(), 2 | 3) && v.chars().all(|c| c.is_ascii_lowercase()))
+    }) {
+        out["dictationLanguage"] = input["dictationLanguage"].clone();
+    }
+    for key in [
+        "workingShelfHeight",
+        "snoozedShelfHeight",
+        "settledShelfHeight",
+        "pinnedShelfHeight",
+        "inputShelfHeight",
+    ] {
+        if let Some(value) = input[key]
+            .as_f64()
+            .filter(|n| n.is_finite() && *n >= 60.0 && *n <= 1200.0)
+        {
+            out[key] = json!(value);
+        }
+    }
+    for key in [
+        "panelWidth",
+        "panelHeight",
+        "sidebarWidth",
+        "browserPanelWidth",
+        "renderPanelWidth",
+        "windowWidth",
+        "windowHeight",
+    ] {
+        if let Some(value) = input[key]
+            .as_f64()
+            .filter(|n| n.is_finite() && *n >= 100.0 && *n <= 10000.0)
+        {
+            out[key] = json!(value);
+        }
     }
     for (key, max) in [
         ("selectedEnvironment", 2048),
@@ -113,21 +559,47 @@ pub fn sanitize(input: &Value) -> Value {
             out[key] = json!(v)
         }
     }
-    if let Some(v) = input["statusFilter"]
-        .as_str()
-        .filter(|v| ["all", "working", "waiting", "idle", "done", "failed", "pending", "settled"].contains(v))
-    {
+    if let Some(v) = input["statusFilter"].as_str().filter(|v| {
+        [
+            "all", "working", "waiting", "idle", "done", "failed", "pending", "settled",
+        ]
+        .contains(v)
+    }) {
         out["statusFilter"] = json!(v)
     }
-    if let Some(n)=input["mosaicCount"].as_u64().filter(|n|(1..=8).contains(n)){out["mosaicCount"]=json!(n);}
-    if let Some(language)=input["quickReplyLanguage"].as_str().filter(|s|*s=="auto"||(s.len()==2&&s.chars().all(|c|c.is_ascii_lowercase()))){out["quickReplyLanguage"]=json!(language);}
-    if let Some(languages)=input["quickReplies"].as_object(){
-        let mut clean=serde_json::Map::new();
-        for (language,replies) in languages.iter().take(32){
-            if language.len()!=2||!language.chars().all(|c|c.is_ascii_lowercase()){continue}
-            if let Some(replies)=replies.as_array(){clean.insert(language.clone(),json!(replies.iter().filter_map(|r|r.as_str()).filter(|s|!s.trim().is_empty()&&s.len()<=1000&&!s.chars().any(char::is_control)).take(32).collect::<Vec<_>>()));}
+    if let Some(n) = input["mosaicCount"]
+        .as_u64()
+        .filter(|n| (1..=8).contains(n))
+    {
+        out["mosaicCount"] = json!(n);
+    }
+    if let Some(language) = input["quickReplyLanguage"]
+        .as_str()
+        .filter(|s| *s == "auto" || (s.len() == 2 && s.chars().all(|c| c.is_ascii_lowercase())))
+    {
+        out["quickReplyLanguage"] = json!(language);
+    }
+    if let Some(languages) = input["quickReplies"].as_object() {
+        let mut clean = serde_json::Map::new();
+        for (language, replies) in languages.iter().take(32) {
+            if language.len() != 2 || !language.chars().all(|c| c.is_ascii_lowercase()) {
+                continue;
+            }
+            if let Some(replies) = replies.as_array() {
+                clean.insert(
+                    language.clone(),
+                    json!(replies
+                        .iter()
+                        .filter_map(|r| r.as_str())
+                        .filter(|s| !s.trim().is_empty()
+                            && s.len() <= 1000
+                            && !s.chars().any(char::is_control))
+                        .take(32)
+                        .collect::<Vec<_>>()),
+                );
+            }
         }
-        out["quickReplies"]=Value::Object(clean);
+        out["quickReplies"] = Value::Object(clean);
     }
     if let Some(positions) = input["positions"].as_object() {
         for (key, p) in positions.iter().take(128).filter(|(k, _)| k.len() <= 2200) {
@@ -156,7 +628,7 @@ pub fn load() -> Value {
         .filter(|_| bytes.len() <= 1024 * 1024)
         .and_then(|_| serde_json::from_slice(&bytes).ok())
         .unwrap_or(Value::Null);
-    let mut state=sanitize(&value);
+    let mut state = sanitize(&value);
     let policy = load_memory_policy().unwrap_or_else(|_| json!({"unavailable":true}));
     if !policy.as_object().is_some_and(|p| p.is_empty()) {
         state["remoteHostMemorySettings"] = policy;
@@ -168,7 +640,11 @@ pub fn save(value: &Value) -> Result<()> {
     let dir = path.parent().ok_or("local_error")?;
     fs::create_dir_all(dir).map_err(|_| "local_error")?;
     fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(|_| "local_error")?;
-    save_json(&path, &sanitize(value))
+    let clean = sanitize(value);
+    if serde_json::to_vec(&clean).map_err(|_| "local_error")?.len() > 1024 * 1024 {
+        return Err("ui_state_too_large".into());
+    }
+    save_json(&path, &clean)
 }
 fn memory_policy_path() -> std::path::PathBuf {
     xdg("XDG_STATE_HOME", ".local/state").join("remote-host-memory.json")
@@ -233,43 +709,79 @@ pub fn save_memory_policy(surface: &str, patch: &Value) -> Result<()> {
 mod tests {
     use super::*;
     #[test]
-    fn shared_drafts_are_explicit_and_default_off(){
-        let owner="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        let state=sanitize(&json!({"sharedDraftsEnabled":true,"sharedDraftsAuthority":owner}));
-        assert_eq!(state["sharedDraftsEnabled"],true);assert_eq!(state["sharedDraftsAuthority"],owner);
+    fn terminal_layout_retains_ids_without_history_or_credentials() {
+        let clean = sanitize(
+            &json!({"terminalLayouts":{"remote/thread":{"active":"missing","tabs":[{"id":"tab-1","terminalIds":["term-1","term-2"],"activeTerminalId":"term-2","vertical":true,"history":"private history","token":"private token"},{"id":"bad","terminalIds":["bad\n"],"activeTerminalId":"bad\n"}],"history":"private history"},"invalid":{"tabs":[]}}}),
+        );
+        assert_eq!(
+            clean["terminalLayouts"]["remote/thread"],
+            json!({"active":"tab-1","tabs":[{"id":"tab-1","terminalIds":["term-1","term-2"],"activeTerminalId":"term-2","vertical":true}]})
+        );
+        assert!(clean["terminalLayouts"].get("invalid").is_none());
+        assert!(!clean.to_string().contains("private"));
+    }
+    #[test]
+    fn shared_drafts_are_explicit_and_default_off() {
+        let owner = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let state = sanitize(&json!({"sharedDraftsEnabled":true,"sharedDraftsAuthority":owner}));
+        assert_eq!(state["sharedDraftsEnabled"], true);
+        assert_eq!(state["sharedDraftsAuthority"], owner);
         assert!(sanitize(&json!({}))["sharedDraftsEnabled"].is_null());
-        assert!(sanitize(&json!({"sharedDraftsEnabled":"yes","sharedDraftsAuthority":"display-name"}))["sharedDraftsAuthority"].is_null());
+        assert!(sanitize(
+            &json!({"sharedDraftsEnabled":"yes","sharedDraftsAuthority":"display-name"})
+        )["sharedDraftsAuthority"]
+            .is_null());
     }
     #[test]
     fn interface_layout_is_optional_and_preserves_other_preferences() {
         assert!(sanitize(&json!({})).get("interfaceLayout").is_none());
         for layout in ["classic", "focus", "projects"] {
-            let clean = sanitize(&json!({"interfaceLayout":layout,"sidebarStyle":"vivid","threadRowSize":"large","projectColors":false}));
+            let clean = sanitize(
+                &json!({"interfaceLayout":layout,"sidebarStyle":"vivid","threadRowSize":"large","projectColors":false}),
+            );
             assert_eq!(clean["interfaceLayout"], layout);
             assert_eq!(clean["sidebarStyle"], "vivid");
             assert_eq!(clean["threadRowSize"], "large");
             assert_eq!(clean["projectColors"], false);
         }
         for invalid in [json!("unknown"), json!(true), json!(null)] {
-            assert!(sanitize(&json!({"interfaceLayout":invalid})).get("interfaceLayout").is_none());
+            assert!(sanitize(&json!({"interfaceLayout":invalid}))
+                .get("interfaceLayout")
+                .is_none());
         }
     }
     #[test]
     fn project_tree_collapses_are_bounded_and_saved() {
-        let clean=sanitize(&json!({"interfaceLayout":"projects","projectTreeCollapsed":{"project/repository/alpha":true,"project/repository/alpha/state/working":false,"bad":true,"project/bad\nkey":true,"project/wrong-type":"yes"}}));
-        assert_eq!(clean["interfaceLayout"],"projects");
-        assert_eq!(clean["projectTreeCollapsed"],json!({"project/repository/alpha":true,"project/repository/alpha/state/working":false}));
+        let clean = sanitize(
+            &json!({"interfaceLayout":"projects","projectTreeCollapsed":{"project/repository/alpha":true,"project/repository/alpha/state/working":false,"bad":true,"project/bad\nkey":true,"project/wrong-type":"yes"}}),
+        );
+        assert_eq!(clean["interfaceLayout"], "projects");
+        assert_eq!(
+            clean["projectTreeCollapsed"],
+            json!({"project/repository/alpha":true,"project/repository/alpha/state/working":false})
+        );
     }
     #[test]
     fn mosaic_and_quick_replies_are_bounded() {
-        let clean=sanitize(&json!({"hostFilter":"node","statusFilter":"waiting","mosaicOpen":true,"mosaicCount":8,"quickReplyLanguage":"es","quickReplies":{"es":["Continúa.","", "bad\nline"],"../en":["bad"]}}));
-        assert_eq!(clean["hostFilter"],"node");
-        assert_eq!(clean["statusFilter"],"waiting");
-        assert_eq!(clean["mosaicCount"],8);
-        assert_eq!(clean["quickReplies"],json!({"es":["Continúa."]}));
-        let invalid=sanitize(&json!({"mosaicCount":9,"hostFilter":"bad\nhost","quickReplyLanguage":"--arg"}));
-        assert!(invalid.get("mosaicCount").is_none()&&invalid.get("hostFilter").is_none()&&invalid.get("quickReplyLanguage").is_none());
-        assert_eq!(sanitize(&json!({"quickReplies":{"es":[]}}))["quickReplies"]["es"],json!([]));
+        let clean = sanitize(
+            &json!({"hostFilter":"node","statusFilter":"waiting","mosaicOpen":true,"mosaicCount":8,"quickReplyLanguage":"es","quickReplies":{"es":["Continúa.","", "bad\nline"],"../en":["bad"]}}),
+        );
+        assert_eq!(clean["hostFilter"], "node");
+        assert_eq!(clean["statusFilter"], "waiting");
+        assert_eq!(clean["mosaicCount"], 8);
+        assert_eq!(clean["quickReplies"], json!({"es":["Continúa."]}));
+        let invalid = sanitize(
+            &json!({"mosaicCount":9,"hostFilter":"bad\nhost","quickReplyLanguage":"--arg"}),
+        );
+        assert!(
+            invalid.get("mosaicCount").is_none()
+                && invalid.get("hostFilter").is_none()
+                && invalid.get("quickReplyLanguage").is_none()
+        );
+        assert_eq!(
+            sanitize(&json!({"quickReplies":{"es":[]}}))["quickReplies"]["es"],
+            json!([])
+        );
     }
     #[test]
     fn state_roundtrip_excludes_content_and_bounds_scroll() {
@@ -289,11 +801,12 @@ mod tests {
         );
         fs::write(path(), "corrupt").unwrap();
         assert_eq!(load(), json!({"schemaVersion":1,"positions":{}}));
-        fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn animation_preferences_keep_known_choices_only() {
-        let clean = sanitize(&json!({"starfieldSpeed":"fast","starfieldMeteors":"many","threadWorkingEffect":"pulse","threadInputEffect":"static","threadChangeEffect":"off","threadEffectIntensity":"turbo","transitionStyle":"fold","transitionSpeed":"warp","threadMoveEffect":"glide","threadMoveSpeed":"ludicrous","settledShelfHeight":480,"workingShelfHeight":5}));
+        let clean = sanitize(
+            &json!({"starfieldSpeed":"fast","starfieldMeteors":"many","threadWorkingEffect":"pulse","threadInputEffect":"static","threadChangeEffect":"off","threadEffectIntensity":"turbo","transitionStyle":"fold","transitionSpeed":"warp","threadMoveEffect":"glide","threadMoveSpeed":"ludicrous","settledShelfHeight":480,"workingShelfHeight":5}),
+        );
         assert_eq!(clean["starfieldSpeed"], "fast");
         assert_eq!(clean["starfieldMeteors"], "many");
         assert_eq!(clean["threadWorkingEffect"], "pulse");
@@ -309,46 +822,106 @@ mod tests {
     }
     #[test]
     fn subthread_expansion_keeps_thread_keys_and_booleans_only() {
-        let clean = sanitize(&json!({"subthreadsExpanded":{"local/root":true,"local/other":false,"bad":true,"local/x":"yes"}}));
-        assert_eq!(clean["subthreadsExpanded"], json!({"local/root":true,"local/other":false}));
+        let clean = sanitize(
+            &json!({"subthreadsExpanded":{"local/root":true,"local/other":false,"bad":true,"local/x":"yes"}}),
+        );
+        assert_eq!(
+            clean["subthreadsExpanded"],
+            json!({"local/root":true,"local/other":false})
+        );
     }
     #[test]
     fn details_and_update_preferences_are_bounded() {
-        let clean = sanitize(&json!({"threadDetailsOpen":true,"preferredEditor":"vscode","providerUpdateDismissals":["local=claudeAgent:2.1.307","",3]}));
+        let clean = sanitize(
+            &json!({"threadDetailsOpen":true,"preferredEditor":"vscode","providerUpdateDismissals":["local=claudeAgent:2.1.307","",3]}),
+        );
         assert_eq!(clean["threadDetailsOpen"], true);
         assert_eq!(clean["preferredEditor"], "vscode");
-        assert_eq!(clean["providerUpdateDismissals"], json!(["local=claudeAgent:2.1.307"]));
-        assert!(sanitize(&json!({"preferredEditor":"rm -rf"})).get("preferredEditor").is_none());
+        assert_eq!(
+            clean["providerUpdateDismissals"],
+            json!(["local=claudeAgent:2.1.307"])
+        );
+        assert!(sanitize(&json!({"preferredEditor":"rm -rf"}))
+            .get("preferredEditor")
+            .is_none());
     }
     #[test]
     fn omabridge_indicator_is_an_opt_in_boolean() {
-        assert_eq!(sanitize(&json!({"omabridgeIndicator":true}))["omabridgeIndicator"], true);
+        assert_eq!(
+            sanitize(&json!({"omabridgeIndicator":true}))["omabridgeIndicator"],
+            true
+        );
         assert!(sanitize(&json!({})).get("omabridgeIndicator").is_none());
-        assert!(sanitize(&json!({"omabridgeIndicator":"yes"})).get("omabridgeIndicator").is_none());
+        assert!(sanitize(&json!({"omabridgeIndicator":"yes"}))
+            .get("omabridgeIndicator")
+            .is_none());
     }
     #[test]
     fn thread_groups_keep_short_names_on_thread_keys() {
-        let clean = sanitize(&json!({"threadGroups":{"local/t1":"  Release ","local/t2":"","bad":"X","local/t3":"a\nb","local/t4":"x".repeat(49)},"threadGroupFilter":"Release","pinnedExpanded":false,"inputShelfHeight":200}));
+        let clean = sanitize(
+            &json!({"threadGroups":{"local/t1":"  Release ","local/t2":"","bad":"X","local/t3":"a\nb","local/t4":"x".repeat(49)},"threadGroupFilter":"Release","pinnedExpanded":false,"inputShelfHeight":200}),
+        );
         assert_eq!(clean["threadGroups"], json!({"local/t1":"Release"}));
-        assert_eq!(sanitize(&json!({"groupProjects":{"local/p1":"Release","nope":"X"}}))["groupProjects"], json!({"local/p1":"Release"}));
-        assert_eq!((clean["threadGroupFilter"].clone(), clean["pinnedExpanded"].clone(), clean["inputShelfHeight"].clone()), (json!("Release"), json!(false), json!(200.0)));
+        assert_eq!(
+            sanitize(&json!({"groupProjects":{"local/p1":"Release","nope":"X"}}))["groupProjects"],
+            json!({"local/p1":"Release"})
+        );
+        assert_eq!(
+            (
+                clean["threadGroupFilter"].clone(),
+                clean["pinnedExpanded"].clone(),
+                clean["inputShelfHeight"].clone()
+            ),
+            (json!("Release"), json!(false), json!(200.0))
+        );
     }
     #[test]
     fn screenshot_preferences_keep_single_line_commands() {
-        let clean = sanitize(&json!({"screenshotButton":false,"screenshotHidePanel":true,"screenshotCommand":"grim -g \"$(slurp)\" {file}"}));
+        let clean = sanitize(
+            &json!({"screenshotButton":false,"screenshotHidePanel":true,"screenshotCommand":"grim -g \"$(slurp)\" {file}"}),
+        );
         assert_eq!(clean["screenshotButton"], false);
         assert_eq!(clean["screenshotHidePanel"], true);
         assert_eq!(clean["screenshotCommand"], "grim -g \"$(slurp)\" {file}");
-        assert!(sanitize(&json!({"screenshotCommand":"grim\nrm -rf ~"})).get("screenshotCommand").is_none());
-        assert!(sanitize(&json!({"screenshotCommand":"x".repeat(4097)})).get("screenshotCommand").is_none());
+        assert!(sanitize(&json!({"screenshotCommand":"grim\nrm -rf ~"}))
+            .get("screenshotCommand")
+            .is_none());
+        assert!(sanitize(&json!({"screenshotCommand":"x".repeat(4097)}))
+            .get("screenshotCommand")
+            .is_none());
     }
     #[test]
     fn dictation_preferences_reject_arguments_and_unknown_models() {
-        let dictation = sanitize(&json!({"dictationButton":false,"dictationModel":"small","dictationLanguage":"es","dictationVocabulary":"Omarchy, Hyprland"}));
-        assert_eq!((dictation["dictationButton"].clone(), dictation["dictationModel"].clone(), dictation["dictationLanguage"].clone(), dictation["dictationVocabulary"].clone()), (json!(false), json!("small"), json!("es"), json!("Omarchy, Hyprland")));
-        let invalid = sanitize(&json!({"dictationModel":"../model","dictationLanguage":"--prompt","dictationVocabulary":"a\nb","dictationRecordings":"forever"}));
-        assert!(invalid.get("dictationModel").is_none() && invalid.get("dictationLanguage").is_none() && invalid.get("dictationVocabulary").is_none() && invalid.get("dictationRecordings").is_none());
-        assert_eq!(sanitize(&json!({"dictationRecordings":"week"}))["dictationRecordings"], json!("week"));
+        let dictation = sanitize(
+            &json!({"dictationButton":false,"dictationModel":"small","dictationLanguage":"es","dictationVocabulary":"Omarchy, Hyprland"}),
+        );
+        assert_eq!(
+            (
+                dictation["dictationButton"].clone(),
+                dictation["dictationModel"].clone(),
+                dictation["dictationLanguage"].clone(),
+                dictation["dictationVocabulary"].clone()
+            ),
+            (
+                json!(false),
+                json!("small"),
+                json!("es"),
+                json!("Omarchy, Hyprland")
+            )
+        );
+        let invalid = sanitize(
+            &json!({"dictationModel":"../model","dictationLanguage":"--prompt","dictationVocabulary":"a\nb","dictationRecordings":"forever"}),
+        );
+        assert!(
+            invalid.get("dictationModel").is_none()
+                && invalid.get("dictationLanguage").is_none()
+                && invalid.get("dictationVocabulary").is_none()
+                && invalid.get("dictationRecordings").is_none()
+        );
+        assert_eq!(
+            sanitize(&json!({"dictationRecordings":"week"}))["dictationRecordings"],
+            json!("week")
+        );
     }
 }
 
@@ -358,10 +931,13 @@ mod remote_surface_preferences_tests {
     #[test]
     fn owner_consent_is_explicit_local_and_default_off() {
         assert!(sanitize(&json!({}))["remoteDocumentsEnabled"].is_null());
-        let state=sanitize(&json!({"remoteDocumentsEnabled":true,"remoteDocumentsConsent":"epoch-123"}));
-        assert_eq!(state["remoteDocumentsEnabled"],true);
-        assert_eq!(state["remoteDocumentsConsent"],"epoch-123");
-        let invalid=sanitize(&json!({"remoteDocumentsEnabled":"yes","remoteDocumentsConsent":"../../etc/passwd"}));
+        let state =
+            sanitize(&json!({"remoteDocumentsEnabled":true,"remoteDocumentsConsent":"epoch-123"}));
+        assert_eq!(state["remoteDocumentsEnabled"], true);
+        assert_eq!(state["remoteDocumentsConsent"], "epoch-123");
+        let invalid = sanitize(
+            &json!({"remoteDocumentsEnabled":"yes","remoteDocumentsConsent":"../../etc/passwd"}),
+        );
         assert!(invalid["remoteDocumentsEnabled"].is_null());
         assert!(invalid["remoteDocumentsConsent"].is_null());
     }

@@ -11,6 +11,7 @@ use std::fmt;
 /// T3 `MIN_SCHEDULED_TASK_INTERVAL_MS` and `MAX_WEBHOOK_FILTERS`.
 const MIN_INTERVAL_MS: u64 = 60_000;
 const MAX_WEBHOOK_FILTERS: usize = 16;
+pub const THREAD_MODES: &[&str] = &["new_thread", "continue", "fresh_session"];
 const TITLE_MAX: usize = 255;
 const PROMPT_MAX: usize = 120_000;
 
@@ -30,9 +31,10 @@ pub const UPSERT: Function = api_fn! {
         (projectId, Id, required), (workspaceStrategy, Object, required), (modelSelection, Object, required),
         (runtimeMode, Enum(models::RUNTIME_MODES), required), (interactionMode, Enum(INTERACTION_MODES), required),
         (commandId, Id, optional), (id, Id, optional), (requireExisting, Bool, optional), (threadId, Id, optional),
+        (threadMode, Enum(THREAD_MODES), optional),
         (createdBy, Enum(ACTORS), optional), (creationSource, Enum(CREATION_SOURCES), optional),
     ],
-    payload: |a| TaskUpsert::from_json(a.all())?.payload(),
+    payload: |a| TaskUpsertWithMode::from_json(a.all())?.payload(),
 };
 pub const SET_ENABLED: Function = api_fn! {
     name: "scheduledTasks.setEnabled", module: "scheduledTasks", tag: Some("scheduledTasks.setEnabled"),
@@ -52,7 +54,25 @@ pub const RUN_NOW: Function = api_fn! {
     args: [(id, Id, required)],
     payload: |a| id_payload(a.req("id")?),
 };
-pub const FUNCTIONS: &[Function] = &[LIST, UPSERT, SET_ENABLED, DELETE, RUN_NOW];
+pub const SUBSCRIBE: Function = Function {
+    stream: true,
+    ..api_fn! {
+        name: "scheduledTasks.subscribe", module: "scheduledTasks", tag: Some("scheduledTasks.subscribe"),
+        kind: Read, scope: Fixed("orchestration:read"),
+        args: [], payload: |_| Ok(json!({})),
+    }
+};
+/// Read the initial snapshot from modern servers, which expose a stream rather than list.
+pub fn snapshot(conn: &Connection) -> Result<Value> {
+    let spec = super::streams::spec("scheduledTasks.subscribe", &json!({}))?;
+    match crate::stream::first_item(conn, &spec, std::time::Duration::from_secs(10), |v| v["tasks"].is_array()) {
+        Ok(Some(v)) if v["tasks"].is_array() => Ok(v),
+        Ok(_) => Err("invalid_scheduled_tasks_snapshot".into()),
+        Err(e) if e.starts_with("rpc_rejected") && e.contains("scheduledTasks.subscribe") => list(conn),
+        Err(e) => Err(e),
+    }
+}
+pub const FUNCTIONS: &[Function] = &[LIST, SUBSCRIBE, UPSERT, SET_ENABLED, DELETE, RUN_NOW];
 
 /// `scheduledTasks.list`: `{tasks[]}`.
 pub fn list(conn: &Connection) -> Result<Value> {
@@ -95,7 +115,8 @@ impl fmt::Debug for TaskUpsert {
     }
 }
 impl TaskUpsert {
-    pub fn payload(&self) -> Result<Value> {
+    pub fn payload(&self) -> Result<Value> {self.payload_with_mode(None)}
+    fn payload_with_mode(&self,thread_mode:Option<&str>) -> Result<Value> {
         if self.command_id.is_none() && self.id.is_none() {
             return Err(ids::invalid("commandId"));
         }
@@ -120,6 +141,7 @@ impl TaskUpsert {
         if let Some(thread) = &self.thread_id {
             v["threadId"] = json!(thread.as_deref().map(|t| ids::id("threadId", t)).transpose()?);
         }
+        put(&mut v, "threadMode", thread_mode.map(|m| one_of("threadMode", m, THREAD_MODES)).transpose()?);
         put(&mut v, "createdBy", self.created_by.as_deref().map(|c| one_of("createdBy", c, ACTORS)).transpose()?);
         put(&mut v, "creationSource", self.creation_source.as_deref().map(|c| one_of("creationSource", c, CREATION_SOURCES)).transpose()?);
         Ok(v)
@@ -261,6 +283,8 @@ fn webhook_filter(v: &Value) -> Result<Value> {
 pub fn upsert(conn: &Connection, task: &TaskUpsert) -> Result<Value> {
     send(conn, &UPSERT, task.payload()?)
 }
+/// Upsert through the unchanged wire method with an explicit nightly mode.
+pub fn upsert_with_mode(conn:&Connection,task:&TaskUpsertWithMode)->Result<Value>{send(conn,&UPSERT,task.payload()?)}
 fn id_payload(id: &str) -> Result<Value> {
     Ok(json!({"id":ids::id("id", id)?}))
 }
@@ -281,4 +305,17 @@ pub fn delete(conn: &Connection, id: &str) -> Result<Value> {
 /// reconcile with `list`.
 pub fn run_now(conn: &Connection, id: &str) -> Result<Value> {
     send(conn, &RUN_NOW, id_payload(id)?)
+}
+
+/// An explicit nightly extension without adding fields to legacy TaskUpsert
+/// struct literals. None retains the old omission/update behavior.
+#[derive(Clone,Debug)]
+pub struct TaskUpsertWithMode {pub task:TaskUpsert,pub thread_mode:Option<String>}
+impl TaskUpsertWithMode {
+    pub fn from_json(value:&Value)->Result<Self>{
+        let thread_mode=Reader::new(value)?.opt_str("threadMode")?;
+        let legacy=Value::Object(value.as_object().ok_or("invalid_input")?.iter().filter(|(key,_)| key.as_str()!="threadMode").map(|(key,value)|(key.clone(),value.clone())).collect());
+        Ok(Self{task:TaskUpsert::from_json(&legacy)?,thread_mode})
+    }
+    pub fn payload(&self)->Result<Value>{self.task.payload_with_mode(self.thread_mode.as_deref())}
 }

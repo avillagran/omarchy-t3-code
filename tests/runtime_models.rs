@@ -20,5 +20,5 @@ fn watch_routes_catalog_favorites_and_scroll_actions_without_waiting_for_poll(){
   }}
  }
  {let raw=inspected.lock().unwrap();assert_eq!(raw["sourceControlWritingStyle"]["customInstructions"],"Keep native instructions");assert_eq!(raw["sourceControlWritingStyle"]["followChangeRequestTemplates"],true);assert_eq!(raw["favorites"].as_array().unwrap().len(),1);}
- writeln!(input,"{}",json!({"op":"quit"})).unwrap();child.wait().unwrap();stop.store(true,Ordering::Relaxed);server.join().unwrap();fs::remove_dir_all(root).unwrap();
+ writeln!(input,"{}",json!({"op":"quit"})).unwrap();child.wait().unwrap();stop.store(true,Ordering::Relaxed);server.join().unwrap();
 }

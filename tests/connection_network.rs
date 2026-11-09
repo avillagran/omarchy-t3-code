@@ -25,5 +25,5 @@ fn native_settings_preserve_fields_and_failed_activation_rolls_back(){
  let cli=root.join(".t3/bin/t3");fs::create_dir_all(cli.parent().unwrap()).unwrap();fs::write(&cli,"#!/bin/sh\nif [ \"$2\" = runtime-port ]; then printf 'ready 3773\\n'; fi\nexit 0\n").unwrap();fs::set_permissions(&cli,fs::Permissions::from_mode(0o700)).unwrap();
  let systemctl=root.join("bin/systemctl");fs::write(&systemctl,format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{}'\nif [ \"$2\" = restart ]; then printf '%s' '{{\"pid\":{},\"port\":3773,\"origin\":\"http://127.0.0.1:3773\",\"host\":\"127.0.0.1\"}}' > '{}'; fi\nexit 0\n",root.join("calls").display(),std::process::id(),root.join("native/userdata/server-runtime.json").display())).unwrap();
  let applied=network::execute(&json!({"action":"apply","revision":before["revision"],"confirmed":true,"mode":"local-only","tailscaleServeEnabled":false,"tailscaleServePort":8443})).unwrap();assert_eq!(applied["desiredMode"],"local-only");assert_eq!(read_json(&settings).unwrap()["unknown"]["keep"],42);assert!(fs::read_to_string(root.join(".config/systemd/user/t3code.service.d/ot3-network.conf")).unwrap().contains("T3CODE_TAILSCALE_SERVE_PORT=8443"));let calls=fs::read_to_string(root.join("calls")).unwrap();assert!(calls.contains("--user daemon-reload")&&calls.contains("--user restart t3code.service"));
- fs::remove_dir_all(root).unwrap();
+
 }

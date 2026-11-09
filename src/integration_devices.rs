@@ -38,7 +38,7 @@ fn string(value: &Value, max: usize) -> Result<&str> {
 fn required<'a>(v: &'a Value, key: &str, max: usize) -> Result<&'a str> {
     string(&v[key], max)
 }
-fn list<'a>(v: &'a Value, max: usize) -> Result<&'a Vec<Value>> {
+fn list(v: &Value, max: usize) -> Result<&Vec<Value>> {
     v.as_array()
         .filter(|a| a.len() <= max)
         .ok_or("invalid_device_state".into())
@@ -137,6 +137,13 @@ pub fn present_state(v: &Value) -> Result<Value> {
         }
         let mut out = json!({"status":status(&s["status"])?});
         if let Some(incomplete)=s.get("androidDiscoveryIncomplete"){out["androidDiscoveryIncomplete"]=json!(boolean(incomplete)?);}
+        if let Some(incomplete) = s.get("incompletePlatforms") {
+            let platforms = incomplete.as_array().ok_or("invalid_device_state")?;
+            if platforms.iter().any(|platform| !matches!(platform.as_str(), Some("ios" | "android"))) {
+                return Err("invalid_device_state".into());
+            }
+            out["incompletePlatforms"] = incomplete.clone();
+        }
         if let Some(detail) = present(s, "detail") {
             out["detail"] = json!(string(detail, 4096)?);
         }
@@ -264,7 +271,7 @@ fn settings(raw: &Value) -> Result<Value> {
     )
 }
 fn digest(value: &Value) -> String {
-    format!("{:x}", Sha256::digest(value.to_string()))
+    format!("{:x}", Sha256::digest(crate::composer_context::canonical_json(value)))
 }
 fn remember(e: &Environment, permissions: Value, settings: Value, state: Value) -> Result<Value> {
     let id = uuid::Uuid::new_v4().to_string();

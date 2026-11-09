@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""Check private admission with real libwayland, without launching a compositor."""
+import fcntl
+import hashlib
+import json
+import pathlib
+import subprocess
+import tempfile
+
+root=pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+output=pathlib.Path(tempfile.mkdtemp(prefix='private-wayland-owner-',dir='/home/node/BuildCache/o3-desktop-next'))
+print(output,flush=True)
+for source in ['native/browser/waylandowner.h','tools/fixtures/wayland-owner-check.c']:
+    (output/pathlib.Path(source).name).write_bytes((root/source).read_bytes())
+common=['podman','run','--rm','--pull=never','--read-only','--network=none',
+        '--userns=keep-id','--cap-drop=ALL','--security-opt=no-new-privileges',
+        '--ulimit=core=0:0','--pids-limit=16','--memory=256m',
+        '--tmpfs','/tmp:rw,size=16m,mode=1777','-v','/usr:/usr:ro','--env','HOME=/tmp']
+build=common+['-v',str(output)+':/fixture:rw','docker.io/library/archlinux:latest','python3','-c',r'''
+import pathlib,resource,subprocess
+assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
+versions=subprocess.check_output(['pkg-config','--modversion','wayland-client','wayland-server'],text=True).splitlines()
+assert versions==['1.26.0','1.26.0'],versions
+pathlib.Path('/fixture/versions.json').write_text(__import__('json').dumps(versions)+'\n')
+flags=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client','wayland-server'],text=True).split()
+subprocess.run(['cc','-D_GNU_SOURCE','-std=c11','-Wall','-Wextra','-Werror','/fixture/wayland-owner-check.c','-I/fixture','-o','/fixture/check',*flags],check=True)
+''']
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+    fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
+    with (output/'compile.log').open('w') as log:
+        subprocess.run(build,check=True,stdout=log,stderr=subprocess.STDOUT,timeout=20)
+for file in output.iterdir():file.chmod(0o500 if file.name=='check' else 0o400)
+(output/'artifacts.json').write_text(json.dumps({file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in output.iterdir() if file.is_file()},indent=2)+'\n')
+run=common+['-v',str(output)+':/fixture:ro','docker.io/library/archlinux:latest','python3','-c',
+    'import subprocess;raise SystemExit(subprocess.run(["/fixture/check"]).returncode)']
+(output/'podman-command.json').write_text(json.dumps(run)+'\n')
+with (output/'runtime.log').open('w') as log:
+    result=subprocess.run(run,stdout=log,stderr=subprocess.STDOUT,timeout=10)
+(output/'result.json').write_text(json.dumps({'returncode':result.returncode,'compositorLaunched':False,'engineLaunched':False})+'\n')
+raise SystemExit(result.returncode)

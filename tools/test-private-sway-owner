@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Run only the frozen private Sway admission artifact, never the host display."""
+import hashlib
+import json
+import pathlib
+import stat
+import subprocess
+import tempfile
+
+root = pathlib.Path(__file__).resolve().parent.parent
+base = pathlib.Path('/home/node/BuildCache/o3-desktop-next/private-sway-build-1.12')
+proof = json.loads((root / 'tests/fixtures/private-sway-owner-proof-4314.json').read_text())
+
+
+def verify(path, digest):
+    assert stat.S_ISREG(path.lstat().st_mode), path.name
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, path.name
+
+
+for source, digest in proof['sourceHashes'].items():
+    verify(root / source, digest)
+verify(base / 'sway-owned', proof['artifact']['sha256'])
+for member, digest in proof['libraryHashes'].items():
+    verify(base / member, digest)
+assert subprocess.check_output(
+    ['podman', 'info', '--format', '{{.Host.Security.Rootless}}'], text=True).strip() == 'true'
+output = pathlib.Path(tempfile.mkdtemp(prefix='private-sway-owner-', dir=base.parent))
+fixture = output / 'private-sway-owner-check.py'
+fixture.write_bytes((root / 'tools/fixtures/private-sway-owner-check.py').read_bytes())
+fixture.chmod(0o400)
+command = [
+    'podman', 'run', '--rm', '--pull=never', '--read-only', '--network=none',
+    '--userns=keep-id', '--cap-drop=ALL', '--security-opt=no-new-privileges',
+    '--ulimit', 'core=0:0', '--pids-limit=32', '--memory=512m',
+    '--tmpfs', '/tmp:rw,size=32m,mode=1777', '-v', '/usr:/usr:ro',
+    '-v', str(base) + ':/fixture:ro', '-v', str(output) + ':/result:rw',
+    '--env', 'HOME=/tmp', 'docker.io/library/archlinux:latest', 'python3', '-c',
+    'import subprocess;raise SystemExit(subprocess.run('
+    '["python3","/result/private-sway-owner-check.py"]).returncode)',
+]
+(output / 'source-fence.json').write_text(json.dumps(proof, indent=2) + '\n')
+print(output, flush=True)
+with (output / 'runtime.log').open('w') as log:
+    result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=20)
+(output / 'result.json').write_text(json.dumps({
+    'returncode': result.returncode, 'command': command,
+    'publicSelectorEnabled': False, 'engineLaunched': False,
+}) + '\n')
+raise SystemExit(result.returncode)

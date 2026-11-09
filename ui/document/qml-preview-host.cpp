@@ -5,6 +5,8 @@
 #include "document-host.h"
 #include <QDesktopServices>
 #include <QFileInfo>
+#include <QUuid>
+#include <memory>
 #include <QJsonArray>
 #include <QLibraryInfo>
 #include <QNetworkAccessManager>
@@ -74,16 +76,39 @@ public:
 
 // A private import directory holding only the allowed modules (symlinks into
 // Qt's own tree), so nothing else, Quickshell included, can be resolved.
-static QString mirrorImports(const QString &frames,const QString &imports){
- QDir root(frames+"/qml-imports");root.removeRecursively();QDir().mkpath(root.path());
+struct ImportMirror {
+ QString path;
+ QStringList links,directories;
+ explicit ImportMirror(const QString &frames):path(frames+"/qml-imports-"+QUuid::createUuid().toString(QUuid::Id128)){
+  if(QDir().mkdir(path))directories<<path;
+ }
+ bool directory(const QString &target){
+  QString current=path;
+  for(const auto &part:QDir(path).relativeFilePath(target).split('/',Qt::SkipEmptyParts)){
+   if(part==".")continue;if(part=="..")return false;
+   current+="/"+part;QFileInfo entry(current);
+   if(entry.exists()){if(!entry.isDir()||entry.isSymLink())return false;}
+   else{if(!QDir().mkdir(current))return false;directories<<current;}
+  }
+  return !directories.isEmpty();
+ }
+ void link(const QString &source,const QString &target){if(QFile::link(source,target))links<<target;}
+ ~ImportMirror(){
+  // Only entries created above are removed; symlink targets are never traversed.
+  for(auto entry=links.crbegin();entry!=links.crend();++entry)QFile::remove(*entry);
+  for(auto dir=directories.crbegin();dir!=directories.crend();++dir)QDir().rmdir(*dir);
+ }
+};
+static std::unique_ptr<ImportMirror> mirrorImports(const QString &frames,const QString &imports){
+ auto mirror=std::make_unique<ImportMirror>(frames);QDir root(mirror->path);
  for(const auto &d:allowedDirs){
   QString source=imports+"/"+d.path,target=root.filePath(d.path);
   if(!QFileInfo(source).isDir())continue;
-  if(d.recursive){QDir().mkpath(QFileInfo(target).absolutePath());QFile::link(source,target);continue;}
-  QDir().mkpath(target);
-  for(const auto &file:QDir(source).entryInfoList(QDir::Files))QFile::link(file.absoluteFilePath(),target+"/"+file.fileName());
+  if(d.recursive){if(mirror->directory(QFileInfo(target).absolutePath()))mirror->link(source,target);continue;}
+  if(!mirror->directory(target))continue;
+  for(const auto &file:QDir(source).entryInfoList(QDir::Files))mirror->link(file.absoluteFilePath(),target+"/"+file.fileName());
  }
- return root.path();
+ return mirror;
 }
 
 // A component stuck in JavaScript (an endless loop) never returns to the event
@@ -130,9 +155,10 @@ extern "C" int t3_qml_preview_main(const char *payload, const char *wrapper) {
 
  QUrl previewUrl=QUrl::fromLocalFile(frames+"/Preview.qml"),wrapperUrl=QUrl::fromLocalFile(QString::fromLocal8Bit(wrapper));
  QString imports=QLibraryInfo::path(QLibraryInfo::QmlImportsPath);
+ auto mirror=mirrorImports(frames,imports);
  QQmlEngine engine;
  BlockedNetworkFactory network;engine.setNetworkAccessManagerFactory(&network);
- engine.setImportPathList({mirrorImports(frames,imports)});
+ engine.setImportPathList({mirror->path});
  // Plugins only next to an allowed qmldir.
  engine.setPluginPathList({"."});
  PreviewUrls urls(imports,{previewUrl,wrapperUrl},QUrl::fromLocalFile(frames+"/refused/refused"));engine.addUrlInterceptor(&urls);

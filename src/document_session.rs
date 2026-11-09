@@ -9,7 +9,7 @@ impl Manager{
  pub fn send(&self,mut input:Value){if matches!(text(&input,"op"),"document-open"|"document-close"){self.generation.fetch_add(1,Ordering::SeqCst);}input["generation"]=json!(self.generation.load(Ordering::SeqCst));let _=self.tx.send(input);}
 }
 struct Session{child:Child,stdin:ChildStdin,dir:std::path::PathBuf,id:String}
-impl Drop for Session{fn drop(&mut self){let _=writeln!(self.stdin,"{{\"type\":\"close\"}}");let until=std::time::Instant::now()+std::time::Duration::from_millis(1500);while std::time::Instant::now()<until{if self.child.try_wait().ok().flatten().is_some(){break}thread::sleep(std::time::Duration::from_millis(10));}if self.child.try_wait().ok().flatten().is_none(){unsafe{libc::kill(-(self.child.id() as i32),libc::SIGKILL);}let _=self.child.kill();}let _=self.child.wait();let _=fs::remove_dir_all(&self.dir);}}
+impl Drop for Session{fn drop(&mut self){let _=writeln!(self.stdin,"{{\"type\":\"close\"}}");let until=std::time::Instant::now()+std::time::Duration::from_millis(1500);while std::time::Instant::now()<until{if self.child.try_wait().ok().flatten().is_some(){break}thread::sleep(std::time::Duration::from_millis(10));}if self.child.try_wait().ok().flatten().is_none(){unsafe{libc::kill(-(self.child.id() as i32),libc::SIGKILL);}let _=self.child.kill();}let _=self.child.wait();let _=frame_files::reclaim(&self.dir);}}
 fn launch(exe:&std::path::Path,doc:&Value,id:&str,generation:u64,current:Arc<AtomicU64>)->Result<Session>{
  let root=exe.parent().ok_or("viewer_unavailable")?;
  let qml=doc["qmlPreview"]==true;
@@ -25,7 +25,11 @@ fn launch(exe:&std::path::Path,doc:&Value,id:&str,generation:u64,current:Arc<Ato
  let internal=doc["internalReview"]==true;let id=id.to_string();thread::spawn(move||{
   // A renderer may say why it is about to exit (QML previews: stuck in a loop).
   let mut reason="viewer_closed".to_string();
-  for line in BufReader::new(stdout).lines(){let Ok(line)=line else{break};if current.load(Ordering::SeqCst)!=generation{break}let Ok(v)=serde_json::from_str::<Value>(&line)else{continue};if let Some(e)=v["error"].as_str().filter(|e|e.starts_with("qml_preview_")&&e.len()<64){reason=e.to_string();continue}if internal&&v["reviewReady"]==true{super::emit("document-ready",json!({"requestId":id,"error":text(&v,"reviewError")}));continue}if v["appRequest"].is_object(){super::emit("document-app-request",json!({"requestId":id,"request":v["appRequest"]}));continue}if let Some(value)=v["clipboard"].as_str().filter(|s|s.len()<=120000){super::emit("document-clipboard",json!({"requestId":id,"text":value}));continue}if let Some(height)=v["contentHeight"].as_u64().filter(|h|*h>0&&*h<=100000){super::emit("document-size",json!({"requestId":id,"height":height}));continue}let name=text(&v,"frame");if !matches!(name,"frame-0.png"|"frame-1.png")&&!(qml&&matches!(name,"frame-0.bmp"|"frame-1.bmp")){continue}let path=dir.join(name);if !fs::metadata(&path).is_ok_and(|m|m.is_file()&&m.len()<=20*1024*1024){continue}let Ok(url)=Url::from_file_path(path)else{continue};super::emit("document-frame",json!({"requestId":id,"url":url.to_string(),"revision":v["revision"],"width":v["width"],"height":v["height"]}));
+  for line in BufReader::new(stdout).lines(){let Ok(line)=line else{break};if current.load(Ordering::SeqCst)!=generation{break}let Ok(v)=serde_json::from_str::<Value>(&line)else{continue};if let Some(e)=v["error"].as_str().filter(|e|e.starts_with("qml_preview_")&&e.len()<64){reason=e.to_string();continue}
+if internal&&v["reviewReady"]==true{super::emit("document-ready",json!({"requestId":id,"error":text(&v,"reviewError")}));continue}
+if v["appRequest"].is_object(){super::emit("document-app-request",json!({"requestId":id,"request":v["appRequest"]}));continue}
+if let Some(value)=v["clipboard"].as_str().filter(|s|s.len()<=120000){super::emit("document-clipboard",json!({"requestId":id,"text":value}));continue}
+if let Some(height)=v["contentHeight"].as_u64().filter(|h|*h>0&&*h<=100000){super::emit("document-size",json!({"requestId":id,"height":height}));continue}let name=text(&v,"frame");if !matches!(name,"frame-0.png"|"frame-1.png")&&!(qml&&matches!(name,"frame-0.bmp"|"frame-1.bmp")){continue}let path=dir.join(name);if !fs::metadata(&path).is_ok_and(|m|m.is_file()&&m.len()<=20*1024*1024){continue}let Ok(url)=Url::from_file_path(path)else{continue};super::emit("document-frame",json!({"requestId":id,"url":url.to_string(),"revision":v["revision"],"width":v["width"],"height":v["height"]}));
   }
   if current.load(Ordering::SeqCst)==generation{super::emit("document-frame",json!({"requestId":id,"error":reason}));}
  });Ok(session)
@@ -38,7 +42,8 @@ pub fn start_with(exe:std::path::PathBuf)->Manager{
    match text(&input,"op"){
     "document-open"=>{
      session=None;let result=write::execute(&input);if stamp!=current.load(Ordering::SeqCst){continue}
-     let result=result.and_then(|mut doc|{if doc["html"]==true{session=Some(launch(&exe,&doc,text(&input,"requestId"),stamp,current.clone())?)}if doc["internalReview"]==true||doc["generated"]==true{doc["contents"]=json!("");}Ok(doc)});
+     let result=result.and_then(|mut doc|{if doc["html"]==true{session=Some(launch(&exe,&doc,text(&input,"requestId"),stamp,current.clone())?)}
+if doc["internalReview"]==true||doc["generated"]==true{doc["contents"]=json!("");}Ok(doc)});
      super::emit("action",json!({"op":"document-open","requestId":input["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}));
     },
     "document-input"=>{if let Some(s)=session.as_mut(){if s.id==text(&input,"requestId"){let v=&input["event"];if (v.to_string().len()<=8192||text(v,"type")=="app-response"&&v.to_string().len()<=2*1024*1024)&&matches!(text(v,"type"),"app-response"|"press"|"release"|"move"|"double"|"wheel"|"key"|"keyup"|"resize"|"zoom"|"capture"|"review-options"){let _=writeln!(s.stdin,"{v}");}}}},

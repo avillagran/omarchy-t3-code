@@ -6,6 +6,16 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "client-setting:boringSidebarEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:boringSidebarMultilineRows": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "client-setting:browserAutoShowFloatingPreview": {
    "status": "supported",
    "reviewed": false,
@@ -130,6 +140,11 @@
    "status": "missing",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "client-setting:effortDisplay": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "client-setting:environmentIdentificationMode": {
    "status": "missing",
@@ -348,11 +363,71 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "client-setting:speechCorrectionWord": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:speechCustomWords": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:speechLanguage": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:speechPostProcessingPrompt": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:speechRemoveFillerWords": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:speechSilenceFiltering": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:speechTranslateToEnglish": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:threadDetailsItems": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:threadDetailsUsageEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "client-setting:timestampFormat": {
    "status": "supported",
    "reviewed": true,
    "since": "v0.1.1-nightly.20261020.3386",
    "evidence": "tests/connection_preferences.rs; tests/qml/nightly.qml"
+  },
+  "client-setting:toolCallVisibility": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4262"
+  },
+  "client-setting:voiceMicrophone": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "client-setting:voiceShortcutMode": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "client-setting:wordWrap": {
    "status": "supported",
@@ -497,6 +572,61 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "http:/api/voice/acceleration": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/model-unload-timeout": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/models": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/models/cancel": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/models/download": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/models/prepare": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/models/remove": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/models/select": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/post-process": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/status": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "http:/api/voice/transcribe": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "keybinding:appearance.cycle": {
    "status": "missing",
    "reviewed": false,
@@ -541,6 +671,11 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "keybinding:composer.dictation": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "keybinding:composer.effort": {
    "status": "supported",
@@ -917,6 +1052,16 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "keybinding:workspace.focusNext": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "keybinding:workspace.focusPrevious": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "orchestration:checkpoint.captured": {
    "status": "supported",
    "reviewed": false,
@@ -1090,6 +1235,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "orchestration:thread.interrupt.unresponsive": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "orchestration:thread.mark-unread": {
    "status": "supported",
    "reviewed": false,
@@ -1119,6 +1269,11 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.project.adopt-folder": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "orchestration:thread.pull-request-link-updated": {
    "status": "supported",
@@ -1174,6 +1329,11 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "orchestration:thread.tag.set": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "orchestration:thread.title.regeneration.complete": {
    "status": "missing",
@@ -1291,6 +1451,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:device.simlockIdentity": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "rpc:device.testHost": {
    "status": "supported",
    "reviewed": false,
@@ -1352,6 +1517,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:orchestration.forceStopThread": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "rpc:orchestration.getArchivedShellSnapshot": {
    "status": "supported",
    "reviewed": false,
@@ -1361,6 +1531,11 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getNativeChildWork": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "rpc:orchestration.getOlderSettledThreads": {
    "status": "supported",
@@ -1378,6 +1553,11 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:orchestration.getThreadTitles": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "rpc:orchestration.getTurnDiff": {
    "status": "supported",
@@ -1445,6 +1625,26 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:peerLinks.answerRequest": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "rpc:peerLinks.link": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "rpc:peerLinks.list": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "rpc:peerLinks.unlink": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "rpc:preview.adjust": {
    "status": "supported",
    "reviewed": false,
@@ -1495,6 +1695,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:preview.stopLocalServer": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "rpc:projectClone.cancel": {
    "status": "missing",
    "reviewed": false,
@@ -1514,6 +1719,11 @@
    "status": "missing",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:projects.createFromThread": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "rpc:projects.createNew": {
    "status": "supported",
@@ -1808,6 +2018,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:review.getBranchCommits": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "rpc:review.getDiffFileContents": {
    "status": "supported",
    "reviewed": false,
@@ -1918,6 +2133,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:server.getNpmRelease": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "rpc:server.getProcessDiagnostics": {
    "status": "supported",
    "reviewed": false,
@@ -1977,6 +2197,11 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:server.prepareTriage": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "rpc:server.probe": {
    "status": "missing",
@@ -2068,6 +2293,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "rpc:sourceControl.appAccess": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "rpc:sourceControl.cloneRepository": {
    "status": "missing",
    "reviewed": false,
@@ -2082,6 +2312,31 @@
    "status": "missing",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "rpc:sourceControl.signInCancel": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "rpc:sourceControl.signInStart": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "rpc:sourceControl.signInWait": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "rpc:sourceControl.star": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "rpc:sourceControl.starred": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "rpc:terminal.attach": {
    "status": "supported",
@@ -2300,10 +2555,20 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "server-setting:fallbackModelSelection": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "server-setting:favorites": {
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:ghqCloneLayout": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "server-setting:guestSharingEnabled": {
    "status": "supported",
@@ -2311,11 +2576,26 @@
    "since": "v0.1.3-nightly.20261026.3726",
    "evidence": "docs/NIGHTLY_3726.md"
   },
+  "server-setting:hiddenThreadTags": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "server-setting:hideTaggedThreads": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "server-setting:idleCompaction": {
    "status": "supported",
    "reviewed": true,
    "since": "v0.1.3-nightly.20261026.3726",
    "evidence": "docs/NIGHTLY_3726.md"
+  },
+  "server-setting:linkedEnvironmentsEnabled": {
+   "status": "supported",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "server-setting:newWorktreesStartFromOrigin": {
    "status": "supported",
@@ -2402,6 +2682,11 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "server-setting:secretProviders": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "server-setting:sidebarAutoSettleAfterDays": {
    "status": "supported",
    "reviewed": false,
@@ -2417,10 +2702,25 @@
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
   },
+  "server-setting:simlockDeviceHosts": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "server-setting:simlockDeviceHostsEnabled": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
   "server-setting:snoozeLimitedThreads": {
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:snoozePresets": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "server-setting:sourceControlHosts": {
    "status": "missing",
@@ -2436,6 +2736,31 @@
    "status": "supported",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:speechAcceleration": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "server-setting:speechModelId": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "server-setting:speechModelUnloadTimeout": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "server-setting:speechPostProcessingModelSelection": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
+  },
+  "server-setting:speechProjectCustomWords": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "server-setting:storageCleanup": {
    "status": "supported",
@@ -2462,6 +2787,11 @@
    "status": "missing",
    "reviewed": false,
    "since": "v0.1.1-nightly.20261020.3386"
+  },
+  "server-setting:usageModelFilter": {
+   "status": "missing",
+   "reviewed": false,
+   "since": "v0.1.8-nightly.20261106.4247"
   },
   "server-setting:usagePriceOverrides": {
    "status": "missing",

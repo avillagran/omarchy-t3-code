@@ -123,7 +123,7 @@ fn shared_peers_join_the_catalog_and_leave_it_when_withdrawn(){
 struct Cleanup(std::path::PathBuf);
 impl Drop for Cleanup{fn drop(&mut self){
  for pid in fs::read_dir(&self.0).into_iter().flatten().flatten().filter(|e|e.path().extension().is_some_and(|x|x=="pid")){let _=std::process::Command::new("kill").arg(fs::read_to_string(pid.path()).unwrap_or_default().trim()).status();}
- let _=fs::remove_dir_all(&self.0);
+
 }}
 fn connections_view()->serde_json::Value{write::execute(&json!({"op":"connections-manage","action":"read"})).unwrap()}
 fn connections_manage(mut v:serde_json::Value){v["op"]=json!("connections-manage");write::execute(&v).unwrap();}

@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Compare whole original DSP in the exact Electron renderer, with no real media."""
+import argparse,hashlib,json,os,pathlib,subprocess,tempfile
+p=argparse.ArgumentParser(description=__doc__)
+p.add_argument('--native',required=True,type=pathlib.Path)
+p.add_argument('--runtime',required=True,type=pathlib.Path)
+p.add_argument('--reference',required=True,type=pathlib.Path,help='Retained original Node DSP JSON result')
+p.add_argument('--expect-reference-difference',action='store_true',help='Record the demonstrated Node/renderer difference instead of accepting Node as the renderer oracle')
+a=p.parse_args();root=pathlib.Path(__file__).resolve().parent.parent
+assert subprocess.check_output(['podman','--remote=false','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()=='true'
+runtime=a.runtime.resolve();manifest=json.loads((root/'ui/voice/electron-runtime-44.10.1-linux-x64.json').read_text())
+assert manifest['version']=='44.10.1'and manifest['archiveSha256']=='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167'
+out=pathlib.Path(tempfile.mkdtemp(prefix='native-pcm-renderer-',dir=os.environ.get('O3_SPEECH_EVIDENCE_ROOT','/var/tmp')));out.chmod(0o700)
+source=out/'source';source.mkdir(mode=0o700);state=out/'state';state.mkdir(mode=0o700)
+files=['tools/test-native-pcm-renderer','tools/fixtures/pcm-renderer-main.cjs','tools/fixtures/pcm-renderer-preload.cjs','tools/fixtures/pcm-renderer.py','tools/fixtures/pcm-capture-driver.js','ui/js/NativePcmCapture.js','ui/js/NativePcmCapture.sources.json','ui/voice/electron-runtime-44.10.1-linux-x64.json'];fence={}
+for name in files:
+ data=(root/name).read_bytes();fence[name]=hashlib.sha256(data).hexdigest();target=source/pathlib.Path(name).name;target.write_bytes(data);target.chmod(0o400)
+meta=json.loads((root/'ui/js/NativePcmCapture.sources.json').read_text())
+assert meta['outputSha256']==fence['ui/js/NativePcmCapture.js']
+for name,digest in meta['sourceFiles'].items():
+ if pathlib.Path(name).name not in ['pcmResampler.ts','pcmWorklet.ts']:continue
+ data=(a.native/name).read_bytes();assert hashlib.sha256(data).hexdigest()==digest
+ target=source/'native'/pathlib.Path(name).name;target.parent.mkdir(mode=0o700,exist_ok=True);target.write_bytes(data);target.chmod(0o400)
+assert not a.reference.is_symlink();reference=a.reference.read_bytes();(out/'reference.json').write_bytes(reference)
+(source/'runtime.json').write_text(json.dumps(manifest)+'\n')
+command=['podman','--remote=false','run','--rm','--pull=never','--http-proxy=false','--timeout=90','--read-only','--network=none','--userns=keep-id','--user',f'{os.getuid()}:{os.getgid()}','--cap-drop=ALL','--security-opt=no-new-privileges','--security-opt=seccomp=unconfined','--ulimit=core=0:0','--memory=2g','--pids-limit=256','--shm-size=256m','--tmpfs','/tmp:rw,exec,size=128m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',f'{runtime}:/electron:ro','-v',f'{source}:/source:ro','-v',f'{state}:/state:rw','docker.io/library/archlinux:latest','python3','/source/pcm-renderer.py']
+with(out/'runtime.log').open('w')as log:result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=105)
+proof={'exit':result.returncode,'sourceSha256':fence,'runtimeArchiveSha256':manifest['archiveSha256'],'referenceSha256':hashlib.sha256(reference).hexdigest(),'scope':'Pure numeric original DSP in actual sandboxed renderer V8 with controlled worklet base/port; no microphone, AudioContext graph, user profile or GUI input acceptance'}
+if result.returncode==0:
+ native=json.loads(reference);renderer=json.loads((state/'renderer.json').read_text());equal=renderer['result']==renderer['compiled'];reference_equal=native==renderer['result']
+ proof.update({'equal':equal,'nodeReferenceEqual':reference_equal,'expectedReferenceDifference':a.expect_reference_difference,'runtimeVersions':renderer['runtime'],'userAgent':renderer['userAgent'],'cases':renderer['result']['wholeModuleCases'],'fullLimitSamples':renderer['result']['fullLimitSamples'],'mathPrimitiveObservations':renderer['result']['mathPrimitiveObservations'],'compiledDifferences':[{'case':i,'fields':[key for key in left if left[key]!=right[key]]}for i,(left,right)in enumerate(zip(renderer['result']['cases'],renderer['compiled']['cases']))if left!=right],'nodeReferenceDifferences':[{'case':i,'fields':[key for key in left if left[key]!=right[key]]}for i,(left,right)in enumerate(zip(native['cases'],renderer['result']['cases']))if left!=right]})
+ proof['exit']=0 if equal and reference_equal!=a.expect_reference_difference else 1
+assert all(hashlib.sha256((root/name).read_bytes()).hexdigest()==digest for name,digest in fence.items()),'Source changed during probe'
+for row in manifest['files']:
+ path=runtime/row['path'];assert path.is_file()and not path.is_symlink()
+ with path.open('rb')as file:assert hashlib.file_digest(file,'sha256').hexdigest()==row['sha256'],'Pinned runtime changed during probe'
+(out/'result.json').write_text(json.dumps(proof,indent=2)+'\n');print(out);raise SystemExit(proof['exit'])

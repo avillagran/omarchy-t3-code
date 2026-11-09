@@ -1,0 +1,257 @@
+{
+  "targetCommit": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "runtimeVersion": "44.10.1",
+  "runtimeArchiveSha256": "2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167",
+  "scope": "Private diagnostic matrix against explicitly snapshotted experimental input files. No public browser selection, native surrounding-text/caret query, or whole-client parity acceptance. Nonzero return codes preserve unsuccessful controls; they are not passing tests.",
+  "cases": [
+    {
+      "artifact": "native-electron-entrypoint-slui82xh",
+      "scope": "Short native entrypoint with six clipboard operations and seven navigations; component success is not sustained capture proof.",
+      "returncode": 0,
+      "inputsManifestSha256": "7f10dc874e3424a6972f6d2b55a8cce69f45ddf73c755a95aad31a058d3f8a74",
+      "nativeMainSha256": "16b68ffbee5f7566ef62e37b85efe3ed647c29c10b056b5a398f4e54c32d87dd",
+      "driverSha256": "e3d0f11992d0f511817b17f6a4f3b7b6d2d9d3b489229d86a908ddf3b05bed40",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "e1cdb7a06c0fbb310f4cdaee73590ca55cf8b558a4ede5a16277daa38ec7de8b"
+    },
+    {
+      "artifact": "native-electron-entrypoint-6z1eq9zt",
+      "scope": "Two native target/session initializations and three source-pinned metadata evaluations also complete editing.",
+      "returncode": 0,
+      "inputsManifestSha256": "144761fb9234847f192b09cf5f402aa7f701fb6115be7e20c92509c0e9452550",
+      "nativeMainSha256": "41e8f7fa62dd416a06b4750d04f30428a1aced3d30157b919fef2b7af289e34e",
+      "driverSha256": "2a91fdfa11938179b57fb3c8986d06727817113f93391072c9f49ea08d483c5d",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "578edbdb4af2079a8ff2fc07a12935c9cdbd2428ee92d4e459edc4a0e40c8cb2"
+    },
+    {
+      "artifact": "native-electron-entrypoint-k5kqxpc1",
+      "scope": "Secondary sustained GPU failure: default shared-memory capacity has less free space than one frame.",
+      "returncode": 1,
+      "inputsManifestSha256": "1b5d2d91b2d4bfefeb38e5d5f7e4806732335e5484381084c4c9c73d3ceeccbb",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "5ab40e70e9838e079a21de49033211af30b78777c54990d8e5a1db79f10d6796",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "a631dfd1a1f9c705f55403f2ad9d6117f88b55aaceeb8cb6ba1033918f298c8f"
+    },
+    {
+      "artifact": "native-electron-entrypoint-irbh5taa",
+      "scope": "Default GLX and bounded256MiB shared memory; sustained15s plus native edit succeeds.",
+      "returncode": 0,
+      "inputsManifestSha256": "1b5d2d91b2d4bfefeb38e5d5f7e4806732335e5484381084c4c9c73d3ceeccbb",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "5ab40e70e9838e079a21de49033211af30b78777c54990d8e5a1db79f10d6796",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "c6c0398a92e4d952a8bd56d808b1152ffba34be0a97adabc0f4adae3dc68e64a"
+    },
+    {
+      "artifact": "native-electron-entrypoint-iy707dnb",
+      "scope": "Original GLX-disabled topology and256MiB; sustained15s plus native edit succeeds.",
+      "returncode": 0,
+      "inputsManifestSha256": "1b5d2d91b2d4bfefeb38e5d5f7e4806732335e5484381084c4c9c73d3ceeccbb",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "5ab40e70e9838e079a21de49033211af30b78777c54990d8e5a1db79f10d6796",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "67748282a28afb7315d8a5a0e17254e0f79ff2b4e56b572791f77c2318c65907"
+    },
+    {
+      "artifact": "browser-gui-platform-nbzm3loa",
+      "scope": "Full GUI/Manager still reproduces renderer139 with sufficient shared memory.",
+      "returncode": 1,
+      "inputsManifestSha256": "e89453272b0af78443e340ebcf425c18dc22684a2a3b26dfbd43f9f020e8a0f8",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": null,
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "808891d1907f9d03876239af4b8a8acfd55c6d4ff14291c99037d8bcfb17a7a7"
+    },
+    {
+      "artifact": "native-electron-entrypoint-xkcv0svx",
+      "scope": "Actual Qt producer also reproduces renderer139 without Rust Manager/Pool or clipboard cohort.",
+      "returncode": 1,
+      "inputsManifestSha256": "84f61f0c1193d74b8036b873f7a2e748e1993d94102794d2b9a76beccfd5b4af",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "5ab40e70e9838e079a21de49033211af30b78777c54990d8e5a1db79f10d6796",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "3c6235e64592014c569ced891bd7a8a6e664e5e7aa02361e1470f7a2df4f3cca"
+    },
+    {
+      "artifact": "native-electron-entrypoint-83canvot",
+      "scope": "Complete fixed synthetic Qt input timeline recorded before renderer failure.",
+      "returncode": 1,
+      "inputsManifestSha256": "b5f5af9a4ffbfac49477463198d3bf6e9d1835dc808e6d2eff7ce8c2a7bff110",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "79df76d1272f724721ae1e2054cdeeabb0d701ad6392305b0d4a124f80f61caf",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "8aba875b18d03aba67ee1762757c6b366ffdc37d9721f941a06f29c03793da9c"
+    },
+    {
+      "artifact": "native-electron-entrypoint-kvc6cz04",
+      "scope": "Exact five-event timeline replay succeeds in standalone Arch image.",
+      "returncode": 0,
+      "inputsManifestSha256": "1c97ee2cb4db3d2231a4b38c3374b8193a54531f83ee2ec7d2212f9c98b1a162",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "dbefef1a7f6e624aed22a653c815b001f2e6e57c740e6aa86344663f1ebbdc61",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "925b3879c02fc5b6d291f16db6f46637fe0f0130e00ce772ede27f7b47d95aeb"
+    },
+    {
+      "artifact": "native-electron-entrypoint-81ahr6zj",
+      "scope": "Timeline replay with Qt frame consumer and no physical Qt input reproduces renderer139.",
+      "returncode": 1,
+      "inputsManifestSha256": "b2a92fe64f7624cec0469052da079bb83d6c58d76153613da510b27d8327d428",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "a6a3188fba1ac7c368977d8274335dec0bb448758f92e31e1cb2894f56294e5d",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "ac04b876c0e561adf7e18ac4509bbe7b5aed2e7b7789f99f0c40d3c702c21e60"
+    },
+    {
+      "artifact": "native-electron-entrypoint-ms6n9k4k",
+      "scope": "Same Qt image without any GUI also reproduces renderer139.",
+      "returncode": 1,
+      "inputsManifestSha256": "85b907c196f24cb52dacf5de8128015aae40c7d22c84741060a989a5db85d902",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "80fe120cc3aed0df17f1e8bc52d1cd294397d70a63854e721e073fe434cbe866",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "d5250b5bf2e76da585b87de0f6acc16d48e3e3e06489d91cdd87e9ff3ac572bb"
+    },
+    {
+      "artifact": "native-electron-entrypoint-mwgk51or",
+      "scope": "Arch immediate selection snapshot and forced Fcitx module observation before editing; succeeds.",
+      "returncode": 0,
+      "inputsManifestSha256": "4671dd65d8c88eaaded084bba709d01902f36beea6feef2cda32cd233fa43aa4",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "d9992d85c80a57772e3edd9517ec8b0e8653f6b72571349a9c7433d7010f6ae5",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "ecd3ac53be033808fb93cabd801c6fabd5aae74d121407300ac624abf0de1aac"
+    },
+    {
+      "artifact": "native-electron-entrypoint-wg3mwhjl",
+      "scope": "Qt immediate selection snapshot and Fcitx observation match Arch; renderer still fails.",
+      "returncode": 1,
+      "inputsManifestSha256": "4671dd65d8c88eaaded084bba709d01902f36beea6feef2cda32cd233fa43aa4",
+      "nativeMainSha256": "40a687f2b5850fb9c526842e578ca6e622fc008ad7cc19a120d872ea27b957c7",
+      "driverSha256": "d9992d85c80a57772e3edd9517ec8b0e8653f6b72571349a9c7433d7010f6ae5",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "eacaf9f22d4e7d71990b33c088c6ad29aaf03ac55a7481c3b03f4563c8de7f3e"
+    },
+    {
+      "artifact": "native-electron-entrypoint-krjc48o5",
+      "scope": "Arch observed renderer static-module manifest; succeeds.",
+      "returncode": 0,
+      "inputsManifestSha256": "e4ebf437c1b73c458980e57ce6d4187265cfd67abe8144592104fee54ca11841",
+      "nativeMainSha256": "90257f6437446ebb995799a30182b02f4c7e665ed6bfd5d77bdfaa513445ad10",
+      "driverSha256": "c092f685bb921ad280ad15f7bca1d31721c97415dbdd2fe28f0e06d7afc4a8a1",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "20e175ae34779780e57c4b7b0a4fdf7ab411a00e936878a5aecea97c8ed5f4f0"
+    },
+    {
+      "artifact": "native-electron-entrypoint-1cn1my8i",
+      "scope": "Qt observed renderer static-module manifest matches Arch; renderer fails.",
+      "returncode": 1,
+      "inputsManifestSha256": "e4ebf437c1b73c458980e57ce6d4187265cfd67abe8144592104fee54ca11841",
+      "nativeMainSha256": "90257f6437446ebb995799a30182b02f4c7e665ed6bfd5d77bdfaa513445ad10",
+      "driverSha256": "c092f685bb921ad280ad15f7bca1d31721c97415dbdd2fe28f0e06d7afc4a8a1",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "b58214f254d603d0d7b7eaa6f3c320449b7f378704bd96a0c81cf48701a7f596"
+    },
+    {
+      "artifact": "native-electron-entrypoint-snqw9bz8",
+      "scope": "Empty private system-fontcache does not prevent renderer failure.",
+      "returncode": 1,
+      "inputsManifestSha256": "e4ebf437c1b73c458980e57ce6d4187265cfd67abe8144592104fee54ca11841",
+      "nativeMainSha256": "90257f6437446ebb995799a30182b02f4c7e665ed6bfd5d77bdfaa513445ad10",
+      "driverSha256": "c092f685bb921ad280ad15f7bca1d31721c97415dbdd2fe28f0e06d7afc4a8a1",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "9481abe322a8d11bfb6e5cfcf5757a3c2f6d07c98b8bcaf4cc4e730a90db9a28"
+    },
+    {
+      "artifact": "native-electron-entrypoint-fknkx0x6",
+      "scope": "Exact immutable Arch linker-cache fixture does not prevent renderer failure.",
+      "returncode": 1,
+      "inputsManifestSha256": "8234616c65d559e0f6d04f74b2cbd754b9513487c9bcfb3c679cd6f2003c0615",
+      "nativeMainSha256": "90257f6437446ebb995799a30182b02f4c7e665ed6bfd5d77bdfaa513445ad10",
+      "driverSha256": "c092f685bb921ad280ad15f7bca1d31721c97415dbdd2fe28f0e06d7afc4a8a1",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "843322cc83686aaec6c14f8a523c57cfbcf32385105e49e9179389132f7980c4"
+    },
+    {
+      "artifact": "native-electron-entrypoint-_zq695pf",
+      "scope": "Arch actual GPU/network-service module maps; succeeds.",
+      "returncode": 0,
+      "inputsManifestSha256": "fc2a69bd7caf25341ebd57a08b45aed4a23f1084ae016d3d065ed0a82e33d00d",
+      "nativeMainSha256": "ee29956f201f3ff0d9e5c251df29707acf460a0dcb739c754d5581c472fbbfdf",
+      "driverSha256": "c4e980d853c57aaac5a2e7cbadd18d46457687ceb844ea72fa0f0807199bb248",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "438f83fd92cfec13f27e4cda923418e27784b26c8efa50e65034a1be8f8e990a"
+    },
+    {
+      "artifact": "native-electron-entrypoint-g2qn5snc",
+      "scope": "Qt actual GPU/network-service module maps match Arch; renderer fails.",
+      "returncode": 1,
+      "inputsManifestSha256": "fc2a69bd7caf25341ebd57a08b45aed4a23f1084ae016d3d065ed0a82e33d00d",
+      "nativeMainSha256": "ee29956f201f3ff0d9e5c251df29707acf460a0dcb739c754d5581c472fbbfdf",
+      "driverSha256": "c4e980d853c57aaac5a2e7cbadd18d46457687ceb844ea72fa0f0807199bb248",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "af1194033e4dac96dbceb2860b7fe074d7e607612eca36a869a7266d2e4a5f83"
+    },
+    {
+      "artifact": "native-electron-entrypoint-benqtgz2",
+      "scope": "Qt sustained15s/168 frames and canonical idle focus-release ACK still precede renderer139.",
+      "returncode": 1,
+      "inputsManifestSha256": "412f63f272b45b1a895b06d7efe049240119ac0074b7fb890df00d05777a69b8",
+      "nativeMainSha256": "ee29956f201f3ff0d9e5c251df29707acf460a0dcb739c754d5581c472fbbfdf",
+      "driverSha256": "c4e980d853c57aaac5a2e7cbadd18d46457687ceb844ea72fa0f0807199bb248",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "f182680f7e131a4c31b44fb4b8af627b29eca0a5fc2d3a2ad1c7ff64d47fa854"
+    },
+    {
+      "artifact": "native-electron-entrypoint-d033s3mf",
+      "scope": "Arch actual X11 focus matches NativeWindow immediately before successful composition.",
+      "returncode": 0,
+      "inputsManifestSha256": "61c877d049fed78b3b6998b13f23e88997fdb1d9952ae11113af51867d5203f0",
+      "nativeMainSha256": "0446a160a97065d9a9ce2cacb464e15ca34b7e432d299516ced6b21c2ae5534e",
+      "driverSha256": "fb70fc317b2b5f2f13cdf7f52176cf2dfb171715ace935ff74dad4598ced600d",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "0c907d4f28db9dbf6bb24fb5d33a890cf76fe5ab288304b0dbb624b0929a62aa"
+    },
+    {
+      "artifact": "native-electron-entrypoint-6z74zwgu",
+      "scope": "Qt actual X11 focus also matches NativeWindow before renderer139.",
+      "returncode": 1,
+      "inputsManifestSha256": "61c877d049fed78b3b6998b13f23e88997fdb1d9952ae11113af51867d5203f0",
+      "nativeMainSha256": "0446a160a97065d9a9ce2cacb464e15ca34b7e432d299516ced6b21c2ae5534e",
+      "driverSha256": "fb70fc317b2b5f2f13cdf7f52176cf2dfb171715ace935ff74dad4598ced600d",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "7919ce9b0a302d72cfcc4f29b08f7dfdf1912c3143f24703c028146f73aaa84a"
+    },
+    {
+      "artifact": "browser-gui-platform-co6jg5sq",
+      "scope": "Complete actual private Arch compositor/Qt/Page/Manager/Pool/native GuestInput editing and modal/custom-MIME clipboard pass; reviewed old0b server only.",
+      "returncode": 0,
+      "inputsManifestSha256": "ba51ba5c15f256aef784b3a3b441156d5106b2bb7a9cd17074a9c5d0ae58c7bb",
+      "nativeMainSha256": "0446a160a97065d9a9ce2cacb464e15ca34b7e432d299516ced6b21c2ae5534e",
+      "image": "docker.io/library/archlinux:latest",
+      "commandManifestSha256": "59146cb7eebdd044ec987ab0fc408a0ce470d7e2461f14a1291506586d8035e5",
+      "compositorManifestSha256": "a08b0e963bf8ae8ee8c7e2e3aea5bdde1c51a6185afb79e35b066084494aaae2"
+    },
+    {
+      "artifact": "browser-gui-platform-q7apedbq",
+      "scope": "Matched full Qt-image control with identical admitted compositor and input receipts; original renderer139 at composition remains.",
+      "returncode": 1,
+      "inputsManifestSha256": "ba51ba5c15f256aef784b3a3b441156d5106b2bb7a9cd17074a9c5d0ae58c7bb",
+      "nativeMainSha256": "0446a160a97065d9a9ce2cacb464e15ca34b7e432d299516ced6b21c2ae5534e",
+      "image": "localhost/o3-qml-wayland-tests:local",
+      "commandManifestSha256": "f3e444b820df11ea77dc94404b35d996c6b21ec8292407e53386c035bb042391",
+      "compositorManifestSha256": "a08b0e963bf8ae8ee8c7e2e3aea5bdde1c51a6185afb79e35b066084494aaae2"
+    }
+  ],
+  "syntheticTimelineSha256": "26dc16f44fd609bac2ed665fddeb396a7a2d780a84b6fa53d2e6a1b869069f44",
+  "fullArchGuiContrast": "Not executed: no admitted regular-file compositor bundle identified; automatic image-mount review returned a generic rejection. No mount retry or rootfs export is permitted.",
+  "completeGuiComparison": {
+    "sameInputsReceipt": true,
+    "normalizedArgumentCount": 76,
+    "onlyDifferingArgumentIndex": 72,
+    "difference": "container image; admitted regular-file compositor identical",
+    "publicSelectionEnabled": false
+  }
+}

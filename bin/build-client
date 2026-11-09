@@ -8,8 +8,11 @@ task_build_target=$(rustc -vV | sed -n 's/^host: //p')
 cargo fetch --locked --target "$task_build_target"
 cargo fetch --locked --target "$task_build_target" --manifest-path native/dictate/Cargo.toml
 node tools/build-licenses.cjs
-cargo build --release --locked
-install -m755 target/release/omarchy-t3-client bin/omarchy-t3-client
+# This wrapper clears inherited bundle pins. Only an explicitly selected runtime
+# can build the reviewed addon and compile its exact digest into the client.
+PYTHONDONTWRITEBYTECODE=1 python3 tools/build-client-binary
+# The embedded terminal uses the pinned Ghostty engine, with no shell ownership in Qt.
+tools/build-terminal-surface
 # Local dictation (whisper.cpp). Release packages set OT3_PORTABLE=1 so the CPU
 # code runs on every machine of the architecture, not only the builder's.
 if command -v cmake >/dev/null && command -v c++ >/dev/null; then
@@ -20,8 +23,10 @@ if command -v cmake >/dev/null && command -v c++ >/dev/null; then
       x86_64) GGML_AVX=ON GGML_AVX2=ON GGML_FMA=ON GGML_F16C=ON; export GGML_AVX GGML_AVX2 GGML_FMA GGML_F16C;;
     esac
   fi
-  cargo build --release --locked --manifest-path native/dictate/Cargo.toml
-  install -m755 native/dictate/target/release/ot3-dictate bin/ot3-dictate
+  task_dictate_target=${CARGO_TARGET_DIR:-$plugin_dir/native/dictate/target}
+  case "$task_dictate_target" in /*) ;; *) task_dictate_target=$plugin_dir/$task_dictate_target;; esac
+  cargo build --release --locked --manifest-path native/dictate/Cargo.toml --target-dir "$task_dictate_target"
+  install -m755 "$task_dictate_target/release/ot3-dictate" bin/ot3-dictate
 else
   printf '%s\n' 'Optional dictation helper not built: CMake and a C++ compiler are needed.' >&2
 fi

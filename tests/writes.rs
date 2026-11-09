@@ -80,5 +80,5 @@ fn native_write_contract_and_upload_boundaries() {
     let mut local=e.clone();local.id="local".into();
     writing::manage(&local,&json!({"requestId":uuid::Uuid::new_v4().to_string(),"action":"add-project","url":reqwest::Url::from_directory_path(&root).unwrap().as_str()})).unwrap();
     for action in ["settle","unsettle","snooze","unsnooze"] { writing::manage(&e,&json!({"requestId":uuid::Uuid::new_v4().to_string(),"action":action,"thread":"fixture-thread","snoozedUntil":"2099-01-01T00:00:00Z"})).unwrap(); }
-    server.join().unwrap();std::fs::remove_dir_all(root).unwrap();
+    server.join().unwrap();
 }

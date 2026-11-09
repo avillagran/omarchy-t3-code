@@ -380,3 +380,12 @@ mod link_tests {
         assert!(thread_command(&json!({"thread":"t","link":"link","reference":{"host":"github.com","repository":"o/r","number":5,"url":"javascript:x"}})).is_err());
     }
 }
+
+impl crate::Connection {
+    /// Existing T3 HTTP endpoint; same-origin authentication and 8MiB response bound.
+    pub fn pull_request_diff(&self,reference:&Value,cursor:Option<&str>)->crate::Result<Value>{
+        if let Some(c)=cursor {crate::api::ids::opaque("cursor",c)?;if c.len()>=4096{return Err("invalid_cursor".into())}}
+        let (_,payload)=request(&json!({"action":"diff","reference":reference,"cursor":cursor}))?;
+        self.request_json_with_limit("POST","/api/pull-requests/diff",Some(&payload),false,8*1024*1024)
+    }
+}

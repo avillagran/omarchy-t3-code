@@ -115,6 +115,25 @@ fn selected() -> Result<Target> {
 pub fn local_profile() -> std::path::PathBuf {
     selected().map(|t| t.profile).unwrap_or_else(|_| t3_home())
 }
+/// Read-only launch configuration for a separate GUI-owned O3 profile.
+/// The remembered background-service choice is never changed here.
+pub fn owned_config() -> Result<crate::owned_backend::Config> {
+    let (targets, _) = targets()?;
+    let executable = targets
+        .iter()
+        .find(|target| target.id == "o3")
+        .map(|target| target.cli.clone())
+        .unwrap_or_else(|| home().join(".local/share/o3-server/bin/o3-server"));
+    let config = crate::owned_backend::Config::native(executable);
+    let identity = |path: &std::path::Path| path.canonicalize().unwrap_or_else(|_| path.to_owned());
+    if targets
+        .iter()
+        .any(|target| identity(&target.profile) == identity(&config.profile()))
+    {
+        return Err("owned_backend_profile_conflict".into());
+    }
+    Ok(config)
+}
 pub fn local_cli() -> std::path::PathBuf {
     selected()
         .map(|t| t.cli)
@@ -299,7 +318,7 @@ fn systemctl(target: &Target, action: &str) -> Result<()> {
 pub fn start() -> Result<Value> {
     start_as(&selected()?.id)
 }
-pub fn start_as(id: &str) -> Result<Value> {
+fn control_lock() -> Result<std::fs::File> {
     use std::{
         fs::OpenOptions,
         os::{fd::AsRawFd, unix::fs::OpenOptionsExt},
@@ -318,6 +337,15 @@ pub fn start_as(id: &str) -> Result<Value> {
     if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
         return Err("backend_start_busy".into());
     }
+    Ok(lock)
+}
+
+pub fn start_as(id: &str) -> Result<Value> {
+    let _control = control_lock()?;
+    start_as_locked(id)
+}
+
+fn start_as_locked(id: &str) -> Result<Value> {
     let (targets, current) = targets()?;
     let target = targets
         .iter()
@@ -330,12 +358,54 @@ pub fn start_as(id: &str) -> Result<Value> {
         return Err("backend_already_running".into());
     }
     launchable(target)?;
+    if runtime_pid(target).is_none() {
+        require_legacy_handover(target, &targets)?;
+    }
     // Record an explicit choice only. An unsuccessful launch never selects another server.
     if current != id {
         save_json(&choice_path(), &json!({"server":id}))?;
     }
     start_target(target)
 }
+fn require_legacy_handover(target: &Target, targets: &[Target]) -> Result<()> {
+    if target.id != "t3" || !target.shared {
+        return Ok(());
+    }
+    let source = targets
+        .iter()
+        .find(|other| other.id == "o3" && other.profile == target.profile)
+        .ok_or("backend_handover_readiness_unavailable")?;
+    let output = Command::new("timeout")
+        .arg("5")
+        .arg(&source.cli)
+        .args(["shared-profile-readiness", "--base-dir"])
+        .arg(&source.profile)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|_| "backend_handover_readiness_unavailable")?;
+    if !output.status.success() || output.stdout.len() > 4096 {
+        return Err("backend_handover_readiness_unavailable".into());
+    }
+    let report: Value = serde_json::from_slice(&output.stdout)
+        .map_err(|_| "backend_handover_readiness_unavailable")?;
+    let pending = report["pendingLegacyDeliveries"]
+        .as_u64()
+        .ok_or("backend_handover_readiness_unavailable")?;
+    let replay = report["retainedLegacyReplayClaims"]
+        .as_u64()
+        .ok_or("backend_handover_readiness_unavailable")?;
+    let ready = pending == 0 && replay == 0;
+    if report["version"].as_u64() != Some(1)
+        || report["legacyWebhookReady"].as_bool() != Some(ready)
+    {
+        return Err("backend_handover_readiness_unavailable".into());
+    }
+    if !ready {
+        return Err("backend_legacy_webhook_handover_blocked".into());
+    }
+    Ok(())
+}
+
 fn launchable(target: &Target) -> Result<()> {
     if target.registered && (!unit_path(target).exists() || !target.cli.is_file()) {
         return Err("backend_not_installed".into());
@@ -349,6 +419,7 @@ fn launchable(target: &Target) -> Result<()> {
 /// is checked before anything is stopped; a failed start leaves both stopped
 /// (no automatic return to the previous server) and the error is reported.
 pub fn switch_to(id: &str) -> Result<Value> {
+    let _control = control_lock()?;
     let (targets, _) = targets()?;
     let target = targets
         .iter()
@@ -361,13 +432,17 @@ pub fn switch_to(id: &str) -> Result<Value> {
     if selected()?.id == id && runtime_pid(target).is_some() {
         return Ok(json!({"status":"already-running","local":status()}));
     }
+    require_legacy_handover(target, &targets)?;
     stop()?;
-    start_as(id)
+    // Re-read after stopping: an older O3 process may have admitted legacy work
+    // between the first check and graceful shutdown.
+    start_as_locked(id)
 }
 fn start_target(target: &Target) -> Result<Value> {
     if runtime_pid(target).is_some() {
         return Ok(json!({"status":"already-running","local":status()}));
     }
+    require_legacy_handover(target, &targets()?.0)?;
     if unit_path(target).exists() {
         // A GUI can replace/remove the runtime file while the older headless
         // service remains active. `start` is then a successful no-op. Restart
@@ -484,10 +559,15 @@ fn stop() -> Result<Value> {
 pub fn control(action: &str) -> Result<Value> {
     match action {
         "start" => start(),
-        "stop" => stop(),
+        "stop" => {
+            let _control = control_lock()?;
+            stop()
+        }
         "restart" => {
+            let _control = control_lock()?;
+            let id = selected()?.id;
             stop()?;
-            start()
+            start_as_locked(&id)
         }
         _ => Err("invalid_action".into()),
     }

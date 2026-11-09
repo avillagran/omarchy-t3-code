@@ -300,6 +300,6 @@ mod tests {
             "new snapshot sees committed WAL rows"
         );
         drop(child);
-        std::fs::remove_dir_all(root).unwrap();
+
     }
 }

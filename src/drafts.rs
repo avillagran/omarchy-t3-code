@@ -21,6 +21,8 @@ pub fn clean(v: &Value) -> Result<Value> {
         return Err("draft_too_large".into());
     }
     let mut out = json!({"text":text,"attachments":[],"modelSelection":null,"delivery":if v["delivery"]=="queue"{"queue"}else{"auto"},"attempt":null});
+    if let Some(owner)=v.get("localDraftId").filter(|owner|!owner.is_null()){uuid::Uuid::parse_str(owner.as_str().ok_or("invalid_draft")?).map_err(|_|"invalid_draft")?;out["localDraftId"]=owner.clone();}
+    if let Some(context)=v.get("context").filter(|c|!c.is_null()) {out["context"]=crate::composer_context::clean(context)?;}
     if let Some(ids)=v.get("recoveryIds"){
         let ids=ids.as_array().filter(|ids|ids.len()<=1024).ok_or("invalid_draft")?;
         let mut seen=std::collections::HashSet::new();
@@ -39,6 +41,7 @@ pub fn clean(v: &Value) -> Result<Value> {
         if !valid_id(text_field(reference,"threadId"))||!valid_id(text_field(reference,"planId")){return Err("invalid_plan_scope".into())}
         out["sourcePlanRef"]=json!({"threadId":reference["threadId"],"planId":reference["planId"]});
     }
+    if v["modelSelectionExplicit"]==true&&crate::native_settings::model_selection(&v["modelSelection"]).is_ok() {out["modelSelectionExplicit"]=json!(true);}
     if let Some(s) = v["modelSelection"].as_object() {
         let options = s
             .get("options")
@@ -66,8 +69,9 @@ pub fn clean(v: &Value) -> Result<Value> {
     if v["queueEdit"].is_object(){
         let q=&v["queueEdit"];if !valid_id(text_field(q,"runId")){return Err("invalid_draft".into())}
         let b=&q["backup"];
-        let backup=clean(&json!({"text":b["text"],"attachments":b["attachments"],"modelSelection":b["modelSelection"],"delivery":b["delivery"]}))?;
-        out["queueEdit"]=json!({"runId":q["runId"],"messageId":q["messageId"],"context":q["context"],"backup":backup});
+        let backup=clean(&json!({"text":b["text"],"context":b["context"],"attachments":b["attachments"],"modelSelection":b["modelSelection"],"delivery":b["delivery"]}))?;
+        let context=if q["context"]["version"]==1{crate::composer_context::clean(&q["context"])?}else{q["context"].clone()};
+        out["queueEdit"]=json!({"runId":q["runId"],"messageId":q["messageId"],"context":context,"backup":backup});
     }
     if v["attempt"].is_object() {
         let a = &v["attempt"];
@@ -75,12 +79,16 @@ pub fn clean(v: &Value) -> Result<Value> {
         if !(a["op"]=="send" || (a["op"]=="manage"&&a["action"]=="new-thread"&&valid_id(text_field(a,"projectId"))) || (a["op"]=="queue"&&a["action"]=="edit"&&a["runId"]==out["queueEdit"]["runId"])) || (a["text"] != out["text"] && !(a["op"]=="manage"&&a["planFollowUp"]==true&&a["sourcePlanRef"].is_object())) {
             return Err("invalid_draft".into());
         }
+        if let Some(target)=a.get("targetThreadId") {if a["op"]!="manage"||a["action"]!="new-thread"||!target.as_str().is_some_and(valid_id)||target!=&a["thread"] {return Err("invalid_draft".into())}}
+        if let Some(local)=a.get("localDraftId") {uuid::Uuid::parse_str(local.as_str().ok_or("invalid_draft")?).map_err(|_|"invalid_draft")?;if a["targetThreadId"]!=a["thread"]||out["localDraftId"]!=*local {return Err("invalid_draft".into())}}
         if let Some(mode)=a.get("interactionMode").filter(|v|!v.is_null()){if !matches!(mode.as_str(),Some("default"|"plan")){return Err("invalid_interaction_mode".into())}}
         if let Some(reference)=a.get("sourcePlanRef").filter(|v|!v.is_null()){if !valid_id(text_field(reference,"threadId"))||!valid_id(text_field(reference,"planId")){return Err("invalid_plan_scope".into())}}
-        for flag in ["planFollowUp","navigateAfterSend"]{if a.get(flag).is_some_and(|v|!v.is_boolean()){return Err("invalid_draft".into())}}
+        for flag in ["planFollowUp","navigateAfterSend","freshContext","generateTitle"]{if a.get(flag).is_some_and(|v|!v.is_boolean()){return Err("invalid_draft".into())}}
+        if let Some(arm)=a.get("freshSessionArm"){uuid::Uuid::parse_str(arm.as_str().ok_or("invalid_draft")?).map_err(|_|"invalid_draft")?;}
         if let Some(key)=a.get("planOriginKey"){if !key.as_str().and_then(|s|s.split_once('/')).is_some_and(|(e,t)|valid_id(e)&&valid_id(t)){return Err("invalid_draft".into())}}
         if a["planFollowUp"]==true {crate::write::validate_message(a)?;if a["op"]=="manage"&&(a["workspaceStrategy"].is_object()||a["launchWithMessage"]==true||!a["attachments"].as_array().is_some_and(Vec::is_empty)){return Err("invalid_draft".into())}}
         if a["op"]=="manage" {uuid::Uuid::parse_str(text_field(a,"sendRequestId")).map_err(|_| "invalid_draft")?;}
+        if a["planFollowUp"]!=true&&(out["context"].is_object()||a["context"]["version"]==1)&&!crate::composer_context::semantic_equal(&crate::composer_context::clean(&a["context"])?,&out["context"]){return Err("invalid_draft".into())}
         let mut attempt = json!({});
         for key in [
             "op",
@@ -94,12 +102,17 @@ pub fn clean(v: &Value) -> Result<Value> {
             "attachments",
             "modelSelection",
             "delivery",
+            "freshContext",
+            "freshSessionArm",
             "nextThread",
+            "targetThreadId",
+            "localDraftId",
             "sendRequestId",
             "moveSource",
             "creationRequestId",
             "workspaceStrategy",
             "launchWithMessage",
+            "generateTitle",
             "projectId",
             "title",
             "runtimeMode",
@@ -125,7 +138,7 @@ pub fn clean(v: &Value) -> Result<Value> {
         if approvals.len()>32 || v["approvals"].to_string().len()>96000 {return Err("invalid_draft".into())}
         out["approvals"]=v["approvals"].clone();
     }
-    if out.to_string().len() > 750000 {
+    if crate::composer_context::serialized_bytes(&crate::composer_context::ordinary_draft(&out))? > 750000 || crate::composer_context::serialized_bytes(&out)? > crate::composer_context::MAX_DRAFT_BYTES {
         return Err("draft_too_large".into());
     }
     Ok(out)
@@ -141,10 +154,10 @@ pub fn load(key: &str) -> Result<Value> {
         Err(_) => return Err("draft_read_failed".into()),
     };
     let mut bytes = vec![];
-    file.take(800001)
+    file.take(crate::composer_context::MAX_DRAFT_BYTES as u64 + 65537)
         .read_to_end(&mut bytes)
         .map_err(|_| "draft_read_failed")?;
-    if bytes.len() > 800000 {
+    if bytes.len() > crate::composer_context::MAX_DRAFT_BYTES + 65536 {
         return Err("draft_read_failed".into());
     }
     let doc: Value = serde_json::from_slice(&bytes).map_err(|_| "draft_read_failed")?;
@@ -167,7 +180,11 @@ pub fn update(key:&str,change:impl FnOnce(&Value)->Result<Value>)->Result<Value>
     let p=path(key)?.with_extension("lock");fs::create_dir_all(p.parent().unwrap()).map_err(|_|"draft_save_failed")?;
     let lock=fs::OpenOptions::new().write(true).create(true).truncate(false).mode(0o600).custom_flags(libc::O_NOFOLLOW).open(p).map_err(|_|"draft_save_failed")?;
     if unsafe{libc::flock(lock.as_raw_fd(),libc::LOCK_EX|libc::LOCK_NB)}!=0{return Err("drafts_busy".into())}
-    let result=(||{let old=load(key)?;let next=clean(&change(&old)?)?;
+    let result=(||{let old=load(key)?;let mut next=clean(&change(&old)?)?;
+        if let Some(owner)=old.get("localDraftId").filter(|owner|!owner.is_null()) {
+            if next.get("localDraftId").is_some_and(|next|!next.is_null()&&next!=owner){return Err("draft_owner_changed".into())}
+            next["localDraftId"]=owner.clone();
+        }else if next.get("localDraftId").is_some_and(|owner|!owner.is_null())&&!crate::local_drafts::empty_document(&old){return Err("draft_destination_occupied".into())}
         let markers=next["recoveryIds"].as_array().cloned().unwrap_or_default();
         if old["recoveryIds"].as_array().into_iter().flatten().any(|id|!markers.contains(id)){return Err("draft_recovery_changed".into())}
         save_unlocked(key,&next)?;Ok(next)})();

@@ -1,0 +1,54 @@
+{
+  "timebase": "actual-ime-ready",
+  "rows": [
+    {
+      "microseconds": 17201,
+      "event": {
+        "button": 1,
+        "buttons": 1,
+        "modifiers": 0,
+        "type": "press",
+        "x": 50.24000000000003,
+        "y": 40.32
+      }
+    },
+    {
+      "microseconds": 17369,
+      "event": {
+        "button": 1,
+        "buttons": 0,
+        "modifiers": 0,
+        "type": "release",
+        "x": 50.24000000000003,
+        "y": 40.32
+      }
+    },
+    {
+      "microseconds": 56550,
+      "event": {
+        "button": 0,
+        "buttons": 0,
+        "modifiers": 0,
+        "type": "move",
+        "x": 50.24000000000003,
+        "y": 40.32
+      }
+    },
+    {
+      "microseconds": 96370,
+      "event": {
+        "preedit": "にほん",
+        "selectionEnd": 3,
+        "selectionStart": 3,
+        "type": "composition"
+      }
+    },
+    {
+      "microseconds": 117240,
+      "event": {
+        "text": "日本",
+        "type": "text"
+      }
+    }
+  ]
+}

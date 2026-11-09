@@ -25,6 +25,25 @@ Rectangle {
   }
   readonly property bool focusLayout:bridge.viewState.interfaceLayout === "focus" || (bridge.viewState || {}).interfaceLayout === "projects"
   required property var bridge
+  readonly property bool nativeVoiceMode:bridge.nativeVoiceAvailable===true||bridge.nativeVoiceInitialized===true
+  readonly property var nativeVoiceState:bridge.voiceState || ({phase:"idle"})
+  readonly property string nativeVoicePhase:String(nativeVoiceState.phase || "idle")
+  readonly property string nativeVoiceShortcutMode:(bridge.nativeVoicePreferences||{}).voiceShortcutMode||"auto"
+  onNativeVoiceShortcutModeChanged:{nativeVoicePress=null;nativeVoiceShortcutGeneration++}
+  onNativeVoiceModeChanged:{nativeVoicePress=null;nativeVoiceShortcutGeneration++}
+  readonly property real microphoneLevel:nativeVoiceMode?Math.max(0,Math.min(1,Number(bridge.nativeVoiceLevel)||0)):Number((bridge.dictation || {}).level)||0
+  readonly property string nativeVoicePreviewText:bridge.nativeVoicePreview&&typeof bridge.nativeVoicePreview.committed==="string"&&typeof bridge.nativeVoicePreview.tentative==="string"?bridge.nativeVoicePreview.committed+bridge.nativeVoicePreview.tentative:""
+  readonly property string nativeVoiceFailure:voiceMessage(nativeVoiceState.error || bridge.nativeVoiceError || (nativeVoiceMode&&bridge.nativeVoiceAvailable!==true?"voice_host_unavailable":""))
+  function voiceMessage(value){return T3I18n.error(String(value||""))}
+  function voiceDestination(){
+    var choice=bridge.nativeVoiceChoice,destination=choice&&choice!=="off"?choice.destination:null;
+    if(!destination)return "";
+    var environment=((bridge.state || {}).environments || []).find(function(item){return item.id===destination.environmentId});
+    var name=String(environment?(environment.name||environment.title||environment.id):destination.environmentId||"");
+    return destination.kind==="cloud"?String(destination.provider||"")+" · "+name:name;
+  }
+  function openNativeVoiceSettings(){if(typeof bridge.requestClientSettings==="function")bridge.requestClientSettings();nativeVoiceSettingsPopup.open()}
+  Connections{target:root.bridge;ignoreUnknownSignals:true;function onNativeVoiceSettingsRequested(){if(root.visible&&(!root.Window.window||root.Window.window.active))root.openNativeVoiceSettings()}}
   property bool showOptions: false
   property bool expanded: false
   signal sidebarShortcutRequested(bool focusSelected)
@@ -47,7 +66,7 @@ Rectangle {
   property var viewRefs:[]
   property string viewText:""
   property bool syncingEditor:false
-  readonly property string referenceSource:"!?\\[[^\\]\\n]*\\]\\(t3-context://v1/[a-z]+/[^)\\s]+\\)"
+  readonly property string referenceSource:"!?\\[[^\\]\\n]*\\]\\(t3-context://v1/[a-z][a-z0-9-]{0,39}/[^)\\s]+\\)"
   function splitReferences(source){var refs=[];var text=String(source || "").replace(new RegExp(referenceSource,"g"),function(m){refs.push(m);return "\ufffc"});return {text:text,refs:refs}}
   function joinReferences(view,refs){var i=0;return String(view).replace(/\ufffc/g,function(){return i<refs.length?refs[i++]:""})}
   function sourceText(){return joinReferences(viewText,viewRefs)}
@@ -61,14 +80,14 @@ Rectangle {
   // Qt SVG (Tiny 1.2) has no rgba(): colours are hex, opacity a separate attribute.
   function svgColor(col){var hex=function(v){var h=Math.round(v*255).toString(16);return h.length<2?"0"+h:h};return "#"+hex(col.r)+hex(col.g)+hex(col.b)}
   function chipImage(ref){
-    var m=/^(!?)\[([^\]]*)\]\(t3-context:\/\/v1\/([a-z]+)\/([^)]+)\)$/.exec(ref) || ["","","",""," "]
+    var m=/^(!?)\[([^\]]*)\]\(t3-context:\/\/v1\/([a-z][a-z0-9-]{0,39})\/([^)]+)\)$/.exec(ref) || ["","","",""," "]
     var attachment=(draft.attachments || []).map(function(a){return a.attachment || {}}).find(function(a){return a.id===m[4]}) || {}
     var name=m[2] || attachment.name || m[3],size=sizeText(attachment.sizeBytes)
     chipName.text=name;chipSize.text=size
     var h=Math.round(Style.space(22)),pad=Math.round(Style.space(7)),icon=Math.round(Style.space(13)),gap=Math.round(Style.space(5))
     var nameW=Math.ceil(Math.min(chipName.advanceWidth,Style.space(200))),sizeW=size?Math.ceil(chipSize.advanceWidth)+gap:0
     var w=pad+icon+gap+nameW+sizeW+pad,f=chipName.font.pixelSize,ink=svgColor(fg),accent=svgColor(Color.accent),family=escapeHtml(chipName.font.family),baseline=(h/2+f*0.35).toFixed(1)
-    var glyph=m[1]==="!"?'<rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="'+accent+'" stroke-width="1.3"/><circle cx="5" cy="5" r="1.3" fill="'+accent+'"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>'
+    var glyph=m[3]==="terminal"?'<rect x="1.5" y="2" width="11" height="10" rx="1.5" fill="none" stroke="'+accent+'" stroke-width="1.2"/><path d="M4 5l2 2-2 2m3 0h3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>':m[1]==="!"?'<rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="none" stroke="'+accent+'" stroke-width="1.3"/><circle cx="5" cy="5" r="1.3" fill="'+accent+'"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3" fill="none" stroke="'+accent+'" stroke-width="1.2"/>'
       :'<path d="M3 1.5h5l3.5 3.5v7.5h-8.5z" fill="none" stroke="'+accent+'" stroke-width="1.3"/>'
     // Drawn at the screen's scale (at least 2x) and shown at its logical size, so it stays sharp.
     var scale=Math.max(2,Math.ceil(editor.Screen.devicePixelRatio || 1))
@@ -106,7 +125,7 @@ Rectangle {
   property string lastDraftText:""
   property string pendingCursorKey:bridge.selectedKey
   function positionDraftAtEnd(){if(pendingCursorKey!==bridge.selectedKey||draft.loading)return;var key=pendingCursorKey;Qt.callLater(function(){if(key!==root.bridge.selectedKey||root.draft.loading)return;editor.cursorPosition=editor.length;root.bridge.rememberDraftCursor(root.sourcePosition(editor.cursorPosition),root.sourcePosition(editor.cursorPosition));root.pendingCursorKey=""})}
-  Component.onCompleted:positionDraftAtEnd()
+  Component.onCompleted:{positionDraftAtEnd();synchronizeNativePermission()}
   Connections{target:root.bridge;function onSelectedKeyChanged(){root.pendingCursorKey=root.bridge.selectedKey;root.positionDraftAtEnd()}function onDraftRestored(key,start,end){if(key!==root.bridge.selectedKey)return;Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.select(root.viewPosition(start),root.viewPosition(end));editor.forceActiveFocus()})}}
   onDraftChanged:{renderEditor();positionDraftAtEnd();if(!draft.loading && draft.text!==lastDraftText && editor.activeFocus)saveQuietPeriod.restart();lastDraftText=draft.text}
   Timer{id:saveQuietPeriod;interval:1000}
@@ -114,8 +133,39 @@ Rectangle {
   Connections{target:root.bridge;function onDictationInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.cursorPosition=root.viewPosition(cursor);editor.forceActiveFocus()})}}
   // Ctrl+Space: held past a moment it is push-to-talk, a quick tap starts and a second tap stops.
   property double dictationPressedAt: 0
+  property var nativeVoiceShortcutLifetime:({active:true})
+  Component.onDestruction:{nativeVoiceShortcutLifetime.active=false;if(currentNativePermission())answerNativePermission(false)}
+  property var nativeVoicePress:null
+  property int nativeVoiceShortcutGeneration:0
+  function nativeVoiceShortcut(event,pressed){
+    if(event.key!==Qt.Key_Space)return false;
+    if(root.nativeVoiceMode&&root.bridge.nativeVoiceAvailable!==true)return event.modifiers===Qt.ControlModifier;
+    if(pressed){
+      if(event.modifiers!==Qt.ControlModifier||root.locked)return false;
+      if(event.isAutoRepeat)return true;
+      var phase=root.nativeVoicePhase;
+      if(phase!=="idle"&&phase!=="error"&&phase!=="recording")return true;
+      nativeVoicePress=null;nativeVoiceShortcutGeneration++;
+      if(phase==="recording"){bridge.toggleNativeVoice();return true}
+      if(!bridge.nativeVoiceChoice||bridge.nativeVoiceChoice==="off"){bridge.toggleNativeVoice();return true}
+      var starting=bridge.toggleNativeVoice();
+      nativeVoicePress={generation:nativeVoiceShortcutGeneration,startedAt:Date.now(),mode:root.nativeVoiceShortcutMode,starting:Promise.resolve(starting)};
+      return true;
+    }
+    if(event.isAutoRepeat||!nativeVoicePress)return false;
+    var press=nativeVoicePress;nativeVoicePress=null;
+    if(press.mode==="hold"||(press.mode==="auto"&&Date.now()-press.startedAt>=300)){
+      var life=nativeVoiceShortcutLifetime;
+      press.starting.then(function(){if(life.active&&root.nativeVoiceShortcutGeneration===press.generation&&root.bridge.voiceController)root.bridge.voiceController.stop()}).catch(function(){});
+    }
+    return true;
+  }
+  function cancelNativeVoice(){nativeVoicePress=null;nativeVoiceShortcutGeneration++;if(bridge.voiceController)bridge.voiceController.cancel()}
+  Connections{target:root.bridge;ignoreUnknownSignals:true;function onSelectedKeyChanged(){root.nativeVoicePress=null;root.nativeVoiceShortcutGeneration++;if(root.currentNativePermission())root.answerNativePermission(false)}function onNativeVoiceAvailableChanged(){if(root.bridge.nativeVoiceAvailable!==true){root.nativeVoicePress=null;root.nativeVoiceShortcutGeneration++}}}
   function dictationKey(event,pressed){
-    if(event.key!==Qt.Key_Space||!bridge.dictationEnabled)return false
+    if(event.key!==Qt.Key_Space)return false
+    if(root.nativeVoiceMode)return root.nativeVoiceShortcut(event,pressed)
+    if(!bridge.dictationEnabled)return false
     if(pressed){
       if(event.modifiers!==Qt.ControlModifier)return false
       if(event.isAutoRepeat)return true
@@ -131,8 +181,10 @@ Rectangle {
   Connections{target:root.bridge;function onClipboardInserted(key,cursor){if(key===root.bridge.selectedKey)Qt.callLater(function(){if(key!==root.bridge.selectedKey)return;root.renderEditor();editor.cursorPosition=root.viewPosition(cursor);editor.forceActiveFocus()})}}
   property int historyIndex: -1
   property string historyScratch: ""
-  readonly property var promptHistory: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim()}).filter(function(t){return !!t}).reverse()
-  Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";saveQuietPeriod.stop()} }
+  property var historyScratchContext:null
+  readonly property var promptHistoryEntries: bridge.transcript.filter(function(m){return m.role === "user"&&!m.attribution}).map(function(m){return {text:String(m.recallableText!=null?m.recallableText:m.text || "").replace(/\n*<t3_context\b[\s\S]*<\/t3_context>\s*(?:\[Attached[\s\S]*)?$/,"").trim(),context:m.context || null}}).filter(function(m){return !!m.text}).reverse()
+  readonly property var promptHistory:promptHistoryEntries.map(function(m){return m.text})
+  Connections { target: root.bridge; function onThreadWillChange(){root.historyIndex=-1;root.historyScratch="";root.historyScratchContext=null;saveQuietPeriod.stop()} }
   property var completion: null
   property int completionIndex: 0
   property string dismissedCompletion: ""
@@ -153,6 +205,7 @@ Rectangle {
     if(!completion || !bridge.suggestionItems[index])return false
     var item=bridge.suggestionItems[index];var before=root.viewText.slice(0,completion.start);var after=root.viewText.slice(completion.end)
     var insert=item.insert || "";root.commitView(before+insert+after);var cursor=before.length+insert.length
+    if(item.kind==="fresh-session")bridge.armFreshSession()
     closeCompletion();Qt.callLater(function(){editor.cursorPosition=cursor;dismissedCompletion=root.viewText+"/"+cursor;editor.forceActiveFocus();if(item.kind==="model"){root.showOptions=true;modelPicker.forceActiveFocus();modelPicker.popup.open()}});return true
   }
   function completionKey(event,step) {
@@ -200,11 +253,11 @@ Rectangle {
     if (Math.abs(editor.cursorRectangle.y-edge.y)>1) return false
     if (direction < 0) {
       if (historyIndex+1 >= promptHistory.length) return false
-      if (historyIndex < 0) historyScratch=root.draft.text
-      historyIndex++;bridge.edit(promptHistory[historyIndex])
+      if (historyIndex < 0){historyScratch=root.draft.text;historyScratchContext=root.draft.context || null}
+      historyIndex++;bridge.patchDraft(bridge.selectedKey,{text:promptHistory[historyIndex],context:promptHistoryEntries[historyIndex].context})
     } else {
       if (historyIndex < 0) return false
-      historyIndex--;bridge.edit(historyIndex < 0 ? historyScratch : promptHistory[historyIndex])
+      historyIndex--;bridge.patchDraft(bridge.selectedKey,{text:historyIndex < 0 ? historyScratch : promptHistory[historyIndex],context:historyIndex < 0 ? historyScratchContext : promptHistoryEntries[historyIndex].context})
     }
     Qt.callLater(function(){editor.cursorPosition=direction<0?0:editor.length});return true
   }
@@ -247,6 +300,7 @@ Rectangle {
   readonly property int modelIndex: models.findIndex(function(m) { return m.instanceId === root.selection.instanceId && m.model === root.selection.model })
   readonly property var descriptors: modelIndex >= 0 ? (models[modelIndex].descriptors || []) : []
   readonly property bool locked: !!(bridge.planOperation || {}).busy || !!draft.busy || !!draft.attempt || !!draft.loading || !!draft.loadError
+  readonly property bool voiceBlocksSubmission:bridge.voiceBlocksSubmission===true
   readonly property bool running: !!bridge.selectedInfo.activeRunId
   readonly property bool hasContent: !!draft.text.trim() || draft.attachments.length > 0
   readonly property bool stopMode: running && !hasContent && !draft.queueEdit
@@ -272,6 +326,15 @@ Rectangle {
     anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.space(12) }
     height:root.expanded ? Math.max(0,root.height-Style.space(24)) : implicitHeight
     spacing: Style.space(8)
+    RowLayout {
+      objectName:"t3FreshSessionBanner";Layout.fillWidth:true;visible:root.bridge.freshSessionArmed===true&&root.bridge.approvals.length===0
+      T3Icon{name:"eraser";tint:Color.accent}
+      ColumnLayout{Layout.fillWidth:true;spacing:Style.space(2)
+        Text{Layout.fillWidth:true;text:T3I18n.tr("Your next message starts a fresh session");color:root.fg;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+        Text{Layout.fillWidth:true;text:T3I18n.tr("The agent won't see earlier messages in this thread.");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap}
+      }
+      T3IconButton{objectName:"t3KeepCurrentSession";name:"x";tooltipText:T3I18n.tr("Keep the current session");onClicked:root.bridge.disarmFreshSession(root.bridge.selectedKey)}
+    }
     RowLayout {
       objectName:"t3FocusComposerContext";Layout.fillWidth:true;visible:root.focusLayout;spacing:Style.space(8)
       T3Icon{name:"folder";implicitWidth:Style.space(13);tint:root.dim}
@@ -433,7 +496,7 @@ Rectangle {
         Keys.onUpPressed: function(event) { event.accepted = root.completionKey(event,-1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(-1)) }
         Keys.onDownPressed: function(event) { event.accepted = root.completionKey(event,1) || (event.modifiers === Qt.NoModifier && root.navigateHistory(1)) }
         Keys.onTabPressed: function(event) {event.accepted=root.completionVisible;if(event.accepted)root.chooseCompletion(root.completionIndex)}
-        Keys.onEscapePressed: function(event) {if(["starting","recording","transcribing"].indexOf(root.bridge.dictation.state)>=0){root.bridge.cancelDictation();event.accepted=true;return}event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
+        Keys.onEscapePressed: function(event) {if(root.voiceBlocksSubmission&&root.bridge.voiceController){root.cancelNativeVoice();event.accepted=true;return}if(["starting","recording","transcribing"].indexOf(root.bridge.dictation.state)>=0){root.bridge.cancelDictation();event.accepted=true;return}event.accepted=root.completionVisible;if(event.accepted)root.closeCompletion()}
         KeyNavigation.priority: KeyNavigation.BeforeItem
         KeyNavigation.tab: expandEditorButton
         Keys.onReturnPressed: function(event) {root.handleEnter(event)}
@@ -450,16 +513,20 @@ Rectangle {
     }
     T3ModelOptions {id:modelOptions;Layout.fillWidth:true;visible:root.showOptions&&!root.draft.queueEdit;bridge:root.bridge;descriptors:root.descriptors;selection:root.selection;locked:root.locked}
     Text {
+      objectName:"nativeVoiceErrorMessage"
       Layout.fillWidth: true
       visible: !!text
       text: root.draft.error ? (root.draft.error === "rpc_outcome_unknown" ? T3I18n.tr("No confirmation from T3. Retry the same submission; it will not duplicate.") : T3I18n.error(root.draft.error))
         : root.invalidFiles ? T3I18n.tr("An upload failed. Remove it and attach it again.")
         : root.bridge.screenshot.error ? T3I18n.tr(root.bridge.screenshot.error)
-        : root.bridge.dictation.error ? T3I18n.tr(root.bridge.dictation.error)
-        : root.bridge.dictationDownload.error ? T3I18n.tr(root.bridge.dictationDownload.error)
+        : root.nativeVoiceMode&&root.nativeVoiceFailure ? root.nativeVoiceFailure
+        : !root.nativeVoiceMode&&root.bridge.dictation.error ? T3I18n.tr(root.bridge.dictation.error)
+        : !root.nativeVoiceMode&&root.bridge.dictationDownload.error ? T3I18n.tr(root.bridge.dictationDownload.error)
         : T3I18n.error(root.bridge.catalog.error || root.bridge.messageError)
       color: Color.urgent; font.pixelSize: Style.font.caption; wrapMode: Text.Wrap; textFormat: Text.PlainText
     }
+    Text{objectName:"nativeVoicePreview";Layout.fillWidth:true;visible:root.nativeVoiceMode&&root.voiceBlocksSubmission&&!!root.nativeVoicePreviewText;text:root.nativeVoicePreviewText;color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;maximumLineCount:3;elide:Text.ElideRight;textFormat:Text.PlainText}
+    Text{objectName:"nativeVoiceWarning";Layout.fillWidth:true;visible:root.nativeVoiceMode&&!!root.bridge.nativeVoiceWarning;text:root.voiceMessage(root.bridge.nativeVoiceWarning||"");color:root.dim;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
     RowLayout {
       Layout.fillWidth: true; spacing: Style.space(5)
       T3IconButton {
@@ -522,21 +589,21 @@ Rectangle {
       T3IconButton {
         id: dictateButton
         objectName: "t3ComposerDictate"
-        visible: root.bridge.dictationEnabled
-        readonly property string mode: root.bridge.dictationDownload.busy ? "downloading" : root.bridge.dictation.state
-        readonly property bool listening: mode === "starting" || mode === "recording"
+        visible: root.nativeVoiceMode||root.bridge.dictationEnabled
+        readonly property string mode: root.nativeVoiceMode?root.nativeVoicePhase:root.bridge.dictationDownload.busy ? "downloading" : root.bridge.dictation.state
+        readonly property bool listening: mode === "recording" || (!root.nativeVoiceMode&&mode === "starting")
         readonly property var model: root.bridge.dictationModelInfo || ({})
         name: "mic"; tint: listening ? Color.urgent : root.fg
-        tooltipText: mode === "downloading" ? T3I18n.tr("Downloading the dictation model… {percent}% · click to cancel",{percent:Math.floor(100*root.bridge.dictationDownload.bytes/Math.max(1,root.bridge.dictationDownload.total))})
+        tooltipText: root.nativeVoiceMode?(mode==="recording"?T3I18n.tr("Stop and insert the text"):mode==="preparing"?T3I18n.tr("Preparing voice input…"):mode==="transcribing"?T3I18n.tr("Transcribing…"):mode==="post-processing"?T3I18n.tr("Cleaning up transcript…"):root.bridge.nativeVoiceChoice&&root.bridge.nativeVoiceChoice!=="off"?T3I18n.tr("Dictate"):T3I18n.tr("Voice settings")):mode === "downloading" ? T3I18n.tr("Downloading the dictation model… {percent}% · click to cancel",{percent:Math.floor(100*root.bridge.dictationDownload.bytes/Math.max(1,root.bridge.dictationDownload.total))})
           : listening ? T3I18n.tr("Stop and insert the text") + " · Ctrl+Space · " + T3I18n.tr("Esc cancels")
           : mode === "transcribing" ? T3I18n.tr("Transcribing…")
           : !model.installed ? T3I18n.tr("Download the dictation model ({size}), then dictate",{size:root.sizeText(model.sizeBytes)})
           : T3I18n.tr("Dictate") + " · " + T3I18n.tr("Ctrl+Space: hold to talk, tap to start and stop")
-        enabled: mode === "downloading" || listening || (mode === "idle" && (!model.installed || (!root.locked && !!root.bridge.selectedThread)))
-        onClicked: mode === "downloading" ? root.bridge.cancelDictationDownload() : root.bridge.toggleDictation()
+        enabled: root.nativeVoiceMode?(root.bridge.nativeVoiceAvailable===true&&(listening||((mode==="idle"||mode==="error")&&!root.locked&&!!root.bridge.selectedKey))):mode === "downloading" || listening || (mode === "idle" && (!model.installed || (!root.locked && !!root.bridge.selectedThread)))
+        onClicked: root.nativeVoiceMode?(root.nativeVoiceState.errorAction==="settings"?root.openNativeVoiceSettings():root.bridge.toggleNativeVoice()):mode === "downloading" ? root.bridge.cancelDictationDownload() : root.bridge.toggleDictation()
         // Resting the mouse on the microphone lists the recordings kept for this
         // thread, so the audio behind a lost transcription is a click away.
-        readonly property bool keepsRecordings: root.bridge.dictationRecordingsPolicy !== "off"
+        readonly property bool keepsRecordings: !root.nativeVoiceMode&&root.bridge.dictationRecordingsPolicy !== "off"
         readonly property var recordings: recordingsPopup
         Timer { interval: 900; running: dictateButton.hovered && dictateButton.mode === "idle" && dictateButton.keepsRecordings && !recordingsPopup.visible; onTriggered: { root.bridge.refreshDictationRecordings(); recordingsPopup.open() } }
         Timer { interval: 450; running: recordingsPopup.visible && !dictateButton.hovered && !recordingsHover.hovered; onTriggered: recordingsPopup.close() }
@@ -593,12 +660,12 @@ Rectangle {
         // The ring follows the microphone level while recording.
         Rectangle {
           anchors.centerIn: parent; z: -1
-          width: parent.width * (0.75 + 0.45 * root.bridge.dictation.level); height: width; radius: width / 2
+          width: parent.width * (0.75 + 0.45 * root.microphoneLevel); height: width; radius: width / 2
           color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.18)
           visible: dictateButton.listening
           Behavior on width { enabled:T3Motion.enabled;NumberAnimation { duration: T3Motion.duration(70)} }
         }
-        WorkIndicator { anchors.centerIn: parent; implicitWidth: Style.space(26); visible: dictateButton.mode === "transcribing" || dictateButton.mode === "downloading"; active: visible && root.visible; tint: Color.accent }
+        WorkIndicator { anchors.centerIn: parent; implicitWidth: Style.space(26); visible: dictateButton.mode === "preparing" || dictateButton.mode === "post-processing" || dictateButton.mode === "transcribing" || dictateButton.mode === "downloading"; active: visible && root.visible; tint: Color.accent }
         // While it records, a bubble grows out of the microphone with the last two
         // seconds of sound, newest on the right, measured from the room's noise:
         // flat while nothing is heard, tall bars for a voice. Two drops rise first,
@@ -606,7 +673,7 @@ Rectangle {
         Item {
           id: dictationWave
           objectName: "t3ComposerDictationWave"
-          readonly property bool shown: dictateButton.visible && dictateButton.listening
+          readonly property bool shown: !root.nativeVoiceMode&&dictateButton.visible && dictateButton.listening
           readonly property var levels: root.bridge.dictation.levels || []
           readonly property int count: root.bridge.dictationWaveLength
           readonly property real floor: Math.min(0.5, levels.reduce(function(low, v) { return Math.min(low, v) }, 1))
@@ -715,6 +782,8 @@ Rectangle {
           }
         }
       }
+      T3IconButton{objectName:"nativeVoiceCancel";visible:root.nativeVoiceMode&&root.voiceBlocksSubmission;name:"x";tooltipText:T3I18n.tr("Cancel voice input");onClicked:root.cancelNativeVoice()}
+      T3IconButton{objectName:"nativeVoiceSettingsButton";visible:root.nativeVoiceMode;name:"settings";tooltipText:T3I18n.tr("Voice settings");onClicked:root.openNativeVoiceSettings()}
       T3ModelPicker {
         id:modelPicker;objectName:"t3ComposerModel"
         Layout.fillWidth:true;Layout.maximumWidth:Style.space(300)
@@ -774,7 +843,7 @@ Rectangle {
         objectName:"t3SendAndNewThread"
         name:"git-branch"
         tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Shift+Enter"
-        enabled:!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
+        enabled:!root.voiceBlocksSubmission&&!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)
         onClicked:root.bridge.submit(true)
       }
       Rectangle {
@@ -797,7 +866,7 @@ Rectangle {
         T3Icon { anchors.centerIn: parent; name: primaryAction.iconName; tint: root.stopMode ? "white" : Color.popups.background; visible: root.stopMode ? !root.draft.stopping : !root.draft.busy && !root.uploading }
         MouseArea {
           id: sendMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-          enabled: root.stopMode ? !root.draft.stopping : !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
+          enabled: root.stopMode ? !root.draft.stopping : !root.voiceBlocksSubmission && (!root.bridge.localDraft || root.bridge.localDraftConnected(root.bridge.selectedInfo)) && !root.bridge.rewindPending && !root.draft.loading && !root.draft.loadError && !root.draft.busy && !root.uploading && !root.invalidFiles && root.hasContent
           onClicked: function(mouse) { primaryAction.activate((mouse.modifiers & Qt.ControlModifier) !== 0) }
         }
         Controls.ToolTip.visible: sendHover.hovered
@@ -816,6 +885,63 @@ Rectangle {
       drop.acceptProposedAction()
     }
     Rectangle { anchors.fill: parent; radius: root.radius; color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.10); border.width: 1; border.color: Color.accent; visible: parent.containsDrag }
+  }
+  property string nativePermissionSession:""
+  property string nativePermissionId:""
+  property string nativePermissionOwner:""
+  function currentNativePermission(){var value=bridge.nativeVoicePermission;return value&&value.session===nativePermissionSession&&value.id===nativePermissionId}
+  function answerNativePermission(allow){
+    var current=currentNativePermission();nativePermissionSession="";nativePermissionId="";
+    if(current)bridge.decideNativeVoicePermission(allow===true);
+    nativeVoicePermissionPopup.close();
+  }
+  function synchronizeNativePermission(){
+    var value=bridge.nativeVoicePermission;
+    if(!value){nativePermissionSession="";nativePermissionId="";nativeVoicePermissionPopup.close();return}
+    if(!root.visible||root.Window.window&&!root.Window.window.active)return;
+    if(value.session===nativePermissionSession&&value.id===nativePermissionId)return;
+    nativePermissionSession=String(value.session);nativePermissionId=String(value.id);nativePermissionOwner=root.bridge.selectedKey;
+    nativeVoicePermissionPopup.open();nativePermissionBlock.forceActiveFocus();
+  }
+  Connections{target:root.bridge;ignoreUnknownSignals:true;function onNativeVoicePermissionChanged(){root.synchronizeNativePermission()}}
+  Connections{target:root.Window.window;ignoreUnknownSignals:true;function onActiveChanged(){root.synchronizeNativePermission()}}
+  Controls.Popup {
+    id:nativeVoicePermissionPopup;objectName:"nativeVoiceMicrophonePermission"
+    parent:root.Window.window?root.Window.window.contentItem:root
+    anchors.centerIn:parent
+    width:Math.min(Style.space(460),parent.width-Style.space(32));padding:Style.space(20)
+    modal:true;focus:true;closePolicy:Controls.Popup.CloseOnEscape
+    onClosed:if(root.nativePermissionId)root.answerNativePermission(false)
+    background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Color.accent}
+    contentItem:ColumnLayout{
+      spacing:Style.space(12)
+      Keys.onReleased:function(event){if(root.nativeVoiceShortcut(event,false))event.accepted=true}
+      Text{Layout.fillWidth:true;text:T3I18n.tr("Allow microphone access?");color:Color.popups.text;font.pixelSize:Style.font.body;font.bold:true;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+      Text{objectName:"nativeVoicePermissionDestination";Layout.fillWidth:true;text:T3I18n.tr("Audio will be sent to {destination} for transcription.",{destination:root.voiceDestination()});color:Color.popups.text;font.pixelSize:Style.font.caption;wrapMode:Text.Wrap;textFormat:Text.PlainText}
+      RowLayout{
+        Layout.alignment:Qt.AlignRight
+        T3PickerButton{id:nativePermissionBlock;objectName:"nativeVoicePermissionBlock";text:T3I18n.tr("Block");primary:false;Keys.onReleased:function(event){if(root.nativeVoiceShortcut(event,false))event.accepted=true};onClicked:root.answerNativePermission(false)}
+        T3PickerButton{objectName:"nativeVoicePermissionAllow";text:T3I18n.tr("Allow");Keys.onReleased:function(event){if(root.nativeVoiceShortcut(event,false))event.accepted=true};enabled:root.currentNativePermission()&&root.nativeVoiceMode&&root.bridge.nativeVoiceAvailable===true&&root.nativePermissionOwner===root.bridge.selectedKey&&!!root.voiceDestination();onClicked:root.answerNativePermission(true)}
+      }
+    }
+  }
+  Controls.Popup {
+    id:nativeVoiceSettingsPopup;objectName:"nativeVoiceSettingsPopup"
+    parent:root.Window.window?root.Window.window.contentItem:root
+    anchors.centerIn:parent
+    width:Math.min(Style.space(640),parent.width-Style.space(32));height:Math.min(implicitHeight,parent.height-Style.space(48));padding:Style.space(20)
+    modal:true;focus:true;closePolicy:Controls.Popup.CloseOnEscape
+    background:Rectangle{color:Color.popups.background;radius:Style.space(12);border.width:1;border.color:Color.accent}
+    contentItem:ColumnLayout{
+      spacing:Style.space(12)
+      RowLayout{Layout.fillWidth:true
+        Text{Layout.fillWidth:true;text:T3I18n.tr("Voice settings");color:Color.popups.text;font.pixelSize:Style.font.body;font.bold:true;textFormat:Text.PlainText}
+        T3IconButton{objectName:"nativeVoiceSettingsClose";name:"x";tooltipText:T3I18n.tr("Close");onClicked:nativeVoiceSettingsPopup.close()}
+      }
+      Controls.ScrollView{id:nativeVoiceSettingsScroll;Layout.fillWidth:true;Layout.fillHeight:true;implicitHeight:Math.min(nativeVoiceSettingsContent.implicitHeight,Style.space(560));clip:true
+        T3NativeVoiceSettings{id:nativeVoiceSettingsContent;width:nativeVoiceSettingsScroll.availableWidth;bridge:root.bridge}
+      }
+    }
   }
   FileDialog {
     id: files

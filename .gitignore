@@ -30,4 +30,11 @@ __pycache__/
 
 # Local dictation helper build output.
 /bin/ot3-dictate
+/bin/qml/
 /native/dictate/target/
+
+/ui/browser/private-browser-pipe.moc.cpp
+
+# Explicit native voice bundle build/install output.
+/bin/native-voice/
+/bin/.native-voice-*/

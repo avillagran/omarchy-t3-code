@@ -39,7 +39,7 @@ pub enum Signal {
 }
 fn after<'a>(line: &'a str, key: &str) -> Option<&'a str> {
     let rest = &line[line.find(key)? + key.len()..];
-    Some(rest[..rest.find(|c| c == ',' || c == '}').unwrap_or(rest.len())].trim())
+    Some(rest[..rest.find([',', '}']).unwrap_or(rest.len())].trim())
 }
 pub fn parse_signal(line: &str) -> Option<Signal> {
     if line.contains("org.freedesktop.login1.Manager.PrepareForSleep") {

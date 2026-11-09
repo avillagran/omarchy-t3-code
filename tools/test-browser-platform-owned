@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Test GUI-owned QML admission only on an isolated private Wayland display."""
+import argparse,fcntl,hashlib,json,os,subprocess,tempfile,uuid
+from runtime_artifacts import snapshot
+from pathlib import Path
+parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--reuse-manager-build',type=Path);parser.add_argument('--manager-ime',action='store_true');parser.add_argument('--manager-server',type=Path);parser.add_argument('--runtime',type=Path);parser.add_argument('--cross-cohort',action='store_true');parser.add_argument('--services',type=Path);parser.add_argument('--retire-cohort-before-ime',action='store_true');parser.add_argument('--shm-megabytes',type=int,choices=[64,256],default=64)
+parser.add_argument('--compositor',type=Path,help='Reviewed regular-file compositor artifact; no image extraction')
+parser.add_argument('--arch-image',action='store_true',help='Use the admitted compositor with the existing Arch image')
+options=parser.parse_args()
+if (options.compositor or options.arch_image) and not options.reuse_manager_build:parser.error('compositor comparison requires the reviewed immutable manager build')
+if options.arch_image and not options.compositor:parser.error('Arch GUI comparison requires a regular-file compositor artifact')
+if options.retire_cohort_before_ime and not options.manager_ime:parser.error('cohort retirement requires private manager IME proof')
+if options.cross_cohort and not options.runtime:parser.error('cross-cohort requires native runtime')
+if bool(options.runtime)!=bool(options.services):parser.error('runtime and services must be supplied together')
+if options.manager_ime and not options.manager_server:parser.error('manager IME requires exact server')
+if options.manager_server and not options.runtime:parser.error('manager proof requires native runtime')
+root=Path(__file__).resolve().parent.parent
+def freeze_ui(destination):
+ files=sorted((root/'ui').rglob('*'))
+ if any(file.is_symlink() for file in files):raise SystemExit('GUI source snapshot refuses symbolic links')
+ before={str(file.relative_to(root/'ui')):hashlib.sha256(file.read_bytes()).hexdigest() for file in files if file.is_file()}
+ for relative in before:
+  file=destination/relative;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes((root/'ui'/relative).read_bytes());file.chmod(0o400)
+ after={str(file.relative_to(root/'ui')):hashlib.sha256(file.read_bytes()).hexdigest() for file in (root/'ui').rglob('*') if file.is_file()}
+ if before!=after:raise SystemExit('GUI source changed during private snapshot')
+ return before
+def manager_diagnostic_code(code):
+ if 'NATIVE_MANAGER_DIAGNOSTIC_TRACE' in code:return code
+ needle=';print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;'
+ replacement=';print(result.stdout);print(result.stderr)\n  if result.returncode:\n   for trace in list(pathlib.Path("/tmp").glob("nm-*/browser/home/native-electron.log"))[:16]:\n    fd=os.open(trace,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)\n    try:\n     assert os.fstat(fd).st_mode&0o170000==0o100000\n     print("NATIVE_MANAGER_DIAGNOSTIC_TRACE");print(os.read(fd,131072).decode("utf-8",errors="replace"))\n    finally:os.close(fd)\n  assert result.returncode==0,result.returncode;'
+ if needle not in code:raise SystemExit('Unexpected frozen manager command')
+ return code.replace(needle,replacement,1)
+if subprocess.check_output(['podman','info','--format','{{.Host.Security.Rootless}}'],text=True).strip()!='true':raise SystemExit('Rootless Podman required')
+out=Path(tempfile.mkdtemp(prefix='browser-gui-platform-',dir='/home/node/BuildCache/o3-desktop-next'));print('GUI platform evidence: '+str(out),flush=True)
+if options.reuse_manager_build:
+ if not options.manager_ime:parser.error('reuse requires the reviewed manager IME case')
+ parent=options.reuse_manager_build.resolve()
+ for name,digest in json.loads((parent/'rust-source-hashes.json').read_text()).items():
+  if hashlib.sha256((root/name).read_bytes()).hexdigest()!=digest:raise SystemExit('Rust source changed since reviewed immutable build: '+name)
+ for file in (parent/'electron').iterdir():
+  if file.name=='native-electron-services.cjs':current=options.services.resolve()
+  elif file.suffix in ['.node','.cjs','.js'] and file.name!='native-electron-services.cjs':continue
+  else:current=root/'ui/browser'/file.name
+  if file.read_bytes()!=current.read_bytes():raise SystemExit('Native assets changed since reviewed immutable build')
+ for name in ['browserinputchannel.h','browserinputcontext.h','browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:
+  if (parent/name).read_bytes()!=(root/'native/browser'/name).read_bytes():raise SystemExit('Native GUI member changed since immutable build')
+ for name in ['private-virtual-pointer.c','wayland-input-method-peer.c','input-method-unstable-v2.xml']:
+  if (parent/name).read_bytes()!=(root/'tools/fixtures'/name).read_bytes():raise SystemExit('Private input helper changed since immutable build')
+ for name,digest in json.loads((parent/'artifacts.json').read_text()).items():
+  if hashlib.sha256((parent/name).read_bytes()).hexdigest()!=digest:raise SystemExit('Immutable artifact changed: '+name)
+ for file in (root/'licenses').rglob('*'):
+  if file.is_file() and str(file.relative_to(root)) not in json.loads((parent/'rust-source-hashes.json').read_text()):raise SystemExit('Frozen build lacks embedded notice input receipt')
+ fixture=out/'native-clipboard-manager.qml';fixture.write_bytes((root/'tools/fixtures/native-clipboard-manager.qml').read_bytes());fixture.chmod(0o400)
+ gui_hashes=freeze_ui(out/'root/ui')
+ website=out/'native-ime-page.html';website.write_bytes((root/'tools/fixtures/native-ime-page.html').read_bytes());website.chmod(0o400)
+ args=json.loads((parent/'podman-command.json').read_text());args[3:3]=['-v',str(out/'root/ui')+':/fixture/root/ui:ro']
+ if str(options.runtime.resolve())+':/electron:ro' not in args or str(options.manager_server.resolve())+':/server/o3-server:ro' not in args:raise SystemExit('Frozen runtime/server do not match supplied inputs')
+ overlays={}
+ for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-scope.js']:
+  file=out/name;file.write_bytes((root/'ui/browser'/name).read_bytes());file.chmod(0o400);overlays[name]=hashlib.sha256(file.read_bytes()).hexdigest();args[3:3]=['-v',str(file)+':/fixture/electron/'+name+':ro','-v',str(file)+':/fixture/root/ui/browser/'+name+':ro']
+ args[3:3]=['-v',str(website)+':/fixture/native-ime-page.html:ro'];args[3:3]=['-v',str(fixture)+':/fixture/native-clipboard-manager.qml:ro']
+ code_index=args.index('-c')+1;code=args[code_index]
+ args[code_index]=manager_diagnostic_code(code)
+ compositor_receipt=None
+ if options.compositor:
+  compositor=options.compositor
+  if compositor.is_symlink() or not compositor.is_dir():raise SystemExit('Compositor must be an owned regular-file artifact')
+  compositor=compositor.resolve();manifest=compositor/'artifact.json'
+  if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size>131072:raise SystemExit('Bounded compositor receipt required')
+  compositor_receipt=json.loads(manifest.read_text())
+  if compositor_receipt.get('schema')!=1 or compositor_receipt.get('kind')!='official-arch-sway-regular-files':raise SystemExit('Reviewed official compositor artifact required')
+  expected={record['path']:record for record in compositor_receipt['files']}
+  required={'usr/bin/sway','usr/bin/swaymsg','usr/lib/libwlroots-0.20.so','usr/lib/libliftoff.so.0','usr/share/licenses/sway/LICENSE','usr/share/licenses/wlroots0.20/LICENSE','usr/share/licenses/libliftoff/LICENSE'}
+  if set(expected)!=required:raise SystemExit('Unexpected compositor member set')
+  for member in compositor.rglob('*'):
+   if member.is_symlink():raise SystemExit('Compositor artifact refuses symbolic links')
+   if member.is_dir():continue
+   relative=str(member.relative_to(compositor))
+   if relative=='artifact.json':continue
+   if relative not in expected or not member.is_file() or member.stat().st_uid!=os.getuid() or member.stat().st_size>4*1024*1024:raise SystemExit('Unowned or unexpected compositor member')
+   record=expected[relative]
+   if member.stat().st_size!=record['bytes'] or hashlib.sha256(member.read_bytes()).hexdigest()!=record['sha256']:raise SystemExit('Compositor member changed')
+  if not all((compositor/name).is_file() for name in required):raise SystemExit('Missing compositor member')
+  args[3:3]=['-v',str(compositor)+':/opt/sway-runtime:ro']
+ if options.arch_image:
+  args[args.index('localhost/o3-qml-wayland-tests:local')]='docker.io/library/archlinux:latest'
+ if options.shm_megabytes!=64:args[3:3]=['--shm-size='+str(options.shm_megabytes)+'m']
+ if options.retire_cohort_before_ime:args[3:3]=['--env','O3_RETIRE_COHORT_BEFORE_IME=1']
+ (out/'inputs.json').write_text(json.dumps({'parent':str(parent),'parentArtifactManifestSha256':hashlib.sha256((parent/'artifacts.json').read_bytes()).hexdigest(),'qmlSha256':hashlib.sha256(fixture.read_bytes()).hexdigest(),'websiteSha256':hashlib.sha256(website.read_bytes()).hexdigest(),'nativeAssetOverlays':overlays,'guiSourceHashes':gui_hashes,'guiHead':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()},indent=2)+'\n')
+ (out/'podman-command.json').write_text(json.dumps(args)+'\n')
+ if compositor_receipt is not None:(out/'compositor.json').write_text(json.dumps(compositor_receipt,indent=2)+'\n')
+ with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=125)
+ (out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)
+(out/'source-revision.json').write_text(json.dumps({'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()})+'\n')
+for name in ['browserinputchannel.h','browserinputcontext.h','browserinputitem.h','clipboardplatform.cpp','clipboardplatform.h','clipboardcohort.cpp','clipboardcohort.h','waylandoffers.h','plugin.cpp']:(out/name).write_bytes((root/'native/browser'/name).read_bytes())
+for name in ['browser-platform-owned.cpp','browser-platform-peer.py','browser-platform-process.qml','electron-clipboard-owner.cpp']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
+(out/'T3BrowserClipboardPlatform.qml').write_bytes((root/'ui/qml/T3BrowserClipboardPlatform.qml').read_bytes())
+if options.manager_server:
+ server=options.manager_server.resolve()
+ if hashlib.sha256(server.read_bytes()).hexdigest()!='23b9f821ddc2d3da7597ff9f65cbb3ab7daa6e5eb84c1887301b1977595a977c':raise SystemExit('Exact reviewed desktop server required')
+ (out/'gui-source-hashes.json').write_text(json.dumps(freeze_ui(out/'root/ui'),indent=2)+'\n')
+ (out/'root/bin').mkdir(parents=True)
+ (out/'root/bin/omarchy-t3-client').write_bytes((root/'tests/fixtures/browser-permission-worker.py').read_bytes());(out/'root/bin/omarchy-t3-client').chmod(0o500)
+ (out/'native-clipboard-manager.qml').write_bytes((root/'tools/fixtures/native-clipboard-manager.qml').read_bytes())
+ (out/'disabled-local-browser').write_bytes(b'Local browser fallback is excluded from this desktop-only proof.\n');(out/'disabled-local-browser').chmod(0o400)
+ (out/'server-artifact.json').write_text(json.dumps({'sha256':hashlib.sha256(server.read_bytes()).hexdigest(),'revision':'0b9a5d31abf64e7bf90008802a6115302d0ed735'})+'\n')
+if options.manager_ime:
+ for name in ['native-ime-page.html','private-virtual-pointer.c','wayland-input-method-peer.c','input-method-unstable-v2.xml','input-method-unstable-v2.source.json']:(out/name).write_bytes((root/'tools/fixtures'/name).read_bytes())
+ reference=json.loads((out/'input-method-unstable-v2.source.json').read_text());assert hashlib.sha256((out/'input-method-unstable-v2.xml').read_bytes()).hexdigest()==reference['sha256']
+ pointer=root/'tools/fixtures/protocols/wlr-virtual-pointer-unstable-v1.xml';pointer_source=json.loads((pointer.parent/'wlr-virtual-pointer-source.json').read_text());assert hashlib.sha256(pointer.read_bytes()).hexdigest()==pointer_source['sha256'];(out/'virtual-pointer.xml').write_bytes(pointer.read_bytes())
+if options.runtime:
+ runtime=options.runtime.resolve();manifest=json.loads((runtime.parent/'artifact.json').read_text())
+ if manifest['version']!='44.10.1' or manifest['archiveSha256']!='2be868b71b0aa71f30e6b5567a106a35a049385e963183c074aad1975ead5167':raise SystemExit('Verified official runtime required')
+ assets=out/'electron';assets.mkdir()
+ for name in ['native-electron-main.cjs','electron-human-input.cjs','qt-target-scope.js','electron-private-fd.c']:(assets/name).write_bytes((root/'ui/browser'/name).read_bytes())
+ (assets/'native-electron-services.cjs').write_bytes(options.services.resolve().read_bytes());(out/'electron-artifact.json').write_text(json.dumps(manifest,indent=2)+'\n')
+ with (out/'addon-compile.log').open('w') as log:subprocess.run(['cc','-std=c11','-fPIC','-shared','-Wall','-Wextra','-Werror','-I/usr/include/node',str(assets/'electron-private-fd.c'),'-o',str(assets/'electron-private-fd.node')],check=True,stdout=log,stderr=subprocess.STDOUT)
+qml=out/'qml/O3/Browser';qml.mkdir(parents=True);(qml/'qmldir').write_bytes((root/'native/browser/qmldir').read_bytes())
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+ fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
+ with (out/'compile.log').open('w') as log:
+  moc=subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip()+'/moc'
+  for source,target in [('browserinputitem.h','moc_browserinputitem.cpp'),('clipboardplatform.h','moc_clipboardplatform.cpp'),('plugin.cpp','plugin.moc')]:subprocess.run([moc,str(out/source),'-o',str(out/target)],check=True,stdout=log,stderr=subprocess.STDOUT)
+  flags=subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Quick','Qt6Qml','Qt6Gui','wayland-client','xcb','xcb-xfixes','xcb-res'],text=True).split()
+  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror','-shared',str(out/'clipboardplatform.cpp'),str(out/'clipboardcohort.cpp'),str(out/'plugin.cpp'),str(out/'moc_clipboardplatform.cpp'),str(out/'moc_browserinputitem.cpp'),'-I'+str(out),'-o',str(qml/'libo3browserplatform.so'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'electron-clipboard-owner.cpp'),'-o',str(out/'clipboard-owner'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+  subprocess.run(['c++','-std=c++17','-fPIC','-Wall','-Wextra','-Werror',str(out/'browser-platform-owned.cpp'),'-o',str(out/'gui'),*flags],check=True,stdout=log,stderr=subprocess.STDOUT)
+  if options.manager_ime:
+   for mode,name in [('client-header','input-method-client.h'),('private-code','input-method-protocol.c')]:subprocess.run(['wayland-scanner',mode,str(out/'input-method-unstable-v2.xml'),str(out/name)],check=True,stdout=log,stderr=subprocess.STDOUT)
+   wayland=subprocess.check_output(['pkg-config','--cflags','--libs','wayland-client'],text=True).split()
+   subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(out/'wayland-input-method-peer.c'),str(out/'input-method-protocol.c'),'-o',str(out/'input-method-peer'),*wayland],check=True,stdout=log,stderr=subprocess.STDOUT)
+   for mode,name in [('client-header','virtual-pointer.h'),('private-code','virtual-pointer.c')]:subprocess.run(['wayland-scanner',mode,str(out/'virtual-pointer.xml'),str(out/name)],check=True,stdout=log,stderr=subprocess.STDOUT)
+   subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(out/'private-virtual-pointer.c'),str(out/'virtual-pointer.c'),'-o',str(out/'pointer'),*wayland],check=True,stdout=log,stderr=subprocess.STDOUT)
+ source_paths=sorted(list((root/'src').rglob('*.rs'))+list((root/'vendor/t3-protocol').rglob('*.rs'))+[file for file in (root/'licenses').rglob('*') if file.is_file()]+[root/'Cargo.toml',root/'Cargo.lock',*list((root/'examples').glob('*.rs'))])
+ source_hashes={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}
+ (out/'rust-source-hashes.json').write_text(json.dumps(source_hashes,indent=2)+'\n')
+ with (out/'rust-compile.jsonl').open('w') as log,(out/'rust-compile.log').open('w') as errors:
+  build_args=['/home/node/.cargo/bin/cargo','build','--locked','--offline','--bins','--message-format=json']
+  if options.manager_server:build_args+=['--example','native_clipboard_manager_probe']
+  else:
+   build_args+=['--example','gui_clipboard_probe','--example','engine_identity_peer']
+   if options.runtime:build_args+=['--example','native_clipboard_pool_probe']
+  build=subprocess.run(build_args,cwd=root,env=dict(os.environ,CARGO_TARGET_DIR='/home/node/BuildCache/o3-desktop-next/gui-glue-target',CARGO_INCREMENTAL='0',CARGO_BUILD_JOBS='2'),stdout=log,stderr=errors)
+ if build.returncode:raise SystemExit(build.returncode)
+ if source_hashes!={str(file.relative_to(root)):hashlib.sha256(file.read_bytes()).hexdigest() for file in source_paths}:raise SystemExit('Source changed during GUI consumer compile')
+ items=[json.loads(line) for line in (out/'rust-compile.jsonl').read_text().splitlines()];executables=[Path(item['executable']) for item in items if item.get('executable')]
+ probe=next(file for file in executables if file.name==('native_clipboard_manager_probe' if options.manager_server else 'gui_clipboard_probe'));debug=probe.parent.parent
+ frozen=debug.resolve().parent/('browser-gui-platform-'+uuid.uuid4().hex)
+ records=snapshot(debug,executables,frozen);(out/'runtime-artifacts.json').write_text(json.dumps(records,indent=2)+'\n')
+ if not options.manager_server:
+  peer=next(file for file in executables if file.name=='engine_identity_peer');(out/'identity-peer').write_bytes((frozen/peer.relative_to(debug)).read_bytes());(out/'identity-peer').chmod(0o500)
+  (out/'worker-probe').write_bytes((frozen/probe.relative_to(debug)).read_bytes());(out/'worker-probe').chmod(0o500)
+ (out/'worker-libs').mkdir()
+ for file in frozen.iterdir():
+  if file.is_file() and file.suffix=='.so':(out/'worker-libs'/file.name).write_bytes(file.read_bytes())
+ if options.runtime:
+  if not options.manager_server:
+   pool=next(file for file in executables if file.name=='native_clipboard_pool_probe');(out/'native-pool-probe').write_bytes((frozen/pool.relative_to(debug)).read_bytes());(out/'native-pool-probe').chmod(0o500)
+  main=next(file for file in executables if file.name=='omarchy-t3-client');(out/'app/bin').mkdir(parents=True);(out/'app/bin/omarchy-t3-client').write_bytes((frozen/main.relative_to(debug)).read_bytes());(out/'app/bin/omarchy-t3-client').chmod(0o500)
+if options.manager_server:
+ manager=next(file for file in executables if file.name=='native_clipboard_manager_probe');(out/'native-manager-probe').write_bytes((frozen/manager.relative_to(debug)).read_bytes());(out/'native-manager-probe').chmod(0o500)
+(out/'clipboard-owner').chmod(0o500)
+(out/'gui').chmod(0o500)
+(out/'artifacts.json').write_text(json.dumps({str(file.relative_to(out)):hashlib.sha256(file.read_bytes()).hexdigest() for file in out.rglob('*') if file.is_file()},indent=2)+'\n')
+args=['podman','run','--rm','--pull=never','--read-only','--network=none','--userns=keep-id','--user',str(os.getuid())+':'+str(os.getgid()),'--cap-drop=ALL','--security-opt=no-new-privileges','--ulimit=core=0:0','--pids-limit=96','--memory=512m','--tmpfs','/tmp:rw,size=128m,mode=1777','--tmpfs','/run:rw,size=32m','-v','/usr:/usr:ro','-v','/etc/fonts:/etc/fonts:ro','-v',str(out)+':/fixture:ro','--env','HOME=/tmp/home','--env','XDG_RUNTIME_DIR=/tmp/runtime','--env','LIBGL_ALWAYS_SOFTWARE=1','--env','__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json','--env','QT_QPA_PLATFORM=wayland','--env','LD_LIBRARY_PATH=/fixture/worker-libs','localhost/o3-qml-wayland-tests:local','python3','-c',r'''
+import hashlib,json,os,pathlib,resource,subprocess,time
+assert resource.getrlimit(resource.RLIMIT_CORE)==(0,0)
+os.mkdir('/tmp/home',0o700);os.mkdir('/tmp/runtime',0o700)
+if os.environ.get('O3_NATIVE_GUI_POOL')=='1':
+ for row in json.loads(pathlib.Path('/fixture/electron-artifact.json').read_text())['files']:
+  file=pathlib.Path('/electron')/row['path'];assert file.is_file() and not file.is_symlink()
+  with file.open('rb') as source:assert hashlib.file_digest(source,'sha256').hexdigest()==row['sha256']
+pathlib.Path('/tmp/sway.conf').write_text('xwayland disable\noutput * mode 1280x1024\nseat seat0 fallback true\ndefault_border none\nfor_window [title="Owned GUI Clipboard"] floating enable, resize set width 640 height 480, move position 100 100\nfor_window [title="Owned synthetic clipboard peer"] floating enable, move position 800 100\n')
+env=dict(os.environ,LD_LIBRARY_PATH='/opt/sway-runtime/usr/lib',WLR_BACKENDS='headless',WLR_RENDERER='pixman',WLR_HEADLESS_OUTPUTS='1',WLR_LIBINPUT_NO_DEVICES='1')
+log=open('/tmp/sway.log','w');display=subprocess.Popen(['/opt/sway-runtime/usr/bin/sway','--config','/tmp/sway.conf'],env=env,stdout=log,stderr=subprocess.STDOUT);keyboard=None
+try:
+ for _ in range(100):
+  sockets=[file for file in pathlib.Path('/tmp/runtime').glob('wayland-*') if file.is_socket()]
+  if sockets:break
+  assert display.poll() is None;time.sleep(.02)
+ else:raise AssertionError('private display unavailable')
+ keyboard=subprocess.Popen(['wtype','-k','Shift_L','-s','120000'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ time.sleep(.05)
+ if os.environ.get('O3_NATIVE_GUI_MANAGER')=='1':
+  assert not any(os.access(pathlib.Path('/usr/bin',name),os.X_OK) for name in ['chromium','chromium-browser','google-chrome','google-chrome-stable']), 'Local browser fallback must be unavailable'
+  server=pathlib.Path('/server/o3-server');assert hashlib.sha256(server.read_bytes()).hexdigest()==json.loads(pathlib.Path('/fixture/server-artifact.json').read_text())['sha256']
+  qml=pathlib.Path('/tmp/qml');qml.mkdir()
+  for name in ['Commons','Ui','plugins','services']:(qml/name).symlink_to('/usr/share/omarchy/shell/'+name)
+  (qml/'UnderTest').symlink_to('/fixture/root')
+  (qml/'shell.qml').write_text('//@ pragma OmarchyLoadPatch\n//@ pragma RespectSystemStyle\n'+pathlib.Path('/fixture/native-clipboard-manager.qml').read_text())
+  sway=next(pathlib.Path('/tmp/runtime').glob('sway-ipc.*.sock'))
+  result=subprocess.run(['quickshell','-p',str(qml/'shell.qml')],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name,SWAYSOCK=str(sway),QML_IMPORT_PATH='/fixture/qml'),capture_output=True,text=True,timeout=100);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'NATIVE_CLIPBOARD_MANAGER_MODAL_PASS' in result.stdout+result.stderr
+ else:
+  result=subprocess.run(['/fixture/gui'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name),capture_output=True,text=True,timeout=40);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PLATFORM_PASS' in result.stdout
+  result=subprocess.run(['quickshell','-p','/fixture/browser-platform-process.qml'],env=dict(os.environ,WAYLAND_DISPLAY=sockets[0].name,QML_IMPORT_PATH='/fixture/qml'),capture_output=True,text=True,timeout=15);print(result.stdout);print(result.stderr);assert result.returncode==0,result.returncode;assert 'BROWSER_GUI_PROCESS_PASS' in result.stdout+result.stderr
+finally:
+ if keyboard is not None and keyboard.poll() is None:keyboard.terminate();keyboard.wait(timeout=3)
+ display.terminate();display.wait(timeout=3);log.close()
+''']
+if options.shm_megabytes!=64:args[3:3]=['--shm-size='+str(options.shm_megabytes)+'m']
+if options.manager_ime:args[3:3]=['--env','O3_NATIVE_GUI_IME=1']
+if options.retire_cohort_before_ime:args[3:3]=['--env','O3_RETIRE_COHORT_BEFORE_IME=1']
+if options.manager_server:
+ for name in ['chromium','chromium-browser','google-chrome','google-chrome-stable']:
+  if Path('/usr/bin',name).exists():args[3:3]=['-v',str(out/'disabled-local-browser')+':/usr/bin/'+name+':ro']
+if options.manager_server:args[3:3]=['-v',str(server)+':/server/o3-server:ro','--env','O3_NATIVE_GUI_MANAGER=1']
+if options.cross_cohort:args[3:3]=['--env','O3_NATIVE_GUI_CROSS=1']
+if options.runtime:
+ args[args.index('--memory=512m')]='--memory=3g';args[args.index('--pids-limit=96')]='--pids-limit=384'
+ args[3:3]=['--security-opt=seccomp=unconfined','-v',str(runtime)+':/electron:ro','--env','O3_NATIVE_GUI_POOL=1']
+if options.manager_server:args[args.index('-c')+1]=manager_diagnostic_code(args[args.index('-c')+1])
+(out/'podman-command.json').write_text(json.dumps(args)+'\n')
+with (out/'runtime.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=125)
+(out/'result.json').write_text(json.dumps({'returncode':result.returncode})+'\n');raise SystemExit(result.returncode)

@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Run exact capture scripts with synthetic media; never open host audio/display."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('--runtime', required=True, type=Path)
+p.add_argument('--addon', required=True, type=Path)
+a = p.parse_args()
+root = Path(__file__).resolve().parent.parent
+podman = ['podman', '--remote=false']
+assert subprocess.check_output([*podman, 'info', '--format',
+    '{{.Host.Security.Rootless}}'], text=True).strip() == 'true'
+image = subprocess.check_output([*podman, 'image', 'inspect',
+    'docker.io/library/archlinux:latest', '--format', '{{.Id}}'], text=True).strip()
+if len(image) == 64:
+    image = 'sha256:' + image
+assert image.startswith('sha256:') and len(image) == 71
+
+def digest(path):
+    with path.open('rb') as data:
+        return hashlib.file_digest(data, 'sha256').hexdigest()
+
+# Admit the fixed runtime graph without copying it into another cache.
+runtime = a.runtime
+assert runtime.is_absolute() and runtime.resolve() == runtime
+manifest = json.loads((root / 'ui/voice/electron-runtime-44.10.1-linux-x64.json').read_text())
+assert manifest['version'] == '44.10.1' and manifest['platform'] == 'linux-x64'
+assert len(manifest['files']) == 72
+expected = {member['path'] for member in manifest['files']}
+actual = set()
+for directory, children, names in os.walk(runtime, followlinks=False):
+    current = Path(directory)
+    metadata = current.lstat()
+    assert stat.S_ISDIR(metadata.st_mode) and metadata.st_uid == os.getuid()
+    assert metadata.st_mode & 0o022 == 0
+    for child in children:
+        assert not (current / child).is_symlink()
+    actual.update(str((current / name).relative_to(runtime)) for name in names)
+assert actual == expected
+for member in manifest['files']:
+    source = runtime / member['path']
+    metadata = source.lstat()
+    assert stat.S_ISREG(metadata.st_mode) and metadata.st_nlink == 1
+    assert metadata.st_uid == os.getuid() and metadata.st_mode & 0o222 == 0
+    assert bool(metadata.st_mode & 0o111) == member['executable']
+    assert metadata.st_size == member['bytes'] and digest(source) == member['sha256']
+metadata = json.loads(subprocess.check_output([
+    'python3', str(root / 'tools/prepare-native-voice-build-metadata'),
+    '--addon', str(a.addon)], text=True))
+
+out = Path(tempfile.mkdtemp(prefix='voice-capture-identity-', dir='/var/tmp/o3-build'))
+out.chmod(0o700)
+source = out / 'source'
+source.mkdir(mode=0o700)
+state = out / 'state'
+state.mkdir(mode=0o700)
+copies = {
+    'ui/voice/electron-capture-main.cjs': 'electron-capture-main.cjs',
+    'ui/voice/electron-capture-preload.cjs': 'electron-capture-preload.cjs',
+    'ui/voice/electron-capture-renderer.mjs': 'electron-capture-renderer.mjs',
+    'ui/voice/browser-capture-owner.mjs': 'browser-capture-owner.mjs',
+    'ui/voice/browser-microphones.mjs': 'browser-microphones.mjs',
+    'ui/voice/browser-microphone-monitor.mjs': 'browser-microphone-monitor.mjs',
+    'ui/js/NativePcmCapture.js': 'NativePcmCapture.js',
+    'tools/fixtures/voice-microphone-identity.py': 'controller.py',
+}
+fence = {name: digest(root / name) for name in copies}
+fence['tools/test-voice-microphone-identity'] = digest(Path(__file__))
+for name, target in copies.items():
+    destination = source / target
+    with destination.open('xb') as data:
+        data.write((root / name).read_bytes())
+    destination.chmod(0o400)
+addon = source / 'electron-private-fd.node'
+with addon.open('xb') as data:
+    data.write(a.addon.read_bytes())
+addon.chmod(0o500)
+assert digest(addon) == metadata['environment']['O3_NATIVE_VOICE_BUNDLED_ADDON_SHA256']
+proof = {'complete': False, 'sourceSha256': fence, 'imageId': image,
+    'addonSha256': digest(addon), 'runtimeManifestSha256': digest(
+        root / 'ui/voice/electron-runtime-44.10.1-linux-x64.json'),
+    'scope': 'Exact capture JS/addon/original DSP and metadata with synthetic media. '
+        'Rust profile/discovery/host/UI integration and physical microphone remain separate acceptance.'}
+def save():
+    (out / 'result.json').write_text(json.dumps(proof, indent=2) + '\n')
+save()
+command = [*podman, 'run', '--rm', '--init', '--timeout=100', '--pull=never', '--http-proxy=false',
+    '--read-only', '--network=none', '--userns=keep-id', '--user', f'{os.getuid()}:{os.getgid()}',
+    '--cap-drop=ALL', '--security-opt=no-new-privileges', '--security-opt=seccomp=unconfined',
+    '--memory=2g', '--pids-limit=256', '--shm-size=256m', '--ulimit=core=0:0',
+    '--tmpfs', '/tmp:rw,exec,size=128m,mode=1777', '--tmpfs', '/run:rw,size=32m',
+    '-v', '/usr:/usr:ro', '-v', '/etc/fonts:/etc/fonts:ro', '-v', f'{runtime}:/electron:ro',
+    '-v', f'{source}:/source:ro', '-v', f'{state}:/state:rw', '--env', 'HOME=/state', image,
+    '/usr/bin/python3', '/source/controller.py']
+try:
+    with (out / 'runtime.json').open('w') as stdout, (out / 'runtime.log').open('w') as stderr:
+        result = subprocess.run(command, stdout=stdout, stderr=stderr, timeout=120)
+    proof['runtimeExit'] = result.returncode
+    assert all(digest(root / name) == value for name, value in fence.items())
+    assert result.returncode == 0, 'Private capture identity runtime failed'
+    proof['receipt'] = json.loads((out / 'runtime.json').read_text())
+    assert proof['receipt']['complete'] is True
+    proof['complete'] = True
+    proof['exit'] = 0
+except Exception as error:
+    proof['exit'] = 1
+    proof['failure'] = str(error)
+finally:
+    save()
+    print(out)
+raise SystemExit(proof['exit'])

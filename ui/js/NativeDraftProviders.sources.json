@@ -1,0 +1,22 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "files": {
+    "apps/web/src/providerInstances.ts": "52f34496c50b94919252cf9c4ee57c3fa042c6fb871bc3e7d17d0b4f45e7a3f9",
+    "packages/client-runtime/src/state/providerInstanceDisplay.ts": "54ef1a76cf419c96efaa456003677c85835d859915d629eadc3aa17ee544bf56",
+    "packages/shared/src/path.ts": "5d8e50477165341bff87df2c12208b87f6f4d1363b3497d141de1ed0cdb3261c",
+    "packages/shared/src/projectSettings.ts": "0ed89a05f7271fa5d569a2b2d0f7bb1a69e54d56002a44341efc014bfa27a36a"
+  },
+  "outputSha256": "5dd76e78cf5b514665bccacfda0d1cc27a7510f0cf70787b96a2963e16d0b1fc",
+  "constants": {
+    "fixture": "tests/fixtures/local-thread-draft-4301.json",
+    "sha256": "5af2c7cb74d1c6bc5f2d78c6b7447a03987b73baa6a558d6373fee9465e4d164"
+  },
+  "adaptations": [
+    "Complete selected provider/default/display functions after TypeScript/import/export/comment removal",
+    "Syntax-only Qt object spread lowering to Object.assign",
+    "Nominal driver ID constructor erases to identity for validated provider driver strings",
+    "Actual native constants evaluated in canonical Effect source oracle",
+    "Existing exact native project enablement helper shared with fallback selection",
+    "Effect pipe is sequential application; Object.hasOwn uses equivalent Qt-supported call"
+  ]
+}

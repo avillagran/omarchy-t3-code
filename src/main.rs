@@ -20,6 +20,7 @@ mod remote_maintenance_host;
 mod server_update;
 mod session_audit_cache;
 mod shell_watch;
+mod terminal_surface;
 mod ui_state;
 mod worktree_setup;
 use omarchy_t3_client::write;
@@ -404,10 +405,14 @@ fn device_pool(browser: browser_sessions::Manager) -> mpsc::SyncSender<Value> {
     sender
 }
 fn watch(client: Client) -> Result<()> {
+    let gui_clipboard =
+        gui_clipboard::start().map(|session| std::sync::Arc::new(std::sync::Mutex::new(session)));
     binary_update::spawn();
     let external = local_quotas::ExternalHttp::shared()?;
     emit("ui-state", ui_state::load());
     let (tx, rx) = mpsc::channel::<Value>();
+    rpc_sessions::set_events(tx.clone());
+    file_metadata_runtime::set_events(tx.clone());
     let compactor = auto_compact::Control::new(tx.clone());
     let idle_releaser = idle_release::Control::new(tx.clone());
     let updater = server_update::Control::new();
@@ -497,6 +502,7 @@ fn watch(client: Client) -> Result<()> {
     let input_tx = tx.clone();
     let live = live::Control::new(client.clone());
     let shell_environments = shell_watch::start(tx.clone());
+    let mut profile_reporting = browser_profile_reporting::Control::new(tx.clone());
     // Resume from suspend / network change: streams reconnect on their own; re-check
     // connections (SSH tunnels die with a suspend) and rebuild the sidebar now.
     let wake_tx = tx.clone();
@@ -510,7 +516,7 @@ fn watch(client: Client) -> Result<()> {
     let input_live = live.clone();
     let input_client = client.clone();
     let browser_manager = browser_sessions::Manager::start(
-        browser_guest::Config::native()?,
+        browser_guest::Config::native()?.with_gui_clipboard(gui_clipboard),
         |id| {
             environments()?
                 .into_iter()
@@ -520,6 +526,9 @@ fn watch(client: Client) -> Result<()> {
         connection_preferences::read_client_preferences,
         |data| emit("browser-surface", data),
     );
+    let owned_desktop = std::sync::Arc::new(std::sync::Mutex::new(None::<owned_runtime::Runtime>));
+    let input_owned_desktop = owned_desktop.clone();
+    let mut native_search = native_search::Manager::new(tx.clone())?;
     std::thread::spawn(move || {
         let mut input_visible = false;
         let mut mosaic_readers: Vec<live::Control> = Vec::new();
@@ -527,6 +536,7 @@ fn watch(client: Client) -> Result<()> {
         let mut keybinding_watches = keybinding_watch::Control::default();
         let mut device_watches = device_watch::Control::default();
         let mut device_screens = device_screen::Manager::default();
+        let mut terminal_surfaces = terminal_surface::Manager::default();
         let browser_observer = browser_manager.clone();
         let preview_watches =
             preview_watch::Control::with_observer(move |data| browser_observer.observe(data));
@@ -541,10 +551,42 @@ fn watch(client: Client) -> Result<()> {
             .map_while(std::result::Result::ok)
         {
             binary_update::touch();
-            if line.len() > 1024 * 1024 {
+            // Queue state retains four native contexts; an operation may carry a fifth copy.
+            if line.len() > 256 * 1024 * 1024 {
                 continue;
             }
             if let Ok(mut v) = serde_json::from_str::<Value>(&line) {
+                if v["op"] == "native-search" {
+                    if let Err(error) = native_search.submit(v.clone()) {
+                        emit(
+                            "action",
+                            json!({"op":"native-search","requestId":v["requestId"],"error":error}),
+                        );
+                    }
+                    continue;
+                }
+                if v["op"] == "thread-search-mount" {
+                    let result = shell_state::mount_search(
+                        text(&v, "consumer"),
+                        text(&v, "key"),
+                        &v["rows"],
+                    );
+                    emit(
+                        "action",
+                        json!({"op":"thread-search-mount", "requestId":v["requestId"],
+                        "error":result.err()}),
+                    );
+                    continue;
+                }
+                // Apply mounted lease controls in input order before any query
+                // worker can observe this conversation's lifecycle.
+                if let Some(result) = file_metadata_runtime::control(&v) {
+                    emit(
+                        "action",
+                        json!({"op":v["op"],"environment":v["environment"],"thread":v["thread"],"requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}),
+                    );
+                    continue;
+                }
                 if v["op"] == "stream-resync" {
                     if let Some(id) = v["stream"].as_u64() {
                         json_delta::request_resync(id);
@@ -648,6 +690,7 @@ fn watch(client: Client) -> Result<()> {
                         preview_watches.clear();
                         browser_manager.hide();
                         device_screens.stop();
+                        terminal_surfaces.stop();
                         document_thread_key = key;
                     }
                 }
@@ -664,13 +707,18 @@ fn watch(client: Client) -> Result<()> {
                         keybinding_watches.clear();
                         device_watches.clear();
                         device_screens.stop();
+                        terminal_surfaces.stop();
                         preview_watches.clear();
                         browser_manager.hide();
                     }
                 }
                 if matches!(
                     text(&v, "op"),
-                    "browser-show" | "browser-hide" | "browser-input" | "browser-control"
+                    "browser-show"
+                        | "browser-hide"
+                        | "browser-input"
+                        | "browser-control"
+                        | "browser-permission"
                 ) {
                     browser_manager.request(v, input_visible);
                     continue;
@@ -687,6 +735,7 @@ fn watch(client: Client) -> Result<()> {
                     preview_watches.clear();
                     browser_manager.hide();
                     device_screens.stop();
+                    terminal_surfaces.stop();
                 }
                 if v["op"] == "devices-watch" {
                     device_watches.select(&v, input_visible);
@@ -713,6 +762,10 @@ fn watch(client: Client) -> Result<()> {
                     if v["op"] == "command-output-stop" {
                         continue;
                     }
+                }
+                if text(&v, "op").starts_with("terminal-surface-") {
+                    terminal_surfaces.request(&v, input_visible);
+                    continue;
                 }
                 if matches!(
                     text(&v, "op"),
@@ -868,16 +921,49 @@ fn watch(client: Client) -> Result<()> {
                 }
                 // Draft durability must never wait behind a slow remote snapshot.
                 if v["op"] == "backend-status" {
-                    emit("backend-status", backend_service::status());
+                    let mut status = backend_service::status();
+                    status["ownedDesktop"] = input_owned_desktop.try_lock().ok().and_then(|runtime| runtime.as_ref().map(owned_runtime::Runtime::status)).unwrap_or_else(|| json!({"id":owned_runtime::ENVIRONMENT_ID,"owner":"gui","running":false}));
+                    emit("backend-status", status);
                     continue;
                 }
                 // Lifecycle controls must not wait behind a remote snapshot.
                 if matches!(text(&v, "op"), "backend-start" | "backend-control") {
                     let service_tx = input_tx.clone();
+                    let owned = input_owned_desktop.clone();
+                    let browser = browser_manager.clone();
                     std::thread::spawn(move || {
                         static BUSY: std::sync::Mutex<()> = std::sync::Mutex::new(());
                         let guard = BUSY.try_lock();
                         let result = match guard {
+                            Ok(_guard) if v["server"] == owned_runtime::ENVIRONMENT_ID => {
+                                (|| -> Result<Value> {
+                                    let mut runtime =
+                                        owned.try_lock().map_err(|_| "backend_control_busy")?;
+                                    match text(&v, "action") {
+                                        "start" => {
+                                            if runtime.is_some() {
+                                                return Err("owned_backend_already_running".into());
+                                            }
+                                            let launched = owned_runtime::Runtime::launch(
+                                                &backend_service::owned_config()?,
+                                                browser,
+                                            )?;
+                                            let status = launched.status();
+                                            *runtime = Some(launched);
+                                            Ok(status)
+                                        }
+                                        "stop" => {
+                                            if let Some(mut old) = runtime.take() {
+                                                old.stop()?;
+                                            }
+                                            Ok(
+                                                json!({"id":owned_runtime::ENVIRONMENT_ID,"owner":"gui","running":false}),
+                                            )
+                                        }
+                                        _ => Err("invalid_backend_action".into()),
+                                    }
+                                })()
+                            }
                             Ok(_guard) => write::execute(&v),
                             Err(_) => Err("backend_control_busy".into()),
                         };
@@ -891,6 +977,12 @@ fn watch(client: Client) -> Result<()> {
                 }
                 if v["op"] == "quit" {
                     let _ = cloud_manager.cancel_active();
+                    if let Ok(mut runtime) = input_owned_desktop.lock() {
+                        if let Some(mut owned) = runtime.take() {
+                            let _ = owned.stop();
+                        }
+                    }
+                    let _ = browser_manager.shutdown();
                 }
                 if v["op"] == "prompt-stash" && !text(&v, "authority").is_empty() {
                     let c = input_client.clone();
@@ -1098,13 +1190,27 @@ fn watch(client: Client) -> Result<()> {
                     });
                     continue;
                 }
+                if v["op"] == "thread-search" {
+                    std::thread::spawn(move || {
+                        let result = thread_search::search_with_progress(&v, |partial| {
+                            emit(
+                                "action",
+                                json!({"op":"thread-search","requestId":v["requestId"],"result":partial}),
+                            );
+                        });
+                        emit(
+                            "action",
+                            json!({"op":"thread-search","requestId":v["requestId"],"result":result.as_ref().ok(),"error":result.as_ref().err()}),
+                        );
+                    });
+                    continue;
+                }
                 if matches!(
                     text(&v, "op"),
                     "branch-refs"
                         | "branch-switch"
                         | "branch-check"
                         | "branch-resolve"
-                        | "thread-search"
                         | "secret-answer"
                         | "pull-request-action"
                         | "thread-pull-request"
@@ -1115,6 +1221,9 @@ fn watch(client: Client) -> Result<()> {
                         | "provider-setup"
                         | "provider-login"
                         | "provider-refresh"
+                        | "provider-reset-credit-access"
+                        | "provider-reset-credit"
+                        | "speech"
                         | "agent-sessions"
                         | "process-diagnostics"
                         | "pin-reorder"
@@ -1127,6 +1236,7 @@ fn watch(client: Client) -> Result<()> {
                         | "workflow-script"
                         | "workflow-stop"
                         | "nightly"
+                        | "file-metadata-query"
                         | "thread-details-read"
                         | "thread-details-open-editor"
                         | "provider-update"
@@ -1165,7 +1275,15 @@ fn watch(client: Client) -> Result<()> {
             }
         }
         let _ = cloud_manager.cancel_active();
+        if let Ok(mut runtime) = input_owned_desktop.lock() {
+            if let Some(mut owned) = runtime.take() {
+                let _ = owned.stop();
+            }
+        }
         let _ = browser_manager.shutdown();
+        if let Err(error) = native_search.close() {
+            emit("native-search-error", json!({"error":error}));
+        }
         let _ = input_tx.send(json!({"op":"quit"}));
     });
     let result_tx = tx.clone();
@@ -1261,6 +1379,7 @@ fn watch(client: Client) -> Result<()> {
         if Instant::now() >= next_poll {
             last_snapshot = Instant::now();
             if let Ok(environments) = environments() {
+                profile_reporting.sync(&environments);
                 quotas.sync(environments);
             }
             match snapshot(&client) {
@@ -1371,6 +1490,20 @@ fn watch(client: Client) -> Result<()> {
             Err(_) => return Ok(()),
         };
         match text(&cmd, "op") {
+            "native-search-result" => emit(
+                "action",
+                json!({"op":"native-search",
+                "requestId":cmd["requestId"],"result":cmd["result"],"error":cmd["error"]}),
+            ),
+            "rpc-session-state" | "file-metadata-invalidated" => {
+                emit(text(&cmd, "op"), cmd.clone())
+            }
+            "browser-profile-targets-ready" => {
+                for target in profile_reporting.take_targets() {
+                    emit("browser-profile-target", target);
+                }
+            }
+            "browser-profile-report" => profile_reporting.submit(&cmd),
             "ui-state-set" => {
                 if let Err(error) = ui_state::save(&cmd["state"]) {
                     emit("ui-state-error", json!({"error":error}));
@@ -1675,7 +1808,7 @@ fn run() -> Result<()> {
             )
             .map_err(|_| "invalid_command")?;
             let mut input: Value = serde_json::from_str(&raw).map_err(|_| "invalid_command")?;
-            if !input.is_object() || text(&input, "op") != "" {
+            if !input.is_object() || !text(&input, "op").is_empty() {
                 return Err("invalid_command".into());
             }
             input["op"] = json!("connections-manage");
@@ -1721,6 +1854,22 @@ fn run() -> Result<()> {
     Ok(())
 }
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("__native-voice-bundle") {
+        let arguments: Vec<_> = std::env::args().skip(2).collect();
+        let verify = match arguments.as_slice() {
+            [] => true,
+            [mode] if mode == "metadata" => false,
+            _ => std::process::exit(2),
+        };
+        match voice_host::bundled_metadata(verify) {
+            Ok(metadata) => println!("{metadata}"),
+            Err(error) => {
+                eprintln!("{error}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     if std::env::args().nth(1).as_deref() == Some("remote-surfaces-serve") {
         let args: Vec<_> = std::env::args().skip(2).collect();
         let result = if args.len() == 2 {
@@ -1782,6 +1931,13 @@ fn main() {
         if let Err(error) = browser_runtime::renderer() {
             eprintln!("{error}");
             std::process::exit(1)
+        }
+        return;
+    }
+    if std::env::args().nth(1).as_deref() == Some("voice-watch") {
+        if let Err(error) = voice_watch::run(env_by_id) {
+            eprintln!("{error}");
+            std::process::exit(1);
         }
         return;
     }
@@ -1888,6 +2044,5 @@ mod notification_tests {
         let image = image::open(lines[position + 1]).unwrap();
         assert_eq!((image.width(), image.height()), (96, 96));
         assert!(args.contains("Input required"));
-        fs::remove_dir_all(root).unwrap();
     }
 }

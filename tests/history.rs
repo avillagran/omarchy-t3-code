@@ -24,7 +24,7 @@ fn authenticated_native_history_page_is_normalized_without_live_controls() {
         let n = stream.read(&mut bytes).unwrap();
         let headers = String::from_utf8_lossy(&bytes[..n]).to_lowercase();
         assert!(headers.starts_with(
-            "get /api/orchestration/threads/chat/history?cursor=opaque%2b%2f%3d%3f%26 "
+            "get /api/orchestration/threads/chat/history?cursor=opaque%2b%2f%3d%3f%26&compactids=1 "
         ));
         assert!(headers.contains("authorization: bearer synthetic-private-token"));
         assert!(headers.contains("x-t3-orchestration-protocol: 2"));

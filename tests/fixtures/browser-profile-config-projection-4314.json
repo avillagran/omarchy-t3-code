@@ -1,0 +1,147 @@
+{
+  "revision": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "sourceSha256": {
+    "packages/client-runtime/src/state/serverConfigProjection.ts": "9b2e59b961a8d366e3679918e8d7a49b659cd7b8a1d459787c9ce88c4bbf2662",
+    "packages/client-runtime/src/state/presentation.ts": "beac3c8a1cec697205568b9c041cbb3f41a5148b8505f9dd1aa299c8a781b6f8",
+    "packages/contracts/src/settings.ts": "98861705ca62879f6fe7771b20aba6b7ec02a1b00bb5045c0569a3b9ecf255a6"
+  },
+  "effect": "4.1.2",
+  "wholeProjection": true,
+  "wholeWithoutProviders": true,
+  "rows": [
+    {
+      "name": "initial",
+      "eventJson": "{\"version\":1,\"type\":\"snapshot\",\"config\":{\"environment\":{\"capabilities\":{\"serverBrowser\":true}},\"providers\":[],\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000},\"keybindings\":[],\"issues\":[]}}",
+      "changed": true,
+      "ownUndefined": []
+    },
+    {
+      "name": "equal-snapshot",
+      "eventJson": "{\"version\":1,\"type\":\"snapshot\",\"config\":{\"environment\":{\"capabilities\":{\"serverBrowser\":true}},\"providers\":[],\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000},\"keybindings\":[],\"issues\":[]}}",
+      "changed": false,
+      "ownUndefined": []
+    },
+    {
+      "name": "providers-only",
+      "eventJson": "{\"version\":1,\"type\":\"providerStatuses\",\"payload\":{\"providers\":[{\"id\":\"source-only-fixture\"}]}}",
+      "changed": false,
+      "ownUndefined": []
+    },
+    {
+      "name": "same-settings-fresh-duration",
+      "eventJson": "{\"version\":1,\"type\":\"settingsUpdated\",\"payload\":{\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000}}}",
+      "changed": false,
+      "ownUndefined": []
+    },
+    {
+      "name": "equal-integer-float-wire",
+      "eventJson": "{\"version\":1,\"type\":\"settingsUpdated\",\"payload\":{\"settings\":{\"automaticGitFetchInterval\":500.0,\"providerHealthRefreshInterval\":300000}}}",
+      "changed": false,
+      "ownUndefined": []
+    },
+    {
+      "name": "empty-themes-add-own-undefined",
+      "eventJson": "{\"version\":1,\"type\":\"environmentThemesUpdated\",\"payload\":{\"themes\":[]}}",
+      "changed": true,
+      "ownUndefined": [
+        "environmentThemes"
+      ]
+    },
+    {
+      "name": "repeated-empty-themes",
+      "eventJson": "{\"version\":1,\"type\":\"environmentThemesUpdated\",\"payload\":{\"themes\":[]}}",
+      "changed": false,
+      "ownUndefined": [
+        "environmentThemes"
+      ]
+    },
+    {
+      "name": "snapshot-removes-undefined-theme-key",
+      "eventJson": "{\"version\":1,\"type\":\"snapshot\",\"config\":{\"environment\":{\"capabilities\":{\"serverBrowser\":true}},\"providers\":[],\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000},\"keybindings\":[],\"issues\":[]}}",
+      "changed": true,
+      "ownUndefined": []
+    },
+    {
+      "name": "empty-sources-add-own-undefined",
+      "eventJson": "{\"version\":1,\"type\":\"usageLimitSourcesUpdated\",\"payload\":{\"sources\":[]}}",
+      "changed": true,
+      "ownUndefined": [
+        "usageLimitSources"
+      ]
+    },
+    {
+      "name": "repeated-empty-sources",
+      "eventJson": "{\"version\":1,\"type\":\"usageLimitSourcesUpdated\",\"payload\":{\"sources\":[]}}",
+      "changed": false,
+      "ownUndefined": [
+        "usageLimitSources"
+      ]
+    },
+    {
+      "name": "snapshot-removes-undefined-source-key",
+      "eventJson": "{\"version\":1,\"type\":\"snapshot\",\"config\":{\"environment\":{\"capabilities\":{\"serverBrowser\":true}},\"providers\":[],\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000},\"keybindings\":[],\"issues\":[]}}",
+      "changed": true,
+      "ownUndefined": []
+    },
+    {
+      "name": "both-undefined-themes",
+      "eventJson": "{\"version\":1,\"type\":\"environmentThemesUpdated\",\"payload\":{\"themes\":[]}}",
+      "changed": true,
+      "ownUndefined": [
+        "environmentThemes"
+      ]
+    },
+    {
+      "name": "both-undefined-sources",
+      "eventJson": "{\"version\":1,\"type\":\"usageLimitSourcesUpdated\",\"payload\":{\"sources\":[]}}",
+      "changed": true,
+      "ownUndefined": [
+        "environmentThemes",
+        "usageLimitSources"
+      ]
+    },
+    {
+      "name": "snapshot-removes-both-undefined",
+      "eventJson": "{\"version\":1,\"type\":\"snapshot\",\"config\":{\"environment\":{\"capabilities\":{\"serverBrowser\":true}},\"providers\":[],\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000},\"keybindings\":[],\"issues\":[]}}",
+      "changed": true,
+      "ownUndefined": []
+    },
+    {
+      "name": "keybindings-new-empty-arrays",
+      "eventJson": "{\"version\":1,\"type\":\"keybindingsUpdated\",\"payload\":{\"keybindings\":[],\"issues\":[]}}",
+      "changed": true,
+      "ownUndefined": []
+    },
+    {
+      "name": "keybindings-repeated-empty-arrays",
+      "eventJson": "{\"version\":1,\"type\":\"keybindingsUpdated\",\"payload\":{\"keybindings\":[],\"issues\":[]}}",
+      "changed": true,
+      "ownUndefined": []
+    },
+    {
+      "name": "snapshot-reuses-empty-arrays",
+      "eventJson": "{\"version\":1,\"type\":\"snapshot\",\"config\":{\"environment\":{\"capabilities\":{\"serverBrowser\":true}},\"providers\":[],\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000},\"keybindings\":[],\"issues\":[]}}",
+      "changed": false,
+      "ownUndefined": []
+    },
+    {
+      "name": "duration-changes",
+      "eventJson": "{\"version\":1,\"type\":\"settingsUpdated\",\"payload\":{\"settings\":{\"automaticGitFetchInterval\":501,\"providerHealthRefreshInterval\":300000}}}",
+      "changed": true,
+      "ownUndefined": []
+    },
+    {
+      "name": "duration-same-after-change",
+      "eventJson": "{\"version\":1,\"type\":\"settingsUpdated\",\"payload\":{\"settings\":{\"automaticGitFetchInterval\":501,\"providerHealthRefreshInterval\":300000}}}",
+      "changed": false,
+      "ownUndefined": []
+    },
+    {
+      "name": "snapshot-restores-duration",
+      "eventJson": "{\"version\":1,\"type\":\"snapshot\",\"config\":{\"environment\":{\"capabilities\":{\"serverBrowser\":true}},\"providers\":[],\"settings\":{\"automaticGitFetchInterval\":500,\"providerHealthRefreshInterval\":300000},\"keybindings\":[],\"issues\":[]}}",
+      "changed": true,
+      "ownUndefined": []
+    }
+  ],
+  "qualification": "Actual whole original projection/presentation with decoded DurationFromMillis fields; pure config identity values, not full ServerConfig schema or Rust/runtime transport acceptance"
+}

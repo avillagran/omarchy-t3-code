@@ -17,7 +17,7 @@ impl Home {
 }
 impl Drop for Home {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.0).unwrap();
+
     }
 }
 fn db(path: &Path, sql: &str) {

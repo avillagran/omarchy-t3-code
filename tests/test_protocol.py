@@ -47,8 +47,8 @@ class ProtocolTest(unittest.TestCase):
 
 class TransportTest(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory()
-        self.token=Path(self.tmp.name)/'token'
+        self.tmp=Path(tempfile.mkdtemp(prefix="t3-protocol-test-"))
+        self.token=self.tmp/'token'
         self.token.write_text('synthetic-test-token')
         self.token.chmod(0o600)
         test=self
@@ -66,7 +66,7 @@ class TransportTest(unittest.TestCase):
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
         self.client=Client('http://127.0.0.1:'+str(self.server.server_port),self.token)
     def tearDown(self):
-        self.server.shutdown();self.server.server_close();self.thread.join();self.tmp.cleanup()
+        self.server.shutdown();self.server.server_close();self.thread.join()
     def test_auth_header_protocol_and_compression(self):
         self.assertEqual(self.client.threads('test'),[])
         self.assertEqual(self.headers['authorization'],'Bearer synthetic-test-token')
@@ -90,7 +90,7 @@ class TransportTest(unittest.TestCase):
         self.token.chmod(0o644)
         with self.assertRaises(T3Error):read_token(self.token)
         self.token.chmod(0o600)
-        link=Path(self.tmp.name)/'link';link.symlink_to(self.token)
+        link=self.tmp/'link';link.symlink_to(self.token)
         with self.assertRaises(T3Error):read_token(link)
 
 if __name__=='__main__': unittest.main()

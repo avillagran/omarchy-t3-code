@@ -17,7 +17,7 @@ use std::{
 struct Fixture {
     child: Option<Child>,
     stop: Arc<AtomicBool>,
-    root: std::path::PathBuf,
+    _root: std::path::PathBuf,
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
@@ -26,7 +26,7 @@ impl Drop for Fixture {
             let _ = child.kill();
             let _ = child.wait();
         }
-        let _ = fs::remove_dir_all(&self.root);
+
     }
 }
 fn until(mut condition: impl FnMut() -> bool) {
@@ -47,7 +47,7 @@ fn mosaic_streams_across_hosts(count:usize) {
     let mut fixture = Fixture {
         child: None,
         stop: stop.clone(),
-        root: root.clone(),
+        _root: root.clone(),
     };
     let token = root.join("token");
     fs::write(&token, "synthetic-token").unwrap();

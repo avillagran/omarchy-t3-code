@@ -1,0 +1,11 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "files": {
+    "apps/web/src/components/usage/UsageLimits.tsx": "91043bb21730a78c1417782781424b3f1c2f35676486bef2a60547f9eac75fb5"
+  },
+  "outputSha256": "a359ee5e8ac9defc3a69fe1a1dee6cfba955799bd3ad7ba88de6c540a53bbf58",
+  "adaptations": [
+    "Extract only resetCreditsSummary; erase TypeScript and export",
+    "Use existing native formatDuration through a Qt module import"
+  ]
+}

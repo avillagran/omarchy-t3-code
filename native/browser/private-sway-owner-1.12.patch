@@ -1,0 +1,65 @@
+--- a/sway/server.c
++++ b/sway/server.c
+@@ -64,6 +64,7 @@
+ #include "sway/input/cursor.h"
+ #include "sway/tree/root.h"
+ #include "sway/tree/workspace.h"
++#include "o3/waylandowner.h"
+ 
+ #if WLR_HAS_XWAYLAND
+ #include <wlr/xwayland/shell.h>
+@@ -80,6 +81,8 @@
+ #define SWAY_PRESENTATION_VERSION 2
+ 
+ bool unsupported_gpu_detected = false;
++
++struct o3_wayland_owner o3_private_owner;
+ 
+ #if WLR_HAS_DRM_BACKEND
+ static void handle_drm_lease_request(struct wl_listener *listener, void *data) {
+@@ -132,6 +135,9 @@
+ 
+ static bool filter_global(const struct wl_client *client,
+ 		const struct wl_global *global, void *data) {
++	if (!o3_wayland_owner_admits(data, client)) {
++		return false;
++	}
+ #if WLR_HAS_XWAYLAND
+ 	struct wlr_xwayland *xwayland = server.xwayland.wlr_xwayland;
+ 	if (xwayland && global == xwayland->shell_v1->global) {
+@@ -251,7 +257,12 @@
+ 	}
+ 	server->wl_event_loop = wl_display_get_event_loop(server->wl_display);
+ 
+-	wl_display_set_global_filter(server->wl_display, filter_global, NULL);
++	if (!o3_wayland_owner_init(&o3_private_owner, server->wl_display)) {
++		sway_log(SWAY_ERROR, "Private compositor supervisor is unavailable");
++		wl_display_destroy(server->wl_display);
++		return false;
++	}
++	wl_display_set_global_filter(server->wl_display, filter_global, &o3_private_owner);
+ 	wl_display_set_default_max_buffer_size(server->wl_display, 1024 * 1024);
+ 
+ 	if (!wlr_fixes_create(server->wl_display, 1)) {
+--- a/sway/ipc-server.c
++++ b/sway/ipc-server.c
+@@ -1,5 +1,7 @@
+ // See https://i3wm.org/docs/ipc.html for protocol information
+ #include <linux/input-event-codes.h>
++#include "o3/waylandowner.h"
++extern struct o3_wayland_owner o3_private_owner;
+ #include <assert.h>
+ #include <errno.h>
+ #include <fcntl.h>
+@@ -153,6 +155,11 @@
+ 	int client_fd = accept(ipc_socket, NULL, NULL);
+ 	if (client_fd == -1) {
+ 		sway_log_errno(SWAY_ERROR, "Unable to accept IPC client connection");
++		return 0;
++	}
++
++	if (!o3_wayland_owner_admits_fd(&o3_private_owner, client_fd)) {
++		close(client_fd);
+ 		return 0;
+ 	}
+ 

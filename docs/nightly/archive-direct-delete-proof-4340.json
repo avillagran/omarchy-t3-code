@@ -1,0 +1,21 @@
+{
+  "upstreamRevision": "a9e709f15f825cacac1b6d665fa1920c328d68b7",
+  "upstreamRelease": "v0.1.8-nightly.20261107.4340",
+  "originalSourceSha256": {
+    "apps/web/src/components/settings/ArchivedThreadsPanel.tsx": "0639680d018cd55fbd73e0b7df9c59dfd569c3774577d67ed9cd610bbee663a0",
+    "apps/web/src/hooks/useThreadActions.ts": "c3be05f79df72a478489590408136bf3e81a90cd8ad96fc10f007a5180138d0a"
+  },
+  "sourceSha256": {
+    "tools/test-device-panel-container": "ddb08c865daedd1a1e0e3b04f8393f28fbf9c60f414b71ca45be6c8771ac6ee4",
+    "tests/qml/archive.qml": "a4c21ef96fbb23b26cbb3171032df29d0e1e1ed98bde6c1c1cbb1135b4bb5997",
+    "tests/fixtures/archive-worker.py": "fd23c970adf9033e091b2b7a153a7ebbac733c835638610d1f2aed7ac11d6e98",
+    "ui/qml/T3Archive.qml": "ac86da5667f9bcc1b3572febd2b14b4fb75182dc2a8ff1025eac104d52cdc619",
+    "ui/qml/T3Backend.qml": "0d0e8136e83dd7634b8480fcd91c9d5f52a5c6f4a1aacfdabe0237aafd66cc28",
+    "ui/qml/T3IconButton.qml": "e702dc360d81fdf9a48803f3762067912ad8b51f658cae5ab0855661e14e0f5b"
+  },
+  "runtimeReceipt": "/var/tmp/o3-device-panel-8xowm5ip/result.json",
+  "runtimeReceiptSha256": "4ebce4f79e677e9765caf86cbf89b437f2d415b02996b50375886df57cc06e54",
+  "runtimeLogSha256": "384b77576192955293ded18e4903d932f7d6d5252f9834f1ba0fd7a9e217cf12",
+  "accepted": true,
+  "qualification": "Actual T3Archive, T3Backend, Qt mouse events, confirmation/cancel and immutable action receipts, with inert metadata transport. No live RPC, thread deletion, Rust execution, host credentials/devices/display/network or full4340 acceptance."
+}

@@ -17,4 +17,4 @@ try{
  fs.writeFileSync(unit,'Environment=T3CODE_HOME='+base+'\n');r=run('fixture-id',{T3_TEST_FAIL:'restart'});assert.equal(r.status,9);
  fs.unlinkSync(unit);r=run();assert.equal(r.status,0,r.stderr);assert(r.log.includes('service install --base-dir '+base),'no service: installs and starts it');
  console.log('REMOTE_RESTART_PASS: service killed then restarted and awaited; wrong environment and other profiles refused; start failure reported; unmanaged server reinstalled');
-}finally{fs.rmSync(root,{recursive:true,force:true})}
+}finally{}

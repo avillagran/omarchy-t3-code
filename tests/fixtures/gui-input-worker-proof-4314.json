@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "scope": "Actual Rust sender and GUI registration; own synthetic renderer/engine processes, not a new NativeMain/Wayland factory acceptance",
+  "sourceHashes": {
+    "src/gui_input_context.rs": "41f3c028cccd225d1e28e187436a5397cc2eee83b00e43cf1c04bc01e1c2c92c",
+    "src/gui_clipboard.rs": "145d384517a7106057ba7339ddbf972606d80082f86f49987c95848de9f4dce7",
+    "src/lib.rs": "04a34684662388bc40c6074108857709373a7646a43d4330aa370cde6a9e80a2",
+    "examples/gui-input-context-worker.rs": "34ff52f726746537cf6cfe962049f104593db9254828375b4b1e753834fe65d0",
+    "Cargo.toml": "43e984b4552621c71fac2023c9d07a27cf7ce12e0977113e6b72a6b67ec60bad",
+    "Cargo.lock": "17a6c4b74dec4a7466d06da90edbd4c744b6b3aea7ef3f39cf312ccad5facc89"
+  },
+  "guiFixtureSha256": "68c1d1a0750854366ac2455f8ad4ed181822e0f00c35475711e42d4bf05c9810",
+  "build": {
+    "artifact": "gui-input-context-worker-p0h80bpj",
+    "strictReturncode": 0,
+    "runtimeExecutedOnHost": false,
+    "sourceHashesSha256": "536069be05b3ae90b8b2eae0e5e7d2c3a1d483e16679bf24089560097cb43829",
+    "runtimeArtifactsSha256": "ad9d7acd7b119ecfb8ee9aea395adf095e3b7815ed3f4ce6c64e75a2e1e35d43"
+  },
+  "privateRun": {
+    "artifact": "browser-input-method-5jgjj_4a",
+    "returncode": 0,
+    "actualPageAndPlugin": true,
+    "kernelEngineIdentityAndAncestry": true,
+    "guiRequestCredentialVerified": true,
+    "scopedInvalidOffsetRefused": true,
+    "recoveryAndExplicitRetirementWhileWorkerAlive": true,
+    "runtimeLogSha256": "17a4489f2c9994df8ee70ce9485fc987dc6287ca62c172e0a3406d3e1c5f8ef5",
+    "artifactsSha256": "c0f1a5d93f3f4811837fa1020f2cda389889bdbf35d031865e617cff2f801894"
+  },
+  "publicSelectorEnabled": false
+}

@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Compile and freeze the owned registration fixture; never execute it on host."""
+import fcntl
+import hashlib
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+from runtime_artifacts import snapshot
+
+root=pathlib.Path(__file__).resolve().parent.parent
+output=pathlib.Path(tempfile.mkdtemp(prefix='gui-input-context-worker-',dir='/home/node/BuildCache/o3-desktop-next'))
+print(output,flush=True)
+environment=dict(os.environ,CARGO_TARGET_DIR='/var/tmp/o3-build/client-nightly-target',CARGO_BUILD_JOBS='2')
+environment['PATH']='/home/node/.cargo/bin:'+environment.get('PATH','/usr/bin')
+cargo='/home/node/.cargo/bin/cargo'
+sources=['src/gui_input_context.rs','src/gui_clipboard.rs','src/lib.rs',
+         'examples/gui-input-context-worker.rs','Cargo.toml','Cargo.lock']
+before={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in sources}
+with open('/var/tmp/o3-build/o3-parity-compile.lock','a') as lock:
+    fcntl.flock(lock.fileno(),fcntl.LOCK_EX)
+    with (output/'build.log').open('w') as log:
+        subprocess.run([cargo,'build','--locked','--offline','--example','gui-input-context-worker'],
+            cwd=root,env=environment,stdout=log,stderr=subprocess.STDOUT,check=True)
+    with (output/'strict.log').open('w') as log:
+        subprocess.run([cargo,'clippy','--locked','--offline','--lib','--example','gui-input-context-worker','--','-D','warnings'],
+            cwd=root,env=environment,stdout=log,stderr=subprocess.STDOUT,check=True)
+    after={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in sources}
+    assert before==after,'Rust sources changed during compilation'
+    debug=pathlib.Path(environment['CARGO_TARGET_DIR'])/'debug'
+    records=snapshot(debug,[debug/'examples/gui-input-context-worker'],output/'runtime')
+(output/'runtime-artifacts.json').write_text(json.dumps(records,indent=2)+'\n')
+(output/'source-hashes.json').write_text(json.dumps(before,indent=2)+'\n')
+(output/'result.json').write_text(json.dumps({'returncode':0,'fixtureExecutedOnHost':False})+'\n')

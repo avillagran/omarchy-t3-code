@@ -2,6 +2,7 @@ import QtQuick 6.11
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
 import qs.Commons
+import "../js/NativeProviderAuth.js" as NativeProviderAuth
 ColumnLayout {
  id:root;objectName:"providerInstances"
  required property var bridge
@@ -32,16 +33,46 @@ ColumnLayout {
  property bool customId:false
  property var draftConfig:({})
  property var draftEnvironment:[]
+ property string authInstanceId:""
+ readonly property var authProvider:instances.find(function(instance){return instance.id===root.authInstanceId}) || null
+ readonly property var authSetup:{var value=setupOf(authInstanceId);return value.environment===environment?value:({})}
  spacing:Style.space(12)
  function setupOf(id){return (bridge.providerSetup || {})[id] || ({})}
+ function nativeAuth(instance){var setup=setupOf(instance.id);return instance.driver==="codex"&&setup.environment===environment&&setup.state&&setup.state.credentialOwner==="t3"}
+ function primeAuthMethods(){
+  if(!writable)return
+  instances.filter(function(instance){return instance.driver==="codex"&&instance.config&&instance.config.setupMode==="managed"}).slice(0,32).forEach(function(instance){
+   var setup=root.setupOf(instance.id)
+   if(!setup.busy&&(setup.environment!==root.environment||!setup.state&&!setup.error))root.bridge.providerSetupAction(root.environment,instance.id,{action:"auth-state"})
+  })
+ }
+ function pickAuth(instance){
+  if(!writable||!instance||!instance.enabled||!nativeAuth(instance))return
+  authInstanceId=instance.id
+  authPicker.open()
+  load()
+  if(!setupOf(instance.id).busy)bridge.providerSetupAction(environment,instance.id,{action:"auth-state"})
+ }
+ function signIn(instance){
+  var setup=setupOf(instance.id)
+  if(nativeAuth(instance)&&(!writable||!instance.enabled||NativeProviderAuth.busy(setup)||setup.action==="auth-state"&&setup.error))return
+  if(nativeAuth(instance)&&NativeProviderAuth.profileMethods(setupOf(instance.id).state).length){pickAuth(instance);return}
+  var values={action:"login"};if(nativeAuth(instance))values.methodId="chatgpt"
+  bridge.providerSetupAction(environment,instance.id,values)
+ }
  // A provider reports a new sign-in once the server has re-read it, which can land just after
  // the flow ends; read the list again a moment later so the row does not keep "Sign in".
  Timer{id:signedInReload;interval:3000;onTriggered:root.load()}
  function load(){if(bridge&&environment&&environment!=="*"&&typeof bridge.requestProviderInstances==="function")bridge.requestProviderInstances(environment,"read")}
- onEnvironmentChanged:{selectedId="";editor.close();confirmation.close();load()}
+ onEnvironmentChanged:{selectedId="";authInstanceId="";authPicker.close();editor.close();confirmation.close();load()}
+ onAuthProviderChanged:if(authInstanceId&&!authProvider){
+  var owner=authInstanceId
+  Qt.callLater(function(){if(root.authInstanceId===owner&&!root.authProvider){authPicker.close();root.authInstanceId=""}})
+ }
  Component.onCompleted:load()
  Connections {target:root.bridge;function onProviderInstancesChanged(){
   if(!root.state.busy&&root.state.environment!==root.environment){root.load();return}
+  if(root.current&&!root.state.busy)root.primeAuthMethods()
   if(!root.awaitingSave||root.state.busy||root.state.environment!==root.environment)return
   root.awaitingSave=false
   if(!root.state.error){editor.close();confirmation.close();if(root.mode==="create")root.selectedId=instanceId.text;else if(root.mode==="remove")root.selectedId="";root.draftConfig={};root.draftEnvironment=[]}
@@ -100,6 +131,7 @@ ColumnLayout {
       text:modelData.label+" · "+(parent.setup.error?T3I18n.error(parent.setup.error):parent.setup.kind==="install"?(parent.st.phase==="downloading"&&parent.st.totalBytes?T3I18n.tr("Downloading… {percent}%",{percent:Math.round(100*parent.st.downloadedBytes/parent.st.totalBytes)}):T3I18n.tr(({idle:"Not installed",downloading:"Downloading…",extracting:"Installing…",verifying:"Verifying…",succeeded:"Installed",failed:"Install failed",cancelled:"Install cancelled"})[parent.st.phase]||String(parent.st.phase||""))):T3I18n.tr(({idle:"Signed out",starting:"Starting sign-in…",waiting:"Waiting for you to sign in",verifying:"Verifying…",succeeded:"Signed in",failed:"Sign-in failed",cancelled:"Sign-in cancelled"})[parent.st.phase]||String(parent.st.phase||"")))+(parent.st.message?" · "+parent.st.message:"")}
      RowLayout{visible:!!parent.interaction&&(parent.interaction.type==="browser"||parent.interaction.type==="deviceCode")&&["succeeded","failed","cancelled"].indexOf(parent.flowPhase)<0;spacing:Style.space(8)
       Text{visible:!!parent.parent.interaction&&parent.parent.interaction.type==="deviceCode";text:parent.parent.interaction?T3I18n.tr("Code: {code}",{code:parent.parent.interaction.userCode||""}):"";color:root.fg;font.family:"monospace";font.pixelSize:Style.font.body}
+      T3PickerButton{objectName:"providerCopyCode_"+modelData.id;visible:!!parent.parent.interaction&&parent.parent.interaction.type==="deviceCode"&&!!parent.parent.interaction.userCode;primary:false;implicitHeight:Style.space(28);text:T3I18n.tr("Copy code");Accessible.name:T3I18n.tr("Copy code");onClicked:root.bridge.copyText(parent.parent.interaction.userCode)}
       T3PickerButton{objectName:"providerOpenSignIn_"+modelData.id;implicitHeight:Style.space(28);text:T3I18n.tr("Open sign-in page");onClicked:{var i=parent.parent.interaction;if(/^https?:\/\//i.test(i.url||""))Qt.openUrlExternally(i.url);if(i.type==="browser"&&i.requiresConsent)root.bridge.providerSetupAction(root.environment,modelData.id,{action:"respond",flowId:parent.parent.st.flowId,interactionId:i.id,response:{type:"browser",action:"accept"}})}}
      }
      // A CLI that signs in through a browser can show a code to paste back (Claude does when the
@@ -127,7 +159,8 @@ ColumnLayout {
      }
      T3PickerButton{objectName:"providerUpdate_"+modelData.id;visible:modelData.versionStatus==="behind_latest"&&modelData.canUpdate===true&&!root.updating(modelData);primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Update to {version}",{version:modelData.latestVersion||""});onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"update",driver:modelData.driver})}
      T3PickerButton{objectName:"providerInstall_"+modelData.id;visible:modelData.installed===false&&modelData.canInstall===true;primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Install");onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"install"})}
-     T3PickerButton{objectName:"providerSignIn_"+modelData.id;visible:modelData.canAuthenticate===true&&modelData.authStatus!=="authenticated"&&modelData.installed!==false;primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Sign in");onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"login"})}
+     T3PickerButton{objectName:"providerSignIn_"+modelData.id;visible:modelData.canAuthenticate===true&&modelData.authStatus!=="authenticated"&&modelData.installed!==false;primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Sign in");onClicked:root.signIn(modelData)}
+     T3PickerButton{objectName:"providerChangeAccount_"+modelData.id;visible:root.nativeAuth(modelData)&&modelData.authStatus==="authenticated";primary:false;implicitHeight:Style.space(28);enabled:root.writable&&modelData.enabled&&!NativeProviderAuth.busy(root.setupOf(modelData.id));text:T3I18n.tr("Change account");onClicked:root.pickAuth(modelData)}
      T3PickerButton{objectName:"providerSignOut_"+modelData.id;visible:modelData.canLogout===true&&modelData.authStatus==="authenticated";primary:false;implicitHeight:Style.space(28);enabled:!root.setupOf(modelData.id).busy;text:T3I18n.tr("Sign out");onClicked:root.bridge.providerSetupAction(root.environment,modelData.id,{action:"logout"})}
      T3Switch{checked:modelData.enabled;enabled:root.writable;onToggled:root.toggle(modelData)}
      T3IconButton{name:"square-pen";tooltipText:T3I18n.tr("Edit provider");enabled:root.writable;onClicked:root.edit(modelData)}
@@ -135,6 +168,26 @@ ColumnLayout {
     }
    }
   }}
+ }
+ T3ChatGptAccountPicker {
+  id:authPicker
+  environment:root.environment
+  instanceId:root.authInstanceId
+  authState:root.authSetup.state || ({})
+  busy:!root.current||root.state.busy||NativeProviderAuth.busy(root.authSetup)
+  canManage:root.writable&&!!root.authProvider&&root.authProvider.enabled&&root.nativeAuth(root.authProvider)&&!(root.authSetup.action==="auth-state"&&root.authSetup.error)
+  error:root.authSetup.error?T3I18n.error(root.authSetup.error):""
+  onChosen:function(methodId){
+   if(!canManage||busy)return
+   var methods=Array.isArray(authState.methods)?authState.methods:[]
+   var chosen=methods.some(function(method){return method.id===methodId})?methodId:NativeProviderAuth.changeAccount
+   close()
+   root.bridge.providerSetupAction(root.environment,root.authInstanceId,{action:"login",methodId:chosen})
+  }
+  onRemoveRequested:function(methodId){
+   if(!canManage||busy||!NativeProviderAuth.removable(methodId,profiles))return
+   root.bridge.providerSetupAction(root.environment,root.authInstanceId,{action:"remove-auth-method",methodId:methodId})
+  }
  }
  Controls.Popup{id:editor;parent:Controls.Overlay.overlay;anchors.centerIn:parent;modal:true;closePolicy:root.awaitingSave?Controls.Popup.NoAutoClose:Controls.Popup.CloseOnEscape|Controls.Popup.CloseOnPressOutside
   width:Math.min(Style.space(600),parent?parent.width-Style.space(32):Style.space(600));padding:Style.space(20)

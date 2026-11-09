@@ -1,0 +1,36 @@
+{
+  "accepted": true,
+  "targetRevision": "a9e709f15f825cacac1b6d665fa1920c328d68b7",
+  "serverBaseRevision": "d873408168783694a2a61beb5497dd6d9deb871b",
+  "clientSourceBaseRevision": "7eb9735e56337835072a97a07e757bedca4e086e",
+  "publicClientProfileProducer": "ba6324bbcb1f4a5505ef344f5d0eb3338f4022a3",
+  "clientArtifactSha256": "80e44787b6e132c743d50fd3f46d5ae9070867f0a2f8480c6da27ba6c6b651dd",
+  "serverArtifact": {
+    "path": "/home/node/BuildCache/o3-native-page-worker-next/target/debug/examples/profile_reporting_acceptance",
+    "bytes": 72393680,
+    "sha256": "4dd078f9347cdd2ebe53af1a4c537aded185e91e1677fc059ebde12819781c9c"
+  },
+  "clientSourceSha256": {
+    "ui/qml/T3Backend.qml": "0d0e8136e83dd7634b8480fcd91c9d5f52a5c6f4a1aacfdabe0237aafd66cc28",
+    "ui/js/NativeBrowserProfileReporting.js": "32e5c5a7bdbfae575abeca871d1d184dc36a5bd259c2f519c408eea7ce6cc91d",
+    "src/browser_profile_reporting.rs": "0f3c73ecbb1af01c66640034d951af8b760f25758d9c14d7c755a2a99f02bde1",
+    "src/rpc_sessions.rs": "6b7aa65b806414bba9ecfdc290a5ebb85dd2e38a7dd0ec6e8e493452e544635d",
+    "tests/qml/browser-profile-reporting-actual.qml": "74ec784b08c521ee2dabe8fd7061d3ec3cf1ee7011ba2ea99c600942759b3880",
+    "tools/test-profile-reporting-actual-container": "59be151846486661d67a053791f7e7f170e07a649f2f1085b9f11333edac1d89"
+  },
+  "serverFixtureSha256": "90532d52a5ab3a640b74d6e22514098dfd325643699f22660d6abb3d606058f5",
+  "sourceFenceCounts": {
+    "client": 915,
+    "server": 650
+  },
+  "receiptDirectory": "/var/tmp/o3-profile-chain-7lqtp9xd",
+  "receiptSha256": {
+    "result.json": "ecd8a0970cdb2b1e0b68ff621f6136d51ded8974d5e1b8a7f83c874419c5d966",
+    "inside-result.json": "c10b3c3311395e5c436bbd4768933952cb0c2c9b309eecb857d55269e91093dd",
+    "server-result.json": "a9d51d61ae544a99d5d827d017786f7ada047591b2fc22d488bbaad91db05952",
+    "qml.log": "52f817eccb8c157c730a718a46fb3f6f51b66b6287729b2fd68ee030f0525108",
+    "source-fences.json": "7bcbae693f62ee5213b7748dcb7066f58ad85e4705bdded1b7552f74e1254f76",
+    "terminal-observation.json": "1116743cb6e0b4736e946fe8404e733c28e188411626cb368d8cb759fa43367c"
+  },
+  "qualification": "Actual production QML -> admitted CLI watch and native preference CAS -> real HTTP authentication/WebSocket RPC -> three actual State catalogs. Two allowed, one denied. No metadata transport peer, real user profile, provider, browser engine or standalone server-startup acceptance. The final 3.5-second hold checks retained values while the real worker is active; it does not independently count snapshot cycles or establish reconnect/revocation/EOF semantics. Those component receipts retain their prior qualifications. Two existing NativeUsageLimits declaration-order warnings remain in the Qt log."
+}

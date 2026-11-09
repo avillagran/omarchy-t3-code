@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Build the client with optional addon pins from an explicitly selected runtime."""
+import json
+import os
+from pathlib import Path
+import platform
+import shutil
+import subprocess
+import tempfile
+import native_voice_bundle as voice
+
+root = voice.ROOT
+environment = dict(os.environ)
+for key in ['O3_NATIVE_VOICE_BUNDLED_ADDON_SHA256', 'O3_NATIVE_VOICE_BUNDLED_ADDON_BYTES']:
+    environment.pop(key, None)
+runtime_value = environment.pop('O3_NATIVE_VOICE_BUILD_RUNTIME', None)
+runtime = None
+build = Path(tempfile.mkdtemp(prefix='.native-voice-build-', dir=root / 'bin'))
+build.chmod(0o700)
+metadata = None
+if runtime_value is not None:
+    if not runtime_value or platform.system() != 'Linux' or platform.machine() != 'x86_64':
+        raise SystemExit('An explicit Linux x86-64 native voice runtime is required')
+    runtime = voice.directory(Path(runtime_value))
+    voice.admit_runtime(runtime)
+    addon = build / voice.ADDON
+    source = root / 'ui/browser/electron-private-fd.c'
+    source_sha256 = voice.digest(source.read_bytes())
+    compiler = Path(shutil.which('cc') or '/usr/bin/cc').resolve(strict=True)
+    subprocess.run([str(compiler), '-shared', '-fPIC', '-O2', '-Wall', '-Wextra', '-Werror',
+        '-I/usr/include/node', str(source), '-o', str(addon)], check=True, env=environment, timeout=60)
+    addon.chmod(0o500)
+    if voice.digest(source.read_bytes()) != source_sha256:
+        raise RuntimeError('Native voice addon source changed during compilation')
+    metadata = voice.metadata_tool.prepare(addon, root)
+    environment.update(metadata['environment'])
+subprocess.run(['cargo', 'build', '--release', '--locked'], cwd=root, env=environment, check=True)
+target = Path(environment.get('CARGO_TARGET_DIR', str(root / 'target')))
+if not target.is_absolute():
+    target = root / target
+binary = target / 'release/omarchy-t3-client'
+compiled = subprocess.check_output([str(binary), '__native-voice-bundle', 'metadata'],
+    env={'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'}, text=True, timeout=15)
+expected = voice.compiled(metadata) if metadata is not None else None
+if json.loads(compiled) != expected:
+    raise RuntimeError('Client did not compile the native voice pins supplied by this builder')
+if runtime is not None:
+    staged = build / 'native-voice'
+    subprocess.run(['python3', str(root / 'tools/package-native-voice'), 'stage',
+        '--runtime', str(runtime), '--addon', str(addon), '--destination', str(staged)],
+        check=True, env={**environment, 'PYTHONDONTWRITEBYTECODE': '1'})
+install = ['python3', str(root / 'tools/package-native-voice'), 'install-client',
+    '--client', str(binary), '--destination', str(root / 'bin/omarchy-t3-client'), '--cargo-output']
+if runtime is not None:
+    install += ['--bundle', str(staged)]
+subprocess.run(install, check=True, env={**environment, 'PYTHONDONTWRITEBYTECODE': '1'})

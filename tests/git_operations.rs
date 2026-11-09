@@ -279,7 +279,7 @@ fn shared_native_transport_journals_before_stream_and_never_replays_unknown_or_o
     } else {
         std::env::remove_var("PATH")
     };
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]

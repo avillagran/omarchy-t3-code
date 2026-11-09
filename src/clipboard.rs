@@ -10,6 +10,15 @@ fn read(mime:Option<&str>,limit:usize)->Result<Vec<u8>>{
  if result.is_err()||bytes.len()>limit{let _=child.kill();let _=child.wait();return Err("clipboard_too_large".into())}
  if !child.wait().map_err(|_|"clipboard_unavailable")?.success(){return Err("clipboard_unavailable".into())}Ok(bytes)
 }
+/// Explicit terminal middle-click: text only, with no attachment upload path.
+pub fn primary_text()->Result<String>{
+ let mut command=Command::new("timeout");command.args(["3","wl-paste","--primary","--no-newline","--type","text"]);
+ let mut child=command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"clipboard_unavailable")?;
+ let mut bytes=Vec::new();let result=child.stdout.take().ok_or("clipboard_unavailable")?.take(480001).read_to_end(&mut bytes);
+ if result.is_err()||bytes.len()>480000{let _=child.kill();let _=child.wait();return Err("clipboard_too_large".into())}
+ if !child.wait().map_err(|_|"clipboard_unavailable")?.success(){return Err("clipboard_unavailable".into())}
+ utf8(bytes)
+}
 fn utf8(bytes:Vec<u8>)->Result<String>{String::from_utf8(bytes).map_err(|_|"invalid_clipboard_text".into())}
 fn paths(mime:&str,value:&str)->Result<Vec<String>>{
  let mut files=vec![];
@@ -87,7 +96,7 @@ pub fn copy(input:&Value)->Result<Value>{
   },
   _=>return Err("clipboard_unsupported".into())
  };
- let mut command=Command::new("timeout");command.args(["5","wl-copy","--type",mime]);offer(&mut command,&bytes)?;
+ let mut command=Command::new("timeout");command.args(["5","wl-copy"]);if input["primary"]==true {if input["kind"]!="text"{return Err("clipboard_unsupported".into())}command.arg("--primary");}command.args(["--type",mime]);offer(&mut command,&bytes)?;
  Ok(json!({"copied":true,"mimeType":mime}))
 }
 #[cfg(test)]mod copy_tests{

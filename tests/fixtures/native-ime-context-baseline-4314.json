@@ -1,0 +1,192 @@
+{
+  "scope": "Private original-engine context and typed client-protocol baseline; Qt projection and public selection remain unimplemented.",
+  "runtime": "44.10.1",
+  "chromiumRevision": "92a6f15143569cf59b340472d0b5030465d95722",
+  "cases": [
+    {
+      "artifact": "native-ime-context-_wtnf17a",
+      "note": "Valid original GuestInput pointer/native focus/real selection; no surrounding callback; stronger expectation failure.",
+      "returncode": 1,
+      "sourceArtifactsManifestSha256": "79665c993b258c3913a6f7db7641522a20303a319692ddd9228c3c184902c88a",
+      "commandManifestSha256": "42a474ea0323800ca2cf4beeeed51bef6477db048d3f62b898df27313d4f78df",
+      "runtimeLogSha256": "cfc038134f75dd9e6b87db3aaa2a6661f60f916c4d690805b27d1a7c5c7b3ea1"
+    },
+    {
+      "artifact": "native-ime-context-75hj70ht",
+      "note": "Valid real keyboard edit6to7UTF16units, native caret,8stateupdates; no surrounding callback; stronger expectation failure.",
+      "returncode": 1,
+      "sourceArtifactsManifestSha256": "423e7a7dd1ffc5b525b7ecd205d2157c8548800ff2fcbdee1db99b8a8cf0382c",
+      "commandManifestSha256": "8e08678c20b0996e13c801d075c3041a61f392c8271eda429ee26f4deb453c7f",
+      "runtimeLogSha256": "48d6c7f2a73cd268cf556a2504236ac94746760eda8e63f3b055e5b7b639791b"
+    },
+    {
+      "artifact": "native-ime-context-sjm2u88s",
+      "note": "Real edit observed, native-view-first close crashes private compositor; lifetime failure, not acceptance.",
+      "returncode": 1,
+      "sourceArtifactsManifestSha256": "2c666cfe2607ca9f69c9414157208432303a0305be1f2019ae29b0f37411fcf7",
+      "commandManifestSha256": "8bf6a219853a46e8a1911ba6e6f126cde757218519b5a49c903bb3a9ce668732",
+      "runtimeLogSha256": "b8d61e94120c6c5aa7bcb4d4475efd9617a9ca6f6747fcc6e919f9f6150ec36b"
+    },
+    {
+      "artifact": "native-ime-context-i6pu87gd",
+      "note": "Reviewed changed lifetime: original editing observed, role-first close acknowledged before native deactivation. Observation baseline only; no Qt context implementation or stronger full-surrounding acceptance.",
+      "returncode": 0,
+      "sourceArtifactsManifestSha256": "b2bc387b824c19e53715f8524bdd87c24b5ea649cc9a45b9e9195e963a38ab6f",
+      "commandManifestSha256": "a9dbcd9e2b5760284d1d331eaa5a0d4aad50b7cbaffef708d13f0935f6dbcf52",
+      "runtimeLogSha256": "3785780d1f6b3180d06bc3ee3c60d3ac6a45cf9ffb05967fd64e2f51c4922b7e",
+      "intakePinsManifestSha256": "a710a52720bd9d67e01fe973abe908fc3f87a86fb7b195d6831e614b781131ca",
+      "popupAckBeforeNativeDeactivation": true,
+      "fallbackKillObserved": false,
+      "baselineResult": {
+        "kind": "baseline-result",
+        "scope": "original-engine private fixed-field lifetime only",
+        "actualEditingObserved": true,
+        "surroundingObserved": false,
+        "popupRectangleObserved": true,
+        "qtQueryImplemented": false
+      }
+    },
+    {
+      "artifact": "native-ime-context-y5wwex1u",
+      "returncode": 1,
+      "note": "Single-connection relay blocks independent GTK/Ozone display startup; ordered popup retirement retained.",
+      "sourceArtifactsManifestSha256": "af28f3b2d9d3a51e38ac4c125c665354ade934b05ed1858771dd4e1bfa7e05fd",
+      "commandManifestSha256": "63af8e1ef2fd1daf3bead9775ff377b19708f036fc9afe46dd8f6d4383272f1c",
+      "runtimeLogSha256": "e00ed0fea92a71190d1eedd25502f9c7aa546e9a1e417c564f5922fe2cae9d3e",
+      "intakePinsManifestSha256": "f75d9138de7c0fb17df5ae7959761c87c61820b53e9290eb101be9f5853f831d"
+    },
+    {
+      "artifact": "native-ime-context-6phcyy0x",
+      "returncode": 1,
+      "note": "Single-connection relay blocks independent GTK/Ozone display startup; ordered popup retirement retained.",
+      "sourceArtifactsManifestSha256": "a99b74b70e0629e95bcfd35618a34abb930f15e55060899d6ddc09935fdb3b32",
+      "commandManifestSha256": "13808c43fcfbbf54c44906be110918c403e408b3ebb779f8f93c365541abe0dc",
+      "runtimeLogSha256": "806c7dc9d01b4e7b1df7e65b604cc87bdd104eee5b663cd12b5f40e77937fc54",
+      "intakePinsManifestSha256": "80c946e5ddad27bf37a6f83a13dcbcf1938eaa2893c9476f56a5f6bdc964408c"
+    },
+    {
+      "artifact": "native-ime-context-c1ctemih",
+      "returncode": 0,
+      "note": "Authenticated transparent transport; actual client-protocol state measurement.",
+      "sourceArtifactsManifestSha256": "d5e9626580370ee4eab1460c1f5266e2f7bf306c6775de1cdb5d0cc18f2934a4",
+      "commandManifestSha256": "59b4521ed63c5a1f142fcc43b5f4ef558ef4518f0e8fc224b43e7cf360e1b8d9",
+      "runtimeLogSha256": "6d446b77a057cf866ab1a938dc9e946ae8705cecd331dce04a8534df00e23ba1",
+      "intakePinsManifestSha256": "afd5111d8e33ddfc1e73d51be5b4ae4c7005e208c7de1db75836f806591ed261"
+    },
+    {
+      "artifact": "native-ime-context-q62gjdj0",
+      "returncode": 0,
+      "sourceHead": "85db7cb",
+      "note": "Actual current native Wayland state through dedicated inherited private descriptor to a mapped Qt query consumer on a separate owned GUI compositor; product worker/Manager delivery and Wayland clipboard remain unselected.",
+      "liveQtQueryResult": {
+        "kind": "qt-live-query-result",
+        "realNativeCurrentState": true,
+        "dedicatedPrivateDescriptor": true,
+        "actualQtQueryEvent": true,
+        "nativeSerial": 9,
+        "connectionId": 1,
+        "surroundingBytes": 13,
+        "cursorByte": 13,
+        "nativeAndGuiSeatsSeparate": true,
+        "textLogged": false
+      },
+      "sourceArtifactsManifestSha256": "ecf3e7bf4ea0d91e2cf621271cede5eda7ea3d2b041918d349d29b735231319a",
+      "commandManifestSha256": "5c4a32ef1730088294752388f736bb13059216135bf3afe7eb2f63adeb6fce50",
+      "runtimeLogSha256": "e689e3b0f91833de9ee37b44f21f3c75b26bc926c9125476bc2e3aef13cecac4",
+      "intakePinsManifestSha256": "16b5af521dbbb4bb02bb8d4026e9baa3ccfe65bb34202d878e9d891bb867ea36"
+    }
+  ],
+  "crash": {
+    "process": "owned-private-sway",
+    "pid": 3314538,
+    "signal": "SIGSEGV",
+    "storage": "none",
+    "coreLimits": "0:0",
+    "library": "libwayland-server.so.0.26.0",
+    "elfBuildId": "0844735a67b53b10f35139455b7bed3e5887ddc8",
+    "kernelFileOffset": "0x867f",
+    "staticSymbol": "wl_list_remove+0xf",
+    "faultAddress": "0x8",
+    "callerStackAvailable": false,
+    "memoryExtracted": false,
+    "upstreamCauseProven": false,
+    "staticLibrarySha256": "7e89d8a177a78343a7cf92e3c1c756dc98a437489de4861ff6de907c7e48af89"
+  },
+  "preparedSourceFiles": {
+    "tools/probe-native-ime-context": "529bbb7e4ddaa5f2c5547e6fbef234be2fd35b7a306363f3e14f0905659e37dc",
+    "tools/fixtures/native-ime-context-peer.c": "fb1d01bccfd64eee526dccdcc4bf46816099b994fa17aecf2f98efa2f2c4054e",
+    "tools/fixtures/native-ime-context.cjs": "9950381ccc52e48663016487a33ad8964405de4660ffb4a08525edf87cef2479",
+    "tools/fixtures/native-ime-context.py": "6c5cfd0ccf80d07165f5ba83978a571a887dd127fe9d25c52816e11763fd35db"
+  },
+  "preparedSourceChecks": {
+    "pythonFiles": 2,
+    "nodeCheckFiles": 1,
+    "cStrictSyntaxFiles": 1,
+    "nativeCompositorOrEngineExecuted": false,
+    "runtimeValidated": true,
+    "pendingReview": false,
+    "singleChangedLifetimeReplayAuthorized": true,
+    "runtimeValidatedScope": "One reviewed popup-first fixed-field normal lifetime; not Qt queries or stronger full-context expectation.",
+    "singleChangedLifetimeReplayConsumed": true
+  },
+  "sourceDiagnosis": {
+    "swayTag": "1.12",
+    "swayTextInputGitBlob": "e496bff1b6773b7579f12ba1819f66becaa235ef",
+    "packageBuildInfoPkgbuildSha256": "e4ad2f490a89e9d9985f524c50629d2fa3ea5dc39cff388cb17329eb58f51ef1",
+    "retrievedPkgbuildMatches": true,
+    "onlyPackagePatch": "Meson version formatting",
+    "candidate": "focused-surface listener removed before unsupported-view return without reinitialization",
+    "callerProven": false,
+    "preparedChange": "Own popup role/surface/buffer destruction and acknowledged roundtrip precedes native view close. Validated fixed-field lifecycle; prior failed view-first closure retained."
+  },
+  "sourceControlledIntake": {
+    "runtime": "ui/voice/electron-runtime-44.10.1-linux-x64.json",
+    "runtimeSha256": "59ba60542eeb35c2427d8a58d0d7ba5dd0ae7a61c5123abe752e18265263008a",
+    "compositor": "tests/fixtures/private-compositor-artifact-4314.json",
+    "compositorSha256": "a6776d3a0e6a14ff10820ccf01d6b07befc93ee8598357c601fd2547afccb5eb",
+    "acquisitionReceiptsAuthorizeIdentity": false,
+    "smallCompositorCopiedBeforeRun": true
+  },
+  "typedBoundary": {
+    "sourceHead": "2a42116",
+    "actualEngineConnections": 2,
+    "authenticatedEngineAndCompositor": true,
+    "serverLifecycleSynthetic": false,
+    "realSurroundingBytes": [
+      12,
+      13
+    ],
+    "realCursorRectangles": [
+      [
+        23,
+        63,
+        0,
+        18
+      ],
+      [
+        47,
+        63,
+        0,
+        18
+      ],
+      [
+        82,
+        63,
+        0,
+        18
+      ],
+      [
+        90,
+        63,
+        0,
+        18
+      ]
+    ],
+    "coordinateSpace": "native-surface-local",
+    "popupCoordinatesAreNotCaretCoordinates": true,
+    "qtQueryImplemented": true,
+    "publicSelectorEnabled": false,
+    "liveQtQueryProof": "native-ime-context-q62gjdj0",
+    "productWorkerManagerDelivery": false
+  }
+}

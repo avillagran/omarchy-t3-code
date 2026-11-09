@@ -1,0 +1,257 @@
+{
+  "revision": "ade473018d32003658b7d38693e083ee2e314bd8",
+  "sourceFiles": {
+    "apps/web/src/components/Sidebar.logic.ts": "0389fec57b596f9a7f0c16c1416b86cfaabf766419d3dd9b2e3e6068863a39c5",
+    "apps/web/src/components/Sidebar.logic.test.ts": "3b082310c441c8187d98021f2785ec42ef15afc19c6a1c85cdaf456d8c7ce7b1",
+    "packages/shared/src/paletteSearch.ts": "1cf17bf43e0bf3c0c508b67bb707caf234c3e1eac6d068a7d5875d8d0633c2db",
+    "packages/shared/src/paletteSearch.test.ts": "2160115ffc05f020a856e997a41b9d369afafe86a0c7ee5e2c4cddf157cc735e",
+    "packages/shared/src/git.ts": "2a17d67d3a1c00366e998d33bc57797094ede743339bef5520fa9887add23a1c",
+    "LICENSE": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43",
+    "packages/shared/src/threadPullRequests.ts": "a894c17a83ecd3762e9e8ade439373128efd2da9e9898869d14b0a5d164482b7",
+    "packages/client-runtime/src/state/threadSort.ts": "52a7ff2bc25fad376b67dc84bdda5bc01536230aa58eef5f264f202550c2b805",
+    "packages/client-runtime/src/state/threadSearch.ts": "687ef946a9ef0da92befded329ddc68816e06f7f5957d2f505d9124f6aaf781a",
+    "apps/web/src/components/CommandPalette.logic.ts": "68f65fa1b148c5c2fc64ac7f3bb3681283c60d6f877374a49b902976c9ebd5c1",
+    "apps/web/src/components/chat/threadFindStore.ts": "13445a219a80e8d657e9cff1f8674b0f8eb07f7227028a44c233e656d9555842"
+  },
+  "compilerLockSha256": "0d0bc93378fbd6079ea207a9c5ce482a8ab750f4e019d8dd74f70ac408dbe378",
+  "node": "26.13.0",
+  "outputSha256": "3b801ebcec6eba56fdad0a3d2d954447835edd1dcc8976df985ae2a470f7b1f4",
+  "modules": [
+    {
+      "file": "packages/shared/src/paletteSearch.ts",
+      "name": "NativePalette",
+      "declarations": [
+        "ALPHANUMERIC",
+        "LOWERCASE",
+        "UPPERCASE",
+        "DIGIT",
+        "LETTER",
+        "COMBINING_MARKS",
+        "SYMBOL",
+        "APOSTROPHE",
+        "CURLY_APOSTROPHES",
+        "fieldCache",
+        "FIELD_CACHE_LIMIT",
+        "foldCharacter",
+        "foldInPlace",
+        "isCjk",
+        "hasCjkWord",
+        "isWordStart",
+        "foldSearchField",
+        "prepareSearchField",
+        "WRAPPING_QUOTES",
+        "foldSearchQuery",
+        "wordEnd",
+        "withinOneEdit",
+        "WHOLE_WORD",
+        "WHOLE_NAME",
+        "MID_WORD",
+        "TYPO",
+        "JOINED_WORDS",
+        "matchToken",
+        "matchJoinedWords",
+        "preparedField",
+        "FILLER_WORDS",
+        "mergeRanges",
+        "lastQuery",
+        "queryTokens",
+        "matchSearchFields",
+        "MESSAGE_TOKEN_MIN_LENGTH",
+        "messageSearchTokens",
+        "messagePhrase",
+        "MESSAGE_PHRASE_BONUS",
+        "MESSAGE_NEAR_BONUS",
+        "MESSAGE_NEAR_SPAN",
+        "NON_ASCII",
+        "MESSAGE_WORD_START_LENGTH",
+        "MESSAGE_PREFIX",
+        "startsWordAt",
+        "endsWordAt",
+        "HEX_ID",
+        "findMessageToken",
+        "messageMatcher",
+        "shortestSpan",
+        "findSearchTokenRanges",
+        "splitSearchText",
+        "DAY_MS",
+        "SEARCH_RECENCY_HALF_LIFE_MS",
+        "THREAD_OPEN_DEDUPE_MS",
+        "THREAD_SEARCH_PICK_LIMIT",
+        "THREAD_SEARCH_PICK_MAX_LENGTH",
+        "pickedQuery",
+        "decay",
+        "recordThreadOpen",
+        "USE_BOOST_LIMIT",
+        "threadUsageBoost",
+        "REFERENCE_PREFIX_MIN",
+        "notCut",
+        "matchReference",
+        "PICK_WINDOW_MS",
+        "PICK_PREFIX_MIN_LENGTH",
+        "activePick",
+        "WORKTREE_BRANCH_PREFIX_PATTERN",
+        "searchableBranch",
+        "matchHint",
+        "threadFieldsCache",
+        "threadSearchFields",
+        "lastFieldQuery",
+        "threadFieldQuery",
+        "scoreThreadSearch",
+        "threadRecentUse",
+        "messageMatchWeight",
+        "rankMessageMatches",
+        "PALETTE_THREAD_LIMIT",
+        "PALETTE_MESSAGE_LIMIT",
+        "PALETTE_SECONDARY_LIMIT",
+        "matchClass",
+        "rankSearchGroups",
+        "rankSearchItems",
+        "KEYWORD_QUALITY",
+        "KEYWORD_QUERY_MIN_LENGTH",
+        "scoreSearchTerms"
+      ],
+      "exports": [
+        "foldSearchQuery",
+        "messageSearchTokens",
+        "messagePhrase",
+        "messageMatcher",
+        "findSearchTokenRanges",
+        "splitSearchText",
+        "SEARCH_RECENCY_HALF_LIFE_MS",
+        "THREAD_OPEN_DEDUPE_MS",
+        "pickedQuery",
+        "recordThreadOpen",
+        "scoreThreadSearch",
+        "threadRecentUse",
+        "rankMessageMatches",
+        "PALETTE_THREAD_LIMIT",
+        "PALETTE_MESSAGE_LIMIT",
+        "PALETTE_SECONDARY_LIMIT",
+        "rankSearchGroups",
+        "rankSearchItems",
+        "scoreSearchTerms"
+      ]
+    },
+    {
+      "file": "packages/shared/src/threadPullRequests.ts",
+      "name": "NativePullRequests",
+      "declarations": [
+        "visibleThreadPullRequests",
+        "latestUpdatedAt",
+        "SEARCHED_PULL_REQUEST_TITLES",
+        "threadSearchPullRequests",
+        "threadPullRequestSearchTerms"
+      ],
+      "exports": [
+        "visibleThreadPullRequests",
+        "threadSearchPullRequests",
+        "threadPullRequestSearchTerms"
+      ]
+    },
+    {
+      "file": "packages/client-runtime/src/state/threadSort.ts",
+      "name": "NativeThreadSort",
+      "declarations": [
+        "toSortableTimestamp",
+        "resolveSettledThreadTimestamp",
+        "resolveThreadActivityTimestamp",
+        "sortSettledThreads",
+        "getFirstSortableTimestamp",
+        "getLatestUserMessageTimestamp",
+        "getThreadSortTimestamp",
+        "activeThreadAnchorTimestampMs",
+        "sortThreads",
+        "getLatestThreadForProject",
+        "PIN_ORDER_DIGITS",
+        "isValidPinOrderKey",
+        "pinOrderMidpoint",
+        "pinOrderKeyBetween",
+        "generateSpreadPinOrderKeys",
+        "planPinnedReorder",
+        "sortPinnedThreadsByOrderKey",
+        "sortActiveThreadsByOrderKey"
+      ],
+      "exports": [
+        "toSortableTimestamp",
+        "resolveSettledThreadTimestamp",
+        "resolveThreadActivityTimestamp",
+        "sortSettledThreads",
+        "getThreadSortTimestamp",
+        "sortThreads",
+        "getLatestThreadForProject",
+        "pinOrderKeyBetween",
+        "generateSpreadPinOrderKeys",
+        "planPinnedReorder",
+        "sortPinnedThreadsByOrderKey",
+        "sortActiveThreadsByOrderKey"
+      ]
+    },
+    {
+      "file": "packages/client-runtime/src/state/threadSearch.ts",
+      "name": "NativeThreadSearch",
+      "declarations": [
+        "sentThreadOpens",
+        "localThreadOpens",
+        "localThreadOpensVersion",
+        "claimThreadOpen",
+        "threadSearchMatchKey",
+        "threadSearchSubject",
+        "subjectCache",
+        "buildThreadSearchSubject",
+        "LATE_ROOM",
+        "nextShownOrder",
+        "visibleThreadSearch"
+      ],
+      "exports": [
+        "claimThreadOpen",
+        "threadSearchMatchKey",
+        "threadSearchSubject",
+        "nextShownOrder",
+        "visibleThreadSearch"
+      ]
+    },
+    {
+      "file": "apps/web/src/components/CommandPalette.logic.ts",
+      "name": "NativeCommandPalette",
+      "declarations": [
+        "RECENT_THREAD_LIMIT",
+        "rankPaletteItem",
+        "scorePaletteItem",
+        "filterCommandPaletteGroups",
+        "buildNestedSearchItems"
+      ],
+      "exports": [
+        "RECENT_THREAD_LIMIT",
+        "filterCommandPaletteGroups",
+        "buildNestedSearchItems"
+      ]
+    },
+    {
+      "file": "apps/web/src/components/chat/threadFindStore.ts",
+      "name": "NativeThreadFind",
+      "declarations": [
+        "findForMessageMatch"
+      ],
+      "exports": [
+        "findForMessageMatch"
+      ]
+    },
+    {
+      "file": "apps/web/src/components/Sidebar.logic.ts",
+      "name": "NativeSidebar",
+      "declarations": [
+        "EMPTY_CONTENT_MATCH_KEYS",
+        "searchSidebarThreads"
+      ],
+      "exports": [
+        "searchSidebarThreads"
+      ]
+    }
+  ],
+  "adaptations": [
+    "TypeScript erasure, exact native branch-prefix linkage and explicit original module dependency linkage",
+    "Complete paletteSearch, threadPullRequests and threadSort modules; original pure declaration closures for threadSearch, command-palette filtering matched-message find navigation and sidebar search",
+    "No algorithm, cache, regular expression, numeric scoring, native limit or ordering substitution"
+  ],
+  "scope": "Local V8 search algorithms and original subject/open/order helpers; Effect search subscriptions and UI catalog consumers are separate integrations"
+}

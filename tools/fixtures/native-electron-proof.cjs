@@ -1,0 +1,163 @@
+// Synthetic native Electron acceptance; run only through the private runner.
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const http=require('node:http');
+const readline=require('node:readline');
+const {spawn,spawnSync}=require('node:child_process');
+const calibration=process.env.O3_TEST_CLIPBOARD_CALIBRATION==='1';let mainCalibration={};
+const visibleHost=process.env.O3_TEST_VISIBLE_HOST==='1',wayland=process.env.O3_TEST_WAYLAND==='1';
+async function seatFocus(title){if(!wayland)return;const socket=fs.readdirSync(process.env.XDG_RUNTIME_DIR).find(name=>name.startsWith('sway-ipc')&&name.endsWith('.sock'));assert(socket);const env={...process.env,SWAYSOCK:path.join(process.env.XDG_RUNTIME_DIR,socket),LD_LIBRARY_PATH:'/opt/sway-runtime/usr/lib'};const result=spawnSync('/opt/sway-runtime/usr/bin/swaymsg',['[title="'+title+'"]','focus'],{env,encoding:'utf8'});assert.equal(result.status,0);await new Promise(resolve=>setTimeout(resolve,60));const pulse=spawnSync('wtype',['-k','Shift_L'],{env:process.env,encoding:'utf8'});assert.equal(pulse.status,0);await new Promise(resolve=>setTimeout(resolve,60));const tree=JSON.parse(spawnSync('/opt/sway-runtime/usr/bin/swaymsg',['-t','get_tree'],{env,encoding:'utf8'}).stdout);function focused(node){return node.name===title&&node.focused===true||[...(node.nodes||[]),...(node.floating_nodes||[])].some(focused)}assert(focused(tree),'actual compositor keyboard focus: '+title);}
+const privateFd=Number(process.env.O3_TEST_PRIVATE_FD);assert(Number.isInteger(privateFd)&&privateFd>=64);
+assert.equal(require('./electron-private-fd.node').admit(privateFd,Number(process.env.O3_TEST_PEER_PID)),true);
+const privateSocket=new(require('node:net').Socket)({fd:privateFd,readable:true,writable:true});
+const descriptorFlags=/^flags:\s+([0-7]+)$/m.exec(fs.readFileSync('/proc/self/fdinfo/'+privateFd,'utf8'));assert(descriptorFlags&&(parseInt(descriptorFlags[1],8)&0o2000000),'actual private descriptor is close-on-exec before guests');
+const {app,BrowserWindow,clipboard,webContents,ipcMain,session:electronSessions}=require('electron');
+assert.equal(process.versions.electron,'44.10.1');
+app.setPath('userData','/tmp/electron-userdata');
+app.setPath('crashDumps','/tmp/electron-crashes');
+if(process.env.O3_TEST_NATIVE_GRAPHICS!=='1')app.disableHardwareAcceleration();
+const observedPermissions=[];let selectionProxy,proxySequence=0,proxyRevoked=false;const proxyPending=new Map();
+function proxyGrant(){if(selectionProxy&&!proxyRevoked)selectionProxy.stdin.write(JSON.stringify({op:'grant'})+'\n')}
+async function proxyCommand(op){const id=++proxySequence;let resolve;const pending=new Promise(value=>resolve=value);proxyPending.set(id,resolve);selectionProxy.stdin.write(JSON.stringify({op,id})+'\n');return deadline(pending,'selection proxy control')}
+const originalFromPartition=electronSessions.fromPartition.bind(electronSessions);
+const wrappedSessions=new WeakSet();
+electronSessions.fromPartition=(...args)=>{const value=originalFromPartition(...args);if(!wrappedSessions.has(value)){wrappedSessions.add(value);const check=value.setPermissionCheckHandler.bind(value),request=value.setPermissionRequestHandler.bind(value);value.setPermissionCheckHandler=handler=>check((...args)=>{const result=handler(...args);if(result&&args[1]==='clipboard-read')proxyGrant();observedPermissions.push({kind:'check',permission:args[1],result});return result});value.setPermissionRequestHandler=handler=>request((contents,permission,callback,details)=>handler(contents,permission,result=>{if(result&&permission==='clipboard-read')proxyGrant();observedPermissions.push({kind:'request',permission,result});callback(result)},details));}return value;};
+const delays=[];
+const windows=[];
+let services,producer,server,sequence=0;
+const pending=new Map(),producerPending=new Map(),sandbox=new Map(),dialogs=[],attachments=new Map();
+let choices=[1,1,0,1],observedNativeFocus=null;
+function deadline(promise,label){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Private fixture deadline: '+label)),12000)})]).finally(()=>clearTimeout(timer))}
+function event(line){const row=JSON.parse(new TextDecoder().decode(line));if(row.type==='attached'){attachments.get(row.tabId)?.();attachments.delete(row.tabId)}if(row.type!=='cdp')return;const frame=JSON.parse(row.message);if(typeof frame.id!=='number')return;const wait=pending.get(frame.id);if(!wait)return;pending.delete(frame.id);frame.error?wait.reject(Error(frame.error.message)):wait.resolve(frame.result)}
+async function command(tab,method,params={},sessionId){const id=++sequence;let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});pending.set(id,{resolve,reject});await services.command(JSON.stringify({type:'cdp',...tab.key,message:JSON.stringify({id,method,params,...(sessionId===undefined?{}:{sessionId})})}));return deadline(promise,method)}
+async function evaluate(tab,expression){if(selectionProxy)await seatFocus('Owned clipboard platform proxy');if(visibleHost)await seatFocus(tab.window.getTitle());const result=await command(tab,'Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true},tab.session);if(result.exceptionDetails)throw Error('Fixture evaluation failed: '+(result.exceptionDetails.exception?.description||result.exceptionDetails.text));return result.result.value}
+async function producerCommand(row){if(wayland)await seatFocus('Owned synthetic clipboard peer');const id=++sequence;let resolve;const promise=new Promise(r=>resolve=r);producerPending.set(id,resolve);producer.stdin.write(JSON.stringify({...row,id})+'\n');const result=await deadline(promise,'selection owner');if(wayland)assert.equal(result.active,true,'real Qt clipboard peer has keyboard focus');return result}
+async function navigate(tab,url){await command(tab,'Page.navigate',{url},tab.session);for(let count=0;count<300;count++){if(await evaluate(tab,'location.href === '+JSON.stringify(url)+' && document.readyState === \"complete\"'))return;await new Promise(r=>setTimeout(r,20))}throw Error('Actual navigation did not finish')}
+async function tab(scope,host){const persistent=scope==='ime-baseline';const browserSession=await services.getSession(scope,persistent,'profile');const partition=await services.getPartition(scope,persistent,'profile');
+ const window=new BrowserWindow({useContentSize:scope==='ime-baseline',show:scope==='ime-baseline'?false:visibleHost,title:'Owned Electron '+scope,width:scope==='ime-baseline'?1280:640,height:scope==='ime-baseline'?800:480,webPreferences:{offscreen:!visibleHost,backgroundThrottling:scope==='ime-baseline'?false:true,webviewTag:true,contextIsolation:true,nodeIntegration:false,sandbox:true}});windows.push(window);window.on('page-title-updated',event=>event.preventDefault());
+ window.webContents.on('will-attach-webview',(event,preferences,params)=>{assert.equal(params.partition,partition);preferences.sandbox=true;preferences.nodeIntegration=false;preferences.nodeIntegrationInSubFrames=false;preferences.contextIsolation=false;preferences.disableHtmlFullscreenWindowResize=true;if(scope==='ime-baseline')delete preferences.preload;else preferences.preload=path.join(__dirname,'electron-sandbox-preload.cjs')});
+ const attachedGuest=new Promise(resolve=>window.webContents.once('did-attach-webview',(_event,guest)=>resolve(guest)));
+ const guestSize=scope==='ime-baseline'?'width:100vw;height:100vh':'width:640px;height:480px';
+ await window.loadURL('data:text/html,'+encodeURIComponent('<html><body style="margin:0"><webview partition="'+partition+'" src="about:blank" allowpopups="true" webpreferences="contextIsolation=false,sandbox=true,nodeIntegration=false" style="display:flex;'+guestSize+'"></webview></body></html>'));
+ const contents=await deadline(attachedGuest,'actual native webview attachment');assert.equal(contents.getType(),'webview');assert.equal(contents.hostWebContents,window.webContents);assert.equal(contents.session,browserSession,'actual guest uses the native service partition');await contents.loadURL('about:blank');contents.debugger.attach('1.3');
+ const info=await contents.debugger.sendCommand('Target.getTargetInfo');assert.equal(webContents.fromDevToolsTargetId(info.targetInfo.targetId),contents,'actual debugger belongs to the exact created contents');
+ const key={threadId:'owned-thread',tabId:'owned-'+scope};window.__ownedProofKey=key;const attached=new Promise(resolve=>attachments.set(key.tabId,resolve));let boundary=contents.debugger;
+ if(scope==='ime-baseline'){
+  const realm={};require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname,'target-scope.js'),'utf8'),realm);
+  const listeners=new Set();const guard=realm.T3QtTargetScope.create(info.targetInfo.targetId,(method,params,sessionId)=>{const pending=contents.debugger.sendCommand(method,params,sessionId);return method==='Emulation.setFocusEmulationEnabled'?pending.then(result=>{observedNativeFocus=params.enabled===true;console.log('NATIVE_FOCUS_EMULATION '+Number(observedNativeFocus));return result}):pending},()=>{throw Error('native_control_target_retired')});
+  contents.debugger.on('message',(event,method,params,sessionId)=>{if(guard.event(method,params,sessionId))for(const listener of listeners)listener(event,method,params,sessionId)});
+  boundary={sendCommand:(...args)=>guard.sendCommand(...args),on:(name,listener)=>{if(name==='message')listeners.add(listener)},off:(name,listener)=>{if(name==='message')listeners.delete(listener)}};
+ }
+ services.attach(key,{webContents:contents,debugger:boundary});services.setShown(key,true);await deadline(attached,'native attached-event barrier');
+ const value={window,contents,key,inputDebugger:boundary};const targets=await command(value,'Target.getTargets');assert.equal(targets.targetInfos.length,1);assert.equal(targets.targetInfos[0].targetId,info.targetInfo.targetId);
+ value.session=(await command(value,'Target.attachToTarget',{targetId:info.targetInfo.targetId,flatten:true})).sessionId;
+ if(scope==='ime-baseline'){
+  // Exact desktop adoption initialization from the immutable server0b9a5d3.
+  await command(value,'Page.enable',{},value.session);
+  await command(value,'Target.setDiscoverTargets',{discover:true});
+  await command(value,'Target.setAutoAttach',{autoAttach:true,waitForDebuggerOnStart:false,flatten:true});
+  await command(value,'Page.getFrameTree',{},value.session);
+  await command(value,'Network.enable',{},value.session);
+ }
+
+ if(scope==='ime-baseline'){window.setContentSize(640,480);window.show();window.focus();contents.focus();window.webContents.setBackgroundThrottling(true)}
+ await navigate(value,'http://'+host+':'+server.address().port+'/');window.setTitle('Owned Electron '+scope);
+ const isolation=await evaluate(value,'[typeof require,typeof process,typeof Buffer,typeof T3NativeDesktopHost]');assert.deepEqual(isolation,['undefined','undefined','undefined','undefined']);
+ const proof=sandbox.get(contents.id);if(scope==='ime-baseline'){const preferences=contents.getLastWebPreferences();assert.equal(preferences.sandbox,true);assert.equal(preferences.nodeIntegration,false);assert.equal(preferences.contextIsolation,false)}else assert(proof?.sandboxed&&proof.isolated===false&&proof.electron==='44.10.1','real sandboxed native-preference webview preload');
+ return value;
+}
+ipcMain.on('owned-sandbox-proof',(event,value)=>sandbox.set(event.sender.id,value));
+app.whenReady().then(async()=>{
+ producer=spawn('/proof/clipboard-owner',[],{stdio:['pipe','pipe','pipe'],env:{...process.env,QT_QPA_PLATFORM:process.env.QT_QPA_PLATFORM||'xcb'}});
+ let producerReady;const ready=new Promise(resolve=>producerReady=resolve);
+ readline.createInterface({input:producer.stdout}).on('line',line=>{const row=JSON.parse(line);if(row.id!==undefined){producerPending.get(row.id)?.(row);producerPending.delete(row.id)}else if(row.ready)producerReady()});
+ producer.stderr.on('data',()=>{});await deadline(ready,'independent clipboard owner start');
+ if(process.env.O3_TEST_SELECTION_PROXY==='1'){
+  selectionProxy=spawn('/proof/lazy-selection-proxy',[process.env.O3_PROXY_DISPLAY],{stdio:['pipe','pipe','pipe'],env:process.env});let admit;const ready=new Promise(resolve=>admit=resolve);
+  readline.createInterface({input:selectionProxy.stdout}).on('line',line=>{const row=JSON.parse(line);if(row.ready){assert.equal(row.enginePid,process.pid);admit()}else if(row.id!==undefined){proxyPending.get(row.id)?.(row);proxyPending.delete(row.id)}});
+  selectionProxy.stderr.on('data',()=>{});await deadline(ready,'actual platform selection proxy');
+  for(const mode of ['foreign','synthetic','unauthenticated']){const env={...process.env};if(mode==='unauthenticated')env.XAUTHORITY='/tmp/no-private-x-auth';const probe=spawnSync('/proof/selection-client-probe',[process.env.O3_PROXY_DISPLAY,mode],{env,encoding:'utf8'});assert.equal(probe.status,0,'private selection client refusal '+mode);}
+  const blocked=await proxyCommand('stats');assert(blocked.foreign>=1&&blocked.synthetic>=1);assert.equal(blocked.dataReads,0);
+
+ }
+
+ server=http.createServer((request,response)=>{if(process.env.O3_TEST_IME_BASELINE==='1'){request.resume();response.setHeader('Content-Type','text/html');response.setHeader('Connection','close');let body=request.method==='POST'?'ok':fs.readFileSync(path.join(__dirname,'native-ime-page.html'),'utf8');if(request.url==='/ime-input')body=body.replace('<textarea','<input').replace('</textarea>','');response.end(body)}else response.end('<html><title>Owned Electron fixture</title></html>')});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const {create}=require('./native-electron-services.cjs');
+ services=await create({event,showMessageBox:async(options,owner)=>{dialogs.push({options,owner:owner?.webContents.id});assert.equal(options.defaultId,1);assert.equal(options.cancelId,1);const response=choices.shift();assert.notEqual(response,undefined,'No unsolicited dialog');return {response,checkboxChecked:false}}});
+ if(process.env.O3_TEST_IME_BASELINE==='1'){
+  const page=await tab('ime-baseline','127.0.0.1');
+  page.contents.on('render-process-gone',(_event,details)=>console.log('NATIVE_IME_RENDERER_GONE '+JSON.stringify({reason:details.reason,exitCode:details.exitCode})));
+  for(const tag of ['textarea','input']){
+   await navigate(page,'http://localhost:'+server.address().port+(tag==='input'?'/ime-input':'/read-6'));
+   if(wayland)await seatFocus(page.window.getTitle());console.log('NATIVE_IME_HOST_STATE '+JSON.stringify({visible:page.window.isVisible(),windowFocused:page.window.isFocused(),focusedFrame:!!page.contents.focusedFrame,ownerOffscreen:page.window.webContents.isOffscreen(),guestOffscreen:page.contents.isOffscreen()}));
+   for(const type of ['mousePressed','mouseReleased'])await services.humanInput(page.contents,page.inputDebugger,'Input.dispatchMouseEvent',{type,x:50,y:40,button:'left',clickCount:1,buttons:type==='mousePressed'?1:0});
+   const rootState=await page.inputDebugger.sendCommand('Runtime.evaluate',{expression:'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})',returnByValue:true});console.log('NATIVE_IME_BASELINE_BEFORE '+JSON.stringify({tag,focusedFrame:!!page.contents.focusedFrame,root:rootState.result.value,virtual:await evaluate(page,'({scheme:location.protocol,tag:document.activeElement?.tagName,fieldTag:document.getElementById("field")?.tagName})')}));for(let attempt=0;attempt<100;attempt++){if(await evaluate(page,'document.activeElement === document.getElementById("field")'))break;await new Promise(resolve=>setTimeout(resolve,10));if(attempt===99)throw Error('native_editor_not_focused')}console.log('NATIVE_IME_BASELINE_EDITOR_FOCUSED '+tag);
+   const nativeImage=await page.contents.capturePage();console.log('NATIVE_IME_NATIVE_CAPTURE '+JSON.stringify({empty:nativeImage.isEmpty(),size:nativeImage.getSize()}));console.log('NATIVE_FOCUS_IDLE_CONTROL_BEGIN');const idleDeadline=Date.now()+12500;while(observedNativeFocus!==false&&Date.now()<idleDeadline)await new Promise(resolve=>setTimeout(resolve,50));assert.equal(observedNativeFocus,false,'canonical idle release completed');console.log('NATIVE_FOCUS_IDLE_CONTROL_END');await services.humanInput(page.contents,page.inputDebugger,'Input.imeSetComposition',{text:'にほん',selectionStart:3,selectionEnd:3});
+   await services.humanInput(page.contents,page.inputDebugger,'Input.insertText',{text:'日本'});
+   const result=await evaluate(page,'({value:field.value,events:window.imeEvents})');console.log('NATIVE_IME_BASELINE_AFTER '+JSON.stringify({tag,result}));assert.equal(result.value,'日本','real native focused editor receives composition');assert(result.events.some(event=>event.type==='compositionstart'&&event.trusted));
+  }
+  console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({nativeImeBaseline:true}));await services.close();producer.stdin.end();for(const window of windows)window.destroy();server.close();app.exit(0);return;
+ }
+ if(process.env.O3_TEST_INPUT_BASELINE==='1'){
+  choices=Array(20).fill(1);if(process.env.O3_TEST_CUSTOM_MIME==='1')choices[2]=0;
+  await require('./native-input-baseline.cjs')({tab,evaluate,command,producerCommand,seatFocus,services,dialogs,windows,server,producer,app,clipboard,proxyCommand,selectionProxy});return;
+ }
+ const writeCheck=await tab('writecheck','127.0.0.1');
+ const denied="navigator.clipboard.readText().then(()=>false,()=>true)";
+ const nativeWrite=await evaluate(writeCheck,"navigator.clipboard.writeText('owned asynchronous write').then(()=>({allowed:true}),error=>({allowed:false,name:error.name,message:error.message}))");
+ assert.equal(nativeWrite.allowed,false,'actual upstream async-write context is denied without read consent');assert.equal(dialogs.length,1);
+ const copied=await evaluate(writeCheck,"(()=>{const input=document.createElement('textarea');input.value='owned sanitized gesture copy';document.body.appendChild(input);input.focus();input.select();return document.execCommand('copy')})()");
+ if(!visibleHost)assert.equal(copied,false,'native DevTools copy context is not silently promoted to a human gesture');
+ if(wayland){if(visibleHost)await seatFocus(writeCheck.window.getTitle());await clipboard.writeText('owned platform clipboard control');mainCalibration.ownRead=await clipboard.readText();const backend=await producerCommand({op:'read'});mainCalibration.qtReceived=backend.text;mainCalibration.qtFocused=backend.active;if(!calibration)assert.equal(backend.text,'owned platform clipboard control','main-process OS clipboard calibration with focused Qt receiver');}
+ if(visibleHost){await seatFocus(writeCheck.window.getTitle());await writeCheck.window.webContents.executeJavaScript("document.querySelector('webview').focus()");}
+ if(selectionProxy){await seatFocus('Owned clipboard platform proxy');await proxyCommand('human-copy');}
+ writeCheck.contents.focus();await new Promise(resolve=>setTimeout(resolve,60));writeCheck.contents.copy();
+ if(selectionProxy){let published;for(let i=0;i<80;i++){published=await proxyCommand('stats');if(published.publications)break;await new Promise(resolve=>setTimeout(resolve,10))}assert(published.publications>0,'actual admitted copy publishes a Qt offer');assert(published.egressReads<=5&&published.egressBytes<=16*1024*1024,'only bounded current native-copy data is exposed during Qt offer publication');console.log('NATIVE_COPY_PUBLICATION '+JSON.stringify(published));assert.equal(published.dataReads,0,'human copy does not read the system clipboard');}
+
+ let copiedText;for(let count=0;count<(calibration?1:100);count++){copiedText=(await producerCommand({op:'read'})).text;if(copiedText==='owned sanitized gesture copy')break;await new Promise(resolve=>setTimeout(resolve,30))}
+ if(!calibration||selectionProxy)assert.equal(copiedText,'owned sanitized gesture copy','separate application receives actual explicit-human-copy clipboard bytes');assert.equal(dialogs.length,1,'explicit user copy adds no read prompt');
+ assert.equal(await evaluate(writeCheck,denied),true,'human copy does not grant programmatic clipboard read');assert.equal(dialogs.length,1);
+ const one=await tab('one','127.0.0.1');
+ await producerCommand({op:'text',text:'owned external clipboard one'});mainCalibration.externalUnfocusedMainRead=await clipboard.readText();if(visibleHost)await seatFocus(one.window.getTitle());mainCalibration.externalMainRead=await clipboard.readText();
+ const beforeBlocked=selectionProxy?await proxyCommand('stats'):null;
+ assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2);
+ assert.equal(await evaluate(one,denied),true);assert.equal(dialogs.length,2,'remembered Block');if(selectionProxy){const stats=await proxyCommand('stats');assert.equal(stats.dataReads,beforeBlocked.dataReads,'native blocked programmatic reads add no system content retrieval');assert.equal(stats.streamBytes,beforeBlocked.streamBytes);}
+ await navigate(one,'http://localhost:'+server.address().port+'/');
+ const initialRead=await evaluate(one,'navigator.clipboard.readText()');if(!calibration)assert.equal(initialRead,'owned external clipboard one');assert.equal(dialogs.length,3);
+ await producerCommand({op:'text',text:'owned external clipboard changed'});
+ const freshRead=await evaluate(one,'navigator.clipboard.readText()');if(!calibration)assert.equal(freshRead,'owned external clipboard changed');assert.equal(dialogs.length,3,'remembered Allow still reads fresh external bytes');
+
+ if(selectionProxy){
+  await producerCommand({op:'large'});const large=await evaluate(one,"navigator.clipboard.readText().then(value=>({length:value.length,valid:value==='L'.repeat(200000)}))");assert.deepEqual(large,{length:200000,valid:true},'actual native INCR transfer');
+  if(process.env.O3_TEST_NATIVE_OFFERS==='1'){await producerCommand({op:'at-limit'});const atLimit=await evaluate(one,"navigator.clipboard.readText().then(value=>({length:value.length,valid:value==='V'.repeat(16*1024*1024)}))");assert.deepEqual(atLimit,{length:16*1024*1024,valid:true},'full valid byte-budget clipboard transfer');}
+  await producerCommand({op:'many'});const before=await proxyCommand('stats');const cappedMetadata=await evaluate(one,"navigator.clipboard.readText().then(value=>value.length,()=>0)");const after=await proxyCommand('stats');assert.equal(cappedMetadata,0);assert(after.capDenied>before.capDenied&&after.dataReads===before.dataReads,'metadata cap denies before content retrieval');
+  await producerCommand({op:'oversized'});const beforeSize=await proxyCommand('stats');const cappedSize=await evaluate(one,"navigator.clipboard.readText().then(value=>value.length,()=>0)");const afterSize=await proxyCommand('stats');if(process.env.O3_TEST_NATIVE_OFFERS==='1'){assert.equal(afterSize.streamReservedPeak,16*1024*1024);assert(afterSize.streamAssemblyCapacity<=16*1024*1024&&afterSize.streamBufferEstimate<=32*1024*1024);assert(afterSize.streamLimitFailures>0,'native offer reader rejects before growing beyond reserved cap');}assert.equal(cappedSize,0);assert(afterSize.capDenied>beforeSize.capDenied,'oversized contents fail without truncation');
+ }
+ await producerCommand({op:'image'});
+ const image=await evaluate(one,"navigator.clipboard.read().then(async items=>{const item=items.find(item=>item.types.includes('image/png'));if(!item)throw Error('No PNG');const blob=await item.getType('image/png');const image=await createImageBitmap(blob);const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const context=canvas.getContext('2d');context.drawImage(image,0,0);return {width:image.width,height:image.height,pixel:Array.from(context.getImageData(0,0,1,1).data)}})").catch(error=>{if(!calibration)throw error;return {error:String(error.message)}});if(!calibration||selectionProxy)assert.deepEqual(image,{width:2,height:2,pixel:[18,52,86,255]});
+ let revocation=null;
+ if(selectionProxy){await producerCommand({op:'large'});await proxyCommand('pause');const held=evaluate(one,"navigator.clipboard.readText().then(value=>value.length,()=>0)");let waiting;for(let i=0;i<80;i++){waiting=await proxyCommand('stats');if(waiting.activeTransfers)break;await new Promise(resolve=>setTimeout(resolve,10))}assert(waiting.activeTransfers>0,'actual native INCR pending before revocation');proxyRevoked=true;await proxyCommand('revoke');const cancelled=await held;const after=await proxyCommand('stats');assert.equal(cancelled,0);assert.equal(after.activeTransfers,0);assert.equal(after.dataReads,waiting.dataReads,'revocation performs no additional content fetch');revocation={cancelled,remaining:after.activeTransfers};}
+ const proxyStats=selectionProxy?await proxyCommand('stats'):null;
+ const two=await tab('two','localhost');assert.equal(await evaluate(two,denied),true);assert.equal(dialogs.length,4,'native decisions stay in the actual session');
+ const foreign=await two.contents.debugger.sendCommand('Target.getTargetInfo');let blocked=false;try{await command(one,'Target.attachToTarget',{targetId:foreign.targetInfo.targetId,flatten:true})}catch{blocked=true}assert(blocked,'native root relay rejects a foreign target');
+ const ownSocket=process.env.O3_TEST_PRIVATE_INODE;const descendants=new Set([process.pid]);let grew=true;
+ while(grew){grew=false;for(const pid of fs.readdirSync('/proc').filter(name=>/^\d+$/.test(name))){try{const stat=fs.readFileSync('/proc/'+pid+'/stat','utf8');const parent=Number(stat.slice(stat.lastIndexOf(')')+2).split(' ')[1]);if(descendants.has(parent)&&!descendants.has(Number(pid))){descendants.add(Number(pid));grew=true}}catch{}}}
+ assert(descendants.has(one.contents.getOSProcessId()),'actual guest renderer belongs to the owned process tree');
+ for(const name of fs.readdirSync('/proc').filter(name=>/^\d+$/.test(name))){const pid=Number(name);if(pid===process.pid||pid===Number(process.env.O3_TEST_PEER_PID))continue;let descriptors;try{descriptors=fs.readdirSync('/proc/'+pid+'/fd')}catch{continue}for(const fd of descriptors){let link;try{link=fs.readlinkSync('/proc/'+pid+'/fd/'+fd)}catch{continue}assert.notEqual(link,ownSocket,'private socket must not leak into any other private-namespace process, including reparented crash helpers')}}
+ const scopeRealm={};require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname,'target-scope.js'),'utf8'),scopeRealm);
+ const ownInfo=await one.contents.debugger.sendCommand('Target.getTargetInfo');
+ let retired=false;const guard=scopeRealm.T3QtTargetScope.create(ownInfo.targetInfo.targetId,(...args)=>one.contents.debugger.sendCommand(...args),()=>retired=true);
+ let rawForeignVisible=false;try{const raw=await one.contents.debugger.sendCommand('Target.getTargetInfo',{targetId:foreign.targetInfo.targetId});rawForeignVisible=raw.targetInfo.targetId===foreign.targetInfo.targetId}catch{}
+ const forbidden=[['Target.getTargetInfo',{targetId:foreign.targetInfo.targetId}],['Target.attachToTarget',{targetId:foreign.targetInfo.targetId,flatten:true}],['Target.closeTarget',{targetId:foreign.targetInfo.targetId}],['Target.getTargets',{}],['Target.createTarget',{url:'about:blank'}],['Target.createBrowserContext',{}],['Target.setDiscoverTargets',{discover:true}],['Browser.getVersion',{}]];
+ for(const [method,params]of forbidden)await assert.rejects(guard.sendCommand(method,params),/Only this preview tab/);
+ await assert.rejects(guard.sendCommand('Runtime.evaluate',{expression:'1'},'foreign-session'),/Only this preview tab/);
+ const opaque=JSON.stringify({targetId:foreign.targetInfo.targetId,sessionId:'foreign-session',method:'Target.closeTarget'});
+ const opaqueResult=await guard.sendCommand('Runtime.evaluate',{expression:JSON.stringify(opaque),returnByValue:true});assert.equal(opaqueResult.result.value,opaque,'opaque page strings stay unchanged');
+ const guardedInfo=await guard.sendCommand('Target.getTargetInfo');assert.equal(guardedInfo.targetInfo.targetId,ownInfo.targetInfo.targetId);assert.equal(retired,false);guard.close();await assert.rejects(guard.sendCommand('Runtime.evaluate',{expression:'1'}),/Only this preview tab/);
+ console.log('NATIVE_ELECTRON_PROOF '+JSON.stringify({electron:process.versions.electron,visibleHost,wayland,sandboxed:true,nativeContextIsolation:false,nodeGlobalsAbsent:true,dialogs:dialogs.map(row=>({message:row.options.message,buttons:row.options.buttons,defaultId:row.options.defaultId,cancelId:row.options.cancelId})),nativeAsyncWrite:nativeWrite,nativeDevtoolsCopy:copied,calibrationOnly:calibration,mainCalibration,proxyStats,revocation,guestCopiedText:copiedText,guestInitialRead:initialRead,guestFreshRead:freshRead,sanitizedGestureCopy:copiedText==='owned sanitized gesture copy',textRoundtrip:initialRead==='owned external clipboard one',freshExternalText:freshRead==='owned external clipboard changed',externalPng:image,sessionIsolation:true,foreignRootAttachDenied:true,rawForeignTargetVisible:rawForeignVisible,physicalTargetScopeDenied:forbidden.length+1,privateFdCloexec:true,descendantSocketIsolation:true,privateNamespaceSocketIsolation:true,opaqueRuntimePreserved:true}));
+ for(const window of windows){services.detach(window.__ownedProofKey);window.destroy()}
+ await services.close();selectionProxy?.stdin.end(JSON.stringify({op:'quit'})+'\n');producer.stdin.end(JSON.stringify({op:'quit'})+'\n');server.close();app.exit(0);
+}).catch(error=>{console.error('NATIVE_ELECTRON_FIXTURE_FAILED',error?.stack||String(error),'PERMISSIONS',JSON.stringify(observedPermissions));for(const window of windows)if(!window.isDestroyed())window.destroy();producer?.kill();selectionProxy?.kill();server?.close();app.exit(1)});
+setTimeout(()=>{console.error('NATIVE_ELECTRON_FIXTURE_TIMEOUT');producer?.kill();selectionProxy?.kill();app.exit(2)},35000).unref();

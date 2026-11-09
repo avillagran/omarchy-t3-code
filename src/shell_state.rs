@@ -14,17 +14,26 @@ use std::{collections::HashMap, sync::Mutex};
 struct Entry {
     shell: Option<Value>,
     live: bool,
-    generation:u64,
-    snapshot_sequence:u64,
-    older_counts:Option<(String,Value)>,
+    generation: u64,
+    snapshot_sequence: u64,
+    older_counts: Option<(String, Value)>,
     supplemental: HashMap<String, (u64, Value)>,
     versions: HashMap<String, u64>,
+    search_mounts: Vec<SearchMount>,
+}
+struct SearchMount {
+    key: String,
+    read: Value,
+    owners: Vec<String>,
 }
 static SHELLS: Mutex<Option<HashMap<String, Entry>>> = Mutex::new(None);
 
 fn with<R>(env: &str, f: impl FnOnce(&mut Entry) -> R) -> R {
     let mut guard = SHELLS.lock().unwrap_or_else(|e| e.into_inner());
-    f(guard.get_or_insert_with(HashMap::new).entry(env.to_string()).or_default())
+    f(guard
+        .get_or_insert_with(HashMap::new)
+        .entry(env.to_string())
+        .or_default())
 }
 
 /// The shell of an environment whose stream is connected and caught up.
@@ -33,9 +42,15 @@ pub fn live(env: &str) -> Option<Value> {
 }
 /// Sequence to resume from after a reconnect, if a shell is held.
 pub fn cursor(env: &str) -> Option<u64> {
-    with(env, |e| e.shell.as_ref().and_then(|s| s["snapshotSequence"].as_u64()))
+    with(env, |e| {
+        e.shell
+            .as_ref()
+            .and_then(|s| s["snapshotSequence"].as_u64())
+    })
 }
-pub fn generation(env:&str)->u64{with(env,|e|e.generation)}
+pub fn generation(env: &str) -> u64 {
+    with(env, |e| e.generation)
+}
 pub fn is_live(env: &str) -> bool {
     with(env, |e| e.live)
 }
@@ -48,50 +63,186 @@ pub fn set_live(env: &str, live: bool) {
 /// Applies one stream item; true when the visible shell changed.
 pub fn apply(env: &str, item: &Value) -> bool {
     with(env, |e| {
-        let sequence=crate::protocol::stream::cursor_of(crate::protocol::api::streams::SUBSCRIBE_SHELL.name,item).unwrap_or(0);
-        if item["kind"]=="snapshot" && item.get("resolvedRepositoryIdentityRoots").is_none() { e.snapshot_sequence=sequence;e.generation=e.generation.wrapping_add(1);e.supplemental.clear(); e.versions.clear();e.older_counts=None; }
-        let id=item["thread"]["id"].as_str().or(item["threadId"].as_str());
-        if let Some(id)=id {
-            e.versions.entry(id.to_string()).and_modify(|n|*n=(*n).max(sequence)).or_insert(sequence);
-            if e.supplemental.get(id).is_some_and(|(at,_)|*at<=sequence){e.supplemental.remove(id);}
+        let sequence = crate::protocol::stream::cursor_of(
+            crate::protocol::api::streams::SUBSCRIBE_SHELL.name,
+            item,
+        )
+        .unwrap_or(0);
+        if item["kind"] == "snapshot" && item.get("resolvedRepositoryIdentityRoots").is_none() {
+            e.snapshot_sequence = sequence;
+            e.generation = e.generation.wrapping_add(1);
+            e.supplemental.clear();
+            e.versions.clear();
+            e.older_counts = None;
         }
-        reduce(&mut e.shell,item)
+        let id = item["thread"]["id"].as_str().or(item["threadId"].as_str());
+        if let Some(id) = id {
+            e.versions
+                .entry(id.to_string())
+                .and_modify(|n| *n = (*n).max(sequence))
+                .or_insert(sequence);
+            if e.supplemental
+                .get(id)
+                .is_some_and(|(at, _)| *at <= sequence)
+            {
+                e.supplemental.remove(id);
+            }
+        }
+        reduce(&mut e.shell, item)
     })
 }
 /// Merge a read page without advancing the stream cursor or overwriting a newer delta.
 pub fn supplement(env: &str, page: &Value) -> crate::Result<()> {
-    let sequence=page["snapshotSequence"].as_u64().ok_or("missing_sequence")?;
-    let rows=page["threads"].as_array().ok_or("malformed_shell_page")?;
-    if rows.iter().any(|r|!r["id"].as_str().is_some_and(crate::valid_id)){return Err("malformed_shell_page".into())}
-    with(env,|e| {
-        let floor=e.snapshot_sequence;
-        if sequence<floor{return Err("stale_shell_page".into())}
+    let sequence = page["snapshotSequence"]
+        .as_u64()
+        .ok_or("missing_sequence")?;
+    let rows = page["threads"].as_array().ok_or("malformed_shell_page")?;
+    if rows
+        .iter()
+        .any(|r| !r["id"].as_str().is_some_and(crate::valid_id))
+    {
+        return Err("malformed_shell_page".into());
+    }
+    with(env, |e| {
+        let floor = e.snapshot_sequence;
+        if sequence < floor {
+            return Err("stale_shell_page".into());
+        }
         for row in rows {
-            let id=row["id"].as_str().unwrap();
-            if sequence<floor || e.versions.get(id).is_some_and(|n|*n>sequence) {continue}
-            if e.supplemental.get(id).is_none_or(|(n,_)|*n<=sequence){e.supplemental.insert(id.into(),(sequence,row.clone()));}
+            let id = row["id"].as_str().unwrap();
+            if sequence < floor || e.versions.get(id).is_some_and(|n| *n > sequence) {
+                continue;
+            }
+            if e.supplemental.get(id).is_none_or(|(n, _)| *n <= sequence) {
+                e.supplemental.insert(id.into(), (sequence, row.clone()));
+            }
         }
         Ok(())
     })
 }
-pub fn update_older_counts(env:&str,before:&str,page:&Value)->crate::Result<()> {
-    let sequence=page["snapshotSequence"].as_u64().ok_or("missing_sequence")?;
-    let counts=page["counts"].as_array().ok_or("malformed_shell_page")?;
-    if counts.iter().any(|c|!c["projectId"].as_str().is_some_and(crate::valid_id)||c["count"].as_u64().is_none()){return Err("malformed_shell_page".into())}
-    with(env,|e|{
-        if e.snapshot_sequence>sequence{return Err("stale_shell_page".into())}
-        e.older_counts=Some((before.to_string(),json!({"before":before,"asOfSequence":sequence,"counts":counts})));Ok(())
+/// Search rows are visible only while a consumer holds their shown search key.
+/// Multiple consumers of the same key share one mount; closing either releases
+/// only its own hold. Read data never replaces an authoritative shell row.
+pub fn mount_search(owner: &str, key: &str, pages: &Value) -> crate::Result<()> {
+    if !matches!(owner, "sidebar" | "palette") {
+        return Err("invalid_search_consumer".into());
+    }
+    let pages = pages.as_array().ok_or("malformed_shell_page")?;
+    let mut reads = HashMap::new();
+    for page in pages {
+        let env = page["environmentId"]
+            .as_str()
+            .filter(|id| crate::valid_id(id))
+            .ok_or("invalid_environment")?;
+        let read = &page["read"];
+        let rows = read["threads"].as_array().ok_or("malformed_shell_page")?;
+        if key.is_empty()
+            || read["snapshotSequence"].as_u64().is_none()
+            || rows
+                .iter()
+                .any(|row| !row["id"].as_str().is_some_and(crate::valid_id))
+            || reads.insert(env.to_string(), read.clone()).is_some()
+        {
+            return Err("malformed_shell_page".into());
+        }
+    }
+    let mut guard = SHELLS.lock().unwrap_or_else(|error| error.into_inner());
+    let entries = guard.get_or_insert_with(HashMap::new);
+    for (env, entry) in entries.iter_mut() {
+        for mount in &mut entry.search_mounts {
+            if mount.key != key || !reads.contains_key(env) {
+                mount.owners.retain(|held| held != owner);
+            }
+        }
+        entry.search_mounts.retain(|mount| !mount.owners.is_empty());
+    }
+    for (env, read) in reads {
+        let entry = entries.entry(env).or_default();
+        if let Some(mount) = entry
+            .search_mounts
+            .iter_mut()
+            .find(|mount| mount.key == key)
+        {
+            mount.read = read;
+            if !mount.owners.iter().any(|held| held == owner) {
+                mount.owners.push(owner.to_string());
+            }
+        } else {
+            entry.search_mounts.push(SearchMount {
+                key: key.to_string(),
+                read,
+                owners: vec![owner.to_string()],
+            });
+        }
+    }
+    Ok(())
+}
+pub fn update_older_counts(env: &str, before: &str, page: &Value) -> crate::Result<()> {
+    let sequence = page["snapshotSequence"]
+        .as_u64()
+        .ok_or("missing_sequence")?;
+    let counts = page["counts"].as_array().ok_or("malformed_shell_page")?;
+    if counts.iter().any(|c| {
+        !c["projectId"].as_str().is_some_and(crate::valid_id) || c["count"].as_u64().is_none()
+    }) {
+        return Err("malformed_shell_page".into());
+    }
+    with(env, |e| {
+        if e.snapshot_sequence > sequence {
+            return Err("stale_shell_page".into());
+        }
+        e.older_counts = Some((
+            before.to_string(),
+            json!({"before":before,"asOfSequence":sequence,"counts":counts}),
+        ));
+        Ok(())
     })
 }
 pub fn enriched(env: &str, mut shell: Value) -> Value {
-    with(env,|e| {
-        if let Some((before,counts))=&e.older_counts{if shell["olderSettled"]["before"]==*before&&shell["olderSettled"]["asOfSequence"].as_u64().unwrap_or(0)<=counts["asOfSequence"].as_u64().unwrap_or(0){shell["olderSettled"]=counts.clone();}}
-        if let Some(rows)=shell["threads"].as_array_mut(){for (_,row) in e.supplemental.values(){upsert(rows,row.clone());}}
-    });shell
+    with(env, |e| {
+        if let Some((before, counts)) = &e.older_counts {
+            if shell["olderSettled"]["before"] == *before
+                && shell["olderSettled"]["asOfSequence"].as_u64().unwrap_or(0)
+                    <= counts["asOfSequence"].as_u64().unwrap_or(0)
+            {
+                shell["olderSettled"] = counts.clone();
+            }
+        }
+        let cut = shell["olderSettled"]["asOfSequence"].as_u64().unwrap_or(0);
+        if let Some(rows) = shell["threads"].as_array_mut() {
+            for (_, row) in e.supplemental.values() {
+                upsert(rows, row.clone());
+            }
+            for mount in &e.search_mounts {
+                let sequence = mount.read["snapshotSequence"].as_u64().unwrap_or(0);
+                if sequence < cut {
+                    continue;
+                }
+                for row in mount.read["threads"].as_array().into_iter().flatten() {
+                    let id = row["id"].as_str().unwrap_or("");
+                    if rows.iter().any(|present| same_id(present, row))
+                        || e.versions
+                            .get(id)
+                            .is_some_and(|removed| *removed > sequence)
+                    {
+                        continue;
+                    }
+                    rows.push(row.clone());
+                }
+            }
+        }
+    });
+    shell
 }
 /// Drops the held shell so the next subscription starts from a full snapshot.
 pub fn reset(env: &str) {
-    with(env, |e| {let generation=e.generation.wrapping_add(1);*e = Entry{generation,..Default::default()}})
+    with(env, |e| {
+        let generation = e.generation.wrapping_add(1);
+        *e = Entry {
+            generation,
+            ..Default::default()
+        }
+    })
 }
 pub fn forget(env: &str) {
     let mut guard = SHELLS.lock().unwrap_or_else(|e| e.into_inner());
@@ -110,7 +261,10 @@ fn upsert(list: &mut Vec<Value>, item: Value) {
     }
 }
 fn array(shell: &mut Value, key: &str) -> Vec<Value> {
-    shell[key].as_array_mut().map(std::mem::take).unwrap_or_default()
+    shell[key]
+        .as_array_mut()
+        .map(std::mem::take)
+        .unwrap_or_default()
 }
 /// Enrichment is asynchronous: keep a resolved identity for the same workspace root
 /// when a later project body still has none.
@@ -129,20 +283,31 @@ fn retain_identity(previous: Option<&Value>, mut next: Value) -> Value {
 pub fn reduce(state: &mut Option<Value>, item: &Value) -> bool {
     match item["kind"].as_str().unwrap_or("") {
         "snapshot" => {
-            let Some(snapshot) = item["snapshot"].as_object() else { return false };
+            let Some(snapshot) = item["snapshot"].as_object() else {
+                return false;
+            };
             if let Some(roots) = item["resolvedRepositoryIdentityRoots"].as_array() {
                 // Metadata-only refresh: structure and sequence never change.
-                let Some(shell) = state.as_mut() else { return false };
-                let candidates = snapshot.get("projects").and_then(Value::as_array).cloned().unwrap_or_default();
+                let Some(shell) = state.as_mut() else {
+                    return false;
+                };
+                let candidates = snapshot
+                    .get("projects")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
                 let mut changed = false;
                 for project in shell["projects"].as_array_mut().into_iter().flatten() {
-                    let Some(candidate) = candidates.iter().find(|c| same_id(c, project)) else { continue };
+                    let Some(candidate) = candidates.iter().find(|c| same_id(c, project)) else {
+                        continue;
+                    };
                     if candidate["workspaceRoot"] != project["workspaceRoot"] {
                         continue;
                     }
                     let resolved = roots.contains(&project["workspaceRoot"]);
                     let identity = &candidate["repositoryIdentity"];
-                    if (resolved || (project["repositoryIdentity"].is_null() && !identity.is_null()))
+                    if (resolved
+                        || (project["repositoryIdentity"].is_null() && !identity.is_null()))
                         && project["repositoryIdentity"] != *identity
                     {
                         project["repositoryIdentity"] = identity.clone();
@@ -167,8 +332,15 @@ pub fn reduce(state: &mut Option<Value>, item: &Value) -> bool {
             changed
         }
         kind @ ("project.updated" | "project.removed" | "thread.updated" | "thread.removed") => {
-            let Some(shell) = state.as_mut() else { return false };
-            let Some(sequence) = crate::protocol::stream::cursor_of(crate::protocol::api::streams::SUBSCRIBE_SHELL.name, item) else { return false };
+            let Some(shell) = state.as_mut() else {
+                return false;
+            };
+            let Some(sequence) = crate::protocol::stream::cursor_of(
+                crate::protocol::api::streams::SUBSCRIBE_SHELL.name,
+                item,
+            ) else {
+                return false;
+            };
             if sequence <= shell["snapshotSequence"].as_u64().unwrap_or(0) {
                 return false;
             }
@@ -176,7 +348,10 @@ pub fn reduce(state: &mut Option<Value>, item: &Value) -> bool {
             match kind {
                 "project.updated" => {
                     let mut projects = array(shell, "projects");
-                    let project = retain_identity(projects.iter().find(|p| same_id(p, &item["project"])), item["project"].clone());
+                    let project = retain_identity(
+                        projects.iter().find(|p| same_id(p, &item["project"])),
+                        item["project"].clone(),
+                    );
                     upsert(&mut projects, project);
                     shell["projects"] = json!(projects);
                 }
@@ -201,7 +376,8 @@ pub fn reduce(state: &mut Option<Value>, item: &Value) -> bool {
                     shell["threads"] = json!(threads);
                 }
             }
-            let changed = before["projects"] != shell["projects"] || before["threads"] != shell["threads"];
+            let changed =
+                before["projects"] != shell["projects"] || before["threads"] != shell["threads"];
             shell["snapshotSequence"] = json!(sequence);
             changed
         }
@@ -225,7 +401,10 @@ mod tests {
         let shell = state.as_ref().unwrap();
         assert_eq!(shell["snapshotSequence"], 5);
         assert_eq!(shell["archivedThreads"], json!([]));
-        assert!(!reduce(&mut state, &snapshot(5)), "an identical snapshot changes nothing");
+        assert!(
+            !reduce(&mut state, &snapshot(5)),
+            "an identical snapshot changes nothing"
+        );
     }
     #[test]
     fn deltas_apply_once_in_sequence_order() {
@@ -234,14 +413,18 @@ mod tests {
         let add = json!({"kind":"thread.updated","sequence":6,"location":"active","thread":{"id":"t2","title":"Two"}});
         assert!(reduce(&mut state, &add));
         assert!(!reduce(&mut state, &add), "replayed sequence is ignored");
-        let stale = json!({"kind":"thread.removed","sequence":4,"location":"active","threadId":"t1"});
+        let stale =
+            json!({"kind":"thread.removed","sequence":4,"location":"active","threadId":"t1"});
         assert!(!reduce(&mut state, &stale));
         let rename = json!({"kind":"thread.updated","sequence":7,"location":"active","thread":{"id":"t1","title":"Renamed"}});
         assert!(reduce(&mut state, &rename));
         let shell = state.as_ref().unwrap();
         assert_eq!(shell["snapshotSequence"], 7);
         assert_eq!(shell["threads"].as_array().unwrap().len(), 2);
-        assert_eq!(shell["threads"][0]["title"], "Renamed", "upsert keeps the position");
+        assert_eq!(
+            shell["threads"][0]["title"], "Renamed",
+            "upsert keeps the position"
+        );
         let archived = json!({"kind":"thread.updated","sequence":8,"location":"archive","thread":{"id":"t2","title":"Two"}});
         assert!(reduce(&mut state, &archived));
         let removed = json!({"kind":"project.removed","sequence":9,"projectId":"p1"});
@@ -262,7 +445,10 @@ mod tests {
     #[test]
     fn deltas_without_a_shell_wait_for_the_snapshot() {
         let mut state = None;
-        assert!(!reduce(&mut state, &json!({"kind":"thread.removed","sequence":1,"location":"active","threadId":"t1"})));
+        assert!(!reduce(
+            &mut state,
+            &json!({"kind":"thread.removed","sequence":1,"location":"active","threadId":"t1"})
+        ));
         assert!(state.is_none());
     }
     #[test]
@@ -273,8 +459,15 @@ mod tests {
             "projects":[{"id":"p1","workspaceRoot":"/w","repositoryIdentity":{"key":"new"}}],"threads":[],"archivedThreads":[]}});
         assert!(reduce(&mut state, &refresh));
         let shell = state.as_ref().unwrap();
-        assert_eq!(shell["snapshotSequence"], 5, "a resume prefix must not skip replayed events");
-        assert_eq!(shell["threads"].as_array().unwrap().len(), 1, "metadata frames carry no threads");
+        assert_eq!(
+            shell["snapshotSequence"], 5,
+            "a resume prefix must not skip replayed events"
+        );
+        assert_eq!(
+            shell["threads"].as_array().unwrap().len(),
+            1,
+            "metadata frames carry no threads"
+        );
         assert_eq!(shell["projects"][0]["repositoryIdentity"]["key"], "new");
         assert!(!reduce(&mut None, &refresh), "nothing to merge into");
     }
@@ -292,19 +485,45 @@ mod tests {
 
 #[cfg(test)]
 mod nightly_tests {
- use super::*;
- #[test]
- fn loaded_pages_never_resurrect_newer_removed_or_archived_threads() {
-  let env="nightly-page-test";
-  reset(env);
-  apply(env,&json!({"kind":"snapshot","snapshot":{"snapshotSequence":10,"threads":[{"id":"t","title":"base"}],"projects":[]}}));
-  supplement(env,&json!({"snapshotSequence":12,"threads":[{"id":"t","title":"page"},{"id":"other","title":"other"}]})).unwrap();
-  apply(env,&json!({"kind":"thread.updated","sequence":11,"location":"active","thread":{"id":"t","title":"older delta"}}));
-  let base=with(env,|e|e.shell.clone().unwrap());assert_eq!(enriched(env,base)["threads"][0]["title"],"page");
-  apply(env,&json!({"kind":"thread.removed","sequence":13,"threadId":"t"}));
-  supplement(env,&json!({"snapshotSequence":12,"threads":[{"id":"t","title":"stale"}]})).unwrap();
-  assert_eq!(supplement(env,&json!({"snapshotSequence":9,"threads":[{"id":"t","title":"before snapshot"}]})).unwrap_err(),"stale_shell_page");
-  let base=with(env,|e|e.shell.clone().unwrap());assert!(enriched(env,base)["threads"].as_array().unwrap().iter().all(|t|t["id"]!="t"));
-  forget(env);
- }
+    use super::*;
+    #[test]
+    fn loaded_pages_never_resurrect_newer_removed_or_archived_threads() {
+        let env = "nightly-page-test";
+        reset(env);
+        apply(
+            env,
+            &json!({"kind":"snapshot","snapshot":{"snapshotSequence":10,"threads":[{"id":"t","title":"base"}],"projects":[]}}),
+        );
+        supplement(env,&json!({"snapshotSequence":12,"threads":[{"id":"t","title":"page"},{"id":"other","title":"other"}]})).unwrap();
+        apply(
+            env,
+            &json!({"kind":"thread.updated","sequence":11,"location":"active","thread":{"id":"t","title":"older delta"}}),
+        );
+        let base = with(env, |e| e.shell.clone().unwrap());
+        assert_eq!(enriched(env, base)["threads"][0]["title"], "page");
+        apply(
+            env,
+            &json!({"kind":"thread.removed","sequence":13,"threadId":"t"}),
+        );
+        supplement(
+            env,
+            &json!({"snapshotSequence":12,"threads":[{"id":"t","title":"stale"}]}),
+        )
+        .unwrap();
+        assert_eq!(
+            supplement(
+                env,
+                &json!({"snapshotSequence":9,"threads":[{"id":"t","title":"before snapshot"}]})
+            )
+            .unwrap_err(),
+            "stale_shell_page"
+        );
+        let base = with(env, |e| e.shell.clone().unwrap());
+        assert!(enriched(env, base)["threads"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|t| t["id"] != "t"));
+        forget(env);
+    }
 }

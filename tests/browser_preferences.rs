@@ -141,7 +141,7 @@ fn native_client_file_cas_keeps_profiles_unknown_fields_and_legacy_envelope() {
         .is_err());
         assert_eq!(fs::read(&file).unwrap(), bytes);
     }
-    fs::remove_dir_all(root).unwrap();
+
 }
 
 #[test]

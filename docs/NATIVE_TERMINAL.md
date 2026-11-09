@@ -1,47 +1,63 @@
 # Native terminal
 
-Use the terminal icon in the chat header or **Ctrl+J**. Ot3 opens the terminal
-configured by Omarchy and attaches it to T3's primary terminal (`term-1`) for
-that chat. Commands run in the selected T3 environment, in the chat's worktree
-or project directory. Remote environments use the existing T3 connection;
-no separate SSH host, password or terminal configuration is required.
+Use the terminal icon in the chat header or **Ctrl+J** to open the embedded
+terminal in O3’s side panel. The chat, composer and application window remain
+available. **Ctrl+D** splits a focused terminal. Tabs and horizontal/vertical
+splits retain their layout per thread. The renderer uses the exact pinned native
+Ghostty engine rather than a terminal approximation; see
+[terminal panel implementation and validation](TERMINAL_PANEL.md).
 
-Closing the native window detaches the frontend. It does not close T3's shell
-or terminate its jobs. Reopening restores the server's terminal history. Use
-`exit` to end the shell. Opening an exited shell starts it again. A connection
-failure ends the frontend instead of replaying input or reconnecting silently.
-Read-only connections cannot launch terminals. Local and inherited SSH credentials
-request T3’s `terminal:read` and `terminal:operate` scopes. Paired connections
-request the same scopes within their existing grant; a restricted grant must
-be updated in T3 before it can operate a terminal.
+Commands run in the selected T3 environment and the thread’s project or worktree.
+Remote environments use the existing T3 connection. No separate SSH host,
+password or terminal configuration is required. Selection, copy/paste, PRIMARY
+selection, scrollback and VT input stay inside the embedded terminal. **Add
+selection to prompt** creates a native structured context record and inline
+reference; drafts, send/retry, queue editing, recall and stash retain its text.
 
-The native emulator supplies selection, copy/paste, scrollback, fonts and the
-Omarchy theme. When launched from the overlay panel, O3 hides the panel so it
-does not cover the terminal; detached O3 windows remain open. The chat draft
-is preserved in both cases. This terminal is independent of the agent's tool
-executions and permission selector. Project scripts and sending a terminal
-selection as structured prompt context remain separate parity work.
+Closing a panel detaches the frontend and preserves the server shell and jobs.
+The panel restores terminal output after attaching again; explicit restart is
+available for an exited shell. Input is never replayed automatically after an
+uncertain write. Read-only connections cannot mutate terminals. Existing
+connection grants must include the native terminal scopes; credentials remain
+in Rust’s connection and never enter terminal launcher arguments.
 
-## Implementation
+## Implementation and remaining fidelity work
 
-The reusable `lib-t3-rust::terminal` module resolves the native thread context,
-builds attach/write/resize payloads and handles history sequence deduplication.
-The desktop Rust frontend forwards terminal output, UTF-8 input, Ctrl+C and
-window size changes. It restores termios and cancels the subscription on exit.
-There is no embedded browser terminal, JavaScript backend or local execution
-of remote commands. Credentials remain in the inherited T3 connection and are
-never included in terminal launcher arguments.
+`src/terminal_surface.rs` owns native terminal session RPCs and subscription
+lifetime. `native/terminal/terminalsurface.cpp` renders and encodes through the
+pinned Ghostty C ABI. `T3TerminalPanel.qml` and `T3TerminalPane.qml` supply the
+side-panel interaction, theme and session layout. The legacy external frontend
+in `src/terminal.rs` remains available for existing explicit CLI actions;
+it is no longer the chat-header implementation.
 
-Reference: `t3code-nightly` at `5a4e9980`,
-`packages/contracts/src/terminal.ts`, `rpc.ts`, and
-`apps/web/src/components/ThreadTerminalDrawer.tsx`.
+The terminal engine suite covers 52 Qt cases, including 40 native engine oracle
+cases, with 20 separate native terminal-context producer cases. Private Qt interaction checks exercise the
+actual chat header, renderer, focus, Ctrl+J/Ctrl+D, draft retention and selection
+attachment. Rust checks cover the real terminal RPC and context persistence
+paths. These checks run with isolated profiles and displays, without live user
+projects. Source-derived link matching has 219 helper oracle calls and 273
+actual viewport cell checks. Another 22 isolated routing checks and an actual
+pane/viewport QML check cover URL/browser preferences, editor positions, hover
+admission, selection, modifiers and stale-thread replies. Plain first left click
+activates a link without changing selection; Ctrl or Meta forces the system
+browser for URLs. The generic Ctrl/Meta-only activation helper belongs to the
+markdown consumer, not the terminal surface.
 
-Validation: isolated PTY/WebSocket integration covers snapshot/live output,
-replay deduplication, split UTF-8 input, Ctrl+C, resizing, normal shell exit,
-frontend termination/detachment and termios restoration. QML checks cover the
-header button, Ctrl+J, duplicate launch prevention, failures, late replies,
-draft preservation and read-only gating. These fixtures do not execute commands
-in a live user project or establish end-to-end LAN/emulator validation.
+Resolved UNC/network paths are rejected before requesting metadata. Path actions
+require current thread and connection permissions. The first wrapper wiring uses
+a bounded 60-second metadata cache and rechecks metadata before opening an editor.
+This is a temporary fidelity gap: native positive metadata remains retained for
+the mounted thread and RPC session, including after its global cache TTL. Exact
+retention, invalidation and mounted-session identity remain to be ported. The terminal frontend stays mounted when switching between side-panel tool tabs,
+preserving its stream, renderer and selection while an app-browser link opens.
+Closing the side panel still detaches it. The native terminal source at nightly
+4288 has no terminal search action; search is not claimed as an upstream feature.
+The input exposes the native accessible name and its vertical scrollbar retains
+native geometry, row/page/Home/End keys, pointer tracking and numeric accessibility
+values. The scrollbar helpers match the pinned source over 768 geometry/pointer
+cases. Native picker/importer details and the metadata lifecycle described above
+remain fidelity work. The resource and importer limits in [TERMINAL_PANEL.md](TERMINAL_PANEL.md)
+remain explicit.
 
 ## Run a command from a message
 
@@ -51,10 +67,15 @@ anything. As in T3 Code, only a closed, single-line shell fence without control
 or invisible formatting characters offers the run action. Streaming, incomplete
 or multiline blocks remain readable and copyable.
 
-A code action opens a fresh T3 terminal in the current chat's environment and
-project/worktree directory, so it cannot write into an unrelated running job.
-The command travels to the native frontend through a private one-use file,
-not a launcher shell argument. It is written once after the terminal attaches;
-an uncertain write is never retried automatically. Ordinary header/Ctrl+J opens
-continue to attach to the primary terminal. Closing the native window detaches
-without killing its shell.
+A code action opens a fresh embedded terminal tab in the current chat's
+environment and project/worktree directory. The command travels through the
+existing private desktop worker IPC and is written once as `command + "\r"`
+after the initial live terminal snapshot. An uncertain write is never replayed
+automatically. The chat header and Ctrl+J use the same embedded panel.
+
+Native T3 code actions target the drawer and may reuse an idle drawer-owned
+terminal, excluding terminals owned by the side panel. O3 currently exposes the
+embedded side-panel ownership path and creates a fresh terminal for code actions;
+separate drawer ownership and eligible idle-drawer reuse remain fidelity work.
+The legacy external frontend is still an explicit CLI path. Closing either
+frontend detaches without killing its server shell.

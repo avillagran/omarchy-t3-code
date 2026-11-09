@@ -8,7 +8,33 @@
 sep=$(printf '\037')
 real_home=$(cd "$HOME" 2>/dev/null && pwd -P) || exit 5
 stage=$(mktemp -d "${TMPDIR:-/tmp}/ot3-sync.XXXXXX") || exit 6
-trap 'rm -rf -- "$stage"' EXIT
+cleanup_stage() {
+  # The producer's explicit regular-file manifest owns cleanup. Never walk a tree.
+  if [ -f "$stage/plan" ] && [ ! -L "$stage/plan" ]; then
+    while IFS="$sep" read -r kind owned ignored; do
+      [ "$kind" = F ] || continue
+      case "$owned" in ''|/*|..|../*|*/../*|*/..) continue;; esac
+      parent="$stage/files"; rest="$owned"; valid=true
+      [ -d "$parent" ] && [ ! -L "$parent" ] || continue
+      while [ "$rest" != "${rest#*/}" ]; do
+        component=${rest%%/*}; rest=${rest#*/}
+        case "$component" in ''|.|..) valid=false; break;; esac
+        parent="$parent/$component"
+        if [ ! -d "$parent" ] || [ -L "$parent" ]; then valid=false; break; fi
+      done
+      [ "$valid" = true ] || continue
+      case "$rest" in ''|.|..) continue;; esac
+      if [ ! -d "$parent/$rest" ] || [ -L "$parent/$rest" ]; then rm -f -- "$parent/$rest" || true; fi
+      while [ "$parent" != "$stage/files" ]; do
+        rmdir -- "$parent" 2>/dev/null || break
+        parent=$(dirname -- "$parent")
+      done
+    done < "$stage/plan"
+  fi
+  rm -f -- "$stage/stamp" "$stage/plan" || true
+  rmdir -- "$stage/files" "$stage" 2>/dev/null || true
+}
+trap cleanup_stage EXIT
 tar -xpf - -C "$stage" 2>/dev/null || exit 3
 stamp=$(cat "$stage/stamp")
 case "$stamp" in ''|*[!0-9TZ-]*) exit 4;; esac

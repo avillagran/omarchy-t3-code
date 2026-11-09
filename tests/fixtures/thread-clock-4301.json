@@ -1,0 +1,111 @@
+{
+  "revision": "4cb6945dc60ed03f567dc5daafd083e52308e82b",
+  "sourceSha256": "a79464d13df7dd7b30290d2a1f1d304e04ffb697968e8d19e1118adf4c18865d",
+  "nowStart": 1794054896789,
+  "events": [
+    {
+      "step": "cold",
+      "now": 1794054896789,
+      "value": "2026-11-07T12:34",
+      "timers": [],
+      "calls": []
+    },
+    {
+      "step": "first-subscribe",
+      "now": 1794054896789,
+      "value": "2026-11-07T12:34",
+      "timers": [
+        3211
+      ],
+      "calls": []
+    },
+    {
+      "step": "second-subscribe",
+      "now": 1794054896789,
+      "value": "2026-11-07T12:34",
+      "timers": [
+        3211
+      ],
+      "calls": []
+    },
+    {
+      "step": "cached-between-ticks",
+      "now": 1794054897789,
+      "value": "2026-11-07T12:34",
+      "timers": [
+        3211
+      ],
+      "calls": []
+    },
+    {
+      "step": "minute-boundary",
+      "now": 1794054900000,
+      "value": "2026-11-07T12:35",
+      "timers": [
+        60000
+      ],
+      "calls": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "step": "one-reader-left",
+      "now": 1794054900000,
+      "value": "2026-11-07T12:35",
+      "timers": [
+        60000
+      ],
+      "calls": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "step": "last-reader-gone",
+      "now": 1794054900000,
+      "value": "2026-11-07T12:35",
+      "timers": [],
+      "calls": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "step": "unsubscribed-catches-up",
+      "now": 1794055080000,
+      "value": "2026-11-07T12:38",
+      "timers": [],
+      "calls": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "step": "reentrant-resubscribe",
+      "now": 1794055140000,
+      "value": "2026-11-07T12:39",
+      "timers": [
+        60000
+      ],
+      "calls": [
+        "a",
+        "b",
+        "reentrant-a",
+        "reentrant-c"
+      ]
+    },
+    {
+      "step": "reentrant-last-reader-gone",
+      "now": 1794055140000,
+      "value": "2026-11-07T12:39",
+      "timers": [],
+      "calls": [
+        "a",
+        "b",
+        "reentrant-a",
+        "reentrant-c"
+      ]
+    }
+  ]
+}

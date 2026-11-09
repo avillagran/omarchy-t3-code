@@ -1,0 +1,11 @@
+{
+  "revision": "83a3674ffd84ffb33de768210c806cb1ac53fd80",
+  "source": "apps/web/src/speech/browserMicrophones.ts",
+  "sourceSha256": "ae9e0733b8eea7942943139bd3c1e47f271feaeb750d86918df3fe4206b65c54",
+  "node": "26.13.0",
+  "outputSha256": "924126635b0a8e0c3a543b09d1509159b00a141c659b1cca6fa402d8f3af8bb2",
+  "adaptations": [
+    "Complete original module; TypeScript types only removed"
+  ],
+  "scope": "Read-only audioinput metadata enumeration; never requests microphone permission or opens an audio stream"
+}

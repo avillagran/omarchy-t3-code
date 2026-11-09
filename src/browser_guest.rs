@@ -1,5 +1,7 @@
 //! Qt guest ownership below the authorized native preview bridge. Callers must
-//! supply authoritative native snapshots; no page evaluation/automation API.
+//! supply authoritative native snapshots. Automation uses only its separately
+//! admitted private descriptor; it never shares public UI/status messages.
+mod private;
 use crate::{json, text, Result};
 use serde_json::Value;
 use std::{
@@ -7,7 +9,10 @@ use std::{
     ffi::OsString,
     fs,
     io::{BufRead, BufReader, Write},
-    os::unix::{fs::PermissionsExt, process::CommandExt},
+    os::{
+        fd::AsRawFd,
+        unix::{fs::PermissionsExt, net::UnixStream, process::CommandExt},
+    },
     path::{Path, PathBuf},
     process::{Child, ChildStdin, Command, Stdio},
     sync::{
@@ -24,6 +29,10 @@ pub struct Config {
     environment: HashMap<OsString, OsString>,
     cache: PathBuf,
     basic_store: bool,
+    native_display: Option<PathBuf>,
+    native_wayland: Option<crate::browser_wayland::Config>,
+    mapped_native_host: bool,
+    clipboard: Option<crate::gui_clipboard::Shared>,
 }
 impl Config {
     pub fn import_assets(&self) -> [PathBuf; 2] {
@@ -76,7 +85,85 @@ impl Config {
             environment,
             cache: crate::xdg("XDG_CACHE_HOME", ".cache"),
             basic_store: false,
+            native_display: None,
+            native_wayland: None,
+            mapped_native_host: false,
+            clipboard: None,
         })
+    }
+    /// Keep the actual GUI registration with this factory. Ordinary Qt guests
+    /// do not register an X cohort or request clipboard contents.
+    pub fn with_gui_clipboard(mut self, platform: Option<crate::gui_clipboard::Shared>) -> Self {
+        self.clipboard = platform;
+        self
+    }
+    /// Explicit internal opt-in with a private authenticated display owned by
+    /// each cohort. This does not advertise or select a browser capability.
+    pub fn with_owned_native_electron(
+        self,
+        runtime: &Path,
+        assets: &Path,
+        x_server: &Path,
+    ) -> Result<Self> {
+        if !x_server.is_absolute() {
+            return Err("invalid_browser_fixture".into());
+        }
+        let mut owned = self.with_native_electron(runtime, assets, ":owned")?;
+        owned.native_wayland = None;
+        owned.native_display = Some(x_server.into());
+        Ok(owned)
+    }
+    /// Internal opt-in: an app-private admitted compositor and authenticated
+    /// transparent frontend sockets. System clipboard migration is not enabled.
+    pub fn with_owned_native_wayland(
+        self,
+        runtime: &Path,
+        assets: &Path,
+        compositor: &Path,
+        libraries: &Path,
+    ) -> Result<Self> {
+        let mut owned = self.with_native_electron(runtime, assets, "owned-wayland")?;
+        owned.environment.remove(std::ffi::OsStr::new("DISPLAY"));
+        owned.native_display = None;
+        owned.native_wayland = Some(crate::browser_wayland::Config::new(compositor, libraries)?);
+        Ok(owned)
+    }
+    /// Map the genuine native host only on this factory's owned display.
+    /// No existing desktop display or service is adopted by this option.
+    pub fn with_mapped_native_host(mut self) -> Result<Self> {
+        if self.native_display.is_none() && self.native_wayland.is_none() {
+            return Err("browser_owned_display_required".into());
+        }
+        self.mapped_native_host = true;
+        Ok(self)
+    }
+    /// Explicit internal renderer opt-in on an already isolated display.
+    pub fn with_native_electron(
+        mut self,
+        runtime: &Path,
+        assets: &Path,
+        display: &str,
+    ) -> Result<Self> {
+        if !runtime.is_absolute() || !assets.is_absolute() || display.is_empty() {
+            return Err("invalid_browser_fixture".into());
+        }
+        self.environment
+            .insert("O3_BROWSER_ENGINE".into(), "native-electron".into());
+        self.environment
+            .insert("O3_NATIVE_ELECTRON_RUNTIME".into(), runtime.into());
+        self.environment
+            .insert("O3_NATIVE_ELECTRON_ASSETS".into(), assets.into());
+        self.environment.insert("DISPLAY".into(), display.into());
+        if self.basic_store {
+            if let Some(home) = self.environment.get(std::ffi::OsStr::new("HOME")) {
+                self.environment.insert(
+                    "O3_NATIVE_ELECTRON_DIAGNOSTICS".into(),
+                    Path::new(home).join("native-electron.log").into_os_string(),
+                );
+            }
+        }
+
+        Ok(self)
     }
     /// Explicit fixture configuration, with no real user bus, keyring or browser.
     pub fn isolated(executable: PathBuf, root: &Path) -> Result<Self> {
@@ -104,11 +191,22 @@ impl Config {
             format!("unix:path={}", root.join("no-session-bus").display()).into(),
         );
         environment.insert("LANG".into(), "C.UTF-8".into());
+        // Preserve the private harness's audited software-rendering choice
+        // across the renderer's intentionally cleared environment.
+        for key in ["LIBGL_ALWAYS_SOFTWARE", "__EGL_VENDOR_LIBRARY_FILENAMES"] {
+            if let Some(value) = std::env::var_os(key) {
+                environment.insert(key.into(), value);
+            }
+        }
         Ok(Self {
             executable,
             environment,
             cache: root.join("cache/omarchy-t3-code"),
             basic_store: true,
+            native_display: None,
+            native_wayland: None,
+            mapped_native_host: false,
+            clipboard: None,
         })
     }
 }
@@ -231,6 +329,10 @@ impl ImportVerification {
     }
 }
 struct Session {
+    _display: Option<crate::browser_native_display::Display>,
+    _wayland: Option<crate::browser_wayland::Display>,
+    _engine: Option<crate::browser_engine_identity::Engine>,
+    _clipboard: Option<crate::gui_clipboard::CohortLease>,
     child: Child,
     input: ChildStdin,
     id: String,
@@ -243,14 +345,44 @@ struct Session {
     cookie_replies: std::sync::mpsc::Receiver<Value>,
     cookie_checks: HashMap<(String, String, String), CookieCheck>,
     cookie_database: PathBuf,
+    private: Option<private::Guest>,
 }
 impl Session {
-    fn send(&mut self, value: Value) -> Result<()> {
+    fn send(&mut self, mut value: Value) -> Result<()> {
+        if let Some(context) = self._wayland.as_ref().and_then(|display| display.context()) {
+            let mut owner = context
+                .lock()
+                .map_err(|_| "browser_input_context_unavailable")?;
+            match text(&value, "type") {
+                "open" => {
+                    let title = owner.title(text(&value, "threadId"), text(&value, "tabId"))?;
+                    value["nativeContextTitle"] = json!(title);
+                }
+                "deactivate" => owner.hide()?,
+                "close-tab" => owner.remove(text(&value, "threadId"), text(&value, "tabId"))?,
+                _ => {}
+            }
+        }
+        if self
+            ._wayland
+            .as_ref()
+            .is_some_and(|display| !display.healthy())
+        {
+            return Err("browser_wayland_host_unavailable".into());
+        }
         writeln!(self.input, "{value}").map_err(|_| "browser_runtime_closed".into())
     }
     fn stop(&mut self) -> Result<()> {
         if let Some(result) = &self.stopped {
             return result.clone();
+        }
+        if let Some(context) = self._wayland.as_ref().and_then(|display| display.context()) {
+            if let Ok(mut owner) = context.lock() {
+                let _ = owner.hide();
+            }
+        }
+        if let Some(private) = &self.private {
+            private.close();
         }
         self.alive.store(false, Ordering::SeqCst);
         let _ = writeln!(self.input, "{{\"type\":\"close\"}}");
@@ -271,8 +403,9 @@ impl Session {
         if let Some(reader) = self.reader.take() {
             let _ = reader.join();
         }
+        self.private.take();
         if let Some(path) = self.frames.lock().unwrap().take() {
-            let _ = fs::remove_dir_all(path);
+            let _ = crate::frame_files::reclaim(&path);
         }
         let result = if success {
             Ok(())
@@ -288,12 +421,19 @@ impl Drop for Session {
         let _ = self.stop();
     }
 }
+struct PrivateBinding {
+    origin: String,
+    receive: private::Native,
+    turns: Arc<Mutex<HashSet<String>>>,
+}
 pub struct Pool {
     config: Config,
     sessions: HashMap<(String, String), Session>,
     visited: HashSet<(String, String)>,
     active: Arc<Mutex<Option<View>>>,
     receive: Callback,
+    private_bindings: HashMap<String, PrivateBinding>,
+    private_registry: Arc<Mutex<crate::browser_automation::Registry>>,
 }
 impl Pool {
     pub fn new(config: Config, receive: impl Fn(Value) + Send + Sync + 'static) -> Self {
@@ -303,26 +443,244 @@ impl Pool {
             visited: HashSet::new(),
             active: Arc::new(Mutex::new(None)),
             receive: Arc::new(receive),
+            private_bindings: HashMap::new(),
+            private_registry: Arc::new(Mutex::new(Default::default())),
         }
+    }
+    /// Trusted owned-backend coordinator only. This callback writes native
+    /// browser events to its dedicated backend descriptor, never the UI output.
+    pub fn bind_private_source(
+        &mut self,
+        environment: &str,
+        origin_key: &str,
+        receive: impl Fn(Value) + Send + Sync + 'static,
+    ) -> Result<()> {
+        if environment.is_empty() || origin_key.is_empty() || origin_key.len() > 128 {
+            return Err("preview_scope_changed".into());
+        }
+        if self
+            .sessions
+            .keys()
+            .any(|(current, _)| current == environment)
+        {
+            return Err("browser_guest_mode_busy".into());
+        }
+        self.private_bindings.insert(
+            environment.into(),
+            PrivateBinding {
+                origin: origin_key.into(),
+                receive: Arc::new(receive),
+                turns: Arc::new(Mutex::new(HashSet::new())),
+            },
+        );
+        Ok(())
+    }
+    pub fn has_private_source(&self, environment: &str, origin_key: &str) -> bool {
+        self.private_bindings
+            .get(environment)
+            .is_some_and(|binding| binding.origin == origin_key)
+    }
+    pub fn unbind_private_source(&mut self, environment: &str) {
+        self.close_environment(environment);
+        self.private_bindings.remove(environment);
+    }
+    /// Caller must first perform fresh native RPC permission/snapshot admission.
+    /// A backend opened event can create this view before its open RPC completes.
+    pub fn ensure_private(
+        &mut self,
+        environment: &str,
+        origin_key: &str,
+        snapshot: &Value,
+        size: (u64, u64),
+        zoom: &Value,
+    ) -> Result<()> {
+        if !self.has_private_source(environment, origin_key) {
+            return Err("preview_scope_changed".into());
+        }
+        let snapshot = crate::preview_transport::snapshot(snapshot)?;
+        let profile = snapshot["profileId"].as_str().unwrap_or("default");
+        crate::browser_runtime::partition(environment, profile)?;
+        let viewport = crate::browser_preferences::validate(
+            "browserDefaultViewport",
+            &json!({"_tag":"freeform","width":size.0,"height":size.1}),
+        )?;
+        let zoom = crate::browser_preferences::validate("browserDefaultZoomFactor", zoom)?;
+        let key = (environment.to_owned(), profile.to_owned());
+        if self.sessions.get_mut(&key).is_some_and(|session| {
+            session.origin != origin_key
+                || session.child.try_wait().ok().flatten().is_some()
+                || !session
+                    .private
+                    .as_ref()
+                    .is_some_and(private::Guest::is_open)
+        }) {
+            self.sessions.remove(&key);
+        }
+        if !self.sessions.contains_key(&key) {
+            if self.sessions.len() >= 16 {
+                return Err("browser_guest_limit".into());
+            }
+            let session = self.launch(
+                environment,
+                profile,
+                origin_key,
+                (
+                    viewport["width"].as_u64().unwrap(),
+                    viewport["height"].as_u64().unwrap(),
+                ),
+                &zoom,
+                false,
+            )?;
+            self.sessions.insert(key.clone(), session);
+        }
+        let session = self.sessions.get_mut(&key).unwrap();
+        let thread = text(&snapshot, "threadId");
+        let tab = text(&snapshot, "tabId");
+        let instance = session
+            .private
+            .as_ref()
+            .ok_or("browser_private_unavailable")?
+            .approve(thread, tab)?;
+        if session.tabs.insert((thread.into(), tab.into())) {
+            let url = if snapshot["navStatus"]["_tag"] == "Idle" {
+                Value::Null
+            } else {
+                snapshot["navStatus"]["url"].clone()
+            };
+            session.send(json!({"type":"open","threadId":thread,"tabId":tab,"url":url,"background":true,"automation":true,"automationInstance":instance,"serverControlled":snapshot["runtime"]=="server"}))?;
+        } else {
+            session.send(json!({"type":"automation","threadId":thread,"tabId":tab,"automationInstance":instance}))?;
+        }
+        Ok(())
+    }
+    pub fn private_command(
+        &mut self,
+        environment: &str,
+        origin_key: &str,
+        command: &Value,
+    ) -> Result<()> {
+        if !self.has_private_source(environment, origin_key) {
+            return Err("preview_scope_changed".into());
+        }
+        let command = crate::desktop_browser_ipc::decode_command(command)
+            .ok_or("browser_private_command_invalid")?;
+        let thread = text(&command, "threadId");
+        let tab = text(&command, "tabId");
+        if command["type"] == "turn" {
+            let binding = self
+                .private_bindings
+                .get(environment)
+                .ok_or("preview_scope_changed")?;
+            let mut turns = binding.turns.lock().map_err(|_| "local_error")?;
+            if command["active"] == true {
+                turns.insert(thread.into());
+            } else {
+                turns.remove(thread);
+            }
+        }
+        for ((current, _), session) in &self.sessions {
+            if current != environment || session.origin != origin_key {
+                continue;
+            }
+            let Some(private) = &session.private else {
+                continue;
+            };
+            for (current_thread, current_tab) in &session.tabs {
+                if current_thread == thread && (command["type"] == "turn" || current_tab == tab) {
+                    private.command(current_thread, current_tab, command.clone())?;
+                }
+            }
+        }
+        // Native DesktopBrowserHost ignores commands for an absent tab.
+        Ok(())
+    }
+    pub fn private_lease(
+        &self,
+        environment: &str,
+        profile: &str,
+        thread: &str,
+        tab: &str,
+    ) -> Option<crate::browser_automation::Lease> {
+        let session = self.sessions.get(&(environment.into(), profile.into()))?;
+        self.private_registry.lock().ok()?.current(
+            &crate::browser_automation::Source {
+                environment: environment.into(),
+                profile: profile.into(),
+                guest: session.id.clone(),
+            },
+            thread,
+            tab,
+        )
     }
     fn launch(
         &mut self,
         environment: &str,
         profile: &str,
         origin: &str,
-        width: u64,
-        height: u64,
+        size: (u64, u64),
         zoom: &Value,
         initialize_cookies: bool,
     ) -> Result<Session> {
+        let (width, height) = size;
         let root = self
             .config
             .executable
             .parent()
             .ok_or("browser_runtime_unavailable")?;
-        if !root.join("libt3-browser.so").is_file() {
+        let native_electron = self
+            .config
+            .environment
+            .get(std::ffi::OsStr::new("O3_BROWSER_ENGINE"))
+            .is_some_and(|engine| engine == "native-electron");
+        if !native_electron && !root.join("libt3-browser.so").is_file() {
             return Err("browser_runtime_unavailable".into());
         }
+        let native_display = self
+            .config
+            .native_display
+            .as_ref()
+            .map(|executable| crate::browser_native_display::Display::launch(executable))
+            .transpose()?;
+        let native_wayland = self
+            .config
+            .native_wayland
+            .as_ref()
+            .map(crate::browser_wayland::Display::launch)
+            .transpose()?;
+        let identity = if native_display.is_some() || native_wayland.is_some() {
+            Some(crate::browser_engine_identity::Pending::new()?)
+        } else {
+            None
+        };
+        let identity_fd = identity
+            .as_ref()
+            .map(|pending| pending.source().as_raw_fd());
+        let id = uuid::Uuid::new_v4().to_string();
+        let mut private_source = None;
+        let mut private_fd = None;
+        let private = if let Some(binding) = self.private_bindings.get(environment) {
+            if binding.origin != origin {
+                return Err("preview_scope_changed".into());
+            }
+            let (parent, child) = UnixStream::pair().map_err(|_| "browser_private_unavailable")?;
+            let source = crate::desktop_browser_ipc::duplicate_child_source(child.as_raw_fd())
+                .map_err(|_| "browser_private_unavailable")?;
+            private_fd = Some(source.as_raw_fd());
+            private_source = Some(source);
+            Some(private::Guest::start(
+                crate::browser_automation::Source {
+                    environment: environment.into(),
+                    profile: profile.into(),
+                    guest: id.clone(),
+                },
+                parent,
+                self.private_registry.clone(),
+                binding.receive.clone(),
+                binding.turns.clone(),
+            )?)
+        } else {
+            None
+        };
         let mut command = Command::new(&self.config.executable);
         command
             .arg("browser-render")
@@ -341,6 +699,18 @@ impl Pool {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
+        if let Some(display) = &native_wayland {
+            command
+                .env_remove("DISPLAY")
+                .env("WAYLAND_DISPLAY", display.name())
+                .env("XDG_SESSION_TYPE", "wayland")
+                .env("XDG_RUNTIME_DIR", display.runtime());
+        }
+        if let Some(display) = &native_display {
+            command
+                .env("DISPLAY", display.name())
+                .env("XAUTHORITY", display.authorization_path());
+        }
         // The GUI worker may crash or be replaced. Do not orphan its Qt guest.
         let parent = unsafe { libc::getpid() };
         unsafe {
@@ -350,13 +720,18 @@ impl Pool {
                 {
                     return Err(std::io::Error::other("browser_parent_gone"));
                 }
+                if let Some(source) = &private_source {
+                    crate::desktop_browser_ipc::admit_child_source(source.as_raw_fd())?;
+                }
+                if let Some(identity) = identity_fd {
+                    crate::desktop_browser_ipc::admit_child_source(identity)?;
+                }
                 Ok(())
             });
         }
         let mut child = command.spawn().map_err(|_| "browser_runtime_unavailable")?;
         let input = child.stdin.take().ok_or("browser_runtime_unavailable")?;
         let stdout = child.stdout.take().ok_or("browser_runtime_unavailable")?;
-        let id = uuid::Uuid::new_v4().to_string();
         let alive = Arc::new(AtomicBool::new(true));
         let frames = Arc::new(Mutex::new(None));
         let (cookie_tx, cookie_replies) = std::sync::mpsc::sync_channel(16);
@@ -365,6 +740,10 @@ impl Pool {
             .visited
             .contains(&(environment.to_owned(), profile.to_owned()));
         let mut session = Session {
+            _display: native_display,
+            _wayland: native_wayland,
+            _engine: None,
+            _clipboard: None,
             child,
             input,
             id: id.clone(),
@@ -376,6 +755,7 @@ impl Pool {
             stopped: None,
             cookie_replies,
             cookie_checks: HashMap::new(),
+            private,
             cookie_database: self
                 .config
                 .storage_root()
@@ -388,18 +768,61 @@ impl Pool {
                 )
                 .join("storage/Cookies"),
         };
-        let payload=json!({"environmentId":environment,"profileId":profile,"width":width,"height":height,"zoomFactor":zoom,"initializeCookieStore":initialize_cookies||!restore,"restoreSessionCookies":restore}).to_string().into_bytes();
+        let mut payload = json!({"environmentId":environment,"profileId":profile,"width":width,"height":height,"zoomFactor":zoom,"initializeCookieStore":initialize_cookies||!restore,"restoreSessionCookies":restore});
+        if self.config.mapped_native_host
+            && (session._display.is_some() || session._wayland.is_some())
+        {
+            payload["ownedNativeHost"] = json!(true);
+        }
+        if let Some(fd) = private_fd {
+            payload["privateBrowserFd"] = json!(fd);
+        }
+        if let Some(fd) = identity_fd {
+            payload["privateClipboardIdentityFd"] = json!(fd);
+        }
+        if session._wayland.is_some() {
+            payload["privateEngineSpawn"] = json!(true);
+        }
+        let payload = payload.to_string().into_bytes();
         session
             .input
             .write_all(&(payload.len() as u64).to_be_bytes())
             .and_then(|_| session.input.write_all(&payload))
             .map_err(|_| "browser_runtime_closed")?;
+        session._engine = identity
+            .map(|pending| {
+                if let Some(display) = session._wayland.as_mut() {
+                    let engine = pending.admit_spawn(session.child.id())?;
+                    display.attach(&engine, self.config.clipboard.clone(), &session.id)?;
+                    pending.confirm(session.child.id(), &engine)?;
+                    Ok(engine)
+                } else {
+                    pending.admit(session.child.id())
+                }
+            })
+            .transpose()?;
+        if let (Some(gui), Some(display), Some(engine)) =
+            (&self.config.clipboard, &session._display, &session._engine)
+        {
+            session._clipboard = Some(crate::gui_clipboard::register(
+                gui.clone(),
+                &session.id,
+                display,
+                engine,
+            )?);
+        }
+
+        let context = session
+            ._wayland
+            .as_ref()
+            .and_then(|display| display.context());
         let active = self.active.clone();
         let receive = self.receive.clone();
         let cache = self.config.cache.join("browser-sessions");
         let environment = environment.to_owned();
         let visited_key = (environment.clone(), profile.to_owned());
         let origin = origin.to_owned();
+        let reader_profile = profile.to_owned();
         session.reader = Some(thread::spawn(move || {
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
@@ -413,6 +836,43 @@ impl Pool {
                     continue;
                 };
                 match text(&value, "type") {
+                    "native-dialog-request"
+                        if value["options"]["message"]
+                            .as_str()
+                            .is_some_and(|text| text.len() <= 16384)
+                            && value["options"]["buttons"]
+                                .as_array()
+                                .is_some_and(|buttons| {
+                                    buttons.len() == 2
+                                        && buttons.iter().all(|button| {
+                                            button.as_str().is_some_and(|text| text.len() <= 1024)
+                                        })
+                                })
+                            && value["options"]["defaultId"] == 1
+                            && value["options"]["cancelId"] == 1 =>
+                    {
+                        let request = text(&value, "requestId");
+                        let origin_value = text(&value, "origin");
+                        if uuid::Uuid::parse_str(request).is_ok() && origin_value.len() <= 8192 {
+                            receive(
+                                json!({"kind":"permission-request","environment":environment,"originKey":origin,"processId":id,"profileId":reader_profile,"nativeRequestId":request,"thread":value["threadId"],"tabId":value["tabId"],"origin":origin_value,"nativeOptions":value["options"]}),
+                            );
+                        }
+                    }
+                    "permission-request" if value["permission"] == "clipboard-read" => {
+                        let request = text(&value, "requestId");
+                        let origin_value = text(&value, "origin");
+                        if uuid::Uuid::parse_str(request).is_ok() && !origin_value.is_empty() {
+                            receive(
+                                json!({"kind":"permission-request","environment":environment,"originKey":origin,"processId":id,"profileId":reader_profile,"nativeRequestId":request,"thread":value["threadId"],"tabId":value["tabId"],"origin":origin_value}),
+                            );
+                        }
+                    }
+                    "permission-cancelled" => {
+                        receive(
+                            json!({"kind":"permission-cancelled","processId":id,"nativeRequestId":value["requestId"]}),
+                        );
+                    }
                     "cookie-imported" => {
                         // Dedicated response channel: cookie results never enter the UI/event callback.
                         let _ = cookie_tx.try_send(
@@ -433,12 +893,29 @@ impl Pool {
                             let _ = ready_tx.try_send(());
                         }
                     }
+                    "input-rejected" => {
+                        if text(&value, "error") != "browser_native_input_focus_required" {
+                            continue;
+                        }
+                        let view = active.lock().unwrap().clone();
+                        if let Some(view) = view.filter(|v| {
+                            v.process == id
+                                && v.id == text(&value, "surfaceId")
+                                && serde_json::to_string(&json!([v.thread, v.tab]))
+                                    .is_ok_and(|key| key == text(&value, "tabKey"))
+                        }) {
+                            receive(
+                                json!({"kind":"input-rejected","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"error":"browser_native_input_focus_required","inputType":value["inputType"]}),
+                            );
+                        }
+                    }
                     "frame" => {
                         let view = active.lock().unwrap().clone();
                         let Some(view) = view.filter(|v| {
                             v.process == id
                                 && v.id == text(&value, "surfaceId")
-                                && json!([v.thread, v.tab]).to_string() == text(&value, "tabKey")
+                                && serde_json::to_string(&json!([v.thread, v.tab]))
+                                    .is_ok_and(|key| key == text(&value, "tabKey"))
                         }) else {
                             continue;
                         };
@@ -460,9 +937,39 @@ impl Pool {
                         let Ok(url) = crate::Url::from_file_path(path) else {
                             continue;
                         };
-                        receive(
-                            json!({"kind":"frame","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"url":url.to_string(),"revision":value["revision"],"width":value["width"],"height":value["height"]}),
-                        );
+                        // Keep frame admission and context binding atomic against
+                        // hide/show. A previously cloned View cannot rebind after hide.
+                        let current = active.lock().unwrap();
+                        if !current.as_ref().is_some_and(|now| {
+                            now.id == view.id
+                                && now.process == view.process
+                                && now.thread == view.thread
+                                && now.tab == view.tab
+                        }) {
+                            continue;
+                        }
+                        let mut frame = json!({"kind":"frame","environment":view.environment,"originKey":view.origin,"thread":view.thread,"tabId":view.tab,"requestId":view.id,"url":url.to_string(),"revision":value["revision"],"width":value["width"],"height":value["height"],"nativeInput":native_electron && value["nativeInput"] == true});
+                        if let Some(context) = &context {
+                            if let (Ok(mut owner), Some(revision)) =
+                                (context.lock(), value["revision"].as_u64())
+                            {
+                                if let Ok(Some((binding, content))) =
+                                    owner.frame(crate::browser_context_owner::FrameInput {
+                                        thread: &view.thread,
+                                        tab: &view.tab,
+                                        scope: &view.id,
+                                        revision,
+                                        title: text(&value, "nativeContextTitle"),
+                                        content: &value["nativeInputContent"],
+                                    })
+                                {
+                                    frame["nativeInputBinding"] = binding;
+                                    frame["nativeInputContent"] = content;
+                                }
+                            }
+                        }
+                        drop(current);
+                        receive(frame);
                     }
                     "status" => {
                         if let Ok(snapshot) = crate::preview_transport::snapshot(
@@ -476,6 +983,7 @@ impl Pool {
                     _ => {} // No raw JS evaluation, cookies or unhandled native prompts escape.
                 }
             }
+            receive(json!({"kind":"permission-source-closed","processId":id}));
             if alive.load(Ordering::SeqCst) {
                 let view = active.lock().unwrap().clone();
                 if let Some(view) = view.filter(|v| v.process == id) {
@@ -498,12 +1006,12 @@ impl Pool {
         origin: &str,
         snapshot: &Value,
         view_id: &str,
-        width: u64,
-        height: u64,
+        size: (u64, u64),
         zoom: &Value,
     ) -> Result<()> {
+        let (width, height) = size;
         let snapshot = crate::preview_transport::snapshot(snapshot)?;
-        if snapshot["runtime"] == "server" {
+        if snapshot["runtime"] == "server" && !self.has_private_source(environment, origin) {
             return Err("server_browser_surface_required".into());
         }
         if view_id.is_empty() || view_id.len() > 128 || origin.is_empty() || origin.len() > 128 {
@@ -536,7 +1044,8 @@ impl Pool {
             if self.sessions.len() >= 16 {
                 return Err("browser_guest_limit".into());
             }
-            let session = self.launch(environment, profile, origin, width, height, &zoom, false)?;
+            let session =
+                self.launch(environment, profile, origin, (width, height), &zoom, false)?;
             self.sessions.insert(key.clone(), session);
         }
         let session = self.sessions.get_mut(&key).unwrap();
@@ -551,6 +1060,15 @@ impl Pool {
             tab: tab.into(),
         });
         session.send(json!({"type":"resize","width":size["width"],"height":size["height"]}))?;
+        let instance = session
+            .private
+            .as_ref()
+            .map(|private| private.approve(thread, tab))
+            .transpose()?;
+        let automation = session
+            .private
+            .as_ref()
+            .is_some_and(private::Guest::is_open);
         if session.tabs.insert((thread.into(), tab.into())) {
             let url = if snapshot["navStatus"]["_tag"] == "Idle" {
                 Value::Null
@@ -558,11 +1076,11 @@ impl Pool {
                 snapshot["navStatus"]["url"].clone()
             };
             session.send(
-                json!({"type":"open","threadId":thread,"tabId":tab,"surfaceId":view_id,"url":url}),
+                json!({"type":"open","threadId":thread,"tabId":tab,"surfaceId":view_id,"url":url,"automation":automation,"automationInstance":instance,"serverControlled":snapshot["runtime"]=="server"}),
             )?;
         } else {
             session.send(
-                json!({"type":"activate","threadId":thread,"tabId":tab,"surfaceId":view_id}),
+                json!({"type":"activate","threadId":thread,"tabId":tab,"surfaceId":view_id,"automation":automation,"automationInstance":instance,"serverControlled":snapshot["runtime"]=="server"}),
             )?;
         }
         session.send(json!({"type":"zoom","threadId":thread,"tabId":tab,"value":zoom}))?;
@@ -596,6 +1114,8 @@ impl Pool {
                     | "wheel"
                     | "key"
                     | "keyup"
+                    | "text"
+                    | "composition"
                     | "resize"
                     | "capture"
             )
@@ -608,6 +1128,25 @@ impl Pool {
             .find(|s| s.id == view.process)
             .ok_or("browser_runtime_closed")?;
         session.send(event.clone())
+    }
+    pub(crate) fn permission_decision(
+        &mut self,
+        source: &Value,
+        allow: bool,
+        remember: bool,
+    ) -> Result<()> {
+        let session = self
+            .sessions
+            .get_mut(&(
+                text(source, "environment").into(),
+                text(source, "profileId").into(),
+            ))
+            .filter(|session| {
+                session.id == text(source, "processId")
+                    && session.origin == text(source, "originKey")
+            })
+            .ok_or("browser_view_changed")?;
+        session.send(json!({"type":"permission-decision","requestId":source["nativeRequestId"],"allow":allow,"remember":remember}))
     }
     pub fn close_tab(
         &mut self,
@@ -628,6 +1167,9 @@ impl Pool {
         let key = (environment.to_owned(), profile.to_owned());
         if let Some(session) = self.sessions.get_mut(&key) {
             if session.tabs.remove(&(thread.into(), tab.into())) {
+                if let Some(private) = &session.private {
+                    private.remove(thread, tab);
+                }
                 session.send(json!({"type":"close-tab","threadId":thread,"tabId":tab}))?;
             }
             if session.tabs.is_empty() {
@@ -761,7 +1303,7 @@ impl Pool {
             if self.sessions.len() >= 16 {
                 return Err("browser_guest_limit".into());
             }
-            let session = self.launch(environment, profile, origin, 240, 240, &json!(1), true)?;
+            let session = self.launch(environment, profile, origin, (240, 240), &json!(1), true)?;
             self.sessions.insert(key.clone(), session);
         }
         let session = self.sessions.get_mut(&key).unwrap();
@@ -907,6 +1449,5 @@ mod import_verification_tests {
             verify_import(&path, &checks).is_err(),
             "missing persisted row cannot acknowledge an in-memory event"
         );
-        fs::remove_dir_all(root).unwrap();
     }
 }
