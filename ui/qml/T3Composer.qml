@@ -26,6 +26,8 @@ Rectangle {
   required property var bridge
   property bool showOptions: false
   property bool expanded: false
+  // A narrow window keeps the toolbar to what a short message needs.
+  readonly property bool compact: width>0&&width<Style.space(440)
   signal sidebarShortcutRequested(bool focusSelected)
   signal toggleExpanded()
   signal previewAttachment(var attachment)
@@ -452,7 +454,7 @@ Rectangle {
       }
       T3IconButton {
         objectName: "t3ComposerScreenshot"
-        visible: root.bridge.screenshotEnabled
+        visible: root.bridge.screenshotEnabled && !root.compact
         name: "camera"; tint: root.bridge.screenshot.busy ? Color.accent : root.fg
         tooltipText: T3I18n.tr(root.bridge.screenshot.busy ? "Cancel screenshot" : "Take a screenshot")
         enabled: !root.locked && !!root.bridge.selectedThread
@@ -462,7 +464,7 @@ Rectangle {
         id:quickButton;objectName:"t3QuickRepliesButton"
         readonly property var menu:quickPopup
         name:"sparkles";tooltipText:T3I18n.tr("Quick replies")
-        visible:root.bridge.viewState.quickRepliesButton!==false
+        visible:root.bridge.viewState.quickRepliesButton!==false&&!root.compact
         enabled:!root.locked&&!!root.bridge.selectedThread
         readonly property string language:QuickReplies.language(root.bridge.draft.text,root.bridge.transcript,T3I18n.language,root.bridge.viewState.quickReplyLanguage)
         readonly property var replies:QuickReplies.replies(language,root.bridge.viewState.quickReplies)
@@ -712,13 +714,14 @@ Rectangle {
         onPicked:editor.forceActiveFocus()
       }
       T3PickerButton{objectName:"t3InteractionMode";primary:false;implicitHeight:Style.space(28);leftPadding:Style.space(8);rightPadding:leftPadding;visible:root.bridge.interactionModeEnabled===true;text:T3I18n.tr(root.bridge.interactionMode==="plan"?"Plan":"Build");enabled:!root.locked&&!root.draft.queueEdit&&root.bridge.catalog.canWrite!==false;onClicked:root.bridge.chooseInteractionMode(root.bridge.interactionMode==="plan"?"default":"plan")}
-      T3BranchPicker { id:branchPicker;bridge:root.bridge;Layout.maximumWidth:Style.space(190) }
-      T3ContextMeter { objectName:"t3ComposerContext";usage:root.bridge.contextWindow }
+      T3BranchPicker { id:branchPicker;bridge:root.bridge;visible:!root.compact&&branchPicker.available;Layout.maximumWidth:Style.space(190) }
+      T3ContextMeter { objectName:"t3ComposerContext";visible:!root.compact&&!!root.bridge.contextWindow;usage:root.bridge.contextWindow }
       T3IconButton { enabled:!root.draft.queueEdit;name: "sliders-horizontal"; tooltipText: T3I18n.tr("Model options"); onClicked: root.showOptions = !root.showOptions }
       Item { Layout.fillWidth: true }
       Item {
         id:draftStatus
         objectName:"t3DraftStatus"
+        visible:!root.compact
         implicitWidth:Style.space(22);implicitHeight:Style.space(28)
         readonly property bool saving:root.draft.loading || root.draft.saveState==="saving" || saveQuietPeriod.running
         readonly property bool failed:!!root.draft.loadError || !!root.draft.saveError
@@ -755,6 +758,7 @@ Rectangle {
       }
       T3IconButton {
         objectName:"t3SendAndNewThread"
+        visible:!root.compact
         name:"git-branch"
         tooltipText:T3I18n.tr("Send and start new thread")+" · Ctrl+Shift+Enter"
         enabled:!root.bridge.rewindPending&&!root.locked&&!root.draft.queueEdit&&!root.bridge.activeQuestion&&!root.bridge.managementBusy&&!root.bridge.managementRequest&&!!root.bridge.selectedInfo.projectId&&(!!root.draft.text.trim()||root.draft.attachments.length>0)

@@ -62,7 +62,7 @@ pub fn apply(input: &Value) -> Result<Value> {
 
 /// The floating size the panel remembered, in logical pixels, when sane.
 fn floating_size(input: &Value) -> Option<(u32, u32)> {
-    let w = input["width"].as_f64().filter(|w| (360.0..=10000.0).contains(w))?;
+    let w = input["width"].as_f64().filter(|w| (320.0..=10000.0).contains(w))?;
     let h = input["height"].as_f64().filter(|h| (240.0..=10000.0).contains(h))?;
     Some((w.round() as u32, h.round() as u32))
 }
@@ -107,6 +107,7 @@ mod floating_size_tests {
     fn floating_size_accepts_only_sane_sizes() {
         assert_eq!(floating_size(&json!({"width":1358.4,"height":722.0})), Some((1358, 722)));
         assert_eq!(floating_size(&json!({"width":100,"height":722})), None);
+        assert_eq!(floating_size(&json!({"width":320,"height":722})), Some((320, 722)));
         assert_eq!(floating_size(&json!({"width":1358})), None);
         assert_eq!(floating_size(&json!({"width":"1358","height":722})), None);
     }
