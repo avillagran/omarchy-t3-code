@@ -35,7 +35,7 @@ Item {
     var current=String(bridge.draft.text||"");var next=current.trim()?current.replace(/\s+$/,"")+"\n\n"+quote+"\n\n":quote+"\n\n"
     bridge.patchDraft(bridge.selectedKey,{text:next});Qt.callLater(function(){composerPanel.inputField.forceActiveFocus();composerPanel.inputField.cursorPosition=composerPanel.inputField.length})
   }
-  function openPreferencesPage(page,environment){preferencesOpen=true;Qt.callLater(function(){var p=preferencesLoader.item;if(!p)return;if(environment)p.selectEnvironment(environment);p.page=page})}
+  function openPreferencesPage(page,environment){rememberPreferencesPage(page);preferencesOpen=true;Qt.callLater(function(){var p=preferencesLoader.item;if(!p)return;if(environment)p.selectEnvironment(environment);p.page=page})}
   // Command palette groups, built when it opens (T3 CommandPalette: actions, threads, projects, settings).
   function paletteGroups(){
     var b=bridge,thread=!!b.selectedThread,actions=[]
@@ -87,6 +87,11 @@ Item {
   property real browserPanelWidth:Math.max(360,Math.min(1600,bridge.viewState.browserPanelWidth || 540))
   readonly property real browserAvailableWidth:panelLayout.width-(sidebarReveal.visible?sidebarReveal.width+sidebarResizer.width:0)
   readonly property bool browserInline:browserAvailableWidth>=Style.space(760)
+  // Narrow windows (a vertical chat beside other work) show either the thread list
+  // or the chat, never both: the sidebar takes the whole width and picking a
+  // thread hides it again.
+  readonly property bool narrow:panelLayout.width>0&&panelLayout.width<Style.space(640)
+  Connections{target:root.bridge;function onSelectedKeyChanged(){if(root.narrow&&!root.sidebarCollapsed&&root.bridge.selectedKey)root.toggleSidebar()}}
   readonly property bool browserShown:browserOpen&&opened&&!!bridge.selectedThread&&!preferencesOpen&&!pullRequestsOpen&&!composerExpanded
   readonly property real browserMaxWidth:Math.max(360,Math.min(Math.floor(panelLayout.width/Style.space(1)*0.7),Math.floor(browserAvailableWidth/Style.space(1))-366))
   readonly property var browserWorkspaceItem:sidePanelItem?sidePanelItem.browserItem:null
@@ -168,6 +173,9 @@ Item {
   function browserKeyFocus(){var item=nativeFocusItem;while(item){if(item.objectName==="t3BrowserWorkspace")return true;item=item.parent}return false}
   readonly property bool browserFocused:browserShown&&browserKeyFocus()
   property bool preferencesOpen:false
+  // Last settings page, kept in the view state so reopening or reloading the panel returns to it.
+  readonly property string preferencesPage:bridge.viewState.preferencesPage || "general"
+  function rememberPreferencesPage(page){if(page&&bridge.viewState.preferencesPage!==page)bridge.rememberView({preferencesPage:page})}
   property string preferencesProjectKey:""
   function openProjectSettings(key){preferencesProjectKey=key;preferencesOpen=true;var loader=preferencesLoader;if(loader&&loader.item){loader.item.initialProjectKey=key;loader.item.selectInitialProject()}}
   onPreferencesOpenChanged:{if(preferencesOpen){captureState();conversation.stopWheel();pullRequestsOpen=false}else if(opened){restoringConversation=true;restorePosition(conversation,bridge.transcript,bridge.selectedKey,true,function(){root.restoringConversation=false})}}
@@ -238,8 +246,8 @@ Item {
   property real panelWidth: bridge.viewState.panelWidth || 1120
   property real panelHeight: bridge.viewState.panelHeight || 780
   function resizePanel(w,h) {
-    if(detached){desktop.implicitWidth=Style.space(Math.max(760,w));desktop.implicitHeight=Style.space(Math.max(360,h));return}
-    panelWidth=Math.max(760,Math.min(4000,w));panelHeight=Math.max(360,Math.min(3000,h))
+    if(detached){desktop.implicitWidth=Style.space(Math.max(320,w));desktop.implicitHeight=Style.space(Math.max(360,h));return}
+    panelWidth=Math.max(320,Math.min(4000,w));panelHeight=Math.max(360,Math.min(3000,h))
     bridge.rememberView({panelWidth:panelWidth,panelHeight:panelHeight})
   }
   function expandComposer(focusEditor) {
@@ -994,7 +1002,7 @@ Item {
     surfaceFormat.opaque:Color.popups.background.a>=0.999
     implicitWidth:Style.space(root.bridge.viewState.windowWidth || root.panelWidth)
     implicitHeight:Style.space(root.bridge.viewState.windowHeight || root.panelHeight)
-    minimumSize:Qt.size(Style.space(760),Style.space(360))
+    minimumSize:Qt.size(Style.space(320),Style.space(360))
     onClosed:if(root.detached)root.close()
     onWidthChanged:if(visible&&root.detached)saveWindowSize.restart()
     onHeightChanged:if(visible&&root.detached)saveWindowSize.restart()
@@ -1326,7 +1334,7 @@ Item {
       T3Reveal {
         id: sidebarReveal; objectName: "sidebarReveal"
         horizontal: true; Layout.fillHeight: true
-        size: Math.min(Style.space(root.sidebarWidth),Math.max(Style.space(260),panelLayout.width-Style.space(420)))
+        size: root.narrow ? panelLayout.width : Math.min(Style.space(root.sidebarWidth),Math.max(Style.space(260),panelLayout.width-Style.space(420)))
         shown: !root.sidebarCollapsed && !root.composerExpanded
         visible: present && !root.preferencesOpen
         Rectangle {
@@ -1887,7 +1895,7 @@ Item {
       Item {
         id:sidebarResizer
         Layout.fillHeight:true;Layout.preferredWidth:Style.space(6)
-        visible:!root.preferencesOpen && sidebarReveal.shown && !sidebarReveal.moving
+        visible:!root.preferencesOpen && !root.narrow && sidebarReveal.shown && !sidebarReveal.moving
         activeFocusOnTab:true
         Accessible.role:Accessible.Slider
         Accessible.name:T3I18n.tr("Sidebar width")
@@ -1906,6 +1914,7 @@ Item {
       Rectangle {
         id:mainChatArea;objectName:"t3MainChatArea"
         Layout.fillWidth: true; Layout.fillHeight: true
+        visible: !(root.narrow && sidebarReveal.visible && sidebarReveal.shown)
         color: "transparent"
         Column {
           id:chatOverlays;objectName:"t3ChatOverlays";z:18;spacing:Style.space(8)
@@ -1948,7 +1957,7 @@ Item {
             onSubthreadsToggled:function(source){root.toggleSubthreads(source)}
             renderer:function(message,width){return root.renderMessage(message,width)};threads:root.boardThreads;sectionData:root.boardSections;onClosed:root.boardOpen=false;onIdeaRequested:function(text){sidebarActions.newThread();sidebarActions.initialPrompt=text};onThreadRequested:function(t){root.boardOpen=false;root.bridge.selectThread(t.environmentId,t.id)}}
         }
-        Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
+        Loader{id:preferencesLoader;objectName:"t3PreferencesView";anchors.fill:parent;active:root.preferencesOpen&&root.opened;sourceComponent:Component{T3Preferences{bridge:root.bridge;page:root.preferencesPage;onPageChanged:root.rememberPreferencesPage(page);initialProjectKey:root.preferencesProjectKey;shortcuts:root.shortcutHelp();onUsageRequested:function(value){root.usageCollapsed=!value};onGroupingRequested:function(value){root.setSidebarGrouped(value)};onClosed:root.preferencesOpen=false}}}
         Loader {
           id:mosaicLoader
           anchors.fill:parent;active:root.opened&&root.mosaicOpen&&!root.preferencesOpen&&!root.pullRequestsOpen
@@ -1961,8 +1970,8 @@ Item {
           RowLayout {
             objectName:"t3ChatHeader"
             Layout.fillWidth: true; Layout.preferredHeight: Style.space(58)
-            Layout.leftMargin: Style.space(24); Layout.rightMargin: Style.space(14)
-            spacing: Style.space(10)
+            Layout.leftMargin: Style.space(root.narrow?10:24); Layout.rightMargin: Style.space(root.narrow?6:14)
+            spacing: Style.space(root.narrow?4:10)
             T3IconButton { visible: root.sidebarCollapsed; name: "panel-left"; tooltipText: T3I18n.tr("Open sidebar"); onClicked: root.toggleSidebar() }
             T3ProjectIcon {
               objectName:"t3HeaderProjectIcon";visible:!!root.bridge.selectedThread&&!!root.bridge.selectedInfo.projectKey
@@ -1970,8 +1979,8 @@ Item {
               monogram:root.bridge.selectedInfo.projectMonogram || "PR";projectKey:root.bridge.selectedInfo.projectKey || ""
               Layout.preferredWidth:Style.space(16);Layout.preferredHeight:Style.space(16);radius:Style.space(4)
             }
-            Text { text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
-            Text { text: "/"; color: root.dim; visible: !!root.bridge.selectedThread }
+            Text { visible: !root.narrow; text: root.bridge.selectedProject || "T3 Code"; color: root.dim; elide: Text.ElideRight; Layout.maximumWidth: Style.space(180); font.pixelSize: Style.font.body; textFormat: Text.PlainText }
+            Text { text: "/"; color: root.dim; visible: !root.narrow && !!root.bridge.selectedThread }
             Text {
               objectName:"t3HeaderThreadTitle"
               Layout.fillWidth: true; text: root.bridge.selectedTitle || T3I18n.tr("Your workspace"); color: root.fg; font.pixelSize: Style.font.body; elide: Text.ElideRight; textFormat: Text.PlainText
@@ -1989,18 +1998,18 @@ Item {
                 onNewThreadOnBranch:function(source){sidebarActions.newOnBranch(source)}
               }
             }
-            T3HostBadge {objectName:"t3HeaderHost";visible:!!root.bridge.selectedThread;bridge:root.bridge;environmentId:root.bridge.selectedEnvironment}
+            T3HostBadge {objectName:"t3HeaderHost";visible:!root.narrow&&!!root.bridge.selectedThread;bridge:root.bridge;environmentId:root.bridge.selectedEnvironment}
             T3IconButton {objectName:"t3MergeBack";visible:!!root.bridge.mergeBackTarget;name:"git-merge";enabled:!!root.bridge.mergeBackRunId&&!root.bridge.managementBusy&&!root.bridge.selectedInfo.working;tint:root.dim;tooltipText:!root.bridge.mergeBackRunId?T3I18n.tr("Complete a run in this fork before merging it back"):root.bridge.mergeBackTitle?T3I18n.tr("Merge this conversation back into {title}",{title:root.bridge.mergeBackTitle}):T3I18n.tr("Merge this conversation back into its source");onClicked:root.bridge.mergeBack()}
             T3IconButton {objectName:"t3ToggleThreadDetails";name:"square-menu";enabled:!!root.bridge.selectedThread;tint:root.threadDetailsOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Thread details")+" · Ctrl+Shift+B";onClicked:root.toggleThreadDetails()}
             T3IconButton {objectName:"t3OpenSidePanel";name:"panel-right";enabled:!!root.bridge.selectedThread;tint:root.sidePanelOpen?Color.accent:root.dim;tooltipText:T3I18n.tr("Side panel");onClicked:root.toggleSide()}
-            T3PickerButton{objectName:"t3OpenFocusBoard";visible:true;text:T3I18n.tr("Task board");primary:false;implicitHeight:Style.space(28);onClicked:root.boardOpen=true}
-            T3IconButton {objectName:"t3OpenGit";name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
-            T3IconButton {objectName:"t3OpenTerminal";name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
+            T3PickerButton{objectName:"t3OpenFocusBoard";visible:!root.narrow;text:T3I18n.tr("Task board");primary:false;implicitHeight:Style.space(28);onClicked:root.boardOpen=true}
+            T3IconButton {objectName:"t3OpenGit";visible:!root.narrow;name:"git-branch";enabled:root.bridge.canOpenGit || false;tooltipText:T3I18n.tr("Git & scripts");onClicked:{root.bridge.requestGit();gitPopup.open()}}
+            T3IconButton {objectName:"t3OpenTerminal";visible:!root.narrow;name:"terminal";enabled:root.bridge.canOpenTerminal&&!root.bridge.terminalOperation.busy;tooltipText:T3I18n.tr("Open native terminal")+" · Ctrl+J"+(root.bridge.terminalOperation.error?" · "+T3I18n.error(root.bridge.terminalOperation.error):"");onClicked:root.bridge.openTerminal()}
             T3IconButton {objectName:"toggleWindowMode";name:"pin";glyph:root.windowMode==="tiled"?"":"\uf2d0";tint:root.detached?Color.accent:root.fg;tooltipText:T3I18n.tr(root.windowMode==="panel"||(!root.panelAvailable&&root.windowMode==="tiled")?"Floating window":root.windowMode==="floating"?"Tiled window":"Return to panel")+(root.bridge.windowLayoutError?" · "+T3I18n.error(root.bridge.windowLayoutError):"");onClicked:root.cycleWindowMode()}
-            T3IconButton { name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
-            T3IconButton{name:"shrink";tooltipText:T3I18n.tr("Automatic compaction");onClicked:compactionSettings.open()}
+            T3IconButton { visible: !root.narrow; name: "external-link"; enabled: !!root.bridge.selectedThread; tooltipText: T3I18n.tr("Open in T3"); onClicked: root.bridge.openThread(root.bridge.selectedEnvironment, root.bridge.selectedThread) }
+            T3IconButton{visible:!root.narrow;name:"shrink";tooltipText:T3I18n.tr("Automatic compaction");onClicked:compactionSettings.open()}
             T3IconButton{objectName:"t3FindInChat";name:"search";tooltipText:T3I18n.tr("Find in conversation");enabled:!!root.bridge.selectedThread;onClicked:root.openFind()}
-            Controls.Button {text:"?";implicitWidth:Style.space(28);Accessible.name:T3I18n.tr("Keyboard shortcuts");onClicked:keyHelp.open()}
+            Controls.Button {visible:!root.narrow;text:"?";implicitWidth:Style.space(28);Accessible.name:T3I18n.tr("Keyboard shortcuts");onClicked:keyHelp.open()}
             T3IconButton {objectName:"t3CloseWindow";name:root.standalone?"minus":"x";tooltipText:T3I18n.tr(root.standalone?"Hide":"Close");onClicked:root.close()}
           }
           T3ConnectionNotice {
