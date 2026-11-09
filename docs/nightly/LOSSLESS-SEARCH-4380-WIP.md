@@ -108,3 +108,26 @@ separately if required for integration. No compiler or runtime has been launched
 for this source candidate. No host tests, new Cargo target, executable copies,
 cleanup, release, installation, active client edits or public selector changes
 are included.
+
+
+## Qualified private observations and canonical application gate
+
+Source99d70 with public SDK1c6 passed four actual-library Rust fixtures. A
+separate real Qt/V8 QProcess observation passed clip200, snippet240, original
+pickedQuery32, isolated-low visit, raw failure and scoped row checks. These are
+component observations; the earlier overall compiler and Qt configuration
+failures remain retained. The compiler graph is qualified separately after an
+ordinary old rlib hardlink fence was corrected without recompilation. Evidence:
+`/var/tmp/o3-build/client-lossless-search-4380-private-acceptance/observations.json`,
+SHA256 `abafad4af08b3193c4b7be34430f13c2c70726632169d3ed2f9bba5088d6e4e4`.
+
+The next prepared gate uses the actual canonical src/main.rs executable, the
+unchanged product T3Backend/T3Panel and its own watch Process. Two controlled
+private HTTP/WebSocket peers provide actual server payloads; no driver substitutes
+for the application or injects state/actions. The QML fixture observes existing
+public Singleton.children, Process.stdout.read and Process.exited metadata,
+without replacing product handlers. It requires actual result/error packets,
+raw restored rows, modern key spelling, palette/sidebar ownership, original
+selection/visit, and normal canonical main exit after a real quit command.
+It is source-only until its separately reviewed compiler/runtime succeeds.
+Genuine O3 codec/SQL and full-shell4392 acceptance remain separate.
