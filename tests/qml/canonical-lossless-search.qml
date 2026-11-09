@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import O3.CanonicalProcessTest 1.0
 import "UnderTest/ui/qml" as Test
 import "UnderTest/ui/js/NativeJson.js" as NativeJson
 ShellRoot {
@@ -19,6 +20,7 @@ ShellRoot {
  property int index:0
  property int visits:0
  property var queries:["a".repeat(199)+"\ud83d","ab\udc00","ab\ud83d\ude00","ab\ud800"]
+ ProcessInspector{id:inspector}
  Test.T3Panel{id:panel;bridge:root.backend}
  function check(ok,why){if(!ok)throw Error(why)}
  function fail(error){console.error("CANONICAL_LOSSLESS_QT_FAIL "+String(error));Qt.exit(1)}
@@ -48,15 +50,14 @@ ShellRoot {
  }catch(error){fail(error)}}
  Timer{interval:30;repeat:true;running:true;onTriggered:{try{
   if(!attached){
-   // Singleton.children, Process.command/stdout/exited are existing public Qt
-   // metadata. Observe actual signals without replacing the backend handlers.
-   for(var i=0;i<backend.children.length;i++){
-    var child=backend.children[i]
-    if(child.command&&child.command.length===2&&child.command[0]===backend.binary&&child.command[1]==="watch"){
+   // The private native observer uses QObject ancestry because the default
+   // QML children list has no count callback. Product handlers stay intact.
+   inspector.find(backend,backend.binary)
+   var child=inspector.observed
+   if(child){
      actualWorker=child;child.stdout.read.connect(root.observe)
      child.exited.connect(function(code,status){try{check(finishing&&visits===4&&code===0&&status===0,"canonical main normal exit");console.log("CANONICAL_LOSSLESS_MAIN_QT_PASS actualBackend actualMain clip200 snippet240 rawFailure picked32 lowVisit scopedRows sharedOwners normalMainExit");Qt.exit(0)}catch(error){fail(error)}})
-     attached=true;break
-    }
+     attached=true
    }
    if(!attached)return
   }
