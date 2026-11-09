@@ -24,6 +24,7 @@ ShellRoot {
  function fail(error){console.error("CANONICAL_LOSSLESS_QT_FAIL "+String(error));Qt.exit(1)}
  function observe(line){try{
   var packet=JSON.parse(line),d=packet.data||{}
+  check(packet.type!=="native-search-error","actual native worker close error")
   if(packet.type!=="action")return
   if(d.op==="thread-search"&&d.result&&typeof d.result.resultJson==="string"){
    var r=JSON.parse(d.result.resultJson)
