@@ -103,3 +103,43 @@ checkpoint, which was independently revalidated before closing the census.
 Later concurrent changes require another observation; this cut does not silently
 certify future source or cache state. The complete Nightly parity goal remains
 active and incomplete.
+
+## Subsequent observations — 04:43 UTC
+
+The 03:11 census above remains a historical cut. Subsequent parity work changed
+individual source candidates; its 120-worktree and 660-version totals must not
+be presented as a new exhaustive census.
+
+- The opened checkout remains clean on `fix/share-t3-o3-label`. The published
+  Nightly implementation remains `3e932581` before this documentation update,
+  with the same thirteen untracked prototypes. No product merge occurred.
+- The isolated combined client is now clean at `b3736873`. Its actual main
+  compiled successfully, and four Rust/SDK runtime cases plus a separate Qt
+  library observation passed. The canonical full-application observation still
+  fails its unchanged deadline. Its diagnostic follow-up is prepared, unrun;
+  this candidate is not accepted or integrated into the published client.
+- Browser source38 passed its four compiler commands, the real Encoder case,
+  and five short-temporary-directory regressions. Browser, published DateTime,
+  and the raw-RPC foundation now share a clean local integration branch at
+  `e8c02157`. Its combined compiler and actual-crate regressions are prepared,
+  unrun. It is not a published or accepted server integration.
+- Auth remains separately checkpointed at `592509b5`. Original-source AST
+  expansion reached 941 modules, with 52 remaining source gaps. Parsing is not
+  a running driver or a complete session-manager/MCP implementation. Its new
+  five-file MCP overlay is locally checkpointed at `21bc52b0`, uncompiled and
+  unrun. The newest client/runtime and server/compiler envelope sources are
+  also preserved in local checkpoints `ce43d851` and `4718aea8`.
+- In this follow-up, free space was 1.85 GB on ROOT and 44.73 GB on HOME. The large
+  candidate allocations above have not been retired or reclassified as safe to
+  delete. No cache cleanup was performed.
+
+Compiler and runtime work in these observations belongs to the continuing
+parity goal, after the read-only audit. The audit itself did not run those jobs.
+
+A separate read-only check verified 41 newest source versions against their
+checkpoint blobs and file modes: ten client envelope files, fifteen server
+envelope files, and sixteen MCP overlay/metadata files. HEADs and application
+source were not changed by preservation. These remain local Git copies, not a
+published application or an off-machine backup. Receipt:
+`/var/tmp/o3-build/git-current-source-checkpoints-1irbyzy4/result.json`,
+SHA256 `bf801e8fd1a0a561f86ffeae9ec895c49fad6fc7968c1a79fa862e36c8a05c82`.
