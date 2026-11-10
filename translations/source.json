@@ -1864,6 +1864,14 @@
     "The T3 server is not running or did not become ready.": "The T3 server is not running or did not become ready.",
     "The host answered with a different T3 environment.": "The host answered with a different T3 environment.",
     "The saved connections could not be unlocked.": "The saved connections could not be unlocked.",
-    "The connection to T3 was interrupted.": "The connection to T3 was interrupted."
+    "The connection to T3 was interrupted.": "The connection to T3 was interrupted.",
+    "Clean Cargo build folders outside projects": "Clean Cargo build folders outside projects",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.",
+    "Folders searched for outside build folders": "Folders searched for outside build folders",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.",
+    "Notify when build output is cleaned": "Notify when build output is cleaned",
+    "Shows a desktop notification with how much space a cleanup freed.": "Shows a desktop notification with how much space a cleanup freed.",
+    "{count} build folders removed, {freed} freed.": "{count} build folders removed, {freed} freed.",
+    "Build output cleaned": "Build output cleaned"
   }
 }

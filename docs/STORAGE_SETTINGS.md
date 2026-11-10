@@ -38,7 +38,8 @@ not checked.
 `src/build_cleanup.rs` removes regenerable build output on **this computer**,
 for any project kind, without touching code, branches or uncommitted changes.
 Storage → This computer sets the idle days separately for T3 worktrees (1 day
-by default) and for each project's main checkout (7 days); either can be Off.
+by default), for each project's main checkout (7 days) and for Cargo target
+folders outside projects (1 day); each can be Off.
 A pass runs two minutes after start, then hourly, or with **Clean build output
 now**.
 
@@ -53,6 +54,18 @@ now**.
   in use) and no change for that many days to its tracked or untracked files,
   its git index/HEAD, or the build folder itself, so building by hand counts as
   use. Without a local shell to read thread activity from, nothing is removed.
+- **Outside projects:** Cargo target folders that agents or scripts placed
+  outside any checkout (`CARGO_TARGET_DIR=/var/tmp/x`, `~/BuildCache/x`) are
+  found by their `CACHEDIR.TAG` (written by Cargo) up to two levels below the
+  folders listed in **Folders searched for outside build folders** (by default
+  `~`, `~/.cache`, `/var/tmp` and `/tmp`). A folder qualifies only when no
+  `Cargo.toml` sits next to it, it is a real folder owned by this user, nothing
+  in it or its profiles (`debug/`, `release/`, ...) changed for the chosen days
+  (1 by default; Off disables it) and no running build holds its
+  `.cargo-lock`.
+- **Notice:** after a pass that removed something, a desktop notification says
+  how many folders were removed and how much space was freed. **Notify when
+  build output is cleaned** switches it off.
 - **Report:** the page shows the last pass; each removal is also written to the
   client's standard error. `omarchy-t3-client build-cleanup --dry-run` lists what
   a pass would remove now.

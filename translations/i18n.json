@@ -1864,7 +1864,15 @@
     "The T3 server is not running or did not become ready.": "The T3 server is not running or did not become ready.",
     "The host answered with a different T3 environment.": "The host answered with a different T3 environment.",
     "The saved connections could not be unlocked.": "The saved connections could not be unlocked.",
-    "The connection to T3 was interrupted.": "The connection to T3 was interrupted."
+    "The connection to T3 was interrupted.": "The connection to T3 was interrupted.",
+    "Clean Cargo build folders outside projects": "Clean Cargo build folders outside projects",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.",
+    "Folders searched for outside build folders": "Folders searched for outside build folders",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.",
+    "Notify when build output is cleaned": "Notify when build output is cleaned",
+    "Shows a desktop notification with how much space a cleanup freed.": "Shows a desktop notification with how much space a cleanup freed.",
+    "{count} build folders removed, {freed} freed.": "{count} build folders removed, {freed} freed.",
+    "Build output cleaned": "Build output cleaned"
   },
   "es": {
     "{activity} · {title}": "{activity} · {title}",
@@ -3731,7 +3739,15 @@
     "The T3 server is not running or did not become ready.": "El servidor T3 no está en ejecución o no quedó listo.",
     "The host answered with a different T3 environment.": "El equipo respondió con un entorno T3 distinto.",
     "The saved connections could not be unlocked.": "No se pudieron desbloquear las conexiones guardadas.",
-    "The connection to T3 was interrupted.": "Se interrumpió la conexión con T3."
+    "The connection to T3 was interrupted.": "Se interrumpió la conexión con T3.",
+    "Clean Cargo build folders outside projects": "Limpiar carpetas de compilación de Cargo fuera de los proyectos",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Borra las carpetas target de Cargo que agentes o scripts dejaron fuera del proyecto (CARGO_TARGET_DIR) cuando nada ha compilado en ellas durante este número de días. Una carpeta que está usando una compilación se conserva.",
+    "Folders searched for outside build folders": "Carpetas donde buscar compilaciones externas",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Una carpeta por línea; ~ es tu carpeta personal. Cada una se recorre hasta dos niveles; se omiten los enlaces simbólicos y las carpetas de otros usuarios.",
+    "Notify when build output is cleaned": "Notificar cuando se limpie la salida de compilación",
+    "Shows a desktop notification with how much space a cleanup freed.": "Muestra una notificación de escritorio con el espacio que liberó la limpieza.",
+    "{count} build folders removed, {freed} freed.": "{count} carpetas de compilación eliminadas, {freed} liberados.",
+    "Build output cleaned": "Salida de compilación limpiada"
   },
   "pt": {
     "{activity} · {title}": "{activity} · {title}",
@@ -5598,7 +5614,15 @@
     "The T3 server is not running or did not become ready.": "O servidor T3 não está em execução ou não ficou pronto.",
     "The host answered with a different T3 environment.": "O computador respondeu com outro ambiente T3.",
     "The saved connections could not be unlocked.": "Não foi possível desbloquear as conexões salvas.",
-    "The connection to T3 was interrupted.": "A conexão com o T3 foi interrompida."
+    "The connection to T3 was interrupted.": "A conexão com o T3 foi interrompida.",
+    "Clean Cargo build folders outside projects": "Limpar pastas de compilação do Cargo fora dos projetos",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Apaga as pastas target do Cargo que agentes ou scripts deixaram fora do projeto (CARGO_TARGET_DIR) quando nada compilou nelas por esse número de dias. Uma pasta em uso por uma compilação é mantida.",
+    "Folders searched for outside build folders": "Pastas onde procurar compilações externas",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Uma pasta por linha; ~ é a sua pasta pessoal. Cada uma é percorrida até dois níveis; links simbólicos e pastas de outros usuários são ignorados.",
+    "Notify when build output is cleaned": "Notificar quando a saída de compilação for limpa",
+    "Shows a desktop notification with how much space a cleanup freed.": "Mostra uma notificação na área de trabalho com o espaço liberado pela limpeza.",
+    "{count} build folders removed, {freed} freed.": "{count} pastas de compilação removidas, {freed} liberados.",
+    "Build output cleaned": "Saída de compilação limpa"
   },
   "fr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -7465,7 +7489,15 @@
     "The T3 server is not running or did not become ready.": "Le serveur T3 ne fonctionne pas ou n’est pas devenu disponible.",
     "The host answered with a different T3 environment.": "L’ordinateur a répondu avec un autre environnement T3.",
     "The saved connections could not be unlocked.": "Les connexions enregistrées n’ont pas pu être déverrouillées.",
-    "The connection to T3 was interrupted.": "La connexion à T3 a été interrompue."
+    "The connection to T3 was interrupted.": "La connexion à T3 a été interrompue.",
+    "Clean Cargo build folders outside projects": "Nettoyer les dossiers de compilation Cargo hors des projets",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Supprime les dossiers target de Cargo que des agents ou des scripts ont placés hors du projet (CARGO_TARGET_DIR) lorsque rien n'y a été compilé depuis ce nombre de jours. Un dossier utilisé par une compilation est conservé.",
+    "Folders searched for outside build folders": "Dossiers où chercher les compilations externes",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Un dossier par ligne ; ~ est votre dossier personnel. Chacun est parcouru sur deux niveaux ; les liens symboliques et les dossiers des autres utilisateurs sont ignorés.",
+    "Notify when build output is cleaned": "Notifier quand la sortie de compilation est nettoyée",
+    "Shows a desktop notification with how much space a cleanup freed.": "Affiche une notification de bureau indiquant l'espace libéré par le nettoyage.",
+    "{count} build folders removed, {freed} freed.": "{count} dossiers de compilation supprimés, {freed} libérés.",
+    "Build output cleaned": "Sortie de compilation nettoyée"
   },
   "de": {
     "{activity} · {title}": "{activity} · {title}",
@@ -9332,7 +9364,15 @@
     "The T3 server is not running or did not become ready.": "Der T3-Server läuft nicht oder wurde nicht bereit.",
     "The host answered with a different T3 environment.": "Der Rechner antwortete mit einer anderen T3-Umgebung.",
     "The saved connections could not be unlocked.": "Die gespeicherten Verbindungen konnten nicht entsperrt werden.",
-    "The connection to T3 was interrupted.": "Die Verbindung zu T3 wurde unterbrochen."
+    "The connection to T3 was interrupted.": "Die Verbindung zu T3 wurde unterbrochen.",
+    "Clean Cargo build folders outside projects": "Cargo-Build-Ordner außerhalb von Projekten bereinigen",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Löscht Cargo-Target-Ordner, die Agenten oder Skripte außerhalb des Projekts abgelegt haben (CARGO_TARGET_DIR), wenn so viele Tage nichts darin gebaut wurde. Ein Ordner, den ein Build gerade nutzt, bleibt erhalten.",
+    "Folders searched for outside build folders": "Ordner für die Suche nach externen Build-Ordnern",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Ein Ordner pro Zeile; ~ ist Ihr Home-Ordner. Jeder wird zwei Ebenen tief durchsucht; symbolische Links und Ordner anderer Benutzer werden übersprungen.",
+    "Notify when build output is cleaned": "Benachrichtigen, wenn Build-Ausgabe bereinigt wurde",
+    "Shows a desktop notification with how much space a cleanup freed.": "Zeigt eine Desktop-Benachrichtigung mit dem durch die Bereinigung freigegebenen Speicher.",
+    "{count} build folders removed, {freed} freed.": "{count} Build-Ordner entfernt, {freed} freigegeben.",
+    "Build output cleaned": "Build-Ausgabe bereinigt"
   },
   "it": {
     "{activity} · {title}": "{activity} · {title}",
@@ -11199,7 +11239,15 @@
     "The T3 server is not running or did not become ready.": "Il server T3 non è in esecuzione o non è diventato pronto.",
     "The host answered with a different T3 environment.": "Il computer ha risposto con un ambiente T3 diverso.",
     "The saved connections could not be unlocked.": "Non è stato possibile sbloccare le connessioni salvate.",
-    "The connection to T3 was interrupted.": "La connessione a T3 è stata interrotta."
+    "The connection to T3 was interrupted.": "La connessione a T3 è stata interrotta.",
+    "Clean Cargo build folders outside projects": "Pulisci le cartelle di build di Cargo fuori dai progetti",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Elimina le cartelle target di Cargo che agenti o script hanno messo fuori dal progetto (CARGO_TARGET_DIR) quando nulla vi è stato compilato per questo numero di giorni. Una cartella usata da una build viene mantenuta.",
+    "Folders searched for outside build folders": "Cartelle in cui cercare build esterne",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Una cartella per riga; ~ è la tua cartella home. Ognuna viene esplorata per due livelli; link simbolici e cartelle di altri utenti vengono ignorati.",
+    "Notify when build output is cleaned": "Notifica quando l'output di build viene pulito",
+    "Shows a desktop notification with how much space a cleanup freed.": "Mostra una notifica sul desktop con lo spazio liberato dalla pulizia.",
+    "{count} build folders removed, {freed} freed.": "{count} cartelle di build rimosse, {freed} liberati.",
+    "Build output cleaned": "Output di build pulito"
   },
   "nl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -13066,7 +13114,15 @@
     "The T3 server is not running or did not become ready.": "De T3-server draait niet of is niet gereed gekomen.",
     "The host answered with a different T3 environment.": "De computer antwoordde met een andere T3-omgeving.",
     "The saved connections could not be unlocked.": "De opgeslagen verbindingen konden niet worden ontgrendeld.",
-    "The connection to T3 was interrupted.": "De verbinding met T3 is onderbroken."
+    "The connection to T3 was interrupted.": "De verbinding met T3 is onderbroken.",
+    "Clean Cargo build folders outside projects": "Cargo-buildmappen buiten projecten opschonen",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Verwijdert Cargo-targetmappen die agents of scripts buiten het project hebben geplaatst (CARGO_TARGET_DIR) zodra er zoveel dagen niets in is gebouwd. Een map die een build gebruikt, blijft behouden.",
+    "Folders searched for outside build folders": "Mappen om te doorzoeken op externe buildmappen",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Eén map per regel; ~ is je thuismap. Elke map wordt twee niveaus diep doorzocht; symbolische koppelingen en mappen van andere gebruikers worden overgeslagen.",
+    "Notify when build output is cleaned": "Melden wanneer build-uitvoer is opgeschoond",
+    "Shows a desktop notification with how much space a cleanup freed.": "Toont een bureaubladmelding met hoeveel ruimte de opschoning heeft vrijgemaakt.",
+    "{count} build folders removed, {freed} freed.": "{count} buildmappen verwijderd, {freed} vrijgemaakt.",
+    "Build output cleaned": "Build-uitvoer opgeschoond"
   },
   "pl": {
     "{activity} · {title}": "{activity} · {title}",
@@ -14933,7 +14989,15 @@
     "The T3 server is not running or did not become ready.": "Serwer T3 nie działa lub nie osiągnął gotowości.",
     "The host answered with a different T3 environment.": "Komputer odpowiedział z innego środowiska T3.",
     "The saved connections could not be unlocked.": "Nie udało się odblokować zapisanych połączeń.",
-    "The connection to T3 was interrupted.": "Połączenie z T3 zostało przerwane."
+    "The connection to T3 was interrupted.": "Połączenie z T3 zostało przerwane.",
+    "Clean Cargo build folders outside projects": "Czyść foldery kompilacji Cargo poza projektami",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Usuwa foldery target Cargo, które agenci lub skrypty umieścili poza projektem (CARGO_TARGET_DIR), gdy nic w nich nie kompilowano przez tyle dni. Folder używany przez kompilację zostaje.",
+    "Folders searched for outside build folders": "Foldery przeszukiwane pod kątem zewnętrznych kompilacji",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Jeden folder w wierszu; ~ to twój folder domowy. Każdy jest przeszukiwany na dwa poziomy w głąb; dowiązania symboliczne i foldery innych użytkowników są pomijane.",
+    "Notify when build output is cleaned": "Powiadamiaj o wyczyszczeniu wyników kompilacji",
+    "Shows a desktop notification with how much space a cleanup freed.": "Pokazuje powiadomienie na pulpicie z ilością miejsca zwolnionego przez czyszczenie.",
+    "{count} build folders removed, {freed} freed.": "Usunięto folderów kompilacji: {count}, zwolniono {freed}.",
+    "Build output cleaned": "Wyniki kompilacji wyczyszczone"
   },
   "ru": {
     "{activity} · {title}": "{activity} · {title}",
@@ -16800,7 +16864,15 @@
     "The T3 server is not running or did not become ready.": "Сервер T3 не запущен или не перешёл в состояние готовности.",
     "The host answered with a different T3 environment.": "Компьютер ответил из другой среды T3.",
     "The saved connections could not be unlocked.": "Не удалось разблокировать сохранённые подключения.",
-    "The connection to T3 was interrupted.": "Подключение к T3 было прервано."
+    "The connection to T3 was interrupted.": "Подключение к T3 было прервано.",
+    "Clean Cargo build folders outside projects": "Очищать папки сборки Cargo вне проектов",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Удаляет папки target Cargo, которые агенты или скрипты разместили вне проекта (CARGO_TARGET_DIR), если в них ничего не собиралось столько дней. Папка, которую использует сборка, сохраняется.",
+    "Folders searched for outside build folders": "Папки для поиска внешних папок сборки",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "По одной папке в строке; ~ — ваша домашняя папка. Каждая просматривается на два уровня вглубь; символические ссылки и папки других пользователей пропускаются.",
+    "Notify when build output is cleaned": "Уведомлять об очистке результатов сборки",
+    "Shows a desktop notification with how much space a cleanup freed.": "Показывает уведомление на рабочем столе с объёмом освобождённого места.",
+    "{count} build folders removed, {freed} freed.": "Удалено папок сборки: {count}, освобождено {freed}.",
+    "Build output cleaned": "Результаты сборки очищены"
   },
   "uk": {
     "{activity} · {title}": "{activity} · {title}",
@@ -18667,7 +18739,15 @@
     "The T3 server is not running or did not become ready.": "Сервер T3 не працює або не став готовим.",
     "The host answered with a different T3 environment.": "Комп’ютер відповів з іншого середовища T3.",
     "The saved connections could not be unlocked.": "Не вдалося розблокувати збережені підключення.",
-    "The connection to T3 was interrupted.": "Підключення до T3 було перервано."
+    "The connection to T3 was interrupted.": "Підключення до T3 було перервано.",
+    "Clean Cargo build folders outside projects": "Очищати теки збирання Cargo поза проєктами",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Видаляє теки target Cargo, які агенти чи скрипти розмістили поза проєктом (CARGO_TARGET_DIR), якщо в них нічого не збиралося стільки днів. Теку, яку використовує збирання, буде збережено.",
+    "Folders searched for outside build folders": "Теки для пошуку зовнішніх тек збирання",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Одна тека на рядок; ~ — ваша домашня тека. Кожна переглядається на два рівні вглиб; символьні посилання й теки інших користувачів пропускаються.",
+    "Notify when build output is cleaned": "Сповіщати про очищення результатів збирання",
+    "Shows a desktop notification with how much space a cleanup freed.": "Показує сповіщення на робочому столі з обсягом звільненого місця.",
+    "{count} build folders removed, {freed} freed.": "Видалено тек збирання: {count}, звільнено {freed}.",
+    "Build output cleaned": "Результати збирання очищено"
   },
   "ja": {
     "{activity} · {title}": "{activity} · {title}",
@@ -20534,7 +20614,15 @@
     "The T3 server is not running or did not become ready.": "T3 サーバーが起動していないか、準備が完了していません。",
     "The host answered with a different T3 environment.": "ホストが別の T3 環境で応答しました。",
     "The saved connections could not be unlocked.": "保存済みの接続をロック解除できませんでした。",
-    "The connection to T3 was interrupted.": "T3 への接続が中断されました。"
+    "The connection to T3 was interrupted.": "T3 への接続が中断されました。",
+    "Clean Cargo build folders outside projects": "プロジェクト外の Cargo ビルドフォルダーを削除",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "エージェントやスクリプトがプロジェクト外に置いた Cargo の target フォルダー (CARGO_TARGET_DIR) を、指定日数ビルドがなければ削除します。ビルド中のフォルダーは残ります。",
+    "Folders searched for outside build folders": "外部ビルドフォルダーを探すフォルダー",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "1 行に 1 フォルダー。~ はホームフォルダーです。各フォルダーは 2 階層まで探し、シンボリックリンクと他のユーザーのフォルダーは除外します。",
+    "Notify when build output is cleaned": "ビルド出力を削除したら通知",
+    "Shows a desktop notification with how much space a cleanup freed.": "削除で空いた容量をデスクトップ通知で表示します。",
+    "{count} build folders removed, {freed} freed.": "ビルドフォルダーを {count} 個削除し、{freed} 空きました。",
+    "Build output cleaned": "ビルド出力を削除しました"
   },
   "ko": {
     "{activity} · {title}": "{activity} · {title}",
@@ -22401,7 +22489,15 @@
     "The T3 server is not running or did not become ready.": "T3 서버가 실행 중이 아니거나 준비되지 않았습니다.",
     "The host answered with a different T3 environment.": "호스트가 다른 T3 환경으로 응답했습니다.",
     "The saved connections could not be unlocked.": "저장된 연결의 잠금을 해제할 수 없습니다.",
-    "The connection to T3 was interrupted.": "T3 연결이 중단되었습니다."
+    "The connection to T3 was interrupted.": "T3 연결이 중단되었습니다.",
+    "Clean Cargo build folders outside projects": "프로젝트 밖의 Cargo 빌드 폴더 정리",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "에이전트나 스크립트가 프로젝트 밖에 둔 Cargo target 폴더(CARGO_TARGET_DIR)를 이 일수 동안 빌드가 없으면 삭제합니다. 빌드가 사용 중인 폴더는 유지됩니다.",
+    "Folders searched for outside build folders": "외부 빌드 폴더를 찾을 폴더",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "한 줄에 폴더 하나; ~는 홈 폴더입니다. 각 폴더는 두 단계 깊이까지 검색하며 심볼릭 링크와 다른 사용자의 폴더는 건너뜁니다.",
+    "Notify when build output is cleaned": "빌드 출력을 정리하면 알림",
+    "Shows a desktop notification with how much space a cleanup freed.": "정리로 확보한 공간을 데스크톱 알림으로 표시합니다.",
+    "{count} build folders removed, {freed} freed.": "빌드 폴더 {count}개를 삭제해 {freed}를 확보했습니다.",
+    "Build output cleaned": "빌드 출력 정리됨"
   },
   "zh": {
     "{activity} · {title}": "{activity} · {title}",
@@ -24268,7 +24364,15 @@
     "The T3 server is not running or did not become ready.": "T3 服务器未运行或尚未就绪。",
     "The host answered with a different T3 environment.": "主机响应的是另一个 T3 环境。",
     "The saved connections could not be unlocked.": "无法解锁已保存的连接。",
-    "The connection to T3 was interrupted.": "与 T3 的连接已中断。"
+    "The connection to T3 was interrupted.": "与 T3 的连接已中断。",
+    "Clean Cargo build folders outside projects": "清理项目之外的 Cargo 构建文件夹",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "当这么多天内没有任何构建时，删除代理或脚本放在项目之外的 Cargo target 文件夹（CARGO_TARGET_DIR）。正在被构建使用的文件夹会保留。",
+    "Folders searched for outside build folders": "搜索外部构建文件夹的位置",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "每行一个文件夹；~ 表示你的主文件夹。每个文件夹向下搜索两层；跳过符号链接和其他用户的文件夹。",
+    "Notify when build output is cleaned": "清理构建输出后通知",
+    "Shows a desktop notification with how much space a cleanup freed.": "以桌面通知显示清理释放的空间。",
+    "{count} build folders removed, {freed} freed.": "已删除 {count} 个构建文件夹，释放 {freed}。",
+    "Build output cleaned": "构建输出已清理"
   },
   "ar": {
     "{activity} · {title}": "{activity} · {title}",
@@ -26135,7 +26239,15 @@
     "The T3 server is not running or did not become ready.": "خادم T3 لا يعمل أو لم يصبح جاهزًا.",
     "The host answered with a different T3 environment.": "استجاب الجهاز ببيئة T3 مختلفة.",
     "The saved connections could not be unlocked.": "تعذر فتح الاتصالات المحفوظة.",
-    "The connection to T3 was interrupted.": "انقطع الاتصال بخادم T3."
+    "The connection to T3 was interrupted.": "انقطع الاتصال بخادم T3.",
+    "Clean Cargo build folders outside projects": "تنظيف مجلدات بناء Cargo خارج المشاريع",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "يحذف مجلدات target الخاصة بـ Cargo التي وضعها الوكلاء أو السكربتات خارج المشروع (CARGO_TARGET_DIR) عندما لا يُبنى فيها شيء طوال هذا العدد من الأيام. يُحتفظ بالمجلد الذي يستخدمه بناء جارٍ.",
+    "Folders searched for outside build folders": "المجلدات التي يُبحث فيها عن مجلدات البناء الخارجية",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "مجلد واحد في كل سطر؛ ~ هو مجلدك الشخصي. يُبحث في كل مجلد بعمق مستويين؛ وتُتخطى الروابط الرمزية ومجلدات المستخدمين الآخرين.",
+    "Notify when build output is cleaned": "الإشعار عند تنظيف مخرجات البناء",
+    "Shows a desktop notification with how much space a cleanup freed.": "يعرض إشعارًا على سطح المكتب بالمساحة التي حررها التنظيف.",
+    "{count} build folders removed, {freed} freed.": "حُذف {count} من مجلدات البناء، وتحرر {freed}.",
+    "Build output cleaned": "تم تنظيف مخرجات البناء"
   },
   "tr": {
     "{activity} · {title}": "{activity} · {title}",
@@ -28002,7 +28114,15 @@
     "The T3 server is not running or did not become ready.": "T3 sunucusu çalışmıyor veya hazır duruma gelmedi.",
     "The host answered with a different T3 environment.": "Bilgisayar farklı bir T3 ortamıyla yanıt verdi.",
     "The saved connections could not be unlocked.": "Kaydedilen bağlantıların kilidi açılamadı.",
-    "The connection to T3 was interrupted.": "T3 bağlantısı kesildi."
+    "The connection to T3 was interrupted.": "T3 bağlantısı kesildi.",
+    "Clean Cargo build folders outside projects": "Projeler dışındaki Cargo derleme klasörlerini temizle",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Ajanların veya betiklerin projenin dışına koyduğu Cargo target klasörlerini (CARGO_TARGET_DIR) bu kadar gün içinde hiçbir derleme yapılmadığında siler. Bir derlemenin kullandığı klasör korunur.",
+    "Folders searched for outside build folders": "Harici derleme klasörlerinin arandığı klasörler",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Her satıra bir klasör; ~ ana klasörünüzdür. Her biri iki seviye derinliğe kadar aranır; sembolik bağlantılar ve diğer kullanıcıların klasörleri atlanır.",
+    "Notify when build output is cleaned": "Derleme çıktısı temizlendiğinde bildir",
+    "Shows a desktop notification with how much space a cleanup freed.": "Temizliğin ne kadar alan boşalttığını masaüstü bildirimiyle gösterir.",
+    "{count} build folders removed, {freed} freed.": "{count} derleme klasörü silindi, {freed} boşaltıldı.",
+    "Build output cleaned": "Derleme çıktısı temizlendi"
   },
   "sv": {
     "{activity} · {title}": "{activity} · {title}",
@@ -29869,7 +29989,15 @@
     "The T3 server is not running or did not become ready.": "T3-servern körs inte eller blev inte redo.",
     "The host answered with a different T3 environment.": "Datorn svarade med en annan T3-miljö.",
     "The saved connections could not be unlocked.": "De sparade anslutningarna kunde inte låsas upp.",
-    "The connection to T3 was interrupted.": "Anslutningen till T3 avbröts."
+    "The connection to T3 was interrupted.": "Anslutningen till T3 avbröts.",
+    "Clean Cargo build folders outside projects": "Rensa Cargo-byggmappar utanför projekt",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Tar bort Cargo-targetmappar som agenter eller skript placerat utanför projektet (CARGO_TARGET_DIR) när inget byggts i dem på så många dagar. En mapp som ett bygge använder behålls.",
+    "Folders searched for outside build folders": "Mappar som söks efter externa byggmappar",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "En mapp per rad; ~ är din hemmapp. Varje mapp genomsöks två nivåer ner; symboliska länkar och andra användares mappar hoppas över.",
+    "Notify when build output is cleaned": "Meddela när byggutdata har rensats",
+    "Shows a desktop notification with how much space a cleanup freed.": "Visar en skrivbordsavisering med hur mycket utrymme rensningen frigjorde.",
+    "{count} build folders removed, {freed} freed.": "{count} byggmappar borttagna, {freed} frigjort.",
+    "Build output cleaned": "Byggutdata rensat"
   },
   "da": {
     "{activity} · {title}": "{activity} · {title}",
@@ -31736,7 +31864,15 @@
     "The T3 server is not running or did not become ready.": "T3-serveren kører ikke eller blev ikke klar.",
     "The host answered with a different T3 environment.": "Computeren svarede med et andet T3-miljø.",
     "The saved connections could not be unlocked.": "De gemte forbindelser kunne ikke låses op.",
-    "The connection to T3 was interrupted.": "Forbindelsen til T3 blev afbrudt."
+    "The connection to T3 was interrupted.": "Forbindelsen til T3 blev afbrudt.",
+    "Clean Cargo build folders outside projects": "Ryd Cargo-build-mapper uden for projekter",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Sletter Cargo-target-mapper, som agenter eller scripts har lagt uden for projektet (CARGO_TARGET_DIR), når intet er bygget i dem i så mange dage. En mappe, som et build bruger, bevares.",
+    "Folders searched for outside build folders": "Mapper, der søges i efter eksterne build-mapper",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Én mappe pr. linje; ~ er din hjemmemappe. Hver gennemsøges to niveauer ned; symbolske links og andre brugeres mapper springes over.",
+    "Notify when build output is cleaned": "Giv besked, når build-output er ryddet",
+    "Shows a desktop notification with how much space a cleanup freed.": "Viser en skrivebordsnotifikation med, hvor meget plads oprydningen frigjorde.",
+    "{count} build folders removed, {freed} freed.": "{count} build-mapper fjernet, {freed} frigjort.",
+    "Build output cleaned": "Build-output ryddet"
   },
   "no": {
     "{activity} · {title}": "{activity} · {title}",
@@ -33603,7 +33739,15 @@
     "The T3 server is not running or did not become ready.": "T3-serveren kjører ikke eller ble ikke klar.",
     "The host answered with a different T3 environment.": "Datamaskinen svarte med et annet T3-miljø.",
     "The saved connections could not be unlocked.": "De lagrede tilkoblingene kunne ikke låses opp.",
-    "The connection to T3 was interrupted.": "Tilkoblingen til T3 ble avbrutt."
+    "The connection to T3 was interrupted.": "Tilkoblingen til T3 ble avbrutt.",
+    "Clean Cargo build folders outside projects": "Rydd Cargo-byggemapper utenfor prosjekter",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Sletter Cargo-target-mapper som agenter eller skript har lagt utenfor prosjektet (CARGO_TARGET_DIR) når ingenting er bygget i dem på så mange dager. En mappe som et bygg bruker, beholdes.",
+    "Folders searched for outside build folders": "Mapper det søkes i etter eksterne byggemapper",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Én mappe per linje; ~ er hjemmemappen din. Hver søkes gjennom to nivåer ned; symbolske lenker og andre brukeres mapper hoppes over.",
+    "Notify when build output is cleaned": "Varsle når byggeresultater er ryddet",
+    "Shows a desktop notification with how much space a cleanup freed.": "Viser et skrivebordsvarsel med hvor mye plass oppryddingen frigjorde.",
+    "{count} build folders removed, {freed} freed.": "{count} byggemapper fjernet, {freed} frigjort.",
+    "Build output cleaned": "Byggeresultater ryddet"
   },
   "fi": {
     "{activity} · {title}": "{activity} · {title}",
@@ -35470,7 +35614,15 @@
     "The T3 server is not running or did not become ready.": "T3-palvelin ei ole käynnissä tai ei tullut valmiiksi.",
     "The host answered with a different T3 environment.": "Tietokone vastasi eri T3-ympäristöllä.",
     "The saved connections could not be unlocked.": "Tallennettujen yhteyksien lukitusta ei voitu avata.",
-    "The connection to T3 was interrupted.": "Yhteys T3-palvelimeen katkesi."
+    "The connection to T3 was interrupted.": "Yhteys T3-palvelimeen katkesi.",
+    "Clean Cargo build folders outside projects": "Siivoa projektien ulkopuoliset Cargo-käännöskansiot",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Poistaa Cargo-target-kansiot, jotka agentit tai skriptit ovat sijoittaneet projektin ulkopuolelle (CARGO_TARGET_DIR), kun niissä ei ole käännetty mitään näin moneen päivään. Käännöksen käyttämä kansio säilyy.",
+    "Folders searched for outside build folders": "Kansiot, joista ulkoisia käännöskansioita etsitään",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Yksi kansio riviä kohden; ~ on kotikansiosi. Kustakin etsitään kaksi tasoa syvältä; symboliset linkit ja muiden käyttäjien kansiot ohitetaan.",
+    "Notify when build output is cleaned": "Ilmoita, kun käännöstulosteet on siivottu",
+    "Shows a desktop notification with how much space a cleanup freed.": "Näyttää työpöytäilmoituksen siitä, paljonko tilaa siivous vapautti.",
+    "{count} build folders removed, {freed} freed.": "{count} käännöskansiota poistettu, {freed} vapautettu.",
+    "Build output cleaned": "Käännöstulosteet siivottu"
   },
   "cs": {
     "{activity} · {title}": "{activity} · {title}",
@@ -37337,6 +37489,14 @@
     "The T3 server is not running or did not become ready.": "Server T3 není spuštěný nebo nebyl připraven.",
     "The host answered with a different T3 environment.": "Počítač odpověděl z jiného prostředí T3.",
     "The saved connections could not be unlocked.": "Nepodařilo se odemknout uložená připojení.",
-    "The connection to T3 was interrupted.": "Připojení k T3 bylo přerušeno."
+    "The connection to T3 was interrupted.": "Připojení k T3 bylo přerušeno.",
+    "Clean Cargo build folders outside projects": "Čistit složky sestavení Cargo mimo projekty",
+    "Deletes Cargo target folders that agents or scripts placed outside the project (CARGO_TARGET_DIR) once nothing has built in them for this many days. A folder a build is using is kept.": "Smaže složky target Cargo, které agenti nebo skripty umístili mimo projekt (CARGO_TARGET_DIR), když se v nich tolik dní nic nesestavovalo. Složka, kterou sestavení používá, zůstane.",
+    "Folders searched for outside build folders": "Složky prohledávané kvůli externím sestavením",
+    "One folder per line; ~ is your home folder. Each is searched two levels deep; symlinks and other users' folders are skipped.": "Jedna složka na řádek; ~ je vaše domovská složka. Každá se prohledává do hloubky dvou úrovní; symbolické odkazy a složky jiných uživatelů se přeskakují.",
+    "Notify when build output is cleaned": "Upozornit po vyčištění výstupu sestavení",
+    "Shows a desktop notification with how much space a cleanup freed.": "Zobrazí oznámení na ploše s tím, kolik místa čištění uvolnilo.",
+    "{count} build folders removed, {freed} freed.": "Odstraněno složek sestavení: {count}, uvolněno {freed}.",
+    "Build output cleaned": "Výstup sestavení vyčištěn"
   }
 }

@@ -691,7 +691,12 @@ Singleton {
   property var buildCleanup:({running:false,error:"",report:null})
   readonly property var buildCleanupWorktreeDays:viewState.buildCleanupWorktreeDays===undefined?1:viewState.buildCleanupWorktreeDays
   readonly property var buildCleanupCheckoutDays:viewState.buildCleanupCheckoutDays===undefined?7:viewState.buildCleanupCheckoutDays
+  readonly property var buildCleanupExternalDays:viewState.buildCleanupExternalDays===undefined?1:viewState.buildCleanupExternalDays
+  readonly property var buildCleanupExternalFolders:viewState.buildCleanupExternalFolders===undefined?["~","~/.cache","/var/tmp","/tmp"]:viewState.buildCleanupExternalFolders
+  readonly property bool buildCleanupNotify:viewState.buildCleanupNotify!==false
   function setBuildCleanupDays(key,days){var v={};v[key]=days;rememberView(v)}
+  function setBuildCleanupFolders(text){rememberView({buildCleanupExternalFolders:String(text).split("\n").map(function(l){return l.trim()}).filter(function(l){return l.length>0})})}
+  function setBuildCleanupNotify(on){rememberView({buildCleanupNotify:!!on})}
   function runBuildCleanup(){if(buildCleanup.running)return;buildCleanup=Object.assign({},buildCleanup,{running:worker.running,error:worker.running?"":"disconnected"});persistView.stop();persistViewNow();send({op:"build-cleanup"})}
   // Memory/Obsidian (journal_vault.rs): the development vault on this computer, and
   // what each connected host reports. Every write happens on this computer.
